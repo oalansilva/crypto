@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Trade Marker Phase Is Not Inferred From Text Alone
 

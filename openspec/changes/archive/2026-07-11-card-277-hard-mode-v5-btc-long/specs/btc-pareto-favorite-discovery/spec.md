@@ -20,6 +20,10 @@ Every benchmark, candidate, finalist, saved Favorite, and Pine artifact MUST pre
 - **THEN** only Long-compatible evidence may be used for this execution
 - **AND** Short strategies or references are discarded and recorded as incompatible instead of being used as fallbacks.
 
+#### Scenario: SHORT engine support is missing
+- **WHEN** the configured direction is SHORT and the engine cannot prove true SHORT execution with 100 USD, 100% entry/exit, and Deep Backtest
+- **THEN** the run blocks before counting any winner and records the proof in the Project card
+
 ### Requirement: Revalidate current Favorites as Pareto benchmarks
 The execution MUST revalidate every current BTC/USDT 1d long Favorite on the full available period using the hard invariants and derive `BENCHMARK_RETURN`, `BENCHMARK_DD`, `BENCHMARK_SHARPE`, `BENCHMARK_PF`, and the current non-dominated Pareto set before final ranking when same-direction Favorites exist.
 
@@ -30,7 +34,11 @@ The execution MUST revalidate every current BTC/USDT 1d long Favorite on the ful
 - **AND** `BENCHMARK_PARETO_SET` is empty
 - **AND** the execution continues to search for Winner 1.
 
-### Requirement: Save five sequential Pareto winners
+#### Scenario: Benchmarks are stronger than stored metrics
+- **WHEN** deep revalidation materially improves a benchmark relative to stored metrics
+- **THEN** previous candidate rankings are discarded and post-benchmark adaptive rounds target the revalidated Pareto set
+
+### Requirement: Save exactly five sequential direction-aware winners
 The execution MUST save exactly five new BTC/USDT 1d Long Favorites in sequence, recalibrating benchmarks after each saved winner.
 
 #### Scenario: Winner 1 starts cold chain
@@ -44,6 +52,14 @@ The execution MUST save exactly five new BTC/USDT 1d Long Favorites in sequence,
 - **AND** max drawdown less than or equal to every prior winner
 - **AND** Sharpe or profit factor greater than or equal to every prior winner
 - **AND** at least one configured material improvement over the best prior winner.
+
+#### Scenario: Later winner does not beat the chain
+- **WHEN** a candidate does not satisfy sequential improvement against all prior saved winners
+- **THEN** it cannot be saved as the next winner even if it is better than T0 benchmarks
+
+#### Scenario: Five valid winners are saved
+- **WHEN** WINNER_1 through WINNER_5 are saved, visible, backtest-updated, public-name-safe, direction-correct, and sequentially validated
+- **THEN** the card may move to Done técnico after required branch, review, validation, integration, and restart steps
 
 ### Requirement: Reject duplicates and dominated candidates
 The execution MUST reject candidates that duplicate T0 strategies, duplicate saved winners, or are dominated by any current revalidated same-direction Favorite or prior winner before final ranking or saving.

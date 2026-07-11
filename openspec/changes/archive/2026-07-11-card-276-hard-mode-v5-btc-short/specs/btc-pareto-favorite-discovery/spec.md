@@ -19,7 +19,9 @@ Every benchmark, candidate, finalist, saved Favorite, and Pine artifact MUST pre
 - **WHEN** the configured direction is SHORT and the engine cannot prove true SHORT execution with 100 USD, 100% entry/exit, and Deep Backtest
 - **THEN** the run blocks before counting any winner and records the proof in the Project 1 card
 
-### Requirement: Revalidate current Favorites as direction-aware Pareto benchmarks
+## MODIFIED Requirements
+
+### Requirement: Revalidate current Favorites as Pareto benchmarks
 The execution MUST revalidate every current BTC/USDT 1d Favorite in the configured direction on the full available period using the hard invariants and derive `BENCHMARK_RETURN`, `BENCHMARK_DD`, `BENCHMARK_SHARPE`, `BENCHMARK_PF`, and the current non-dominated Pareto set when such Favorites exist.
 
 #### Scenario: No same-direction Favorites exist
@@ -28,12 +30,20 @@ The execution MUST revalidate every current BTC/USDT 1d Favorite in the configur
 - **AND** all benchmark fields may be null or empty
 - **AND** the run proceeds to search WINNER_1 instead of blocking
 
+#### Scenario: Benchmarks are stronger than stored metrics
+- **WHEN** deep revalidation materially improves a benchmark relative to stored metrics
+- **THEN** previous candidate rankings are discarded and post-benchmark adaptive rounds target the revalidated Pareto set
+
+## MODIFIED Requirements
+
 ### Requirement: Reject duplicates and dominated candidates
 The execution MUST reject candidates that duplicate T0 strategies, duplicate earlier winners, use the opposite direction, or are dominated by any current revalidated same-direction Favorite or prior winner before final ranking or saving.
 
 #### Scenario: Candidate is a renamed existing strategy
 - **WHEN** a candidate has new copy or a new `strategy_name` but materially matches T0 logic, parameters, template data, ranges, metrics, or Pine
 - **THEN** it is classified as duplicate and cannot be saved or counted as a material executed candidate
+
+## ADDED Requirements
 
 ### Requirement: Save exactly five sequential direction-aware winners
 The execution MUST save exactly five new Favorites in the configured direction or block with the configured evidence. WINNER_1 MAY initialize the chain in cold-start mode; each later winner MUST satisfy the sequential improvement contract against every prior winner.
@@ -53,6 +63,8 @@ The execution MUST validate an explicit public-name contract before saving each 
 - **WHEN** the public resolver or save payload would produce empty, generic, or `Estratégia Cripto Farol` copy
 - **THEN** the Favorite MUST NOT be saved
 - **AND** the product path MUST be fixed through the governed workflow or the run must block with evidence
+
+## MODIFIED Requirements
 
 ### Requirement: Block only after configured evidence thresholds
 The execution MUST report a no-winner blocker only after satisfying the configured minimum active search time, cycles, theses, template families, executed unique deep candidates, post-benchmark adaptive rounds, Pareto-member targeting, and finalist stress requirements unless a real technical blocker prevents continuation.
