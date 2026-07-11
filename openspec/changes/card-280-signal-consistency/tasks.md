@@ -17,6 +17,6 @@
 - [x] 3.1 Run focused backend/frontend tests, formatter/build and `openspec validate card-280-signal-consistency`.
 - [x] 3.2 Run Codex review on the exact diff and resolve/classify findings.
 - [x] 3.3 Run `/opsx:verify` equivalent and record implementation evidence.
-- [ ] 3.4 Integrate into `develop`, execute `./restart` and validate the served DEV scenario.
+- [x] 3.4 Integrate into `develop`, execute `./restart` and validate the served DEV scenario.
 
 Use project skills in `.codex/skills` when applicable for testing, debugging, frontend validation and OpenSpec verification.
