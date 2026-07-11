@@ -22,11 +22,18 @@ def test_dev_worktree_restart_fails_closed_before_legacy_runtime(tmp_path):
     repo_root = Path(__file__).resolve().parents[3]
     simulated_worktree = repo_root / ".restart-contract-test"
     simulated_worktree.mkdir(exist_ok=True)
-    restart_link = simulated_worktree / "restart"
+    restart_copy = simulated_worktree / "restart"
     try:
-        restart_link.symlink_to(repo_root / "restart")
+        restart_source = (repo_root / "restart").read_text()
+        restart_copy.write_text(
+            restart_source.replace(
+                "/srv/apps/dev/criptofarol/*",
+                f"{repo_root}/*",
+            )
+        )
+        restart_copy.chmod(0o755)
         result = subprocess.run(
-            [str(restart_link)],
+            [str(restart_copy)],
             cwd=simulated_worktree,
             env={**os.environ, "PATH": os.environ.get("PATH", "")},
             capture_output=True,
@@ -35,7 +42,7 @@ def test_dev_worktree_restart_fails_closed_before_legacy_runtime(tmp_path):
             check=False,
         )
     finally:
-        restart_link.unlink(missing_ok=True)
+        restart_copy.unlink(missing_ok=True)
         simulated_worktree.rmdir()
 
     assert result.returncode == 2
