@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.database import get_db
 from app.models import ComboTemplate, FavoriteStrategy, MonitorStrategyPreference, User
@@ -89,6 +89,8 @@ def _favorite_response(
 ) -> FavoriteStrategyResponse:
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
+    if isinstance(payload.get("metrics"), dict):
+        payload["metrics"] = _safe_cached_metrics(payload["metrics"], str(row.timeframe))
     payload["strategy_description"] = (description_by_strategy or {}).get(
         str(row.strategy_name),
         public_strategy_description(row.strategy_name),
@@ -175,6 +177,77 @@ def _normalized_timestamp(raw: Any) -> str | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc).isoformat()
+
+
+def _timeframe_delta(timeframe: str) -> timedelta:
+    normalized = str(timeframe or "1d").strip().lower()
+    if normalized.endswith("m") and normalized[:-1].isdigit():
+        return timedelta(minutes=int(normalized[:-1]))
+    if normalized.endswith("h") and normalized[:-1].isdigit():
+        return timedelta(hours=int(normalized[:-1]))
+    if normalized.endswith("d") and normalized[:-1].isdigit():
+        return timedelta(days=int(normalized[:-1]))
+    return timedelta(days=1)
+
+
+def _safe_cached_trades(
+    trades: Any, candles: list[dict[str, Any]], timeframe: str
+) -> list[dict[str, Any]]:
+    if not isinstance(trades, list) or not candles:
+        return trades if isinstance(trades, list) else []
+
+    candle_times = [
+        parsed
+        for parsed in (
+            _normalized_timestamp(candle.get("timestamp_utc") or candle.get("timestamp"))
+            for candle in candles
+            if isinstance(candle, dict)
+        )
+        if parsed is not None
+    ]
+    if not candle_times:
+        return trades
+
+    coverage_start = datetime.fromisoformat(min(candle_times))
+    coverage_end = datetime.fromisoformat(max(candle_times)) + _timeframe_delta(timeframe)
+    safe_trades: list[dict[str, Any]] = []
+    exit_fields = {
+        "exit_time",
+        "exit_price",
+        "profit",
+        "pnl",
+        "final_capital",
+        "exit_reason",
+        "signal_type",
+    }
+    for raw_trade in trades:
+        if not isinstance(raw_trade, dict):
+            continue
+        entry_timestamp = _normalized_timestamp(raw_trade.get("entry_time"))
+        if entry_timestamp is None:
+            continue
+        entry_time = datetime.fromisoformat(entry_timestamp)
+        if entry_time < coverage_start or entry_time >= coverage_end:
+            continue
+
+        trade = dict(raw_trade)
+        raw_exit_time = trade.get("exit_time")
+        exit_timestamp = _normalized_timestamp(raw_exit_time)
+        if raw_exit_time and exit_timestamp is None:
+            trade = {key: value for key, value in trade.items() if key not in exit_fields}
+        elif exit_timestamp is not None:
+            exit_time = datetime.fromisoformat(exit_timestamp)
+            if exit_time < entry_time or exit_time >= coverage_end:
+                trade = {key: value for key, value in trade.items() if key not in exit_fields}
+        safe_trades.append(trade)
+    return safe_trades
+
+
+def _safe_cached_metrics(metrics: dict[str, Any], timeframe: str) -> dict[str, Any]:
+    safe_metrics = dict(metrics)
+    candles = _analysis_candles_from_metrics(metrics)
+    safe_metrics["trades"] = _safe_cached_trades(metrics.get("trades"), candles, timeframe)
+    return safe_metrics
 
 
 def _merge_chart_candles(
@@ -592,6 +665,7 @@ async def get_favorite_trades(
     favorite = _normalize_favorite_json_fields(favorite)
     metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     strategy_transparency = _favorite_transparency(db, favorite, metrics)
+    metrics = _safe_cached_metrics(metrics, str(favorite.timeframe))
     saved_trades = metrics.get("trades")
     saved_trade_count = _numeric_metric(metrics.get("total_trades"))
     history_cached = metrics.get("trades_history_cached") is True

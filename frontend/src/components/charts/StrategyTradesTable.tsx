@@ -158,6 +158,9 @@ export function StrategyTradesTable({
 }: StrategyTradesTableProps) {
     const isShort = direction.toLowerCase() === 'short'
     const rows = buildClosedTradeRows(trades, candles, isShort)
+    const openTrades = [...trades]
+        .filter((trade) => trade.entry_time && (!trade.exit_time || trade.exit_price == null))
+        .sort((left, right) => new Date(right.entry_time).getTime() - new Date(left.entry_time).getTime())
     const displayMetrics = deriveMetrics(rows, metrics)
 
     return (
@@ -237,6 +240,20 @@ export function StrategyTradesTable({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#2b3139] bg-[#1e2329]">
+                            {openTrades.map((trade, index) => (
+                                <tr key={`open-${trade.entry_time}-${index}`} className="border-b border-[#2b3139] bg-[#1e2329] transition-colors hover:bg-[#2b3139]">
+                                    <td className="border-r border-[#2b3139] px-4 py-3 text-center">
+                                        <div className="font-medium text-[#eaecef]">{rows.length + openTrades.length - index}</div>
+                                        <div className={`text-xs ${isShort ? 'text-[#f0b90b]' : 'text-[#929aa5]'}`}>{isShort ? 'Venda' : 'Compra'}</div>
+                                    </td>
+                                    <td className="px-4 py-2 text-[#eaecef]">Entrada</td>
+                                    <td className="px-4 py-2 text-[#eaecef]">{formatDate(trade.entry_time)}</td>
+                                    <td className="px-4 py-2 text-[#eaecef]">{isShort ? 'Vender' : 'Comprar'}</td>
+                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.entry_price)}</td>
+                                    <td className="px-4 py-2 text-[#eaecef]">-</td>
+                                    <td colSpan={4} className="px-4 py-2 font-medium text-[#0ecb81]">Posição aberta</td>
+                                </tr>
+                            ))}
                             {rows.length > 0 ? rows.flatMap((trade) => [
                                 <tr key={`${trade.tradeNum}-entry`} className="bg-[#1e2329] transition-colors hover:bg-[#2b3139]">
                                     <td rowSpan={2} className="border-r border-[#2b3139] px-4 py-3 text-center">
@@ -272,13 +289,13 @@ export function StrategyTradesTable({
                                         <div className="text-xs text-[#929aa5]">, {trade.cumulativePnlPct.toFixed(2)}%</div>
                                     </td>
                                 </tr>,
-                            ]) : (
+                            ]) : openTrades.length === 0 ? (
                                 <tr>
                                     <td colSpan={10} className="px-4 py-8 text-center text-[#929aa5]">
                                         Sem lista de trades fechados para esta estrategia.
                                     </td>
                                 </tr>
-                            )}
+                            ) : null}
                         </tbody>
                     </table>
                 </div>

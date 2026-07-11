@@ -428,6 +428,62 @@ def test_favorite_trades_returns_saved_trades_without_regeneration(tmp_path: Pat
     assert response.trades == [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}]
 
 
+def test_favorite_trades_removes_future_cached_exit_but_keeps_open_entry(
+    tmp_path: Path, monkeypatch
+):
+    SessionLocal = _session_factory(tmp_path)
+    monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+
+    with SessionLocal() as db:
+        created = favorites.create_favorite(
+            favorites.FavoriteStrategyCreate(
+                **{
+                    **_favorite_payload("Future cached exit").model_dump(),
+                    "metrics": {
+                        "total_trades": 1,
+                        "trades_history_cached": True,
+                        "trades": [
+                            {
+                                "entry_time": "2026-07-10T00:00:00Z",
+                                "entry_price": 63230.01,
+                                "exit_time": "2026-07-12T00:00:00Z",
+                                "exit_price": 64344.76,
+                                "profit": 0.0161,
+                                "exit_reason": "signal_15m",
+                            },
+                            {
+                                "entry_time": "2026-07-11T00:00:00Z",
+                                "entry_price": 64000.00,
+                                "exit_time": "invalid",
+                                "exit_price": 65000.00,
+                                "profit": 0.02,
+                            },
+                        ],
+                        "analysis_candles": [
+                            {"timestamp_utc": "2026-07-10T00:00:00Z", "close": 63230.01},
+                            {"timestamp_utc": "2026-07-11T00:00:00Z", "close": 64000.00},
+                        ],
+                    },
+                }
+            ),
+            current_user_id="user-a",
+            db=db,
+        )
+
+        response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id="user-a", db=db)
+        )
+        listed = favorites.list_favorites(current_user_id="user-a", db=db)
+
+    expected = [
+        {"entry_time": "2026-07-10T00:00:00Z", "entry_price": 63230.01},
+        {"entry_time": "2026-07-11T00:00:00Z", "entry_price": 64000.00},
+    ]
+    assert response.regenerated is False
+    assert response.trades == expected
+    assert listed[0].metrics["trades"] == expected
+
+
 def test_favorite_trades_backfills_legacy_saved_trades_without_chart_context(
     tmp_path: Path, monkeypatch
 ):

@@ -43,6 +43,12 @@ Alternativa rejeitada: remover todos os fallbacks. Eles ainda são úteis quando
 
 Compra continua usando `#0ecb81`, venda `#f6465d`, canvas `#0b0e11` e superfícies `#1e2329`, conforme `DESIGN.md`. A mudança é de coerência funcional, sem novo componente visual.
 
+### 5. Validar caches legados na leitura e exibir posição aberta
+
+O backend filtrará eventos fora da cobertura antes de devolver `metrics.trades`, mesmo quando o cache foi criado antes desta correção. A tabela de resultados aceitará trades sem `exit_time` e mostrará a operação como aberta, sem criar linha, preço ou resultado de saída. O favorito afetado será regenerado em DEV depois do deploy para persistir a forma correta.
+
+Alternativa rejeitada: depender somente do próximo refresh agendado. O cache antigo continuaria visível até o job diário e qualquer consumidor direto permaneceria vulnerável.
+
 ## Risks / Trade-offs
 
 - [Histórico antigo sem candles armazenados pode perder autoridade] → manter fallback da análise atual e classificar incerteza, sem fabricar saída.

@@ -19,4 +19,11 @@
 - [x] 3.3 Run `/opsx:verify` equivalent and record implementation evidence.
 - [x] 3.4 Integrate into `develop`, execute `./restart` and validate the served DEV scenario.
 
+## 4. Legacy cache correction
+
+- [x] 4.1 Filter invalid future exits from saved favorite trades in backend read responses while preserving the valid open entry.
+- [x] 4.2 Update the results table and favorite analysis path to represent an open final operation without a synthetic exit row.
+- [x] 4.3 Add backend/frontend regression coverage for legacy cached future exits and open-position rendering.
+- [ ] 4.4 Review, verify, integrate into `develop`, restart DEV, regenerate favorite 9 and validate database plus served UI.
+
 Use project skills in `.codex/skills` when applicable for testing, debugging, frontend validation and OpenSpec verification.

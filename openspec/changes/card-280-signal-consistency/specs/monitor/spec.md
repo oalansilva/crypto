@@ -51,3 +51,16 @@ The favorite refresh process MUST NOT replace previously valid metrics with a re
 #### Scenario: Real intraday stop closes the final position
 - **WHEN** a stop is reached in covered intraday candles before the backtest period ends
 - **THEN** the system MUST preserve the stop exit and its covered timestamp
+
+### Requirement: Cached result history is safe on read
+The system MUST validate saved favorite trades against their saved candle coverage before returning or rendering them, including caches created before this change.
+
+#### Scenario: Legacy cache contains future exit
+- **WHEN** saved metrics contain an exit outside the saved analysis candle coverage
+- **THEN** the read model MUST remove the invalid exit while preserving its valid entry
+- **AND** MUST expose the final operation as open rather than sold
+
+#### Scenario: Results table receives open operation
+- **WHEN** a trade has a valid entry and no valid exit
+- **THEN** the results table MUST display the entry as an open position
+- **AND** MUST NOT render a fabricated exit row, exit price or realized profit

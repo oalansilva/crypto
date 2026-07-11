@@ -9,6 +9,7 @@ O Monitor pode exibir `Venda` e encerrar visualmente uma posição comprada quan
 - Resolver posição, badge, mensagem e marcador do gráfico a partir da mesma evidência válida.
 - Preservar `Compra` quando existe entrada ativa sem saída válida posterior.
 - Adicionar cobertura backend e frontend para entrada ativa, saída confirmada e saída temporalmente inválida.
+- Revalidar caches históricos também na leitura e representar posição aberta sem uma linha de saída fictícia na tabela de resultados.
 - Manter o visual existente do `DESIGN.md`: verde `#0ecb81` para compra, vermelho `#f6465d` para venda e superfícies escuras do Monitor; não há redesign.
 
 ## Capabilities
@@ -25,5 +26,5 @@ O Monitor pode exibir `Venda` e encerrar visualmente uma posição comprada quan
 
 - Backend: `backend/app/services/opportunity_service.py` e testes de estado/serviço do Monitor.
 - Frontend: `frontend/src/components/monitor/signalResolution.ts`, `ChartModal.tsx` e testes de resolução/marcadores.
-- Dados: leitura defensiva de `favorite_strategies.metrics.trades`; sem migração e sem alteração de parâmetros salvos.
+- Dados: leitura defensiva de `favorite_strategies.metrics.trades` e saneamento do cache inválido do favorito afetado; sem alteração de parâmetros salvos.
 - Runtime alvo: somente DEV nesta etapa.
