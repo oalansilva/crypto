@@ -39,4 +39,12 @@
 - [x] 6.3 Tornar `./restart` do source DEV canônico restrito aos serviços/portas DEV e validar que não referencia nem reinicia PROD.
 - [x] 6.4 Rodar apply/verify, checks focados, review independente, integrar em `develop`, reiniciar somente DEV e validar o favorito real da captura.
 
+## 7. Correção pós-feedback DEV — cores e candles atuais
+
+- [x] 7.1 Atribuir cores semânticas às médias móveis por papel/período: curta vermelha, intermediária laranja e longa azul, sem depender somente do tipo EMA/SMA.
+- [x] 7.2 Reconstruir no backend o manifesto/séries do favorito sobre o histórico OHLCV atual, usando o mesmo cutoff dos candles e sem reotimizar trades.
+- [x] 7.3 Preservar fallback cacheado e redaction: trader comum recebe séries públicas atuais, mas não `indicator_data`, configuração interna ou diagnósticos brutos.
+- [x] 7.4 Adicionar testes backend/frontend/Playwright para cores distintas, cache defasado e último timestamp de cada média igual ao último candle retornado.
+- [ ] 7.5 Rodar apply/verify, checks focados, acessibilidade básica, review independente, integrar em `develop`, reiniciar somente DEV e validar o favorito real #119.
+
 Use project skills under `.codex/skills` when applicable for architecture, tests, debugging, frontend, accessibility and OpenSpec work.

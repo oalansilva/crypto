@@ -43,3 +43,12 @@ O teste de Alan em `/combo/results` mostrou somente candles e marcadores para um
 - favoritos legados com candles e arrays de indicadores alinhados, mas sem `analysis_strategy_transparency`, usam um atalho de cache que não consulta a resposta de análise capaz de reconstruir as séries.
 
 A correção passa a hidratar o manifesto legado pela API de análise quando o cache não contém séries timestampadas utilizáveis e torna o `./restart` do source DEV canônico restrito aos serviços `criptofarol-dev-*`, sem atingir PROD.
+
+## Correção pós-feedback DEV — cores e séries atuais
+
+O reteste de Alan em 11/07 confirmou que as três médias agora aparecem, mas mostrou dois problemas restantes:
+
+- a média curta usa amarelo e as médias intermediária/lenta usam tons azuis muito próximos, reduzindo a leitura imediata;
+- o gráfico mescla candles atuais até 11/07 com séries cacheadas somente até 28/06, deixando os candles mais recentes sem médias.
+
+A mesma change passa a definir cores semânticas por papel da média — curta vermelha, intermediária laranja e longa azul — e exige que a resposta de análise reconstrua no backend os indicadores sobre o mesmo histórico OHLCV atual entregue ao gráfico. O frontend continua proibido de recalcular ou alinhar séries por posição. A correção não reotimiza trades, não altera sinais/regras e não expõe `indicator_data` bruto ao trader comum.

@@ -65,3 +65,17 @@ The repository SHALL maintain an auditable matrix and automated coverage for eve
 #### Scenario: Active template catalog changes
 - **WHEN** a template is added or its configuration changes
 - **THEN** tests SHALL fail if identity is generic, metadata announces an unused indicator, configured indicators are missing, or panel/participation metadata is absent.
+
+### Requirement: Public series and candles share one temporal cutoff
+When current OHLCV is available, the backend SHALL derive public indicator points and returned candles from the same ordered timestamp snapshot.
+
+#### Scenario: Current history extends beyond a saved analysis
+- **WHEN** canonical OHLCV contains candles newer than the favorite's saved analysis arrays
+- **THEN** the backend SHALL calculate the declared indicators over the current snapshot
+- **AND** SHALL return each available series through the last candle timestamp after its normal warm-up
+- **AND** SHALL NOT change saved trades, metrics or effective parameters.
+
+#### Scenario: Public payload is redacted
+- **WHEN** the current manifest is returned to a common trader
+- **THEN** only allowlisted timestamped series SHALL be included
+- **AND** raw calculation columns and diagnostic arrays SHALL remain excluded.

@@ -69,3 +69,16 @@ The chart SHALL not silently omit a manifest indicator that lacks usable data.
 - **WHEN** an indicator is declared but has no finite timestamped points
 - **THEN** the UI SHALL identify that indicator as unavailable
 - **AND** candles, markers, trades and chart controls SHALL remain usable.
+
+### Requirement: Moving-average colors communicate temporal role
+The canonical chart contract SHALL distinguish ordered moving averages by temporal role rather than assigning one color to every EMA or SMA type.
+
+#### Scenario: Three moving averages are rendered
+- **WHEN** a strategy executes short, intermediate and long moving averages
+- **THEN** the short average SHALL be red, the intermediate average SHALL be orange and the long average SHALL be blue
+- **AND** each item SHALL retain its type, period and function in accessible text so meaning does not depend on color alone.
+
+#### Scenario: Moving-average role is not provable
+- **WHEN** an indicator does not declare a temporal alias and cannot be ordered safely within a moving-average group
+- **THEN** the manifest SHALL keep its standard type color
+- **AND** SHALL NOT invent a short/intermediate/long role.

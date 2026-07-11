@@ -64,3 +64,22 @@ Favorites list and analysis responses SHALL expose the same strategy transparenc
 - **THEN** opening full analysis SHALL request the favorite analysis response that reconstructs the canonical timestamped series
 - **AND** `/combo/results` SHALL render the declared overlays or panels
 - **AND** the Favorites list SHALL remain a summary payload without duplicating full historical series for every row.
+
+### Requirement: Favorite analysis indicators cover current candles
+Opening full favorite analysis SHALL return public indicator series calculated by the backend over the same current OHLCV snapshot returned as chart candles, without rerunning trade optimization.
+
+#### Scenario: Cached analysis is older than canonical candles
+- **WHEN** a favorite has saved trades and indicator arrays ending before the current canonical OHLCV history
+- **THEN** the analysis response SHALL preserve the saved trades and metrics
+- **AND** SHALL recalculate only the declared indicator columns using the favorite's effective parameters
+- **AND** every available moving-average series SHALL end at the same timestamp as the last returned candle.
+
+#### Scenario: Current OHLCV reconstruction fails
+- **WHEN** current canonical candles cannot be loaded or calculated safely
+- **THEN** the analysis SHALL fall back to the proven cached candles and series
+- **AND** SHALL NOT align arrays positionally or regenerate trades implicitly.
+
+#### Scenario: Common trader receives current reconstruction
+- **WHEN** a non-admin trader is authorized to view the favorite analysis
+- **THEN** the response SHALL include current timestamped public series and candles
+- **AND** SHALL keep raw `indicator_data`, diagnostics and implementation configuration hidden.
