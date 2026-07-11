@@ -45,6 +45,6 @@
 - [x] 7.2 Reconstruir no backend o manifesto/séries do favorito sobre o histórico OHLCV atual, usando o mesmo cutoff dos candles e sem reotimizar trades.
 - [x] 7.3 Preservar fallback cacheado e redaction: trader comum recebe séries públicas atuais, mas não `indicator_data`, configuração interna ou diagnósticos brutos.
 - [x] 7.4 Adicionar testes backend/frontend/Playwright para cores distintas, cache defasado e último timestamp de cada média igual ao último candle retornado.
-- [ ] 7.5 Rodar apply/verify, checks focados, acessibilidade básica, review independente, integrar em `develop`, reiniciar somente DEV e validar o favorito real #119.
+- [x] 7.5 Rodar apply/verify, checks focados, acessibilidade básica, review independente, integrar em `develop`, reiniciar somente DEV e validar o favorito real #119.
 
 Use project skills under `.codex/skills` when applicable for architecture, tests, debugging, frontend, accessibility and OpenSpec work.
