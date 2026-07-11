@@ -10,7 +10,11 @@ from sqlalchemy import text
 from app.database import SessionLocal
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 from app.services.market_data_providers import CCXT_SOURCE, STOOQ_SOURCE
-from app.services.opportunity_service import OpportunityService, _normalize_market_timeframe
+from app.services.opportunity_service import (
+    OpportunityService,
+    _is_current_favorite_trade_event,
+    _normalize_market_timeframe,
+)
 from app.services import opportunity_service
 
 
@@ -44,6 +48,20 @@ def _sample_ohlcv():
         },
         index=ts,
     )
+
+
+def test_cached_trade_event_must_be_inside_candle_coverage():
+    frame = _sample_ohlcv()
+
+    assert _is_current_favorite_trade_event("2026-04-22T12:00:00Z", "1d", frame, [])
+    assert not _is_current_favorite_trade_event("2026-04-23T00:00:00Z", "1d", frame, [])
+
+
+def test_cached_trade_event_cannot_override_a_newer_calculated_signal():
+    frame = _sample_ohlcv()
+    history = [{"timestamp": "2026-04-22T00:00:00Z", "type": "entry"}]
+
+    assert not _is_current_favorite_trade_event("2026-04-21T12:00:00Z", "1d", frame, history)
 
 
 class _FakeComboStrategy:

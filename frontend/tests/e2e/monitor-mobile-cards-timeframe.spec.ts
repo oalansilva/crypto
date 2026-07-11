@@ -1055,13 +1055,13 @@ test('monitor resolves same-day Compra and Venda trade to the opposite signal', 
 
   const surface = page.getByTestId('chart-modal-surface')
   await expect(surface).toHaveAttribute('data-marker-count', '1')
-  await expect(surface).toHaveAttribute('data-marker-labels', /^VENDA/)
+  await expect(surface).toHaveAttribute('data-marker-labels', /^VENDA/i)
   await expect(surface).not.toHaveAttribute('data-marker-labels', /COMPRA/)
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
   await expect(page.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
 })
 
-test('monitor resolves exit and next entry on the same day to the opposite of the previous signal', async ({ page }) => {
+test('monitor keeps the canonical active entry when cached trades also contain an exit', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -1191,10 +1191,10 @@ test('monitor resolves exit and next entry on the same day to the opposite of th
 
   await page.goto('/monitor')
 
-  await expect(page.getByTestId('monitor-section-exit').getByTestId('monitor-card-ada-usdt')).toBeVisible()
-  await expect(page.getByTestId('monitor-section-hold').getByTestId('monitor-card-ada-usdt')).toHaveCount(0)
-  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Venda')
-  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Venda')
+  await expect(page.getByTestId('monitor-section-hold').getByTestId('monitor-card-ada-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-section-exit').getByTestId('monitor-card-ada-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Compra')
+  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Compra')
 
   const card = page.getByTestId('monitor-card-ada-usdt')
   await expect(card).toBeVisible()
@@ -1204,8 +1204,8 @@ test('monitor resolves exit and next entry on the same day to the opposite of th
   await expect(surface).toHaveAttribute('data-marker-count', '2')
   await expect(surface).toHaveAttribute('data-marker-labels', /^COMPRA\|VENDA/)
   await expect(surface).not.toHaveAttribute('data-marker-labels', /COMPRA\|VENDA\|COMPRA/)
-  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
-  await expect(page.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
+  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')
+  await expect(page.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {

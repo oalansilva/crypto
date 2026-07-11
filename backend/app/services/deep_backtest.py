@@ -127,6 +127,12 @@ def simulate_execution_with_15m(
             final_exit_price = signal_exit_price
             exit_reason = reason_end
 
+        # An open position is not a completed trade.  The old implementation
+        # fabricated an exit on the day after the last candle, which could be
+        # cached and exposed as a future sell signal by the monitor.
+        if exit_reason == "end_of_period":
+            continue
+
         last_exit_time = final_exit_time
         if is_short:
             profit = (

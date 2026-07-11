@@ -383,14 +383,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const tradeSignalMarkers = React.useMemo<StrategyChartMarker[]>(() => (
         canRenderSignalHistoryMarkers
             ? buildTradeMarkers(analysisTrades, { direction: opportunityDirection, timeframe })
+                .filter((marker) => candleTimes.has(toStrategyChartTimestamp(marker.time)))
             : []
-    ), [analysisTrades, canRenderSignalHistoryMarkers, opportunityDirection, timeframe]);
+    ), [analysisTrades, canRenderSignalHistoryMarkers, candleTimes, opportunityDirection, timeframe]);
     const baseChartMarkers = React.useMemo<StrategyChartMarker[]>(
-        () => (
-            tradeSignalMarkers.length > 0
-                ? tradeSignalMarkers
-                : historicalSignalMarkers as StrategyChartMarker[]
-        ),
+        () => [...tradeSignalMarkers, ...historicalSignalMarkers as StrategyChartMarker[]],
         [historicalSignalMarkers, tradeSignalMarkers],
     );
     const latestVisibleMarkerType = React.useMemo(
