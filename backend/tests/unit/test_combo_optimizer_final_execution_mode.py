@@ -193,6 +193,7 @@ def test_optimizer_final_backtest_preserves_requested_short_direction(monkeypatc
         start_date="2026-01-01",
         end_date="2026-01-02",
         direction="short",
+        deep_backtest=False,
     )
 
     assert calls[-1]["direction"] == "short"
