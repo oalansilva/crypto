@@ -208,7 +208,6 @@ def _safe_cached_trades(
     if not candle_times:
         return trades
 
-    coverage_start = datetime.fromisoformat(min(candle_times))
     coverage_end = datetime.fromisoformat(max(candle_times)) + _timeframe_delta(timeframe)
     safe_trades: list[dict[str, Any]] = []
     exit_fields = {
@@ -227,7 +226,7 @@ def _safe_cached_trades(
         if entry_timestamp is None:
             continue
         entry_time = datetime.fromisoformat(entry_timestamp)
-        if entry_time < coverage_start or entry_time >= coverage_end:
+        if entry_time >= coverage_end:
             continue
 
         trade = dict(raw_trade)
@@ -245,8 +244,9 @@ def _safe_cached_trades(
 
 def _safe_cached_metrics(metrics: dict[str, Any], timeframe: str) -> dict[str, Any]:
     safe_metrics = dict(metrics)
-    candles = _analysis_candles_from_metrics(metrics)
-    safe_metrics["trades"] = _safe_cached_trades(metrics.get("trades"), candles, timeframe)
+    if isinstance(metrics.get("trades"), list):
+        candles = _analysis_candles_from_metrics(metrics)
+        safe_metrics["trades"] = _safe_cached_trades(metrics["trades"], candles, timeframe)
     return safe_metrics
 
 

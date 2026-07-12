@@ -484,6 +484,23 @@ def test_favorite_trades_removes_future_cached_exit_but_keeps_open_entry(
     assert listed[0].metrics["trades"] == expected
 
 
+def test_favorite_trades_preserves_history_before_partial_candle_window():
+    trades = [
+        {
+            "entry_time": "2026-05-09T00:00:00Z",
+            "exit_time": "2026-05-20T00:00:00Z",
+            "profit": -0.0438,
+        }
+    ]
+    candles = [{"timestamp_utc": "2026-05-20T00:00:00Z", "close": 0.08877}]
+
+    assert favorites._safe_cached_trades(trades, candles, "1d") == trades
+
+
+def test_safe_cached_metrics_preserves_missing_trades_key():
+    assert "trades" not in favorites._safe_cached_metrics({"total_trades": 1}, "1d")
+
+
 def test_favorite_trades_backfills_legacy_saved_trades_without_chart_context(
     tmp_path: Path, monkeypatch
 ):
