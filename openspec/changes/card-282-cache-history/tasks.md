@@ -8,6 +8,6 @@
 
 - [x] 2.1 Run focused and complete backend tests plus OpenSpec validation.
 - [x] 2.2 Run Codex review and `/opsx:verify` equivalent.
-- [ ] 2.3 Integrate into `develop`, restart and validate DEV.
+- [x] 2.3 Integrate into `develop`, restart and validate DEV.
 
 Use project skills in `.codex/skills` when applicable for tests, debugging and OpenSpec verification.
