@@ -18,7 +18,7 @@
 - [x] 3.1 Executar testes focados de CI/Playwright, build frontend e validações OpenSpec da change.
 - [x] 3.2 Mover o card para Code Review, revisar o diff exato e corrigir/classificar achados.
 - [x] 3.3 Commitar/publicar a branch, verificar o `qa-gate` e registrar evidências no card.
-- [ ] 3.4 Integrar em develop, executar `./restart`, validar runtime e mover para Done técnico.
+- [x] 3.4 Integrar em develop, executar `./restart`, validar runtime e mover para Done técnico.
 
 ## Nota de execução
 
