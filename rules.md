@@ -26,10 +26,14 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 3. No cripto, o campo `Status` e a fonte principal das colunas. O campo `Fluxo`, quando existir, e substatus/legado; se houver divergencia, `Status` prevalece.
    - `Todo`: backlog ou pronto para comecar.
    - `In Progress`: Codex/Clara esta trabalhando ou validando tecnicamente.
-   - `Done`: Done tecnico; codigo implementado, validado tecnicamente e integrado em `develop`, aguardando teste/aprovacao do Alan.
+   - `Code Review`: diff pronto para revisao Codex antes do commit; achados bloqueantes corrigidos ou classificados.
+   - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
+   - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
    - `Pronto`: alteracao ja subiu para `main`/producao com evidencia; este e o fechamento final.
    - `Cancelado`: nao sera feito ou foi substituido.
+   - Caminho normal: `Todo -> In Progress -> Code Review -> QA -> Done -> Homologado -> Pronto`.
+   - Falha de QA que exige codigo: `QA -> In Progress -> Code Review -> QA`; falha de infraestrutura permanece em `QA` para rerun documentado.
    - Nao descreva `Status=Done` como card fechado/finalizado; use `Done tecnico` ou `aguardando homologacao`.
 
 4. Homologacao e release seguem `alan-workflow`.
@@ -66,3 +70,8 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Vale para telas novas e antigas, ajustes pequenos, refactors visuais, cards de produto e correcoes de interface.
    - Antes de implementar, consultar `DESIGN.md` e registrar no OpenSpec/hand-off quais tokens, componentes, padroes e excecoes foram aplicados.
    - Validacao visual e tecnica deve confirmar aderencia ao `DESIGN.md`; se houver desvio necessario, registrar justificativa antes de fechar a entrega.
+
+13. Playwright visual e obrigatorio no QA de todo card por padrao, inclusive sem mudanca em `frontend/**`.
+   - Dispensa so vale com label `qa-visual-skip` e comentario explicito de Alan no card no formato `QA visual dispensado por Alan.` seguido de motivo.
+   - Label isolada, comentario isolado, filtro de path ou variavel de repositorio nao autorizam skip.
+   - `Done` exige `qa-gate` verde, artifacts/evidencias quando aplicaveis, integracao em `develop`, `./restart` e URL servindo o resultado novo.

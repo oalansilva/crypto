@@ -914,7 +914,7 @@ test('monitor uses favorite trade markers without duplicating the current sell m
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '4')
+  await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '5')
   await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-labels', /COMPRA.*VENDA/);
   await expect(dialog.getByTestId('chart-modal-surface')).not.toHaveAttribute('data-marker-labels', /BUY|SELL|SHORT|COVER/);
   await expect(dialog.locator('header p').first()).toContainText('4 velas')

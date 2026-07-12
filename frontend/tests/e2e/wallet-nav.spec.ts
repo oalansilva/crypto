@@ -65,7 +65,7 @@ test('menu: Carteira -> loads and shows balances (with screenshots)', async ({ p
     .click()
   await expect(page).toHaveURL(/\/external\/balances/)
 
-  await expect(page.getByRole('heading', { name: 'Carteira' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Carteira', exact: true })).toBeVisible()
 
   // Wait for wallet rows using locators scoped to the balances section so
   // strict mode doesn't collide with duplicated asset labels elsewhere.

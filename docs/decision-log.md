@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-07-12 - Gate QA automatizado entre Code Review e Done
+
+**Decisao:** adotar o fluxo `Todo -> In Progress -> Code Review -> QA -> Done -> Homologado -> Pronto` no Project 1 e na operação técnica. `QA` é um gate automatizado, não substitui a homologação funcional do Alan.
+
+**Regra:** depois do Code Review limpo, o SHA revisado entra em QA. `Done` exige `qa-gate` verde, Playwright visual executado ou dispensado explicitamente por Alan, integração em `develop`, `./restart` e validação do runtime. Falha de código retorna a `In Progress -> Code Review -> QA`; falha de infraestrutura permanece em QA para rerun documentado.
+
+**QA visual:** todo card executa regressão Playwright por padrão, inclusive sem mudança de frontend. Dispensa exige label `qa-visual-skip` e comentário de Alan iniciado por `QA visual dispensado por Alan.` com motivo.
+
+**Motivo:** separar revisão humana de validação automatizada e impedir que uma entrega tecnicamente revisada avance sem prova visual, de testes e de runtime.
+
+**Relação com decisão anterior:** esta decisão substitui apenas a sequência operacional descrita em 2026-05-08 para cards da Clara; preserva `Done` como checkpoint técnico, `Homologado` como aprovação de Alan e `Pronto` como publicação final.
+
 ## 2026-04-28 - Stack de acompanhamento do projeto
 
 **Decisao:** usar GitHub Projects + Issues como fonte operacional de execucao e `crypto_backlog_po.xlsx` no SharePoint como visao executiva/produto.
