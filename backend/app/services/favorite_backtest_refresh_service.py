@@ -228,6 +228,39 @@ def _ensure_fresh_candles(
         )
 
 
+def _ensure_trade_events_within_candles(result: dict[str, Any], favorite: FavoriteStrategy) -> None:
+    """Prevent a refresh from persisting trade events beyond candle coverage."""
+    candles = result.get("candles") if isinstance(result.get("candles"), list) else []
+    latest = _latest_candle_timestamp(candles)
+    if latest is None:
+        return
+
+    timeframe = str(favorite.timeframe or "1d").strip().lower()
+    if timeframe.endswith("m") and timeframe[:-1].isdigit():
+        coverage_step = timedelta(minutes=int(timeframe[:-1]))
+    elif timeframe.endswith("h") and timeframe[:-1].isdigit():
+        coverage_step = timedelta(hours=int(timeframe[:-1]))
+    elif timeframe.endswith("d") and timeframe[:-1].isdigit():
+        coverage_step = timedelta(days=int(timeframe[:-1]))
+    else:
+        coverage_step = timedelta(days=1)
+    coverage_end = latest + coverage_step
+
+    trades = result.get("trades") if isinstance(result.get("trades"), list) else []
+    for trade in trades:
+        if not isinstance(trade, dict):
+            continue
+        for field in ("entry_time", "exit_time"):
+            if not trade.get(field):
+                continue
+            event_time = _parse_candle_timestamp(trade[field])
+            if event_time is None or event_time >= coverage_end:
+                raise RuntimeError(
+                    f"Trade event outside candle coverage for "
+                    f"{favorite.symbol} {favorite.timeframe}: {field}={trade[field]}"
+                )
+
+
 def _ensure_fresh_frame(frame: Any, *, symbol: str, timeframe: str, now: datetime) -> None:
     if frame is None or getattr(frame, "empty", True):
         raise RuntimeError(f"No candles available for {symbol} {timeframe}")
@@ -490,6 +523,7 @@ class FavoriteBacktestRefreshService:
 
             result = self._run_optimization(favorite)
             _ensure_fresh_candles(result, favorite, _utcnow())
+            _ensure_trade_events_within_candles(result, favorite)
             refreshed_metrics = result.get("best_metrics") or result.get("metrics") or {}
             current_metrics = _decode_jsonish(favorite.metrics)
             current_metrics = current_metrics if isinstance(current_metrics, dict) else {}

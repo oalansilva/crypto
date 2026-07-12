@@ -11,6 +11,7 @@ import {
     toStrategyChartTimestamp,
     type StrategyChartMarker,
     type StrategyChartPriceLine,
+    type StrategyChartConfigurationItem,
     type StrategyChartSnapshot,
     type StrategyChartSummaryItem,
 } from '../charts/StrategyChartSurface';
@@ -310,6 +311,30 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => normalizeStrategyTransparency(analysisStrategyTransparency ?? opportunity.strategy_transparency),
         [analysisStrategyTransparency, opportunity.strategy_transparency],
     );
+    const indicatorConfigurationItems = React.useMemo<StrategyChartConfigurationItem[]>(() => {
+        if (!activeStrategyTransparency) return [];
+
+        const indicatorItems = activeStrategyTransparency.indicators.map((indicator) => {
+            const parameters = Object.entries(indicator.parameters);
+            const configuration = parameters.length > 0
+                ? parameters.map(([key, value]) => (
+                    parameters.length === 1
+                        ? formatStrategyParameterValue(key, value)
+                        : `${formatStrategyParameterLabel(key)} ${formatStrategyParameterValue(key, value)}`
+                )).join(' • ')
+                : 'configuração padrão';
+            return {
+                label: `${indicator.label} ${configuration}`,
+                color: indicator.color,
+            };
+        });
+        const riskItems = Object.entries(activeStrategyTransparency.effective_parameters)
+            .filter(([key]) => ['stop_loss', 'take_profit', 'direction'].includes(key))
+            .map(([key, value]) => ({
+                label: `${formatStrategyParameterLabel(key)} ${formatStrategyParameterValue(key, value)}`,
+            }));
+        return [...indicatorItems, ...riskItems];
+    }, [activeStrategyTransparency]);
     const opportunityDirection = normalizeDirection(String(opportunity.direction ?? opportunity.parameters?.direction ?? 'long'));
 
     React.useEffect(() => {
@@ -383,14 +408,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const tradeSignalMarkers = React.useMemo<StrategyChartMarker[]>(() => (
         canRenderSignalHistoryMarkers
             ? buildTradeMarkers(analysisTrades, { direction: opportunityDirection, timeframe })
+                .filter((marker) => candleTimes.has(toStrategyChartTimestamp(marker.time)))
             : []
-    ), [analysisTrades, canRenderSignalHistoryMarkers, opportunityDirection, timeframe]);
+    ), [analysisTrades, canRenderSignalHistoryMarkers, candleTimes, opportunityDirection, timeframe]);
     const baseChartMarkers = React.useMemo<StrategyChartMarker[]>(
-        () => (
-            tradeSignalMarkers.length > 0
-                ? tradeSignalMarkers
-                : historicalSignalMarkers as StrategyChartMarker[]
-        ),
+        () => [...tradeSignalMarkers, ...historicalSignalMarkers as StrategyChartMarker[]],
         [historicalSignalMarkers, tradeSignalMarkers],
     );
     const latestVisibleMarkerType = React.useMemo(
@@ -786,6 +808,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             {resolvedSignal.visual.badgeText}
                         </span>
                     )}
+                    configurationItems={indicatorConfigurationItems}
                     headerActions={(
                         <div className="flex items-start gap-3">
                             <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] px-4 py-3 text-right">

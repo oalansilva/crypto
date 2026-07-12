@@ -256,7 +256,7 @@ export const resolveOpportunitySignal = (
         section = 'hold';
         isUncertain = false;
         reasons.length = 0;
-    } else if (context.latestVisibleMarkerType === 'exit') {
+    } else if (context.latestVisibleMarkerType === 'exit' && (!isHolding || isExplicitExitStatus(rawStatus))) {
         section = 'exit';
         isUncertain = false;
         reasons.length = 0;

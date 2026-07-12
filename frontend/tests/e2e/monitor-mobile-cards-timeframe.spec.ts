@@ -1055,13 +1055,13 @@ test('monitor resolves same-day Compra and Venda trade to the opposite signal', 
 
   const surface = page.getByTestId('chart-modal-surface')
   await expect(surface).toHaveAttribute('data-marker-count', '1')
-  await expect(surface).toHaveAttribute('data-marker-labels', /^VENDA/)
+  await expect(surface).toHaveAttribute('data-marker-labels', /^VENDA/i)
   await expect(surface).not.toHaveAttribute('data-marker-labels', /COMPRA/)
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
   await expect(page.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
 })
 
-test('monitor resolves exit and next entry on the same day to the opposite of the previous signal', async ({ page }) => {
+test('monitor keeps the canonical active entry when cached trades also contain an exit', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -1191,10 +1191,10 @@ test('monitor resolves exit and next entry on the same day to the opposite of th
 
   await page.goto('/monitor')
 
-  await expect(page.getByTestId('monitor-section-exit').getByTestId('monitor-card-ada-usdt')).toBeVisible()
-  await expect(page.getByTestId('monitor-section-hold').getByTestId('monitor-card-ada-usdt')).toHaveCount(0)
-  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Venda')
-  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Venda')
+  await expect(page.getByTestId('monitor-section-hold').getByTestId('monitor-card-ada-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-section-exit').getByTestId('monitor-card-ada-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Compra')
+  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Compra')
 
   const card = page.getByTestId('monitor-card-ada-usdt')
   await expect(card).toBeVisible()
@@ -1204,8 +1204,8 @@ test('monitor resolves exit and next entry on the same day to the opposite of th
   await expect(surface).toHaveAttribute('data-marker-count', '2')
   await expect(surface).toHaveAttribute('data-marker-labels', /^COMPRA\|VENDA/)
   await expect(surface).not.toHaveAttribute('data-marker-labels', /COMPRA\|VENDA\|COMPRA/)
-  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
-  await expect(page.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
+  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')
+  await expect(page.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {
@@ -1224,6 +1224,44 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/5/trades', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        trades: [
+          {
+            entry_time: '2099-04-10T00:00:00Z',
+            entry_price: 70210.15,
+            exit_time: '2099-04-13T00:00:00Z',
+            exit_price: 72150.42,
+            profit: 0.0276,
+            type: 'long',
+          },
+          {
+            entry_time: '2099-04-15T00:00:00Z',
+            entry_price: 73980.37,
+            type: 'long',
+          },
+        ],
+        metrics: { total_trades: 1, win_rate: 1, total_return: 0.0276, avg_profit: 0.0276 },
+        strategy_transparency: {
+          status: 'available',
+          timeframe: '1d',
+          display_name: 'Médias e momentum',
+          description: 'Configuração pública da estratégia.',
+          parameters: { stop_loss: 0.042, direction: 'long' },
+          indicators: [
+            { key: 'short', label: 'EMA curta', type: 'ema', parameters: { length: 18 }, color: '#f6465d', panel: 'price', scale: 'price', function: 'Tendência recente', participation: ['entry'], series: [], availability: 'unavailable', references: [] },
+            { key: 'medium', label: 'SMA média', type: 'sma', parameters: { length: 20 }, color: '#ff9f43', panel: 'price', scale: 'price', function: 'Confirmação', participation: ['entry'], series: [], availability: 'unavailable', references: [] },
+            { key: 'rsi', label: 'RSI', type: 'rsi', parameters: { length: 14 }, color: '#a970ff', panel: 'oscillator', scale: 'oscillator', function: 'Momentum', participation: ['entry'], series: [], availability: 'unavailable', references: [] },
+          ],
+          logic_blocks: [],
+        },
+      }),
     })
   )
 
@@ -1342,6 +1380,14 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByText('100.00 USD').first()).toBeVisible()
   await expect(dialog.getByText('Apr 10, 2099')).toBeVisible()
   await expect(dialog.getByText('Apr 13, 2099')).toBeVisible()
+  await expect(dialog.getByText('Apr 15, 2099')).toBeVisible()
+  await expect(dialog.getByText('Posição aberta')).toBeVisible()
+  const indicatorConfig = dialog.getByTestId('chart-modal-surface-indicator-config')
+  await expect(indicatorConfig).toContainText('EMA curta 18')
+  await expect(indicatorConfig).toContainText('SMA média 20')
+  await expect(indicatorConfig).toContainText('RSI 14')
+  await expect(indicatorConfig).toContainText('Stop de perda 4.20%')
+  await expect(indicatorConfig).toContainText('Direção Compra')
   await page.waitForTimeout(1500)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-main-chart').locator('canvas').first()).toBeVisible()

@@ -624,6 +624,44 @@ def _latest_favorite_trade_event(metrics: Any) -> dict[str, Any] | None:
     }
 
 
+def _is_current_favorite_trade_event(
+    timestamp: Any,
+    timeframe: str,
+    frame: pd.DataFrame,
+    signal_history: list[dict[str, Any]],
+) -> bool:
+    """Reject cached events outside candle coverage or superseded by a signal."""
+    event_time = _coerce_utc_timestamp(timestamp)
+    if event_time is None or frame.empty:
+        return False
+
+    frame_start = _coerce_utc_timestamp(frame.index.min())
+    frame_end = _coerce_utc_timestamp(frame.index.max())
+    if frame_start is None or frame_end is None:
+        return False
+
+    normalized_timeframe = str(timeframe or "1d").strip().lower()
+    coverage_step = {
+        "15m": pd.Timedelta(minutes=15),
+        "1h": pd.Timedelta(hours=1),
+        "4h": pd.Timedelta(hours=4),
+        "1d": pd.Timedelta(days=1),
+    }.get(normalized_timeframe, pd.Timedelta(days=1))
+    if event_time < frame_start or event_time >= frame_end + coverage_step:
+        return False
+
+    calculated_times = [
+        parsed
+        for parsed in (
+            _coerce_utc_timestamp(item.get("timestamp"))
+            for item in signal_history
+            if isinstance(item, dict)
+        )
+        if parsed is not None
+    ]
+    return not calculated_times or event_time >= max(calculated_times)
+
+
 class OpportunityService:
     """
     Service to manage Strategy Favorites and calculate Opportunities (Proximity to Signal).
@@ -1886,6 +1924,13 @@ class OpportunityService:
                 favorite_latest_trade_signal = (
                     str(fav.get("_favorite_latest_trade_signal") or "").strip().lower()
                 )
+                if not _is_current_favorite_trade_event(
+                    fav.get("_favorite_latest_trade_time"),
+                    normalized_tf,
+                    df_signals,
+                    signal_history,
+                ):
+                    favorite_latest_trade_signal = ""
                 if favorite_latest_trade_signal in {"entry", "exit"}:
                     analysis["favorite_latest_trade_signal"] = favorite_latest_trade_signal
                     analysis["favorite_latest_trade_time"] = fav.get("_favorite_latest_trade_time")

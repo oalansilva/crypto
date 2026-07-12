@@ -26,7 +26,6 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
-import { buildTradeMarkers, getLatestMarkerSignalType, type MarkerSignalType } from '@/lib/tradeMarkers';
 import { useAuth } from '@/stores/authStore';
 import type { MarketCandle } from './MiniCandlesChart';
 import { fetchMarketCandles, type ChartTimeframe } from './chartData';
@@ -66,8 +65,6 @@ type ResolvedSectionRow = {
     opportunity: Opportunity;
     resolved: ReturnType<typeof resolveOpportunitySignal>;
 };
-
-type FavoriteMarkerSignalByOpportunityId = Record<number, MarkerSignalType | null>;
 
 const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
@@ -198,7 +195,6 @@ export const MonitorStatusTab: React.FC = () => {
     const [sparklineByKey, setSparklineByKey] = useState<Record<string, number[]>>({});
     const [sparklineLoadingByKey, setSparklineLoadingByKey] = useState<Record<string, boolean>>({});
     const [sparklineErrorByKey, setSparklineErrorByKey] = useState<Record<string, boolean>>({});
-    const [favoriteMarkerSignalByOpportunityId, setFavoriteMarkerSignalByOpportunityId] = useState<FavoriteMarkerSignalByOpportunityId>({});
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>(
         {}
     );
@@ -339,7 +335,6 @@ export const MonitorStatusTab: React.FC = () => {
             if (!response.ok) throw new Error('Falha ao buscar oportunidades');
             const data = await response.json();
             setOpportunities(data);
-            setFavoriteMarkerSignalByOpportunityId({});
             setLastUpdated(new Date());
 
             toast({
@@ -677,67 +672,6 @@ export const MonitorStatusTab: React.FC = () => {
         sortedOpportunities,
     ]);
 
-    const favoriteMarkerProbeKey = useMemo(
-        () => filteredOpportunities
-            .map((opportunity) => `${opportunity.id}:${opportunity.timeframe}:${String(opportunity.parameters?.direction || 'long')}`)
-            .join('|'),
-        [filteredOpportunities],
-    );
-
-    useEffect(() => {
-        const missing = filteredOpportunities.filter((opportunity) => (
-            favoriteMarkerSignalByOpportunityId[opportunity.id] === undefined
-        ));
-        if (missing.length === 0) {
-            return;
-        }
-
-        const controller = new AbortController();
-        let cancelled = false;
-
-        const loadMarkerSignals = async () => {
-            const results = await Promise.all(missing.map(async (opportunity): Promise<readonly [number, MarkerSignalType | null]> => {
-                try {
-                    const response = await authFetch(`${API_BASE_URL}/favorites/${opportunity.id}/trades`, {
-                        signal: controller.signal,
-                    });
-                    const payload = await response.json().catch(() => ({}));
-                    if (!response.ok) {
-                        return [opportunity.id, null] as const;
-                    }
-
-                    const trades = Array.isArray(payload?.trades) ? payload.trades : [];
-                    const markers = buildTradeMarkers(trades, {
-                        direction: String(opportunity.parameters?.direction || 'long'),
-                        timeframe: opportunity.timeframe,
-                    });
-                    return [opportunity.id, getLatestMarkerSignalType(markers)] as const;
-                } catch {
-                    return [opportunity.id, null] as const;
-                }
-            }));
-
-            if (cancelled) {
-                return;
-            }
-
-            setFavoriteMarkerSignalByOpportunityId((current) => {
-                const next = { ...current };
-                results.forEach(([id, markerSignal]) => {
-                    next[id] = markerSignal;
-                });
-                return next;
-            });
-        };
-
-        void loadMarkerSignals();
-
-        return () => {
-            cancelled = true;
-            controller.abort();
-        };
-    }, [favoriteMarkerProbeKey, favoriteMarkerSignalByOpportunityId, filteredOpportunities]);
-
     const resolvedSections = useMemo(() => {
         const groups: Record<SectionKey, ResolvedSectionRow[]> = {
             hold: [],
@@ -745,10 +679,8 @@ export const MonitorStatusTab: React.FC = () => {
         };
 
         for (const opportunity of filteredOpportunities) {
-            const markerSignal = favoriteMarkerSignalByOpportunityId[opportunity.id] ?? null;
             const resolved = resolveOpportunitySignal(opportunity, {
                 selectedTimeframe: opportunity.timeframe,
-                latestVisibleMarkerType: markerSignal,
             });
             groups[resolved.section].push({ opportunity, resolved });
         }
@@ -765,7 +697,7 @@ export const MonitorStatusTab: React.FC = () => {
         }
 
         return groups;
-    }, [favoriteMarkerSignalByOpportunityId, filteredOpportunities]);
+    }, [filteredOpportunities]);
 
     const visibleOpportunityCount = resolvedSections.hold.length + resolvedSections.exit.length;
 
