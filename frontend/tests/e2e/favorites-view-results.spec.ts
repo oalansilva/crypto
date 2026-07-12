@@ -393,6 +393,45 @@ const MONITOR_OPPORTUNITIES_PAYLOAD = [
   },
 ];
 
+const FAVORITE_ROW_TEXT = {
+  btcEmaRsi: /BTC\/USDT.*ema rsi.*4h/i,
+  btcLegacyMultiMa: /BTC\/USDT.*multi ma crossover.*4h/i,
+  protectedEmaRsiVolume: /ETH\/USDT.*EMA RSI Volume.*1h/i,
+  protectedMultiMa: /BTC\/USDT.*Multi MA Crossover\b.*1d/i,
+};
+
+function buildStrategyTransparency(favorite: any, candles: any[]) {
+  return {
+    status: 'available',
+    timeframe: favorite?.timeframe || '4h',
+    display_name: favorite?.strategy_display_name || favorite?.strategy_name || 'Estratégia',
+    description: '',
+    effective_parameters: favorite?.parameters || {},
+    indicators: [
+      {
+        key: 'ema_short',
+        label: 'EMA curta',
+        parameters: { period: 12 },
+        type: 'ema',
+        panel: 'price',
+        scale: 'auto',
+        color: '#f6465d',
+        function: '',
+        participation: [],
+        references: [],
+        series: candles.map((candle) => ({
+          timestamp_utc: candle.timestamp_utc,
+          value: candle.close,
+        })),
+        availability: 'available',
+        unavailable_reason: '',
+      },
+    ],
+    logic_blocks: [],
+    unavailable_reason: '',
+  };
+}
+
 function cloneFavoritesPayload() {
   return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
 }
@@ -420,7 +459,7 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
 
   let serverFavoritesPayload = cloneFavoritesPayload();
 
-  await page.route('**/api/favorites/', (route: any) => {
+  await page.route(/\/api\/favorites\/?$/, (route: any) => {
     if (route.request().method() === 'GET') {
       return route.fulfill({
         status: 200,
@@ -444,20 +483,32 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
     });
   });
 
-  await page.route(/.*\/api\/favorites\/(2|4)\/trades$/, (route: any) => {
+  await page.route(/.*\/api\/favorites\/(\d+)\/trades$/, (route: any) => {
     favoriteTradesTriggeredCount += 1;
     const url = new URL(route.request().url());
     const favoriteId = Number(url.pathname.match(/\/favorites\/(\d+)\/trades$/)?.[1] ?? 2);
     const simulatesLegacyMismatch = favoriteId === 2;
+    const favorite = serverFavoritesPayload.find((item: any) => item.id === favoriteId);
+    const isProtectedFavorite = favorite?.is_strategy_protected === true;
+    const recoveredTrades = isProtectedFavorite
+      ? favorite.metrics?.trades || []
+      : BACKTEST_PAYLOAD.trades;
+    const recoveredCandles = isProtectedFavorite
+      ? favorite.metrics?.analysis_candles || []
+      : BACKTEST_PAYLOAD.candles;
+    const strategyTransparency = isProtectedFavorite
+      ? null
+      : buildStrategyTransparency(favorite, BACKTEST_PAYLOAD.candles);
     const cachedMetrics = {
-      ...BACKTEST_PAYLOAD.metrics,
-      trades: BACKTEST_PAYLOAD.trades,
+      ...(isProtectedFavorite ? favorite.metrics || {} : BACKTEST_PAYLOAD.metrics),
+      trades: recoveredTrades,
       trades_history_cached: true,
       trades_metrics_match: !simulatesLegacyMismatch,
       trades_metrics_deltas: simulatesLegacyMismatch ? { total_return_pct: { saved: 20, regenerated: 1 } } : {},
-      analysis_candles: BACKTEST_PAYLOAD.candles,
-      analysis_indicator_data: BACKTEST_PAYLOAD.indicator_data,
+      analysis_candles: recoveredCandles,
+      analysis_indicator_data: isProtectedFavorite ? favorite.metrics?.analysis_indicator_data || {} : BACKTEST_PAYLOAD.indicator_data,
       analysis_execution_mode: BACKTEST_PAYLOAD.execution_mode,
+      ...(strategyTransparency ? { analysis_strategy_transparency: strategyTransparency } : {}),
     };
     serverFavoritesPayload = serverFavoritesPayload.map((fav: any) => (
       fav.id === favoriteId ? { ...fav, metrics: cachedMetrics } : fav
@@ -467,19 +518,20 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
       contentType: 'application/json',
       body: JSON.stringify({
         favorite_id: favoriteId,
-        trades: BACKTEST_PAYLOAD.trades,
+        trades: recoveredTrades,
         metrics: cachedMetrics,
         metrics_match: !simulatesLegacyMismatch,
         metrics_deltas: cachedMetrics.trades_metrics_deltas,
         regenerated: true,
-        candles: BACKTEST_PAYLOAD.candles,
-        indicator_data: BACKTEST_PAYLOAD.indicator_data,
+        candles: recoveredCandles,
+        indicator_data: isProtectedFavorite ? favorite.metrics?.analysis_indicator_data || {} : BACKTEST_PAYLOAD.indicator_data,
         execution_mode: BACKTEST_PAYLOAD.execution_mode,
+        ...(strategyTransparency ? { strategy_transparency: strategyTransparency } : {}),
       }),
     });
   });
 
-  await page.route('**/api/market/candles**', (route: any) => {
+  await page.route(/\/api\/market\/candles(?:\?.*)?$/, (route: any) => {
     marketCandlesTriggeredCount += 1;
     const url = new URL(route.request().url());
     const isFullHistory = url.searchParams.get('full_history') === 'true';
@@ -496,7 +548,7 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
     });
   });
 
-  await page.route('**/api/opportunities**', (route: any) => {
+  await page.route(/\/api\/opportunities\/?(?:\?.*)?$/, (route: any) => {
     opportunitiesTriggeredCount += 1;
     if (options?.hangOpportunities) {
       return;
@@ -544,7 +596,7 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toHaveCount(0);
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: /ema rsi/i }).first()).toBeVisible();
-  await expect(page.getByRole('cell', { name: /Protected BTC Setup/i }).first()).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'EMA RSI Volume', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Protected BTC Setup ETH/USDT 1h' }).first()).toHaveCount(0);
   await expect(page.getByRole('cell', { name: /Estratégia protegida/i }).first()).toHaveCount(0);
 
@@ -563,7 +615,7 @@ test('favorites hides stocks and removes Asset Type dropdown in crypto-only MVP'
   await page.goto('/favorites');
 
   const nvdaRow = page.locator('tbody tr', { hasText: 'NVDA' });
-  const btcRow = page.locator('tbody tr', { hasText: 'BTC Swing' });
+  const btcRow = page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi });
   await expect(page.getByLabel('Asset Type')).toHaveCount(0);
   await expect(nvdaRow).toHaveCount(0);
   await expect(btcRow).toHaveCount(1);
@@ -684,27 +736,27 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
 
   await strategyFilter.selectOption({ label: 'ema rsi' });
 
-  await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(1);
-  await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
+  await expect(page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi })).toHaveCount(1);
+  await expect(page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.protectedEmaRsiVolume })).toHaveCount(0);
 
   await strategyFilter.selectOption({ label: 'EMA RSI Volume' });
 
-  await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(0);
-  await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(1);
+  await expect(page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi })).toHaveCount(0);
+  await expect(page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.protectedEmaRsiVolume })).toHaveCount(1);
   await expect(page.locator('tbody tr', { hasText: 'ema_short' })).toHaveCount(0);
 
   await strategyFilter.selectOption('ALL');
   await timeFilter.selectOption('4h');
 
-  await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(1);
-  await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
+  await expect(page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi })).toHaveCount(1);
+  await expect(page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.protectedEmaRsiVolume })).toHaveCount(0);
 });
 
 test('favorites exposes one analysis CTA instead of separate trades/results actions', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const btcRow = page.locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' });
+  const btcRow = page.locator('.fav-table-shell tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi });
   await expect(btcRow.locator('button[title="View Trades"]')).toHaveCount(0);
   await expect(btcRow.locator('button[title="View Results"]')).toHaveCount(0);
   await expect(btcRow.locator('button[title="Chat com o agente"]')).toHaveCount(0);
@@ -727,7 +779,7 @@ test('favorites mobile card exposes one analysis CTA', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const btcCard = page.locator('.fav-mobile-card', { hasText: 'BTC Swing' });
+  const btcCard = page.locator('.fav-mobile-card', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi });
   await expect(btcCard).toBeVisible();
   await expect(btcCard.locator('button[title="View Trades"]')).toHaveCount(0);
   await expect(btcCard.locator('button[title="View Results"]')).toHaveCount(0);
@@ -742,7 +794,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await page.goto('/favorites');
 
   const analysis = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
+    .locator('.fav-table-shell tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi })
     .locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();
@@ -786,7 +838,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible();
 
   const cachedAnalysis = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
+    .locator('.fav-table-shell tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi })
     .locator('button[title="Ver análise completa"]');
   await expect(cachedAnalysis).toBeVisible();
   await cachedAnalysis.click();
@@ -805,7 +857,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await page.goto('/favorites');
 
   const analysis = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Legacy' })
+    .locator('.fav-table-shell tbody tr', { hasText: FAVORITE_ROW_TEXT.btcLegacyMultiMa })
     .locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();
@@ -824,7 +876,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page).toHaveURL(/\/favorites$/);
 
   const cachedAnalysis = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Legacy' })
+    .locator('.fav-table-shell tbody tr', { hasText: FAVORITE_ROW_TEXT.btcLegacyMultiMa })
     .locator('button[title="Ver análise completa"]');
   await cachedAnalysis.click();
 
@@ -890,7 +942,7 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect(analysis).toBeVisible();
   await analysis.click();
 
-  expect(api.favoriteTradesTriggeredCount()).toBe(0);
+  expect(api.favoriteTradesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByText(/EMA RSI Volume - Ação de preço/i)).toBeVisible();
@@ -923,7 +975,9 @@ test('favorites opens Multi MA Crossover full-history chart even when monitor sy
   });
   await page.goto('/favorites');
 
-  const quantRow = page.locator('.fav-table-shell tbody tr', { hasText: 'BTC Multi MA Crossover - Price Action' });
+  const quantRow = page
+    .locator('.fav-table-shell tbody tr')
+    .filter({ has: page.getByText('Multi MA Crossover', { exact: true }) });
   const analysis = quantRow.locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();
@@ -945,14 +999,14 @@ test('favorites analysis uses full market history over stale saved analysis vela
   await page.goto('/favorites');
 
   const analysis = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'Protected BTC Setup' })
+    .locator('.fav-table-shell tbody tr', { hasText: FAVORITE_ROW_TEXT.protectedEmaRsiVolume })
     .locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();
 
+  await expect(page).toHaveURL(/\/combo\/results$/);
   expect(api.marketCandlesTriggeredCount()).toBe(1);
   expect(api.opportunitiesTriggeredCount()).toBe(1);
-  await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByText('ETH/USDT • 1h • 160 velas')).toBeVisible();
   await expect(page.getByText('ETH/USDT • 1h • 120 velas')).toHaveCount(0);
@@ -966,7 +1020,7 @@ test('favorites analysis preserves saved trades and adds monitor signal history 
   await page.goto('/favorites');
 
   const analysis = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
+    .locator('.fav-table-shell tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi })
     .locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();

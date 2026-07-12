@@ -12,6 +12,13 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
+  expect: {
+    toHaveScreenshot: {
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.001,
+    },
+  },
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
@@ -23,6 +30,34 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
+  projects: [
+    {
+      name: 'functional',
+      testIgnore: /visual-critical\.spec\.ts/,
+      use: {
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
+      name: 'visual-desktop',
+      testMatch: /visual-critical\.spec\.ts/,
+      use: {
+        viewport: { width: 1440, height: 900 },
+        colorScheme: 'dark',
+        timezoneId: 'UTC',
+      },
+    },
+    {
+      name: 'visual-mobile',
+      testMatch: /visual-critical\.spec\.ts/,
+      use: {
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        colorScheme: 'dark',
+        timezoneId: 'UTC',
+      },
+    },
+  ],
   webServer: skipWebServer
     ? undefined
     : {

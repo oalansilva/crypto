@@ -36,23 +36,33 @@ Exemplos de evidencia:
 
 ## Colunas do GitHub Project
 
-- `Backlog`: item conhecido, mas nao pronto para execucao.
-- `Ready`: pronto para fazer, com criterio de pronto claro.
-- `In progress`: trabalho ativo.
-- `Blocked`: depende de decisao, acesso, dado ou correcao anterior.
-- `Validate`: precisa de teste, revisao ou evidencia.
-- `Done`: concluido com evidencia.
+- `Status` e a fonte principal das colunas:
+  - `Todo`: backlog ou pronto para comecar.
+  - `In Progress`: trabalho ativo.
+  - `Code Review`: diff pronto para revisao Codex antes do commit.
+  - `QA`: SHA revisado em validacao automatizada, incluindo `qa-gate` e Playwright visual.
+  - `Done`: Done tecnico; QA verde, integrado em `develop`, restart/runtime validados e aguardando Alan.
+  - `Homologado`: Alan aprovou funcionalmente em `develop`.
+  - `Pronto`: publicado/operacional em producao com evidencia.
+  - `Cancelado`: item substituido ou descartado.
+- Caminho normal: `Todo -> In Progress -> Code Review -> QA -> Done -> Homologado -> Pronto`.
+- Falha que exige alteração: `QA -> In Progress -> Code Review -> QA`.
+- `Fluxo` e substatus/legado: `Backlog`, `Ready`, `In-progress`, `Code Review`, `QA`, `Blocked`, `Validate` e `Done`. Quando houver equivalência, espelhar o `Status`; `Validate` permanece para histórico.
 
 ## Regra de Revisao da Clara
 
 Quando Clara concluir um entregavel de produto, operacao, validacao, metrica ou copy:
 
-- mover `Status` para `Done`;
-- mover `Fluxo` para `Validate`;
-- registrar evidencia no issue;
-- aguardar revisao/homologacao de Alan.
+- registrar evidencia no issue e encaminhar para `QA` quando a entrega entrar no ciclo técnico;
+- aguardar `qa-gate`/Playwright visual ou a dispensa autorizada quando aplicável;
+- mover para `Done` somente após QA verde e evidência técnica;
+- aguardar revisão/homologação de Alan.
 
-Clara nao deve usar `Pronto` como estado de revisao. Se ainda faltar execucao real, o card deve ficar em `In progress`.
+Clara nao deve usar `Pronto` como estado de revisao. Se ainda faltar execucao real, o card deve ficar em `In Progress`.
+
+## QA visual
+
+Playwright visual é obrigatório por padrão em todo card, inclusive sem mudança de frontend. A dispensa só vale quando Alan registra no card `QA visual dispensado por Alan.` com motivo e a label `qa-visual-skip` está aplicada. O CI preserva artifacts de falha; baseline visual atualizado faz parte do diff revisado.
 
 ## Regra de Release
 

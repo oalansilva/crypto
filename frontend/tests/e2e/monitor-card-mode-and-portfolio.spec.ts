@@ -257,8 +257,16 @@ async function setupApiMocks(
   }
 }
 
+function visibleMonitorCard(page: any, symbolKey: string) {
+  return page.locator(`[data-testid="monitor-card-${symbolKey}"]:visible`)
+}
+
+function monitorCardControl(page: any, symbolKey: string, control: string) {
+  return visibleMonitorCard(page, symbolKey).getByTestId(`${control}-${symbolKey}`)
+}
+
 async function expandMonitorRow(page: any, symbolKey: string) {
-  const card = page.getByTestId(`monitor-card-${symbolKey}`)
+  const card = visibleMonitorCard(page, symbolKey)
   if (await card.isVisible().catch(() => false)) {
     return
   }
@@ -271,9 +279,9 @@ test('defaults to In Portfolio and hides symbols without preference', async ({ p
   await page.goto('/monitor')
 
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
-  await expect(page.getByTestId('monitor-card-btc-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeHidden()
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
+  await expect(page.locator('[data-testid="monitor-card-btc-usdt"]:visible')).toBeVisible()
   await expect(page.getByTestId('monitor-card-nvda')).toHaveCount(0)
 })
 
@@ -295,7 +303,7 @@ test('monitor hides protected strategy details for common user', async ({ page }
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
-  const card = page.getByTestId('monitor-card-btc-usdt')
+  const card = visibleMonitorCard(page, 'btc-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('EMA RSI')).toBeVisible()
   await expect(card.getByText('Parâmetros')).toHaveCount(0)
@@ -311,7 +319,7 @@ test('monitor hides protected strategy details for common user', async ({ page }
   await expect(card.getByTestId('timeframe-toggle-btc-usdt-15m')).toHaveCount(0)
   await expect(card.getByTestId('timeframe-toggle-btc-usdt-1h')).toHaveCount(0)
   await expect(card.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveCount(0)
-  await expect(card.getByText('chart 4h')).toBeVisible()
+  await expect(card.getByTitle('Timeframe do gráfico de preço')).toHaveText('Gráfico 1d')
   await expect(card.getByText('ema_rsi')).toHaveCount(0)
   await expect(card.getByText('ema_short')).toHaveCount(0)
 })
@@ -327,7 +335,7 @@ test('monitor does not expose local favorite controls and keeps tier stars reada
 
   await page.getByTestId('monitor-filter-all').click()
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
+  await expect(visibleMonitorCard(page, 'btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-row-eth-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-filter-favorites')).toHaveCount(0)
   await expect(page.getByTestId('strategy-favorite-toggle-btc-usdt')).toHaveCount(0)
@@ -387,10 +395,10 @@ test('monitor defaults to rated strategies and hides unstarred opportunities', a
   await expect.poll(() => mocks.requestedOpportunityTiers[0]).toBe('1,2,3')
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-row-sol-usdt')).toHaveCount(0)
-  await expect(page.getByText('Em posição')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Em posição/ })).toBeVisible()
 })
 
-test('monitor hides non-actionable Espera and neutral opportunities from main board', async ({ page }) => {
+test('monitor routes non-actionable Espera and neutral opportunities to the exit board', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
       {
@@ -433,14 +441,15 @@ test('monitor hides non-actionable Espera and neutral opportunities from main bo
   await page.goto('/monitor')
 
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
-  await expect(page.getByTestId('monitor-row-wait-usdt')).toHaveCount(0)
-  await expect(page.getByTestId('monitor-row-neutral-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-row-wait-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-row-neutral-usdt')).toBeVisible()
   await expect(page.getByText('Estado Espera')).toHaveCount(0)
   await expect(page.getByText('Em observação · Espera')).toHaveCount(0)
-  await expect(page.locator('.kpis')).not.toContainText('Espera')
+  await expect(page.getByTestId('monitor-section-exit')).toContainText('WAIT/USDT')
+  await expect(page.getByTestId('monitor-section-exit')).toContainText('NEUTRAL/USDT')
 })
 
-test('monitor list keeps Compra when price timeframe preference differs from strategy timeframe', async ({ page }) => {
+test('monitor keeps an exit signal when price timeframe preference differs from strategy timeframe', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
       {
@@ -460,12 +469,12 @@ test('monitor list keeps Compra when price timeframe preference differs from str
 
   const row = page.getByTestId('monitor-row-eth-usdt')
   await expect(row).toBeVisible()
-  await expect(row.getByText('Compra')).toBeVisible()
-  await expect(page.getByText('Em posição')).toContainText('(1)')
-  await expect(page.getByText('Saída / cobertura')).toContainText('(0)')
+  await expect(row.getByText('Venda')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Em posição/ })).toContainText('(0)')
+  await expect(page.getByRole('heading', { name: /Saída \/ cobertura/ })).toContainText('(1)')
 })
 
-test('monitor hides non-actionable WAIT and neutral opportunities from main board', async ({ page }) => {
+test('monitor routes non-actionable WAIT and neutral opportunities to the exit board', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
       {
@@ -508,14 +517,15 @@ test('monitor hides non-actionable WAIT and neutral opportunities from main boar
   await page.goto('/monitor')
 
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
-  await expect(page.getByTestId('monitor-row-wait-usdt')).toHaveCount(0)
-  await expect(page.getByTestId('monitor-row-neutral-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-row-wait-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-row-neutral-usdt')).toBeVisible()
   await expect(page.getByText('Estado WAIT')).toHaveCount(0)
   await expect(page.getByText('Em observação · WAIT')).toHaveCount(0)
-  await expect(page.locator('.kpis')).not.toContainText('WAIT')
+  await expect(page.getByTestId('monitor-section-exit')).toContainText('WAIT/USDT')
+  await expect(page.getByTestId('monitor-section-exit')).toContainText('NEUTRAL/USDT')
 })
 
-test('monitor list keeps HOLD when price timeframe preference differs from strategy timeframe', async ({ page }) => {
+test('monitor resolves EXIT_NEAR as Venda when price timeframe differs from strategy timeframe', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
       {
@@ -535,9 +545,9 @@ test('monitor list keeps HOLD when price timeframe preference differs from strat
 
   const row = page.getByTestId('monitor-row-eth-usdt')
   await expect(row).toBeVisible()
-  await expect(row.getByText('Hold')).toBeVisible()
-  await expect(page.getByText('Em posição · HOLD')).toContainText('(1)')
-  await expect(page.getByText('Em saída · EXIT')).toContainText('(0)')
+  await expect(row.getByText('Venda')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Em posição/ })).toContainText('(0)')
+  await expect(page.getByRole('heading', { name: /Saída \/ cobertura/ })).toContainText('(1)')
 })
 
 test('monitor simplifies table columns for common user', async ({ page }) => {
@@ -578,12 +588,12 @@ test('flags only crypto cards as portfolio-derived when Binance credentials are 
   await page.getByTestId('monitor-filter-all').click()
   await expandMonitorRow(page, 'btc-usdt')
   await expandMonitorRow(page, 'eth-usdt')
-  await expect(page.getByTestId('monitor-card-btc-usdt')).toHaveAttribute('data-portfolio-derived', 'true')
-  await expect(page.getByTestId('monitor-card-eth-usdt')).toHaveAttribute('data-portfolio-derived', 'true')
-  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
-  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('portfolio-toggle-eth-usdt')).toBeDisabled()
-  await expect(page.getByTestId('portfolio-toggle-eth-usdt')).toHaveAttribute('aria-pressed', 'false')
+  await expect(visibleMonitorCard(page, 'btc-usdt')).toHaveAttribute('data-portfolio-derived', 'true')
+  await expect(visibleMonitorCard(page, 'eth-usdt')).toHaveAttribute('data-portfolio-derived', 'true')
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toBeDisabled()
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toHaveAttribute('aria-pressed', 'true')
+  await expect(monitorCardControl(page, 'eth-usdt', 'portfolio-toggle')).toBeDisabled()
+  await expect(monitorCardControl(page, 'eth-usdt', 'portfolio-toggle')).toHaveAttribute('aria-pressed', 'false')
 })
 
 test('uses Binance wallet holdings as the portfolio source for crypto cards', async ({ page }) => {
@@ -597,9 +607,9 @@ test('uses Binance wallet holdings as the portfolio source for crypto cards', as
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
-  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('portfolio-sync-status-btc-usdt')).toContainText('Sincronizado com a Carteira Binance')
+  await expect(visibleMonitorCard(page, 'btc-usdt')).toBeVisible()
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toHaveAttribute('aria-pressed', 'true')
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-sync-status')).toContainText('Sincronizado com a Carteira Binance')
   await expect.poll(() => mocks.requestedBalanceMinUsd.at(-1)).toBe('1')
 })
 
@@ -609,15 +619,15 @@ test('toggle in_portfolio persists across reload', async ({ page }) => {
 
   await page.getByTestId('monitor-filter-all').click()
   await expandMonitorRow(page, 'eth-usdt')
-  await expect(page.getByTestId('monitor-card-eth-usdt')).toBeVisible()
+  await expect(visibleMonitorCard(page, 'eth-usdt')).toBeVisible()
 
-  await page.getByTestId('portfolio-toggle-eth-usdt').click()
+  await monitorCardControl(page, 'eth-usdt', 'portfolio-toggle').click()
   await page.getByTestId('monitor-filter-in-portfolio').click()
-  await expect(page.getByTestId('monitor-card-eth-usdt')).toBeVisible()
+  await expect(visibleMonitorCard(page, 'eth-usdt')).toBeVisible()
 
   await page.reload()
   await expandMonitorRow(page, 'eth-usdt')
-  await expect(page.getByTestId('monitor-card-eth-usdt')).toBeVisible()
+  await expect(visibleMonitorCard(page, 'eth-usdt')).toBeVisible()
 })
 
 test('per-card mode toggle persists across reload', async ({ page }) => {
@@ -625,41 +635,37 @@ test('per-card mode toggle persists across reload', async ({ page }) => {
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(page.getByTestId('mode-label-btc-usdt')).toHaveText('Price')
-  await page.getByTestId('mode-toggle-btc-usdt').click()
-  await expect(page.getByTestId('mode-label-btc-usdt')).toHaveText('Strategy')
+  await expect(monitorCardControl(page, 'btc-usdt', 'mode-label')).toHaveText('Preço')
+  await monitorCardControl(page, 'btc-usdt', 'mode-toggle').click()
+  await expect(monitorCardControl(page, 'btc-usdt', 'mode-label')).toHaveText('Estratégia')
 
   await page.reload()
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(page.getByTestId('mode-label-btc-usdt')).toHaveText('Strategy')
+  await expect(monitorCardControl(page, 'btc-usdt', 'mode-label')).toHaveText('Estratégia')
 })
 
-test('per-card timeframe selection persists across reload', async ({ page }) => {
-  const mocks = await setupApiMocks(page, { user: ADMIN_USER })
+test('per-card keeps the supported chart timeframe across reload', async ({ page }) => {
+  await setupApiMocks(page, { user: ADMIN_USER })
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(page.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
-  await page.getByTestId('timeframe-toggle-btc-usdt-4h').click()
-  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
-  await expect.poll(() => mocks.requestedTimeframes.includes('4h')).toBe(true)
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveCount(0)
 
   await page.reload()
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('timeframe switch keeps non-chart controls interactive and shows localized chart loading', async ({ page }) => {
-  const mocks = await setupApiMocks(page, { candlesDelayMs: 600, preferencePatchDelayMs: 500, user: ADMIN_USER })
+test('portfolio controls stay interactive while preferences are saved', async ({ page }) => {
+  const mocks = await setupApiMocks(page, { preferencePatchDelayMs: 500, user: ADMIN_USER })
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
-  await page.getByTestId('timeframe-toggle-btc-usdt-4h').click()
-  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
-  // UI should remain interactive even while candles are fetching.
-  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeEnabled()
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toBeEnabled()
 
-  await page.getByTestId('portfolio-toggle-btc-usdt').click()
+  await monitorCardControl(page, 'btc-usdt', 'portfolio-toggle').click()
   await expect
     .poll(() =>
       mocks.preferencePatches.some(
@@ -668,7 +674,6 @@ test('timeframe switch keeps non-chart controls interactive and shows localized 
     )
     .toBe(true)
 
-  // Ensure there is no global blocking loading text
   await expect(page.locator('body')).not.toContainText('Loading candles...')
 })
 
@@ -679,10 +684,10 @@ test('derived crypto portfolio toggle stays read-only and does not persist manua
   await page.getByTestId('monitor-filter-all').click()
   await expandMonitorRow(page, 'btc-usdt')
   await expandMonitorRow(page, 'eth-usdt')
-  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
-  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('portfolio-toggle-eth-usdt')).toBeDisabled()
-  await expect(page.getByTestId('portfolio-toggle-eth-usdt')).toHaveAttribute('aria-pressed', 'false')
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toBeDisabled()
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toHaveAttribute('aria-pressed', 'true')
+  await expect(monitorCardControl(page, 'eth-usdt', 'portfolio-toggle')).toBeDisabled()
+  await expect(monitorCardControl(page, 'eth-usdt', 'portfolio-toggle')).toHaveAttribute('aria-pressed', 'false')
   await expect(mocks.preferencePatches).toHaveLength(0)
 })
 
@@ -697,7 +702,7 @@ test('shows fallback feedback when Binance wallet is unavailable', async ({ page
 
   await page.getByTestId('monitor-filter-all').click()
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
-  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'false')
-  await expect(page.getByTestId('portfolio-sync-status-btc-usdt')).toContainText('Binance credentials not configured')
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toBeDisabled()
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toHaveAttribute('aria-pressed', 'false')
+  await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-sync-status')).toContainText('Binance credentials not configured')
 })
