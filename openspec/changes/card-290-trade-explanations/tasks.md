@@ -21,6 +21,6 @@
 - [x] 4.1 Adicionar testes backend de catálogo, valores históricos, saída lógica, stop, `long`/`short` e indisponibilidade.
 - [x] 4.2 Adicionar testes frontend de renderização, disclosure, teclado e fallback seguro.
 - [x] 4.3 Rodar testes focados, build, validação OpenSpec, checklist de acessibilidade e Playwright visual desktop/mobile.
-- [ ] 4.4 Registrar evidências de Code Review, QA, PR, integração em `develop`, restart e runtime no card #290.
+- [x] 4.4 Registrar evidências de Code Review, QA, PR, integração em `develop`, restart e runtime no card #290.
 
 Nota: usar as skills do projeto para arquitetura, testes, depuração, frontend, acessibilidade e Playwright quando aplicáveis.
