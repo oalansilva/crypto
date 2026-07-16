@@ -894,7 +894,11 @@ export function StrategyChartSurface({
                                 <div className="mt-3">
                                     <h4 className="text-xs font-semibold uppercase text-[#929aa5]">Lógica funcional</h4>
                                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#eaecef]">
-                                        {transparency.logic_blocks.map((block, index) => <li key={`${block}-${index}`}>{block}</li>)}
+                                        {transparency.logic_blocks.map((block, index) => (
+                                            <li key={`${block.participation}-${index}`}>
+                                                {block.description}
+                                            </li>
+                                        ))}
                                     </ul>
                                 </div>
                             ) : null}

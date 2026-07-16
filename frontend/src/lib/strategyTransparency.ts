@@ -27,6 +27,14 @@ export interface StrategyTransparencyIndicator {
     unavailable_reason: string
 }
 
+export interface StrategyLogicBlock {
+    participation: string
+    description: string
+    status: string
+    operator: string
+    condition_count: number
+}
+
 export interface StrategyTransparency {
     status: string
     timeframe: string
@@ -34,7 +42,7 @@ export interface StrategyTransparency {
     description: string
     effective_parameters: Record<string, unknown>
     indicators: StrategyTransparencyIndicator[]
-    logic_blocks: string[]
+    logic_blocks: StrategyLogicBlock[]
     unavailable_reason: string
 }
 
@@ -130,15 +138,72 @@ const normalizeParticipation = (value: unknown): string[] => {
     return text ? [text] : []
 }
 
-const normalizeLogicBlocks = (value: unknown): string[] => {
+const normalizeLogicBlocks = (value: unknown): StrategyLogicBlock[] => {
     if (!Array.isArray(value)) return []
-    return value.map((item) => {
-        if (typeof item === 'string') return item.trim()
+    return value.flatMap((item) => {
+        if (typeof item === 'string') {
+            const description = item.trim()
+            return description ? [{
+                participation: '',
+                description,
+                status: 'partial',
+                operator: 'mixed',
+                condition_count: 0,
+            }] : []
+        }
         const record = asRecord(item)
-        const label = asText(record.label ?? record.title ?? record.name ?? record.participation)
         const description = asText(record.description ?? record.text ?? record.function)
-        return [label, description].filter(Boolean).join(': ')
-    }).filter(Boolean)
+        if (!description) return []
+        const conditionCount = Number(record.condition_count)
+        return [{
+            participation: asText(record.participation ?? record.role).toLowerCase(),
+            description,
+            status: asText(record.status, 'available').toLowerCase(),
+            operator: asText(record.operator, 'all').toLowerCase(),
+            condition_count: Number.isFinite(conditionCount) ? conditionCount : 0,
+        }]
+    })
+}
+
+export interface StrategyRuleOverviewItem {
+    title: 'Quando compra' | 'Quando vende'
+    action: string
+    summary: string
+    available: boolean
+}
+
+export interface StrategyRuleOverview {
+    entry: StrategyRuleOverviewItem
+    exit: StrategyRuleOverviewItem
+}
+
+const RULE_UNAVAILABLE = 'Regra pública indisponível para esta estratégia.'
+
+export function buildStrategyRuleOverview(
+    value: unknown,
+    direction: string | null | undefined,
+): StrategyRuleOverview {
+    const transparency = normalizeStrategyTransparency(value)
+    const isShort = String(direction || '').trim().toLowerCase() === 'short'
+    const entry = transparency?.logic_blocks.find((block) => block.participation === 'entry')
+    const exit = transparency?.logic_blocks.find((block) => block.participation === 'exit')
+    const entryAvailable = Boolean(entry?.description && entry.status !== 'unavailable')
+    const exitAvailable = Boolean(exit?.description && exit.status !== 'unavailable')
+
+    return {
+        entry: {
+            title: 'Quando compra',
+            action: isShort ? 'Venda/Short para entrar' : 'Compra para entrar',
+            summary: entryAvailable ? entry?.description || RULE_UNAVAILABLE : RULE_UNAVAILABLE,
+            available: entryAvailable,
+        },
+        exit: {
+            title: 'Quando vende',
+            action: isShort ? 'Compra/Cobertura para sair' : 'Venda para sair',
+            summary: exitAvailable ? exit?.description || RULE_UNAVAILABLE : RULE_UNAVAILABLE,
+            available: exitAvailable,
+        },
+    }
 }
 
 export function normalizeStrategyTransparency(value: unknown): StrategyTransparency | null {
