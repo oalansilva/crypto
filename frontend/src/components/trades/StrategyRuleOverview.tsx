@@ -33,8 +33,10 @@ export function StrategyRuleOverview({
                     <div key={rule.title} className="min-w-0 rounded-md border border-[#2b3139] bg-[#1e2329] px-3 py-2">
                         <dt className="text-xs font-semibold text-[#eaecef]">{rule.title}</dt>
                         <dd className="mt-1 min-w-0">
-                            <span className="block text-xs font-medium text-[#fcd535]">{rule.action}</span>
-                            <span className={`mt-1 block break-words text-sm leading-6 ${rule.available ? 'text-[#eaecef]' : 'text-[#929aa5]'}`}>
+                            {rule.action ? (
+                                <span className="block text-xs font-medium text-[#fcd535]">{rule.action}</span>
+                            ) : null}
+                            <span className={`${rule.action ? 'mt-1 ' : ''}block break-words text-sm leading-6 ${rule.available ? 'text-[#eaecef]' : 'text-[#929aa5]'}`}>
                                 {rule.summary}
                             </span>
                         </dd>

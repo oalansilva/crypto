@@ -17,4 +17,10 @@
 - [x] 3.3 Validar Playwright funcional e visual em desktop/mobile.
 - [x] 3.4 Registrar evidências de Code Review, QA, PR, integração em `develop`, restart e runtime no card #293.
 
+## 4. Feedback de homologação (copy)
+
+- [x] 4.1 Remover tautologia em `long` (“Compra para entrar” / “Venda para sair”); deixar título + condição.
+- [x] 4.2 Em `short`, clarificar abertura por venda e fechamento por cobertura sem contradizer os títulos.
+- [x] 4.3 Atualizar testes unitários e Playwright; validar OpenSpec, QA e runtime em DEV.
+
 Nota: usar as skills do projeto em `.codex/skills` para frontend, testes, depuração, acessibilidade e Playwright quando aplicáveis.

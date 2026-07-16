@@ -6,7 +6,7 @@ A explicação atual destaca o evento ou a posição do trade, mas não garante 
 
 - Exibir sempre os blocos “Quando compra” e “Quando vende” ao expandir a explicação de um trade.
 - Separar as regras permanentes da estratégia da explicação contextual do evento atual.
-- Aplicar a direção executada: `long` compra para entrar e vende para sair; `short` vende/abre short e compra/faz cobertura para sair.
+- Aplicar a direção executada sem tautologia: em `long`, os títulos “Quando compra/vende” + condição bastam; em `short`, clarificar que a entrada abre por venda (short) e a saída fecha por compra (cobertura).
 - Manter as duas regras em posições abertas, fechadas, fora de posição e payloads legados/protegidos, com fallback seguro.
 - Validar catálogo completo, acessibilidade, desktop e mobile sem criar colunas horizontais.
 

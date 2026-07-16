@@ -75,15 +75,15 @@ test('preserva regras permanentes e aplica ações direcionais long e short', ()
 
     const longRules = buildStrategyRuleOverview(normalized, 'long')
     assert.equal(longRules.entry.title, 'Quando compra')
-    assert.equal(longRules.entry.action, 'Compra para entrar')
+    assert.equal(longRules.entry.action, '')
     assert.equal(longRules.exit.title, 'Quando vende')
-    assert.equal(longRules.exit.action, 'Venda para sair')
+    assert.equal(longRules.exit.action, '')
     assert.equal(longRules.entry.summary, 'A entrada exige tendência confirmada.')
     assert.equal(longRules.exit.summary, 'A saída ocorre quando a tendência perde força.')
 
     const shortRules = buildStrategyRuleOverview(normalized, 'short')
-    assert.equal(shortRules.entry.action, 'Venda/Short para entrar')
-    assert.equal(shortRules.exit.action, 'Compra/Cobertura para sair')
+    assert.equal(shortRules.entry.action, 'Na prática: vende para abrir (short)')
+    assert.equal(shortRules.exit.action, 'Na prática: compra para fechar (cobertura)')
 })
 
 test('mantém as duas regras visíveis com fallback seguro para manifesto legado', () => {
