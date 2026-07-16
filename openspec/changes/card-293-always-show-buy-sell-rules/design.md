@@ -30,7 +30,7 @@ Alternativas rejeitadas: usar `entry.summary`/`exit.summary`, pois descrevem eve
 
 Criar um `StrategyRuleOverview` reutilizável. O card expandido do Monitor mostra sempre o grupo “Como funciona a estratégia”, com “Quando compra” e “Quando vende”. O disclosure de trades usa o mesmo grupo antes de “Por que entrou”, “Por que saiu” ou “Por que continua aberto”. Assim o usuário distingue contrato da estratégia de evento atual.
 
-Para `short`, os rótulos continuam amigáveis, mas as ações informam “Venda/Short” na entrada e “Compra/Cobertura” na saída. Estado não depende apenas de verde/vermelho.
+Os títulos “Quando compra” e “Quando vende” já identificam Compra/Venda. Em `long`, não repetir “Compra para entrar” / “Venda para sair”: mostrar só a condição pública do manifesto. Em `short`, manter uma linha de clarificação sob o título (“Na prática: vende para abrir (short)” / “Na prática: compra para fechar (cobertura)”), porque a entrada short é venda e a saída é cobertura. Estado não depende apenas de verde/vermelho.
 
 ### Decision: fallback seguro e cobertura de catálogo
 
@@ -42,7 +42,8 @@ Aplicação do `DESIGN.md`: superfícies `#0b0e11/#1e2329`, hairline `#2b3139`, 
 
 - [Propagação do manifesto até a tabela] → adicionar uma prop tipada única em `StrategyTradesTable` e reutilizar o mesmo componente.
 - [Payload legado sem `logic_blocks`] → renderizar ambos os cards como indisponíveis, sem usar valores atuais.
-- [Confusão em estratégia short] → exibir ação direcional dentro de cada card e validar copy em testes.
+- [Confusão em estratégia short] → exibir clarificação direcional só em `short` e validar copy em testes.
+- [Tautologia em long] → omitir a linha de ação em `long`; o título + condição bastam.
 - [Painel mais denso] → resumo em dois cards compactos; detalhes históricos continuam abaixo e colapsados pelo disclosure.
 
 ## Migration Plan

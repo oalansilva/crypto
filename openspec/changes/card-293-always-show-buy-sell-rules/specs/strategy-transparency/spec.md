@@ -5,13 +5,15 @@ The frontend strategy-transparency contract SHALL preserve the canonical entry a
 
 #### Scenario: Long strategy rule pair is built
 - **WHEN** a manifest is normalized and displayed for a `long` strategy
-- **THEN** the permanent entry rule SHALL identify Compra and summarize the canonical entry condition
-- **AND** the permanent exit rule SHALL identify Venda and summarize the canonical exit condition.
+- **THEN** the permanent entry rule SHALL identify Compra via the heading “Quando compra” and summarize the canonical entry condition
+- **AND** the permanent exit rule SHALL identify Venda via the heading “Quando vende” and summarize the canonical exit condition
+- **AND** SHALL NOT repeat tautological action lines such as “Compra para entrar” or “Venda para sair”.
 
 #### Scenario: Short strategy rule pair is built
 - **WHEN** a manifest is normalized and displayed for a `short` strategy
-- **THEN** the permanent entry rule SHALL identify Venda/Short and summarize the canonical entry condition
-- **AND** the permanent exit rule SHALL identify Compra/Cobertura and summarize the canonical exit condition.
+- **THEN** the permanent entry rule SHALL keep the heading “Quando compra” and clarify that entry opens by selling (short)
+- **AND** the permanent exit rule SHALL keep the heading “Quando vende” and clarify that exit closes by buying (cobertura)
+- **AND** each rule SHALL summarize the canonical entry or exit condition.
 
 #### Scenario: Public rule pair cannot be translated safely
 - **WHEN** either canonical logic block is absent or cannot be translated from allowlisted metadata

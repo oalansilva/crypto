@@ -193,13 +193,15 @@ export function buildStrategyRuleOverview(
     return {
         entry: {
             title: 'Quando compra',
-            action: isShort ? 'Venda/Short para entrar' : 'Compra para entrar',
+            // Em long o título já identifica Compra; em short esclarece que a entrada abre vendendo.
+            action: isShort ? 'Na prática: vende para abrir (short)' : '',
             summary: entryAvailable ? entry?.description || RULE_UNAVAILABLE : RULE_UNAVAILABLE,
             available: entryAvailable,
         },
         exit: {
             title: 'Quando vende',
-            action: isShort ? 'Compra/Cobertura para sair' : 'Venda para sair',
+            // Em long o título já identifica Venda; em short esclarece cobertura.
+            action: isShort ? 'Na prática: compra para fechar (cobertura)' : '',
             summary: exitAvailable ? exit?.description || RULE_UNAVAILABLE : RULE_UNAVAILABLE,
             available: exitAvailable,
         },

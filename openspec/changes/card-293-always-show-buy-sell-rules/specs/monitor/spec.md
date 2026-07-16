@@ -15,8 +15,14 @@ The Monitor trade disclosure SHALL show the strategy's permanent buy and sell ru
 
 #### Scenario: User expands a short trade
 - **WHEN** the trade direction is `short`
-- **THEN** the two permanent rule cards SHALL expose Venda/Short as entry and Compra/Cobertura as exit
-- **AND** SHALL retain the user-facing headings “Quando compra” and “Quando vende” as the requested strategy overview.
+- **THEN** the two permanent rule cards SHALL retain the headings “Quando compra” and “Quando vende”
+- **AND** SHALL clarify that entry opens by selling (short) and exit closes by buying (cobertura)
+- **AND** SHALL show the canonical condition summaries under those clarifications.
+
+#### Scenario: Long strategy avoids tautological action copy
+- **WHEN** the trade direction is `long`
+- **THEN** the permanent rule cards SHALL show “Quando compra” and “Quando vende” with the condition summaries
+- **AND** SHALL NOT show redundant lines such as “Compra para entrar” or “Venda para sair”.
 
 #### Scenario: Legacy payload has no permanent rule pair
 - **WHEN** the expanded trade does not include the new permanent rule contract
