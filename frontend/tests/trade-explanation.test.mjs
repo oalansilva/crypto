@@ -12,6 +12,7 @@ test('trade explanation disclosure exposes the accessible disclosure contract', 
   assert.match(source, /aria-controls=\{panelId\}/)
   assert.match(source, /min-h-11/)
   assert.match(source, /focus-visible:ring-2 focus-visible:ring-\[#3b82f6\]/)
+  assert.match(source, /<StrategyRuleOverview/)
 })
 
 test('trade explanation distinguishes event timing, evidence and safe legacy fallback', () => {
@@ -46,6 +47,20 @@ test('trade list integrates explanations without adding another table header', (
   assert.match(source, /current_state_explanation\?: TradeExplanation/)
   assert.match(source, /<TradeExplanationDisclosure/)
   assert.doesNotMatch(source, /<th[^>]*>Entenda este trade<\/th>/)
+  assert.match(source, /strategyTransparency=\{strategyTransparency\}/)
+})
+
+test('permanent rule overview separates strategy contract from current event', () => {
+  const source = read('src/components/trades/StrategyRuleOverview.tsx')
+  const card = read('src/components/monitor/OpportunityCard.tsx')
+
+  assert.match(source, /Como funciona a estratégia/)
+  assert.match(source, /Estas regras não mudam com a posição atual do trade/)
+  assert.match(source, /md:grid-cols-2/)
+  assert.doesNotMatch(source, /sm:grid-cols-2/)
+  assert.match(source, /aria-labelledby/)
+  assert.match(card, /monitor-strategy-rules-/)
+  assert.match(card, /O que aconteceu agora/)
 })
 
 test('monitor trade builders preserve entry, exit and open-position explanations', () => {

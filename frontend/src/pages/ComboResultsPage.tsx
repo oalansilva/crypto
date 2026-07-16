@@ -330,6 +330,7 @@ export function ComboResultsPage() {
                         metrics={metrics}
                         onExport={handleExportTrades}
                         testId="result-trades"
+                        strategyTransparency={strategyTransparency}
                     />
 
                 </div>

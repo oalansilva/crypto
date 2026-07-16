@@ -2,6 +2,8 @@ import React from 'react';
 import { Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
+import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
+import { StrategyRuleOverview } from '../trades/StrategyRuleOverview';
 import { hasExitedOpportunity, resolveOpportunitySignal, type ResolvedMonitorSignal } from './signalResolution';
 import {
     getStrategyDisplayName,
@@ -114,6 +116,10 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         if (!explanation || !['available', 'partial'].includes(explanation.status)) return null;
         return explanation.summary?.trim() || null;
     }, [opportunity.signal_history]);
+    const strategyTransparency = React.useMemo(
+        () => normalizeStrategyTransparency(opportunity.strategy_transparency),
+        [opportunity.strategy_transparency],
+    );
     const exitClassName = resolvedSignal.section === 'exit'
         ? ''
         : 'hold-msg';
@@ -281,12 +287,19 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <span className="label">Mensagem</span>
                         <span>{statusMessage}</span>
                     </div>
+                    <div className="mt-2">
+                        <StrategyRuleOverview
+                            id={`monitor-strategy-rules-${symbolTestKey}`}
+                            strategyTransparency={strategyTransparency}
+                            direction={isShort ? 'short' : 'long'}
+                        />
+                    </div>
                     {latestTradeExplanation ? (
                         <div
                             className="mt-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] px-3 py-2 text-sm leading-6 text-[#eaecef]"
                             data-testid={`monitor-trade-explanation-summary-${symbolTestKey}`}
                         >
-                            <span className="block text-[10px] font-semibold uppercase text-[#929aa5]">Entenda este trade</span>
+                            <span className="block text-[10px] font-semibold uppercase text-[#929aa5]">O que aconteceu agora</span>
                             {latestTradeExplanation}
                         </div>
                     ) : null}

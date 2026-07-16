@@ -1,12 +1,16 @@
 import React from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { TradeEvidenceItem, TradeExplanation } from '@/types/tradeExplanation'
+import type { StrategyTransparency } from '@/lib/strategyTransparency'
+import { StrategyRuleOverview } from './StrategyRuleOverview'
 
 interface TradeExplanationDisclosureProps {
     id: string
     entry?: TradeExplanation | null
     exit?: TradeExplanation | null
     currentState?: TradeExplanation | null
+    strategyTransparency?: StrategyTransparency | null
+    direction?: string | null
 }
 
 const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
@@ -158,6 +162,8 @@ export function TradeExplanationDisclosure({
     entry,
     exit,
     currentState,
+    strategyTransparency,
+    direction,
 }: TradeExplanationDisclosureProps) {
     const [expanded, setExpanded] = React.useState(false)
     const panelId = `${id}-trade-explanation`
@@ -186,6 +192,11 @@ export function TradeExplanationDisclosure({
                     aria-label="Explicação do trade"
                     data-testid={`${id}-trade-explanation-panel`}
                 >
+                    <StrategyRuleOverview
+                        id={`${id}-permanent-rules`}
+                        strategyTransparency={strategyTransparency}
+                        direction={direction}
+                    />
                     {explanations.length > 0 ? explanations.map((item) => (
                         <ExplanationBlock key={item.title} title={item.title} explanation={item.explanation} />
                     )) : (

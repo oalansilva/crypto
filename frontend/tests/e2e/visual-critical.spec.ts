@@ -52,6 +52,14 @@ const OPPORTUNITIES = [
     message: 'Holding position',
     last_price: 65000,
     timestamp: '2025-01-01T00:00:00Z',
+    strategy_transparency: {
+      status: 'available',
+      timeframe: '1d',
+      logic_blocks: [
+        { participation: 'entry', description: 'Compra quando a média curta confirma força acima da média longa.', status: 'available' },
+        { participation: 'exit', description: 'Vende quando a média curta perde força abaixo da média longa.', status: 'available' },
+      ],
+    },
     details: {},
   },
 ]
@@ -282,6 +290,8 @@ test('visual critical monitor trade explanation', async ({ page }) => {
   const dialog = page.getByRole('dialog')
   const disclosure = dialog.getByRole('button', { name: 'Entenda este trade' })
   await disclosure.click()
+  await expect(dialog.getByText('Quando compra')).toBeVisible()
+  await expect(dialog.getByText('Quando vende')).toBeVisible()
   await expect(dialog.getByText('Por que continua aberto')).toBeVisible()
   await expect(page).toHaveScreenshot('monitor-trade-explanation.png', {
     animations: 'disabled',
