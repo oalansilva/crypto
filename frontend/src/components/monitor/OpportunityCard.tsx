@@ -106,6 +106,14 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     );
     const resolvedSignal = resolvedSignalOverride ?? computedResolvedSignal;
     const statusMessage = resolvedSignal.statusMessage;
+    const latestTradeExplanation = React.useMemo(() => {
+        const history = [...(opportunity.signal_history || [])].sort(
+            (left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp),
+        );
+        const explanation = history[0]?.explanation;
+        if (!explanation || !['available', 'partial'].includes(explanation.status)) return null;
+        return explanation.summary?.trim() || null;
+    }, [opportunity.signal_history]);
     const exitClassName = resolvedSignal.section === 'exit'
         ? ''
         : 'hold-msg';
@@ -273,6 +281,15 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <span className="label">Mensagem</span>
                         <span>{statusMessage}</span>
                     </div>
+                    {latestTradeExplanation ? (
+                        <div
+                            className="mt-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] px-3 py-2 text-sm leading-6 text-[#eaecef]"
+                            data-testid={`monitor-trade-explanation-summary-${symbolTestKey}`}
+                        >
+                            <span className="block text-[10px] font-semibold uppercase text-[#929aa5]">Entenda este trade</span>
+                            {latestTradeExplanation}
+                        </div>
+                    ) : null}
                     <div className="candle-meta">
                         <span>
                             estratégia <b>{strategyDisplayName || name || symbol}</b>

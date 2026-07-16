@@ -73,7 +73,7 @@ def test_resolve_position_state_does_not_hold_without_confirmed_entry():
     assert stop_breached_now is False
 
 
-def test_resolve_position_state_waits_when_entry_exists_but_trend_is_not_active():
+def test_resolve_position_state_uses_confirmed_signals_without_ma_specific_gate():
     is_holding, is_stopped_out, stop_breached_now = _resolve_position_state(
         short_above_long=False,
         last_buy_pos=10,
@@ -84,7 +84,7 @@ def test_resolve_position_state_waits_when_entry_exists_but_trend_is_not_active(
         stop_price=2049.78,
     )
 
-    assert is_holding is False
+    assert is_holding is True
     assert is_stopped_out is False
     assert stop_breached_now is False
 

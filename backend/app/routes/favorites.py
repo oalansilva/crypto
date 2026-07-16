@@ -29,6 +29,7 @@ from app.services.strategy_transparency import (
     build_strategy_transparency_from_serialized,
     normalize_strategy_transparency_colors,
 )
+from app.services.trade_explanations import explain_trades
 from app.services.ohlcv_storage import MarketOhlcvRepository
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
@@ -144,16 +145,8 @@ def _favorite_transparency(
     favorite: FavoriteStrategy,
     metrics: dict[str, Any],
 ) -> StrategyTransparency:
-    stored = metrics.get("analysis_strategy_transparency")
-    if isinstance(stored, dict):
-        try:
-            manifest = StrategyTransparency.model_validate(stored)
-            if manifest.timeframe == favorite.timeframe:
-                return normalize_strategy_transparency_colors(manifest)
-        except Exception:
-            pass
     template_data = _strategy_templates_for_rows(db, [favorite]).get(str(favorite.strategy_name))
-    return build_strategy_transparency_from_serialized(
+    fresh = build_strategy_transparency_from_serialized(
         favorite.strategy_name,
         template_data,
         effective_parameters=favorite.parameters if isinstance(favorite.parameters, dict) else {},
@@ -161,6 +154,24 @@ def _favorite_transparency(
         candles=_analysis_candles_from_metrics(metrics),
         indicator_data=_analysis_indicators_from_metrics(metrics),
     )
+    stored = metrics.get("analysis_strategy_transparency")
+    if isinstance(stored, dict):
+        try:
+            manifest = StrategyTransparency.model_validate(stored)
+            if manifest.timeframe == favorite.timeframe:
+                stored_by_key = {indicator.key: indicator for indicator in manifest.indicators}
+                for indicator in fresh.indicators:
+                    stored_indicator = stored_by_key.get(indicator.key)
+                    if stored_indicator is not None and stored_indicator.series:
+                        indicator.series = stored_indicator.series
+                        indicator.series_status = stored_indicator.series_status
+                        indicator.unavailable_reason = stored_indicator.unavailable_reason
+                if fresh.status == "available":
+                    return normalize_strategy_transparency_colors(fresh)
+                return normalize_strategy_transparency_colors(manifest)
+        except Exception:
+            pass
+    return fresh
 
 
 def _normalized_candle_timestamp(candle: dict[str, Any]) -> str | None:
@@ -688,6 +699,17 @@ async def get_favorite_trades(
             fallback_manifest=strategy_transparency,
         )
 
+    def with_explanations(
+        trades: list[dict[str, Any]], manifest: StrategyTransparency
+    ) -> list[dict[str, Any]]:
+        parameters = favorite.parameters if isinstance(favorite.parameters, dict) else {}
+        return explain_trades(
+            trades,
+            manifest,
+            direction=parameters.get("direction", "long"),
+            timeframe=str(favorite.timeframe),
+        )
+
     if not include_secrets:
         if not _can_view_cached_chart_payload(
             db,
@@ -703,7 +725,7 @@ async def get_favorite_trades(
 
         return FavoriteTradesResponse(
             favorite_id=favorite_id,
-            trades=saved_trades,
+            trades=with_explanations(saved_trades, strategy_transparency),
             metrics=_public_chart_metrics(metrics),
             metrics_match=True,
             metrics_deltas={},
@@ -728,7 +750,7 @@ async def get_favorite_trades(
         saved_metrics_match = metrics.get("trades_metrics_match")
         return FavoriteTradesResponse(
             favorite_id=favorite_id,
-            trades=saved_trades,
+            trades=with_explanations(saved_trades, strategy_transparency),
             metrics=metrics,
             metrics_match=saved_metrics_match if isinstance(saved_metrics_match, bool) else True,
             metrics_deltas=_analysis_metrics_deltas_from_metrics(metrics),
@@ -787,7 +809,7 @@ async def get_favorite_trades(
 
     return FavoriteTradesResponse(
         favorite_id=favorite_id,
-        trades=regenerated_trades,
+        trades=with_explanations(regenerated_trades, strategy_transparency),
         metrics=updated_metrics,
         metrics_match=True,
         metrics_deltas=metrics_deltas,

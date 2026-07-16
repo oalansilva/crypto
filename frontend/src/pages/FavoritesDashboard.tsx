@@ -11,6 +11,7 @@ import {
     hasAvailableIndicatorSeries,
     type StrategyTransparency,
 } from '@/lib/strategyTransparency';
+import type { TradeExplanation } from '@/types/tradeExplanation';
 
 import * as XLSX from 'xlsx';
 
@@ -45,6 +46,7 @@ interface MonitorSignalHistoryItem {
     type?: string | null;
     reason?: string | null;
     price?: number | null;
+    explanation?: TradeExplanation | null;
 }
 
 interface MonitorOpportunity {
@@ -54,6 +56,7 @@ interface MonitorOpportunity {
     template_name?: string;
     name?: string;
     signal_history?: MonitorSignalHistoryItem[] | null;
+    trade_explanation?: TradeExplanation | null;
 }
 
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
@@ -147,6 +150,7 @@ const calculateSignalProfit = (
 const buildTradesFromSignalHistory = (
     history: MonitorSignalHistoryItem[] | null | undefined,
     direction: string,
+    currentStateExplanation?: TradeExplanation | null,
 ): any[] | null => {
     if (!Array.isArray(history) || history.length === 0) return null;
 
@@ -177,6 +181,8 @@ const buildTradesFromSignalHistory = (
                 entry_signal_type: direction === 'short' ? 'Vender' : 'Comprar',
                 exit_reason: item.reason || 'monitor_signal',
                 source: 'monitor_signal_history',
+                entry_explanation: activeEntry.explanation,
+                exit_explanation: item.explanation,
             });
             activeEntry = null;
         }
@@ -190,6 +196,8 @@ const buildTradesFromSignalHistory = (
             type: direction === 'short' ? 'short' : 'long',
             entry_signal_type: direction === 'short' ? 'Vender' : 'Comprar',
             source: 'monitor_signal_history',
+            entry_explanation: activeEntry.explanation,
+            current_state_explanation: currentStateExplanation,
         });
     }
 
@@ -546,7 +554,11 @@ const FavoritesDashboard: React.FC = () => {
 
             const opportunity = findMatchingOpportunity(fav, payload);
             const direction = String(fav.parameters?.direction || 'long').toLowerCase();
-            return buildTradesFromSignalHistory(opportunity?.signal_history, direction);
+            return buildTradesFromSignalHistory(
+                opportunity?.signal_history,
+                direction,
+                opportunity?.trade_explanation,
+            );
         } catch (error) {
             console.warn(`Falling back to saved favorite trades for ${fav.symbol} ${fav.timeframe}`, error);
             return null;

@@ -192,7 +192,11 @@ function mergeAnalysisCandles(currentCandles: MarketCandle[], analysisCandles: M
     ));
 }
 
-function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | undefined, direction: string): StrategyTrade[] {
+function buildTradesFromSignalHistory(
+    history: OpportunitySignalHistoryItem[] | undefined,
+    direction: string,
+    currentStateExplanation?: StrategyTrade['current_state_explanation'],
+): StrategyTrade[] {
     const sortedHistory = [...(history || [])].sort(
         (left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp),
     );
@@ -224,9 +228,22 @@ function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | 
             type: isShort ? 'short' : 'long',
             entry_signal_type: isShort ? 'Vender' : 'Comprar',
             signal_type: formatSignalReason(item.reason, direction),
+            entry_explanation: activeEntry.explanation,
+            exit_explanation: item.explanation,
         });
         activeEntry = null;
     });
+
+    if (activeEntry) {
+        trades.push({
+            entry_time: activeEntry.timestamp,
+            entry_price: Number(activeEntry.price || 0),
+            type: isShort ? 'short' : 'long',
+            entry_signal_type: isShort ? 'Vender' : 'Comprar',
+            entry_explanation: activeEntry.explanation,
+            current_state_explanation: currentStateExplanation,
+        });
+    }
 
     return trades;
 }
@@ -402,8 +419,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         [opportunity.signal_history],
     );
     const signalHistoryTrades = React.useMemo(
-        () => buildTradesFromSignalHistory(opportunity.signal_history, opportunityDirection),
-        [opportunity.signal_history, opportunityDirection],
+        () => buildTradesFromSignalHistory(
+            opportunity.signal_history,
+            opportunityDirection,
+            opportunity.trade_explanation,
+        ),
+        [opportunity.signal_history, opportunity.trade_explanation, opportunityDirection],
     );
     const tradeSignalMarkers = React.useMemo<StrategyChartMarker[]>(() => (
         canRenderSignalHistoryMarkers
