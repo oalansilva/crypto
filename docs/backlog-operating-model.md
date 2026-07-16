@@ -64,6 +64,8 @@ Clara nao deve usar `Pronto` como estado de revisao. Se ainda faltar execucao re
 
 Playwright visual é obrigatório por padrão em todo card, inclusive sem mudança de frontend. A dispensa só vale quando Alan registra no card `QA visual dispensado por Alan.` com motivo e a label `qa-visual-skip` está aplicada. O CI preserva artifacts de falha; baseline visual atualizado faz parte do diff revisado.
 
+Fluxo rápido (ver `AGENTS.md` / `alan-workflow` Visual QA): em mudança de UI intencional, atualizar baselines no DEV Linux com `npm --prefix frontend run test:e2e:visual -- --update-snapshots`, revisar só o `diff.png` dos cenários alterados, commit dos `*-snapshots/` e deixar o CI revalidar. Não usar loop de vision em todos os artifacts do CI para “passar” o teste — o Playwright já compara pixels.
+
 ## Regra de Release
 
 Quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente para cards no nome da Clara ou do Alan:
