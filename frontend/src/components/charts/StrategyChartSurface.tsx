@@ -80,6 +80,8 @@ interface StrategyChartSurfaceProps {
     showSideContent?: boolean
     belowContent?: React.ReactNode
     footerContent?: React.ReactNode
+    /** When false, keep indicator overlays but hide the large details panel under the chart. */
+    showTransparencyDetails?: boolean
     loading?: boolean
     error?: string | null
     markerCount?: number
@@ -200,6 +202,7 @@ export function StrategyChartSurface({
     showSideContent = true,
     belowContent,
     footerContent,
+    showTransparencyDetails = true,
     loading,
     error,
     markerCount,
@@ -764,15 +767,16 @@ export function StrategyChartSurface({
             </div>
 
             {error ? (
-                <div className="mx-3 mt-3 rounded-lg border border-[#f6465d]/40 bg-[#f6465d]/10 px-4 py-3 text-sm text-[#ffb1ac]">
+                <div className="mx-3 mt-3 shrink-0 rounded-lg border border-[#f6465d]/40 bg-[#f6465d]/10 px-4 py-3 text-sm text-[#ffb1ac]">
                     {error}
                 </div>
             ) : null}
 
+            <div className={belowContent ? 'min-h-0 flex-1 overflow-auto' : undefined}>
             <div className={gridClassName}>
                 <div
                     ref={shellRef}
-                    className="relative min-h-[420px] rounded-lg border border-[#2b3139] bg-[#0b0e11] p-2"
+                    className="relative min-h-[360px] rounded-lg border border-[#2b3139] bg-[#0b0e11] p-2 sm:min-h-[420px]"
                     onWheel={handleWheel}
                     data-testid={shellTestId}
                     data-current-marker={currentMarkerLabel}
@@ -810,7 +814,7 @@ export function StrategyChartSurface({
                         </div>
                     ) : null}
 
-                    {transparency ? (
+                    {showTransparencyDetails && transparency ? (
                         <section
                             className="mt-3 rounded-lg border border-[#2b3139] bg-[#1e2329] p-3 sm:p-4"
                             aria-labelledby={`${rootTestId}-strategy-transparency-title`}
@@ -938,9 +942,10 @@ export function StrategyChartSurface({
                     {belowContent}
                 </div>
             ) : null}
+            </div>
 
             {footerContent ? (
-                <footer className="border-t border-[#2b3139] bg-[#1e2329] px-5 py-3">
+                <footer className="shrink-0 border-t border-[#2b3139] bg-[#1e2329] px-5 py-3">
                     {footerContent}
                 </footer>
             ) : null}
