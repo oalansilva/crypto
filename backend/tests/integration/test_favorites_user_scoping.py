@@ -102,6 +102,18 @@ def _session_factory(tmp_path: Path):
     return TestingSessionLocal
 
 
+def _without_trade_explanations(trades):
+    explanation_keys = {
+        "entry_explanation",
+        "exit_explanation",
+        "current_state_explanation",
+    }
+    return [
+        {key: value for key, value in trade.items() if key not in explanation_keys}
+        for trade in trades
+    ]
+
+
 def _favorite_payload(
     name: str,
     symbol: str = "BTC/USDT",
@@ -425,7 +437,10 @@ def test_favorite_trades_returns_saved_trades_without_regeneration(tmp_path: Pat
 
     assert response.regenerated is False
     assert response.metrics_match is True
-    assert response.trades == [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}]
+    assert _without_trade_explanations(response.trades) == [
+        {"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}
+    ]
+    assert response.trades[0]["entry_explanation"]["status"] == "unavailable"
 
 
 def test_favorite_trades_removes_future_cached_exit_but_keeps_open_entry(
@@ -480,7 +495,8 @@ def test_favorite_trades_removes_future_cached_exit_but_keeps_open_entry(
         {"entry_time": "2026-07-11T00:00:00Z", "entry_price": 64000.00},
     ]
     assert response.regenerated is False
-    assert response.trades == expected
+    assert _without_trade_explanations(response.trades) == expected
+    assert all(trade["current_state_explanation"] for trade in response.trades)
     assert listed[0].metrics["trades"] == expected
 
 
@@ -615,10 +631,12 @@ def test_favorite_trades_regenerates_and_persists_missing_trades(tmp_path: Path,
     assert response.regenerated is True
     assert response.metrics_match is True
     assert response.metrics_deltas == {}
-    assert response.trades == [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}]
+    assert _without_trade_explanations(response.trades) == [
+        {"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}
+    ]
     assert response.candles == [{"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}]
     assert response.indicator_data == {"ema_short": [100]}
-    assert stored["trades"] == response.trades
+    assert stored["trades"] == _without_trade_explanations(response.trades)
     assert stored["trades_history_cached"] is True
     assert stored["trades_metrics_match"] is True
     assert stored["analysis_candles"] == response.candles
@@ -672,7 +690,7 @@ def test_favorite_trades_accepts_reconstructed_metrics_and_keeps_investigation_d
     assert cached_response.metrics_deltas == response.metrics_deltas
     assert cached_response.trades == response.trades
     assert calls["count"] == 1
-    assert stored["trades"] == response.trades
+    assert stored["trades"] == _without_trade_explanations(response.trades)
     assert stored["trades_history_cached"] is True
     assert stored["trades_metrics_match"] is True
     assert stored["trades_reconciled_from_mismatch"] is True
@@ -1049,7 +1067,8 @@ def test_common_user_get_favorite_trades_extends_manifest_to_current_candle_with
     manifest = response.strategy_transparency
     assert response.regenerated is False
     assert response.indicator_data == {}
-    assert response.trades == before_metrics["trades"]
+    assert _without_trade_explanations(response.trades) == before_metrics["trades"]
+    assert response.trades[0]["current_state_explanation"]["status"] == "available"
     assert response.candles[-1]["timestamp_utc"] == "2026-07-12T00:00:00+00:00"
     assert manifest is not None
     assert [indicator.color for indicator in manifest.indicators] == [

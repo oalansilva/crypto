@@ -1,4 +1,5 @@
 import type { StrategyTransparency } from '@/lib/strategyTransparency';
+import type { TradeExplanation } from '@/types/tradeExplanation';
 
 export type MonitorAssetType = 'crypto' | 'stock';
 
@@ -8,6 +9,7 @@ export interface OpportunitySignalHistoryItem {
     type: 'entry' | 'exit';
     reason?: string | null;
     price?: number | null;
+    explanation?: TradeExplanation | null;
 }
 
 export interface Opportunity {
@@ -42,6 +44,8 @@ export interface Opportunity {
     indicator_values_candle_time?: string | null;
     /** Histórico recente de sinais confirmados da estratégia */
     signal_history?: OpportunitySignalHistoryItem[];
+    /** Explicação do estado atual do trade, calculada pela mesma estratégia executada. */
+    trade_explanation?: TradeExplanation | null;
     is_strategy_protected?: boolean;
     strategy_display_name?: string | null;
     strategy_description?: string | null;

@@ -29,6 +29,7 @@ from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 from app.services.strategy_descriptions import public_strategy_description
 from app.schemas.strategy_transparency import StrategyTransparency
 from app.services.strategy_transparency import build_strategy_transparency
+from app.services.trade_explanations import explain_current_position, explain_signal_history
 
 logger = logging.getLogger(__name__)
 _OHLCV_CACHE_TTL_SECONDS = 300.0
@@ -479,9 +480,7 @@ def _resolve_position_state(
         return False, True, stop_breached_now
     if has_exit_after_entry:
         return False, False, False
-    if direction == "short":
-        return bool(has_active_entry), False, False
-    return bool(has_active_entry and short_above_long), False, False
+    return bool(has_active_entry), False, False
 
 
 def _public_monitor_status(*, is_holding: bool, raw_status: str | None) -> str:
@@ -1362,12 +1361,14 @@ class OpportunityService:
                 entry_logic = template_data.get("entry_logic", "")  # Buy rule from DB
                 exit_logic = template_data.get("exit_logic", "")  # Sell rule from DB
 
+                strategy_direction = _normalize_strategy_direction(params.get("direction", "long"))
                 strategy = ComboStrategy(
                     indicators=final_indicators,
                     entry_logic=entry_logic,  # Dynamic buy rule from database
                     exit_logic=exit_logic,  # Dynamic sell rule from database
                     stop_loss=float(sl_param),
                     force_recompute=False,
+                    direction=strategy_direction,
                 )
 
                 df_with_inds = strategy.calculate_indicators(mapped_df)
@@ -1485,7 +1486,7 @@ class OpportunityService:
                             )
                             logger.info(f"  - Minimum distance (closest): {min_dist:.2f}%")
 
-                direction = str(params.get("direction", "long") or "long").lower()
+                direction = strategy_direction
                 last_price = float(df.iloc[-1]["close"]) if not df.empty else None
 
                 # Compute entry distance override based on trend gate
@@ -1988,27 +1989,47 @@ class OpportunityService:
                     if isinstance(fav.get("_metrics"), dict)
                     else None
                 )
-                strategy_transparency = None
+                strategy_transparency = build_strategy_transparency(
+                    template_name,
+                    {
+                        "indicators": final_indicators,
+                        "entry_logic": entry_logic,
+                        "exit_logic": exit_logic,
+                        "stop_loss": sl_param,
+                    },
+                    effective_parameters=params,
+                    timeframe=normalized_tf,
+                    dataframe=df_signals,
+                )
                 if isinstance(stored_manifest, dict):
                     try:
                         candidate = StrategyTransparency.model_validate(stored_manifest)
-                        if candidate.timeframe == normalized_tf:
+                        if (
+                            strategy_transparency.status != "available"
+                            and candidate.timeframe == normalized_tf
+                        ):
                             strategy_transparency = candidate
                     except Exception:
-                        strategy_transparency = None
-                if strategy_transparency is None:
-                    strategy_transparency = build_strategy_transparency(
-                        template_name,
-                        {
-                            "indicators": final_indicators,
-                            "entry_logic": entry_logic,
-                            "exit_logic": exit_logic,
-                            "stop_loss": sl_param,
-                        },
-                        effective_parameters=params,
-                        timeframe=normalized_tf,
-                        dataframe=df_signals,
-                    )
+                        pass
+
+                signal_history = explain_signal_history(
+                    signal_history,
+                    strategy_transparency,
+                    direction=direction,
+                    timeframe=normalized_tf,
+                )
+                current_trade_explanation = explain_current_position(
+                    signal_history,
+                    strategy_transparency,
+                    direction=direction,
+                    timeframe=normalized_tf,
+                    is_holding=public_is_holding,
+                )
+                public_details["trade_explanation"] = (
+                    current_trade_explanation.model_dump(mode="json")
+                    if current_trade_explanation is not None
+                    else None
+                )
 
                 opportunities.append(
                     {
@@ -2037,6 +2058,7 @@ class OpportunityService:
                         "indicator_values": indicator_values if indicator_values else None,
                         "indicator_values_candle_time": indicator_values_candle_time,
                         "signal_history": signal_history,
+                        "trade_explanation": public_details["trade_explanation"],
                         "entry_price": entry_price,
                         "stop_price": stop_price,
                         "distance_to_stop_pct": distance_to_stop_pct,
