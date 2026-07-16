@@ -806,8 +806,9 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByText('Lista de operações')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
-  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-labels', /COMPRA.*VENDA/);
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-labels', /Compra.*Venda/i);
   await expect(page.getByTestId('monitor-aligned-result-chart')).not.toHaveAttribute('data-marker-labels', /BUY|SELL|SHORT|COVER/);
+  await expect(page.getByTestId('favorites-signal-history')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText('BTC/USDT • 4h • 160 velas')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
@@ -1032,9 +1033,30 @@ test('favorites analysis preserves saved trades and adds monitor signal history 
   expect(api.opportunitiesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
+  await expect(page.getByTestId('favorites-signal-history')).toBeVisible();
+  await expect(page.getByTestId('favorites-signal-history-item-0')).toContainText('Venda');
+  await expect(page.getByTestId('favorites-signal-history-item-0')).toContainText('May 20');
+  await expect(page.getByTestId('favorites-signal-history-item-1')).toContainText('Compra');
+  await expect(page.getByTestId('favorites-signal-history-item-1')).toContainText('May 10');
   const visibleTradeTable = page.locator('table:visible');
   await expect(visibleTradeTable.getByText('Jan 1, 2025')).toHaveCount(1);
   await expect(visibleTradeTable.getByText('Jan 2, 2025')).toHaveCount(1);
   await expect(visibleTradeTable.getByText('May 10, 2026').first()).toBeVisible();
   await expect(visibleTradeTable.getByText('May 20, 2026').first()).toBeVisible();
+});
+
+test('favorites shows explicit unavailable state when monitor sync times out', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page, { hangOpportunities: true });
+  await page.goto('/favorites');
+
+  const analysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi })
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByTestId('favorites-signal-history-unavailable')).toBeVisible();
+  await expect(page.getByText('Histórico de sinais do Monitor indisponível no momento')).toBeVisible();
+  expect(api.opportunitiesTriggeredCount()).toBe(1);
 });
