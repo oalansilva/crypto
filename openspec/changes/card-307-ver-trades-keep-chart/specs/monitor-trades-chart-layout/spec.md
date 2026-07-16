@@ -2,7 +2,7 @@
 
 ### Requirement: Ver Trades mantém o gráfico visível
 
-No Monitor, ao abrir o modal via **Ver Trades**, o gráfico de candles deve permanecer visível depois que a lista de trades carregar, em desktop e mobile.
+No Monitor, ao abrir o modal via **Ver Trades**, o sistema SHALL manter o gráfico de candles visível depois que a lista de trades carregar, em desktop e mobile. O gráfico SHALL NOT colapsar para altura zero quando a tabela de trades ocupar espaço no layout.
 
 #### Scenario: gráfico permanece após load dos trades
 
