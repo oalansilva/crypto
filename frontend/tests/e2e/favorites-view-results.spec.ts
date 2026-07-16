@@ -986,7 +986,8 @@ test('favorites opens Multi MA Crossover full-history chart even when monitor sy
   await analysis.click();
 
   expect(api.opportunitiesTriggeredCount()).toBe(1);
-  await expect(page).toHaveURL(/\/combo\/results$/, { timeout: 5000 });
+  // Monitor signal sync waits up to 15s before marking timeout; hang mock never resolves.
+  await expect(page).toHaveURL(/\/combo\/results$/, { timeout: 20_000 });
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText(/Multi MA Crossover - Ação de preço/i)).toBeVisible();
@@ -1055,7 +1056,7 @@ test('favorites shows explicit unavailable state when monitor sync times out', a
   await expect(analysis).toBeVisible();
   await analysis.click();
 
-  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page).toHaveURL(/\/combo\/results$/, { timeout: 20_000 });
   await expect(page.getByTestId('favorites-signal-history-unavailable')).toBeVisible();
   await expect(page.getByText('Histórico de sinais do Monitor indisponível no momento')).toBeVisible();
   expect(api.opportunitiesTriggeredCount()).toBe(1);

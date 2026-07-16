@@ -70,6 +70,9 @@ const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes(
 
 const CURRENT_CHART_CANDLE_LIMIT = 300;
 const FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS = 2500;
+// Monitor signal history is required for Favoritos parity. Cold recompute of
+// /opportunities can take several seconds when the short-lived cache misses.
+const FAVORITE_MONITOR_SIGNAL_SYNC_TIMEOUT_MS = 15_000;
 
 const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
     const candles = fav.metrics?.analysis_candles;
@@ -788,7 +791,7 @@ const FavoritesDashboard: React.FC = () => {
                 resolveWithTimeout(
                     loadMonitorSyncedTrades(fav),
                     monitorSyncFallback,
-                    FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS,
+                    FAVORITE_MONITOR_SIGNAL_SYNC_TIMEOUT_MS,
                     () => console.warn(`Opening favorite analysis without monitor trade sync for ${fav.symbol} ${fav.timeframe}; monitor sync timed out.`),
                 ),
             ]);

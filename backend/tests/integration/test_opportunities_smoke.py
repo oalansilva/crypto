@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from time import perf_counter
 
 from app.routes import opportunity_routes
@@ -257,3 +258,81 @@ async def test_opportunities_route_redacts_curated_fallback_for_common_user(monk
     assert response[0]["indicator_values"] is None
     assert response[0]["details"] == {}
     assert response[0]["is_strategy_protected"] is True
+
+
+async def test_opportunities_refresh_false_serves_stale_cache_within_window(monkeypatch):
+    """Favoritos uses refresh=false; after fresh TTL, still serve signal_history from stale cache."""
+    sample_payload = [
+        {
+            "id": 9,
+            "symbol": "BTC/USDT",
+            "asset_type": "crypto",
+            "timeframe": "1d",
+            "template_name": "multi_ma_crossover",
+            "name": "BTC Virada",
+            "notes": None,
+            "tier": 1,
+            "parameters": {},
+            "is_holding": True,
+            "distance_to_next_status": 1.0,
+            "next_status_label": "exit",
+            "indicator_values": None,
+            "indicator_values_candle_time": None,
+            "signal_history": [
+                {
+                    "timestamp": "2026-07-10T00:00:00+00:00",
+                    "signal": 1,
+                    "type": "entry",
+                    "reason": "entry",
+                    "price": 63230.01,
+                }
+            ],
+            "entry_price": 63230.01,
+            "stop_price": None,
+            "distance_to_stop_pct": None,
+            "status": "HOLD",
+            "badge": "info",
+            "message": "Em Hold",
+            "last_price": 64000.0,
+            "timestamp": "2026-07-16T00:00:00Z",
+            "details": {},
+        }
+    ]
+    compute_calls = {"n": 0}
+
+    class _FakeOpportunityService:
+        def get_opportunities(self, user_id, tier_filter=None):
+            compute_calls["n"] += 1
+            return sample_payload
+
+    monkeypatch.setattr(opportunity_routes, "OpportunityService", _FakeOpportunityService)
+    monkeypatch.setattr(
+        opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: True
+    )
+    opportunity_routes._OPPORTUNITIES_CACHE.clear()
+
+    first = await opportunity_routes.get_opportunities(
+        tier="all", refresh=True, current_user_id="alan-user", db=None
+    )
+    assert compute_calls["n"] == 1
+    assert first[0]["signal_history"][0]["timestamp"].startswith("2026-07-10")
+
+    # Expire fresh TTL but keep within stale window.
+    key = ("alan-user", "all")
+    cached = opportunity_routes._OPPORTUNITIES_CACHE[key]
+    cached["expires_at"] = time.time() - 1.0
+    cached["stale_until"] = time.time() + 120.0
+
+    stale = await opportunity_routes.get_opportunities(
+        tier="all", refresh=False, current_user_id="alan-user", db=None
+    )
+    assert compute_calls["n"] == 1, "stale cache must not recompute on refresh=false"
+    assert stale[0]["signal_history"][0]["price"] == 63230.01
+
+    # Past stale window → recompute.
+    cached["stale_until"] = time.time() - 1.0
+    cold = await opportunity_routes.get_opportunities(
+        tier="all", refresh=False, current_user_id="alan-user", db=None
+    )
+    assert compute_calls["n"] == 2
+    assert cold[0]["id"] == 9

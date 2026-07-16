@@ -26,7 +26,7 @@ O Monitor já entrega `signal_history` no payload de opportunities e o `ChartMod
    Favoritos deriva a lista e os markers desse campo (ou trades `source=monitor_signal_history`), não de um contrato novo.
 
 2. **Sync sem `refresh=true` por padrão**  
-   Usar cache do Monitor (`refresh=false`/omitido) no caminho “Ver resultados”, para evitar timeout e perda silenciosa. Se necessário, timeout maior só para esse sync.
+   Usar cache do Monitor (`refresh=false`/omitido) no caminho “Ver resultados”, para evitar timeout e perda silenciosa. Timeout dedicado maior (~15s) só para sync de `signal_history`. Backend serve cache **stale** (até ~10 min) em `refresh=false` após o TTL fresh de 30s, para não descartar `signal_history` quando o recompute frio passa de 2.5s.
 
 3. **Propagar `signal_history` no navigate state**  
    Incluir `signal_history` e `monitor_sync_status` (`ok` | `timeout` | `missing` | `empty`) ao abrir ComboResults.
@@ -50,4 +50,4 @@ O Monitor já entrega `signal_history` no payload de opportunities e o `ChartMod
 
 ## Open Questions
 
-- Nenhum bloqueante: backend só entra se o fetch cacheado de opportunities for insuficiente em runtime.
+- Nenhum bloqueante. Rework 2026-07-16: evidência de que cache miss + timeout 2.5s escondia entrada 10/07 em BTC/USDT Favoritos.

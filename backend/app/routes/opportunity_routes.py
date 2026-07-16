@@ -18,7 +18,11 @@ from app.schemas.strategy_transparency import StrategyTransparency, TradeExplana
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/opportunities", tags=["opportunities"])
+# Fresh window: Monitor UI prefers recent compute.
 _CACHE_TTL_SECONDS = 30.0
+# Stale window: Favoritos (and other refresh=false callers) may reuse the last
+# payload after fresh expiry so signal_history survives without a full recompute.
+_CACHE_STALE_TTL_SECONDS = 600.0
 _CACHE_LOCK = threading.Lock()
 _OPPORTUNITIES_CACHE: dict[tuple[str, str | None], dict[str, Any]] = {}
 COMMON_USER_TIER_FILTER = "1,2,3"
@@ -73,27 +77,39 @@ class OpportunityResponse(BaseModel):
 from fastapi import Query
 
 
-def _read_cached_opportunities(user_id: str, tier: str | None) -> list[dict[str, Any]] | None:
+def _read_cached_opportunities(
+    user_id: str,
+    tier: str | None,
+    *,
+    allow_stale: bool = False,
+) -> list[dict[str, Any]] | None:
     now = time.time()
     key = (user_id, tier)
     with _CACHE_LOCK:
         cached = _OPPORTUNITIES_CACHE.get(key)
         if not cached:
             return None
-        if float(cached.get("expires_at") or 0) <= now:
+        expires_at = float(cached.get("expires_at") or 0)
+        stale_until = float(cached.get("stale_until") or expires_at)
+        if now <= expires_at:
+            return list(cached.get("payload") or [])
+        if allow_stale and now <= stale_until:
+            return list(cached.get("payload") or [])
+        if now > stale_until:
             _OPPORTUNITIES_CACHE.pop(key, None)
-            return None
-        return list(cached.get("payload") or [])
+        return None
 
 
 def _write_cached_opportunities(
     user_id: str, tier: str | None, payload: list[dict[str, Any]]
 ) -> None:
     key = (user_id, tier)
+    now = time.time()
     with _CACHE_LOCK:
         _OPPORTUNITIES_CACHE[key] = {
             "payload": list(payload),
-            "expires_at": time.time() + _CACHE_TTL_SECONDS,
+            "expires_at": now + _CACHE_TTL_SECONDS,
+            "stale_until": now + _CACHE_STALE_TTL_SECONDS,
         }
 
 
@@ -162,7 +178,13 @@ async def get_opportunities(
         include_secrets = can_view_strategy_secrets(db, current_user_id)
         effective_tier = tier if include_secrets else _common_user_tier_filter(tier)
         if not refresh:
-            cached = _read_cached_opportunities(current_user_id, effective_tier)
+            # Prefer fresh cache; if expired but still within stale TTL, serve it so
+            # Favoritos can read signal_history without waiting on a full recompute.
+            cached = _read_cached_opportunities(
+                current_user_id,
+                effective_tier,
+                allow_stale=True,
+            )
             if cached is not None:
                 return [
                     redact_opportunity_payload(
