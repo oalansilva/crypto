@@ -1444,6 +1444,10 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-trades')).toBeVisible()
+  // After trades finish loading, chart must keep a usable height (no flex collapse).
+  await expect.poll(async () => {
+    return dialog.getByTestId('chart-modal-main-chart').evaluate((node) => (node as HTMLElement).getBoundingClientRect().height)
+  }).toBeGreaterThanOrEqual(300)
   await expect(dialog.getByText('Lista de operações')).toBeVisible()
   await expect(dialog.getByRole('columnheader', { name: 'Valor da posição' })).toBeHidden()
   await expect(dialog.getByText('Apr 10, 2099 → Apr 13, 2099', { exact: true })).toBeVisible()
@@ -1609,6 +1613,10 @@ test('monitor modal zoom controls adjust visible range without reloading velas',
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect.poll(async () => {
+    return dialog.getByTestId('chart-modal-main-chart').evaluate((node) => (node as HTMLElement).getBoundingClientRect().height)
+  }).toBeGreaterThanOrEqual(300)
   const parameters = dialog.locator('section').filter({ hasText: 'Parâmetros' }).last()
   await expect(parameters.getByText('Direção')).toBeVisible()
   await expect(parameters.getByText('Compra')).toBeVisible()

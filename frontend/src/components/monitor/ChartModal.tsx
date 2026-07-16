@@ -876,6 +876,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             strategyTransparency={activeStrategyTransparency}
                         />
                     ) : undefined}
+                    showTransparencyDetails={!isTradesView}
                     footerContent={(
                         <div className="flex flex-wrap items-center gap-3 text-xs text-[#929aa5]">
                             <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#fcd535]" /> Compra</span>
@@ -893,9 +894,15 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     shellTestId="chart-modal-main-chart-shell"
                     zoomTestIdPrefix="chart"
                     visibleBarsTestId="chart-visible-bars"
-                    heightClassName="h-[420px] w-full sm:h-[560px] xl:h-full xl:min-h-[calc(100vh-330px)]"
-                    gridClassName="grid min-h-0 flex-1 gap-3 overflow-auto p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_320px]"
-                    sideClassName="rounded-lg border border-[#2b3139] bg-[#1e2329] p-3 xl:max-h-[calc(100vh-276px)] xl:overflow-auto"
+                    heightClassName={isTradesView
+                        ? 'h-[360px] w-full shrink-0 sm:h-[420px]'
+                        : 'h-[420px] w-full sm:h-[560px] xl:h-full xl:min-h-[calc(100vh-330px)]'}
+                    gridClassName={isTradesView
+                        ? 'grid gap-3 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_320px]'
+                        : 'grid min-h-0 flex-1 gap-3 overflow-auto p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_320px]'}
+                    sideClassName={isTradesView
+                        ? 'rounded-lg border border-[#2b3139] bg-[#1e2329] p-3'
+                        : 'rounded-lg border border-[#2b3139] bg-[#1e2329] p-3 xl:max-h-[calc(100vh-276px)] xl:overflow-auto'}
                     className="flex min-h-0 flex-1 flex-col border-0"
                 />
             </div>
