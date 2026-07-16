@@ -5,8 +5,10 @@ import test from 'node:test'
 import {
     buildIndicatorValueIndex,
     buildStrategyRuleOverview,
+    clipCandlesToIndicatorCoverage,
     hasAvailableIndicatorSeries,
     indicatorValueAtTimestamp,
+    mergeStrategyTransparencySeries,
     normalizeStrategyTransparency,
     transparencyMatchesTimeframe,
 } from '../src/lib/strategyTransparency.ts'
@@ -170,6 +172,57 @@ test('só libera cache com série disponível, pontos válidos e timeframe compa
     }, '1d'), false)
 })
 
+test('mergeStrategyTransparencySeries estende médias cacheadas até as velas ao vivo', () => {
+    const cached = {
+        status: 'available',
+        timeframe: '1d',
+        display_name: 'Médias Móveis',
+        indicators: [{
+            key: 'short',
+            type: 'ema',
+            panel: 'price',
+            color: '#f6465d',
+            series_status: 'available',
+            series: [
+                { timestamp_utc: '2026-07-10T00:00:00Z', value: 100 },
+                { timestamp_utc: '2026-07-11T00:00:00Z', value: 101 },
+            ],
+        }],
+    }
+    const live = {
+        status: 'available',
+        timeframe: '1d',
+        indicators: [{
+            key: 'short',
+            type: 'ema',
+            panel: 'price',
+            series_status: 'available',
+            series: [
+                { timestamp_utc: '2026-07-11T00:00:00Z', value: 101.5 },
+                { timestamp_utc: '2026-07-16T00:00:00Z', value: 110 },
+            ],
+        }],
+    }
+
+    const merged = mergeStrategyTransparencySeries(cached, live)
+    assert.ok(merged)
+    assert.equal(merged.indicators[0].series.length, 3)
+    assert.equal(merged.indicators[0].series.at(-1).timestamp_utc, '2026-07-16T00:00:00.000Z')
+    assert.equal(merged.indicators[0].series.at(-1).value, 110)
+    assert.equal(merged.indicators[0].series[1].value, 101.5)
+
+    const candles = [
+        { timestamp_utc: '2026-07-11T00:00:00Z' },
+        { timestamp_utc: '2026-07-16T00:00:00Z' },
+        { timestamp_utc: '2026-07-17T00:00:00Z' },
+    ]
+    const clipped = clipCandlesToIndicatorCoverage(candles, merged)
+    assert.deepEqual(clipped.map((c) => c.timestamp_utc), [
+        '2026-07-11T00:00:00Z',
+        '2026-07-16T00:00:00Z',
+    ])
+})
+
 test('indexa séries uma vez para lookup constante por timestamp', () => {
     const indicator = {
         key: 'ema',
@@ -198,6 +251,8 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(chartSource, /data-series-last-timestamp/)
     assert.match(chartSource, /h-11/)
     assert.match(comboSource, /strategyTransparency=\{strategyTransparency\}/)
+    assert.match(favoritesSource, /mergeStrategyTransparencySeries/)
     assert.match(favoritesSource, /strategy_transparency: recovered\.strategyTransparency/)
+    assert.match(monitorSource, /mergeStrategyTransparencySeries/)
     assert.match(monitorSource, /strategyTransparency=\{activeStrategyTransparency\}/)
 })

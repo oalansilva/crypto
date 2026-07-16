@@ -15,8 +15,8 @@
 - [x] 3.2 Playwright visual Favoritos com últimos sinais (atualizar baseline se mudança intencional).
 - [x] 3.3 Validar OpenSpec da change, build e runtime DEV; registrar evidências no card.
 
-## 4. Rework — timeout / cache miss (sinal 10/07)
+## 5. Rework — médias até o fim das velas
 
-- [x] 4.1 Backend: `refresh=false` serve cache stale (até ~10 min) após TTL fresh de 30s, preservando `signal_history`.
-- [x] 4.2 Frontend: timeout dedicado maior (~15s) só para sync de `signal_history` em Favoritos (candles/analysis opcional permanece 2.5s).
-- [x] 4.3 Teste: stale cache não recomputa; E2E hang aguarda o novo timeout; validar BTC/USDT 10/07 em DEV.
+- [x] 5.1 Mesclar séries de `strategy_transparency` do Monitor sobre o cache de Favoritos para estender EMA/SMA até a última vela.
+- [x] 5.2 Mesmo merge no ChartModal do Monitor; clip utilitário disponível para casos sem série live.
+- [x] 5.3 Testes unitários de merge/clip.

@@ -9,6 +9,7 @@ import { useAuth } from '@/stores/authStore';
 import { ScreenHelpPanel } from '@/components/onboarding/ScreenHelpPanel';
 import {
     hasAvailableIndicatorSeries,
+    mergeStrategyTransparencySeries,
     type StrategyTransparency,
 } from '@/lib/strategyTransparency';
 import type { TradeExplanation } from '@/types/tradeExplanation';
@@ -20,6 +21,7 @@ type MonitorSignalSyncResult = {
     trades: any[] | null;
     signal_history: MonitorSignalHistoryItem[];
     status: MonitorSyncStatus;
+    strategy_transparency?: StrategyTransparency | Record<string, unknown> | null;
 };
 
 interface FavoriteStrategy {
@@ -64,6 +66,7 @@ interface MonitorOpportunity {
     name?: string;
     signal_history?: MonitorSignalHistoryItem[] | null;
     trade_explanation?: TradeExplanation | null;
+    strategy_transparency?: StrategyTransparency | Record<string, unknown> | null;
 }
 
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
@@ -565,12 +568,17 @@ const FavoritesDashboard: React.FC = () => {
 
             const opportunity = findMatchingOpportunity(fav, payload);
             if (!opportunity) {
-                return { trades: null, signal_history: [], status: 'missing' };
+                return { trades: null, signal_history: [], status: 'missing', strategy_transparency: null };
             }
 
             const history = Array.isArray(opportunity.signal_history) ? opportunity.signal_history : [];
             if (history.length === 0) {
-                return { trades: null, signal_history: [], status: 'empty' };
+                return {
+                    trades: null,
+                    signal_history: [],
+                    status: 'empty',
+                    strategy_transparency: opportunity.strategy_transparency ?? null,
+                };
             }
 
             const direction = String(fav.parameters?.direction || 'long').toLowerCase();
@@ -582,10 +590,11 @@ const FavoritesDashboard: React.FC = () => {
                 ),
                 signal_history: history,
                 status: 'ok',
+                strategy_transparency: opportunity.strategy_transparency ?? null,
             };
         } catch (error) {
             console.warn(`Falling back to saved favorite trades for ${fav.symbol} ${fav.timeframe}`, error);
-            return { trades: null, signal_history: [], status: 'error' };
+            return { trades: null, signal_history: [], status: 'error', strategy_transparency: null };
         }
     };
 
@@ -780,6 +789,7 @@ const FavoritesDashboard: React.FC = () => {
                 trades: null,
                 signal_history: [],
                 status: 'timeout',
+                strategy_transparency: null,
             };
             const [currentCandles, monitorSync] = await Promise.all([
                 resolveWithTimeout(
@@ -795,8 +805,13 @@ const FavoritesDashboard: React.FC = () => {
                     () => console.warn(`Opening favorite analysis without monitor trade sync for ${fav.symbol} ${fav.timeframe}; monitor sync timed out.`),
                 ),
             ]);
-            const chartCandles = mergeAnalysisCandles(currentCandles, recovered.candles || []);
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
+            // Extend cached MA series with live Monitor points so overlays reach the newest candles.
+            analysisResult.strategy_transparency = mergeStrategyTransparencySeries(
+                analysisResult.strategy_transparency,
+                monitorSync.strategy_transparency,
+            ) ?? analysisResult.strategy_transparency ?? null;
+            const chartCandles = mergeAnalysisCandles(currentCandles, recovered.candles || []);
             analysisResult.candles = chartCandles || [];
             if (monitorSync.trades && monitorSync.trades.length > 0) {
                 const mergedTrades = mergeFavoriteAndMonitorTrades(analysisResult.trades, monitorSync.trades);
