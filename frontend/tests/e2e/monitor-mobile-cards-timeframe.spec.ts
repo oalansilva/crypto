@@ -611,6 +611,7 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
       contentType: 'application/json',
       body: JSON.stringify({
         candles: [
+          { timestamp_utc: '2099-04-10T00:00:00Z', open: 142.1, high: 145, low: 141, close: 144, volume: 1000 },
           { timestamp_utc: '2099-04-14T00:00:00Z', open: 149, high: 152, low: 147, close: 151, volume: 1000 },
           { timestamp_utc: '2099-04-15T00:00:00Z', open: 151, high: 154, low: 150, close: 151.24, volume: 1000 },
         ],
@@ -632,6 +633,7 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '1')
   await expect(dialog.getByTestId('chart-modal-signal-context')).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-trades')).toHaveCount(0)
   await expect(dialog.getByRole('group', { name: 'Chart indicators' })).toHaveCount(0)
