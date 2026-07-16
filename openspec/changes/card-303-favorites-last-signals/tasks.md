@@ -14,3 +14,9 @@
 - [x] 3.1 Testes frontend/E2E: Monitor tem sinais → Favoritos mostra os mesmos; timeout → estado explícito.
 - [x] 3.2 Playwright visual Favoritos com últimos sinais (atualizar baseline se mudança intencional).
 - [x] 3.3 Validar OpenSpec da change, build e runtime DEV; registrar evidências no card.
+
+## 4. Rework — timeout / cache miss (sinal 10/07)
+
+- [x] 4.1 Backend: `refresh=false` serve cache stale (até ~10 min) após TTL fresh de 30s, preservando `signal_history`.
+- [x] 4.2 Frontend: timeout dedicado maior (~15s) só para sync de `signal_history` em Favoritos (candles/analysis opcional permanece 2.5s).
+- [x] 4.3 Teste: stale cache não recomputa; E2E hang aguarda o novo timeout; validar BTC/USDT 10/07 em DEV.
