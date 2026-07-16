@@ -15,6 +15,6 @@
 - [x] 3.1 Cobrir normalização, `long`, `short`, posições distintas e fallback legado em testes frontend.
 - [x] 3.2 Validar build, lint, OpenSpec e checklist básico de acessibilidade.
 - [x] 3.3 Validar Playwright funcional e visual em desktop/mobile.
-- [ ] 3.4 Registrar evidências de Code Review, QA, PR, integração em `develop`, restart e runtime no card #293.
+- [x] 3.4 Registrar evidências de Code Review, QA, PR, integração em `develop`, restart e runtime no card #293.
 
 Nota: usar as skills do projeto em `.codex/skills` para frontend, testes, depuração, acessibilidade e Playwright quando aplicáveis.
