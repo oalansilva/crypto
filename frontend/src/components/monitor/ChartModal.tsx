@@ -29,7 +29,7 @@ import {
 } from './types';
 import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
-import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
+import { mergeStrategyTransparencySeries } from '@/lib/strategyTransparency';
 
 interface ChartModalProps {
     symbol: string;
@@ -327,7 +327,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
     const activeStrategyTransparency = React.useMemo(
-        () => normalizeStrategyTransparency(analysisStrategyTransparency ?? opportunity.strategy_transparency),
+        () => mergeStrategyTransparencySeries(
+            analysisStrategyTransparency,
+            opportunity.strategy_transparency,
+        ),
         [analysisStrategyTransparency, opportunity.strategy_transparency],
     );
     const indicatorConfigurationItems = React.useMemo<StrategyChartConfigurationItem[]>(() => {
