@@ -192,7 +192,12 @@ function mergeAnalysisCandles(currentCandles: MarketCandle[], analysisCandles: M
     ));
 }
 
-function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | undefined, direction: string): StrategyTrade[] {
+function buildTradesFromSignalHistory(
+    history: OpportunitySignalHistoryItem[] | undefined,
+    direction: string,
+    includeActiveTrade: boolean,
+    currentStateExplanation?: StrategyTrade['current_state_explanation'],
+): StrategyTrade[] {
     const sortedHistory = [...(history || [])].sort(
         (left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp),
     );
@@ -224,9 +229,22 @@ function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | 
             type: isShort ? 'short' : 'long',
             entry_signal_type: isShort ? 'Vender' : 'Comprar',
             signal_type: formatSignalReason(item.reason, direction),
+            entry_explanation: activeEntry.explanation,
+            exit_explanation: item.explanation,
         });
         activeEntry = null;
     });
+
+    if (activeEntry && includeActiveTrade) {
+        trades.push({
+            entry_time: activeEntry.timestamp,
+            entry_price: Number(activeEntry.price || 0),
+            type: isShort ? 'short' : 'long',
+            entry_signal_type: isShort ? 'Vender' : 'Comprar',
+            entry_explanation: activeEntry.explanation,
+            current_state_explanation: currentStateExplanation,
+        });
+    }
 
     return trades;
 }
@@ -296,6 +314,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [analysisTrades, setAnalysisTrades] = React.useState<StrategyTrade[]>([]);
+    const [analysisUsesSignalHistory, setAnalysisUsesSignalHistory] = React.useState(false);
     const [analysisMetrics, setAnalysisMetrics] = React.useState<StrategyTradeMetrics | null>(null);
     const [analysisStrategyTransparency, setAnalysisStrategyTransparency] = React.useState<Record<string, unknown> | null>(null);
     const [analysisCandles, setAnalysisCandles] = React.useState<MarketCandle[]>([]);
@@ -402,8 +421,13 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         [opportunity.signal_history],
     );
     const signalHistoryTrades = React.useMemo(
-        () => buildTradesFromSignalHistory(opportunity.signal_history, opportunityDirection),
-        [opportunity.signal_history, opportunityDirection],
+        () => buildTradesFromSignalHistory(
+            opportunity.signal_history,
+            opportunityDirection,
+            opportunity.is_holding,
+            opportunity.trade_explanation,
+        ),
+        [opportunity.is_holding, opportunity.signal_history, opportunity.trade_explanation, opportunityDirection],
     );
     const tradeSignalMarkers = React.useMemo<StrategyChartMarker[]>(() => (
         canRenderSignalHistoryMarkers
@@ -412,8 +436,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             : []
     ), [analysisTrades, canRenderSignalHistoryMarkers, candleTimes, opportunityDirection, timeframe]);
     const baseChartMarkers = React.useMemo<StrategyChartMarker[]>(
-        () => [...tradeSignalMarkers, ...historicalSignalMarkers as StrategyChartMarker[]],
-        [historicalSignalMarkers, tradeSignalMarkers],
+        () => analysisUsesSignalHistory
+            ? historicalSignalMarkers as StrategyChartMarker[]
+            : [...tradeSignalMarkers, ...historicalSignalMarkers as StrategyChartMarker[]],
+        [analysisUsesSignalHistory, historicalSignalMarkers, tradeSignalMarkers],
     );
     const latestVisibleMarkerType = React.useMemo(
         () => getLatestMarkerSignalType(baseChartMarkers),
@@ -523,6 +549,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 const payloadTrades = Array.isArray(payload?.trades) ? payload.trades : [];
                 const payloadCandles = Array.isArray(payload?.candles) ? payload.candles : [];
                 setAnalysisTrades(payloadTrades.length > 0 ? payloadTrades : signalHistoryTrades);
+                setAnalysisUsesSignalHistory(payloadTrades.length === 0);
                 setAnalysisCandles(payloadCandles);
                 setAnalysisMetrics(payload?.metrics && typeof payload.metrics === 'object' ? payload.metrics : null);
                 setAnalysisStrategyTransparency(
@@ -533,6 +560,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             } catch {
                 if (!controller.signal.aborted) {
                     setAnalysisTrades(signalHistoryTrades);
+                    setAnalysisUsesSignalHistory(true);
                     setAnalysisCandles([]);
                     setAnalysisMetrics(null);
                     setAnalysisStrategyTransparency(null);
@@ -842,6 +870,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             loading={analysisTradesLoading}
                             error={analysisTradesError}
                             testId="chart-modal-trades"
+                            strategyTransparency={activeStrategyTransparency}
                         />
                     ) : undefined}
                     footerContent={(

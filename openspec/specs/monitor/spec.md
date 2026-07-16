@@ -284,3 +284,92 @@ The favorite read model MUST treat saved candles as a potentially partial window
 #### Scenario: Trades were never generated
 - **WHEN** saved metrics do not contain a `trades` list
 - **THEN** the read model MUST preserve that absence so the regeneration path can execute
+
+
+### Requirement: Monitor explains every trade
+The Monitor trades view SHALL provide an “Entenda este trade” explanation for every open or closed trade returned by the favorite analysis contract.
+
+#### Scenario: User expands a closed trade explanation
+- **WHEN** the user activates “Entenda este trade” for a closed trade
+- **THEN** the UI SHALL show why the entry was confirmed and why the exit occurred
+- **AND** SHALL show decision candle, execution time, prices and allowlisted historical evidence
+- **AND** SHALL label the exit as strategy rule, stop or real objective as applicable.
+
+#### Scenario: User expands an open trade explanation
+- **WHEN** the user activates “Entenda este trade” for an open trade
+- **THEN** the UI SHALL show why the entry was confirmed
+- **AND** SHALL state why no exit is confirmed
+- **AND** SHALL present pending strategy-exit and stop conditions separately.
+
+#### Scenario: Legacy trade has no trustworthy evidence
+- **WHEN** an explanation is unavailable for a trade
+- **THEN** the UI SHALL state that decision details are unavailable for that historical trade
+- **AND** SHALL NOT generate an explanation from current values.
+
+### Requirement: Monitor trade explanation is accessible and responsive
+The Monitor SHALL expose trade explanations through a keyboard-operable disclosure that remains readable on desktop and mobile.
+
+#### Scenario: Keyboard user opens explanation
+- **WHEN** focus is on the “Entenda este trade” control and the user activates it
+- **THEN** the control SHALL expose `aria-expanded` and `aria-controls`
+- **AND** the labelled explanation panel SHALL become available in logical reading order
+- **AND** focus SHALL remain visibly indicated.
+
+#### Scenario: Mobile user opens explanation
+- **WHEN** the viewport is narrower than 768px
+- **THEN** the explanation SHALL use stacked content without horizontal page scrolling
+- **AND** interactive targets SHALL provide at least a 44px effective target.
+
+### Requirement: Monitor names the measured next trigger
+The Monitor SHALL identify what each displayed distance measures instead of using an ambiguous generic “distance to exit” label.
+
+#### Scenario: Strategy exit proximity is displayed
+- **WHEN** the distance represents a technical exit rule
+- **THEN** the UI SHALL label it as proximity to the strategy exit rule.
+
+#### Scenario: Stop or objective distance is displayed
+- **WHEN** a stop or supported objective distance is displayed
+- **THEN** the UI SHALL label the specific stop or objective independently
+- **AND** SHALL NOT present those distances as the same trigger.
+
+### Requirement: Expanded trade always shows buy and sell rules
+The Monitor trade disclosure SHALL show the strategy's permanent buy and sell rules simultaneously, independently of the current position or event explanation.
+
+#### Scenario: User expands an open trade
+- **WHEN** the user expands a trade whose position remains open
+- **THEN** the panel SHALL show “Quando compra” and “Quando vende” before the current-position explanation
+- **AND** SHALL keep stop/risk context separate from the permanent exit rule.
+
+#### Scenario: User expands a closed or out-of-position trade
+- **WHEN** the user expands a closed trade or a strategy that is currently out of position
+- **THEN** the panel SHALL show both permanent rules
+- **AND** SHALL show the actual entry/exit event explanations separately when available.
+
+#### Scenario: User expands a short trade
+- **WHEN** the trade direction is `short`
+- **THEN** the two permanent rule cards SHALL retain the headings “Quando compra” and “Quando vende”
+- **AND** SHALL clarify that entry opens by selling (short) and exit closes by buying (cobertura)
+- **AND** SHALL show the canonical condition summaries under those clarifications.
+
+#### Scenario: Long strategy avoids tautological action copy
+- **WHEN** the trade direction is `long`
+- **THEN** the permanent rule cards SHALL show “Quando compra” and “Quando vende” with the condition summaries
+- **AND** SHALL NOT show redundant lines such as “Compra para entrar” or “Venda para sair”.
+
+#### Scenario: Legacy payload has no permanent rule pair
+- **WHEN** the expanded trade does not include the new permanent rule contract
+- **THEN** both rule cards SHALL remain visible with a safe unavailable message
+- **AND** SHALL NOT infer rules from the current event.
+
+### Requirement: Permanent rule overview remains accessible and responsive
+The permanent rule overview SHALL preserve the existing disclosure's keyboard semantics and remain readable without horizontal page scrolling.
+
+#### Scenario: Keyboard user expands the rule overview
+- **WHEN** the user activates the disclosure using the keyboard
+- **THEN** the labelled strategy overview SHALL appear in logical reading order before event details
+- **AND** the disclosure SHALL preserve `aria-expanded`, `aria-controls` and visible focus.
+
+#### Scenario: Mobile user reads both rules
+- **WHEN** the viewport is narrower than 768px
+- **THEN** the buy and sell rule cards SHALL stack within the available width
+- **AND** SHALL NOT introduce a new table column or horizontal page overflow.

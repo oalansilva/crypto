@@ -822,11 +822,12 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByRole('columnheader', { name: 'Data e hora' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Sinal' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Valor da posição' })).toBeVisible();
-  await expect(page.getByText('100.00 USD').first()).toBeVisible();
-  await expect(page.getByText('May 10, 2026').first()).toBeVisible();
-  await expect(page.getByText('May 20, 2026').first()).toBeVisible();
-  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
-  await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
+  const visibleTradeTable = page.locator('table:visible');
+  await expect(visibleTradeTable.getByText('100.00 USD').first()).toBeVisible();
+  await expect(visibleTradeTable.getByText('May 10, 2026').first()).toBeVisible();
+  await expect(visibleTradeTable.getByText('May 20, 2026').first()).toBeVisible();
+  await expect(visibleTradeTable.getByText('Jan 1, 2025').first()).toBeVisible();
+  await expect(visibleTradeTable.getByText('Jan 2, 2025').first()).toBeVisible();
 
   const tradeTableBodyBackground = await page.locator('table tbody').evaluate((node) => {
     return window.getComputedStyle(node).backgroundColor;
@@ -848,8 +849,8 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   expect(api.marketCandlesTriggeredCount()).toBeGreaterThanOrEqual(1);
   expect(api.opportunitiesTriggeredCount()).toBeGreaterThanOrEqual(2);
   await expect(page).toHaveURL(/\/combo\/results$/);
-  await expect(page.getByText('May 10, 2026').first()).toBeVisible();
-  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+  await expect(page.locator('table:visible').getByText('May 10, 2026').first()).toBeVisible();
+  await expect(page.locator('table:visible').getByText('Jan 1, 2025').first()).toBeVisible();
 });
 
 test('favorites analysis backfills chart context for legacy saved BTC multi MA trades', async ({ page }) => {
@@ -950,9 +951,10 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText('ETH/USDT • 1h • 160 velas')).toBeVisible();
-  await expect(page.getByText('May 12, 2026').first()).toBeVisible();
-  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
-  await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
+  const visibleTradeTable = page.locator('table:visible');
+  await expect(visibleTradeTable.getByText('May 12, 2026').first()).toBeVisible();
+  await expect(visibleTradeTable.getByText('Jan 1, 2025').first()).toBeVisible();
+  await expect(visibleTradeTable.getByText('Jan 2, 2025').first()).toBeVisible();
   await expect(page.getByTestId('result-chart-overlays')).toHaveCount(0);
   await expect(page.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0);
   await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toBeVisible();
@@ -1011,8 +1013,9 @@ test('favorites analysis uses full market history over stale saved analysis vela
   await expect(page.getByText('ETH/USDT • 1h • 160 velas')).toBeVisible();
   await expect(page.getByText('ETH/USDT • 1h • 120 velas')).toHaveCount(0);
   await expect(page.getByText('ETH/USDT • 1h • 40 velas')).toHaveCount(0);
-  await expect(page.getByText('May 12, 2026').first()).toBeVisible();
-  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+  const visibleTradeTable = page.locator('table:visible');
+  await expect(visibleTradeTable.getByText('May 12, 2026').first()).toBeVisible();
+  await expect(visibleTradeTable.getByText('Jan 1, 2025').first()).toBeVisible();
 });
 
 test('favorites analysis preserves saved trades and adds monitor signal history without duplicates', async ({ page }) => {
@@ -1029,8 +1032,9 @@ test('favorites analysis preserves saved trades and adds monitor signal history 
   expect(api.opportunitiesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
-  await expect(page.getByText('Jan 1, 2025')).toHaveCount(1);
-  await expect(page.getByText('Jan 2, 2025')).toHaveCount(1);
-  await expect(page.getByText('May 10, 2026').first()).toBeVisible();
-  await expect(page.getByText('May 20, 2026').first()).toBeVisible();
+  const visibleTradeTable = page.locator('table:visible');
+  await expect(visibleTradeTable.getByText('Jan 1, 2025')).toHaveCount(1);
+  await expect(visibleTradeTable.getByText('Jan 2, 2025')).toHaveCount(1);
+  await expect(visibleTradeTable.getByText('May 10, 2026').first()).toBeVisible();
+  await expect(visibleTradeTable.getByText('May 20, 2026').first()).toBeVisible();
 });

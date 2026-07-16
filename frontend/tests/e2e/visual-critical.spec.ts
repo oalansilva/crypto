@@ -52,6 +52,14 @@ const OPPORTUNITIES = [
     message: 'Holding position',
     last_price: 65000,
     timestamp: '2025-01-01T00:00:00Z',
+    strategy_transparency: {
+      status: 'available',
+      timeframe: '1d',
+      logic_blocks: [
+        { participation: 'entry', description: 'Compra quando a média curta confirma força acima da média longa.', status: 'available' },
+        { participation: 'exit', description: 'Vende quando a média curta perde força abaixo da média longa.', status: 'available' },
+      ],
+    },
     details: {},
   },
 ]
@@ -230,6 +238,66 @@ test('visual critical monitor', async ({ page }) => {
   await page.goto('/monitor')
   await expect(page.getByTestId('monitor-status-tab')).toBeVisible()
   await capture(page, 'monitor.png')
+})
+
+test('visual critical monitor trade explanation', async ({ page }) => {
+  await installStableApiMocks(page)
+  await page.route('**/api/monitor/preferences', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+        'BTC/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+      }),
+    }),
+  )
+  await page.route('**/api/favorites/1/trades', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        trades: [{
+          entry_time: '2025-01-02T00:00:00Z',
+          entry_price: 65500,
+          type: 'long',
+          entry_explanation: {
+            status: 'available', direction: 'long', timeframe: '1d', action: 'Compra', trigger: 'entry_rule',
+            summary: 'Compra confirmada após a média curta cruzar acima da média longa.',
+            decision_candle_time: '2025-01-01T00:00:00Z', execution_time: '2025-01-02T00:00:00Z', execution_price: 65500,
+            evidence: [{ key: 'ema_short', label: 'EMA curta', value: 65220, timestamp_utc: '2025-01-01T00:00:00Z', state: 'confirmed' }],
+          },
+          current_state_explanation: {
+            status: 'available', direction: 'long', timeframe: '1d', action: 'Compra ativa', trigger: 'open_position',
+            summary: 'A posição continua aberta porque a regra de saída ainda não foi confirmada.',
+            rule_summary: 'Venda quando a média curta cruzar abaixo da média longa.',
+            risk_summary: 'Stop de proteção 4,00% abaixo da entrada.',
+            decision_candle_time: '2025-01-02T00:00:00Z',
+            evidence: [{ key: 'ema_long', label: 'EMA longa', value: 64800, timestamp_utc: '2025-01-02T00:00:00Z', state: 'pending' }],
+          },
+        }],
+        metrics: { total_trades: 0, win_rate: 0, total_return: 0, avg_profit: 0 },
+      }),
+    }),
+  )
+
+  await page.goto('/monitor')
+  const dismissOnboarding = page.getByRole('button', { name: 'Dispensar' })
+  if (await dismissOnboarding.isVisible()) {
+    await dismissOnboarding.click()
+  }
+  await page.getByRole('button', { name: 'Ver Trades' }).click()
+  const dialog = page.getByRole('dialog')
+  const disclosure = dialog.getByRole('button', { name: 'Entenda este trade' })
+  await disclosure.click()
+  await expect(dialog.getByText('Quando compra')).toBeVisible()
+  await expect(dialog.getByText('Quando vende')).toBeVisible()
+  await expect(dialog.getByText('Por que continua aberto')).toBeVisible()
+  await expect(page).toHaveScreenshot('monitor-trade-explanation.png', {
+    animations: 'disabled',
+    caret: 'hide',
+    fullPage: false,
+  })
 })
 
 test('visual critical favorites', async ({ page }) => {

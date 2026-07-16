@@ -242,6 +242,35 @@ Status final: pronto.
 - Dispensa só é válida com label `qa-visual-skip` e comentário explícito de Alan: `QA visual dispensado por Alan.` seguido de `Motivo:` não vazio.
 - Falha de QA que exige fonte retorna para `In Progress -> Code Review -> QA`; falha de infraestrutura/flaky permanece em `QA` para rerun com evidência.
 
+#### Fluxo canonico (rapido)
+
+Seguir `alan-workflow` Visual QA. Quem compara pixels e o Playwright; o agente nao precisa ler todos os PNGs para “passar” o teste.
+
+**Sem mudanca visual intencional**
+
+1. Push do SHA revisado.
+2. CI roda `npm --prefix frontend run test:e2e:visual`.
+3. Igual a baseline → verde. Diferente → falha com artifacts (`actual`/`diff`).
+4. Nao abrir todos os screenshots com vision; confiar no resultado do Playwright.
+
+**Com mudanca de UI intencional**
+
+1. No DEV Linux (`/srv/apps/dev/criptofarol/source`), atualizar baselines localmente:
+   ```bash
+   npm --prefix frontend run test:e2e:visual -- --update-snapshots
+   ```
+2. Revisar **somente** o `diff.png` (ou o diff git dos snapshots) dos cenarios que mudaram, uma vez, para confirmar que a mudanca e esperada.
+3. Commitar os novos arquivos em `frontend/tests/e2e/**/*-snapshots/` junto com a mudanca de UI.
+4. Push → CI revalida contra a baseline nova.
+
+**Proibido por padrao**
+
+```text
+CI falha → baixar artifacts → Read/vision em todos os PNG
+→ patch baseline → push → Waiting/polling → repetir
+```
+
+Olhar screenshot so para aprovar mudanca intencional (`diff.png` preferivel) ou quando Alan pedir julgamento visual/exploratorio.
 ### Comandos esperados
 
 Criar branch em worktree limpa:

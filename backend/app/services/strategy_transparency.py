@@ -116,6 +116,198 @@ _MOVING_AVERAGE_ROLE_TOKENS = {
     "long": ("long", "slow", "longa", "lenta"),
 }
 
+_PUBLIC_PRICE_LABELS = {
+    "open": "preço de abertura",
+    "high": "máxima do candle",
+    "low": "mínima do candle",
+    "close": "preço de fechamento",
+    "volume": "volume",
+}
+
+
+def _logic_operator(logic: str) -> str:
+    normalized = str(logic or "").lower()
+    has_all = bool(re.search(r"\band\b|&", normalized))
+    has_any = bool(re.search(r"\bor\b|\|", normalized))
+    if has_all and has_any:
+        return "mixed"
+    if has_any:
+        return "any"
+    return "all"
+
+
+def _logic_condition_count(logic: str) -> int:
+    comparisons = re.findall(r"(?<![<>])(?:>=|<=|==|>|<)(?![=])", str(logic or ""))
+    crosses = re.findall(r"\b(?:crossover|crossunder)\s*\(", str(logic or ""), re.I)
+    return max(1, len(comparisons) + len(crosses)) if str(logic or "").strip() else 0
+
+
+def _indicator_labels(
+    indicators: list[StrategyIndicatorTransparency],
+) -> dict[str, str]:
+    labels = dict(_PUBLIC_PRICE_LABELS)
+    for indicator in indicators:
+        public_label = indicator.label
+        period = next(
+            (
+                value
+                for key, value in indicator.parameters.items()
+                if key in {"length", "period", "window"}
+            ),
+            None,
+        )
+        if period is not None and str(period) not in public_label:
+            public_label = f"{public_label} {period}"
+        for token in {indicator.key, *indicator.execution_columns}:
+            normalized = str(token).strip().lower()
+            if not normalized:
+                continue
+            labels[normalized] = public_label
+            labels[normalized.replace("_", ".")] = public_label
+    return labels
+
+
+def _humanize_logic(
+    logic: str,
+    indicators: list[StrategyIndicatorTransparency],
+    *,
+    participation: str,
+) -> tuple[str, str, int, str]:
+    """Translate allowlisted rule tokens while keeping raw executable logic private."""
+
+    raw = str(logic or "").strip()
+    if not raw:
+        action = "entrada" if participation == "entry" else "saída"
+        return (
+            f"A regra de {action} não está disponível para explicação.",
+            "all",
+            0,
+            "unavailable",
+        )
+
+    labels = _indicator_labels(indicators)
+    operator = _logic_operator(raw)
+    count = _logic_condition_count(raw)
+    action = "entrada" if participation == "entry" else "saída"
+
+    if count > 8:
+        participating = list(
+            dict.fromkeys(
+                indicator.label
+                for indicator in indicators
+                if participation in indicator.participation
+            )
+        )
+        if any(token in raw.lower() for token in ("open", "high", "low", "close")):
+            participating.append("preço e formato do candle")
+        subjects = ", ".join(participating)
+        combination = "uma combinação" if operator == "mixed" else "o conjunto"
+        agreement = "atendida" if operator == "mixed" else "atendido"
+        return (
+            f"A {action} é confirmada quando {combination} de {count} condições públicas "
+            f"de {subjects} é {agreement}.",
+            operator,
+            count,
+            "partial",
+        )
+
+    def label_for(token: str) -> str:
+        normalized = str(token).strip().lower()
+        return labels.get(normalized, labels.get(normalized.replace(".", "_"), ""))
+
+    translated = raw
+
+    def replace_rolling(match: re.Match[str]) -> str:
+        token, shift, window, operation = match.groups()
+        label = label_for(token)
+        if not label:
+            return match.group(0)
+        measure = "máxima" if operation.lower() == "max" else "mínima"
+        return f"{measure} de {label} nos últimos {window} candles, há {shift} candle"
+
+    translated = re.sub(
+        r"([A-Za-z_]\w*)\.shift\((\d+)\)\.rolling\((\d+)\)\.(max|min)\(\)",
+        replace_rolling,
+        translated,
+    )
+
+    def replace_shift(match: re.Match[str]) -> str:
+        token, shift = match.groups()
+        label = label_for(token)
+        return f"{label} há {shift} candle" if label else match.group(0)
+
+    translated = re.sub(r"([A-Za-z_]\w*)\.shift\((\d+)\)", replace_shift, translated)
+
+    def replace_cross(match: re.Match[str]) -> str:
+        function, left, right = match.groups()
+        left_label = label_for(left)
+        right_label = label_for(right)
+        if not left_label or not right_label:
+            return match.group(0)
+        relation = "cruza acima de" if function.lower() == "crossover" else "cruza abaixo de"
+        return f"{left_label} {relation} {right_label}"
+
+    translated = re.sub(
+        r"\b(crossover|crossunder)\s*\(\s*([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*\)",
+        replace_cross,
+        translated,
+        flags=re.I,
+    )
+
+    def replace_token(match: re.Match[str]) -> str:
+        token = match.group(0)
+        lowered = token.lower()
+        if lowered in {"and", "or", "true", "false"}:
+            return token
+        return label_for(token) or token
+
+    translated = re.sub(
+        r"(?<![\w.])[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?(?![\w.])", replace_token, translated
+    )
+    translated = translated.replace(".abs()", " em valor absoluto")
+    translated = re.sub(r"\s*&\s*|\s+and\s+", " e ", translated, flags=re.I)
+    translated = re.sub(r"\s*\|\s*|\s+or\s+", " ou ", translated, flags=re.I)
+    translated = re.sub(r">=", " maior ou igual a ", translated)
+    translated = re.sub(r"<=", " menor ou igual a ", translated)
+    translated = re.sub(r"(?<![<>=])>(?![=])", " maior que ", translated)
+    translated = re.sub(r"(?<![<>=])<(?![=])", " menor que ", translated)
+    translated = re.sub(r"==", " igual a ", translated)
+    translated = translated.replace("*", " vezes ").replace("/", " dividido por ")
+    translated = re.sub(r"\s+", " ", translated).strip(" .")
+
+    unsafe = bool(
+        re.search(
+            r"\b(?:shift|rolling|crossover|crossunder|abs)\b|[A-Za-z]+_[A-Za-z]", translated, re.I
+        )
+    )
+    if unsafe or not translated:
+        participating = list(
+            dict.fromkeys(
+                indicator.label
+                for indicator in indicators
+                if participation in indicator.participation
+            )
+        )
+        joined = ", ".join(participating)
+        if not joined:
+            return (
+                f"A regra de {action} não pôde ser traduzida com segurança.",
+                operator,
+                count,
+                "unavailable",
+            )
+        connector = (
+            "qualquer condição aplicável" if operator == "any" else "as condições aplicáveis"
+        )
+        return (
+            f"A {action} é confirmada quando {connector} de {joined} são atendidas.",
+            operator,
+            count,
+            "partial",
+        )
+
+    return f"A {action} é confirmada quando {translated}.", operator, count, "available"
+
 
 def _public_parameters(indicator: dict[str, Any]) -> dict[str, Any]:
     params = indicator.get("params")
@@ -332,6 +524,32 @@ def build_strategy_transparency(
     if isinstance(stop_loss, (int, float)):
         public_params["stop_loss"] = stop_loss
 
+    direction = str((effective_parameters or {}).get("direction") or "long").strip().lower()
+    entry_description, entry_operator, entry_count, entry_status = _humanize_logic(
+        entry_logic,
+        indicators,
+        participation="entry",
+    )
+    exit_description, exit_operator, exit_count, exit_status = _humanize_logic(
+        exit_logic,
+        indicators,
+        participation="exit",
+    )
+    if isinstance(stop_loss, (int, float)) and float(stop_loss) > 0:
+        normalized_stop = float(stop_loss) / 100 if float(stop_loss) > 1 else float(stop_loss)
+        risk_description = (
+            f"O stop de proteção encerra a posição a {normalized_stop * 100:.2f}% da entrada, "
+            + (
+                "acima do preço para short."
+                if direction == "short"
+                else "abaixo do preço para long."
+            )
+        )
+        risk_status = "available"
+    else:
+        risk_description = "Esta configuração não declarou stop de proteção."
+        risk_status = "unavailable"
+
     manifest = StrategyTransparency(
         status="available",
         strategy_key=key,
@@ -343,15 +561,24 @@ def build_strategy_transparency(
         logic_blocks=[
             StrategyLogicBlock(
                 participation="entry",
-                description="A entrada combina os indicadores marcados como entrada.",
+                description=entry_description,
+                status=entry_status,
+                operator=entry_operator,
+                condition_count=entry_count,
             ),
             StrategyLogicBlock(
                 participation="exit",
-                description="A saída combina os indicadores marcados como saída.",
+                description=exit_description,
+                status=exit_status,
+                operator=exit_operator,
+                condition_count=exit_count,
             ),
             StrategyLogicBlock(
                 participation="risk",
-                description="O risco usa o stop configurado para limitar a exposição.",
+                description=risk_description,
+                status=risk_status,
+                operator="all",
+                condition_count=1 if risk_status == "available" else 0,
             ),
         ],
     )
@@ -376,6 +603,7 @@ def attach_timestamped_series(
             indicator.series_status = "timeframe_mismatch"
             indicator.series = []
             indicator.unavailable_reason = manifest.unavailable_reason
+        manifest.market_series = {}
         return manifest
     if dataframe is None or dataframe.empty:
         return manifest
@@ -387,6 +615,24 @@ def attach_timestamped_series(
         timestamps = pd.to_datetime(frame.index, utc=True, errors="coerce")
     else:
         return manifest
+
+    market_series: dict[str, list[IndicatorPoint]] = {}
+    for column in ("open", "high", "low", "close"):
+        if column not in frame.columns:
+            continue
+        points: list[IndicatorPoint] = []
+        for timestamp, raw_value in zip(timestamps, frame[column], strict=False):
+            if pd.isna(timestamp) or pd.isna(raw_value):
+                continue
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(value):
+                points.append(IndicatorPoint(timestamp_utc=timestamp.isoformat(), value=value))
+        if points:
+            market_series[column] = points
+    manifest.market_series = market_series
 
     for indicator in manifest.indicators:
         column = next((col for col in indicator.execution_columns if col in frame.columns), None)
@@ -434,6 +680,10 @@ def build_strategy_transparency_from_serialized(
         return manifest
     timestamps = [item.get("timestamp_utc") if isinstance(item, dict) else None for item in candles]
     frame_data: dict[str, Any] = {"timestamp_utc": timestamps}
+    for market_column in ("open", "high", "low", "close"):
+        values = [item.get(market_column) if isinstance(item, dict) else None for item in candles]
+        if any(value is not None for value in values):
+            frame_data[market_column] = values
     for indicator in manifest.indicators:
         column = indicator.execution_columns[0] if indicator.execution_columns else ""
         values = indicator_data.get(column)

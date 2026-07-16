@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.middleware.authMiddleware import is_admin_email
 from app.models import User
+from app.schemas.strategy_transparency import TradeExplanation
 from app.services.strategy_descriptions import public_strategy_display_name
 
 PROTECTED_STRATEGY_LABEL = "Estratégia protegida"
@@ -84,15 +85,21 @@ def _redact_signal_history(history: Any) -> list[dict[str, Any]] | None:
         if not isinstance(item, dict):
             continue
         signal_type = str(item.get("type") or "").strip().lower()
-        redacted.append(
-            {
-                "timestamp": item.get("timestamp"),
-                "signal": item.get("signal"),
-                "type": signal_type if signal_type in {"entry", "exit"} else item.get("type"),
-                "reason": "entry" if signal_type == "entry" else "exit",
-                "price": item.get("price"),
-            }
-        )
+        public_item = {
+            "timestamp": item.get("timestamp"),
+            "signal": item.get("signal"),
+            "type": signal_type if signal_type in {"entry", "exit"} else item.get("type"),
+            "reason": "entry" if signal_type == "entry" else "exit",
+            "price": item.get("price"),
+        }
+        if isinstance(item.get("explanation"), dict):
+            try:
+                public_item["explanation"] = TradeExplanation.model_validate(
+                    item["explanation"]
+                ).model_dump(mode="json")
+            except Exception:
+                pass
+        redacted.append(public_item)
     return redacted
 
 
@@ -116,6 +123,13 @@ def redact_opportunity_payload(
     payload["details"] = {}
     payload["message"] = _protected_message(payload)
     payload["signal_history"] = _redact_signal_history(payload.get("signal_history"))
+    if isinstance(payload.get("trade_explanation"), dict):
+        try:
+            payload["trade_explanation"] = TradeExplanation.model_validate(
+                payload["trade_explanation"]
+            ).model_dump(mode="json")
+        except Exception:
+            payload["trade_explanation"] = None
     payload["is_strategy_protected"] = True
     payload["strategy_display_name"] = public_display_name
     return payload

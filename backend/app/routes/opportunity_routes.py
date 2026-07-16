@@ -14,7 +14,7 @@ from app.services.strategy_secret_visibility import (
     can_view_strategy_secrets,
     redact_opportunity_payload,
 )
-from app.schemas.strategy_transparency import StrategyTransparency
+from app.schemas.strategy_transparency import StrategyTransparency, TradeExplanation
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/opportunities", tags=["opportunities"])
@@ -29,6 +29,7 @@ class OpportunityResponse(BaseModel):
     symbol: str
     asset_type: str
     timeframe: str
+    direction: Literal["long", "short"] = "long"
     template_name: str
     name: str  # user custom name
     notes: Optional[str] = None
@@ -46,10 +47,15 @@ class OpportunityResponse(BaseModel):
         None  # ISO datetime do candle usado (para conferir com TradingView)
     )
     signal_history: Optional[List[Dict[str, Any]]] = None
+    trade_explanation: Optional[TradeExplanation] = None
     is_strategy_protected: bool = False
     strategy_display_name: Optional[str] = None
     strategy_description: Optional[str] = None
     strategy_transparency: Optional[StrategyTransparency] = None
+    action_label: Optional[str] = None
+    entry_action_label: Optional[str] = None
+    exit_action_label: Optional[str] = None
+    next_action_label: Optional[str] = None
 
     # Risk / stop-loss (optional)
     entry_price: Optional[float] = None

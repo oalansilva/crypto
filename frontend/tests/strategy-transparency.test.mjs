@@ -4,6 +4,7 @@ import test from 'node:test'
 
 import {
     buildIndicatorValueIndex,
+    buildStrategyRuleOverview,
     hasAvailableIndicatorSeries,
     indicatorValueAtTimestamp,
     normalizeStrategyTransparency,
@@ -48,7 +49,67 @@ test('normaliza séries exclusivamente por timestamp e preserva gaps', () => {
         indicatorValueAtTimestamp(transparency.indicators[0], Date.parse('2026-07-03T00:00:00Z') / 1000),
         55,
     )
-    assert.deepEqual(transparency.logic_blocks, ['Entrada: EMA confirma tendência.'])
+    assert.deepEqual(transparency.logic_blocks, [{
+        participation: '',
+        description: 'EMA confirma tendência.',
+        status: 'available',
+        operator: 'all',
+        condition_count: 0,
+    }])
+})
+
+test('preserva regras permanentes e aplica ações direcionais long e short', () => {
+    const manifest = {
+        status: 'available',
+        timeframe: '1d',
+        logic_blocks: [
+            { participation: 'entry', description: 'A entrada exige tendência confirmada.', status: 'available', operator: 'all', condition_count: 2 },
+            { participation: 'exit', description: 'A saída ocorre quando a tendência perde força.', status: 'available', operator: 'any', condition_count: 2 },
+        ],
+    }
+
+    const normalized = normalizeStrategyTransparency(manifest)
+    assert.equal(normalized.logic_blocks[0].participation, 'entry')
+    assert.equal(normalized.logic_blocks[0].operator, 'all')
+    assert.equal(normalized.logic_blocks[0].condition_count, 2)
+
+    const longRules = buildStrategyRuleOverview(normalized, 'long')
+    assert.equal(longRules.entry.title, 'Quando compra')
+    assert.equal(longRules.entry.action, '')
+    assert.equal(longRules.exit.title, 'Quando vende')
+    assert.equal(longRules.exit.action, '')
+    assert.equal(longRules.entry.summary, 'A entrada exige tendência confirmada.')
+    assert.equal(longRules.exit.summary, 'A saída ocorre quando a tendência perde força.')
+
+    const shortRules = buildStrategyRuleOverview(normalized, 'short')
+    assert.equal(shortRules.entry.action, 'Na prática: vende para abrir (short)')
+    assert.equal(shortRules.exit.action, 'Na prática: compra para fechar (cobertura)')
+})
+
+test('mantém as duas regras visíveis com fallback seguro para manifesto legado', () => {
+    const rules = buildStrategyRuleOverview(null, 'long')
+
+    assert.equal(rules.entry.title, 'Quando compra')
+    assert.equal(rules.exit.title, 'Quando vende')
+    assert.equal(rules.entry.available, false)
+    assert.equal(rules.exit.available, false)
+    assert.equal(rules.entry.summary, 'Regra pública indisponível para esta estratégia.')
+    assert.equal(rules.exit.summary, 'Regra pública indisponível para esta estratégia.')
+})
+
+test('não exibe descrição de bloco explicitamente indisponível', () => {
+    const rules = buildStrategyRuleOverview({
+        status: 'partial',
+        logic_blocks: [
+            { participation: 'entry', description: 'Expressão não pública.', status: 'unavailable' },
+            { participation: 'exit', description: 'Saída pública.', status: 'available' },
+        ],
+    }, 'long')
+
+    assert.equal(rules.entry.available, false)
+    assert.equal(rules.entry.summary, 'Regra pública indisponível para esta estratégia.')
+    assert.equal(rules.exit.available, true)
+    assert.equal(rules.exit.summary, 'Saída pública.')
 })
 
 test('bloqueia séries quando timeframe do manifesto diverge', () => {

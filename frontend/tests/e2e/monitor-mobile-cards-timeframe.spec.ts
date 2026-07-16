@@ -580,6 +580,14 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
           signal_history: [
             { timestamp: '2099-04-10T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 142.1 },
           ],
+          strategy_transparency: {
+            status: 'available',
+            timeframe: '1d',
+            logic_blocks: [
+              { participation: 'entry', description: 'Compra quando as médias confirmam a tendência de alta.', status: 'available' },
+              { participation: 'exit', description: 'Vende quando as médias confirmam a perda da tendência.', status: 'available' },
+            ],
+          },
           details: {},
         },
       ]),
@@ -611,6 +619,7 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
       contentType: 'application/json',
       body: JSON.stringify({
         candles: [
+          { timestamp_utc: '2099-04-10T00:00:00Z', open: 142.1, high: 145, low: 141, close: 144, volume: 1000 },
           { timestamp_utc: '2099-04-14T00:00:00Z', open: 149, high: 152, low: 147, close: 151, volume: 1000 },
           { timestamp_utc: '2099-04-15T00:00:00Z', open: 151, high: 154, low: 150, close: 151.24, volume: 1000 },
         ],
@@ -623,6 +632,13 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   const card = page.getByTestId('monitor-card-sol-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Compra', { exact: true })).toBeVisible()
+  const longRules = card.getByTestId('monitor-strategy-rules-sol-usdt')
+  await expect(longRules.getByText('Quando compra')).toBeVisible()
+  await expect(longRules.getByText('Quando vende')).toBeVisible()
+  await expect(longRules.getByText('Compra para entrar')).toHaveCount(0)
+  await expect(longRules.getByText('Venda para sair')).toHaveCount(0)
+  await expect(longRules.getByText('Compra quando as médias confirmam a tendência de alta.')).toBeVisible()
+  await expect(longRules.getByText('Vende quando as médias confirmam a perda da tendência.')).toBeVisible()
   await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
@@ -632,6 +648,7 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '1')
   await expect(dialog.getByTestId('chart-modal-signal-context')).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-trades')).toHaveCount(0)
   await expect(dialog.getByRole('group', { name: 'Chart indicators' })).toHaveCount(0)
@@ -710,6 +727,14 @@ test('monitor adds current sell marker when history only has prior entry', async
           signal_history: [
             { timestamp: '2026-05-09T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 0.0927 },
           ],
+          strategy_transparency: {
+            status: 'available',
+            timeframe: '1d',
+            logic_blocks: [
+              { participation: 'entry', description: 'Compra quando as médias viram para cima.', status: 'available' },
+              { participation: 'exit', description: 'Vende quando as médias perdem a direção de alta.', status: 'available' },
+            ],
+          },
           details: {},
         },
       ]),
@@ -754,6 +779,11 @@ test('monitor adds current sell marker when history only has prior entry', async
   const card = page.getByTestId('monitor-card-hbar-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Venda', { exact: true })).toBeVisible()
+  const exitRules = card.getByTestId('monitor-strategy-rules-hbar-usdt')
+  await expect(exitRules.getByText('Quando compra')).toBeVisible()
+  await expect(exitRules.getByText('Quando vende')).toBeVisible()
+  await expect(exitRules.getByText('Compra quando as médias viram para cima.')).toBeVisible()
+  await expect(exitRules.getByText('Vende quando as médias perdem a direção de alta.')).toBeVisible()
   await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
@@ -1240,11 +1270,37 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
             exit_price: 72150.42,
             profit: 0.0276,
             type: 'long',
+            entry_explanation: {
+              status: 'available', direction: 'long', timeframe: '1d', action: 'Compra', trigger: 'entry_rule',
+              summary: 'A entrada foi confirmada pelas médias no candle anterior.',
+              decision_candle_time: '2099-04-09T00:00:00Z', execution_time: '2099-04-10T00:00:00Z', execution_price: 70210.15,
+              evidence: [{ key: 'short', label: 'EMA curta acima da média longa', value: 70120, timestamp_utc: '2099-04-09T00:00:00Z', state: 'confirmed' }],
+            },
+            exit_explanation: {
+              status: 'available', direction: 'long', timeframe: '1d', action: 'Venda', trigger: 'exit_rule',
+              summary: 'A saída ocorreu quando a regra técnica de venda foi confirmada.',
+              decision_candle_time: '2099-04-12T00:00:00Z', execution_time: '2099-04-13T00:00:00Z', execution_price: 72150.42,
+              evidence: [{ key: 'medium', label: 'EMA curta abaixo da média', value: 71990, timestamp_utc: '2099-04-12T00:00:00Z', state: 'confirmed' }],
+            },
           },
           {
             entry_time: '2099-04-15T00:00:00Z',
             entry_price: 73980.37,
             type: 'long',
+            entry_explanation: {
+              status: 'available', direction: 'long', timeframe: '1d', action: 'Compra', trigger: 'entry_rule',
+              summary: 'A compra atual foi confirmada por uma nova virada das médias.',
+              decision_candle_time: '2099-04-14T00:00:00Z', execution_time: '2099-04-15T00:00:00Z', execution_price: 73980.37,
+              evidence: [],
+            },
+            current_state_explanation: {
+              status: 'available', direction: 'long', timeframe: '1d', action: 'Manter', trigger: 'open_position',
+              summary: 'A posição continua aberta porque a saída ainda não foi confirmada.',
+              rule_summary: 'Venda quando a média curta cruzar abaixo da média longa.',
+              risk_summary: 'Stop de proteção 4,20% abaixo da entrada.',
+              decision_candle_time: '2099-04-15T00:00:00Z', execution_time: null, execution_price: null,
+              evidence: [{ key: 'exit', label: 'Regra técnica de saída', value: null, timestamp_utc: '2099-04-15T00:00:00Z', state: 'pending' }],
+            },
           },
         ],
         metrics: { total_trades: 1, win_rate: 1, total_return: 0.0276, avg_profit: 0.0276 },
@@ -1259,7 +1315,11 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
             { key: 'medium', label: 'SMA média', type: 'sma', parameters: { length: 20 }, color: '#ff9f43', panel: 'price', scale: 'price', function: 'Confirmação', participation: ['entry'], series: [], availability: 'unavailable', references: [] },
             { key: 'rsi', label: 'RSI', type: 'rsi', parameters: { length: 14 }, color: '#a970ff', panel: 'oscillator', scale: 'oscillator', function: 'Momentum', participation: ['entry'], series: [], availability: 'unavailable', references: [] },
           ],
-          logic_blocks: [],
+          logic_blocks: [
+            { participation: 'entry', description: 'Compra quando médias e momentum confirmam força.', status: 'available' },
+            { participation: 'exit', description: 'Vende quando médias ou momentum confirmam perda de força.', status: 'available' },
+            { participation: 'risk', description: 'Stop limita a perda da posição.', status: 'available' },
+          ],
         },
       }),
     })
@@ -1317,7 +1377,15 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
           signal_history: [
             { timestamp: '2099-04-10T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 70210.15 },
             { timestamp: '2099-04-13T00:00:00+00:00', signal: -1, type: 'exit', reason: 'exit_logic', price: 72150.42 },
-            { timestamp: '2099-04-15T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 73980.37 },
+            {
+              timestamp: '2099-04-15T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 73980.37,
+              explanation: {
+                status: 'available', direction: 'long', timeframe: '1d', action: 'Compra', trigger: 'entry_rule',
+                summary: 'A compra atual foi confirmada por uma nova virada das médias.',
+                decision_candle_time: '2099-04-14T00:00:00Z', execution_time: '2099-04-15T00:00:00Z', execution_price: 73980.37,
+                evidence: [],
+              },
+            },
           ],
           details: {},
         },
@@ -1366,6 +1434,7 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
 
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
+  await expect(card.getByTestId('monitor-trade-explanation-summary-btc-usdt')).toContainText('nova virada das médias')
   await card.getByRole('button', { name: 'Ver Trades' }).click()
 
   const dialog = page.getByRole('dialog')
@@ -1376,12 +1445,34 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-trades')).toBeVisible()
   await expect(dialog.getByText('Lista de operações')).toBeVisible()
-  await expect(dialog.getByRole('columnheader', { name: 'Valor da posição' })).toBeVisible()
-  await expect(dialog.getByText('100.00 USD').first()).toBeVisible()
-  await expect(dialog.getByText('Apr 10, 2099')).toBeVisible()
-  await expect(dialog.getByText('Apr 13, 2099')).toBeVisible()
-  await expect(dialog.getByText('Apr 15, 2099')).toBeVisible()
-  await expect(dialog.getByText('Posição aberta')).toBeVisible()
+  await expect(dialog.getByRole('columnheader', { name: 'Valor da posição' })).toBeHidden()
+  await expect(dialog.getByText('Apr 10, 2099 → Apr 13, 2099', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('Compra · Apr 15, 2099', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('paragraph').filter({ hasText: 'Posição aberta' })).toBeVisible()
+  const openExplanation = dialog.getByTestId('trade-mobile-open-0-trade-explanation-disclosure')
+  const openButton = openExplanation.getByRole('button', { name: 'Entenda este trade' })
+  await expect(openButton).toHaveAttribute('aria-expanded', 'false')
+  await openButton.focus()
+  await page.keyboard.press('Enter')
+  await expect(openButton).toHaveAttribute('aria-expanded', 'true')
+  const permanentRules = openExplanation.getByTestId('trade-mobile-open-0-permanent-rules')
+  await expect(permanentRules.getByText('Quando compra')).toBeVisible()
+  await expect(permanentRules.getByText('Quando vende')).toBeVisible()
+  await expect(permanentRules.getByText('Compra para entrar')).toHaveCount(0)
+  await expect(permanentRules.getByText('Venda para sair')).toHaveCount(0)
+  await expect(permanentRules.getByText('Compra quando médias e momentum confirmam força.')).toBeVisible()
+  await expect(permanentRules.getByText('Vende quando médias ou momentum confirmam perda de força.')).toBeVisible()
+  await expect(openExplanation.getByText('Por que continua aberto')).toBeVisible()
+  await expect(openExplanation.getByText('Saída técnica')).toBeVisible()
+  await expect(openExplanation.getByText('Stop de proteção', { exact: true })).toBeVisible()
+  await expect(openExplanation.getByText('Pendente', { exact: false })).toBeVisible()
+  const closedExplanation = dialog.getByTestId('trade-mobile-1-trade-explanation-disclosure')
+  await closedExplanation.getByRole('button', { name: 'Entenda este trade' }).click()
+  await expect(closedExplanation.getByText('Quando compra')).toBeVisible()
+  await expect(closedExplanation.getByText('Quando vende')).toBeVisible()
+  await expect(closedExplanation.getByText('Por que entrou')).toBeVisible()
+  await expect(closedExplanation.getByText('Por que saiu')).toBeVisible()
+  await expect(closedExplanation.getByText('Regra de saída')).toBeVisible()
   const indicatorConfig = dialog.getByTestId('chart-modal-surface-indicator-config')
   await expect(indicatorConfig).toContainText('EMA curta 18')
   await expect(indicatorConfig).toContainText('SMA média 20')
