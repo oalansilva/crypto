@@ -985,9 +985,10 @@ test('favorites opens Multi MA Crossover full-history chart even when monitor sy
   await expect(analysis).toBeVisible();
   await analysis.click();
 
-  expect(api.opportunitiesTriggeredCount()).toBe(1);
   // Monitor signal sync waits up to 15s before marking timeout; hang mock never resolves.
+  // Opportunities are requested after cached analysis recovery finishes.
   await expect(page).toHaveURL(/\/combo\/results$/, { timeout: 20_000 });
+  expect(api.opportunitiesTriggeredCount()).toBe(1);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText(/Multi MA Crossover - Ação de preço/i)).toBeVisible();
