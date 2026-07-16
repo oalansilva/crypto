@@ -18,5 +18,5 @@
 ## 5. Rework — médias até o fim das velas
 
 - [x] 5.1 Mesclar séries de `strategy_transparency` do Monitor sobre o cache de Favoritos para estender EMA/SMA até a última vela.
-- [x] 5.2 Clip de velas sem cobertura de indicador como rede de segurança; mesmo merge no ChartModal do Monitor.
+- [x] 5.2 Mesmo merge no ChartModal do Monitor; clip utilitário disponível para casos sem série live.
 - [x] 5.3 Testes unitários de merge/clip.

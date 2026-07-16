@@ -8,10 +8,8 @@ import { authFetch } from '@/lib/authFetch';
 import { useAuth } from '@/stores/authStore';
 import { ScreenHelpPanel } from '@/components/onboarding/ScreenHelpPanel';
 import {
-    clipCandlesToIndicatorCoverage,
     hasAvailableIndicatorSeries,
     mergeStrategyTransparencySeries,
-    normalizeStrategyTransparency,
     type StrategyTransparency,
 } from '@/lib/strategyTransparency';
 import type { TradeExplanation } from '@/types/tradeExplanation';
@@ -813,10 +811,7 @@ const FavoritesDashboard: React.FC = () => {
                 analysisResult.strategy_transparency,
                 monitorSync.strategy_transparency,
             ) ?? analysisResult.strategy_transparency ?? null;
-            const chartCandles = clipCandlesToIndicatorCoverage(
-                mergeAnalysisCandles(currentCandles, recovered.candles || []),
-                normalizeStrategyTransparency(analysisResult.strategy_transparency),
-            );
+            const chartCandles = mergeAnalysisCandles(currentCandles, recovered.candles || []);
             analysisResult.candles = chartCandles || [];
             if (monitorSync.trades && monitorSync.trades.length > 0) {
                 const mergedTrades = mergeFavoriteAndMonitorTrades(analysisResult.trades, monitorSync.trades);
