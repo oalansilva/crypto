@@ -117,8 +117,9 @@ def test_save_signal_to_history_persists_buy_when_gate_passes(monkeypatch) -> No
     writer.save_signal_to_history(_make_signal(signal_id="sig-buy"), user_id="user-1")
 
     assert len(session.added) == 1
-    assert session.added[0].id == "sig-buy"
-    assert session.added[0].type == "BUY"
+    saved = session.added[0].__dict__
+    assert saved["id"] == "sig-buy"
+    assert saved["type"] == "BUY"
     assert session.committed is True
     assert session.closed is True
 
