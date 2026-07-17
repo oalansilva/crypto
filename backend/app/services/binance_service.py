@@ -930,7 +930,7 @@ async def build_signal_feed(
     signals = signals[:requested_limit]
 
     if user_id:
-        from app.routes.signals import _save_signal_to_history
+        from app.services.signal_history_writer import save_signal_to_history as _save_signal_to_history
 
         for signal in signals:
             threading.Thread(
@@ -1146,7 +1146,7 @@ async def get_latest_high_confidence_signals(user_id: str | None = None) -> Sign
     for signal in signals:
         _remember_signal(signal, latest_cached_at, is_stale)
     if user_id:
-        from app.routes.signals import _save_signal_to_history
+        from app.services.signal_history_writer import save_signal_to_history as _save_signal_to_history
 
         for signal in signals:
             threading.Thread(

@@ -3,7 +3,6 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Activity,
   Bookmark,
-  ChartPie,
   ChevronLeft,
   Play,
   KeyRound,
@@ -12,7 +11,6 @@ import {
   Menu,
   Settings,
   User,
-  TrendingUp,
   UsersRound,
   Wallet,
   X,
@@ -38,19 +36,10 @@ type NavItemConfig = {
 const mainNavItems: NavItemConfig[] = [
   { to: '/favorites', label: 'Favoritos', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
-  { to: '/signals/history', label: 'Histórico', icon: TrendingUp, adminOnly: true },
-  {
-    to: '/supply-distribution',
-    label: 'Distribuição',
-    accessibilityLabel: 'Distribuicao',
-    icon: ChartPie,
-    adminOnly: true,
-  },
 ]
 
 const strategyNavItems: NavItemConfig[] = [
   { to: '/combo/select', label: 'Combo', icon: Layers, adminOnly: true },
-  { to: '/signals', label: 'Backtests', icon: TrendingUp, adminOnly: true },
 ]
 
 const accountNavItems: NavItemConfig[] = [
@@ -71,9 +60,6 @@ export function openMobileMenu() {
 function resolvePageTitle(pathname: string) {
   if (pathname === '/' || pathname === '/monitor') return 'Monitor de sinais'
   if (pathname === '/favorites') return 'Favoritos'
-  if (pathname === '/signals') return 'Backtests'
-  if (pathname === '/signals/history') return 'Histórico de Sinais'
-  if (pathname === '/supply-distribution') return 'Distribuição de supply'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
   if (pathname.startsWith('/help')) return 'Ajuda'
