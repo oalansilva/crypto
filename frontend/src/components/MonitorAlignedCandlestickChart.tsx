@@ -29,6 +29,7 @@ export function MonitorAlignedCandlestickChart({
             strategyName={strategyName}
             symbol={symbol}
             timeframe={timeframe}
+            viewportResetKey={`${symbol || ''}|${timeframe || ''}`}
             strategyTransparency={strategyTransparency}
             rootTestId="monitor-aligned-result-chart"
             chartTestId="result-main-chart"
