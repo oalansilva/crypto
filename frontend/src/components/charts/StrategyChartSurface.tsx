@@ -98,6 +98,8 @@ interface StrategyChartSurfaceProps {
     className?: string
     /** When this key changes, re-apply the default visible range (e.g. `${symbol}|${timeframe}`). */
     viewportResetKey?: string
+    /** When false, candle updates may render but the default viewport is deferred until ready. */
+    viewportReady?: boolean
 }
 
 const LOGICAL_RANGE_PADDING = 8
@@ -220,6 +222,7 @@ export function StrategyChartSurface({
     sideClassName = 'rounded-lg border border-[#2b3139] bg-[#1e2329] p-4',
     className = '',
     viewportResetKey,
+    viewportReady = true,
 }: StrategyChartSurfaceProps) {
     const shellRef = React.useRef<HTMLDivElement>(null)
     const chartRef = React.useRef<HTMLDivElement>(null)
@@ -367,8 +370,8 @@ export function StrategyChartSurface({
     }, [applyZoom, candlestickData.length])
 
     React.useEffect(() => {
-        const shell = shellRef.current
-        if (!shell) return undefined
+        const chartEl = chartRef.current
+        if (!chartEl) return undefined
 
         const onWheel = (event: WheelEvent) => {
             if (candlestickData.length === 0 || Math.abs(event.deltaY) < 3) return
@@ -377,8 +380,8 @@ export function StrategyChartSurface({
             handleWheelZoom(event.deltaY)
         }
 
-        shell.addEventListener('wheel', onWheel, { passive: false, capture: true })
-        return () => shell.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions)
+        chartEl.addEventListener('wheel', onWheel, { passive: false, capture: true })
+        return () => chartEl.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions)
     }, [candlestickData.length, handleWheelZoom])
 
     React.useEffect(() => {
@@ -508,6 +511,12 @@ export function StrategyChartSurface({
             return
         }
 
+        // Defer default viewport until host finished staged candle loads.
+        if (!viewportReady) {
+            syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
+            return
+        }
+
         const keyChanged = appliedViewportKeyRef.current !== resolvedViewportKey
         if (keyChanged) {
             userAdjustedViewportRef.current = false
@@ -520,14 +529,14 @@ export function StrategyChartSurface({
             return
         }
 
-        // Staged candle loads (cache → market → analysis): re-snap default only when count changes.
-        if (lastAppliedCandleCountRef.current === candlestickData.length) {
+        // Already applied for this key: preserve viewport across later candle merges.
+        if (appliedViewportKeyRef.current === resolvedViewportKey) {
             syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
             return
         }
 
         applyDefaultViewport()
-    }, [applyDefaultViewport, candlestickData, resolvedViewportKey, syncVisibleBars, volumeData])
+    }, [applyDefaultViewport, candlestickData, resolvedViewportKey, syncVisibleBars, viewportReady, volumeData])
 
     React.useEffect(() => {
         const candleSeries = candleSeriesRef.current
