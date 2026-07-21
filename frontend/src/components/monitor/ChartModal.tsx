@@ -828,6 +828,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     strategyName={strategyDisplayName}
                     symbol={symbol}
                     timeframe={timeframe.toUpperCase()}
+                    viewportResetKey={`${symbol}|${timeframe}`}
                     strategyTransparency={activeStrategyTransparency}
                     title={<span id="chart-modal-title">{symbol}</span>}
                     subtitle={`${strategyDisplayName} • ${timeframe.toUpperCase()} • ${sortedCandles.length} velas • candle ref ${formatTimestamp(opportunity.indicator_values_candle_time)}`}
