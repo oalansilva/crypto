@@ -4,6 +4,7 @@ from app.services.opportunity_service import (
     _build_signal_history,
     _last_signal_index_and_position,
     _public_monitor_message,
+    _public_monitor_status,
     _resolve_position_state,
     _signal_execution_price,
 )
@@ -130,6 +131,26 @@ def test_public_monitor_message_does_not_leak_long_hold_copy_for_short():
 
     assert "Compra ativa" not in message
     assert message.startswith("Venda ativa")
+
+
+def test_public_monitor_status_keeps_hold_when_exit_near_while_holding():
+    assert _public_monitor_status(is_holding=True, raw_status="EXIT_NEAR") == "HOLD"
+    assert _public_monitor_status(is_holding=True, raw_status="HOLDING") == "HOLD"
+    assert _public_monitor_status(is_holding=False, raw_status="EXIT_NEAR") == "HOLD"
+    assert _public_monitor_status(is_holding=True, raw_status="EXIT_SIGNAL") == "EXIT"
+    assert _public_monitor_status(is_holding=False, raw_status="EXITED") == "EXIT"
+
+
+def test_public_monitor_message_for_exit_near_hold_avoids_closed_position_copy():
+    message = _public_monitor_message(
+        "HOLD",
+        {"status": "EXIT_NEAR", "distance": 0.51, "message": "EXIT: approaching crossunder"},
+        direction="long",
+    )
+
+    assert "fora de posicao" not in message.lower()
+    assert message.startswith("Compra ativa")
+    assert "0.51%" in message
 
 
 def test_signal_execution_price_uses_signal_candle_open():

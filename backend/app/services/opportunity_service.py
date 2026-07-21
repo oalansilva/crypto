@@ -486,17 +486,19 @@ def _resolve_position_state(
 def _public_monitor_status(*, is_holding: bool, raw_status: str | None) -> str:
     """Normalize Monitor API status to the public binary contract: HOLD or EXIT."""
     normalized = str(raw_status or "").strip().upper()
+    # Exit proximity while still in position is HOLD-compatible (Compra ativa / saída próxima).
+    if is_holding and normalized == "EXIT_NEAR":
+        return "HOLD"
     if normalized in {
         "EXIT",
         "EXIT_SIGNAL",
-        "EXIT_NEAR",
         "EXITED",
         "STOPPED_OUT",
         "MISSED_ENTRY",
         "MISSED",
     }:
         return "EXIT"
-    if normalized in {"HOLD", "HOLDING", "BUY_SIGNAL"} or is_holding:
+    if normalized in {"HOLD", "HOLDING", "BUY_SIGNAL", "EXIT_NEAR"} or is_holding:
         return "HOLD"
     return "EXIT"
 
@@ -532,6 +534,19 @@ def _public_monitor_message(status: str, analysis: dict[str, Any], direction: An
     labels = _monitor_action_labels(direction)
     if status == "HOLD":
         default = f"{labels['hold']}. Acompanhe a proxima {labels['exit'].lower()}."
+        raw_analysis_status = str(analysis.get("status") or "").strip().upper()
+        if raw_analysis_status == "EXIT_NEAR":
+            distance = analysis.get("distance")
+            try:
+                distance_value = float(distance) if distance is not None else None
+            except (TypeError, ValueError):
+                distance_value = None
+            if distance_value is not None and distance_value < 999:
+                return (
+                    f"{labels['hold']}. Distancia para saida: {distance_value:.2f}%. "
+                    f"Acompanhe a proxima {labels['exit'].lower()}."
+                )
+            return default
         if _normalize_strategy_direction(direction) == "short":
             return default
         return str(analysis.get("message") or default)
