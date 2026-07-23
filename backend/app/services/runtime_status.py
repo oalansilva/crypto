@@ -196,9 +196,7 @@ def build_runtime_status_payload(
         "candle_writer": {
             "enabled": env_flag_enabled("CRYPTO_CANDLES_WRITER_ENABLED", "0"),
             "process_role": (
-                "writer"
-                if env_flag_enabled("CRYPTO_CANDLES_WRITER_ENABLED", "0")
-                else "observer"
+                "writer" if env_flag_enabled("CRYPTO_CANDLES_WRITER_ENABLED", "0") else "observer"
             ),
             "lock": inspect_candle_writer_lock(),
             "latest_run": read_candle_writer_state(),
