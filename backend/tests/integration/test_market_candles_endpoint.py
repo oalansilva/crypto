@@ -218,8 +218,12 @@ async def test_market_candles_canonical_mode_returns_stale_persisted_without_dir
     assert response.status_code == 200, response.text
     payload = response.json()
 
-    assert payload["data_source"] == "market_ohlcv"
+    assert payload["data_source"] == "market_ohlcv-stale"
     assert payload["canonical_candles"] is True
+    assert payload["degraded"] is True
+    assert payload["fresh"] is False
+    assert payload["direct_fetch_skipped"] is True
+    assert payload["lag_seconds"] > 0
     assert payload["candles"] == stale_candles
 
 

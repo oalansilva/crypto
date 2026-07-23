@@ -16,7 +16,7 @@ REPO_ROOT = BACKEND_ROOT.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from app.services.ohlcv_storage import run_ohlcv_ingestion_once
+from app.services.ohlcv_storage import run_ohlcv_ingestion_once, get_ohlcv_metrics
 from app.services.runtime_status import candle_writer_lock_path, candle_writer_state_path
 
 
@@ -43,6 +43,7 @@ def _state_payload(
     runs: int = 0,
     duration_seconds: float | None = None,
     error: str | None = None,
+    lag_alerts: int | None = None,
 ) -> dict:
     payload = {
         "status": status,
@@ -54,6 +55,8 @@ def _state_payload(
     }
     if duration_seconds is not None:
         payload["duration_seconds"] = round(duration_seconds, 3)
+    if lag_alerts is not None:
+        payload["lag_alerts"] = int(lag_alerts)
     if error:
         payload["error"] = error
     return payload
@@ -78,6 +81,7 @@ def main() -> int:
                     finished_at=finished_at,
                     runs=0,
                     duration_seconds=time.monotonic() - started_monotonic,
+                    lag_alerts=0,
                 )
             )
             print("canonical_candle_writer_skipped=lock_held")
@@ -90,7 +94,16 @@ def main() -> int:
         _write_state(_state_payload(status="running", started_at=started_at))
 
         try:
+            metrics_before = get_ohlcv_metrics()
+            lag_alerts_before = int(
+                ((metrics_before or {}).get("ingest") or {}).get("lag_alerts") or 0
+            )
             runs = run_ohlcv_ingestion_once()
+            metrics_after = get_ohlcv_metrics()
+            lag_alerts_after = int(
+                ((metrics_after or {}).get("ingest") or {}).get("lag_alerts") or 0
+            )
+            lag_alerts = max(0, lag_alerts_after - lag_alerts_before)
         except Exception as exc:
             finished_at = _utc_now()
             _write_state(
@@ -113,9 +126,11 @@ def main() -> int:
                 finished_at=finished_at,
                 runs=runs,
                 duration_seconds=time.monotonic() - started_monotonic,
+                lag_alerts=lag_alerts,
             )
         )
         print(f"canonical_candle_writer_runs={runs}")
+        print(f"canonical_candle_writer_lag_alerts={lag_alerts}")
         return 0
 
 

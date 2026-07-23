@@ -12,13 +12,23 @@ def test_canonical_candle_writer_records_success(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("CRYPTO_CANDLES_WRITER_LOCK_FILE", str(lock_path))
     monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(state_path))
     monkeypatch.setattr(writer, "run_ohlcv_ingestion_once", lambda: 7)
+    metrics_calls = {"n": 0}
+
+    def _metrics():
+        metrics_calls["n"] += 1
+        return {"ingest": {"lag_alerts": 0 if metrics_calls["n"] == 1 else 3}}
+
+    monkeypatch.setattr(writer, "get_ohlcv_metrics", _metrics)
 
     assert writer.main() == 0
 
-    assert "canonical_candle_writer_runs=7" in capsys.readouterr().out
+    captured = capsys.readouterr().out
+    assert "canonical_candle_writer_runs=7" in captured
+    assert "canonical_candle_writer_lag_alerts=3" in captured
     state = json.loads(state_path.read_text(encoding="utf-8"))
     assert state["status"] == "success"
     assert state["runs"] == 7
+    assert state["lag_alerts"] == 3
     assert state["lock_path"] == str(lock_path)
     assert state["duration_seconds"] >= 0
 
