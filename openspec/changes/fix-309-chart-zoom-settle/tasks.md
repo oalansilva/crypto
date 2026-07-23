@@ -16,4 +16,4 @@
 - [x] 3.2 OpenSpec validate
 - [x] 3.3 Cobrir contrato do estado inicial, timeout, range pós-merge e altura desktop estável
 - [x] 3.4 Rodar testes focados, build e Playwright visual na branch
-- [ ] 3.5 Após integração, executar restart DEV e repetir o fluxo de zoom no bundle servido
+- [x] 3.5 Após integração, executar restart DEV e repetir o fluxo de zoom no bundle servido
