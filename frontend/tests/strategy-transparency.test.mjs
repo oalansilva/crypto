@@ -264,4 +264,13 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(monitorSource, /strategyTransparency=\{activeStrategyTransparency\}/)
     assert.match(monitorSource, /viewportResetKey=\{`\$\{symbol\}\|\$\{timeframe\}`\}/)
     assert.match(monitorSource, /viewportReady=\{!loading && !analysisTradesLoading\}/)
+    assert.match(monitorSource, /const \[analysisTradesLoading, setAnalysisTradesLoading\] = React\.useState\(true\)/)
+    assert.match(monitorSource, /const ANALYSIS_TRADES_TIMEOUT_MS = 15_000/)
+    assert.match(monitorSource, /const timeoutId = window\.setTimeout\(\(\) => controller\.abort\(\), ANALYSIS_TRADES_TIMEOUT_MS\)/)
+    assert.match(monitorSource, /if \(!disposed\) \{\s+setAnalysisTradesLoading\(false\)/)
+    assert.match(
+        monitorSource,
+        /xl:h-\[calc\(100vh-330px\)\] xl:min-h-\[420px\] xl:max-h-\[720px\]/,
+    )
+    assert.doesNotMatch(monitorSource, /xl:h-full xl:min-h-\[calc\(100vh-330px\)\]/)
 })

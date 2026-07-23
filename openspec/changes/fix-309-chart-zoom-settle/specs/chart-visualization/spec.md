@@ -5,8 +5,19 @@ Shared strategy charts SHALL apply the default visible range at most once per vi
 
 #### Scenario: Monitor chart stages market then analysis candles
 - **WHEN** the Monitor chart modal opens and candle payloads arrive in stages for the same symbol/timeframe
-- **THEN** the default visible range SHALL be applied once after loading settles
+- **THEN** analysis loading SHALL be pending from the first render until the analysis request settles
+- **AND** the default visible range SHALL be applied once after loading settles
 - **AND** later merges with a different candle count SHALL preserve the current viewport unless the user changes timeframe/symbol or resets zoom
+
+#### Scenario: Monitor panels resize while loading
+- **WHEN** asynchronous chart and strategy panels render on a desktop viewport
+- **THEN** the chart canvas SHALL keep a bounded viewport-relative height
+- **AND** content reflow MUST NOT cause an apparent zoom or viewport reset
+
+#### Scenario: Analysis request does not settle
+- **WHEN** the analysis request exceeds its bounded timeout
+- **THEN** the Monitor SHALL release the pending viewport state
+- **AND** it SHALL render the available fallback candles/trades without leaving the chart permanently unready
 
 ### Requirement: Wheel zoom is limited to the chart canvas
 Mouse-wheel zoom SHALL only activate when the pointer is over the candlestick chart canvas, not when scrolling adjacent strategy detail panels inside the same shell.

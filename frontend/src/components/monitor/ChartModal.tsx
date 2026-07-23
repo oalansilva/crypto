@@ -53,6 +53,7 @@ const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 8,
 });
+const ANALYSIS_TRADES_TIMEOUT_MS = 15_000;
 
 function formatPrice(value?: number | null) {
     if (value === null || value === undefined || Number.isNaN(value)) {
@@ -318,7 +319,9 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [analysisMetrics, setAnalysisMetrics] = React.useState<StrategyTradeMetrics | null>(null);
     const [analysisStrategyTransparency, setAnalysisStrategyTransparency] = React.useState<Record<string, unknown> | null>(null);
     const [analysisCandles, setAnalysisCandles] = React.useState<MarketCandle[]>([]);
-    const [analysisTradesLoading, setAnalysisTradesLoading] = React.useState(false);
+    // The analysis request starts on mount; begin pending so viewport initialization
+    // waits for the merged candle set instead of first applying to initialCandles.
+    const [analysisTradesLoading, setAnalysisTradesLoading] = React.useState(true);
     const [analysisTradesError, setAnalysisTradesError] = React.useState<string | null>(null);
 
     const cacheRef = React.useRef<Map<string, MarketCandle[]>>(new Map([
@@ -537,6 +540,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
     React.useEffect(() => {
         const controller = new AbortController();
+        let disposed = false;
+        const timeoutId = window.setTimeout(() => controller.abort(), ANALYSIS_TRADES_TIMEOUT_MS);
 
         const run = async () => {
             setAnalysisTradesLoading(true);
@@ -561,7 +566,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                         : null,
                 );
             } catch {
-                if (!controller.signal.aborted) {
+                if (!disposed) {
                     setAnalysisTrades(signalHistoryTrades);
                     setAnalysisUsesSignalHistory(true);
                     setAnalysisCandles([]);
@@ -570,7 +575,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponíveis.');
                 }
             } finally {
-                if (!controller.signal.aborted) {
+                window.clearTimeout(timeoutId);
+                if (!disposed) {
                     setAnalysisTradesLoading(false);
                 }
             }
@@ -578,7 +584,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
         void run();
 
-        return () => controller.abort();
+        return () => {
+            disposed = true;
+            window.clearTimeout(timeoutId);
+            controller.abort();
+        };
     }, [opportunity.id, signalHistoryTrades]);
 
     const fallbackMarker = React.useMemo<StrategyChartMarker[]>(() => (
@@ -898,7 +908,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     visibleBarsTestId="chart-visible-bars"
                     heightClassName={isTradesView
                         ? 'h-[360px] w-full shrink-0 sm:h-[420px]'
-                        : 'h-[420px] w-full sm:h-[560px] xl:h-full xl:min-h-[calc(100vh-330px)]'}
+                        : 'h-[420px] w-full sm:h-[560px] xl:h-[calc(100vh-330px)] xl:min-h-[420px] xl:max-h-[720px]'}
                     gridClassName={isTradesView
                         ? 'grid gap-3 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_320px]'
                         : 'grid min-h-0 flex-1 gap-3 overflow-auto p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_320px]'}

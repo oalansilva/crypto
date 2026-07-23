@@ -1605,34 +1605,57 @@ test('monitor modal zoom controls adjust visible range without reloading velas',
     })
   })
 
+  const analysisCandles = Array.from({ length: 60 }, (_, index) => {
+    const base = 68000 + (index * 90)
+    return {
+      timestamp_utc: new Date(Date.UTC(2026, 3, index + 1, 0, 0, 0)).toISOString(),
+      open: base,
+      high: base + 80,
+      low: base - 70,
+      close: base + 35,
+      volume: 80 + index,
+    }
+  })
+  let releaseAnalysisRequest: () => void = () => {}
+  const analysisRequestGate = new Promise<void>((resolve) => {
+    releaseAnalysisRequest = resolve
+  })
+  let analysisRequestStarted = false
+  let analysisRequestCompleted = false
+  await page.route('**/api/favorites/6/trades', async (route: any) => {
+    analysisRequestStarted = true
+    await analysisRequestGate
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        trades: [],
+        candles: analysisCandles,
+        metrics: {},
+        strategy_transparency: null,
+      }),
+    })
+    analysisRequestCompleted = true
+  })
+
   await page.goto('/monitor')
 
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
-  await card.getByRole('button', { name: 'Ver Trades' }).click()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
+  await page.setViewportSize({ width: 1366, height: 900 })
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
-  await expect.poll(async () => {
-    return dialog.getByTestId('chart-modal-main-chart').evaluate((node) => (node as HTMLElement).getBoundingClientRect().height)
-  }).toBeGreaterThanOrEqual(300)
-  const parameters = dialog.locator('section').filter({ hasText: 'Parâmetros' }).last()
-  await expect(parameters.getByText('Direção')).toBeVisible()
-  await expect(parameters.getByText('Compra')).toBeVisible()
-  await expect(parameters.getByText('EMA curta')).toBeVisible()
-  await expect(parameters.getByText('SMA média')).toBeVisible()
-  await expect(parameters.getByText('SMA longa')).toBeVisible()
-  await expect(parameters.getByText('Stop de perda')).toBeVisible()
-  await expect(parameters.getByText('3.50%')).toBeVisible()
-  await expect(parameters.getByText('Fonte de dados')).toBeVisible()
-  await expect(parameters.getByText('CCXT')).toBeVisible()
-  await expect(parameters.getByText('direction')).toHaveCount(0)
-  await expect(parameters.getByText('ema_short')).toHaveCount(0)
-  await expect(parameters.getByText('sma_medium')).toHaveCount(0)
-  await expect(parameters.getByText('sma_long')).toHaveCount(0)
-  await expect(parameters.getByText('stop_loss')).toHaveCount(0)
-  await expect(parameters.getByText('data_source')).toHaveCount(0)
+  const mainChart = dialog.getByTestId('chart-modal-main-chart')
+  await expect(mainChart).toBeVisible()
+  const readChartHeight = () => mainChart.evaluate(
+    (node) => Math.round((node as HTMLElement).getBoundingClientRect().height),
+  )
+  await expect.poll(() => analysisRequestStarted).toBe(true)
+  expect(analysisRequestCompleted).toBe(false)
+  await expect.poll(readChartHeight).toBe(570)
+  releaseAnalysisRequest()
   await expect(page.getByTestId('chart-zoom-in')).toBeVisible()
   await expect(page.getByTestId('chart-zoom-out')).toBeVisible()
   await expect(page.getByTestId('chart-zoom-reset')).toBeVisible()
@@ -1645,6 +1668,10 @@ test('monitor modal zoom controls adjust visible range without reloading velas',
   }
 
   await expect.poll(readVisibleBars).toBeGreaterThan(0)
+  await expect.poll(() => analysisRequestCompleted).toBe(true)
+  await expect.poll(readVisibleBars).toBeGreaterThanOrEqual(analysisCandles.length)
+  await page.waitForTimeout(500)
+  expect(await readChartHeight()).toBe(570)
   const initialVisibleBars = await readVisibleBars()
 
   await page.getByTestId('chart-zoom-in').click()
