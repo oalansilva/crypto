@@ -34,6 +34,8 @@ def test_runtime_status_defaults_are_safe(monkeypatch, tmp_path):
     assert payload["workers"]["binance_realtime_worker"]["enabled"] is False
     assert payload["candle_writer"]["lock"]["lock_held"] is False
     assert payload["candle_writer"]["lock"]["exists"] is False
+    assert payload["candle_writer"]["process_role"] == "observer"
+    assert payload["candle_writer"]["enabled"] is False
     assert payload["favorite_backtest_refresh"]["enabled"] is False
     assert payload["favorite_backtest_refresh"]["latest_run"] is None
     assert payload["favorite_backtest_refresh"]["interval_seconds"] == 86400
@@ -123,6 +125,7 @@ def test_runtime_status_sanitizes_writer_state(monkeypatch, tmp_path):
                 "finished_at": "2026-05-22T00:01:00+00:00",
                 "runs": 0,
                 "duration_seconds": 60.0,
+                "lag_alerts": 2,
                 "lock_path": "/tmp/crypto-candle-writer.lock",
                 "error": "password=super-secret token=abc123 failure",
             }
@@ -136,6 +139,7 @@ def test_runtime_status_sanitizes_writer_state(monkeypatch, tmp_path):
     assert state is not None
     assert state["status"] == "failed"
     assert state["pid"] == 123
+    assert state["lag_alerts"] == 2
     assert "lock_path" not in state
     assert "super-secret" not in state["error"]
     assert "abc123" not in state["error"]

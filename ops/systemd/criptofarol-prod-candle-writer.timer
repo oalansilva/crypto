@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Cripto Farol PROD canonical candle writer periodically
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=15min
+Persistent=true
+Unit=criptofarol-prod-candle-writer.service
+
+[Install]
+WantedBy=timers.target
