@@ -60,6 +60,7 @@ def _sanitize_candle_writer_state(data: dict[str, Any]) -> dict[str, Any]:
         "finished_at",
         "runs",
         "duration_seconds",
+        "lag_alerts",
     }
     sanitized = {key: data[key] for key in allowed if key in data}
     if "error" in data:
@@ -194,6 +195,9 @@ def build_runtime_status_payload(
         },
         "candle_writer": {
             "enabled": env_flag_enabled("CRYPTO_CANDLES_WRITER_ENABLED", "0"),
+            "process_role": (
+                "writer" if env_flag_enabled("CRYPTO_CANDLES_WRITER_ENABLED", "0") else "observer"
+            ),
             "lock": inspect_candle_writer_lock(),
             "latest_run": read_candle_writer_state(),
         },

@@ -29,7 +29,7 @@ import {
 } from './types';
 import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
-import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
+import { mergeStrategyTransparencySeries } from '@/lib/strategyTransparency';
 
 interface ChartModalProps {
     symbol: string;
@@ -53,6 +53,7 @@ const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 8,
 });
+const ANALYSIS_TRADES_TIMEOUT_MS = 15_000;
 
 function formatPrice(value?: number | null) {
     if (value === null || value === undefined || Number.isNaN(value)) {
@@ -318,7 +319,9 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [analysisMetrics, setAnalysisMetrics] = React.useState<StrategyTradeMetrics | null>(null);
     const [analysisStrategyTransparency, setAnalysisStrategyTransparency] = React.useState<Record<string, unknown> | null>(null);
     const [analysisCandles, setAnalysisCandles] = React.useState<MarketCandle[]>([]);
-    const [analysisTradesLoading, setAnalysisTradesLoading] = React.useState(false);
+    // The analysis request starts on mount; begin pending so viewport initialization
+    // waits for the merged candle set instead of first applying to initialCandles.
+    const [analysisTradesLoading, setAnalysisTradesLoading] = React.useState(true);
     const [analysisTradesError, setAnalysisTradesError] = React.useState<string | null>(null);
 
     const cacheRef = React.useRef<Map<string, MarketCandle[]>>(new Map([
@@ -327,7 +330,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
     const activeStrategyTransparency = React.useMemo(
-        () => normalizeStrategyTransparency(analysisStrategyTransparency ?? opportunity.strategy_transparency),
+        () => mergeStrategyTransparencySeries(
+            analysisStrategyTransparency,
+            opportunity.strategy_transparency,
+        ),
         [analysisStrategyTransparency, opportunity.strategy_transparency],
     );
     const indicatorConfigurationItems = React.useMemo<StrategyChartConfigurationItem[]>(() => {
@@ -534,6 +540,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
     React.useEffect(() => {
         const controller = new AbortController();
+        let disposed = false;
+        const timeoutId = window.setTimeout(() => controller.abort(), ANALYSIS_TRADES_TIMEOUT_MS);
 
         const run = async () => {
             setAnalysisTradesLoading(true);
@@ -558,7 +566,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                         : null,
                 );
             } catch {
-                if (!controller.signal.aborted) {
+                if (!disposed) {
                     setAnalysisTrades(signalHistoryTrades);
                     setAnalysisUsesSignalHistory(true);
                     setAnalysisCandles([]);
@@ -567,7 +575,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponíveis.');
                 }
             } finally {
-                if (!controller.signal.aborted) {
+                window.clearTimeout(timeoutId);
+                if (!disposed) {
                     setAnalysisTradesLoading(false);
                 }
             }
@@ -575,7 +584,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
         void run();
 
-        return () => controller.abort();
+        return () => {
+            disposed = true;
+            window.clearTimeout(timeoutId);
+            controller.abort();
+        };
     }, [opportunity.id, signalHistoryTrades]);
 
     const fallbackMarker = React.useMemo<StrategyChartMarker[]>(() => (
@@ -825,6 +838,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     strategyName={strategyDisplayName}
                     symbol={symbol}
                     timeframe={timeframe.toUpperCase()}
+                    viewportResetKey={`${symbol}|${timeframe}`}
+                    viewportReady={!loading && !analysisTradesLoading}
                     strategyTransparency={activeStrategyTransparency}
                     title={<span id="chart-modal-title">{symbol}</span>}
                     subtitle={`${strategyDisplayName} • ${timeframe.toUpperCase()} • ${sortedCandles.length} velas • candle ref ${formatTimestamp(opportunity.indicator_values_candle_time)}`}
@@ -873,6 +888,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             strategyTransparency={activeStrategyTransparency}
                         />
                     ) : undefined}
+                    showTransparencyDetails={!isTradesView}
                     footerContent={(
                         <div className="flex flex-wrap items-center gap-3 text-xs text-[#929aa5]">
                             <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#fcd535]" /> Compra</span>
@@ -890,9 +906,15 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     shellTestId="chart-modal-main-chart-shell"
                     zoomTestIdPrefix="chart"
                     visibleBarsTestId="chart-visible-bars"
-                    heightClassName="h-[420px] w-full sm:h-[560px] xl:h-full xl:min-h-[calc(100vh-330px)]"
-                    gridClassName="grid min-h-0 flex-1 gap-3 overflow-auto p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_320px]"
-                    sideClassName="rounded-lg border border-[#2b3139] bg-[#1e2329] p-3 xl:max-h-[calc(100vh-276px)] xl:overflow-auto"
+                    heightClassName={isTradesView
+                        ? 'h-[360px] w-full shrink-0 sm:h-[420px]'
+                        : 'h-[420px] w-full sm:h-[560px] xl:h-[calc(100vh-330px)] xl:min-h-[420px] xl:max-h-[720px]'}
+                    gridClassName={isTradesView
+                        ? 'grid gap-3 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_320px]'
+                        : 'grid min-h-0 flex-1 gap-3 overflow-auto p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_320px]'}
+                    sideClassName={isTradesView
+                        ? 'rounded-lg border border-[#2b3139] bg-[#1e2329] p-3'
+                        : 'rounded-lg border border-[#2b3139] bg-[#1e2329] p-3 xl:max-h-[calc(100vh-276px)] xl:overflow-auto'}
                     className="flex min-h-0 flex-1 flex-col border-0"
                 />
             </div>

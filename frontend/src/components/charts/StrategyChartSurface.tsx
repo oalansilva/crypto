@@ -80,6 +80,8 @@ interface StrategyChartSurfaceProps {
     showSideContent?: boolean
     belowContent?: React.ReactNode
     footerContent?: React.ReactNode
+    /** When false, keep indicator overlays but hide the large details panel under the chart. */
+    showTransparencyDetails?: boolean
     loading?: boolean
     error?: string | null
     markerCount?: number
@@ -94,6 +96,10 @@ interface StrategyChartSurfaceProps {
     gridClassName?: string
     sideClassName?: string
     className?: string
+    /** When this key changes, re-apply the default visible range (e.g. `${symbol}|${timeframe}`). */
+    viewportResetKey?: string
+    /** When false, candle updates may render but the default viewport is deferred until ready. */
+    viewportReady?: boolean
 }
 
 const LOGICAL_RANGE_PADDING = 8
@@ -200,6 +206,7 @@ export function StrategyChartSurface({
     showSideContent = true,
     belowContent,
     footerContent,
+    showTransparencyDetails = true,
     loading,
     error,
     markerCount,
@@ -214,6 +221,8 @@ export function StrategyChartSurface({
     gridClassName = 'grid gap-3 p-3 xl:grid-cols-[minmax(0,1fr)_260px]',
     sideClassName = 'rounded-lg border border-[#2b3139] bg-[#1e2329] p-4',
     className = '',
+    viewportResetKey,
+    viewportReady = true,
 }: StrategyChartSurfaceProps) {
     const shellRef = React.useRef<HTMLDivElement>(null)
     const chartRef = React.useRef<HTMLDivElement>(null)
@@ -227,8 +236,14 @@ export function StrategyChartSurface({
     const syncingCrosshairRef = React.useRef(false)
     const priceLineRefs = React.useRef<IPriceLine[]>([])
     const tooltipDataRef = React.useRef<Map<number, StrategyChartSnapshot>>(new Map())
+    const appliedViewportKeyRef = React.useRef<string | null>(null)
+    const lastAppliedCandleCountRef = React.useRef(0)
+    const userAdjustedViewportRef = React.useRef(false)
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null)
     const [tooltip, setTooltip] = React.useState<StrategyChartSnapshot | null>(null)
+    const resolvedViewportKey = viewportResetKey
+        || [symbol, timeframe].filter(Boolean).join('|')
+        || 'default'
 
     const transparency = React.useMemo(
         () => normalizeStrategyTransparency(strategyTransparency),
@@ -323,38 +338,40 @@ export function StrategyChartSurface({
             ? (currentRange.from + currentRange.to) / 2
             : Math.max(candlestickData.length - 1, 0) / 2
         const nextRange = clampLogicalRange(center, nextSpan, candlestickData.length)
+        userAdjustedViewportRef.current = true
         chart.timeScale().setVisibleLogicalRange(nextRange)
         syncVisibleBars(nextRange)
     }, [candlestickData.length, syncVisibleBars])
 
-    const resetZoom = React.useCallback(() => {
+    const applyDefaultViewport = React.useCallback(() => {
         const chart = chartApiRef.current
         if (!chart) return
         const defaultRange = getDefaultLogicalRange(candlestickData.length)
         if (defaultRange) {
             chart.timeScale().setVisibleLogicalRange(defaultRange)
             syncVisibleBars(defaultRange)
-            return
+        } else {
+            chart.timeScale().fitContent()
+            syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
         }
-        chart.timeScale().fitContent()
-        syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
-    }, [candlestickData.length, syncVisibleBars])
+        appliedViewportKeyRef.current = resolvedViewportKey
+        lastAppliedCandleCountRef.current = candlestickData.length
+    }, [candlestickData.length, resolvedViewportKey, syncVisibleBars])
+
+    const resetZoom = React.useCallback(() => {
+        if (!chartApiRef.current) return
+        userAdjustedViewportRef.current = false
+        applyDefaultViewport()
+    }, [applyDefaultViewport])
 
     const handleWheelZoom = React.useCallback((deltaY: number) => {
         if (candlestickData.length === 0 || Math.abs(deltaY) < 3) return
         applyZoom(deltaY < 0 ? 'in' : 'out')
     }, [applyZoom, candlestickData.length])
 
-    const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-        if (candlestickData.length === 0 || Math.abs(event.deltaY) < 3) return
-        event.preventDefault()
-        event.stopPropagation()
-        handleWheelZoom(event.deltaY)
-    }
-
     React.useEffect(() => {
-        const shell = shellRef.current
-        if (!shell) return undefined
+        const chartEl = chartRef.current
+        if (!chartEl) return undefined
 
         const onWheel = (event: WheelEvent) => {
             if (candlestickData.length === 0 || Math.abs(event.deltaY) < 3) return
@@ -363,8 +380,8 @@ export function StrategyChartSurface({
             handleWheelZoom(event.deltaY)
         }
 
-        shell.addEventListener('wheel', onWheel, { passive: false, capture: true })
-        return () => shell.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions)
+        chartEl.addEventListener('wheel', onWheel, { passive: false, capture: true })
+        return () => chartEl.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions)
     }, [candlestickData.length, handleWheelZoom])
 
     React.useEffect(() => {
@@ -396,13 +413,13 @@ export function StrategyChartSurface({
                 rightOffset: 8,
             },
             handleScroll: {
-                mouseWheel: true,
+                mouseWheel: false,
                 pressedMouseMove: true,
                 horzTouchDrag: true,
                 vertTouchDrag: true,
             },
             handleScale: {
-                mouseWheel: true,
+                mouseWheel: false,
                 pinch: true,
                 axisPressedMouseMove: true,
                 axisDoubleClickReset: true,
@@ -470,6 +487,9 @@ export function StrategyChartSurface({
             candleSeriesRef.current = null
             volumeSeriesRef.current = null
             if (chartApiRef.current === chart) chartApiRef.current = null
+            appliedViewportKeyRef.current = null
+            lastAppliedCandleCountRef.current = 0
+            userAdjustedViewportRef.current = false
             chart.remove()
         }
     }, [syncVisibleBars])
@@ -486,19 +506,37 @@ export function StrategyChartSurface({
         if (candlestickData.length === 0) {
             setTooltip(null)
             syncVisibleBars(null)
+            appliedViewportKeyRef.current = null
+            lastAppliedCandleCountRef.current = 0
             return
         }
 
-        const defaultRange = getDefaultLogicalRange(candlestickData.length)
-        if (defaultRange) {
-            chart.timeScale().setVisibleLogicalRange(defaultRange)
-            syncVisibleBars(defaultRange)
+        // Defer default viewport until host finished staged candle loads.
+        if (!viewportReady) {
+            syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
             return
         }
 
-        chart.timeScale().fitContent()
-        syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
-    }, [candlestickData, syncVisibleBars, volumeData])
+        const keyChanged = appliedViewportKeyRef.current !== resolvedViewportKey
+        if (keyChanged) {
+            userAdjustedViewportRef.current = false
+            applyDefaultViewport()
+            return
+        }
+
+        if (userAdjustedViewportRef.current) {
+            syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
+            return
+        }
+
+        // Already applied for this key: preserve viewport across later candle merges.
+        if (appliedViewportKeyRef.current === resolvedViewportKey) {
+            syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
+            return
+        }
+
+        applyDefaultViewport()
+    }, [applyDefaultViewport, candlestickData, resolvedViewportKey, syncVisibleBars, viewportReady, volumeData])
 
     React.useEffect(() => {
         const candleSeries = candleSeriesRef.current
@@ -764,16 +802,16 @@ export function StrategyChartSurface({
             </div>
 
             {error ? (
-                <div className="mx-3 mt-3 rounded-lg border border-[#f6465d]/40 bg-[#f6465d]/10 px-4 py-3 text-sm text-[#ffb1ac]">
+                <div className="mx-3 mt-3 shrink-0 rounded-lg border border-[#f6465d]/40 bg-[#f6465d]/10 px-4 py-3 text-sm text-[#ffb1ac]">
                     {error}
                 </div>
             ) : null}
 
+            <div className={belowContent ? 'min-h-0 flex-1 overflow-auto' : undefined}>
             <div className={gridClassName}>
                 <div
                     ref={shellRef}
-                    className="relative min-h-[420px] rounded-lg border border-[#2b3139] bg-[#0b0e11] p-2"
-                    onWheel={handleWheel}
+                    className="relative min-h-[360px] rounded-lg border border-[#2b3139] bg-[#0b0e11] p-2 sm:min-h-[420px]"
                     data-testid={shellTestId}
                     data-current-marker={currentMarkerLabel}
                 >
@@ -810,7 +848,7 @@ export function StrategyChartSurface({
                         </div>
                     ) : null}
 
-                    {transparency ? (
+                    {showTransparencyDetails && transparency ? (
                         <section
                             className="mt-3 rounded-lg border border-[#2b3139] bg-[#1e2329] p-3 sm:p-4"
                             aria-labelledby={`${rootTestId}-strategy-transparency-title`}
@@ -938,9 +976,10 @@ export function StrategyChartSurface({
                     {belowContent}
                 </div>
             ) : null}
+            </div>
 
             {footerContent ? (
-                <footer className="border-t border-[#2b3139] bg-[#1e2329] px-5 py-3">
+                <footer className="shrink-0 border-t border-[#2b3139] bg-[#1e2329] px-5 py-3">
                     {footerContent}
                 </footer>
             ) : null}

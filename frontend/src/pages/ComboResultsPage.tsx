@@ -4,11 +4,14 @@ import { Activity, BarChart3, ArrowLeft } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
+import { SignalHistoryPanel } from '../components/trades/SignalHistoryPanel'
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters'
 import { buildTradeMarkers } from '@/lib/tradeMarkers'
+import { buildSignalHistoryMarkers, type MonitorSyncStatus } from '@/lib/signalHistory'
 import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
+import type { OpportunitySignalHistoryItem } from '@/components/monitor/types'
 
 interface BacktestResult {
     template_name: string
@@ -38,6 +41,8 @@ interface BacktestResult {
     }>
     indicator_data: Record<string, number[]>
     strategy_transparency?: StrategyTransparency | Record<string, unknown> | null
+    signal_history?: OpportunitySignalHistoryItem[] | null
+    monitor_sync_status?: MonitorSyncStatus | null
     candles: Array<{
         timestamp_utc: string
         open: number
@@ -247,7 +252,12 @@ export function ComboResultsPage() {
         ? { ...baseMetrics, ...derivedMetrics }
         : baseMetrics
 
-    const markers = buildTradeMarkers(result.trades, { direction, timeframe: result.timeframe })
+    const signalHistory = Array.isArray(result.signal_history) ? result.signal_history : []
+    const markers = signalHistory.length > 0
+        ? buildSignalHistoryMarkers(signalHistory, direction, undefined)
+        : buildTradeMarkers(result.trades, { direction, timeframe: result.timeframe })
+
+    const showMonitorSignalHistory = returnTo === '/favorites' || Array.isArray(result.signal_history) || Boolean(result.monitor_sync_status)
 
     return (
         <div className="app-page combo-page relative overflow-hidden">
@@ -322,6 +332,16 @@ export function ComboResultsPage() {
                             <p className="text-zinc-400">Chart data not available for this run.</p>
                         </div>
                     )}
+
+                    {showMonitorSignalHistory ? (
+                        <SignalHistoryPanel
+                            history={result.signal_history}
+                            direction={direction}
+                            syncStatus={result.monitor_sync_status}
+                            testId="favorites-signal-history"
+                            className="glass-strong rounded-[28px] border border-zinc-200 p-6"
+                        />
+                    ) : null}
 
                     <StrategyTradesTable
                         trades={result.trades}

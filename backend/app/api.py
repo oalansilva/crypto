@@ -291,6 +291,26 @@ def _current_market_bucket_start(
     return pd.Timestamp(bucket_epoch, unit="s", tz=timezone.utc)
 
 
+def _persisted_candles_lag_seconds(candles: list[dict[str, Any]]) -> float | None:
+    if not candles:
+        return None
+    raw_timestamp = candles[-1].get("timestamp_utc")
+    parsed = pd.to_datetime(raw_timestamp, utc=True, errors="coerce")
+    if pd.isna(parsed):
+        return None
+    now = pd.Timestamp.now(tz=timezone.utc)
+    return max(0.0, float((now - parsed).total_seconds()))
+
+
+def _persisted_candles_max_lag_seconds(timeframe: str) -> float:
+    return float(
+        _PERSISTED_CANDLES_MAX_LAG_SECONDS.get(
+            str(timeframe or "").strip().lower(),
+            24 * 60 * 60,
+        )
+    )
+
+
 def _is_persisted_candles_fresh(candles: list[dict[str, Any]], timeframe: str) -> bool:
     if not candles:
         return False
@@ -304,13 +324,10 @@ def _is_persisted_candles_fresh(candles: list[dict[str, Any]], timeframe: str) -
     if current_bucket is not None and parsed < current_bucket:
         return False
 
-    now = pd.Timestamp.now(tz=timezone.utc)
-    lag_seconds = max(0.0, (now - parsed).total_seconds())
-    max_lag_seconds = _PERSISTED_CANDLES_MAX_LAG_SECONDS.get(
-        str(timeframe or "").strip().lower(),
-        24 * 60 * 60,
-    )
-    return lag_seconds <= max_lag_seconds
+    lag_seconds = _persisted_candles_lag_seconds(candles)
+    if lag_seconds is None:
+        return False
+    return lag_seconds <= _persisted_candles_max_lag_seconds(timeframe)
 
 
 def _persisted_candles_payload(
@@ -321,8 +338,11 @@ def _persisted_candles_payload(
     limit: int,
     candles: list[dict[str, Any]],
     data_source: str,
+    degraded: bool = False,
+    fresh: bool | None = None,
+    lag_seconds: float | None = None,
 ) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "symbol": raw_symbol,
         "asset_type": asset_type,
         "timeframe": timeframe,
@@ -331,6 +351,15 @@ def _persisted_candles_payload(
         "count": len(candles),
         "candles": candles,
     }
+    if fresh is not None:
+        payload["fresh"] = bool(fresh)
+    if degraded:
+        payload["degraded"] = True
+        payload["fresh"] = False
+    if lag_seconds is not None:
+        payload["lag_seconds"] = round(float(lag_seconds), 3)
+        payload["lag_threshold_seconds"] = _persisted_candles_max_lag_seconds(timeframe)
+    return payload
 
 
 def _read_candles_cache(
@@ -436,25 +465,43 @@ async def get_market_candles(
                 persisted = _OHLCV_REPO.read_recent_candles(raw_symbol, tf, limit)
             except Exception:
                 persisted = []
-            if persisted and (
-                _is_persisted_candles_fresh(persisted, tf)
-                or (canonical_mode and not direct_binance_candle_fetch_allowed())
-            ):
-                payload = _persisted_candles_payload(
-                    raw_symbol=raw_symbol,
-                    asset_type=asset_type,
-                    timeframe=tf,
-                    limit=limit,
-                    candles=persisted,
-                    data_source="market_ohlcv" if canonical_mode else "timescaledb",
-                )
-                payload["canonical_candles"] = canonical_mode
-                _write_candles_cache(raw_symbol, tf, limit, payload)
-                return payload
-            stale_persisted = persisted
+            if persisted:
+                is_fresh = _is_persisted_candles_fresh(persisted, tf)
+                lag_seconds = _persisted_candles_lag_seconds(persisted)
+                if is_fresh:
+                    payload = _persisted_candles_payload(
+                        raw_symbol=raw_symbol,
+                        asset_type=asset_type,
+                        timeframe=tf,
+                        limit=limit,
+                        candles=persisted,
+                        data_source="market_ohlcv" if canonical_mode else "timescaledb",
+                        fresh=True,
+                        lag_seconds=lag_seconds,
+                    )
+                    payload["canonical_candles"] = canonical_mode
+                    _write_candles_cache(raw_symbol, tf, limit, payload)
+                    return payload
+                if canonical_mode and not direct_binance_candle_fetch_allowed():
+                    payload = _persisted_candles_payload(
+                        raw_symbol=raw_symbol,
+                        asset_type=asset_type,
+                        timeframe=tf,
+                        limit=limit,
+                        candles=persisted,
+                        data_source="market_ohlcv-stale",
+                        degraded=True,
+                        lag_seconds=lag_seconds,
+                    )
+                    payload["canonical_candles"] = True
+                    payload["direct_fetch_skipped"] = True
+                    _write_candles_cache(raw_symbol, tf, limit, payload)
+                    return payload
+                stale_persisted = persisted
 
         if asset_type == "crypto" and canonical_mode and not direct_binance_candle_fetch_allowed():
             if stale_persisted:
+                lag_seconds = _persisted_candles_lag_seconds(stale_persisted)
                 payload = _persisted_candles_payload(
                     raw_symbol=raw_symbol,
                     asset_type=asset_type,
@@ -462,6 +509,8 @@ async def get_market_candles(
                     limit=limit,
                     candles=stale_persisted,
                     data_source="market_ohlcv-stale",
+                    degraded=True,
+                    lag_seconds=lag_seconds,
                 )
                 payload["canonical_candles"] = True
                 payload["direct_fetch_skipped"] = True
@@ -499,6 +548,7 @@ async def get_market_candles(
                 df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
             except Exception:
                 if stale_persisted:
+                    lag_seconds = _persisted_candles_lag_seconds(stale_persisted)
                     payload = _persisted_candles_payload(
                         raw_symbol=raw_symbol,
                         asset_type=asset_type,
@@ -506,12 +556,15 @@ async def get_market_candles(
                         limit=limit,
                         candles=stale_persisted,
                         data_source="timescaledb-stale",
+                        degraded=True,
+                        lag_seconds=lag_seconds,
                     )
                     _write_candles_cache(raw_symbol, tf, limit, payload)
                     return payload
                 raise
         candles = _normalize_candles_frame(df, limit=limit)
         if not candles and stale_persisted:
+            lag_seconds = _persisted_candles_lag_seconds(stale_persisted)
             payload = _persisted_candles_payload(
                 raw_symbol=raw_symbol,
                 asset_type=asset_type,
@@ -519,6 +572,8 @@ async def get_market_candles(
                 limit=limit,
                 candles=stale_persisted,
                 data_source="timescaledb-stale",
+                degraded=True,
+                lag_seconds=lag_seconds,
             )
             _write_candles_cache(raw_symbol, tf, limit, payload)
             return payload
@@ -554,7 +609,17 @@ async def get_market_candles(
 @router.get("/market/candles/metrics")
 async def get_market_candles_metrics():
     payload = _OHLCV_REPO.get_metrics()
+    writer_state = None
+    try:
+        from app.services.runtime_status import read_candle_writer_state
+
+        writer_state = read_candle_writer_state()
+    except Exception:
+        writer_state = {"status": "unavailable"}
     return {
         "source": "market_ohlcv" if _OHLCV_REPO.enabled else "disabled",
         "metrics": payload,
+        "candle_writer": {
+            "latest_run": writer_state,
+        },
     }

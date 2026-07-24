@@ -1,0 +1,21 @@
+[Unit]
+Description=Cripto Farol DEV canonical candle writer
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__ROOT_DIR__/backend
+Environment=CRYPTO_CANDLES_CANONICAL_MODE=1
+Environment=CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK=0
+Environment=CRYPTO_CANDLES_WRITER_ENABLED=1
+Environment=MARKET_OHLCV_INGESTION_ENABLED=0
+Environment=MARKET_OHLCV_TIMEFRAMES=15m,1d
+Environment=MARKET_OHLCV_SYMBOL_LIMIT=40
+Environment=CRYPTO_CANDLES_WRITER_LOCK_FILE=/tmp/crypto-candle-writer-dev.lock
+Environment=CRYPTO_CANDLES_WRITER_STATE_FILE=/tmp/crypto-candle-writer-dev-state.json
+ExecStart=/bin/bash -lc 'set -euo pipefail; set -a; if [ -f "__ROOT_DIR__/backend/.env" ]; then source "__ROOT_DIR__/backend/.env"; fi; if [ -f "__ROOT_DIR__/.env" ]; then source "__ROOT_DIR__/.env"; fi; set +a; export CRYPTO_CANDLES_CANONICAL_MODE=1 CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK=0 CRYPTO_CANDLES_WRITER_ENABLED=1 MARKET_OHLCV_INGESTION_ENABLED=0 MARKET_OHLCV_TIMEFRAMES="${MARKET_OHLCV_TIMEFRAMES:-15m,1d}" MARKET_OHLCV_SYMBOL_LIMIT="${MARKET_OHLCV_SYMBOL_LIMIT:-40}" CRYPTO_CANDLES_WRITER_LOCK_FILE=/tmp/crypto-candle-writer-dev.lock CRYPTO_CANDLES_WRITER_STATE_FILE=/tmp/crypto-candle-writer-dev-state.json; exec "__ROOT_DIR__/backend/.venv/bin/python" "__ROOT_DIR__/backend/scripts/run_canonical_candle_writer_once.py"'
+StandardOutput=append:/tmp/crypto-candle-writer-dev.log
+StandardError=append:/tmp/crypto-candle-writer-dev.log
+TimeoutStartSec=3600
+Nice=10

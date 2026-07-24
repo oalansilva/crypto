@@ -266,6 +266,116 @@ export function hasAvailableIndicatorSeries(
     ))
 }
 
+function seriesPointKey(timestampUtc: string): number {
+    return Math.floor(Date.parse(timestampUtc) / 1000)
+}
+
+function mergeIndicatorSeriesPoints(
+    base: StrategyIndicatorPoint[],
+    overlay: StrategyIndicatorPoint[],
+): StrategyIndicatorPoint[] {
+    const byTime = new Map<number, StrategyIndicatorPoint>()
+    for (const point of base) {
+        const key = seriesPointKey(point.timestamp_utc)
+        if (Number.isFinite(key)) byTime.set(key, point)
+    }
+    for (const point of overlay) {
+        const key = seriesPointKey(point.timestamp_utc)
+        if (Number.isFinite(key)) byTime.set(key, point)
+    }
+    return [...byTime.entries()]
+        .sort((left, right) => left[0] - right[0])
+        .map(([, point]) => point)
+}
+
+/**
+ * Merge indicator series so live/monitor points extend a cached full-history
+ * manifesto. Overlay wins on overlapping timestamps; metadata prefers base.
+ */
+export function mergeStrategyTransparencySeries(
+    baseValue: unknown,
+    overlayValue: unknown,
+): StrategyTransparency | null {
+    const base = normalizeStrategyTransparency(baseValue)
+    const overlay = normalizeStrategyTransparency(overlayValue)
+    if (!base && !overlay) return null
+    if (!base) return overlay
+    if (!overlay) return base
+
+    const overlayByKey = new Map(overlay.indicators.map((indicator) => [indicator.key, indicator]))
+    const seen = new Set<string>()
+    const indicators: StrategyTransparencyIndicator[] = []
+
+    for (const indicator of base.indicators) {
+        seen.add(indicator.key)
+        const live = overlayByKey.get(indicator.key)
+        if (!live || live.series.length === 0) {
+            indicators.push(indicator)
+            continue
+        }
+        const series = mergeIndicatorSeriesPoints(indicator.series, live.series)
+        indicators.push({
+            ...indicator,
+            series,
+            availability: normalizeAvailability(
+                series.length > 0 ? 'available' : indicator.availability,
+                series.length > 0,
+            ),
+            unavailable_reason: series.length > 0 ? '' : indicator.unavailable_reason,
+            color: indicator.color || live.color,
+            label: indicator.label || live.label,
+        })
+    }
+
+    for (const indicator of overlay.indicators) {
+        if (seen.has(indicator.key)) continue
+        indicators.push(indicator)
+    }
+
+    return {
+        ...base,
+        status: indicators.some((item) => item.availability === 'available' && item.series.length > 0)
+            ? 'available'
+            : base.status || overlay.status,
+        indicators,
+        display_name: base.display_name || overlay.display_name,
+        description: base.description || overlay.description,
+        effective_parameters: Object.keys(base.effective_parameters).length > 0
+            ? base.effective_parameters
+            : overlay.effective_parameters,
+        logic_blocks: base.logic_blocks.length > 0 ? base.logic_blocks : overlay.logic_blocks,
+    }
+}
+
+export function latestAvailableSeriesTimestampMs(
+    transparency: StrategyTransparency | null | undefined,
+): number | null {
+    if (!transparency) return null
+    let latest: number | null = null
+    for (const indicator of transparency.indicators) {
+        if (indicator.availability !== 'available' || indicator.series.length === 0) continue
+        const last = indicator.series[indicator.series.length - 1]
+        const ms = Date.parse(last?.timestamp_utc || '')
+        if (!Number.isFinite(ms)) continue
+        latest = latest == null ? ms : Math.max(latest, ms)
+    }
+    return latest
+}
+
+/** Drop trailing candles that have no matching indicator coverage yet. */
+export function clipCandlesToIndicatorCoverage<T extends { timestamp_utc?: string; timestamp?: string }>(
+    candles: T[],
+    transparency: StrategyTransparency | null | undefined,
+): T[] {
+    const latestMs = latestAvailableSeriesTimestampMs(transparency)
+    if (latestMs == null || candles.length === 0) return candles
+    const clipped = candles.filter((candle) => {
+        const ms = Date.parse(String(candle.timestamp_utc ?? candle.timestamp ?? ''))
+        return Number.isFinite(ms) && ms <= latestMs
+    })
+    return clipped.length > 0 ? clipped : candles
+}
+
 export function indicatorValueAtTimestamp(
     indicator: StrategyTransparencyIndicator,
     timestampSeconds: number,

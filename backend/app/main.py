@@ -12,7 +12,7 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 import logging
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.api import router
@@ -30,7 +30,6 @@ from app.routes.workflow_validation import router as workflow_validation_router
 from app.routes.market import router as market_router
 from app.routes.onchain_metrics import router as onchain_metrics_router
 from app.routes.portfolio import router as portfolio_router
-from app.routes.signals import router as signals_router
 from app.routes.ai_dashboard import router as ai_dashboard_router
 from app.routes.auth import router as auth_router
 from app.routes.leads import router as leads_router
@@ -285,16 +284,6 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def add_signals_disclaimer_header(request: Request, call_next):
-    response = await call_next(request)
-    if request.url.path.startswith("/api/signals"):
-        response.headers["X-Disclaimer"] = (
-            "Isenção de responsabilidade: este não é advice financeiro."
-        )
-    return response
-
-
 # Include API routes
 app.include_router(router)
 app.include_router(favorites_router)
@@ -311,7 +300,6 @@ app.include_router(workflow_validation_router)
 app.include_router(market_router)
 app.include_router(onchain_metrics_router)
 app.include_router(portfolio_router)
-app.include_router(signals_router)
 app.include_router(ai_dashboard_router)
 app.include_router(auth_router)
 app.include_router(leads_router)

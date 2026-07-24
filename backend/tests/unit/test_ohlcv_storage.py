@@ -335,6 +335,41 @@ def test_ohlcv_ingestion_lag_threshold_reads_env_or_defaults(monkeypatch):
     assert service._ingestion_lag_warning_threshold("1m") == 180
 
 
+def test_ohlcv_ingestion_records_lag_alert_when_latest_candle_is_stale(monkeypatch):
+    service = _new_service(monkeypatch)
+    service._repo._enabled = True
+    monkeypatch.setenv("MARKET_OHLCV_MAX_LAG_SECONDS_1D", "3600")
+
+    class _Repo:
+        enabled = True
+
+        def get_latest_candle_time(self, *_args, **_kwargs):
+            return datetime.now(timezone.utc) - timedelta(days=5)
+
+        def write_candles(self, *_args, **_kwargs):
+            raise AssertionError("empty provider frame should not write")
+
+    service._repo = _Repo()
+    monkeypatch.setattr(service, "_resolve_source", lambda *_: CCXT_SOURCE)
+    monkeypatch.setattr(
+        service,
+        "_fetch_provider_df",
+        lambda *_args, **_kwargs: pd.DataFrame(),
+    )
+    monkeypatch.setattr(service, "_resolve_since", lambda *_: datetime.now(timezone.utc))
+
+    before = ohlcv_storage._METRICS.lag_alerts()
+    service._ingest_symbol("BTC/USDT", "1d")
+    after = ohlcv_storage._METRICS.lag_alerts()
+    assert after == before + 1
+    snapshot = ohlcv_storage.get_ohlcv_metrics()
+    assert snapshot["ingest"]["lag_alerts"] == after
+    assert any(
+        item["symbol"] == "BTC/USDT" and item["timeframe"] == "1d" and item["alert"] is True
+        for item in snapshot["ingest"]["latest_lag_alerts"]
+    )
+
+
 def test_ohlcv_ingestion_symbol_skips_stooq_non_1d_and_runs_loop(monkeypatch):
     service = _new_service(monkeypatch)
     service._resolve_source = lambda _symbol, _timeframe: STOOQ_SOURCE

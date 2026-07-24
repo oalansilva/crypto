@@ -92,6 +92,8 @@ class OhlcvStorageMetrics:
         self._rows_written = 0
         self._rows_received = 0
         self._rows_duplicate = 0
+        self._lag_alerts = 0
+        self._latest_lag_by_key: dict[str, dict[str, Any]] = {}
         self._stale_seconds_by_timeframe: dict[str, deque[float]] = defaultdict(
             lambda: deque(maxlen=5000)
         )
@@ -113,6 +115,32 @@ class OhlcvStorageMetrics:
                 self._stale_seconds_by_timeframe[_normalize_timeframe(timeframe)].append(
                     float(lag_seconds)
                 )
+                key = f"{_normalize_symbol(symbol)}|{_normalize_timeframe(timeframe)}"
+                self._latest_lag_by_key[key] = {
+                    "symbol": _normalize_symbol(symbol),
+                    "timeframe": _normalize_timeframe(timeframe),
+                    "lag_seconds": float(lag_seconds),
+                    "alert": False,
+                }
+
+    def record_lag_alert(
+        self,
+        *,
+        symbol: str,
+        timeframe: str,
+        lag_seconds: float,
+        lag_threshold_seconds: float,
+    ) -> None:
+        with self._lock:
+            self._lag_alerts += 1
+            key = f"{_normalize_symbol(symbol)}|{_normalize_timeframe(timeframe)}"
+            self._latest_lag_by_key[key] = {
+                "symbol": _normalize_symbol(symbol),
+                "timeframe": _normalize_timeframe(timeframe),
+                "lag_seconds": float(lag_seconds),
+                "lag_threshold_seconds": float(lag_threshold_seconds),
+                "alert": True,
+            }
 
     def record_query_latency(self, seconds: float) -> None:
         with self._lock:
@@ -122,18 +150,27 @@ class OhlcvStorageMetrics:
         with self._lock:
             return int(self._rows_duplicate)
 
+    def lag_alerts(self) -> int:
+        with self._lock:
+            return int(self._lag_alerts)
+
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
+            alert_entries = [
+                dict(item) for item in self._latest_lag_by_key.values() if item.get("alert")
+            ]
             return {
                 "ingest": {
                     "rows_written": self._rows_written,
                     "rows_received": self._rows_received,
                     "duplicates_skipped": self._rows_duplicate,
+                    "lag_alerts": self._lag_alerts,
                     "lag_seconds": {
                         "p50": _percentile(list(self._insert_lag_seconds), 0.50),
                         "p95": _percentile(list(self._insert_lag_seconds), 0.95),
                         "p99": _percentile(list(self._insert_lag_seconds), 0.99),
                     },
+                    "latest_lag_alerts": alert_entries[-20:],
                 },
                 "query": {
                     "latency_seconds": {
@@ -780,26 +817,53 @@ class OhlcvIngestionService:
             return
 
         if df is None or df.empty:
+            latest = self._repo.get_latest_candle_time(normalized_symbol, timeframe)
+            if latest is not None:
+                lag = datetime.now(timezone.utc) - latest
+                threshold = self._ingestion_lag_warning_threshold(timeframe)
+                if lag.total_seconds() > threshold:
+                    logger.warning(
+                        "Market OHLCV ingestion lag exceeds threshold",
+                        extra={
+                            "event": "ohlcv_ingestion_lag_alert",
+                            "symbol": normalized_symbol,
+                            "timeframe": timeframe,
+                            "lag_seconds": lag.total_seconds(),
+                            "lag_threshold_seconds": threshold,
+                        },
+                    )
+                    _METRICS.record_lag_alert(
+                        symbol=normalized_symbol,
+                        timeframe=timeframe,
+                        lag_seconds=lag.total_seconds(),
+                        lag_threshold_seconds=threshold,
+                    )
             return
 
         try:
             written = self._repo.write_candles(normalized_symbol, timeframe, source, df)
+            latest = self._repo.get_latest_candle_time(normalized_symbol, timeframe)
+            if latest:
+                lag = datetime.now(timezone.utc) - latest
+                threshold = self._ingestion_lag_warning_threshold(timeframe)
+                if lag.total_seconds() > threshold:
+                    logger.warning(
+                        "Market OHLCV ingestion lag exceeds threshold",
+                        extra={
+                            "event": "ohlcv_ingestion_lag_alert",
+                            "symbol": normalized_symbol,
+                            "timeframe": timeframe,
+                            "lag_seconds": lag.total_seconds(),
+                            "lag_threshold_seconds": threshold,
+                        },
+                    )
+                    _METRICS.record_lag_alert(
+                        symbol=normalized_symbol,
+                        timeframe=timeframe,
+                        lag_seconds=lag.total_seconds(),
+                        lag_threshold_seconds=threshold,
+                    )
             if written:
-                latest = self._repo.get_latest_candle_time(normalized_symbol, timeframe)
-                if latest:
-                    lag = datetime.now(timezone.utc) - latest
-                    threshold = self._ingestion_lag_warning_threshold(timeframe)
-                    if lag.total_seconds() > threshold:
-                        logger.warning(
-                            "Market OHLCV ingestion lag exceeds threshold",
-                            extra={
-                                "event": "ohlcv_ingestion_lag_alert",
-                                "symbol": normalized_symbol,
-                                "timeframe": timeframe,
-                                "lag_seconds": lag.total_seconds(),
-                                "lag_threshold_seconds": threshold,
-                            },
-                        )
                 logger.debug(
                     "Ingested %s candles for %s [%s] from source=%s",
                     written,
@@ -896,3 +960,7 @@ def stop_ohlcv_ingestion() -> None:
 
 def run_ohlcv_ingestion_once() -> int:
     return _INGESTION_SERVICE.run_once()
+
+
+def get_ohlcv_metrics() -> dict[str, Any]:
+    return _METRICS.snapshot()

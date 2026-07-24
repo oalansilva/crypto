@@ -9,11 +9,20 @@ import { useAuth } from '@/stores/authStore';
 import { ScreenHelpPanel } from '@/components/onboarding/ScreenHelpPanel';
 import {
     hasAvailableIndicatorSeries,
+    mergeStrategyTransparencySeries,
     type StrategyTransparency,
 } from '@/lib/strategyTransparency';
 import type { TradeExplanation } from '@/types/tradeExplanation';
+import type { MonitorSyncStatus } from '@/lib/signalHistory';
 
 import * as XLSX from 'xlsx';
+
+type MonitorSignalSyncResult = {
+    trades: any[] | null;
+    signal_history: MonitorSignalHistoryItem[];
+    status: MonitorSyncStatus;
+    strategy_transparency?: StrategyTransparency | Record<string, unknown> | null;
+};
 
 interface FavoriteStrategy {
     id: number;
@@ -57,12 +66,16 @@ interface MonitorOpportunity {
     name?: string;
     signal_history?: MonitorSignalHistoryItem[] | null;
     trade_explanation?: TradeExplanation | null;
+    strategy_transparency?: StrategyTransparency | Record<string, unknown> | null;
 }
 
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
 
 const CURRENT_CHART_CANDLE_LIMIT = 300;
 const FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS = 2500;
+// Monitor signal history is required for Favoritos parity. Cold recompute of
+// /opportunities can take several seconds when the short-lived cache misses.
+const FAVORITE_MONITOR_SIGNAL_SYNC_TIMEOUT_MS = 15_000;
 
 const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
     const candles = fav.metrics?.analysis_candles;
@@ -540,9 +553,10 @@ const FavoritesDashboard: React.FC = () => {
         )) || null;
     };
 
-    const loadMonitorSyncedTrades = async (fav: FavoriteStrategy): Promise<any[] | null> => {
+    const loadMonitorSyncedTrades = async (fav: FavoriteStrategy): Promise<MonitorSignalSyncResult> => {
         const url = new URL(`${API_BASE_URL}/opportunities/`, window.location.origin);
-        url.searchParams.set('refresh', 'true');
+        // Prefer Monitor cache so "Ver resultados" does not wait on a full refresh.
+        url.searchParams.set('refresh', 'false');
         url.searchParams.set('tier', 'all');
 
         try {
@@ -553,15 +567,34 @@ const FavoritesDashboard: React.FC = () => {
             }
 
             const opportunity = findMatchingOpportunity(fav, payload);
+            if (!opportunity) {
+                return { trades: null, signal_history: [], status: 'missing', strategy_transparency: null };
+            }
+
+            const history = Array.isArray(opportunity.signal_history) ? opportunity.signal_history : [];
+            if (history.length === 0) {
+                return {
+                    trades: null,
+                    signal_history: [],
+                    status: 'empty',
+                    strategy_transparency: opportunity.strategy_transparency ?? null,
+                };
+            }
+
             const direction = String(fav.parameters?.direction || 'long').toLowerCase();
-            return buildTradesFromSignalHistory(
-                opportunity?.signal_history,
-                direction,
-                opportunity?.trade_explanation,
-            );
+            return {
+                trades: buildTradesFromSignalHistory(
+                    history,
+                    direction,
+                    opportunity?.trade_explanation,
+                ),
+                signal_history: history,
+                status: 'ok',
+                strategy_transparency: opportunity.strategy_transparency ?? null,
+            };
         } catch (error) {
             console.warn(`Falling back to saved favorite trades for ${fav.symbol} ${fav.timeframe}`, error);
-            return null;
+            return { trades: null, signal_history: [], status: 'error', strategy_transparency: null };
         }
     };
 
@@ -752,7 +785,13 @@ const FavoritesDashboard: React.FC = () => {
                 FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS,
                 () => console.warn(`Opening favorite analysis from saved summary for ${fav.symbol} ${fav.timeframe}; trade recovery timed out.`),
             );
-            const [currentCandles, monitorSyncedTrades] = await Promise.all([
+            const monitorSyncFallback: MonitorSignalSyncResult = {
+                trades: null,
+                signal_history: [],
+                status: 'timeout',
+                strategy_transparency: null,
+            };
+            const [currentCandles, monitorSync] = await Promise.all([
                 resolveWithTimeout(
                     loadCurrentChartCandles(fav),
                     recovered.candles || [],
@@ -761,16 +800,21 @@ const FavoritesDashboard: React.FC = () => {
                 ),
                 resolveWithTimeout(
                     loadMonitorSyncedTrades(fav),
-                    null,
-                    FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS,
+                    monitorSyncFallback,
+                    FAVORITE_MONITOR_SIGNAL_SYNC_TIMEOUT_MS,
                     () => console.warn(`Opening favorite analysis without monitor trade sync for ${fav.symbol} ${fav.timeframe}; monitor sync timed out.`),
                 ),
             ]);
-            const chartCandles = mergeAnalysisCandles(currentCandles, recovered.candles || []);
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
+            // Extend cached MA series with live Monitor points so overlays reach the newest candles.
+            analysisResult.strategy_transparency = mergeStrategyTransparencySeries(
+                analysisResult.strategy_transparency,
+                monitorSync.strategy_transparency,
+            ) ?? analysisResult.strategy_transparency ?? null;
+            const chartCandles = mergeAnalysisCandles(currentCandles, recovered.candles || []);
             analysisResult.candles = chartCandles || [];
-            if (monitorSyncedTrades && monitorSyncedTrades.length > 0) {
-                const mergedTrades = mergeFavoriteAndMonitorTrades(analysisResult.trades, monitorSyncedTrades);
+            if (monitorSync.trades && monitorSync.trades.length > 0) {
+                const mergedTrades = mergeFavoriteAndMonitorTrades(analysisResult.trades, monitorSync.trades);
                 analysisResult.trades = mergedTrades;
                 analysisResult.metrics = {
                     ...analysisResult.metrics,
@@ -781,7 +825,11 @@ const FavoritesDashboard: React.FC = () => {
 
             navigate('/combo/results', {
                 state: {
-                    result: analysisResult,
+                    result: {
+                        ...analysisResult,
+                        signal_history: monitorSync.signal_history,
+                        monitor_sync_status: monitorSync.status,
+                    },
                     isOptimization: false,
                     returnTo: '/favorites',
                 }

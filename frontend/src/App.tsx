@@ -15,9 +15,6 @@ import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
 import KanbanPage from './pages/KanbanPage'
-import SignalsPage from './pages/SignalsPage'
-import SignalsHistoryPage from './pages/SignalsHistoryPage'
-import SupplyDistributionPage from './pages/SupplyDistributionPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import SystemPreferencesPage from './pages/SystemPreferencesPage'
@@ -69,9 +66,6 @@ function App() {
           <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/kanban" element={<KanbanPage />} />
-          <Route path="/signals" element={<ProtectedRoute requireAdmin><SignalsPage /></ProtectedRoute>} />
-          <Route path="/signals/history" element={<ProtectedRoute requireAdmin><SignalsHistoryPage /></ProtectedRoute>} />
-          <Route path="/supply-distribution" element={<ProtectedRoute requireAdmin><SupplyDistributionPage /></ProtectedRoute>} />
           <Route path="/combo/select" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />
           {/* Backward-compat route (old link/bookmark) */}
           <Route path="/combo/selectCrypto" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />

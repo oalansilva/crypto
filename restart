@@ -46,6 +46,13 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
     VITE_API_URL="/api" VITE_APP_ENV="development" npm run build
   )
 
+  echo "Ensuring DEV canonical candle writer timer..."
+  if [[ -x "$ROOT_DIR/install-candle-writer-systemd.sh" ]]; then
+    "$ROOT_DIR/install-candle-writer-systemd.sh" --env dev
+  else
+    echo "Missing install-candle-writer-systemd.sh; candle writer timer not updated." >&2
+  fi
+
   echo "Restarting canonical DEV services..."
   systemctl restart "$DEV_BACKEND_UNIT" "$DEV_FRONTEND_UNIT"
 
@@ -54,6 +61,9 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
       && curl -fsS --max-time 2 "http://127.0.0.1:${DEV_FRONTEND_PORT}/" >/dev/null; then
       echo "crypto DEV backend:  http://127.0.0.1:${DEV_BACKEND_PORT}"
       echo "crypto DEV frontend: http://127.0.0.1:${DEV_FRONTEND_PORT}"
+      systemctl is-active criptofarol-dev-candle-writer.timer >/dev/null 2>&1 \
+        && echo "crypto DEV candle writer timer: active" \
+        || echo "crypto DEV candle writer timer: inactive" >&2
       exit 0
     fi
     sleep 1
