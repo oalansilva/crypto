@@ -17,6 +17,6 @@
 
 - [x] 4.1 Run focused release-guard tests and validate shell/workflow syntax.
 - [x] 4.2 Run OpenSpec validation and verify the implementation against proposal, design, specs, and tasks.
-- [ ] 4.3 Record baseline and post-change CI evidence on issue #326 and its pull request.
+- [x] 4.3 Record baseline and post-change CI evidence on issue #326 and its pull request.
 
 Use the applicable project skills under `.codex/skills` for OpenSpec, testing, debugging, and review throughout implementation.
