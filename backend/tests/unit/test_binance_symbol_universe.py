@@ -33,6 +33,30 @@ def test_resolve_binance_ohlcv_symbols_supports_explicit_list_and_limit(monkeypa
     assert symbol_universe.resolve_binance_ohlcv_symbols() == ["BTC/USDT"]
 
 
+def test_resolve_binance_ohlcv_symbols_limit_keeps_majors_first(monkeypatch):
+    monkeypatch.delenv("MARKET_OHLCV_SYMBOLS", raising=False)
+    monkeypatch.setenv("MARKET_OHLCV_SYMBOL_LIMIT", "3")
+    monkeypatch.setattr(
+        symbol_universe,
+        "_fetch_trading_spot_usdt_symbols",
+        lambda: [
+            "0G/USDT",
+            "1000CAT/USDT",
+            "AAVE/USDT",
+            "BTC/USDT",
+            "ETH/USDT",
+            "SOL/USDT",
+            "ZEC/USDT",
+        ],
+    )
+
+    assert symbol_universe.resolve_binance_ohlcv_symbols() == [
+        "BTC/USDT",
+        "ETH/USDT",
+        "SOL/USDT",
+    ]
+
+
 def test_resolve_binance_ohlcv_symbols_falls_back_on_exchange_error(monkeypatch):
     class _ExchangeService:
         def fetch_binance_symbols(self):

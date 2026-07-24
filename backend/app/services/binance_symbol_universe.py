@@ -46,10 +46,20 @@ def _symbol_limit() -> int | None:
 
 
 def _apply_limit(symbols: list[str]) -> list[str]:
+    """Cap the universe size while keeping major pairs in the window.
+
+    Binance spot USDT lists are alphabetical, so a naive ``symbols[:limit]``
+    drops BTC/ETH/etc. when the limit is small. Majors from
+    ``FALLBACK_BINANCE_USDT_SYMBOLS`` are pinned first when present.
+    """
     limit = _symbol_limit()
     if limit is None:
         return symbols
-    return symbols[:limit]
+    present = set(symbols)
+    priority = [symbol for symbol in FALLBACK_BINANCE_USDT_SYMBOLS if symbol in present]
+    priority_set = set(priority)
+    remainder = [symbol for symbol in symbols if symbol not in priority_set]
+    return (priority + remainder)[:limit]
 
 
 def _fetch_trading_spot_usdt_symbols() -> list[str]:
