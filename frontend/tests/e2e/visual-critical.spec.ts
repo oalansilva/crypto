@@ -313,3 +313,11 @@ test('visual critical wallet', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Carteira', exact: true })).toBeVisible()
   await capture(page, 'wallet.png')
 })
+
+test('visual critical preferences', async ({ page }) => {
+  await installStableApiMocks(page)
+  await page.goto('/preferences')
+  await expect(page.getByRole('heading', { name: 'Preferências', exact: true })).toBeVisible()
+  await expect(page.getByText('Credenciais Binance')).toBeVisible()
+  await capture(page, 'preferences.png')
+})

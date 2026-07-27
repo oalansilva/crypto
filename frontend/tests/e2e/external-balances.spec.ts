@@ -57,25 +57,15 @@ test('external balances page loads and shows balances', async ({ page }) => {
   await expect(hbarRow.getByText('+25.00%')).toBeVisible()
 })
 
-test('wallet credentials form asks for Binance API credentials, not login credentials', async ({ page }) => {
+test('wallet shows credential status and links to preferences', async ({ page }) => {
   await setupApiMocks(page)
 
   await page.goto('/external/balances')
 
-  const apiKey = page.getByLabel('Binance API Key read-only')
-  const apiSecret = page.getByLabel('Binance API Secret read-only')
-
   await expect(page.getByText('O Cripto Farol não solicita e-mail nem senha da Binance.')).toBeVisible()
-  await expect(apiKey).toHaveAttribute('placeholder', 'API Key read-only da Binance')
-  await expect(apiKey).toHaveAttribute('autocomplete', 'off')
-  await expect(apiKey).toHaveAttribute('data-lpignore', 'true')
-  await expect(apiSecret).toHaveAttribute('placeholder', 'API Secret da chave read-only')
-  await expect(apiSecret).toHaveAttribute('autocomplete', 'new-password')
-  await expect(apiSecret).toHaveAttribute('data-lpignore', 'true')
-
-  await apiKey.fill('alan@example.com')
-  await apiSecret.fill('senha-da-binance')
-  await page.getByRole('button', { name: /Salvar credenciais/ }).click()
-
-  await expect(page.getByText('Este campo não aceita e-mail.')).toBeVisible()
+  await expect(page.getByText('Credenciais Binance')).toBeVisible()
+  await expect(page.getByText('Não configurada')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Configurar em Preferências' })).toHaveAttribute('href', '/preferences')
+  await expect(page.getByLabel('Binance API Key read-only')).toHaveCount(0)
+  await expect(page.getByLabel('Binance API Secret read-only')).toHaveCount(0)
 })
