@@ -18,6 +18,6 @@
 ## 4. Testes e QA
 
 - [x] 4.1 Atualizar/criar E2E de preferências e ajustar `external-balances.spec.ts`
-- [ ] 4.2 Cobrir visual Playwright (preferences + wallet) e atualizar baselines se necessário
-- [ ] 4.3 Rodar testes focados backend de credentials + build frontend
+- [x] 4.2 Cobrir visual Playwright (preferences + wallet) e atualizar baselines se necessário
+- [x] 4.3 Rodar testes focados backend de credentials + build frontend
 - [ ] 4.4 Code Review do diff, commit/push, PR para `develop`, QA gate e Done técnico
