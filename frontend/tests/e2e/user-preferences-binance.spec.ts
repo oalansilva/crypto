@@ -94,13 +94,14 @@ test('user profile manages Binance credentials', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Meu Perfil', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dados da conta', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Credenciais Binance', exact: true })).toBeVisible()
-  await expect(page.getByText('Chave API somente leitura vinculada à sua conta.')).toBeVisible()
+  await expect(page.getByText(/Chave API vinculada à sua conta/)).toBeVisible()
+  await expect(page.getByText(/Proteger stop/)).toBeVisible()
   await expect(page.getByText('Status da chave')).toBeVisible()
   await expect(page.getByText('Não configurada')).toBeVisible()
   await expect(page.getByText('Nenhuma chave salva. Cole API Key e Secret abaixo para conectar.')).toBeVisible()
 
-  const apiKey = page.getByLabel('Binance API Key read-only')
-  const apiSecret = page.getByLabel('Binance API Secret read-only')
+  const apiKey = page.getByLabel('Binance API Key', { exact: true })
+  const apiSecret = page.getByLabel('Binance API Secret', { exact: true })
 
   await expect(apiKey).toHaveAttribute('placeholder', 'Cole a API Key da Binance')
   await expect(apiKey).toHaveAttribute('autocomplete', 'off')
