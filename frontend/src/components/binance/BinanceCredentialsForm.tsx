@@ -165,27 +165,69 @@ export function BinanceCredentialsForm({
   if (variant === 'profile') {
     return (
       <section className={className} aria-labelledby="binance-credentials-heading">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="eyebrow">
-              <span>Integração</span>
-            </div>
-            <h2 id="binance-credentials-heading" className="mt-2 text-lg font-semibold text-[var(--text-primary)]">
-              Credenciais Binance
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
-              Chave API somente leitura vinculada à sua conta. Home e Carteira usam essa chave. Mantenha IP whitelist
-              habilitado na Binance.
-            </p>
+        <div className="min-w-0">
+          <div className="eyebrow">
+            <span>Integração</span>
           </div>
-          <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)]">
-            <span className={`h-1.5 w-1.5 rounded-full ${statusTone}`} />
-            <span>{statusLabel}</span>
-            {maskedApiKey ? <span className="font-mono text-[var(--text-muted)]">· {maskedApiKey}</span> : null}
+          <h2 id="binance-credentials-heading" className="mt-2 text-lg font-semibold text-[var(--text-primary)]">
+            Credenciais Binance
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
+            Chave API somente leitura vinculada à sua conta. Home e Carteira usam essa chave. Mantenha IP whitelist
+            habilitado na Binance.
+          </p>
+        </div>
+
+        <div
+          className={[
+            'mt-5 max-w-3xl rounded-lg border px-4 py-3',
+            credentialsConfigured
+              ? 'border-emerald-300/20 bg-emerald-400/8'
+              : 'border-[var(--border-default)] bg-[var(--bg-secondary)]',
+          ].join(' ')}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                Status da chave
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className={`inline-flex h-1.5 w-1.5 rounded-full ${statusTone}`} />
+                <span className="text-sm font-medium text-[var(--text-primary)]">{statusLabel}</span>
+              </div>
+              {maskedApiKey ? (
+                <div className="mt-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                    API Key atual
+                  </div>
+                  <div className="mt-1 break-all font-mono text-sm text-[var(--text-secondary)]">{maskedApiKey}</div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  Nenhuma chave salva. Cole API Key e Secret abaixo para conectar.
+                </p>
+              )}
+            </div>
+            {credentialsConfigured ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="shrink-0 border border-rose-300/25 bg-rose-400/10 text-rose-100 hover:bg-rose-400/20"
+                onClick={deleteCredentials}
+                disabled={savingCredentials}
+                icon={<Trash2 className="h-4 w-4" />}
+              >
+                Remover chave
+              </Button>
+            ) : null}
           </div>
         </div>
 
         <div className="mt-6 grid max-w-3xl gap-4" data-lpignore="true">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+            {credentialsConfigured ? 'Substituir chave' : 'Adicionar chave'}
+          </div>
           <Input
             label="API Key read-only"
             aria-label="Binance API Key read-only"
@@ -245,29 +287,15 @@ export function BinanceCredentialsForm({
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[var(--text-muted)]">O Cripto Farol não pede e-mail nem senha da Binance.</p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            {credentialsConfigured ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className="border border-rose-300/25 bg-rose-400/10 text-rose-100 hover:bg-rose-400/20"
-                onClick={deleteCredentials}
-                disabled={savingCredentials}
-                icon={<Trash2 className="h-4 w-4" />}
-              >
-                Remover
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              loading={savingCredentials}
-              disabled={savingCredentials || !apiKeyInput.trim() || !apiSecretInput.trim()}
-              onClick={saveCredentials}
-              icon={<ShieldCheck className="h-4 w-4" />}
-            >
-              Salvar credenciais
-            </Button>
-          </div>
+          <Button
+            type="button"
+            loading={savingCredentials}
+            disabled={savingCredentials || !apiKeyInput.trim() || !apiSecretInput.trim()}
+            onClick={saveCredentials}
+            icon={<ShieldCheck className="h-4 w-4" />}
+          >
+            {credentialsConfigured ? 'Atualizar credenciais' : 'Salvar credenciais'}
+          </Button>
         </div>
       </section>
     )
