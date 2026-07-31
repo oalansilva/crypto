@@ -9,7 +9,7 @@ async function setupApiMocks(page: any) {
     return route.abort('blockedbyclient')
   })
 
-  await page.route('**/api/external/binance/spot/balances', (route: any) =>
+  await page.route('**/api/external/binance/spot/balances**', (route: any) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -34,6 +34,14 @@ async function setupApiMocks(page: any) {
 
 test('external balances page loads and shows balances', async ({ page }) => {
   await setupApiMocks(page)
+
+  const balanceRequests: string[] = []
+  page.on('request', (req) => {
+    if (req.url().includes('/api/external/binance/spot/balances')) {
+      balanceRequests.push(req.url())
+    }
+  })
+
   await page.goto('/external/balances')
 
   await expect(page.getByRole('heading', { name: 'Carteira', exact: true })).toBeVisible()
@@ -45,7 +53,7 @@ test('external balances page loads and shows balances', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Locked' })).toHaveCount(0)
   await expect(page.getByText('Locked', { exact: true })).toHaveCount(0)
 
-  // Rows present
+  // Rows present (stables included)
   await expect(page.getByRole('row', { name: /HBAR.*896\.103/ })).toBeVisible()
   await expect(page.getByRole('row', { name: /USDC.*0\.455/ })).toBeVisible()
 
@@ -55,6 +63,46 @@ test('external balances page loads and shows balances', async ({ page }) => {
   await expect(hbarRow.getByText('$0.08')).toBeVisible()
   await expect(hbarRow.getByText('+$17.92')).toBeVisible()
   await expect(hbarRow.getByText('+25.00%')).toBeVisible()
+
+  await expect.poll(() => balanceRequests.some((u) => u.includes('min_usd='))).toBeTruthy()
+})
+
+test('wallet sends min_usd and shows USDT stable row', async ({ page }) => {
+  const seen: string[] = []
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+  await page.route('**/api/external/binance/spot/balances**', (route: any) => {
+    seen.push(route.request().url())
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        balances: [
+          { asset: 'USDT', free: 2100, locked: 0, total: 2100, price_usdt: 1, value_usd: 2100, avg_cost_usdt: 1, pnl_usd: 0, pnl_pct: 0 },
+          { asset: 'USDC', free: 1150, locked: 0, total: 1150, price_usdt: 1, value_usd: 1150, avg_cost_usdt: 1, pnl_usd: 0, pnl_pct: 0 },
+        ],
+        total_usd: 3250,
+        as_of: '2026-07-31T00:00:00Z',
+      }),
+    })
+  })
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: true, api_key_masked: 'abcd…xyz' }),
+    })
+  )
+
+  await page.goto('/external/balances')
+  await expect(page.getByRole('row', { name: /USDT.*2100/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /USDC.*1150/ })).toBeVisible()
+  await expect.poll(() => seen.some((u) => /min_usd=0\.02/.test(u))).toBeTruthy()
 })
 
 test('wallet shows credential status and links to profile', async ({ page }) => {

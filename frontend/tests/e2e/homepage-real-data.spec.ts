@@ -102,7 +102,7 @@ async function mockHomeApis(
     })
   })
 
-  await page.route('**/api/external/binance/spot/balances', async (route: any) => {
+  await page.route('**/api/external/binance/spot/balances**', async (route: any) => {
     await route.fulfill({
       status: opts?.balancesStatus ?? 200,
       contentType: 'application/json',

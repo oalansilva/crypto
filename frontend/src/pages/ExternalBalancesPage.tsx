@@ -71,6 +71,10 @@ function assetName(asset: string) {
     BTC: 'Bitcoin',
     ETH: 'Ethereum',
     USDT: 'Tether USD',
+    USDC: 'USD Coin',
+    LDUSDT: 'USDT (Earn)',
+    LDUSDC: 'USDC (Earn)',
+    LDBUSD: 'BUSD (Earn)',
     SOL: 'Solana',
     BNB: 'BNB',
     ADA: 'Cardano',
@@ -84,6 +88,9 @@ function assetTileStyle(asset: string): React.CSSProperties {
     BTC: 'linear-gradient(135deg, #f7931a 0%, #8b5108 100%)',
     ETH: 'linear-gradient(135deg, #627eea 0%, #2a3d8b 100%)',
     USDT: 'linear-gradient(135deg, #26a17b 0%, #0f4a37 100%)',
+    USDC: 'linear-gradient(135deg, #2775ca 0%, #0f3a66 100%)',
+    LDUSDT: 'linear-gradient(135deg, #26a17b 0%, #0f4a37 100%)',
+    LDUSDC: 'linear-gradient(135deg, #2775ca 0%, #0f3a66 100%)',
     SOL: 'linear-gradient(135deg, #9945ff 0%, #14f195 100%)',
     BNB: 'linear-gradient(135deg, #f3ba2f 0%, #7b5d14 100%)',
     ADA: 'linear-gradient(135deg, #2f66ff 0%, #092776 100%)',
@@ -157,7 +164,10 @@ export default function ExternalBalancesPage() {
     setError(null)
 
     try {
-      const res = await authFetch(`${API_BASE_URL}/external/binance/spot/balances`)
+      const minParsed = Number(minUsd)
+      const minQuery = Number.isFinite(minParsed) ? minParsed : 0.02
+      const qs = new URLSearchParams({ min_usd: String(minQuery) })
+      const res = await authFetch(`${API_BASE_URL}/external/binance/spot/balances?${qs.toString()}`)
       const payload = await res.json()
       if (!res.ok) throw new Error(String(payload?.detail || 'Falha ao carregar saldos externos'))
       if (fetchId !== lastFetchId.current) return

@@ -44,6 +44,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 4. Cards com impacto de UI usam o contrato canônico `.agents/skills/design-critic/SKILL.md` antes da implementação.
    - Codex invoca `$design-critic`; Cursor invoca `/design-critic`.
    - O agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
+   - Protótipo HTML deve ser navegável em `frontend/public/prototypes/<slug>/` via URL DEV; o Gist OpenSpec lista só Markdown e nunca HTML.
    - O agente pode mover somente `Design -> Aprovação de Design` quando a evidência estiver completa; nunca pode executar a aprovação humana.
 
 5. Homologacao e release seguem `alan-workflow`.
