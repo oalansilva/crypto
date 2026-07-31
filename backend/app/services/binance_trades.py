@@ -16,6 +16,23 @@ get_settings()
 
 # Quotes treated as ~1 USD for wallet cost/PnL.
 STABLE_ASSETS = frozenset({"USDT", "USDC", "BUSD", "TUSD", "FDUSD"})
+# Binance Flexible Earn / Simple Earn balances appear on /api/v3/account as LD<ASSET>
+# (e.g. LDUSDT, LDUSDC). They are not Spot free USDT/USDC but are user "caixa".
+EARN_STABLE_PREFIX = "LD"
+
+
+def is_usd_stable_asset(asset: str) -> bool:
+    """True for Spot USD stables and Binance Earn LD* stable wrappers."""
+    a = (asset or "").strip().upper()
+    if not a:
+        return False
+    if a in STABLE_ASSETS:
+        return True
+    if a.startswith(EARN_STABLE_PREFIX) and a[len(EARN_STABLE_PREFIX) :] in STABLE_ASSETS:
+        return True
+    return False
+
+
 # Quote markets used to discover the latest buy for any non-stable asset.
 COST_QUOTE_SUFFIXES: Tuple[str, ...] = ("USDT", "USDC")
 
@@ -227,7 +244,7 @@ def compute_avg_buy_cost_usdt(
     a = (asset or "").strip().upper()
     if not a:
         return None
-    if a in STABLE_ASSETS:
+    if is_usd_stable_asset(a):
         return 1.0
 
     best_buy: Optional[Dict[str, Any]] = None
