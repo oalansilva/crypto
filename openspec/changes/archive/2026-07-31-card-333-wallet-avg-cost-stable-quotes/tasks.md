@@ -17,5 +17,5 @@
 
 ## 4. Fechamento
 
-- [ ] 4.1 Code Review + commit/push + PR develop
-- [ ] 4.2 QA gate verde + merge + `./restart` + Done técnico
+- [x] 4.1 Code Review + commit/push + PR develop
+- [x] 4.2 QA gate verde + merge + `./restart` + Done técnico

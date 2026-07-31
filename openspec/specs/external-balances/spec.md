@@ -33,20 +33,31 @@ The system MUST NOT place orders, withdraw, or modify the Binance account.
 - **THEN** it MUST only call read-only Binance endpoints
 
 ### Requirement: System MUST compute average buy cost for Binance Spot assets (USDT pairs)
-The system MUST compute an average buy cost (USDT) per asset using Binance Spot executed trades for the symbol `ASSETUSDT`.
+The system MUST compute a reference buy cost (USD-stable) per asset using Binance Spot executed buy trades for that asset.
 
-#### Scenario: Only USDT pairs are considered
-- **WHEN** the system computes average cost for an asset
-- **THEN** it MUST only use the `ASSETUSDT` symbol (no other quote currencies) in phase 1
+For each non-stable asset in the wallet snapshot, the system MUST consider executed trades from supported USD-stable quote pairs, at least `ASSETUSDT` and `ASSETUSDC`. The wallet response field MAY remain named `avg_cost_usdt` for compatibility.
 
-#### Scenario: Buys-only cost basis
-- **WHEN** trades exist for `ASSETUSDT`
-- **THEN** the system MUST compute average buy cost using **buys only**
-- **AND** it MUST ignore sells in phase 1
+#### Scenario: Supported stable quotes are considered for every asset
+- **WHEN** the system computes average/reference buy cost for any asset in the wallet snapshot
+- **THEN** it MUST query supported quote pairs including `ASSETUSDT` and `ASSETUSDC`
+- **AND** it MUST NOT hardcode a single asset symbol (rule applies to all balances)
+
+#### Scenario: Latest buy across supported quotes wins
+- **WHEN** buy trades exist in one or more supported quote pairs
+- **THEN** the system MUST use the most recent buy trade price among those pairs as the reference cost
+- **AND** it MUST ignore sells
+
+#### Scenario: USDC buy is preferred over older USDT buy
+- **WHEN** an asset has a newer buy on `ASSETUSDC` and an older buy on `ASSETUSDT`
+- **THEN** the reference cost MUST come from the newer `ASSETUSDC` buy
+
+#### Scenario: USDT-only assets remain correct
+- **WHEN** buy trades exist only on `ASSETUSDT`
+- **THEN** the reference cost MUST continue to use that latest USDT buy
 
 #### Scenario: No trades
-- **WHEN** no executed trades are found for the symbol
-- **THEN** average cost MUST be `null`
+- **WHEN** no executed buy trades are found on any supported quote pair
+- **THEN** average/reference cost MUST be `null`
 
 ### Requirement: Wallet API MUST return PnL fields
 The Wallet balances endpoint MUST return, for each balance row:
@@ -113,7 +124,7 @@ The Wallet UI (`/external/balances`) MUST present account balances in a compact 
 
 #### Scenario: Credential panel
 - **WHEN** the user opens the Wallet page
-- **THEN** the UI MUST show a Binance credential panel with configured/not configured state, masked API key when available, API key and secret inputs, save action, and remove action when credentials exist
+- **THEN** the UI MUST show whether Binance credentials are configured (optionally with masked API key) and a clear action/link to manage them in Meu Perfil (`/profile`), without being the primary full Key/Secret editor
 
 #### Scenario: Filter toolbar
 - **WHEN** the user opens the Wallet page
@@ -126,3 +137,27 @@ The Wallet UI (`/external/balances`) MUST present account balances in a compact 
 #### Scenario: Mobile balance cards
 - **WHEN** balances are displayed on a narrow viewport
 - **THEN** the UI MUST show a single-column card list without requiring horizontal scrolling
+
+### Requirement: Wallet shows credential status and links to user profile
+The external balances (Carteira) page MUST NOT be the primary place to edit Binance API Key/Secret. It MUST show whether credentials are configured and direct the user to `/profile` to manage them.
+
+#### Scenario: Credentials not configured on wallet
+- **WHEN** the user opens `/external/balances` without Binance credentials
+- **THEN** the page MUST show status `Não configurada` and a clear action/link to configure credentials in Meu Perfil
+
+#### Scenario: Credentials configured on wallet
+- **WHEN** the user opens `/external/balances` with Binance credentials configured
+- **THEN** the page MUST show status `Configurada` (optionally with masked API Key) and still allow navigating to Meu Perfil to change or remove them
+
+#### Scenario: Wallet continues using per-user credentials
+- **WHEN** the user has credentials saved in Meu Perfil
+- **THEN** the wallet balances snapshot MUST continue to use the logged-in user's Binance credentials without requiring re-entry on the wallet page
+
+### Requirement: Wallet PnL uses the multi-quote reference buy cost
+PnL fields MUST be computed from the multi-quote reference buy cost and the current spot price already used by the wallet snapshot.
+
+#### Scenario: PnL follows corrected cost
+- **WHEN** reference cost comes from a USDC buy and current price is available
+- **THEN** the system MUST compute:
+  - `pnl_usd = (price_usdt - avg_cost_usdt) * total`
+  - `pnl_pct = (price_usdt / avg_cost_usdt - 1) * 100`
