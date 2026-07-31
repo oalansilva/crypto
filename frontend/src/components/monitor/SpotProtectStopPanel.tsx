@@ -18,6 +18,8 @@ type StatusResponse = {
   protected: boolean
   symbol: string
   client_order_id?: string
+  managed_by_app?: boolean
+  source?: 'app' | 'external' | null
   order?: ProtectiveOrder | null
 }
 
@@ -169,10 +171,17 @@ export function SpotProtectStopPanel({
           ) : loading ? (
             <p className="text-xs text-[#929aa5]">Consultando ordem protetiva…</p>
           ) : protectedOrder ? (
-            <p className="text-xs text-[#eaecef]" data-testid="spot-protect-summary">
-              Ativa: qty {protectedOrder.quantity ?? '-'} · stop {formatPrice(protectedOrder.stop_price)} ·
-              limit {formatPrice(protectedOrder.limit_price)}
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-[#eaecef]" data-testid="spot-protect-summary">
+                Ativa: qty {protectedOrder.quantity ?? '-'} · stop {formatPrice(protectedOrder.stop_price)} ·
+                limit {formatPrice(protectedOrder.limit_price)}
+              </p>
+              {status?.source === 'external' ? (
+                <p className="text-xs text-[#f0b90b]" data-testid="spot-protect-external-note">
+                  Stop já aberto na Binance (fora do app). Remova aqui ou na exchange antes de criar outro.
+                </p>
+              ) : null}
+            </div>
           ) : (
             <p className="text-xs text-[#929aa5]">
               Sem ordem protetiva. Stop do gráfico: {formatPrice(stopPrice)}

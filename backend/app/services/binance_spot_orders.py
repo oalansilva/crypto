@@ -203,6 +203,19 @@ def list_open_orders(
     return payload
 
 
+_PROTECTIVE_STOP_TYPES = frozenset({"STOP_LOSS_LIMIT", "STOP_LOSS"})
+
+
+def _is_protective_stop_order(order: Dict[str, Any]) -> bool:
+    side = str(order.get("side") or "").upper()
+    order_type = str(order.get("type") or "").upper()
+    return side == "SELL" and order_type in _PROTECTIVE_STOP_TYPES
+
+
+def _is_app_managed_order(order: Dict[str, Any]) -> bool:
+    return str(order.get("clientOrderId") or "").startswith(CLIENT_ORDER_PREFIX)
+
+
 def find_protective_order(
     *,
     api_key: str,
@@ -211,19 +224,31 @@ def find_protective_order(
     client_order_id: str,
     base_url: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
+    """Locate an open protective stop for the symbol.
+
+    Priority:
+    1. Exact Cripto Farol ``cfstop_`` clientOrderId for this opportunity
+    2. Any other open ``cfstop_`` order on the symbol
+    3. Any open Spot SELL stop (``STOP_LOSS`` / ``STOP_LOSS_LIMIT``), including
+       orders created on Binance Web/app — so the UI does not offer Proteger
+       when a stop already locks the position.
+    """
     open_orders = list_open_orders(
         api_key=api_key, api_secret=api_secret, symbol=symbol, base_url=base_url
     )
     exact = None
-    fallback = None
+    app_fallback = None
+    external_stop = None
     for order in open_orders:
         cid = str(order.get("clientOrderId") or "")
         if cid == client_order_id:
             exact = order
             break
-        if fallback is None and cid.startswith(CLIENT_ORDER_PREFIX):
-            fallback = order
-    return exact or fallback
+        if app_fallback is None and cid.startswith(CLIENT_ORDER_PREFIX):
+            app_fallback = order
+        if external_stop is None and _is_protective_stop_order(order):
+            external_stop = order
+    return exact or app_fallback or external_stop
 
 
 def compute_order_prices_and_qty(
@@ -284,12 +309,17 @@ def get_protective_status(
             "protected": False,
             "symbol": sym,
             "client_order_id": client_order_id,
+            "managed_by_app": False,
+            "source": None,
             "order": None,
         }
+    managed = _is_app_managed_order(order)
     return {
         "protected": True,
         "symbol": sym,
         "client_order_id": str(order.get("clientOrderId") or client_order_id),
+        "managed_by_app": managed,
+        "source": "app" if managed else "external",
         "order": {
             "order_id": order.get("orderId"),
             "side": order.get("side"),
@@ -334,7 +364,7 @@ def place_protective_stop(
     )
     if existing:
         raise BinanceOrderError(
-            "Já existe uma ordem protetiva do Cripto Farol neste símbolo. Remova antes de criar outra."
+            "Já existe um stop Spot aberto neste símbolo (app ou Binance). Remova antes de criar outro."
         )
 
     free_qty = fetch_free_balance(
@@ -395,23 +425,27 @@ def cancel_protective_stop(
         base_url=base_url,
     )
     if not order:
-        raise BinanceOrderError(
-            "Nenhuma ordem protetiva do Cripto Farol encontrada para este símbolo"
-        )
+        raise BinanceOrderError("Nenhuma ordem protetiva Spot encontrada para este símbolo")
 
     cid = str(order.get("clientOrderId") or "")
-    if not cid.startswith(CLIENT_ORDER_PREFIX):
-        raise BinanceOrderError("Ordem encontrada não é protetiva do Cripto Farol")
+    if not (_is_app_managed_order(order) or _is_protective_stop_order(order)):
+        raise BinanceOrderError("Ordem encontrada não é um stop protetivo Spot")
+
+    cancel_params: Dict[str, Any] = {"symbol": sym}
+    if cid:
+        cancel_params["origClientOrderId"] = cid
+    else:
+        order_id = order.get("orderId")
+        if not order_id:
+            raise BinanceOrderError("Ordem protetiva sem identificador para cancelar")
+        cancel_params["orderId"] = order_id
 
     canceled = signed_request(
         method="DELETE",
         path="/api/v3/order",
         api_key=api_key,
         api_secret=api_secret,
-        params={
-            "symbol": sym,
-            "origClientOrderId": cid,
-        },
+        params=cancel_params,
         base_url=base_url,
     )
     return {

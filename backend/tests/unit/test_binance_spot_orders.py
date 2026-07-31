@@ -155,12 +155,12 @@ def test_cancel_protective_stop_uses_orig_client_order_id(_find, signed_request)
     assert signed_request.call_args.kwargs["params"]["origClientOrderId"] == "cfstop_abc"
 
 
-def test_cancel_ignores_non_cfstop_and_missing():
+def test_cancel_ignores_non_stop_and_missing():
     with patch(
         "app.services.binance_spot_orders.find_protective_order",
-        return_value={"orderId": 1, "clientOrderId": "manual-1"},
+        return_value={"orderId": 1, "clientOrderId": "manual-1", "side": "SELL", "type": "LIMIT"},
     ):
-        with pytest.raises(orders.BinanceOrderError, match="não é protetiva"):
+        with pytest.raises(orders.BinanceOrderError, match="não é um stop protetivo"):
             orders.cancel_protective_stop(
                 api_key="k", api_secret="s", user_id="u", symbol="ETHUSDT", opportunity_id="1"
             )
@@ -171,10 +171,36 @@ def test_cancel_ignores_non_cfstop_and_missing():
             )
 
 
+@patch("app.services.binance_spot_orders.signed_request")
+@patch(
+    "app.services.binance_spot_orders.find_protective_order",
+    return_value={
+        "orderId": 48768780964,
+        "clientOrderId": "web_f8fe890af06c488c99f0dfe2f12f1a96",
+        "side": "SELL",
+        "type": "STOP_LOSS_LIMIT",
+    },
+)
+def test_cancel_allows_external_spot_stop(_find, signed_request):
+    signed_request.return_value = {"orderId": 48768780964, "status": "CANCELED"}
+    result = orders.cancel_protective_stop(
+        api_key="k",
+        api_secret="s",
+        user_id="u",
+        symbol="ETHUSDT",
+        opportunity_id="1",
+    )
+    assert result["protected"] is False
+    assert (
+        signed_request.call_args.kwargs["params"]["origClientOrderId"]
+        == "web_f8fe890af06c488c99f0dfe2f12f1a96"
+    )
+
+
 @patch("app.services.binance_spot_orders.list_open_orders")
 def test_find_and_status_protective_order(list_open):
     list_open.return_value = [
-        {"clientOrderId": "other", "orderId": 1},
+        {"clientOrderId": "other", "orderId": 1, "side": "BUY", "type": "LIMIT"},
         {
             "clientOrderId": "cfstop_exact",
             "orderId": 2,
@@ -205,19 +231,61 @@ def test_find_and_status_protective_order(list_open):
             opportunity_id="1",
         )
     assert status["protected"] is True
+    assert status["managed_by_app"] is True
+    assert status["source"] == "app"
     assert status["order"]["quantity"] == 1.0
 
-    list_open.return_value = [{"clientOrderId": "cfstop_other", "orderId": 9}]
+    list_open.return_value = [
+        {
+            "clientOrderId": "cfstop_other",
+            "orderId": 9,
+            "side": "SELL",
+            "type": "STOP_LOSS_LIMIT",
+        }
+    ]
     fallback = orders.find_protective_order(
         api_key="k", api_secret="s", symbol="ETHUSDT", client_order_id="cfstop_missing"
     )
     assert fallback["orderId"] == 9
+
+    list_open.return_value = [
+        {
+            "clientOrderId": "web_f8fe890af06c488c99f0dfe2f12f1a96",
+            "orderId": 48768780964,
+            "side": "SELL",
+            "type": "STOP_LOSS_LIMIT",
+            "status": "NEW",
+            "stopPrice": "1682.28",
+            "price": "1682.28",
+            "origQty": "0.0519",
+        }
+    ]
+    external = orders.find_protective_order(
+        api_key="k", api_secret="s", symbol="ETHUSDT", client_order_id="cfstop_missing"
+    )
+    assert external["orderId"] == 48768780964
+    with patch(
+        "app.services.binance_spot_orders.find_protective_order",
+        return_value=external,
+    ):
+        external_status = orders.get_protective_status(
+            api_key="k",
+            api_secret="s",
+            user_id="u",
+            symbol="ETHUSDT",
+            opportunity_id="1",
+        )
+    assert external_status["protected"] is True
+    assert external_status["managed_by_app"] is False
+    assert external_status["source"] == "external"
+    assert external_status["order"]["stop_price"] == 1682.28
 
     with patch("app.services.binance_spot_orders.find_protective_order", return_value=None):
         empty = orders.get_protective_status(
             api_key="k", api_secret="s", user_id="u", symbol="ETHUSDT", opportunity_id="1"
         )
     assert empty["protected"] is False
+    assert empty["managed_by_app"] is False
 
 
 @patch("app.services.binance_spot_orders.signed_request")
