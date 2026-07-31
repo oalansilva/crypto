@@ -51,6 +51,10 @@ const OPPORTUNITIES = [
     status: 'HOLDING',
     message: 'Holding position',
     last_price: 65000,
+    entry_price: 65500,
+    stop_price: 62880,
+    distance_to_stop_pct: 4,
+    direction: 'long',
     timestamp: '2025-01-01T00:00:00Z',
     strategy_transparency: {
       status: 'available',
@@ -126,6 +130,13 @@ async function installStableApiMocks(page: Page) {
   )
   await page.route('**/api/user/binance-credentials', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ configured: false, api_key_masked: null }) }),
+  )
+  await page.route('**/api/monitor/spot-stop-order**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ protected: false, symbol: 'BTCUSDT', client_order_id: 'cfstop_visual', order: null }),
+    }),
   )
   await page.route('**/api/external/binance/spot/balances', (route) =>
     route.fulfill({
