@@ -21,6 +21,7 @@ A Home e a Carteira já usam a chave Binance do usuário via `/api/user/binance-
 2. **Remover nav Preferências** — evita segunda porta de entrada; admin mantém Preferências do sistema.
 3. **Redirect `/preferences` → `/profile`** — compatibilidade com a entrega anterior.
 4. **CTA da Carteira** — “Configurar no Perfil” apontando para `/profile`.
+5. **UI do Perfil (rework visual)** — um card com duas seções claras (`Dados da conta` / `Credenciais Binance`), inputs rotulados no padrão do perfil, CTA amarelo do DESIGN.md, sem painel estilo carteira; onboarding global oculto em `/profile`.
 
 ## Risks / Trade-offs
 
