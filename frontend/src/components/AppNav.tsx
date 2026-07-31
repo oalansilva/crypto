@@ -48,7 +48,7 @@ const accountNavItems: NavItemConfig[] = [
 ]
 
 const adminNavItems: NavItemConfig[] = [
-  { to: '/system/preferences', label: 'Preferências', icon: Settings },
+  { to: '/system/preferences', label: 'Preferências do sistema', icon: Settings },
   { to: '/admin/users', label: 'Usuários', icon: UsersRound },
   { to: '/admin/backfill', label: 'Backfill', icon: Play },
 ]

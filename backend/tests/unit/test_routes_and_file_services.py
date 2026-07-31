@@ -434,7 +434,9 @@ def test_binance_trades_helpers_and_trade_filters(monkeypatch):
 
     def fake_fetch(symbol, **kwargs):
         fetch_calls.append((symbol, kwargs["lookback_days"]))
-        return [{"isBuyer": True, "qty": "1", "price": "25", "time": 1}]
+        if symbol == "SOLUSDT":
+            return [{"isBuyer": True, "qty": "1", "price": "25", "time": 1}]
+        return []
 
     monkeypatch.setattr(binance_trades, "fetch_my_trades", fake_fetch)
     assert (
@@ -447,4 +449,4 @@ def test_binance_trades_helpers_and_trade_filters(monkeypatch):
         )
         == 25.0
     )
-    assert fetch_calls == [("SOLUSDT", 30)]
+    assert fetch_calls == [("SOLUSDT", 30), ("SOLUSDC", 30)]

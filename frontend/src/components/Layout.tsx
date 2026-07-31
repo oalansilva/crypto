@@ -5,7 +5,8 @@ import { FirstUseOnboarding } from './onboarding/FirstUseOnboarding'
 export function Layout() {
   const location = useLocation()
   const isKanbanRoute = location.pathname.startsWith('/kanban')
-  const shouldShowFirstUseOnboarding = !location.pathname.startsWith('/help')
+  const shouldShowFirstUseOnboarding =
+    !location.pathname.startsWith('/help') && !location.pathname.startsWith('/profile')
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden font-sans text-[var(--text-primary)] selection:bg-[rgba(252,213,53,0.28)] selection:text-[var(--text-on-primary)]">

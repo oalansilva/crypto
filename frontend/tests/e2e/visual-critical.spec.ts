@@ -313,3 +313,22 @@ test('visual critical wallet', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Carteira', exact: true })).toBeVisible()
   await capture(page, 'wallet.png')
 })
+
+test('visual critical profile', async ({ page }) => {
+  await installStableApiMocks(page)
+  await page.route('**/api/users/me', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...AUTH_USER,
+        createdAt: '2025-01-01T00:00:00Z',
+        lastLogin: '2025-01-15T12:00:00Z',
+      }),
+    }),
+  )
+  await page.goto('/profile')
+  await expect(page.getByRole('heading', { name: 'Meu Perfil', exact: true })).toBeVisible()
+  await expect(page.getByText('Credenciais Binance')).toBeVisible()
+  await capture(page, 'profile.png')
+})

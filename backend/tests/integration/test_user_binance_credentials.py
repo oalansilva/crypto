@@ -36,11 +36,16 @@ def test_user_can_put_get_and_delete_binance_credentials(tmp_path: Path):
         empty = user_credentials.get_binance_credentials_status(current_user_id="user-a", db=db)
 
     assert created.configured is True
-    assert created.api_key_masked is not None
+    assert created.api_key_masked == "abcd****wxyz"
     assert status.configured is True
-    assert status.api_key_masked is not None
+    assert status.api_key_masked == "abcd****wxyz"
     assert deleted["message"] == "Binance credentials deleted"
     assert empty.configured is False
+
+
+def test_mask_api_key_stays_short_for_long_keys():
+    long_key = "BQ37" + ("x" * 40) + "nAOx"
+    assert user_credentials._mask_api_key(long_key) == "BQ37****nAOx"
 
 
 def test_binance_credentials_reject_email_as_api_key():

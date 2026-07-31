@@ -7,12 +7,17 @@ import os
 import time
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.config import get_settings
 
 # Ensure .env files are loaded before runtime os.getenv lookups below.
 get_settings()
+
+# Quotes treated as ~1 USD for wallet cost/PnL.
+STABLE_ASSETS = frozenset({"USDT", "USDC", "BUSD", "TUSD", "FDUSD"})
+# Quote markets used to discover the latest buy for any non-stable asset.
+COST_QUOTE_SUFFIXES: Tuple[str, ...] = ("USDT", "USDC")
 
 
 def _get_env(name: str) -> str:
@@ -142,17 +147,8 @@ def fetch_my_trades(
     return trades
 
 
-def compute_avg_buy_cost_usdt_for_symbol(
-    symbol: str, trades: List[Dict[str, Any]]
-) -> Optional[float]:
-    """Return the latest buy trade price (USDT) for a symbol.
-
-    Backward-compat note:
-    - The wallet response field is still named ``avg_cost_usdt``.
-    - Operationally, Alan changed the rule: use only the latest buy trade as the
-      reference buy price for PnL on ``/external/balances``.
-    """
-
+def _latest_buy_trade(trades: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Return the latest valid buy trade dict, or None."""
     latest_buy: Optional[Dict[str, Any]] = None
     latest_buy_time = float("-inf")
 
@@ -178,6 +174,29 @@ def compute_avg_buy_cost_usdt_for_symbol(
             latest_buy = t
             latest_buy_time = trade_time
 
+    return latest_buy
+
+
+def _buy_trade_sort_key(trade: Dict[str, Any], fallback_idx: int = 0) -> float:
+    raw_time = trade.get("time")
+    try:
+        return float(raw_time) if raw_time is not None else float(fallback_idx)
+    except Exception:
+        return float(fallback_idx)
+
+
+def compute_avg_buy_cost_usdt_for_symbol(
+    symbol: str, trades: List[Dict[str, Any]]
+) -> Optional[float]:
+    """Return the latest buy trade price for a symbol.
+
+    Backward-compat note:
+    - The wallet response field is still named ``avg_cost_usdt``.
+    - Operationally, Alan changed the rule: use only the latest buy trade as the
+      reference buy price for PnL on ``/external/balances``.
+    """
+
+    latest_buy = _latest_buy_trade(trades)
     if latest_buy is None:
         return None
 
@@ -196,7 +215,10 @@ def compute_avg_buy_cost_usdt(
     api_secret: Optional[str] = None,
     base_url: Optional[str] = None,
 ) -> Optional[float]:
-    """Compute latest buy trade reference price (USDT) for an asset using ASSETUSDT.
+    """Compute latest buy trade reference price for an asset across stable quotes.
+
+    Looks up ``ASSETUSDT`` and ``ASSETUSDC`` (and keeps the response field name
+    ``avg_cost_usdt`` for compatibility). The newest buy among those markets wins.
 
     lookback_days:
       - If set, filters fetched trades to the lookback window.
@@ -205,15 +227,34 @@ def compute_avg_buy_cost_usdt(
     a = (asset or "").strip().upper()
     if not a:
         return None
-    if a in {"USDT", "USDC", "BUSD", "TUSD"}:
+    if a in STABLE_ASSETS:
         return 1.0
 
-    symbol = f"{a}USDT"
-    trades = fetch_my_trades(
-        symbol,
-        lookback_days=lookback_days,
-        api_key=api_key,
-        api_secret=api_secret,
-        base_url=base_url,
-    )
-    return compute_avg_buy_cost_usdt_for_symbol(symbol, trades)
+    best_buy: Optional[Dict[str, Any]] = None
+    best_time = float("-inf")
+
+    for quote in COST_QUOTE_SUFFIXES:
+        symbol = f"{a}{quote}"
+        trades = fetch_my_trades(
+            symbol,
+            lookback_days=lookback_days,
+            api_key=api_key,
+            api_secret=api_secret,
+            base_url=base_url,
+        )
+        candidate = _latest_buy_trade(trades)
+        if candidate is None:
+            continue
+        trade_time = _buy_trade_sort_key(candidate)
+        if best_buy is None or trade_time >= best_time:
+            best_buy = candidate
+            best_time = trade_time
+
+    if best_buy is None:
+        return None
+
+    try:
+        price = float(best_buy.get("price") or 0)
+    except Exception:
+        return None
+    return price if price > 0 else None
