@@ -65,12 +65,12 @@ def _signed_get(
 
 
 def _earn_base_asset(asset: str) -> Optional[str]:
-    """Return base asset for Binance Earn LD* wrappers (e.g. LDUSDC -> USDC)."""
+    """Return base asset for Binance Earn LD* wrappers (e.g. LDUSDC -> USDC, LDETH -> ETH)."""
     a = (asset or "").strip().upper()
     if not a.startswith(EARN_STABLE_PREFIX) or len(a) <= len(EARN_STABLE_PREFIX):
         return None
     base = a[len(EARN_STABLE_PREFIX) :]
-    return base if is_usd_stable_asset(base) else None
+    return base or None
 
 
 def _fetch_simple_earn_positions(
