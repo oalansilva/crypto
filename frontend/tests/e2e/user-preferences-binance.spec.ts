@@ -92,21 +92,18 @@ test('user profile manages Binance credentials', async ({ page }) => {
   await page.goto('/profile')
 
   await expect(page.getByRole('heading', { name: 'Meu Perfil', exact: true })).toBeVisible()
-  await expect(page.getByText('Credenciais Binance')).toBeVisible()
-  await expect(
-    page.getByText(
-      'A Home e a carteira usam uma chave API vinculada ao usuário logado. Use permissão somente leitura e mantenha IP whitelist habilitado na Binance.',
-    ),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dados da conta', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Credenciais Binance', exact: true })).toBeVisible()
+  await expect(page.getByText('Chave API somente leitura vinculada à sua conta.')).toBeVisible()
   await expect(page.getByText('Não configurada')).toBeVisible()
 
   const apiKey = page.getByLabel('Binance API Key read-only')
   const apiSecret = page.getByLabel('Binance API Secret read-only')
 
-  await expect(apiKey).toHaveAttribute('placeholder', 'API Key read-only da Binance')
+  await expect(apiKey).toHaveAttribute('placeholder', 'Cole a API Key da Binance')
   await expect(apiKey).toHaveAttribute('autocomplete', 'off')
   await expect(apiKey).toHaveAttribute('data-lpignore', 'true')
-  await expect(apiSecret).toHaveAttribute('placeholder', 'API Secret da chave read-only')
+  await expect(apiSecret).toHaveAttribute('placeholder', 'Cole o API Secret da mesma chave')
   await expect(apiSecret).toHaveAttribute('autocomplete', 'new-password')
   await expect(apiSecret).toHaveAttribute('data-lpignore', 'true')
 

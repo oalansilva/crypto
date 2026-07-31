@@ -4,6 +4,7 @@ import { Eye, EyeOff, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/use-toast'
 
 const BINANCE_API_KEY_HELP =
@@ -13,12 +14,15 @@ const BINANCE_API_SECRET_HELP =
 
 type BinanceCredentialsFormProps = {
   mode?: 'full' | 'compact'
+  /** full+profile: visual alinhado ao Meu Perfil (sem painel da carteira). */
+  variant?: 'wallet' | 'profile'
   onCredentialsChange?: (configured: boolean) => void
   className?: string
 }
 
 export function BinanceCredentialsForm({
   mode = 'full',
+  variant = 'wallet',
   onCredentialsChange,
   className = '',
 }: BinanceCredentialsFormProps) {
@@ -124,6 +128,8 @@ export function BinanceCredentialsForm({
         ? 'Configurada'
         : 'Não configurada'
 
+  const statusTone = credentialsConfigured ? 'bg-emerald-300' : 'bg-amber-300'
+
   if (mode === 'compact') {
     return (
       <section className={`rounded-lg border border-white/10 bg-[#101c2a] p-4 ${className}`.trim()}>
@@ -134,14 +140,13 @@ export function BinanceCredentialsForm({
               Credenciais Binance
             </div>
             <div className="mt-2 max-w-3xl text-sm text-slate-400">
-              Gerencie a chave API read-only em Meu Perfil (menu da conta na barra). A Home e a carteira usam a chave vinculada ao usuário logado.
+              Gerencie a chave API read-only em Meu Perfil (menu da conta na barra). A Home e a carteira usam a chave
+              vinculada ao usuário logado.
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex w-fit items-center gap-2 rounded-md border border-white/10 bg-slate-950/40 px-3 py-1.5 font-mono text-xs text-slate-300">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${credentialsConfigured ? 'bg-emerald-300' : 'bg-amber-300'}`}
-              />
+              <span className={`h-1.5 w-1.5 rounded-full ${statusTone}`} />
               {statusLabel}
               {maskedApiKey ? <span className="text-slate-500">· {maskedApiKey}</span> : null}
             </div>
@@ -151,6 +156,117 @@ export function BinanceCredentialsForm({
             >
               Configurar no Perfil
             </Link>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (variant === 'profile') {
+    return (
+      <section className={className} aria-labelledby="binance-credentials-heading">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="eyebrow">
+              <span>Integração</span>
+            </div>
+            <h2 id="binance-credentials-heading" className="mt-2 text-lg font-semibold text-[var(--text-primary)]">
+              Credenciais Binance
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
+              Chave API somente leitura vinculada à sua conta. Home e Carteira usam essa chave. Mantenha IP whitelist
+              habilitado na Binance.
+            </p>
+          </div>
+          <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)]">
+            <span className={`h-1.5 w-1.5 rounded-full ${statusTone}`} />
+            <span>{statusLabel}</span>
+            {maskedApiKey ? <span className="font-mono text-[var(--text-muted)]">· {maskedApiKey}</span> : null}
+          </div>
+        </div>
+
+        <div className="mt-6 grid max-w-3xl gap-4" data-lpignore="true">
+          <Input
+            label="API Key read-only"
+            aria-label="Binance API Key read-only"
+            title={BINANCE_API_KEY_HELP}
+            name="binance_api_key_readonly"
+            autoComplete="off"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            spellCheck={false}
+            className="font-mono text-sm"
+            placeholder="Cole a API Key da Binance"
+            value={apiKeyInput}
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            icon={<ShieldCheck className="h-4 w-4" />}
+          />
+
+          <div className="w-full">
+            <label
+              htmlFor="binance-api-secret-profile"
+              className="mb-2 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]"
+            >
+              API Secret read-only
+            </label>
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="input-icon pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+              >
+                <KeyRound className="h-4 w-4" />
+              </div>
+              <input
+                id="binance-api-secret-profile"
+                type={showApiSecret ? 'text' : 'password'}
+                aria-label="Binance API Secret read-only"
+                title={BINANCE_API_SECRET_HELP}
+                name="binance_api_secret_readonly"
+                autoComplete="new-password"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                spellCheck={false}
+                className="input input-with-icon font-mono text-sm pr-12"
+                placeholder="Cole o API Secret da mesma chave"
+                value={apiSecretInput}
+                onChange={(e) => setApiSecretInput(e.target.value)}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
+                onClick={() => setShowApiSecret((v) => !v)}
+                aria-label="Mostrar ou ocultar secret"
+              >
+                {showApiSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-[var(--text-muted)]">O Cripto Farol não pede e-mail nem senha da Binance.</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            {credentialsConfigured ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="border border-rose-300/25 bg-rose-400/10 text-rose-100 hover:bg-rose-400/20"
+                onClick={deleteCredentials}
+                disabled={savingCredentials}
+                icon={<Trash2 className="h-4 w-4" />}
+              >
+                Remover
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              loading={savingCredentials}
+              disabled={savingCredentials || !apiKeyInput.trim() || !apiSecretInput.trim()}
+              onClick={saveCredentials}
+              icon={<ShieldCheck className="h-4 w-4" />}
+            >
+              Salvar credenciais
+            </Button>
           </div>
         </div>
       </section>
@@ -171,7 +287,7 @@ export function BinanceCredentialsForm({
           </div>
         </div>
         <div className="inline-flex w-fit items-center gap-2 rounded-md border border-white/10 bg-slate-950/40 px-3 py-1.5 font-mono text-xs text-slate-300">
-          <span className={`h-1.5 w-1.5 rounded-full ${credentialsConfigured ? 'bg-emerald-300' : 'bg-amber-300'}`} />
+          <span className={`h-1.5 w-1.5 rounded-full ${statusTone}`} />
           {statusLabel}
           {maskedApiKey ? <span className="text-slate-500">· {maskedApiKey}</span> : null}
         </div>

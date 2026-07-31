@@ -26,4 +26,5 @@
 - [x] 4.3 Rodar testes focados backend de credentials + build frontend
 - [x] 4.4 Code Review do diff, commit/push, PR para `develop`, QA gate e Done técnico
 - [x] 4.5 Atualizar E2E/visual para perfil + wallet após rework
-- [ ] 4.6 Code Review, PR, QA e evidência no card (Status permanece Done)
+- [x] 4.6 Code Review, PR, QA e evidência no card (Status permanece Done)
+- [x] 4.7 Rework visual do Perfil (seções, variant profile, ocultar onboarding) + baselines
