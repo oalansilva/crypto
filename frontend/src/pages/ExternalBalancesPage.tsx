@@ -157,7 +157,10 @@ export default function ExternalBalancesPage() {
     setError(null)
 
     try {
-      const res = await authFetch(`${API_BASE_URL}/external/binance/spot/balances`)
+      const minParsed = Number(minUsd)
+      const minQuery = Number.isFinite(minParsed) ? minParsed : 0.02
+      const qs = new URLSearchParams({ min_usd: String(minQuery) })
+      const res = await authFetch(`${API_BASE_URL}/external/binance/spot/balances?${qs.toString()}`)
       const payload = await res.json()
       if (!res.ok) throw new Error(String(payload?.detail || 'Falha ao carregar saldos externos'))
       if (fetchId !== lastFetchId.current) return

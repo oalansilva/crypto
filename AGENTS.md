@@ -47,6 +47,8 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra obrigatória de criação via OpenSpec:** ao iniciar uma mudança por card, execute o fluxo ` /opsx:new ──► /opsx:ff ──► /opsx:apply ──► /opsx:verify ` antes de mover para `Done`; execute `/opsx:archive` somente no fechamento de lote/release para produção.
   - Se o projeto ainda não estiver inicializado com OpenSpec, rode `openspec init` e então comece o fluxo.
 - **OpenSpec no card antes de implementar:** seguir `alan-workflow`; neste repo, preferir Gist secreto descrito como `crypto openspec <change>` e comentario no issue/card.
+- **Conteúdo do Gist OpenSpec:** somente `proposal.md`, `design.md`, `tasks.md`, `specs/**/*.md`. **Não** colocar HTML/CSS/JS de protótipo no Gist nem listar `prototype/*.html` como arquivo do Gist no comentário.
+- **Protótipo HTML:** seção separada no comentário com link HTTP `https://dev.criptofarol.com.br/prototypes/<slug>/` (arquivos em `frontend/public/prototypes/<slug>/`). Helper: `publish-openspec-card-artifacts.sh --prototype-url ...`.
 - **Observação de fluxo OpenSpec:** use os comandos nesta ordem para mudanças novas; ajuste a cadência apenas com justificativa explícita.
 - **Subagents:** use subagents sempre que houver ganho claro de paralelismo, investigação independente, validação especializada ou aceleração sem duplicar trabalho.
 - OpenSpec é a camada de especificação técnica (artifacts).
@@ -147,6 +149,7 @@ Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover ar
 - No Codex, invoque `$design-critic`; no Cursor, invoque `/design-critic`. Pedido equivalente em linguagem natural também deve acionar a skill durante `Status=Design`.
 - O Designer/Critic Agent produz ou refatora o protótipo, critica produto, UX, acessibilidade, responsividade e estados, resolve achados bloqueantes no escopo e registra `Design Agent verdict` no `design.md`.
 - O agente só pode mover `Design -> Aprovação de Design` quando `design.md`, `Prototype` e `Design Critique` estiverem completos. Nunca pode mover `Aprovação de Design -> Pronto para Dev`, autoaprovar ou alegar identidade de Alan.
+- **Protótipos HTML navegáveis (Cripto):** publicar em `frontend/public/prototypes/<change-or-card-slug>/` (preferir `index.html`). URL canônica de revisão: `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/`. Não use Gist como superfície de visualização de HTML (Gist mostra código-fonte). No comentário do card, o bloco **OpenSpec** lista só Markdown do Gist; o bloco **Protótipo navegável** traz o link HTTP da tela. Após gravar o arquivo em `public/`, rebuild/restart do frontend DEV se necessário para o `preview` servir o `dist/` atualizado. Helper: `publish-openspec-card-artifacts.sh` com `--prototype-url` (nunca faz upload de HTML no Gist).
 
 ### Falhas antigas em `openspec validate --all`
 

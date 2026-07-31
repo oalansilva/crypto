@@ -6,6 +6,7 @@ import urllib.request
 from typing import Dict, Optional
 
 from app.config import get_settings
+from app.services.binance_trades import STABLE_ASSETS
 
 # Ensure .env files are loaded before runtime os.getenv lookups below.
 get_settings()
@@ -54,7 +55,7 @@ def compute_usdt_price_for_asset(asset: str, symbol_prices: Dict[str, float]) ->
     """Compute an asset price in USDT using best-effort fallbacks.
 
     Strategy:
-    1) If asset is USDT: 1
+    1) If asset is a USD stable (USDT/USDC/BUSD/TUSD/FDUSD): 1
     2) Direct pair: ASSETUSDT
     3) Via BTC: ASSETBTC * BTCUSDT
     4) Fiat BRL: derive from USDTBRL (USD ~ USDT): BRLUSDT = 1 / USDTBRL
@@ -66,10 +67,8 @@ def compute_usdt_price_for_asset(asset: str, symbol_prices: Dict[str, float]) ->
     if not a:
         return None
 
-    if a == "USDT":
-        return 1.0
-    if a == "USDC":
-        # Treat stablecoin as ~1 USDT for display.
+    # USD stables: always value ~1 USDT for wallet display even without a self-pair ticker.
+    if a in STABLE_ASSETS:
         return 1.0
 
     direct = _price(symbol_prices, f"{a}USDT")

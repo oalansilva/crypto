@@ -12,7 +12,7 @@ async function setupApiMocks(page: any) {
     return route.abort('blockedbyclient')
   })
 
-  await page.route('**/api/external/binance/spot/balances', (route: any) =>
+  await page.route('**/api/external/binance/spot/balances**', (route: any) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
