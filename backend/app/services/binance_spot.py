@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from app.config import get_settings
 from app.services.binance_prices import compute_usdt_price_for_asset, fetch_all_binance_prices
-from app.services.binance_trades import compute_avg_buy_cost_usdt
+from app.services.binance_trades import STABLE_ASSETS, compute_avg_buy_cost_usdt
 
 # Ensure .env files are loaded before runtime os.getenv lookups below.
 get_settings()
@@ -137,6 +137,9 @@ def fetch_spot_balances_snapshot(
             continue
 
         price_usdt = compute_usdt_price_for_asset(asset, symbol_prices)
+        # Stables must never be omitted for missing ticker: fall back to ~1 USD.
+        if price_usdt is None and asset in STABLE_ASSETS:
+            price_usdt = 1.0
         value_usd = (total * price_usdt) if price_usdt is not None else None
         if value_usd is None:
             continue
@@ -147,6 +150,7 @@ def fetch_spot_balances_snapshot(
 
         total_usd += float(value_usd)
 
+        is_stable = asset in STABLE_ASSETS
         out.append(
             {
                 "asset": asset,
@@ -155,9 +159,10 @@ def fetch_spot_balances_snapshot(
                 "total": total,
                 "price_usdt": price_usdt,
                 "value_usd": value_usd,
-                "avg_cost_usdt": None,
-                "pnl_usd": None,
-                "pnl_pct": None,
+                # Stables: cost reference 1.0 without waiting for trade-history top-N.
+                "avg_cost_usdt": 1.0 if is_stable else None,
+                "pnl_usd": 0.0 if is_stable else None,
+                "pnl_pct": 0.0 if is_stable else None,
             }
         )
 
@@ -165,16 +170,21 @@ def fetch_spot_balances_snapshot(
     out.sort(key=lambda x: -(float(x.get("value_usd") or 0.0)))
 
     lookups_started = time.time()
+    trade_lookups = 0
 
-    for i, row in enumerate(out):
+    for row in out:
         if max_trade_symbols <= 0:
             break
-        if i >= max_trade_symbols:
+        if trade_lookups >= max_trade_symbols:
             break
         if (time.time() - lookups_started) > float(trade_budget_s):
             break
 
         asset = str(row.get("asset") or "").strip().upper()
+        if asset in STABLE_ASSETS:
+            # Already valued at 1.0 / PnL 0 in the first pass; skip trade lookups.
+            continue
+
         avg_cost_usdt = compute_avg_buy_cost_usdt(
             asset,
             lookback_days=lookback_days,
@@ -182,6 +192,7 @@ def fetch_spot_balances_snapshot(
             api_secret=api_secret,
             base_url=base_url,
         )
+        trade_lookups += 1
         row["avg_cost_usdt"] = avg_cost_usdt
 
         price_usdt = row.get("price_usdt")

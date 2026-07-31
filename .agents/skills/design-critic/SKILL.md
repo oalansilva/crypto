@@ -17,12 +17,19 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 
 1. Explicitar no `design.md` o problema, o usuário afetado, a hipótese de produto e o resultado esperado.
 2. Produzir ou refatorar um protótipo verificável. Aceitar Figma versionado, HTML navegável, arquivo versionado ou wireframe Markdown quando proporcional ao card.
-3. Registrar em `## Prototype`:
-   - URL ou caminho verificável;
+3. **HTML nunca fica no Gist OpenSpec.** Gist renderiza fonte, não a tela. Para protótipo HTML neste repo:
+   - publicar em `frontend/public/prototypes/<change-or-card-slug>/` (entrada preferencial `index.html`);
+   - servir na URL DEV navegável `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/` (rebuild/restart do frontend DEV se o preview usar `dist/`);
+   - opcionalmente manter cópia espelho em `openspec/changes/<change>/prototype/` para o pacote da change (não publicar esse HTML no Gist);
+   - no comentário do card: bloco OpenSpec = só Markdown do Gist; bloco separado **Protótipo navegável** = link HTTP da tela;
+   - usar `publish-openspec-card-artifacts.sh --prototype-url <url>` (o script não envia `prototype/**` ao Gist).
+4. Registrar em `## Prototype`:
+   - **URL HTTP navegável** (obrigatória para HTML; Figma/Markdown usam URL ou caminho verificável);
+   - caminho versionado no repo (`frontend/public/prototypes/...`);
    - versão, commit ou digest;
    - escopo desktop e mobile;
    - fluxos e estados representados.
-4. Aplicar os tokens, componentes e padrões do `DESIGN.md`. Registrar qualquer exceção e sua justificativa.
+5. Aplicar os tokens, componentes e padrões do `DESIGN.md`. Registrar qualquer exceção e sua justificativa.
 
 ## Criticar de forma independente
 
@@ -45,7 +52,7 @@ Adicionar ou atualizar `## Design Critique` no `design.md` com:
 - referências exatas do design e do protótipo avaliados;
 - `Design Agent verdict: PASS` ou `Design Agent verdict: BLOCKED`.
 
-Usar `PASS` somente quando `design.md`, protótipo versionado/verificável e crítica estiverem completos, coerentes e sem achado bloqueante. Publicar novamente os artefatos OpenSpec no card quando a entrega mudar.
+Usar `PASS` somente quando `design.md`, protótipo versionado/verificável (com URL HTTP navegável quando for HTML) e crítica estiverem completos, coerentes e sem achado bloqueante. Publicar novamente os artefatos OpenSpec no card quando a entrega mudar; o comentário de handoff MUST incluir o link da tela prototipada.
 
 ## Handoff permitido
 

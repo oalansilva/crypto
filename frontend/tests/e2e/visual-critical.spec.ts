@@ -138,7 +138,7 @@ async function installStableApiMocks(page: Page) {
       body: JSON.stringify({ protected: false, symbol: 'BTCUSDT', client_order_id: 'cfstop_visual', order: null }),
     }),
   )
-  await page.route('**/api/external/binance/spot/balances', (route) =>
+  await page.route('**/api/external/binance/spot/balances**', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
