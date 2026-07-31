@@ -38,16 +38,30 @@ Exemplos de evidencia:
 
 - `Status` e a fonte principal das colunas:
   - `Todo`: backlog ou pronto para comecar.
-  - `In Progress`: trabalho ativo.
+  - `Design`: Designer/Critic Agent prepara protótipo, crítica e evidências.
+  - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan.
+  - `Pronto para Dev`: design aprovado por Alan ou bypass sem UI auditado.
+  - `Em desenvolvimento`: trabalho técnico ativo.
   - `Code Review`: diff pronto para revisao Codex antes do commit.
   - `QA`: SHA revisado em validacao automatizada, incluindo `qa-gate` e Playwright visual.
   - `Done`: Done tecnico; QA verde, integrado em `develop`, restart/runtime validados e aguardando Alan.
   - `Homologado`: Alan aprovou funcionalmente em `develop`.
   - `Pronto`: publicado/operacional em producao com evidencia.
   - `Cancelado`: item substituido ou descartado.
-- Caminho normal: `Todo -> In Progress -> Code Review -> QA -> Done -> Homologado -> Pronto`.
-- Falha que exige alteração: `QA -> In Progress -> Code Review -> QA`.
-- `Fluxo` e substatus/legado: `Backlog`, `Ready`, `In-progress`, `Code Review`, `QA`, `Blocked`, `Validate` e `Done`. Quando houver equivalência, espelhar o `Status`; `Validate` permanece para histórico.
+- Caminho normal: `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
+- Retornos controlados antes de `Done`: `Aprovação de Design -> Design`, `Code Review -> Em desenvolvimento` e `QA -> Em desenvolvimento`.
+- `Fluxo` e substatus/legado: `Backlog`, `Ready`, `In-progress`, `Code Review`, `QA`, `Blocked`, `Validate` e `Done`. Espelhar somente quando houver valor equivalente; `Status` sempre prevalece e o nome legado `In-progress` não substitui `Em desenvolvimento`.
+
+### Gate de design
+
+- Card com `UI impact: affected` passa por `Design` e usa a skill canônica `.agents/skills/design-critic/SKILL.md` (`$design-critic` no Codex; `/design-critic` no Cursor).
+- A entrega precisa conter `design.md`, protótipo versionado ou verificável, `Design Critique` cobrindo produto, UX, acessibilidade, responsividade e estados, e veredito explícito do agente.
+- O Designer/Critic Agent pode mover apenas `Design -> Aprovação de Design` quando a entrega estiver completa.
+- Alan aprova arrastando `Aprovação de Design -> Pronto para Dev`. O gesto aprova a versão específica do design e do protótipo; agentes não podem executar essa transição.
+- Se o design ou protótipo aprovado mudar, a aprovação fica obsoleta e o desenvolvimento permanece bloqueado até nova aprovação.
+- Card com `UI impact: none` pode usar `Todo -> Pronto para Dev` somente com justificativa não vazia e auditável.
+
+Para reduzir largura sem alterar status, o Kanban oferece as lentes `Produto e Design` (`Todo`, `Design`, `Aprovação de Design`, `Pronto para Dev`), `Entrega` (`Pronto para Dev`, `Em desenvolvimento`, `Code Review`, `QA`, `Done`, `Homologado`, `Pronto`) e `Todas`.
 
 ## Regra de Revisao da Clara
 
@@ -58,11 +72,24 @@ Quando Clara concluir um entregavel de produto, operacao, validacao, metrica ou 
 - mover para `Done` somente após QA verde e evidência técnica;
 - aguardar revisão/homologação de Alan.
 
-Clara nao deve usar `Pronto` como estado de revisao. Se ainda faltar execucao real, o card deve ficar em `In Progress`.
+Clara nao deve usar `Pronto` como estado de revisao. Se ainda faltar execucao real, o card deve ficar na etapa canônica correspondente, normalmente `Design` ou `Em desenvolvimento`.
 
 ## QA visual
 
 Playwright visual é obrigatório por padrão em todo card, inclusive sem mudança de frontend. A dispensa só vale quando Alan registra no card `QA visual dispensado por Alan.` com motivo e a label `qa-visual-skip` está aplicada. O CI preserva artifacts de falha; baseline visual atualizado faz parte do diff revisado.
+
+Ao entrar em `QA`, o backend cria uma rodada pendente vinculada ao SHA atual. Somente o caller confiável de CI/QA, autenticado por `WORKFLOW_QA_APPROVAL_TOKEN`, pode aprovar essa rodada em `POST /api/workflow/projects/<project>/changes/<change>/qa-approvals`. A chamada envia os valores `qa_round_id` e `qa_commit_sha` devolvidos pela API e a evidência dos checks; o servidor compara ambos com a rodada ativa e grava o ator fixo `ci-qa@workflow.local`. Campos `actor` ou `note` enviados pelo cliente não concedem aprovação, e o endpoint genérico de approvals rejeita o gate `QA`.
+
+Exemplo sem expor o segredo no repositório:
+
+```bash
+curl -X POST "$BACKEND_URL/api/workflow/projects/crypto/changes/card-340-design-approval-kanban-flow/qa-approvals" \
+  -H "X-Workflow-QA-Token: $WORKFLOW_QA_APPROVAL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"round_id":"<qa_round_id>","commit_sha":"<qa_commit_sha>","evidence":"qa-gate e Playwright visual verdes"}'
+```
+
+Para mover `Homologado -> Pronto`, o backend procura em `origin/main` um commit cuja mensagem referencie exatamente o `change_id` ou o número do card. O checkout do servidor pode continuar em `develop`; SHA informado pelo cliente não é aceito como prova de publicação.
 
 Fluxo rápido (ver `AGENTS.md` / `alan-workflow` Visual QA): em mudança de UI intencional, atualizar baselines no DEV Linux com `npm --prefix frontend run test:e2e:visual -- --update-snapshots`, revisar só o `diff.png` dos cenários alterados, commit dos `*-snapshots/` e deixar o CI revalidar. Não usar loop de vision em todos os artifacts do CI para “passar” o teste — o Playwright já compara pixels.
 

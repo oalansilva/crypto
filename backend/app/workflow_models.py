@@ -99,9 +99,36 @@ class Change(WorkflowBase):
 
     title: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="in_progress")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="Todo")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     card_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ui_impact: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
+    ui_impact_justification: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    design_ref: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    design_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    prototype_ref: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    prototype_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    design_critique_verdict: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    design_delivered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    design_approved_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    design_approved_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    design_approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    approved_design_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approved_prototype_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    design_approval_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    qa_round_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    qa_commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    qa_round_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    qa_approved_round_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    qa_approved_commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    qa_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    publication_commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # Image attachments stored as JSON: [{"filename": "xxx.jpg", "data": "base64..."}]
     image_data: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
 

@@ -7,7 +7,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 - `rules.md`: politica normativa, curta e obrigatoria. Use para decidir o que nunca pode ser pulado.
 - `AGENTS.md`: manual operacional detalhado. Use para comandos, ordem de execucao, mapeamento OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
 - Em caso de duvida ou conflito, siga a regra mais restritiva. Se ainda houver ambiguidade, pare e registre o conflito antes de alterar codigo, card ou Git.
-- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` (`/root/.codex/skills/alan-workflow/SKILL.md`). Este arquivo deve manter somente regras normativas especificas do projeto cripto.
+- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. Codex e Cursor devem aplicar os mesmos overrides versionados neste arquivo e em `AGENTS.md`; o fluxo do projeto não depende de um caminho absoluto local.
 
 ## Regras obrigatorias
 
@@ -25,53 +25,63 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 3. No cripto, o campo `Status` e a fonte principal das colunas. O campo `Fluxo`, quando existir, e substatus/legado; se houver divergencia, `Status` prevalece.
    - `Todo`: backlog ou pronto para comecar.
-   - `In Progress`: Codex/Clara esta trabalhando ou validando tecnicamente.
+   - `Design`: Designer/Critic Agent prepara prototipo, critica e evidencias.
+   - `Aprovação de Design`: entrega de design completa aguardando Alan.
+   - `Pronto para Dev`: Alan aprovou o design por arraste ou o bypass sem UI foi auditado.
+   - `Em desenvolvimento`: Codex/Clara esta trabalhando ou validando tecnicamente.
    - `Code Review`: diff pronto para revisao Codex antes do commit; achados bloqueantes corrigidos ou classificados.
    - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
    - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
    - `Pronto`: alteracao ja subiu para `main`/producao com evidencia; este e o fechamento final.
    - `Cancelado`: nao sera feito ou foi substituido.
-   - Caminho normal: `Todo -> In Progress -> Code Review -> QA -> Done -> Homologado -> Pronto`.
-   - Falha de QA que exige codigo: `QA -> In Progress -> Code Review -> QA`; falha de infraestrutura permanece em `QA` para rerun documentado.
+   - Caminho normal: `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
+   - Cards com `UI impact: none` podem usar `Todo -> Pronto para Dev` somente com justificativa não vazia e auditável.
+   - Somente Alan autenticado aprova `Aprovação de Design -> Pronto para Dev`; agentes nunca autoaprovam. Mudança no design/protótipo aprovado invalida o gate.
+   - Falha de QA que exige codigo: `QA -> Em desenvolvimento -> Code Review -> QA`; falha de infraestrutura permanece em `QA` para rerun documentado.
    - Nao descreva `Status=Done` como card fechado/finalizado; use `Done tecnico` ou `aguardando homologacao`.
 
-4. Homologacao e release seguem `alan-workflow`.
+4. Cards com impacto de UI usam o contrato canônico `.agents/skills/design-critic/SKILL.md` antes da implementação.
+   - Codex invoca `$design-critic`; Cursor invoca `/design-critic`.
+   - O agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
+   - O agente pode mover somente `Design -> Aprovação de Design` quando a evidência estiver completa; nunca pode executar a aprovação humana.
+
+5. Homologacao e release seguem `alan-workflow`.
    - No cripto, homologacao e aprovacao funcional em `develop`.
    - So comandos explicitos de lote/release autorizam qualquer acao em `main`.
 
-5. Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, execute `alan-workflow` com fechamento de producao dos cards `Homologado`.
+6. Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, execute `alan-workflow` com fechamento de producao dos cards `Homologado`.
    - Nao usar auto-merge.
    - Se `develop` contiver mudanca nao homologada, nao fazer merge direto `develop -> main`; usar branch `release-*` com somente conteudo aprovado ou pedir decisao de Alan.
    - Usar `scripts/release-guard pre` antes de abrir/mesclar PR e `scripts/release-guard post` depois da publicacao.
 
-6. Branches e testes seguem `alan-workflow`; no cripto, evitar commit direto em `develop` enquanto a implementacao estiver parcial.
+7. Branches e testes seguem `alan-workflow`; no cripto, evitar commit direto em `develop` enquanto a implementacao estiver parcial.
    - Integrar em `develop` somente quando a change estiver pronta para teste integrado/homologacao, preferencialmente com commit claro ou squash referenciando o card.
 
-7. Siga `alan-workflow` para higiene Git/worktree/stash; no cripto, stash nao e armazenamento principal de entrega.
+8. Siga `alan-workflow` para higiene Git/worktree/stash; no cripto, stash nao e armazenamento principal de entrega.
    - Antes de iniciar segunda change, rode `git status --short` e isole o trabalho em branch/worktree propria.
    - Use stash apenas como protecao temporaria, sempre com nome, hash, arquivos incluidos, motivo e comando de recuperacao.
    - Branches de change devem ser apagadas no fechamento final, depois que o conteudo entrar em `main`/`Pronto`, e somente se nao houver commits exclusivos pendentes.
 
-8. Sempre utilizar subagentes quando houver tarefa de desenvolvimento, investigacao, validacao ou revisao tecnica com ganho claro de paralelismo.
+9. Sempre utilizar subagentes quando houver tarefa de desenvolvimento, investigacao, validacao ou revisao tecnica com ganho claro de paralelismo.
    - O agente principal continua responsavel por escopo, consolidacao, evidencias e fechamento.
 
-9. PostgreSQL e obrigatorio em runtime, QA, homologacao e scripts operacionais.
+10. PostgreSQL e obrigatorio em runtime, QA, homologacao e scripts operacionais.
    - Nao usar SQLite como banco de operacao.
 
-10. Apos validacao e evidencia, o agente tem autonomia para executar o fluxo manual de fechamento previsto no `AGENTS.md` e em `alan-workflow`, sem solicitar nova autorizacao para cada etapa.
+11. Apos validacao e evidencia, o agente tem autonomia para executar o fluxo manual de fechamento previsto no `AGENTS.md` e em `alan-workflow`, sem solicitar nova autorizacao para cada etapa.
    - Essa autonomia nao autoriza pular teste, OpenSpec, homologacao, isolamento por branch, pedido explicito de lote/release ou merge manual.
 
-11. Usar a skill `caveman` em modo `lite` como padrao de comunicacao com Alan.
+12. Usar a skill `caveman` em modo `lite` como padrao de comunicacao com Alan.
    - Manter respostas curtas, diretas e sem filler, preservando clareza tecnica, seguranca e ordem correta em instrucoes criticas.
    - Desativar somente quando Alan pedir explicitamente `stop caveman` ou `normal mode`.
 
-12. Toda tela, componente visual ou funcionalidade com impacto de UI/UX deve seguir obrigatoriamente o `DESIGN.md`.
+13. Toda tela, componente visual ou funcionalidade com impacto de UI/UX deve seguir obrigatoriamente o `DESIGN.md`.
    - Vale para telas novas e antigas, ajustes pequenos, refactors visuais, cards de produto e correcoes de interface.
    - Antes de implementar, consultar `DESIGN.md` e registrar no OpenSpec/hand-off quais tokens, componentes, padroes e excecoes foram aplicados.
    - Validacao visual e tecnica deve confirmar aderencia ao `DESIGN.md`; se houver desvio necessario, registrar justificativa antes de fechar a entrega.
 
-13. Playwright visual e obrigatorio no QA de todo card por padrao, inclusive sem mudanca em `frontend/**`.
+14. Playwright visual e obrigatorio no QA de todo card por padrao, inclusive sem mudanca em `frontend/**`.
    - Dispensa so vale com label `qa-visual-skip` e comentario explicito de Alan no card no formato `QA visual dispensado por Alan.` seguido de motivo.
    - Label isolada, comentario isolado, filtro de path ou variavel de repositorio nao autorizam skip.
    - `Done` exige `qa-gate` verde, artifacts/evidencias quando aplicaveis, integracao em `develop`, `./restart` e URL servindo o resultado novo.

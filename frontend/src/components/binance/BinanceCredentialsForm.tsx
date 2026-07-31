@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/use-toast'
 
 const BINANCE_API_KEY_HELP =
-  'Use a API Key read-only criada na Binance. Não use e-mail ou senha da sua conta Binance.'
+  'Use uma API Key da Binance (leitura para Carteira; Spot Trading se for usar Proteger stop). Não use e-mail ou senha.'
 const BINANCE_API_SECRET_HELP =
-  'Use o API Secret da mesma chave read-only. O Cripto Farol não pede sua senha da Binance.'
+  'Use o API Secret da mesma chave. O Cripto Farol não pede sua senha da Binance.'
 
 type BinanceCredentialsFormProps = {
   mode?: 'full' | 'compact'
@@ -173,8 +173,10 @@ export function BinanceCredentialsForm({
             Credenciais Binance
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
-            Chave API somente leitura vinculada à sua conta. Home e Carteira usam essa chave. Mantenha IP whitelist
-            habilitado na Binance.
+            Chave API vinculada à sua conta. Home e Carteira precisam só de leitura. Para usar{' '}
+            <span className="text-[var(--text-primary)]">Proteger stop</span> no Monitor, habilite também{' '}
+            <span className="text-[var(--text-primary)]">Spot Trading</span> (sem withdraw). Mantenha IP whitelist
+            na Binance.
           </p>
         </div>
 
@@ -229,8 +231,8 @@ export function BinanceCredentialsForm({
             {credentialsConfigured ? 'Substituir chave' : 'Adicionar chave'}
           </div>
           <Input
-            label="API Key read-only"
-            aria-label="Binance API Key read-only"
+            label="API Key Binance"
+            aria-label="Binance API Key"
             title={BINANCE_API_KEY_HELP}
             name="binance_api_key_readonly"
             autoComplete="off"
@@ -249,7 +251,7 @@ export function BinanceCredentialsForm({
               htmlFor="binance-api-secret-profile"
               className="mb-2 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]"
             >
-              API Secret read-only
+              API Secret
             </label>
             <div className="relative">
               <div
@@ -261,7 +263,7 @@ export function BinanceCredentialsForm({
               <input
                 id="binance-api-secret-profile"
                 type={showApiSecret ? 'text' : 'password'}
-                aria-label="Binance API Secret read-only"
+                aria-label="Binance API Secret"
                 title={BINANCE_API_SECRET_HELP}
                 name="binance_api_secret_readonly"
                 autoComplete="new-password"
@@ -310,7 +312,7 @@ export function BinanceCredentialsForm({
             Credenciais Binance
           </div>
           <div className="mt-2 max-w-3xl text-sm text-slate-400">
-            A Home e a carteira usam uma chave API vinculada ao usuário logado. Use permissão somente leitura e mantenha IP
+            A Home e a carteira usam uma chave API vinculada ao usuário logado. Leitura basta para saldos; Spot Trading é necessário para Proteger stop. Mantenha IP
             whitelist habilitado na Binance.
           </div>
         </div>
@@ -325,7 +327,7 @@ export function BinanceCredentialsForm({
         <label className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-slate-950/35 px-3 text-sm text-slate-200 focus-within:border-sky-300/50">
           <ShieldCheck className="h-4 w-4 text-slate-500" />
           <input
-            aria-label="Binance API Key read-only"
+            aria-label="Binance API Key"
             title={BINANCE_API_KEY_HELP}
             name="binance_api_key_readonly"
             autoComplete="off"
@@ -342,7 +344,7 @@ export function BinanceCredentialsForm({
           <KeyRound className="h-4 w-4 text-slate-500" />
           <input
             type={showApiSecret ? 'text' : 'password'}
-            aria-label="Binance API Secret read-only"
+            aria-label="Binance API Secret"
             title={BINANCE_API_SECRET_HELP}
             name="binance_api_secret_readonly"
             autoComplete="new-password"

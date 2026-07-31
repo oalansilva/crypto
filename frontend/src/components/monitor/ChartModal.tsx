@@ -30,6 +30,7 @@ import {
 import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
 import { mergeStrategyTransparencySeries } from '@/lib/strategyTransparency';
+import { SpotProtectStopPanel } from './SpotProtectStopPanel';
 
 interface ChartModalProps {
     symbol: string;
@@ -642,27 +643,34 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         { label: 'Histórico', value: `${signalHistory.length} sinais` },
     ];
     const timeframeToolbar = (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Selecionar timeframe do gráfico">
-            {timeframeOptions.map((item) => {
-                const active = item.value === timeframe;
-                return (
-                    <button
-                        key={item.value}
-                        type="button"
-                        className={`min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] ${
-                            active
-                                ? 'border-[#fcd535] bg-[#fcd535]/16 text-[#eaecef]'
-                                : 'border-[#2b3139] bg-[#0b0e11] text-[#929aa5] hover:border-[#fcd535] hover:text-[#eaecef]'
-                        }`}
-                        onClick={() => setTimeframe(item.value)}
-                        aria-pressed={active}
-                        title={item.source === 'algorithmic' ? 'Timeframe da estratégia' : 'Timeframe manual'}
-                        data-testid={`chart-timeframe-${item.value}`}
-                    >
-                        {item.label}
-                    </button>
-                );
-            })}
+        <div className="flex w-full flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Selecionar timeframe do gráfico">
+                {timeframeOptions.map((item) => {
+                    const active = item.value === timeframe;
+                    return (
+                        <button
+                            key={item.value}
+                            type="button"
+                            className={`min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] ${
+                                active
+                                    ? 'border-[#fcd535] bg-[#fcd535]/16 text-[#eaecef]'
+                                    : 'border-[#2b3139] bg-[#0b0e11] text-[#929aa5] hover:border-[#fcd535] hover:text-[#eaecef]'
+                            }`}
+                            onClick={() => setTimeframe(item.value)}
+                            aria-pressed={active}
+                            title={item.source === 'algorithmic' ? 'Timeframe da estratégia' : 'Timeframe manual'}
+                            data-testid={`chart-timeframe-${item.value}`}
+                        >
+                            {item.label}
+                        </button>
+                    );
+                })}
+            </div>
+            <SpotProtectStopPanel
+                opportunity={opportunity}
+                showEntryStopRows={showEntryStopRows}
+                direction={opportunityDirection}
+            />
         </div>
     );
     const sideContent = (snapshot: StrategyChartSnapshot | null) => (

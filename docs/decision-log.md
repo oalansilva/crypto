@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-07-31 - Gate humano de design antes do desenvolvimento
+
+**Decisao:** substituir `In Progress` por `Em desenvolvimento` e adotar o fluxo `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto` no Project 1, Kanban interno e instruções de Codex/Cursor.
+
+**Aprovação:** para cards com impacto de UI, o Designer/Critic Agent produz ou refatora o protótipo, executa crítica de produto, UX, acessibilidade, responsividade e estados e move apenas `Design -> Aprovação de Design` quando a evidência estiver completa. Alan aprova a versão revisada arrastando `Aprovação de Design -> Pronto para Dev`; nenhum agente pode executar ou simular essa transição.
+
+**Bypass:** cards com `UI impact: none` podem usar `Todo -> Pronto para Dev` somente com justificativa não vazia e auditável. Mudança posterior no `design.md` ou no protótipo invalida a aprovação anterior.
+
+**Agentes:** o contrato canônico do Designer/Critic Agent fica em `.agents/skills/design-critic/SKILL.md`, com adaptadores finos para Codex e Cursor. OpenSpec usa a mesma ordem operacional por `/opsx:*` e pelos aliases Cursor `/opsx-*`.
+
+**Relação com decisões anteriores:** esta decisão substitui o vocabulário e a sequência operacional definidos em 2026-07-12, preservando `QA` como gate automatizado, `Done` como checkpoint técnico, `Homologado` como aprovação funcional de Alan e `Pronto` como publicação final.
+
 ## 2026-07-12 - Gate QA automatizado entre Code Review e Done
 
 **Decisao:** adotar o fluxo `Todo -> In Progress -> Code Review -> QA -> Done -> Homologado -> Pronto` no Project 1 e na operação técnica. `QA` é um gate automatizado, não substitui a homologação funcional do Alan.

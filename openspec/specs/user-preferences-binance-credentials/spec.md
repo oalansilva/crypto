@@ -5,7 +5,12 @@ Authenticated users manage Binance read-only API credentials from Meu Perfil.
 
 ## Requirements
 ### Requirement: User profile page exposes Binance credentials management
-The system MUST provide Binance read-only API credentials management on the authenticated user profile page (`/profile`), reachable from the account control in the app bar.
+The system MUST provide Binance API credentials management on the authenticated user profile page (`/profile`). Credentials used for Wallet remain usable with read permission; credentials used for Monitor protective stop MUST be allowed to include Spot trading permission. The UI MUST NOT request withdraw permission and MUST continue to reject email/password values in the key/secret fields.
+
+#### Scenario: Copy mentions optional Spot trading
+- **WHEN** a logged-in user opens `/profile` Credenciais Binance
+- **THEN** the UI MUST explain that read-only is enough for Home/Carteira and that Spot trading permission is required to use Proteger stop no Monitor
+- **AND** the UI MUST recommend IP whitelist and MUST NOT ask for the Binance account password
 
 #### Scenario: Open profile without credentials
 - **WHEN** a logged-in user opens `/profile` and has no Binance credentials saved

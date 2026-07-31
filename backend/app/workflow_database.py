@@ -22,7 +22,7 @@ import sys
 from urllib.parse import urlparse
 from typing import Dict
 
-from sqlalchemy import create_engine
+from sqlalchemy import bindparam, create_engine, inspect
 from sqlalchemy import text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -31,6 +31,61 @@ from app.config import get_settings
 WorkflowBase = declarative_base()
 _workflow_engines: Dict[str, object] = {}
 _workflow_sessionmakers: Dict[str, sessionmaker] = {}
+
+
+def migrate_legacy_workflow_statuses(conn) -> None:
+    """Idempotently migrate known workflow status labels.
+
+    Unknown values stop startup instead of being silently reinterpreted as
+    development work. Canonical values are intentionally stored in Portuguese
+    to match the GitHub Project and Kanban contract.
+    """
+
+    from app.services.workflow_transition_service import (
+        CANONICAL_STATUS_SET,
+        LEGACY_STATUS_ALIASES,
+    )
+
+    rows = conn.execute(text("SELECT DISTINCT status FROM wf_changes"))
+    existing = {str(row[0]).strip() for row in rows if row[0] is not None}
+    known = set(CANONICAL_STATUS_SET) | set(LEGACY_STATUS_ALIASES)
+    unknown = sorted(value for value in existing if value not in known)
+    if unknown:
+        raise RuntimeError(
+            "Unknown workflow statuses require manual reconciliation before migration: "
+            + ", ".join(unknown)
+        )
+
+    for legacy, canonical in LEGACY_STATUS_ALIASES.items():
+        conn.execute(
+            text("UPDATE wf_changes SET status = :canonical WHERE status = :legacy"),
+            {"canonical": canonical, "legacy": legacy},
+        )
+
+    columns = {column["name"] for column in inspect(conn).get_columns("wf_changes")}
+    if {"ui_impact", "ui_impact_justification"}.issubset(columns):
+        advanced_statuses = (
+            "Em desenvolvimento",
+            "Code Review",
+            "QA",
+            "Done",
+            "Homologado",
+            "Pronto",
+        )
+        conn.execute(
+            text("""
+                UPDATE wf_changes
+                   SET ui_impact = 'none',
+                       ui_impact_justification =
+                         'Grandfathered by canonical workflow migration: card was already beyond the design gate.'
+                 WHERE status IN :advanced_statuses
+                   AND ui_impact = 'unknown'
+                   AND COALESCE(ui_impact_justification, '') = ''
+                """).bindparams(bindparam("advanced_statuses", expanding=True)),
+            {"advanced_statuses": advanced_statuses},
+        )
+    if conn.dialect.name == "postgresql":
+        conn.execute(text("ALTER TABLE wf_changes ALTER COLUMN status SET DEFAULT 'Todo'"))
 
 
 def _resolve_test_workflow_url(url: str) -> str:
@@ -173,6 +228,32 @@ def init_workflow_schema_for_url(url: str) -> None:
                 conn.execute(
                     text("ALTER TABLE wf_changes ADD COLUMN image_data TEXT NOT NULL DEFAULT '[]'")
                 )
+            change_columns = {
+                "ui_impact": "VARCHAR(16) NOT NULL DEFAULT 'unknown'",
+                "ui_impact_justification": "TEXT NOT NULL DEFAULT ''",
+                "design_ref": "TEXT NOT NULL DEFAULT ''",
+                "design_digest": "VARCHAR(64)",
+                "prototype_ref": "TEXT NOT NULL DEFAULT ''",
+                "prototype_digest": "VARCHAR(64)",
+                "design_critique_verdict": "VARCHAR(32) NOT NULL DEFAULT ''",
+                "design_delivered_at": "TIMESTAMP WITH TIME ZONE",
+                "design_approved_by_user_id": "VARCHAR(36)",
+                "design_approved_by": "VARCHAR(256)",
+                "design_approved_at": "TIMESTAMP WITH TIME ZONE",
+                "approved_design_digest": "VARCHAR(64)",
+                "approved_prototype_digest": "VARCHAR(64)",
+                "design_approval_valid": "BOOLEAN NOT NULL DEFAULT FALSE",
+                "qa_round_id": "VARCHAR(36)",
+                "qa_commit_sha": "VARCHAR(40)",
+                "qa_round_started_at": "TIMESTAMP WITH TIME ZONE",
+                "qa_approved_round_id": "VARCHAR(36)",
+                "qa_approved_commit_sha": "VARCHAR(40)",
+                "qa_approved_at": "TIMESTAMP WITH TIME ZONE",
+                "publication_commit_sha": "VARCHAR(40)",
+            }
+            for column_name, ddl in change_columns.items():
+                if column_name not in cols:
+                    conn.execute(text(f"ALTER TABLE wf_changes ADD COLUMN {column_name} {ddl}"))
 
             project_cols = None
             try:
@@ -245,6 +326,11 @@ def init_workflow_schema_for_url(url: str) -> None:
         except Exception:
             # Best-effort lightweight compatibility shim.
             pass
+
+    # Status migration is a safety boundary and must not be swallowed by the
+    # best-effort compatibility shim above.
+    with workflow_engine.begin() as conn:
+        migrate_legacy_workflow_statuses(conn)
 
 
 def init_workflow_schema() -> None:

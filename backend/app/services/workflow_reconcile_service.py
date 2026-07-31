@@ -9,11 +9,9 @@ column even though the work is effectively past that gate.
 
 Goal
 ----
-Provide a *minimal, safe* auto-reconciliation mechanism that:
-- infers **PO** and **DESIGN** completion from filesystem artifacts (OpenSpec + prototype)
-- advances the workflow DB forward (never backward) to the earliest column that
-  is still actually pending
-- never auto-approves Alan gates (Approval / homologation)
+Provide a minimal reconciliation mechanism that never advances a card or
+approves a human gate from file presence. It only invalidates an already-issued
+design approval when its immutable evidence no longer matches.
 
 This is intentionally best-effort and idempotent.
 """
@@ -22,32 +20,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
 
 from sqlalchemy.orm import Session
 
 from app.services.coordination_service import project_root
 from app.workflow_models import ApprovalScope, ApprovalState, Change, WorkflowApproval
+from app.services.workflow_transition_service import (
+    KANBAN_COLUMNS,
+    approval_matches_current_evidence,
+    canonicalize_status,
+    invalidate_design_approval,
+    invalidate_qa_round,
+)
 
-KANBAN_FLOW_ORDER = [
-    "Pending",
-    "PO",
-    "DESIGN",
-    "Approval",
-    "DEV",
-    "QA",
-    "Homologation",
-    "Archived",
-]
+KANBAN_FLOW_ORDER = KANBAN_COLUMNS
 
 
 def _flow_index(col: str) -> int:
-    if col == "Alan homologation":
-        col = "Homologation"
-    try:
-        return KANBAN_FLOW_ORDER.index(col)
-    except Exception:
-        return 0
+    return KANBAN_FLOW_ORDER.index(canonicalize_status(col))
 
 
 def _openspec_change_dir(change_id: str) -> Path:
@@ -93,122 +83,40 @@ def infer_gates_from_artifacts(change_id: str) -> InferredGates:
     return InferredGates(po_done=po_done, design_done=design_done)
 
 
-def _latest_gate_states(db: Session, change_pk: str) -> Dict[str, ApprovalState]:
-    out: Dict[str, ApprovalState] = {}
-    items = (
-        db.query(WorkflowApproval)
-        .filter(
-            WorkflowApproval.scope == ApprovalScope.change, WorkflowApproval.change_pk == change_pk
-        )
-        .order_by(WorkflowApproval.created_at.asc())
-        .all()
-    )
-    for a in items:
-        out[a.gate] = a.state
-    return out
-
-
-def _append_gate_state(
-    db: Session,
-    *,
-    change_pk: str,
-    gate: str,
-    state: ApprovalState,
-    actor: str,
-    note: str,
-) -> None:
-    db.add(
-        WorkflowApproval(
-            scope=ApprovalScope.change,
-            gate=gate,
-            state=state,
-            change_pk=change_pk,
-            work_item_id=None,
-            actor=actor,
-            note=note,
-        )
-    )
-
-
 def reconcile_change_forward(db: Session, *, change: Change) -> bool:
     """Reconcile a single change.
 
     Returns True if any DB mutation occurred.
     """
 
-    inferred = infer_gates_from_artifacts(change.change_id)
-    latest = _latest_gate_states(db, change.id)
-
-    mutated = False
-
-    # Auto-approve PO/DESIGN when artifacts exist.
-    if inferred.po_done and latest.get("PO") != ApprovalState.approved:
-        _append_gate_state(
-            db,
-            change_pk=change.id,
-            gate="PO",
-            state=ApprovalState.approved,
-            actor="reconcile",
-            note="auto: inferred PO done from openspec artifacts (proposal+tasks+specs)",
-        )
-        mutated = True
-
-    if inferred.design_done and latest.get("DESIGN") != ApprovalState.approved:
-        _append_gate_state(
-            db,
-            change_pk=change.id,
-            gate="DESIGN",
-            state=ApprovalState.approved,
-            actor="reconcile",
-            note="auto: inferred DESIGN done from openspec design/prototype artifacts",
-        )
-        mutated = True
-
-    # Determine the *minimum* column consistent with gate approvals.
-    # Never auto-approve Alan gates; we only read their current state.
-    latest2 = latest.copy()
-    if inferred.po_done:
-        latest2["PO"] = ApprovalState.approved
-    if inferred.design_done:
-        latest2["DESIGN"] = ApprovalState.approved
-
-    def ok(g: str) -> bool:
-        return latest2.get(g) == ApprovalState.approved
-
-    desired_col = "PO"
-    if not ok("PO"):
-        desired_col = "PO"
-    elif not ok("DESIGN"):
-        desired_col = "DESIGN"
-    elif not ok("Approval"):
-        desired_col = "Approval"
-    elif not ok("DEV"):
-        desired_col = "DEV"
-    elif not ok("QA"):
-        desired_col = "QA"
-    elif not ok("Homologation"):
-        desired_col = "Homologation"
-    else:
-        desired_col = "Archived"
-
-    current = (change.status or "").strip() or "PO"
-    if current == "Alan homologation":
-        current = "Homologation"
-    if current == "Pending":
+    current = canonicalize_status(change.status)
+    monitored = {
+        "Pronto para Dev",
+        "Em desenvolvimento",
+        "Code Review",
+        "QA",
+    }
+    if current not in monitored or not change.design_approval_valid:
         return False
-    if current.lower() == "archived":
-        current = "Archived"
-    if current.lower() == "canceled":
-        # Don't reconcile changes that were explicitly canceled
+    if change.ui_impact == "none" and (change.ui_impact_justification or "").strip():
         return False
-
-    # Advance forward only.
-    if _flow_index(desired_col) > _flow_index(current):
-        change.status = desired_col
-        mutated = True
-
-    if mutated:
-        db.commit()
-        db.refresh(change)
-
-    return mutated
+    if approval_matches_current_evidence(change, project_root()):
+        return False
+    invalidate_design_approval(change)
+    if current == "QA":
+        invalidate_qa_round(db, change, actor="reconcile", reason="design evidence changed")
+    change.status = "Aprovação de Design"
+    db.add(
+        WorkflowApproval(
+            scope=ApprovalScope.change,
+            gate="Design Approval",
+            state=ApprovalState.rejected,
+            change_pk=change.id,
+            work_item_id=None,
+            actor="reconcile",
+            note="Approval obsolete: current evidence no longer matches the approved digest.",
+        )
+    )
+    db.commit()
+    db.refresh(change)
+    return True

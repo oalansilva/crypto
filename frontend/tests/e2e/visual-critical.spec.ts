@@ -51,6 +51,10 @@ const OPPORTUNITIES = [
     status: 'HOLDING',
     message: 'Holding position',
     last_price: 65000,
+    entry_price: 65500,
+    stop_price: 62880,
+    distance_to_stop_pct: 4,
+    direction: 'long',
     timestamp: '2025-01-01T00:00:00Z',
     strategy_transparency: {
       status: 'available',
@@ -127,6 +131,13 @@ async function installStableApiMocks(page: Page) {
   await page.route('**/api/user/binance-credentials', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ configured: false, api_key_masked: null }) }),
   )
+  await page.route('**/api/monitor/spot-stop-order**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ protected: false, symbol: 'BTCUSDT', client_order_id: 'cfstop_visual', order: null }),
+    }),
+  )
   await page.route('**/api/external/binance/spot/balances', (route) =>
     route.fulfill({
       status: 200,
@@ -169,11 +180,18 @@ async function installStableApiMocks(page: Page) {
             title: 'Validação visual automática',
             card_number: 284,
             path: 'openspec/changes/card-284-automated-qa-gate/proposal.md',
-            status: { DEV: 'done', QA: 'pending' },
+            status: {},
             archived: false,
-            column: 'DEV',
+            column: 'Aprovação de Design',
             position: 0,
             item_type: 'change',
+            ui_impact: 'affected',
+            design_ref: 'openspec/changes/card-284-automated-qa-gate/design.md',
+            design_digest: 'visual-design-digest',
+            prototype_ref: 'frontend/public/prototypes/card-284-automated-qa-gate/index.html',
+            prototype_digest: 'visual-prototype-digest',
+            design_critique_verdict: 'PASS',
+            design_delivered_at: '2025-01-15T10:00:00Z',
           },
         ],
       }),
@@ -188,12 +206,25 @@ async function installStableApiMocks(page: Page) {
         project_id: 'crypto',
         change_id: 'visual-qa',
         title: 'Validação visual automática',
-        status: 'DEV',
+        status: 'Aprovação de Design',
         card_number: 284,
         created_at: '2025-01-01T00:00:00Z',
         updated_at: '2025-01-01T00:00:00Z',
       }),
     }),
+  )
+  await page.route('**/api/workflow/kanban/changes/*/tasks?project_slug=crypto', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ change_id: 'visual-qa', path: 'openspec/changes/visual-qa/tasks.md', sections: [] }),
+    }),
+  )
+  await page.route('**/api/workflow/kanban/changes/*/comments?project_slug=crypto', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ change_id: 'visual-qa', items: [] }) }),
+  )
+  await page.route('**/api/workflow/projects/crypto/changes/*/tasks', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
   )
   await page.route('**/api/market/prices', (route) =>
     route.fulfill({
@@ -331,4 +362,23 @@ test('visual critical profile', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Meu Perfil', exact: true })).toBeVisible()
   await expect(page.getByText('Credenciais Binance')).toBeVisible()
   await capture(page, 'profile.png')
+})
+
+test('visual critical kanban design approval', async ({ page }) => {
+  await installStableApiMocks(page)
+  if ((page.viewportSize()?.width || 0) < 640) {
+    await page.addInitScript(() => window.localStorage.setItem('cripto-farol-onboarding-dismissed', '1'))
+  }
+  await page.goto('/kanban')
+  await expect(page.getByRole('heading', { name: 'Kanban', exact: true })).toBeVisible()
+  const approvalStage = page.getByRole('tab', { name: /Aprovação de Design 1/i })
+  if (await approvalStage.isVisible()) await approvalStage.click()
+  await expect(page.getByRole('button', { name: 'Open details for visual-qa' })).toBeVisible()
+  await capture(page, 'kanban.png')
+
+  await page.getByRole('button', { name: 'Open details for visual-qa' }).click()
+  const drawer = page.getByRole('complementary')
+  await expect(drawer.getByText('Entrega de design')).toBeVisible()
+  await expect(drawer.getByRole('button', { name: 'Aprovar design' })).toBeVisible()
+  await capture(page, 'kanban-design-approval.png')
 })

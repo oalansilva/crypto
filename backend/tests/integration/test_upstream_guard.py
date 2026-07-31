@@ -3,7 +3,13 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from app.services.upstream_guard import evaluate_upstream_guard
+import pytest
+
+from app.services.upstream_guard import (
+    UpstreamGuardError,
+    evaluate_upstream_guard,
+    require_card_main_publication,
+)
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -63,3 +69,55 @@ def test_upstream_guard_blocks_relevant_changes_and_unpushed_commits(tmp_path: P
     assert result.ok is False
     assert result.unpushed_commits
     assert "notes.txt" in result.relevant_untracked_changes
+
+
+def test_card_publication_is_found_in_main_independently_of_checkout(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    (repo / "README.md").write_text("published card\n", encoding="utf-8")
+    _git(repo, "add", "README.md")
+    _git(repo, "commit", "-m", "feat: concluir card-340-design-approval-kanban-flow (#340)")
+    published_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, text=True, capture_output=True
+    ).stdout.strip()
+    _git(repo, "push", "origin", "main")
+
+    _git(repo, "switch", "-c", "develop")
+    (repo / "README.md").write_text("develop moved on\n", encoding="utf-8")
+    _git(repo, "add", "README.md")
+    _git(repo, "commit", "-m", "feat: unrelated develop work")
+
+    evidence = require_card_main_publication(
+        repo,
+        change_id="card-340-design-approval-kanban-flow",
+        card_number=999,
+    )
+    assert evidence.head_sha == published_sha
+    assert evidence.main_ref == "origin/main"
+
+
+def test_card_publication_rejects_unpublished_card_reference(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    with pytest.raises(UpstreamGuardError, match="No commit"):
+        require_card_main_publication(
+            repo,
+            change_id="card-340-design-approval-kanban-flow",
+            card_number=340,
+        )
+
+
+def test_card_publication_accepts_explicit_number_for_slug_change_id(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    (repo / "README.md").write_text("published manual card\n", encoding="utf-8")
+    _git(repo, "add", "README.md")
+    _git(repo, "commit", "-m", "feat: concluir fluxo manual (#340)")
+    published_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, text=True, capture_output=True
+    ).stdout.strip()
+    _git(repo, "push", "origin", "main")
+
+    evidence = require_card_main_publication(
+        repo,
+        change_id="design-approval-kanban-flow",
+        card_number=340,
+    )
+    assert evidence.head_sha == published_sha

@@ -26,11 +26,18 @@ The system MUST provide a UI page that displays Binance Spot balances in a reada
 - **THEN** the UI MUST sort by `total` descending by default (largest balances first)
 
 ### Requirement: Integration MUST be read-only
-The system MUST NOT place orders, withdraw, or modify the Binance account.
+The Wallet / external-balances integration MUST remain read-only for balances, PnL, and trade history. The system MUST NOT withdraw funds.
 
-#### Scenario: Read-only enforcement
-- **WHEN** the system is configured for Binance
-- **THEN** it MUST only call read-only Binance endpoints
+As a scoped exception for the Monitor protective-stop capability, the authenticated Monitor Spot stop-limit endpoints MAY place or cancel only Spot `STOP_LOSS_LIMIT` sell orders with `clientOrderId` prefix `cfstop_`, using the logged-in user's credentials, after explicit user confirmation in the Monitor chart UI.
+
+#### Scenario: Read-only enforcement for wallet
+- **WHEN** the system serves Wallet / external balances flows
+- **THEN** it MUST only call read-only Binance endpoints for those flows
+
+#### Scenario: Scoped Monitor stop-limit exception
+- **WHEN** the authenticated user confirms Proteger stop or Remover stop on the Monitor chart
+- **THEN** the system MAY call Binance Spot order place/cancel endpoints solely for the protective `cfstop_` stop-limit flow
+- **AND** it MUST NOT withdraw or place unrelated order types through this exception
 
 ### Requirement: System MUST compute average buy cost for Binance Spot assets (USDT pairs)
 The system MUST compute a reference buy cost (USD-stable) per asset using Binance Spot executed buy trades for that asset.

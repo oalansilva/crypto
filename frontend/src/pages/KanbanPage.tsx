@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/use-toast'
-import { NavLink } from 'react-router-dom'
-import { Kanban, Search, X, Sparkles, Bookmark, Layers, Shuffle, Wallet, Activity } from 'lucide-react'
+import { Kanban, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { API_BASE_URL } from '@/lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
 import { ProjectSelector } from '@/components/ProjectSelector'
 
 type CardImage = {
@@ -30,6 +30,20 @@ type CoordinationChangeItem = {
   parent_story_title?: string | null
   image_data?: CardImage[]
   days_in_archived?: number | null
+  ui_impact?: 'affected' | 'none' | 'unknown' | string | null
+  ui_impact_justification?: string | null
+  design_ref?: string | null
+  design_digest?: string | null
+  prototype_ref?: string | null
+  prototype_digest?: string | null
+  design_critique_verdict?: string | null
+  design_delivered_at?: string | null
+  design_approved_by_user_id?: string | null
+  design_approved_by?: string | null
+  design_approved_at?: string | null
+  approved_design_digest?: string | null
+  approved_prototype_digest?: string | null
+  design_approval_valid?: boolean | null
 }
 
 type CoordinationChangeListResponse = {
@@ -92,6 +106,20 @@ type ChangeUpdateResponse = {
   description: string
   status: string
   card_number?: number | null
+  ui_impact?: string | null
+  ui_impact_justification?: string | null
+  design_ref?: string | null
+  design_digest?: string | null
+  prototype_ref?: string | null
+  prototype_digest?: string | null
+  design_critique_verdict?: string | null
+  design_delivered_at?: string | null
+  design_approved_by_user_id?: string | null
+  design_approved_by?: string | null
+  design_approved_at?: string | null
+  approved_design_digest?: string | null
+  approved_prototype_digest?: string | null
+  design_approval_valid?: boolean | null
   created_at: string
   updated_at: string
 }
@@ -103,70 +131,193 @@ const MOBILE_LONG_PRESS_MS = 420
 const MOBILE_LONG_PRESS_MOVE_TOLERANCE = 12
 
 const COLUMNS_ORDER = [
-  'Pending',
-  'PO',
-  'DESIGN',
-  'Approval',
-  'DEV',
+  'Todo',
+  'Design',
+  'Aprovação de Design',
+  'Pronto para Dev',
+  'Em desenvolvimento',
+  'Code Review',
   'QA',
-  'Homologation',
-  'Archived',
-  'Canceled',
+  'Done',
+  'Homologado',
+  'Pronto',
+  'Cancelado',
 ] as const
 
-const STATUS_KEY_ALIASES: Record<string, string[]> = {
-  PO: ['po'],
-  DESIGN: ['design'],
-  Approval: ['approval', 'alan approval'],
-  DEV: ['dev'],
-  QA: ['qa'],
-  Publish: ['publish'],
-  'Homologation readiness': ['homologation readiness', 'ready for homologation'],
-  Homologation: ['homologation', 'alan homologation'],
+type KanbanColumn = (typeof COLUMNS_ORDER)[number]
+type BoardLens = 'Produto e Design' | 'Entrega' | 'Todas'
+
+type MoveChangeVariables = {
+  changeId: string
+  status: KanbanColumn
+  sourceStatus: KanbanColumn | null
+  reworkReason?: string
 }
 
-function normalizeStatusKey(key: string) {
-  return key
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
+type PendingReworkTransition = {
+  changeId: string
+  title: string
+  sourceStatus: KanbanColumn
+  targetStatus: KanbanColumn
 }
 
-function normalizeStatusMap(status: Record<string, string> | undefined) {
-  const normalized: Record<string, string> = {}
-  let stakeholderValue: string | undefined
+const LENS_COLUMNS: Record<BoardLens, readonly KanbanColumn[]> = {
+  'Produto e Design': ['Todo', 'Design', 'Aprovação de Design', 'Pronto para Dev'],
+  Entrega: ['Pronto para Dev', 'Em desenvolvimento', 'Code Review', 'QA', 'Done', 'Homologado', 'Pronto'],
+  Todas: COLUMNS_ORDER,
+}
 
-  for (const [rawKey, rawValue] of Object.entries(status || {})) {
-    const key = normalizeStatusKey(rawKey)
-    const value = String(rawValue || '').trim()
-    if (!key || !value) continue
+const LEGACY_COLUMN_ALIASES: Record<string, KanbanColumn> = {
+  Pending: 'Todo',
+  PO: 'Todo',
+  DESIGN: 'Design',
+  Approval: 'Aprovação de Design',
+  'Aprovacao de Design': 'Aprovação de Design',
+  DEV: 'Em desenvolvimento',
+  'In Progress': 'Em desenvolvimento',
+  in_progress: 'Em desenvolvimento',
+  Homologation: 'Done',
+  'Alan homologation': 'Done',
+  Archived: 'Homologado',
+  archived: 'Homologado',
+  Canceled: 'Cancelado',
+  canceled: 'Cancelado',
+}
 
-    if (key === 'alan stakeholder') {
-      stakeholderValue = value
-      continue
-    }
+function canonicalColumn(value: string | null | undefined): KanbanColumn | null {
+  const trimmed = String(value || '').trim()
+  if ((COLUMNS_ORDER as readonly string[]).includes(trimmed)) return trimmed as KanbanColumn
+  return LEGACY_COLUMN_ALIASES[trimmed] || null
+}
 
-    for (const [canonicalKey, aliases] of Object.entries(STATUS_KEY_ALIASES)) {
-      if (aliases.includes(key) && !normalized[canonicalKey]) {
-        normalized[canonicalKey] = value
-        break
-      }
-    }
+function isPassingCritique(value: string | null | undefined) {
+  return String(value || '').trim().toUpperCase() === 'PASS'
+}
+
+function isReworkTransition(source: KanbanColumn | null, target: KanbanColumn) {
+  return (
+    (source === 'Aprovação de Design' && target === 'Design') ||
+    (source === 'Code Review' && target === 'Em desenvolvimento') ||
+    (source === 'QA' && target === 'Em desenvolvimento')
+  )
+}
+
+function isExternalReference(reference: string) {
+  return /^https?:\/\//i.test(reference)
+}
+
+function EvidenceLink({ label, reference }: { label: string; reference: string }) {
+  const normalizedReference = reference.replace(/^\.\//, '')
+  const designMatch = normalizedReference.match(/^openspec\/changes\/([^/]+)\/design\.md$/)
+  const prototypeMatch = normalizedReference.match(/^frontend\/public\/prototypes\/([^/]+)(?:\/index\.html)?$/)
+  const href = isExternalReference(reference)
+    ? reference
+    : designMatch
+      ? `/openspec/changes/${designMatch[1]}/design`
+      : prototypeMatch
+        ? `/prototypes/${prototypeMatch[1]}/`
+        : reference.startsWith('/')
+          ? reference
+          : `/${normalizedReference}`
+  return (
+    <a
+      href={href}
+      target={isExternalReference(reference) ? '_blank' : undefined}
+      rel={isExternalReference(reference) ? 'noreferrer' : undefined}
+      className="break-all text-cyan-300 underline underline-offset-2 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+    >
+      {label}
+    </a>
+  )
+}
+
+function DesignDeliverySummary({ item, compact = false }: { item: CoordinationChangeItem; compact?: boolean }) {
+  const designAvailable = Boolean(item.design_ref && item.design_digest)
+  const prototypeAvailable = Boolean(item.prototype_ref && item.prototype_digest)
+  const critiquePassed = isPassingCritique(item.design_critique_verdict)
+  const valid = item.ui_impact === 'none'
+    ? Boolean(item.ui_impact_justification?.trim())
+    : item.ui_impact === 'affected'
+      ? designAvailable && prototypeAvailable && critiquePassed
+      : null
+
+  if (!item.ui_impact && !item.design_ref && !item.prototype_ref && !item.design_critique_verdict) return null
+
+  if (item.ui_impact === 'none') {
+    return (
+      <div className={compact ? 'mt-3 text-[11px] text-zinc-400' : 'space-y-1 text-sm text-zinc-300'}>
+        <div className="font-medium text-zinc-200">Sem impacto de UI</div>
+        {!compact && (
+          <div className="whitespace-pre-wrap break-words text-zinc-400">
+            {item.ui_impact_justification || 'Justificativa não informada.'}
+          </div>
+        )}
+      </div>
+    )
   }
 
-  if (!normalized['Approval'] && stakeholderValue) normalized['Approval'] = stakeholderValue
-  if (!normalized['Homologation'] && stakeholderValue) normalized['Homologation'] = stakeholderValue
+  if (compact) {
+    return (
+      <div className="mt-3 grid grid-cols-3 gap-1 text-[10px]" aria-label="Resumo da entrega de design">
+        <span className={designAvailable ? 'text-emerald-300' : 'text-amber-300'}>design {designAvailable ? '✓' : '—'}</span>
+        <span className={prototypeAvailable ? 'text-emerald-300' : 'text-amber-300'}>protótipo {prototypeAvailable ? '✓' : '—'}</span>
+        <span className={critiquePassed ? 'text-emerald-300' : 'text-amber-300'}>crítica {critiquePassed ? '✓' : '—'}</span>
+      </div>
+    )
+  }
 
-  return normalized
-}
-
-function StatusLine({ label, value }: { label: string; value?: string }) {
-  if (!value) return null
   return (
-    <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-500">
-      <span className="text-zinc-400">{label}</span>
-      <span className="font-mono capitalize">{value}</span>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-zinc-400">Impacto de UI: {item.ui_impact || 'não informado'}</span>
+        <span
+          className={
+            'rounded-full border px-2 py-0.5 text-[11px] ' +
+            (valid === true
+              ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+              : valid === false
+                ? 'border-amber-400/30 bg-amber-400/10 text-amber-200'
+                : 'border-zinc-600 text-zinc-400')
+          }
+        >
+          {valid === true ? 'Entrega válida' : valid === false ? 'Entrega incompleta' : 'Validade não informada'}
+        </span>
+      </div>
+
+      {([
+        ['Design', item.design_ref, item.design_digest, designAvailable],
+        ['Protótipo', item.prototype_ref, item.prototype_digest, prototypeAvailable],
+      ] as const).map(([label, reference, digest, available]) => (
+        <div key={label} className="rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-xs text-zinc-400">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-medium text-zinc-200">{label}</span>
+            <span className={available ? 'text-emerald-300' : 'text-amber-300'}>
+              {available ? 'disponível' : 'ausente'}
+            </span>
+          </div>
+          {reference ? <div className="mt-1"><EvidenceLink label={reference} reference={reference} /></div> : null}
+          {digest ? <div className="mt-1 break-all font-mono">Digest: {digest}</div> : null}
+        </div>
+      ))}
+
+      <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-xs text-zinc-400">
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-medium text-zinc-200">Crítica do Designer Agent</span>
+          <span className={critiquePassed ? 'text-emerald-300' : 'text-amber-300'}>{item.design_critique_verdict || 'ausente'}</span>
+        </div>
+        {item.design_delivered_at ? <div className="mt-2">Entregue em: {formatTs(item.design_delivered_at)}</div> : null}
+      </div>
+
+      {valid === false ? (
+        <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100">
+          <div className="font-semibold">Itens pendentes</div>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            {!designAvailable ? <li>design.md versionado</li> : null}
+            {!prototypeAvailable ? <li>protótipo versionado</li> : null}
+            {!critiquePassed ? <li>veredito da crítica do Designer Agent igual a PASS</li> : null}
+          </ul>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -176,12 +327,6 @@ function formatTs(iso: string) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString()
-}
-
-// Extract change ID from bug card ID (format: {change_id}-bug-{bug_id})
-function getChangeIdFromBugId(bugId: string): string | null {
-  const match = bugId.match(/^(.+)-bug-[a-f0-9]+$/)
-  return match ? match[1] : null
 }
 
 // Returns additional CSS classes for bug items (card #14: tipos-itens)
@@ -277,11 +422,20 @@ function TaskTree({
 
 export default function KanbanPage() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   const [selectedProject, setSelectedProject] = useState<string>('crypto')
   const [selected, setSelected] = useState<CoordinationChangeItem | null>(null)
-  const [activeMobileColumn, setActiveMobileColumn] = useState<(typeof COLUMNS_ORDER)[number]>('Pending')
+  const [boardLens, setBoardLens] = useState<BoardLens>('Produto e Design')
+  const [activeMobileColumn, setActiveMobileColumn] = useState<KanbanColumn>('Todo')
   const [moveTarget, setMoveTarget] = useState<CoordinationChangeItem | null>(null)
+  const [pendingRework, setPendingRework] = useState<PendingReworkTransition | null>(null)
+  const [reworkReason, setReworkReason] = useState('')
+  const [reworkReasonError, setReworkReasonError] = useState<string | null>(null)
   const [dragTargetColumn, setDragTargetColumn] = useState<string | null>(null)
+  const [transitionFeedback, setTransitionFeedback] = useState<{
+    kind: 'success' | 'error'
+    message: string
+  } | null>(null)
   const [showBugs, setShowBugs] = useState(true)
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
@@ -289,14 +443,19 @@ export default function KanbanPage() {
   const cardTouchStartRef = useRef<{ x: number; y: number } | null>(null)
   const suppressNextCardClickRef = useRef<string | null>(null)
   const mobileColumnInitializedRef = useRef(false)
+  const reworkReasonInputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     const prev = document.body.style.overflow
-    if (selected || moveTarget) document.body.style.overflow = "hidden"
+    if (selected || moveTarget || pendingRework) document.body.style.overflow = "hidden"
     return () => {
       document.body.style.overflow = prev
     }
-  }, [selected, moveTarget])
+  }, [selected, moveTarget, pendingRework])
+
+  useEffect(() => {
+    if (pendingRework) reworkReasonInputRef.current?.focus()
+  }, [pendingRework])
 
   useEffect(() => {
     setEditTitle(selected?.title || '')
@@ -330,7 +489,14 @@ export default function KanbanPage() {
   type FilterMode = 'all' | 'active' | 'archived'
   type SortMode = 'column' | 'title' | 'id'
 
-  const items = data?.items || []
+  const items = useMemo(() => data?.items || [], [data?.items])
+  const visibleColumns = LENS_COLUMNS[boardLens]
+
+  useEffect(() => {
+    if (!selected?.id) return
+    const fresh = items.find((item) => item.id === selected.id)
+    if (fresh) setSelected(fresh)
+  }, [items, selected?.id])
 
   // Local search ("Localizar"): filters cards by id/title.
   const [query, setQuery] = useState('')
@@ -378,7 +544,8 @@ export default function KanbanPage() {
 
     const sourceIndex = new Map(items.map((item, index) => [item.id, index]))
     const colIdx = (col: string) => {
-      const i = COLUMNS_ORDER.indexOf(col as (typeof COLUMNS_ORDER)[number])
+      const canonical = canonicalColumn(col)
+      const i = canonical ? COLUMNS_ORDER.indexOf(canonical) : -1
       return i === -1 ? 999 : i
     }
 
@@ -405,15 +572,17 @@ export default function KanbanPage() {
     for (const c of COLUMNS_ORDER) map.set(c, [])
 
     for (const it of filteredItems) {
-      const col = map.has(it.column) ? it.column : 'DEV'
-      map.get(col)!.push(it)
+      const col = canonicalColumn(it.column)
+      if (col) map.get(col)!.push(it)
     }
 
     return map
   }, [filteredItems])
 
   const canReorder = (item: CoordinationChangeItem, direction: 'up' | 'down') => {
-    const columnItems = byColumn.get(item.column) || []
+    const column = canonicalColumn(item.column)
+    if (!column) return false
+    const columnItems = byColumn.get(column) || []
     const index = columnItems.findIndex((candidate) => candidate.id === item.id)
     if (index === -1) return false
     return direction === 'up' ? index > 0 : index < columnItems.length - 1
@@ -421,18 +590,28 @@ export default function KanbanPage() {
 
   useEffect(() => {
     if (mobileColumnInitializedRef.current) return
-    const firstNonEmpty = COLUMNS_ORDER.find((col) => (byColumn.get(col)?.length || 0) > 0)
-    if (firstNonEmpty) {
-      setActiveMobileColumn(firstNonEmpty)
-    }
+    if (isLoading) return
+    const firstNonEmpty = visibleColumns.find((col) => (byColumn.get(col)?.length || 0) > 0)
+    setActiveMobileColumn(firstNonEmpty || visibleColumns[0])
     mobileColumnInitializedRef.current = true
-  }, [byColumn])
+  }, [byColumn, isLoading, visibleColumns])
 
-  const activeMobileIndex = COLUMNS_ORDER.indexOf(activeMobileColumn)
+  useEffect(() => {
+    if (visibleColumns.includes(activeMobileColumn)) return
+    const firstNonEmpty = visibleColumns.find((col) => (byColumn.get(col)?.length || 0) > 0)
+    setActiveMobileColumn(firstNonEmpty || visibleColumns[0])
+  }, [activeMobileColumn, byColumn, visibleColumns])
+
+  const unknownItems = useMemo(
+    () => filteredItems.filter((item) => !canonicalColumn(item.column)),
+    [filteredItems],
+  )
+
+  const activeMobileIndex = visibleColumns.indexOf(activeMobileColumn)
 
   const moveMobileStage = (direction: -1 | 1) => {
-    const next = Math.max(0, Math.min(COLUMNS_ORDER.length - 1, activeMobileIndex + direction))
-    setActiveMobileColumn(COLUMNS_ORDER[next])
+    const next = Math.max(0, Math.min(visibleColumns.length - 1, activeMobileIndex + direction))
+    setActiveMobileColumn(visibleColumns[next])
   }
 
   const handleDesktopDragStart = (event: DragEvent, item: CoordinationChangeItem) => {
@@ -454,8 +633,10 @@ export default function KanbanPage() {
     const changeId = event.dataTransfer.getData(DESKTOP_DRAG_MIME) || event.dataTransfer.getData('text/plain')
     if (!changeId) return
     const item = items.find((candidate) => candidate.id === changeId)
-    if (!item || item.column === column) return
-    moveChange.mutate({ changeId, status: column })
+    if (!item || canonicalColumn(item.column) === column) return
+    const targetStatus = canonicalColumn(column)
+    if (!targetStatus) return
+    requestMove(item, targetStatus)
   }
 
   const handleDesktopDragEnd = () => {
@@ -524,6 +705,39 @@ export default function KanbanPage() {
     setSelected(it)
   }
 
+  const requestMove = (item: CoordinationChangeItem, targetStatus: KanbanColumn) => {
+    const sourceStatus = canonicalColumn(item.column)
+    if (isReworkTransition(sourceStatus, targetStatus) && sourceStatus) {
+      setReworkReason('')
+      setReworkReasonError(null)
+      setPendingRework({
+        changeId: item.id,
+        title: item.title || item.id,
+        sourceStatus,
+        targetStatus,
+      })
+      return
+    }
+    moveChange.mutate({ changeId: item.id, status: targetStatus, sourceStatus })
+  }
+
+  const confirmRework = () => {
+    if (!pendingRework) return
+    const reason = reworkReason.trim()
+    if (!reason) {
+      setReworkReasonError('Informe uma justificativa para solicitar o retrabalho.')
+      reworkReasonInputRef.current?.focus()
+      return
+    }
+    setReworkReasonError(null)
+    moveChange.mutate({
+      changeId: pendingRework.changeId,
+      status: pendingRework.targetStatus,
+      sourceStatus: pendingRework.sourceStatus,
+      reworkReason: reason,
+    })
+  }
+
   const tasksQuery = useQuery({
     queryKey: ['workflow', 'kanban', 'change', selected?.id, 'tasks'],
     enabled: Boolean(selected?.id),
@@ -534,6 +748,18 @@ export default function KanbanPage() {
       )
       if (!res.ok) throw new Error(`Failed to load tasks (${res.status})`)
       return (await res.json()) as ChangeTasksChecklistResponse
+    },
+    refetchOnWindowFocus: false,
+  })
+
+  const changeDetailsQuery = useQuery({
+    queryKey: ['workflow', 'change', selected?.id, 'details', selectedProject],
+    enabled: Boolean(selected?.id),
+    queryFn: async () => {
+      const changeId = encodeURIComponent(selected!.id)
+      const res = await authFetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${changeId}`)
+      if (!res.ok) throw new Error(`Failed to load change details (${res.status})`)
+      return (await res.json()) as ChangeUpdateResponse
     },
     refetchOnWindowFocus: false,
   })
@@ -567,11 +793,14 @@ export default function KanbanPage() {
   })
 
   const moveChange = useMutation({
-    mutationFn: async ({ changeId, status }: { changeId: string; status: string }) => {
-      const res = await fetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
+    mutationFn: async ({ changeId, status, reworkReason }: MoveChangeVariables) => {
+      const res = await authFetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          ...(reworkReason ? { rework_reason: reworkReason } : {}),
+        }),
       })
       if (!res.ok) {
         let message = ''
@@ -583,29 +812,59 @@ export default function KanbanPage() {
           } else if (detail && typeof detail === 'object') {
             const base = typeof detail.message === 'string' ? detail.message : ''
             const allowed = Array.isArray(detail.allowed_targets) && detail.allowed_targets.length
-              ? ` Allowed: ${detail.allowed_targets.join(', ')}.`
+              ? ` Alvos permitidos: ${detail.allowed_targets.join(', ')}.`
               : ''
-            message = `${base}${allowed}`.trim()
+            const missing = Array.isArray(detail.missing_items) && detail.missing_items.length
+              ? ` Itens pendentes: ${detail.missing_items.join(', ')}.`
+              : ''
+            message = `${base}${allowed}${missing}`.trim()
           }
         } catch {
           message = await res.text().catch(() => '')
         }
-        throw new Error(`Failed to move card (${res.status})${message ? `: ${message}` : ''}`)
+        throw new Error(`Não foi possível mover o card (${res.status})${message ? `: ${message}` : ''}`)
       }
       return (await res.json()) as ChangeUpdateResponse
     },
-    onSuccess: async (_data, vars) => {
+    onMutate: () => {
+      setTransitionFeedback(null)
+    },
+    onSuccess: async (data, vars) => {
+      setPendingRework(null)
+      setReworkReason('')
+      setReworkReasonError(null)
       setMoveTarget((curr) => (curr?.id === vars.changeId ? null : curr))
-      setActiveMobileColumn(vars.status as (typeof COLUMNS_ORDER)[number])
+      const column = canonicalColumn(vars.status)
+      if (column) {
+        if (!visibleColumns.includes(column)) setBoardLens('Todas')
+        setActiveMobileColumn(column)
+      }
+      setSelected((current) => current?.id === vars.changeId ? { ...current, column: vars.status } : current)
+      const approved = vars.sourceStatus === 'Aprovação de Design' && vars.status === 'Pronto para Dev'
+      const bypassedDesign = vars.sourceStatus === 'Todo' && vars.status === 'Pronto para Dev'
+      const message = approved
+        ? 'Design aprovado. O card está Pronto para Dev.'
+        : bypassedDesign
+          ? 'Card sem impacto de UI movido para Pronto para Dev.'
+        : `Card movido para ${vars.status}.`
+      setTransitionFeedback({ kind: 'success', message })
+      toast({ title: approved ? 'Design aprovado' : 'Status atualizado', description: message })
+      qc.setQueryData(['workflow', 'change', vars.changeId, 'details', selectedProject], data)
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'change', vars.changeId, 'details', selectedProject] })
+    },
+    onError: (error: Error) => {
+      const message = error.message || 'A transição foi recusada.'
+      setTransitionFeedback({ kind: 'error', message })
+      toast({ title: 'Não foi possível mover o card', description: message, variant: 'destructive' })
     },
   })
 
   const reorderChange = useMutation({
     mutationFn: async ({ changeId, direction }: { changeId: string; direction: 'up' | 'down' }) => {
-      const res = await fetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
+      const res = await authFetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reorder: direction }),
@@ -620,15 +879,14 @@ export default function KanbanPage() {
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'change', vars.changeId, 'details', selectedProject] })
     },
   })
-
-  const { toast } = useToast()
 
   // Mutation to toggle task checkbox via PATCH work-items
   const toggleTaskMutation = useMutation({
     mutationFn: async ({ workItemId, state }: { workItemId: string; state: 'done' | 'queued' }) => {
-      const res = await fetch(`${API_BASE_URL}/workflow/work-items/${encodeURIComponent(workItemId)}?project_slug=${encodeURIComponent(selectedProject)}`, {
+      const res = await authFetch(`${API_BASE_URL}/workflow/work-items/${encodeURIComponent(workItemId)}?project_slug=${encodeURIComponent(selectedProject)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state }),
@@ -733,7 +991,7 @@ export default function KanbanPage() {
       const description = newDescription.trim()
       if (!title) throw new Error('Title is required')
 
-      const res = await fetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=${selectedProject}`, {
+      const res = await authFetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=${selectedProject}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, image_data: newImages }),
@@ -755,7 +1013,7 @@ export default function KanbanPage() {
       setEditTitle(data.item.title || '')
       setEditDescription(data.item.description || '')
       setEditImages(newImages)
-      setActiveMobileColumn('Pending')
+      setActiveMobileColumn('Todo')
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', data.item.id, 'tasks'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', data.item.id, 'comments'] })
@@ -770,7 +1028,7 @@ export default function KanbanPage() {
       changeId: string
       payload: { title?: string; description?: string; status?: string; cancel_archive?: boolean; image_data?: CardImage[] }
     }) => {
-      const res = await fetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
+      const res = await authFetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -789,13 +1047,14 @@ export default function KanbanPage() {
     },
     onSuccess: async (data, vars) => {
       const updated: CoordinationChangeItem = {
+        ...selected,
         id: data.change_id,
         title: data.title,
         description: data.description,
         card_number: data.card_number ?? selected?.card_number ?? null,
         path: selected?.path || `openspec/changes/${data.change_id}/proposal`,
         status: selected?.status || {},
-        archived: data.status === 'Archived',
+        archived: data.status === 'Cancelado',
         column: data.status as CoordinationChangeItem['column'],
         image_data: vars.payload.image_data ?? selected?.image_data ?? [],
       }
@@ -803,10 +1062,15 @@ export default function KanbanPage() {
       setEditTitle(data.title || '')
       setEditDescription(data.description || '')
       setEditImages(vars.payload.image_data ?? selected?.image_data ?? [])
-      if (data.status === 'Archived') setActiveMobileColumn('Archived')
+      if (data.status === 'Cancelado') {
+        setBoardLens('Todas')
+        setActiveMobileColumn('Cancelado')
+      }
+      qc.setQueryData(['workflow', 'change', vars.changeId, 'details', selectedProject], data)
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'change', vars.changeId, 'details', selectedProject] })
     },
   })
 
@@ -827,7 +1091,7 @@ export default function KanbanPage() {
       const changeId = encodeURIComponent(selected.id)
       const url = `${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${changeId}/tasks`
 
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -869,7 +1133,7 @@ export default function KanbanPage() {
       const changeId = encodeURIComponent(selected.id)
       const url = `${API_BASE_URL}/workflow/kanban/changes/${changeId}/comments?project_slug=${selectedProject}`
 
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ author: a, body: b }),
@@ -888,6 +1152,24 @@ export default function KanbanPage() {
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', selected?.id, 'comments'] })
     },
   })
+
+  const selectedDesignItem = selected ? {
+    ...selected,
+    ui_impact: changeDetailsQuery.data?.ui_impact ?? selected.ui_impact,
+    ui_impact_justification: changeDetailsQuery.data?.ui_impact_justification ?? selected.ui_impact_justification,
+    design_ref: changeDetailsQuery.data?.design_ref ?? selected.design_ref,
+    design_digest: changeDetailsQuery.data?.design_digest ?? selected.design_digest,
+    prototype_ref: changeDetailsQuery.data?.prototype_ref ?? selected.prototype_ref,
+    prototype_digest: changeDetailsQuery.data?.prototype_digest ?? selected.prototype_digest,
+    design_critique_verdict: changeDetailsQuery.data?.design_critique_verdict ?? selected.design_critique_verdict,
+    design_delivered_at: changeDetailsQuery.data?.design_delivered_at ?? selected.design_delivered_at,
+    design_approved_by_user_id: changeDetailsQuery.data?.design_approved_by_user_id ?? selected.design_approved_by_user_id,
+    design_approved_by: changeDetailsQuery.data?.design_approved_by ?? selected.design_approved_by,
+    design_approved_at: changeDetailsQuery.data?.design_approved_at ?? selected.design_approved_at,
+    approved_design_digest: changeDetailsQuery.data?.approved_design_digest ?? selected.approved_design_digest,
+    approved_prototype_digest: changeDetailsQuery.data?.approved_prototype_digest ?? selected.approved_prototype_digest,
+    design_approval_valid: changeDetailsQuery.data?.design_approval_valid ?? selected.design_approval_valid,
+  } satisfies CoordinationChangeItem : null
 
   return (
     <main className="app-page kanban-page w-full px-0 py-0">
@@ -1014,7 +1296,7 @@ export default function KanbanPage() {
                 <ProjectSelector selectedProject={selectedProject} onProjectChange={setSelectedProject} />
               </div>
               <p className="mt-3 text-sm text-zinc-400 max-w-3xl">
-                Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
+                Design é aprovado por Alan ao mover o card para Pronto para Dev. No mobile, pressione e segure para mover.
               </p>
             </div>
             <div className="mt-4 sm:mt-0 flex items-center gap-2">
@@ -1031,6 +1313,51 @@ export default function KanbanPage() {
               </Button>
             </div>
           </div>
+
+          <div className="mt-5 flex flex-wrap gap-2" role="tablist" aria-label="Lentes do Kanban">
+            {(Object.keys(LENS_COLUMNS) as BoardLens[]).map((lens) => {
+              const active = boardLens === lens
+              return (
+                <button
+                  key={lens}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setBoardLens(lens)}
+                  className={
+                    'rounded-xl border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ' +
+                    (active
+                      ? 'border-cyan-400/40 bg-cyan-400/15 text-cyan-100'
+                      : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-zinc-200')
+                  }
+                >
+                  {lens}
+                </button>
+              )
+            })}
+          </div>
+
+          {transitionFeedback ? (
+            <div
+              className={
+                'mt-4 rounded-xl border px-4 py-3 text-sm ' +
+                (transitionFeedback.kind === 'error'
+                  ? 'border-red-400/30 bg-red-400/10 text-red-100'
+                  : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100')
+              }
+              role={transitionFeedback.kind === 'error' ? 'alert' : 'status'}
+              aria-live={transitionFeedback.kind === 'error' ? 'assertive' : 'polite'}
+            >
+              {transitionFeedback.message}
+            </div>
+          ) : null}
+
+          {unknownItems.length ? (
+            <div className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-100" role="alert">
+              {unknownItems.length} card(s) com status desconhecido não foram posicionados no board:{' '}
+              {unknownItems.map((item) => `${item.title || item.id} (${item.column || 'vazio'})`).join(', ')}.
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -1040,7 +1367,7 @@ export default function KanbanPage() {
           style={{ top: 'var(--app-header-mobile)' }}
         >
           <div className="px-4 py-3">
-            <div className="text-lg font-semibold text-zinc-900">Opportunity Board</div>
+            <div className="text-lg font-semibold text-zinc-900">Kanban</div>
             <div className="text-xs text-zinc-400">Uma etapa por vez · swipe + tabs</div>
           </div>
 
@@ -1096,7 +1423,7 @@ export default function KanbanPage() {
 
           <div className="px-4 pb-2 overflow-x-auto">
             <div className="flex gap-2 min-w-max" role="tablist" aria-label="Workflow stages">
-              {COLUMNS_ORDER.map((col) => {
+              {visibleColumns.map((col) => {
                 const count = byColumn.get(col)?.length || 0
                 const active = activeMobileColumn === col
                 return (
@@ -1142,7 +1469,7 @@ export default function KanbanPage() {
             ) : (
               <div className="overflow-x-auto">
                 <div className="flex items-start gap-4 min-w-max pb-3">
-                  {COLUMNS_ORDER.map((col) => {
+                  {visibleColumns.map((col) => {
                     const colItems = byColumn.get(col) || []
                     return (
                       <section
@@ -1167,7 +1494,6 @@ export default function KanbanPage() {
                             <div className="rounded-xl border border-dashed border-zinc-200 p-5 text-xs text-zinc-500">vazio</div>
                           ) : (
                             colItems.map((it) => {
-                              const status = normalizeStatusMap(it.status)
                               return (
                               <div
                                 key={it.id}
@@ -1237,16 +1563,7 @@ export default function KanbanPage() {
                                   </div>
                                 )}
 
-                                <div className="mt-3 pt-3 border-t border-zinc-200 space-y-1.5">
-                                  <StatusLine label="PO" value={status['PO']} />
-                                  <StatusLine label="DESIGN" value={status['DESIGN'] || 'skipped'} />
-                                  <StatusLine label="Approval" value={status['Approval']} />
-                                  <StatusLine label="DEV" value={status['DEV']} />
-                                  <StatusLine label="QA" value={status['QA']} />
-                                  <StatusLine label="Publish" value={status['Publish']} />
-                                  <StatusLine label="Ready for homologation" value={status['Homologation readiness']} />
-                                  <StatusLine label="Homologation" value={status['Homologation']} />
-                                </div>
+                                <DesignDeliverySummary item={it} compact />
 
                                 {!it.archived ? (
                                   <div className="mt-3 flex items-center gap-2">
@@ -1315,12 +1632,18 @@ export default function KanbanPage() {
                   <div className="rounded-xl border border-dashed border-zinc-200 p-5 text-sm text-zinc-500">Nenhum card nesta etapa.</div>
                 ) : (
                   (byColumn.get(activeMobileColumn) || []).map((it) => {
-                    const status = normalizeStatusMap(it.status)
                     return (
-                    <button
-                      type="button"
+                    <div
                       key={it.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleCardClick(it)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          handleCardClick(it)
+                        }
+                      }}
                       onTouchStart={(e) => {
                         const touch = e.touches[0]
                         startCardLongPress(it, touch?.clientX ?? 0, touch?.clientY ?? 0)
@@ -1354,16 +1677,9 @@ export default function KanbanPage() {
 
                           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                             <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-cyan-100">{activeMobileColumn}</span>
-                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">PO {status['PO'] || '—'}</span>
-                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">DEV {status['DEV'] || '—'}</span>
-                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">QA {status['QA'] || '—'}</span>
-                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">Publish {status['Publish'] || '—'}</span>
                           </div>
 
-                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-zinc-400">
-                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Approval · {(status['Approval'] || '—')}</div>
-                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Ready for homologation · {(status['Homologation readiness'] || '—')}</div>
-                          </div>
+                          <DesignDeliverySummary item={it} compact />
 
                           <div className="mt-3 flex items-center gap-2">
                             <button
@@ -1393,7 +1709,7 @@ export default function KanbanPage() {
                           <div className="mt-3 text-[11px] text-amber-200/80">Pressione e segure para mover de etapa</div>
                         </div>
                       </div>
-                    </button>
+                    </div>
                     )
                   })
                 )}
@@ -1421,13 +1737,13 @@ export default function KanbanPage() {
               <div className="text-xs text-zinc-400">Escolha a nova etapa no fluxo</div>
               <div className="grid grid-cols-1 gap-2">
                 {COLUMNS_ORDER.map((col) => {
-                  const active = moveTarget.column === col
+                  const active = canonicalColumn(moveTarget.column) === col
                   return (
                     <button
                       key={col}
                       type="button"
                       disabled={active || moveChange.isPending}
-                      onClick={() => moveChange.mutate({ changeId: moveTarget.id, status: col })}
+                      onClick={() => requestMove(moveTarget, col)}
                       className={
                         'rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ' +
                         (active
@@ -1460,6 +1776,88 @@ export default function KanbanPage() {
         </div>
       ) : null}
 
+      {pendingRework ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-zinc-950/80"
+            onClick={() => {
+              if (!moveChange.isPending) setPendingRework(null)
+            }}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rework-dialog-title"
+            aria-describedby="rework-dialog-description"
+            className="relative w-full max-w-lg rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-2xl"
+          >
+            <h2 id="rework-dialog-title" className="text-lg font-semibold text-zinc-100">
+              Justificar retrabalho
+            </h2>
+            <p id="rework-dialog-description" className="mt-2 text-sm text-zinc-400">
+              {pendingRework.title}: {pendingRework.sourceStatus} → {pendingRework.targetStatus}. A justificativa ficará registrada no histórico do card.
+            </p>
+
+            <form
+              className="mt-4 space-y-4"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault()
+                confirmRework()
+              }}
+            >
+              <div>
+                <label htmlFor="rework-reason" className="text-sm font-medium text-zinc-200">
+                  Justificativa do retrabalho
+                </label>
+                <textarea
+                  ref={reworkReasonInputRef}
+                  id="rework-reason"
+                  value={reworkReason}
+                  onChange={(event) => {
+                    setReworkReason(event.target.value)
+                    if (event.target.value.trim()) setReworkReasonError(null)
+                  }}
+                  rows={4}
+                  maxLength={4000}
+                  required
+                  aria-invalid={Boolean(reworkReasonError)}
+                  aria-describedby={reworkReasonError ? 'rework-reason-error' : 'rework-dialog-description'}
+                  className="mt-2 w-full resize-y rounded-xl border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                  placeholder="Explique o que precisa ser revisto antes de avançar."
+                />
+                {reworkReasonError ? (
+                  <div id="rework-reason-error" role="alert" className="mt-2 text-sm text-red-300">
+                    {reworkReasonError}
+                  </div>
+                ) : null}
+              </div>
+
+              {moveChange.error ? (
+                <div role="alert" className="text-sm text-red-300">
+                  {moveChange.error instanceof Error ? moveChange.error.message : 'Falha ao solicitar retrabalho.'}
+                </div>
+              ) : null}
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={moveChange.isPending}
+                  onClick={() => setPendingRework(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={moveChange.isPending}>
+                  {moveChange.isPending ? 'Movendo…' : 'Confirmar retrabalho'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
       {selected ? (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-zinc-800" onClick={() => setSelected(null)} aria-hidden="true" />
@@ -1480,25 +1878,77 @@ export default function KanbanPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {(() => {
-                  const status = normalizeStatusMap(selected.status)
-                  return (
-                    <section className="space-y-2">
-                      <div className="text-sm font-semibold text-zinc-900">Status</div>
-                      <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-3 space-y-2">
-                        <div className="text-sm text-zinc-300">Stage atual: {selected.column}</div>
-                        <StatusLine label="PO" value={status['PO']} />
-                        <StatusLine label="DESIGN" value={status['DESIGN'] || 'skipped'} />
-                        <StatusLine label="Approval" value={status['Approval']} />
-                        <StatusLine label="DEV" value={status['DEV']} />
-                        <StatusLine label="QA" value={status['QA']} />
-                        <StatusLine label="Publish" value={status['Publish']} />
-                        <StatusLine label="Ready for homologation" value={status['Homologation readiness']} />
-                        <StatusLine label="Homologation" value={status['Homologation']} />
+                <section className="space-y-2">
+                  <div className="text-sm font-semibold text-zinc-900">Status</div>
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-3 space-y-2">
+                    {canonicalColumn(selected.column) ? (
+                      <div className="text-sm text-zinc-300">Etapa atual: {canonicalColumn(selected.column)}</div>
+                    ) : (
+                      <div className="text-sm text-red-300" role="alert">Status inválido: {selected.column || 'vazio'}</div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="space-y-3" aria-labelledby="design-delivery-heading">
+                  <div id="design-delivery-heading" className="text-sm font-semibold text-zinc-900">Entrega de design</div>
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-3">
+                    {selectedDesignItem && (selectedDesignItem.ui_impact || selectedDesignItem.design_ref || selectedDesignItem.prototype_ref || selectedDesignItem.design_critique_verdict) ? (
+                      <DesignDeliverySummary item={selectedDesignItem} />
+                    ) : (
+                      <div className="text-sm text-zinc-500">Nenhuma evidência de design informada.</div>
+                    )}
+                  </div>
+
+                  {selectedDesignItem && (selectedDesignItem.design_approved_at || selectedDesignItem.design_approval_valid != null) ? (
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-3 text-xs text-zinc-400">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-semibold text-zinc-200">Aprovação humana</span>
+                        <span className={selectedDesignItem.design_approval_valid ? 'text-emerald-300' : 'text-amber-300'}>
+                          {selectedDesignItem.design_approval_valid
+                            ? 'Válida'
+                            : selectedDesignItem.design_approved_at
+                              ? 'Obsoleta'
+                              : 'Pendente'}
+                        </span>
                       </div>
-                    </section>
-                  )
-                })()}
+                      {selectedDesignItem.design_approved_by ? <div className="mt-2">Aprovado por: {selectedDesignItem.design_approved_by}</div> : null}
+                      {selectedDesignItem.design_approved_at ? <div className="mt-1">Em: {formatTs(selectedDesignItem.design_approved_at)}</div> : null}
+                      {selectedDesignItem.approved_design_digest ? (
+                        <div className="mt-1 break-all font-mono">Design: {selectedDesignItem.approved_design_digest}</div>
+                      ) : null}
+                      {selectedDesignItem.approved_prototype_digest ? (
+                        <div className="mt-1 break-all font-mono">
+                          Protótipo: {selectedDesignItem.approved_prototype_digest}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {canonicalColumn(selected.column) === 'Aprovação de Design' ? (
+                    <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-3">
+                      <p id="approve-design-help" className="text-xs text-cyan-100">
+                        Esta ação é equivalente a arrastar o card para Pronto para Dev e registra a aprovação autenticada.
+                      </p>
+                      <Button
+                        className="mt-3 w-full"
+                        onClick={() => requestMove(selected, 'Pronto para Dev')}
+                        disabled={
+                          moveChange.isPending ||
+                          (selectedDesignItem?.ui_impact === 'affected' && !(
+                            selectedDesignItem.design_ref &&
+                            selectedDesignItem.design_digest &&
+                            selectedDesignItem.prototype_ref &&
+                            selectedDesignItem.prototype_digest &&
+                            isPassingCritique(selectedDesignItem.design_critique_verdict)
+                          ))
+                        }
+                        aria-describedby="approve-design-help"
+                      >
+                        {moveChange.isPending ? 'Aprovando…' : 'Aprovar design'}
+                      </Button>
+                    </div>
+                  ) : null}
+                </section>
 
                 <section className="space-y-3">
                   <div className="text-sm font-semibold text-zinc-900">Card</div>
@@ -1620,12 +2070,12 @@ export default function KanbanPage() {
                           if (!window.confirm(`Cancelar o card ${selected.id}? O histórico será preservado.`)) return
                           updateSelectedChange.mutate({
                             changeId: selected.id,
-                            payload: { status: 'Archived', cancel_archive: true },
+                            payload: { status: 'Cancelado' },
                           })
                         }}
-                        disabled={updateSelectedChange.isPending || selected.column === 'Archived'}
+                        disabled={updateSelectedChange.isPending || canonicalColumn(selected.column) === 'Cancelado'}
                       >
-                        {selected.column === 'Archived' ? 'Já cancelado' : 'Cancelar card'}
+                        {canonicalColumn(selected.column) === 'Cancelado' ? 'Já cancelado' : 'Cancelar card'}
                       </Button>
                     </div>
 
@@ -1843,7 +2293,7 @@ export default function KanbanPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3 pt-2">
-                    <div className="text-xs text-zinc-500">Bug será criado em DEV.</div>
+                    <div className="text-xs text-zinc-500">Bug será criado na etapa atual do card.</div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="secondary"
@@ -1948,7 +2398,7 @@ export default function KanbanPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3 pt-2">
-                    <div className="text-xs text-zinc-500">Cria direto em Pending.</div>
+                    <div className="text-xs text-zinc-500">Cria direto em Todo.</div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="secondary"
