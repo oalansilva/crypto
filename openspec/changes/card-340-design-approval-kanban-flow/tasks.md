@@ -21,7 +21,9 @@
 ## 4. Verificação e entrega técnica
 
 - [x] 4.1 Rodar validação OpenSpec, testes backend/frontend, build e QA visual, corrigindo falhas.
-- [ ] 4.2 Executar review Codex no diff exato, commit/push do SHA revisado e acompanhar qa-gate terminal verde.
-- [ ] 4.3 Integrar em develop, executar ./restart, validar a URL e registrar as evidências no card #340.
+- [x] 4.2 Executar review Codex no diff exato, commit/push do SHA revisado e acompanhar qa-gate terminal verde.
+- [x] 4.3 Integrar em develop, executar ./restart, validar a URL e registrar as evidências no card #340.
+
+Evidência operacional: review final aprovado; SHAs `c44c1e3c` e `efe6631a`; PR #341 com `qa-gate` e Playwright verdes; squash `67c1b679` em `develop`; `./restart` concluído; backend `GET /api/health` e frontend `GET /kanban` responderam com sucesso.
 
 Nota: usar as skills do projeto em `.codex/skills` para OpenSpec, testes, debugging e frontend quando aplicável.
