@@ -7,7 +7,11 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.workflow_models import Change, WorkItem
-from app.services.workflow_transition_service import KANBAN_COLUMNS, canonicalize_status, validate_kanban_transition
+from app.services.workflow_transition_service import (
+    KANBAN_COLUMNS,
+    canonicalize_status,
+    validate_kanban_transition,
+)
 
 STAGE_ORDER = KANBAN_COLUMNS
 

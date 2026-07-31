@@ -10,7 +10,6 @@ from app.main import app
 from app.services.workflow_auth import WorkflowActor, get_workflow_actor
 from app.workflow_database import WorkflowBase, get_workflow_db, init_workflow_schema_for_url
 
-
 TEST_ACTOR = WorkflowActor(user_id=str(uuid4()), email="o.alan.silva@gmail.com")
 
 

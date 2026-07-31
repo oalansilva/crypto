@@ -868,7 +868,9 @@ def update_change(
                 continue
             normalized = raw_value.strip()
             if field_name in {"prototype_digest", "design_critique_verdict"}:
-                normalized = normalized.lower() if field_name == "prototype_digest" else normalized.upper()
+                normalized = (
+                    normalized.lower() if field_name == "prototype_digest" else normalized.upper()
+                )
             normalized_value = normalized or (None if field_name == "prototype_digest" else "")
             if getattr(c, field_name) != normalized_value:
                 normalized_evidence_updates[field_name] = normalized_value
@@ -1618,7 +1620,9 @@ def kanban_list_changes(
                 )
             )
 
-        active_change_ids = [c.id for c in items if _normalize_column(c.status) not in {"Pronto", "Cancelado"}]
+        active_change_ids = [
+            c.id for c in items if _normalize_column(c.status) not in {"Pronto", "Cancelado"}
+        ]
         bugs = (
             project_db.query(WorkItem)
             .filter(WorkItem.type == WorkItemType.bug)

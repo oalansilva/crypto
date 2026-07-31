@@ -172,7 +172,10 @@ def _resolve_repo_file(repo_root: Path, reference: str) -> Path | None:
     except ValueError as exc:
         raise HTTPException(
             status_code=422,
-            detail={"code": "invalid_design_reference", "message": "Evidence path is outside the repository."},
+            detail={
+                "code": "invalid_design_reference",
+                "message": "Evidence path is outside the repository.",
+            },
         ) from exc
     return candidate
 
@@ -183,7 +186,9 @@ def refresh_design_evidence(
     *,
     record_delivery: bool = False,
 ) -> tuple[str, str]:
-    design_ref = (change.design_ref or "").strip() or f"openspec/changes/{change.change_id}/design.md"
+    design_ref = (
+        change.design_ref or ""
+    ).strip() or f"openspec/changes/{change.change_id}/design.md"
     design_path = _resolve_repo_file(repo_root, design_ref)
     if not design_path or not design_path.is_file():
         raise HTTPException(
@@ -198,7 +203,9 @@ def refresh_design_evidence(
     missing_sections = []
     if not re.search(r"^##+\s+Prototype\s*$", design_text, flags=re.IGNORECASE | re.MULTILINE):
         missing_sections.append("Prototype section")
-    if not re.search(r"^##+\s+Design Critique\s*$", design_text, flags=re.IGNORECASE | re.MULTILINE):
+    if not re.search(
+        r"^##+\s+Design Critique\s*$", design_text, flags=re.IGNORECASE | re.MULTILINE
+    ):
         missing_sections.append("Design Critique section")
     if missing_sections:
         raise HTTPException(
@@ -284,9 +291,7 @@ def invalidate_design_approval(change: Change) -> bool:
 
 
 def _is_non_ui_bypass(change: Change) -> bool:
-    return change.ui_impact == "none" and bool(
-        (change.ui_impact_justification or "").strip()
-    )
+    return change.ui_impact == "none" and bool((change.ui_impact_justification or "").strip())
 
 
 def _require_current_design_approval(
@@ -483,12 +488,16 @@ def transition_change(
     if current == target:
         return TransitionResult(previous_status=current, status=target)
 
-    if current in {
-        "Pronto para Dev",
-        "Em desenvolvimento",
-        "Code Review",
-        "QA",
-    } and target != "Cancelado":
+    if (
+        current
+        in {
+            "Pronto para Dev",
+            "Em desenvolvimento",
+            "Code Review",
+            "QA",
+        }
+        and target != "Cancelado"
+    ):
         try:
             _require_current_design_approval(
                 change,

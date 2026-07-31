@@ -13,8 +13,9 @@ from app.main import app
 from app.services.workflow_auth import WorkflowActor, get_workflow_actor
 from app.workflow_database import WorkflowBase, get_workflow_db
 
-
-TEST_ACTOR = WorkflowActor(user_id="11111111-1111-1111-1111-111111111111", email="tester@example.com")
+TEST_ACTOR = WorkflowActor(
+    user_id="11111111-1111-1111-1111-111111111111", email="tester@example.com"
+)
 
 
 def _reset_workflow_engine_cache():

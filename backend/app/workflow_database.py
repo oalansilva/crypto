@@ -73,8 +73,7 @@ def migrate_legacy_workflow_statuses(conn) -> None:
             "Pronto",
         )
         conn.execute(
-            text(
-                """
+            text("""
                 UPDATE wf_changes
                    SET ui_impact = 'none',
                        ui_impact_justification =
@@ -82,8 +81,7 @@ def migrate_legacy_workflow_statuses(conn) -> None:
                  WHERE status IN :advanced_statuses
                    AND ui_impact = 'unknown'
                    AND COALESCE(ui_impact_justification, '') = ''
-                """
-            ).bindparams(bindparam("advanced_statuses", expanding=True)),
+                """).bindparams(bindparam("advanced_statuses", expanding=True)),
             {"advanced_statuses": advanced_statuses},
         )
     if conn.dialect.name == "postgresql":

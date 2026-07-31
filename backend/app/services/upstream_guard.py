@@ -246,8 +246,7 @@ def require_card_main_publication(
         else None
     )
     issue_patterns = [
-        re.compile(rf"(?<!\d)#{re.escape(issue_number)}(?!\d)")
-        for issue_number in issue_numbers
+        re.compile(rf"(?<!\d)#{re.escape(issue_number)}(?!\d)") for issue_number in issue_numbers
     ]
     head_sha = ""
     for record in raw_log.split("\x1e"):

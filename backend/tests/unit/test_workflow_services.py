@@ -122,7 +122,9 @@ def test_legacy_status_migration_is_idempotent_and_rejects_unknown():
             )
         )
         conn.execute(
-            text("INSERT INTO wf_changes (id, status) VALUES ('1', 'Pending'), ('2', 'DEV'), ('3', 'Archived')")
+            text(
+                "INSERT INTO wf_changes (id, status) VALUES ('1', 'Pending'), ('2', 'DEV'), ('3', 'Archived')"
+            )
         )
         migrate_legacy_workflow_statuses(conn)
         migrate_legacy_workflow_statuses(conn)
@@ -144,18 +146,20 @@ def test_legacy_status_migration_is_idempotent_and_rejects_unknown():
 
 def test_canonical_transition_matrix_rework_and_terminals():
     for current, target in zip(KANBAN_COLUMNS[:9], KANBAN_COLUMNS[1:10]):
-        assert validate_kanban_transition(
-            current_column=current, target_column=target
-        ) == (current, target)
+        assert validate_kanban_transition(current_column=current, target_column=target) == (
+            current,
+            target,
+        )
 
     for current, target in [
         ("Aprovação de Design", "Design"),
         ("Code Review", "Em desenvolvimento"),
         ("QA", "Em desenvolvimento"),
     ]:
-        assert validate_kanban_transition(
-            current_column=current, target_column=target
-        ) == (current, target)
+        assert validate_kanban_transition(current_column=current, target_column=target) == (
+            current,
+            target,
+        )
 
     with pytest.raises(HTTPException):
         validate_kanban_transition(current_column="Todo", target_column="QA")

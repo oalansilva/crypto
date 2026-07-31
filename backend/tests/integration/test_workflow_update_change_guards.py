@@ -15,7 +15,6 @@ from app.services.upstream_guard import MainPublicationEvidence, UpstreamGuardEr
 from app.services.workflow_auth import WorkflowActor, get_workflow_actor
 from app.workflow_database import get_workflow_db, init_workflow_schema_for_url
 
-
 ALAN = WorkflowActor(
     user_id="44444444-4444-4444-4444-444444444444",
     email="o.alan.silva@gmail.com",
@@ -75,9 +74,7 @@ def _create_project_and_change(
     extra: dict | None = None,
 ) -> str:
     project_slug = f"crypto-{uuid4().hex[:8]}"
-    response = client.post(
-        "/api/workflow/projects", json={"slug": project_slug, "name": "Crypto"}
-    )
+    response = client.post("/api/workflow/projects", json={"slug": project_slug, "name": "Crypto"})
     assert response.status_code == 200
     payload = {"change_id": change_id, "title": change_id, "status": status}
     payload["status"] = "Todo"
@@ -128,9 +125,7 @@ def _advance_non_ui_to(
     ]
     for stage in stages:
         if stage == "Done":
-            current = client.get(
-                f"/api/workflow/projects/{slug}/changes/{change_id}"
-            ).json()
+            current = client.get(f"/api/workflow/projects/{slug}/changes/{change_id}").json()
             approval = client.post(
                 f"/api/workflow/projects/{slug}/changes/{change_id}/qa-approvals",
                 headers={"X-Workflow-QA-Token": QA_TOKEN},
@@ -166,9 +161,10 @@ def test_workflow_mutation_requires_authentication():
 def test_new_change_cannot_start_in_advanced_status():
     client = _build_client(actor=AGENT)
     slug = f"crypto-{uuid4().hex[:8]}"
-    assert client.post(
-        "/api/workflow/projects", json={"slug": slug, "name": "Crypto"}
-    ).status_code == 200
+    assert (
+        client.post("/api/workflow/projects", json={"slug": slug, "name": "Crypto"}).status_code
+        == 200
+    )
     rejected = client.post(
         f"/api/workflow/projects/{slug}/changes",
         json={"change_id": "skip-gates", "title": "Skip", "status": "QA"},
@@ -271,9 +267,7 @@ def test_authenticated_approver_is_derived_and_bound_to_evidence(monkeypatch, tm
     assert body["approved_design_digest"] == body["design_digest"]
     assert body["approved_prototype_digest"] == body["prototype_digest"]
     assert body["design_delivered_at"] == delivered_at
-    approvals = client.get(
-        f"/api/workflow/projects/{slug}/changes/{change_id}/approvals"
-    ).json()
+    approvals = client.get(f"/api/workflow/projects/{slug}/changes/{change_id}/approvals").json()
     assert approvals[-1]["actor"] == ALAN.email
     _close_client(client)
 
@@ -294,14 +288,20 @@ def test_changed_approved_evidence_is_persistently_marked_obsolete(monkeypatch, 
             "design_critique_verdict": "PASS",
         },
     )
-    assert client.patch(
-        f"/api/workflow/projects/{slug}/changes/{change_id}",
-        json={"status": "Aprovação de Design"},
-    ).status_code == 200
-    assert client.patch(
-        f"/api/workflow/projects/{slug}/changes/{change_id}",
-        json={"status": "Pronto para Dev"},
-    ).status_code == 200
+    assert (
+        client.patch(
+            f"/api/workflow/projects/{slug}/changes/{change_id}",
+            json={"status": "Aprovação de Design"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            f"/api/workflow/projects/{slug}/changes/{change_id}",
+            json={"status": "Pronto para Dev"},
+        ).status_code
+        == 200
+    )
 
     (tmp_path / prototype_ref).write_text("<main>changed prototype</main>", encoding="utf-8")
     rejected = client.patch(
@@ -314,9 +314,7 @@ def test_changed_approved_evidence_is_persistently_marked_obsolete(monkeypatch, 
     current = client.get(f"/api/workflow/projects/{slug}/changes/{change_id}").json()
     assert current["status"] == "Aprovação de Design"
     assert current["design_approval_valid"] is False
-    approvals = client.get(
-        f"/api/workflow/projects/{slug}/changes/{change_id}/approvals"
-    ).json()
+    approvals = client.get(f"/api/workflow/projects/{slug}/changes/{change_id}/approvals").json()
     assert approvals[-1]["state"] == "rejected"
     assert "obsolete" in approvals[-1]["note"].lower()
     _close_client(client)
@@ -365,9 +363,7 @@ def test_patch_evidence_after_development_returns_to_design_approval(
     assert changed.json()["design_approval_valid"] is False
     if target_status == "QA":
         assert changed.json()["qa_round_id"] is None
-    approvals = client.get(
-        f"/api/workflow/projects/{slug}/changes/{change_id}/approvals"
-    ).json()
+    approvals = client.get(f"/api/workflow/projects/{slug}/changes/{change_id}/approvals").json()
     assert approvals[-1]["state"] == "rejected"
     _close_client(client)
 
@@ -458,9 +454,7 @@ def test_qa_done_requires_qa_evidence_and_no_open_bugs(monkeypatch, tmp_path):
         json={"state": "done"},
     )
     assert closed.status_code == 200
-    done = client.patch(
-        f"/api/workflow/projects/{slug}/changes/qa-gated", json={"status": "Done"}
-    )
+    done = client.patch(f"/api/workflow/projects/{slug}/changes/qa-gated", json={"status": "Done"})
     assert done.status_code == 200
     assert done.json()["status"] == "Done"
     _close_client(client)
@@ -494,10 +488,13 @@ def test_qa_approval_is_bound_to_current_round_and_commit(monkeypatch, tmp_path)
     assert rework.status_code == 200
     assert rework.json()["qa_round_id"] is None
     assert rework.json()["qa_approved_round_id"] is None
-    assert client.patch(
-        f"/api/workflow/projects/{slug}/changes/qa-round-binding",
-        json={"status": "Code Review"},
-    ).status_code == 200
+    assert (
+        client.patch(
+            f"/api/workflow/projects/{slug}/changes/qa-round-binding",
+            json={"status": "Code Review"},
+        ).status_code
+        == 200
+    )
     second_qa = client.patch(
         f"/api/workflow/projects/{slug}/changes/qa-round-binding",
         json={"status": "QA"},
@@ -610,9 +607,7 @@ def test_homologado_pronto_requires_main_publication(monkeypatch, tmp_path):
     )
     assert ready.status_code == 200
     assert ready.json()["status"] == "Pronto"
-    approvals = client.get(
-        f"/api/workflow/projects/{slug}/changes/published-card/approvals"
-    ).json()
+    approvals = client.get(f"/api/workflow/projects/{slug}/changes/published-card/approvals").json()
     assert approvals[-1]["gate"] == "Publication"
     assert "origin/main" in approvals[-1]["note"]
     _close_client(client)

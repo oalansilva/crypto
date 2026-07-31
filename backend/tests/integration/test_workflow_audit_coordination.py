@@ -10,8 +10,9 @@ from app.main import app
 from app.services.workflow_auth import WorkflowActor, get_workflow_actor
 from app.workflow_database import WorkflowBase, get_workflow_db, init_workflow_schema_for_url
 
-
-TEST_ACTOR = WorkflowActor(user_id="33333333-3333-3333-3333-333333333333", email="tester@example.com")
+TEST_ACTOR = WorkflowActor(
+    user_id="33333333-3333-3333-3333-333333333333", email="tester@example.com"
+)
 
 
 def _build_client():
