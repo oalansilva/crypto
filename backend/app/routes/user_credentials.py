@@ -43,7 +43,8 @@ def _mask_api_key(api_key: str | None) -> str | None:
         return None
     if len(value) <= 8:
         return "*" * len(value)
-    return f"{value[:4]}{'*' * (len(value) - 8)}{value[-4:]}"
+    # Keep a short, stable mask for UI (avoid a long asterisk run).
+    return f"{value[:4]}****{value[-4:]}"
 
 
 @router.get("/binance-credentials", response_model=BinanceCredentialStatusResponse)

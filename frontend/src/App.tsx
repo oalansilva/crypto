@@ -79,6 +79,7 @@ function App() {
           <Route path="/external/balances" element={<ExternalBalancesPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/preferences" element={<Navigate to="/profile" replace />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/system/preferences" element={<ProtectedRoute requireAdmin><SystemPreferencesPage /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsersPage /></ProtectedRoute>} />

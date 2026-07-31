@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { CalendarClock, Mail, Save, UserRound } from 'lucide-react'
 
+import { BinanceCredentialsForm } from '@/components/binance/BinanceCredentialsForm'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -99,8 +100,8 @@ export default function ProfilePage() {
     <div className="app-page space-y-6 pb-20">
       <section className="page-card p-6 sm:p-7 lg:p-8">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-3xl border border-emerald-300/20 bg-[linear-gradient(135deg,rgba(38,194,129,0.18),rgba(56,189,248,0.12))]">
-            <UserRound className="h-6 w-6 text-emerald-100" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-3xl border border-[rgba(252,213,53,0.22)] bg-[linear-gradient(135deg,rgba(252,213,53,0.16),rgba(56,189,248,0.1))]">
+            <UserRound className="h-6 w-6 text-[var(--accent-primary)]" />
           </div>
           <div>
             <div className="eyebrow">
@@ -108,20 +109,34 @@ export default function ProfilePage() {
             </div>
             <h1 className="section-title mt-2">Meu Perfil</h1>
             <p className="section-copy mt-2">
-              Atualize seu nome e revise as informações básicas da sua conta.
+              Dados da conta e integração Binance read-only em um só lugar.
             </p>
           </div>
         </div>
       </section>
 
       <Card className="page-card border-white/8 bg-[linear-gradient(180deg,rgba(16,28,42,0.98),rgba(12,22,34,0.94))]">
-        <CardContent className="p-6">
-          {isLoading ? (
-            <div className="py-10 text-sm text-[var(--text-secondary)]">Carregando perfil...</div>
-          ) : profile ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
-                <div className="space-y-4">
+        <CardContent className="divide-y divide-white/8 p-0">
+          <section className="p-6 sm:p-7" aria-labelledby="profile-account-heading">
+            {isLoading ? (
+              <div className="py-8 text-sm text-[var(--text-secondary)]">Carregando perfil...</div>
+            ) : profile ? (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="eyebrow">
+                      <span>Identidade</span>
+                    </div>
+                    <h2 id="profile-account-heading" className="mt-2 text-lg font-semibold text-[var(--text-primary)]">
+                      Dados da conta
+                    </h2>
+                    <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                      Atualize o nome exibido no app. O e-mail é somente leitura.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
                   <Input
                     label="Nome"
                     value={name}
@@ -138,41 +153,55 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <div className="page-card-muted px-4 py-4">
-                    <div className="flex items-start gap-3">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="page-card-muted px-4 py-3">
+                    <div className="flex items-start gap-2.5">
                       <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
-                      <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Último login</div>
-                        <div className="mt-1 text-sm text-[var(--text-secondary)]">{formatDateTime(profile.lastLogin)}</div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                          Último login
+                        </div>
+                        <div className="mt-1 truncate text-sm text-[var(--text-secondary)]">
+                          {formatDateTime(profile.lastLogin)}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="page-card-muted px-4 py-4">
-                    <div className="flex items-start gap-3">
+                  <div className="page-card-muted px-4 py-3">
+                    <div className="flex items-start gap-2.5">
                       <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
-                      <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Membro desde</div>
-                        <div className="mt-1 text-sm text-[var(--text-secondary)]">{formatDateTime(profile.createdAt)}</div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                          Membro desde
+                        </div>
+                        <div className="mt-1 truncate text-sm text-[var(--text-secondary)]">
+                          {formatDateTime(profile.createdAt)}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="page-card-muted px-4 py-4">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">User ID</div>
-                    <div className="mt-1 break-all text-sm text-[var(--text-secondary)]">{profile.id}</div>
+                  <div className="page-card-muted px-4 py-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                      User ID
+                    </div>
+                    <div className="mt-1 break-all font-mono text-xs text-[var(--text-secondary)]">{profile.id}</div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex justify-end">
-                <Button type="submit" loading={isSaving} icon={<Save className="h-4 w-4" />}>
-                  Salvar perfil
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <div className="py-10 text-sm text-[var(--text-secondary)]">Perfil indisponível.</div>
-          )}
+                <div className="flex justify-end border-t border-white/8 pt-5">
+                  <Button type="submit" loading={isSaving} icon={<Save className="h-4 w-4" />}>
+                    Salvar perfil
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="py-8 text-sm text-[var(--text-secondary)]">Perfil indisponível.</div>
+            )}
+          </section>
+
+          <section className="p-6 sm:p-7">
+            <BinanceCredentialsForm mode="full" variant="profile" />
+          </section>
         </CardContent>
       </Card>
     </div>
