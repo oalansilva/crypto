@@ -6,7 +6,7 @@ import urllib.request
 from typing import Dict, Optional
 
 from app.config import get_settings
-from app.services.binance_trades import STABLE_ASSETS
+from app.services.binance_trades import is_usd_stable_asset
 
 # Ensure .env files are loaded before runtime os.getenv lookups below.
 get_settings()
@@ -67,8 +67,8 @@ def compute_usdt_price_for_asset(asset: str, symbol_prices: Dict[str, float]) ->
     if not a:
         return None
 
-    # USD stables: always value ~1 USDT for wallet display even without a self-pair ticker.
-    if a in STABLE_ASSETS:
+    # USD stables (Spot + Binance Earn LD*): always ~1 USDT for wallet display.
+    if is_usd_stable_asset(a):
         return 1.0
 
     direct = _price(symbol_prices, f"{a}USDT")

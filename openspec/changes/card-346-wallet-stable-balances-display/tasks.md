@@ -8,6 +8,7 @@
 - [x] 2.1 Garantir fallback `price_usdt=1.0` para stables de display (USDT/USDC e alinhados a `STABLE_ASSETS`) quando não houver ticker
 - [x] 2.2 Não omitir row de stable com `total > 0` por `value_usd=null`; incluir no `total_usd`
 - [x] 2.3 Definir `avg_cost_usdt=1.0` para stables na montagem do snapshot (PnL ≈ 0) sem depender do top-N de trades
+- [x] 2.4 Tratar wrappers Earn `LDUSDT`/`LDUSDC` (e `LD*`+stable) como stable de display (~1 USD) para não sumirem da Carteira
 - [x] 2.4 Testes unit/integration: snapshot com USDT+USDC presentes, dust default e `min_usd=0`
 
 ## 3. Frontend — Carteira

@@ -10,7 +10,36 @@ def test_compute_usdt_price_for_stable_assets_without_ticker():
     assert prices.compute_usdt_price_for_asset("USDC", empty) == 1.0
     assert prices.compute_usdt_price_for_asset("BUSD", empty) == 1.0
     assert prices.compute_usdt_price_for_asset("FDUSD", empty) == 1.0
+    assert prices.compute_usdt_price_for_asset("LDUSDT", empty) == 1.0
+    assert prices.compute_usdt_price_for_asset("LDUSDC", empty) == 1.0
     assert prices.compute_usdt_price_for_asset("UNKNOWN", empty) is None
+
+
+def test_balances_snapshot_lists_earn_ld_stables(monkeypatch):
+    binance_spot = importlib.import_module("app.services.binance_spot")
+
+    monkeypatch.setattr(
+        binance_spot,
+        "_signed_get",
+        lambda *a, **k: {
+            "balances": [
+                {"asset": "LDUSDC", "free": "350.24", "locked": "0"},
+                {"asset": "LDUSDT", "free": "89.83", "locked": "0"},
+                {"asset": "ETH", "free": "0.05", "locked": "0"},
+            ]
+        },
+    )
+    monkeypatch.setattr(binance_spot, "fetch_all_binance_prices", lambda: {"ETHUSDT": 2000.0})
+    monkeypatch.setattr(binance_spot, "compute_avg_buy_cost_usdt", lambda *a, **k: 1800.0)
+
+    out = binance_spot.fetch_spot_balances_snapshot(api_key="k", api_secret="s")
+    assets = [row["asset"] for row in out["balances"]]
+    assert "LDUSDC" in assets
+    assert "LDUSDT" in assets
+    ldusdc = next(r for r in out["balances"] if r["asset"] == "LDUSDC")
+    assert ldusdc["price_usdt"] == 1.0
+    assert ldusdc["value_usd"] == pytest.approx(350.24)
+    assert out["total_usd"] == pytest.approx(350.24 + 89.83 + 100.0)
 
 
 def test_balances_snapshot_lists_usdt_and_usdc_with_stable_cost(monkeypatch):

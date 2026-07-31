@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from app.config import get_settings
 from app.services.binance_prices import compute_usdt_price_for_asset, fetch_all_binance_prices
-from app.services.binance_trades import STABLE_ASSETS, compute_avg_buy_cost_usdt
+from app.services.binance_trades import compute_avg_buy_cost_usdt, is_usd_stable_asset
 
 # Ensure .env files are loaded before runtime os.getenv lookups below.
 get_settings()
@@ -137,8 +137,8 @@ def fetch_spot_balances_snapshot(
             continue
 
         price_usdt = compute_usdt_price_for_asset(asset, symbol_prices)
-        # Stables must never be omitted for missing ticker: fall back to ~1 USD.
-        if price_usdt is None and asset in STABLE_ASSETS:
+        # Stables (Spot + Earn LD*) must never be omitted for missing ticker.
+        if price_usdt is None and is_usd_stable_asset(asset):
             price_usdt = 1.0
         value_usd = (total * price_usdt) if price_usdt is not None else None
         if value_usd is None:
@@ -150,7 +150,7 @@ def fetch_spot_balances_snapshot(
 
         total_usd += float(value_usd)
 
-        is_stable = asset in STABLE_ASSETS
+        is_stable = is_usd_stable_asset(asset)
         out.append(
             {
                 "asset": asset,
@@ -181,7 +181,7 @@ def fetch_spot_balances_snapshot(
             break
 
         asset = str(row.get("asset") or "").strip().upper()
-        if asset in STABLE_ASSETS:
+        if is_usd_stable_asset(asset):
             # Already valued at 1.0 / PnL 0 in the first pass; skip trade lookups.
             continue
 
