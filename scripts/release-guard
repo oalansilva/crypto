@@ -114,8 +114,21 @@ fi
 if [[ "$mode" == "post" ]] &&
    git rev-parse --verify -q origin/develop >/dev/null &&
    git rev-parse --verify -q origin/main >/dev/null; then
-  if [[ "$(git rev-parse origin/develop)" != "$(git rev-parse origin/main)" ]]; then
-    issue "post-release requires origin/develop and origin/main aligned"
+  develop_commit="$(git rev-parse origin/develop)"
+  main_commit="$(git rev-parse origin/main)"
+
+  if [[ "$develop_commit" == "$main_commit" ]]; then
+    printf 'Post-release refs aligned: origin/develop and origin/main reference the same commit.\n'
+  elif ! git merge-base --is-ancestor origin/develop origin/main >/dev/null 2>&1; then
+    issue "post-release requires origin/develop to equal or be an ancestor of origin/main"
+  else
+    develop_tree="$(git rev-parse 'origin/develop^{tree}')"
+    main_tree="$(git rev-parse 'origin/main^{tree}')"
+    if [[ "$develop_tree" == "$main_tree" ]]; then
+      printf 'Post-release refs aligned: origin/develop is an ancestor of origin/main with identical trees.\n'
+    else
+      issue "post-release requires origin/develop and origin/main to have identical content trees"
+    fi
   fi
 fi
 

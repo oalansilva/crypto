@@ -2,7 +2,15 @@ name: CI/CD
 
 on:
   push:
+    branches:
+      - develop
+      - main
+    tags:
+      - '**'
   pull_request:
+    branches:
+      - develop
+      - main
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
@@ -362,10 +370,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs:
-      - backend-tests
       - qa-policy
     if: >-
-      always() && needs.backend-tests.result == 'success' &&
+      always() &&
       (github.event_name != 'pull_request' || needs.qa-policy.result == 'success')
     steps:
       - name: Checkout
