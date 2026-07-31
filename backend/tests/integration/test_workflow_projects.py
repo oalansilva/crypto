@@ -10,7 +10,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
+from app.services.workflow_auth import WorkflowActor, get_workflow_actor
 from app.workflow_database import WorkflowBase, get_workflow_db
+
+
+TEST_ACTOR = WorkflowActor(user_id="11111111-1111-1111-1111-111111111111", email="tester@example.com")
 
 
 def _reset_workflow_engine_cache():
@@ -42,6 +46,7 @@ def _build_client():
             db.close()
 
     app.dependency_overrides[get_workflow_db] = override_get_db
+    app.dependency_overrides[get_workflow_actor] = lambda: TEST_ACTOR
     client = TestClient(app)
     try:
         yield client

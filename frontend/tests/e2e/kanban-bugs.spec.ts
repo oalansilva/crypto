@@ -38,7 +38,7 @@ async function setupKanbanBugMocks(page: any) {
             path: `openspec/changes/${storyId}/proposal`,
             status: { PO: 'done', DEV: 'done', QA: 'in progress' },
             archived: false,
-            column: 'DEV',
+            column: 'Em desenvolvimento',
             position: 0,
             item_type: 'story',
             has_bugs: true,
@@ -51,7 +51,7 @@ async function setupKanbanBugMocks(page: any) {
             path: `openspec/changes/${storyId}/bugs/${bugId}`,
             status: { PO: 'done', DEV: 'in progress', QA: 'pending' },
             archived: false,
-            column: 'DEV',
+            column: 'Em desenvolvimento',
             position: 1,
             item_type: 'bug',
             parent_story_title: 'Monitor table redesign',
@@ -87,7 +87,8 @@ test.describe('Kanban Bug Cards', () => {
     await setupKanbanBugMocks(page)
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/kanban')
-    await page.getByRole('tab', { name: /DEV 2/i }).click()
+    await page.getByRole('tab', { name: 'Entrega' }).click()
+    await page.getByRole('tab', { name: /Em desenvolvimento 2/i }).click()
   })
 
   test('bug cards appear in the board with bug label and parent story', async ({ page }) => {
@@ -105,7 +106,7 @@ test.describe('Kanban Bug Cards', () => {
     const detailsSheet = page.getByRole('complementary')
     await expect(detailsSheet.getByText('Detalhes', { exact: true })).toBeVisible()
     await expect(detailsSheet.getByText(bugId, { exact: true })).toBeVisible()
-    await expect(detailsSheet.getByText('Stage atual: DEV')).toBeVisible()
+    await expect(detailsSheet.getByText('Etapa atual: Em desenvolvimento')).toBeVisible()
   })
 
   test('show/hide bugs toggle works', async ({ page }) => {

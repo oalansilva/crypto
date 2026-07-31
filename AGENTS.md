@@ -10,8 +10,8 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 ## Processo global do Alan
 
-- Regras gerais de processo ficam na skill global `alan-workflow`: `/root/.codex/skills/alan-workflow/SKILL.md`.
-- Use essa skill para comunicacao curta, evidencias antes de concluir, OpenSpec no card antes de implementar, higiene Git/worktree/release, classificacao de pendencias, status `Todo`/`In Progress`/`Code Review`/`QA`/`Done`/`Homologado`/`Pronto`/`Cancelado`, seguranca de output e fechamento sem pendencia.
+- Regras gerais de processo ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. Codex e Cursor devem aplicar os mesmos overrides versionados neste `AGENTS.md` e em `rules.md`; o fluxo do projeto não depende de um caminho absoluto local.
+- Use essa skill para comunicacao curta, evidencias antes de concluir, OpenSpec no card antes de implementar, higiene Git/worktree/release, classificacao de pendencias, seguranca de output e fechamento sem pendencia. No cripto, o fluxo local `Todo`/`Design`/`Aprovação de Design`/`Pronto para Dev`/`Em desenvolvimento`/`Code Review`/`QA`/`Done`/`Homologado`/`Pronto`/`Cancelado` prevalece sobre qualquer vocabulário global antigo.
 - Este `AGENTS.md` deve manter apenas regras especificas do cripto: branches `develop/main`, Project 1, release guard, PostgreSQL, Drive/docs, comandos de backend/frontend, workflow DB e papeis dos agentes.
 - Se uma regra geral precisar mudar para todos os projetos, atualize `alan-workflow`; nao duplique a regra aqui.
 
@@ -19,18 +19,18 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 - **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
 - **Comunicação padrão com Alan:** usar sempre a skill `caveman` em modo `lite`: curto, direto, sem filler, mantendo clareza técnica. Só desligar se Alan pedir explicitamente `stop caveman` ou `normal mode`.
-- **Colunas/Status:** seguir `alan-workflow`; no cripto, o campo `Status` e a fonte principal das colunas visuais. `Code Review` = diff pronto para review Codex antes do commit; `QA` = SHA revisado em validacao automatizada, incluindo `qa-gate` e Playwright visual; `Done` = Done tecnico: QA verde, integrado em `develop`, restart/runtime validados, aguardando aprovacao do Alan; `Homologado` = Alan testou e aprovou em `develop`; `Pronto` = já subiu para `main`/produção com evidencia.
+- **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. O fluxo canônico é `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal. O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo `main`/produção com evidencia.
 - **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
 - **Regra de merge de release/lote:** após abrir um PR para `main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
 - **Regra de autonomia operacional:** dentro de fechamento de lote/release solicitado por Alan, após validação e evidência, o agente tem autonomia para repetir tentativas manuais de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
-- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, mover para `Status=Code Review` antes do commit, rodar review Codex no diff exato, commit/push do SHA revisado, mover para `Status=QA`/`Fluxo=QA`, aguardar `qa-gate` e Playwright visual verdes, integrar por PR em `develop`, executar `./restart`, validar a URL e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
+- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, concluir o gate de design quando houver UI, aguardar `Status=Pronto para Dev`, mover para `Status=Em desenvolvimento` antes de aplicar tarefas de código, mover para `Status=Code Review` antes do commit, rodar review Codex no diff exato, commit/push do SHA revisado, mover para `Status=QA`/`Fluxo=QA`, aguardar `qa-gate` e Playwright visual verdes, integrar por PR em `develop`, executar `./restart`, validar a URL e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
 - **Regra de conclusão de correção:** para qualquer correção de bug ou ajuste solicitado por Alan, só diga `concluído` depois de validar, fazer merge/integração da branch de trabalho em `develop`, executar `./restart` e confirmar que a URL do sistema está servindo o bundle/resultado novo. Antes disso, reporte como `corrigido na branch`, `validado localmente` ou `aguardando integração`, conforme o estado real.
 - **Regra de homologação direta por card (solicitação do cliente):** seguir `alan-workflow`; no cripto, homologacao significa aprovacao funcional em `develop`.
 - **Guardrail anti-release acidental:** seguir `alan-workflow`; no cripto, homologacao nao autoriza `main`, PR, merge, archive ou release.
 - **Regra de release/lote:** seguir `alan-workflow`; no cripto, selecione todos os cards `Homologado` incluídos no pacote, confirme commits/branches, rode validação final completa, arquive OpenSpec, push, PR para `main`, merge manual, atualize `develop` e mova os cards incluídos para `Pronto`.
 - **Regra documental de release da Clara/Alan:** quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente para cards no nome da Clara ou do Alan, antes de publicar/encerrar o pacote, pegue todos os cards `Homologado` por Alan e com `Responsavel=Clara` ou `Responsavel=Alan` incluídos na release e revise se as decisões, status e entregáveis desses cards estão refletidos na documentação do projeto/produto. A documentação precisa ficar atualizada tanto nos Markdown locais quanto nos Google Docs/Drive correspondentes. Depois da release publicada/encerrada com evidência, mova esses cards de `Homologado` para `Pronto`. Cards de `Codex` seguem o fluxo técnico próprio do Codex no mesmo pacote.
-- **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `In Progress` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste, corrija e reteste mantendo o status atual. O card só avança: `Done` -> `Homologado` -> `Pronto`.
+- **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `Em desenvolvimento` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste, corrija e reteste mantendo o status atual. O card só avança: `Done` -> `Homologado` -> `Pronto`.
 - **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
 - **Regra de validação OpenSpec global:** `openspec validate --all` verde é critério padrão de fechamento. Se falhar por changes antigas fora do card, valide os specs afetados pelo card como evidência parcial, mas resolva a sujeira global antes do encerramento: corrija ou arquive as changes antigas, inclusive por archive manual quando a CLI/skill não conseguir concluir.
 - **Regra de checks em execução:** seguir `alan-workflow`; no cripto, isso vale para testes locais, `openspec validate`, build e CI antes de `Code Review`, `QA`, `Done`, release/lote, commit, PR ou merge. Check `running`, `cancelled` ou skip sem dispensa autorizada nao e evidencia final.
@@ -58,9 +58,15 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **DoD de documentação sincronizada:** uma atualização documental só está concluída quando os dois lados estão atualizados e conferidos: Markdown local/versionado em `crypto/docs/` e Google Doc/Sheet correspondente no Drive. Se apenas o Drive foi atualizado, espelhe imediatamente no Markdown local; se apenas o Markdown local foi atualizado, sincronize imediatamente no Drive. Não mova card para `Pronto`, não feche release e não reporte documentação como concluída sem evidência dos dois lados.
 - **Passo obrigatório de Drive em release:** ao criar/subir release, depois de atualizar os Markdown locais, sincronize os documentos aplicáveis no Google Drive da Clara. Para usar `gog` sem TTY, carregue `GOG_KEYRING_PASSWORD` do Bitwarden Secrets Manager (`Crypto` / `GOG_KEYRING_PASSWORD`). Primeiro liste a subpasta `Docs` com `gog drive ls --account claravalente840@gmail.com --parent 1X01niQNrPh2wLy5WqJb2iBN8QnzTKGBx --json --no-input`; se já existir Google Doc equivalente, atualize o mesmo ID com `gog docs write <docId> --file <arquivo.md> --markdown --replace --pageless --no-input`; se não existir, crie diretamente nessa subpasta com `gog docs create "<titulo-sem-prefixo>" --account claravalente840@gmail.com --parent 1X01niQNrPh2wLy5WqJb2iBN8QnzTKGBx --file <arquivo.md> --pageless --no-input`. Nunca crie documentos soltos na raiz da pasta do projeto. Ao final, valide com `gog drive ls --account claravalente840@gmail.com --parent 1X01niQNrPh2wLy5WqJb2iBN8QnzTKGBx --json --no-input` e registre os links/evidência da sincronização.
 
-## De-para OpenSpec/OPSX no Codex
+## De-para OpenSpec/OPSX no Codex e no Cursor
 
-Quando o cliente Codex não interpretar `/opsx:*` como slash command, trate o texto como intenção operacional e acione a skill local equivalente. Não substitua a skill por criação manual de arquivos.
+Codex e Cursor usam as mesmas skills OpenSpec, geradas pela mesma versão da CLI. Trate `/opsx:*` como a intenção canônica escrita na documentação e `/opsx-*` como o alias de slash command disponibilizado pelos adaptadores do Cursor. Se o cliente não interpretar uma das formas como slash command, trate o texto como intenção operacional e acione a skill local equivalente. Não substitua a skill por criação manual de arquivos.
+
+Os arquivos em `.codex/skills/openspec-*`, `.cursor/skills/openspec-*` e `.cursor/commands/opsx-*.md` são adaptadores oficiais gerados. Não edite uma cópia isoladamente. Atualize todos com a mesma CLI:
+
+```bash
+openspec init --tools codex,cursor --force
+```
 
 Regra obrigatória:
 - Primeiro use a skill OpenSpec correspondente.
@@ -71,24 +77,25 @@ Regra obrigatória:
 
 De-para principal:
 
-| Intenção / comando | Skill Codex obrigatória | CLI base | Resultado esperado |
-| --- | --- | --- | --- |
-| `/opsx:new <change>` | `$openspec-new-change` | `openspec new change "<change>"`; `openspec status --change "<change>"`; `openspec instructions <artifact-id> --change "<change>"` | Cria apenas o scaffold da change, mostra status e instrução do primeiro artifact. Não cria artifacts ainda. |
-| `/opsx:ff <change>` | `$openspec-ff-change` | `openspec status --change "<change>" --json`; `openspec instructions <artifact-id> --change "<change>" --json` | Gera todos os artifacts necessários para ficar pronto para implementação, respeitando dependências e templates retornados pela CLI. |
-| `/opsx:apply <change>` | `$openspec-apply-change` | `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Lê `contextFiles`, implementa as tasks pendentes e marca checkboxes em `tasks.md` somente após concluir cada item. |
-| `/opsx:verify <change>` | `$openspec-verify-change` | `openspec list --json` quando a change estiver ambígua; `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Verifica completude, corretude e coerência entre artifacts, specs, tasks, design, testes e implementação real. |
-| `/opsx:archive <change>` | `$openspec-archive-change` | `openspec status --change "<change>" --json`; avaliar sync de specs; mover para `openspec/changes/archive/YYYY-MM-DD-<change>/` | Arquiva somente no fechamento de lote/release após homologação, checando artifacts, tasks, delta specs e registrando warnings se algo ficar incompleto. |
+| Intenção canônica | Alias Cursor | Skill obrigatória | CLI base | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| `/opsx:new <change>` | `/opsx-new <change>` | `$openspec-new-change` | `openspec new change "<change>"`; `openspec status --change "<change>"`; `openspec instructions <artifact-id> --change "<change>"` | Cria apenas o scaffold da change, mostra status e instrução do primeiro artifact. Não cria artifacts ainda. |
+| `/opsx:ff <change>` | `/opsx-ff <change>` | `$openspec-ff-change` | `openspec status --change "<change>" --json`; `openspec instructions <artifact-id> --change "<change>" --json` | Gera todos os artifacts necessários para ficar pronto para implementação, respeitando dependências e templates retornados pela CLI. |
+| `/opsx:apply <change>` | `/opsx-apply <change>` | `$openspec-apply-change` | `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Lê `contextFiles` e implementa as tasks pendentes. Em cards com UI, só começa código depois de `Pronto para Dev`. |
+| `/opsx:verify <change>` | `/opsx-verify <change>` | `$openspec-verify-change` | `openspec list --json` quando a change estiver ambígua; `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Verifica completude, corretude e coerência entre artifacts, specs, tasks, design, testes e implementação real. |
+| `/opsx:archive <change>` | `/opsx-archive <change>` | `$openspec-archive-change` | `openspec status --change "<change>" --json`; avaliar sync de specs; mover para `openspec/changes/archive/YYYY-MM-DD-<change>/` | Arquiva somente no fechamento de lote/release após homologação, checando artifacts, tasks, delta specs e registrando warnings se algo ficar incompleto. |
 
 Antes de executar `/opsx:apply` em qualquer change vinculada a card/issue, siga `alan-workflow` e publique os artefatos OpenSpec no card. Convencao local do Gist: descricao `crypto openspec <change>` e comentario no card do Project 1.
 
 De-para complementar:
 
-| Intenção / comando | Skill Codex obrigatória | Uso correto |
-| --- | --- | --- |
-| `/opsx:continue <change>` | `$openspec-continue-change` | Continuar a criação do próximo artifact pronto, usando `openspec status` e `openspec instructions`, sem pular dependências. |
-| `/opsx:sync <change>` | `$openspec-sync-specs` | Sincronizar delta specs de `openspec/changes/<change>/specs/` para `openspec/specs/` antes ou durante o archive, conforme avaliação da skill. |
-| `/opsx:bulk-archive` | `$openspec-bulk-archive-change` | Arquivar várias changes concluídas, uma a uma, preservando evidência e warnings por change. |
-| `/opsx:onboard` | `$openspec-onboard` | Fazer onboarding guiado do fluxo OpenSpec antes de iniciar implementação quando o contexto operacional estiver confuso. |
+| Intenção canônica | Alias Cursor | Skill obrigatória | Uso correto |
+| --- | --- | --- | --- |
+| `/opsx:explore [change]` | `/opsx-explore [change]` | `$openspec-explore` | Explorar decisões e riscos sem implementar código; pode preparar artifacts quando solicitado. |
+| `/opsx:continue <change>` | `/opsx-continue <change>` | `$openspec-continue-change` | Continuar a criação do próximo artifact pronto, usando `openspec status` e `openspec instructions`, sem pular dependências. |
+| `/opsx:sync <change>` | `/opsx-sync <change>` | `$openspec-sync-specs` | Sincronizar delta specs de `openspec/changes/<change>/specs/` para `openspec/specs/` antes ou durante o archive, conforme avaliação da skill. |
+| `/opsx:bulk-archive` | `/opsx-bulk-archive` | `$openspec-bulk-archive-change` | Arquivar várias changes concluídas, uma a uma, preservando evidência e warnings por change. |
+| `/opsx:onboard` | `/opsx-onboard` | `$openspec-onboard` | Fazer onboarding guiado do fluxo OpenSpec antes de iniciar implementação quando o contexto operacional estiver confuso. |
 
 Fluxo canônico para implementação por card:
 
@@ -105,8 +112,18 @@ publicar artifacts OpenSpec no card
   -> seguir alan-workflow; no cripto, usar Gist `crypto openspec <change>` ou links permanentes
   -> comentar o card com change, arquivos e comandos gh gist view
 
+gate de design quando UI impact = affected
+  -> mover para Design e concluir design.md, Prototype e Design Critique
+  -> mover para Aprovação de Design e aguardar Alan
+  -> Alan aprova arrastando para Pronto para Dev
+
+bypass quando UI impact = none
+  -> registrar justificativa não vazia
+  -> mover Todo para Pronto para Dev
+
 /opsx:apply <change>
   -> usar $openspec-apply-change
+  -> mover Pronto para Dev para Em desenvolvimento
   -> implementar tasks e atualizar tasks.md
 
 /opsx:verify <change>
@@ -123,6 +140,13 @@ Fechamento de lote/release após homologação:
 ```
 
 Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover arquivos para `archive/` sem declarar a skill OpenSpec usada, considere o fluxo incompleto e corrija antes de avançar para DEV, QA, homologação ou merge.
+
+### Designer/Critic Agent compartilhado
+
+- O contrato canônico fica em `.agents/skills/design-critic/SKILL.md`. `.codex/skills/design-critic/SKILL.md` e `.cursor/skills/design-critic/SKILL.md` são adaptadores finos e não devem duplicar regras.
+- No Codex, invoque `$design-critic`; no Cursor, invoque `/design-critic`. Pedido equivalente em linguagem natural também deve acionar a skill durante `Status=Design`.
+- O Designer/Critic Agent produz ou refatora o protótipo, critica produto, UX, acessibilidade, responsividade e estados, resolve achados bloqueantes no escopo e registra `Design Agent verdict` no `design.md`.
+- O agente só pode mover `Design -> Aprovação de Design` quando `design.md`, `Prototype` e `Design Critique` estiverem completos. Nunca pode mover `Aprovação de Design -> Pronto para Dev`, autoaprovar ou alegar identidade de Alan.
 
 ### Falhas antigas em `openspec validate --all`
 
@@ -156,28 +180,35 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 
 1. Atualizar `develop`.
 2. Criar branch `change-<id>-<slug>` ou `card-<id>-<slug>`.
-3. Mover card para `Status=In Progress`.
-4. Executar OpenSpec (`/opsx:new`, `/opsx:ff`), publicar os artifacts OpenSpec no card, então executar `/opsx:apply` e `/opsx:verify` para implementar e validar.
-5. Rodar testes proporcionais/focados e validação OpenSpec da change.
-6. Mover card para `Status=Code Review` e sincronizar `Fluxo=Code Review` quando existir.
-7. Rodar review Codex no diff exato antes do commit. Se houver rework grande, voltar para `In Progress`; se forem ajustes pequenos, manter `Code Review` e repetir o review.
-8. Fazer commit/push do SHA revisado, mover para `Status=QA` e sincronizar `Fluxo=QA` quando existir.
-9. Abrir PR para `develop`, aguardar `qa-gate` terminal verde e corrigir qualquer falha antes da integração.
-10. Integrar em `develop` quando pronto, preferencialmente com squash/commit único por card referenciando o card.
-11. Executar `./restart` e validar a URL/runtime.
-12. Mover para `Status=Done` com comentário de evidência tecnica.
+3. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia.
+4. Executar OpenSpec (`/opsx:new`, `/opsx:ff`) e publicar os artifacts no card.
+5. Com UI afetada, mover para `Status=Design`, invocar `design-critic`, concluir `design.md`, `Prototype` e `Design Critique`, mover para `Status=Aprovação de Design` e aguardar Alan arrastar para `Pronto para Dev`. Sem UI, registrar o bypass e mover `Todo -> Pronto para Dev`.
+6. Somente em `Pronto para Dev`, mover para `Status=Em desenvolvimento`, executar `/opsx:apply` e `/opsx:verify` e implementar.
+7. Rodar testes proporcionais/focados e validação OpenSpec da change.
+8. Mover card para `Status=Code Review` e sincronizar `Fluxo=Code Review` quando existir.
+9. Rodar review Codex no diff exato antes do commit. Se houver rework grande, voltar para `Em desenvolvimento`; se forem ajustes pequenos, manter `Code Review` e repetir o review.
+10. Fazer commit/push do SHA revisado, mover para `Status=QA` e sincronizar `Fluxo=QA` quando existir.
+11. Abrir PR para `develop`, aguardar `qa-gate` terminal verde e corrigir qualquer falha antes da integração.
+12. Integrar em `develop` quando pronto, preferencialmente com squash/commit único por card referenciando o card.
+13. Executar `./restart` e validar a URL/runtime.
+14. Mover para `Status=Done` com comentário de evidência tecnica.
 
 ### Colunas Kanban
 
 - O campo `Status` e a fonte principal das colunas. O campo `Fluxo`, quando existir, e substatus/legado; se houver divergencia, `Status` prevalece.
 - `Todo`: backlog ou pronto para comecar.
-- `In Progress`: Codex/Clara esta implementando, investigando, validando ou corrigindo achados de review.
+- `Design`: Designer/Critic Agent prepara protótipo, crítica e evidências da solução.
+- `Aprovação de Design`: entrega completa aguardando decisão humana de Alan.
+- `Pronto para Dev`: design aprovado por Alan ou bypass sem UI auditado; desenvolvimento liberado.
+- `Em desenvolvimento`: Codex/Clara esta implementando, investigando, validando ou corrigindo achados de review.
 - `Code Review`: diff pronto para review Codex antes do commit; achados bloqueantes precisam ser corrigidos ou classificados.
 - `QA`: SHA revisado em validacao automatizada; `qa-gate`, Playwright visual e demais checks obrigatorios precisam terminar verdes.
 - `Done`: Done tecnico; QA verde, implementação técnica revisada, integrada em `develop`, restart/runtime validados, aguardando teste/aprovacao do Alan.
 - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
 - `Pronto`: conteúdo do card entrou em `main`/produção com evidencia; este e o fechamento final.
 - `Cancelado`: nao sera feito ou foi substituido.
+
+O arraste `Aprovação de Design -> Pronto para Dev` aprova a versão específica do `design.md` e do protótipo. Apenas Alan autenticado pode executá-lo. Se uma dessas evidências mudar, a aprovação fica obsoleta e o desenvolvimento deve permanecer bloqueado até nova aprovação. Retornos controlados antes de `Done` são `Aprovação de Design -> Design`, `Code Review -> Em desenvolvimento` e `QA -> Em desenvolvimento`.
 
 Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main`.
 
@@ -241,7 +272,7 @@ Status final: pronto.
 - Todo card executa Playwright visual por padrão, inclusive cards sem alteração em `frontend/**`.
 - Mudança de UI inclui cobertura desktop/mobile da tela afetada e baseline versionado revisado no diff.
 - Dispensa só é válida com label `qa-visual-skip` e comentário explícito de Alan: `QA visual dispensado por Alan.` seguido de `Motivo:` não vazio.
-- Falha de QA que exige fonte retorna para `In Progress -> Code Review -> QA`; falha de infraestrutura/flaky permanece em `QA` para rerun com evidência.
+- Falha de QA que exige fonte retorna para `Em desenvolvimento -> Code Review -> QA`; falha de infraestrutura/flaky permanece em `QA` para rerun com evidência.
 
 #### Fluxo canonico (rapido)
 
@@ -470,11 +501,11 @@ Valida + análise profunda de bugs.
 - `change` é o container raiz da entrega; `story` é a fatia padrão de execução quando houver ownership/dependência própria; `bug` representa defeito real. Não criar cards separados para micro-passos sem necessidade operacional.
 - Múltiplas stories/agentes podem trabalhar em paralelo, desde que respeitem **locks**, **dependências** e **WIP**.
 - Regra prática de WIP: por padrão, no máximo **2 stories ativas por change** e **1 story ativa por agent run**.
-- **Regra de auto-trigger:** Quando o status da change avança no runtime, o agente responsável pela nova etapa deve ser acionado. Ex: status vira PO → acionar PO; vira DEV → acionar DEV; vira QA → acionar QA.
+- **Regra de auto-trigger:** quando o status da change avança no runtime, acionar o responsável pela nova etapa. Em `Design`, acionar o Designer/Critic Agent; em `Aprovação de Design`, aguardar Alan; em `Em desenvolvimento`, acionar DEV; em `QA`, acionar QA.
 - **Regra de validação QA:** Antes de enviar para homologação Alan, QA deve rodar testes E2E (`frontend/tests/*.spec.ts`) e revisar evidências registradas no fluxo operacional.
 - Lock padrão fica no nível da **story**; bug filho herda esse lock salvo reassignment explícito.
 - Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
-- Antes de promover para `QA`, `Homologation` ou `Archived`, reconciliar runtime + `openspec/changes/<change>/tasks.md` + handoff.
+- Antes de promover para `Aprovação de Design`, `Pronto para Dev`, `QA`, `Done`, `Homologado` ou `Pronto`, reconciliar runtime + `openspec/changes/<change>/tasks.md` + handoff e as evidências exigidas pelo gate.
 
 ### Uso padrão de subagents Codex
 

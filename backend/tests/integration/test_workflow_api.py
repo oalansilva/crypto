@@ -7,11 +7,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
-from app.workflow_database import WorkflowBase, get_workflow_db
+from app.services.workflow_auth import WorkflowActor, get_workflow_actor
+from app.workflow_database import WorkflowBase, get_workflow_db, init_workflow_schema_for_url
+
+
+TEST_ACTOR = WorkflowActor(user_id=str(uuid4()), email="o.alan.silva@gmail.com")
 
 
 def _build_client():
     workflow_database_url = "postgresql://postgres:postgres@127.0.0.1:5432/postgres"
+    init_workflow_schema_for_url(workflow_database_url)
     engine = create_engine(
         workflow_database_url,
     )
@@ -26,6 +31,7 @@ def _build_client():
             db.close()
 
     app.dependency_overrides[get_workflow_db] = override_get_db
+    app.dependency_overrides[get_workflow_actor] = lambda: TEST_ACTOR
     client = TestClient(app)
     client.engine = engine  # type: ignore[attr-defined]
     return client, workflow_database_url
@@ -58,7 +64,7 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
             "change_id": change_id,
             "title": "Workflow DB",
             "description": "Initial workflow runtime cutover",
-            "status": "in_progress",
+            "status": "Todo",
         },
     )
     assert change.status_code == 200
@@ -69,13 +75,12 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
     updated = client.patch(
         f"/api/workflow/projects/{project_slug}/changes/{change_id}",
         json={
-            "status": "DEV",
             "title": "Workflow DB APIs",
             "description": "APIs and Kanban compat",
         },
     )
     assert updated.status_code == 200
-    assert updated.json()["status"] == "DEV"
+    assert updated.json()["status"] == "Todo"
     assert updated.json()["description"] == "APIs and Kanban compat"
 
     story = client.post(
@@ -112,6 +117,7 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
     )
     assert change_comment.status_code == 200
     assert change_comment.json()["scope"] == "change"
+    assert change_comment.json()["author"] == TEST_ACTOR.email
 
     task_comment = client.post(
         f"/api/workflow/projects/{project_slug}/changes/{change_id}/comments",
@@ -139,14 +145,15 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
         f"/api/workflow/projects/{project_slug}/changes/{change_id}/approvals",
         json={
             "scope": "change",
-            "gate": "Approval",
+            "gate": "Code Review",
             "state": "approved",
             "actor": "Alan",
             "note": "ok",
         },
     )
     assert approval.status_code == 200
-    assert approval.json()["gate"] == "Approval"
+    assert approval.json()["gate"] == "Code Review"
+    assert approval.json()["actor"] == TEST_ACTOR.email
 
     handoff = client.post(
         f"/api/workflow/projects/{project_slug}/changes/{change_id}/handoffs",
@@ -165,7 +172,7 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
     assert approvals.status_code == 200
     approval_items = approvals.json()
     assert len(approval_items) >= 1
-    assert approval_items[-1]["gate"] == "Approval"
+    assert approval_items[-1]["gate"] == "Code Review"
 
     handoffs = client.get(
         f"/api/workflow/projects/{project_slug}/changes/{change_id}/handoffs?work_item_id={story_id}"

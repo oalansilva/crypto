@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,11 +18,18 @@ DEFAULT_EPHEMERAL_PATTERNS = [
     ".pytest_cache/**",
 ]
 
-ENFORCED_STATUSES = {"Homologation", "Archived"}
+ENFORCED_STATUSES = {"Pronto"}
 
 
 class UpstreamGuardError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class MainPublicationEvidence:
+    head_sha: str
+    main_sha: str
+    main_ref: str
 
 
 @dataclass
@@ -192,3 +200,68 @@ def require_upstream_published(
     raise UpstreamGuardError(
         f"Upstream guard blocked {targets}. Publish relevant changes to GitHub first ({reasons})."
     )
+
+
+def current_commit_sha(repo_root: str | Path) -> str:
+    sha = _git(Path(repo_root).resolve(), "rev-parse", "HEAD", check=False).strip()
+    if not sha:
+        raise UpstreamGuardError("Cannot resolve the current commit SHA for the QA round.")
+    return sha
+
+
+def require_card_main_publication(
+    repo_root: str | Path,
+    *,
+    change_id: str,
+    card_number: int | None = None,
+) -> MainPublicationEvidence:
+    """Prove that a card-specific revision is already contained in main.
+
+    The repository may remain checked out on develop or another integration
+    branch. Publication is bound to a commit message that references the card,
+    not to the process-wide HEAD or a client-provided SHA.
+    """
+
+    root = Path(repo_root).resolve()
+    main_ref = os.getenv("WORKFLOW_MAIN_REF", "origin/main").strip() or "origin/main"
+    main_sha = _git(root, "rev-parse", main_ref, check=False).strip()
+    if not main_sha:
+        raise UpstreamGuardError(
+            f"Publication evidence unavailable: resolve fetched {main_ref} first."
+        )
+    raw_log = _git(root, "log", "--format=%H%x00%B%x1e", main_ref, check=False)
+    normalized_change = (change_id or "").strip()
+    issue_match = re.search(r"(?:^|-)card-(\d+)(?:-|$)", normalized_change, flags=re.IGNORECASE)
+    issue_numbers = {
+        number
+        for number in (
+            issue_match.group(1) if issue_match else None,
+            str(card_number) if card_number is not None else None,
+        )
+        if number
+    }
+    change_pattern = (
+        re.compile(rf"(?<![A-Za-z0-9_-]){re.escape(normalized_change)}(?![A-Za-z0-9_-])")
+        if normalized_change
+        else None
+    )
+    issue_patterns = [
+        re.compile(rf"(?<!\d)#{re.escape(issue_number)}(?!\d)")
+        for issue_number in issue_numbers
+    ]
+    head_sha = ""
+    for record in raw_log.split("\x1e"):
+        record = record.strip()
+        if not record or "\x00" not in record:
+            continue
+        commit_sha, message = record.split("\x00", 1)
+        if (change_pattern and change_pattern.search(message)) or any(
+            issue_pattern.search(message) for issue_pattern in issue_patterns
+        ):
+            head_sha = commit_sha.strip()
+            break
+    if not head_sha:
+        raise UpstreamGuardError(
+            f"No commit in {main_ref} references card {normalized_change or card_number}."
+        )
+    return MainPublicationEvidence(head_sha=head_sha, main_sha=main_sha, main_ref=main_ref)

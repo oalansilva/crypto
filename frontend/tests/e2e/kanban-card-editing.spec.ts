@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test('Kanban drawer edits title/description and cancels card without losing identity', async ({ page }) => {
   const mockedChangeId = 'alterar-dados-dos-cards'
-  let currentColumn = 'DEV'
+  let currentColumn = 'Em desenvolvimento'
   let currentTitle = 'alterar dados dos cards'
   let currentDescription = 'Editar título e descrição mantendo o histórico.'
   const patchPayloads: Array<{ title?: string; description?: string; status?: string; cancel_archive?: boolean }> = []
@@ -28,7 +28,7 @@ test('Kanban drawer edits title/description and cancels card without losing iden
               QA: 'pending',
               'Homologation': 'pending',
             },
-            archived: currentColumn === 'Archived',
+            archived: currentColumn === 'Cancelado',
             column: currentColumn,
           },
         ],
@@ -85,12 +85,13 @@ test('Kanban drawer edits title/description and cancels card without losing iden
   })
 
   await page.goto('/kanban')
-  await page.getByRole('tab', { name: /DEV 1/i }).click()
+  await page.getByRole('tab', { name: 'Entrega' }).click()
+  await page.getByRole('tab', { name: /Em desenvolvimento 1/i }).click()
   await page.getByRole('button', { name: `Open details for ${mockedChangeId}` }).click()
 
   await expect(page.getByText('Detalhes', { exact: true })).toBeVisible()
   await expect(page.getByRole('complementary').getByText(mockedChangeId, { exact: true })).toBeVisible()
-  await expect(page.getByText('Stage atual: DEV')).toBeVisible()
+  await expect(page.getByText('Etapa atual: Em desenvolvimento')).toBeVisible()
 
   const titleInput = page.getByPlaceholder('Título do card')
   const descriptionInput = page.getByPlaceholder('Descrição do card')
@@ -114,11 +115,12 @@ test('Kanban drawer edits title/description and cancels card without losing iden
   await page.getByRole('button', { name: 'Cancelar card' }).click()
 
   await expect(page.getByRole('button', { name: 'Já cancelado' })).toBeVisible()
-  expect(patchPayloads[1]).toEqual({ status: 'Archived', cancel_archive: true })
+  expect(patchPayloads[1]).toEqual({ status: 'Cancelado' })
 
   await page.getByRole('button', { name: 'Close panel' }).click()
-  const archivedTab = page.getByRole('tab', { name: /Archived 1/i })
-  await archivedTab.click()
-  await expect(archivedTab).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: 'Todas' }).click()
+  const canceledTab = page.getByRole('tab', { name: /Cancelado 1/i })
+  await canceledTab.click()
+  await expect(canceledTab).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('button', { name: `Open details for ${mockedChangeId}` })).toBeVisible()
 })
