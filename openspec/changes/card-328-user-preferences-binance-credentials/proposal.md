@@ -1,25 +1,25 @@
 ## Why
 
-Credenciais Binance (API Key/Secret read-only) hoje só são configuradas na tela de Carteira. O usuário precisa de um lugar dedicado de preferências para salvar essa chave vinculada à conta logada, usada pela Home e pela Carteira, sem misturar configuração sensível com a visualização de saldos.
+Credenciais Binance (API Key/Secret read-only) precisam ficar no lugar natural da conta do usuário. Após feedback de Alan, o melhor lugar é **Meu Perfil** (aberto pela barra/conta), não uma tela separada de Preferências.
 
 ## What Changes
 
-- Criar tela de **preferências do usuário** (rota autenticada) com o bloco **Credenciais Binance** (status, API Key, API Secret, salvar/remover).
-- Reutilizar o contrato existente `GET/PUT/DELETE /api/user/binance-credentials`.
-- Mover o formulário completo para fora da Carteira; na Carteira permanecer status compacto + atalho para preferências.
-- Incluir entrada de navegação para preferências do usuário (distinta de Preferências do sistema admin).
-- Cobrir com testes E2E/visual o novo fluxo.
+- Colocar o bloco **Credenciais Binance** em `/profile` (Meu Perfil), acessível pela barra de conta.
+- Remover a entrada de navegação Preferências do usuário e a página dedicada `/preferences` (com redirect para `/profile`).
+- Na Carteira, manter status compacto + atalho para **Meu Perfil**.
+- Reutilizar `GET/PUT/DELETE /api/user/binance-credentials`.
+- Atualizar E2E/visual para o fluxo no perfil.
 
 ## Capabilities
 
 ### New Capabilities
-- `user-preferences-binance-credentials`: tela de preferências do usuário para salvar/gerenciar API Key/Secret Binance read-only vinculada ao usuário logado.
+- `user-preferences-binance-credentials`: gerenciamento de API Key/Secret Binance read-only na tela Meu Perfil do usuário logado.
 
 ### Modified Capabilities
-- `external-balances`: a Carteira deixa de ser o único/lugar principal do formulário completo de credenciais; passa a exibir status + link para preferências, mantendo o consumo da chave do usuário.
+- `external-balances`: Carteira mostra status + link para Meu Perfil (não edita a chave no formulário completo).
 
 ## Impact
 
-- Frontend: nova página/rota de preferências, nav, componente reutilizável de credenciais, ajuste em `ExternalBalancesPage`, testes E2E/visual.
-- Backend: sem mudança de contrato esperada (endpoints já existem); apenas regressão dos testes de credentials.
-- Segurança: secret continua mascarado/não retornado em claro; UI reforça chave read-only + IP whitelist.
+- Frontend: ProfilePage, nav/conta, remoção/redirect de `/preferences`, Carteira compacta, testes E2E/visual.
+- Backend: sem mudança de contrato.
+- Segurança: secret mascarado; UI reforça chave read-only + IP whitelist.

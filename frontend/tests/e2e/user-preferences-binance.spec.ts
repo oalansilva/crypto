@@ -1,7 +1,27 @@
 import { expect, test } from '@playwright/test'
 
+type TestUser = {
+  id: string
+  email: string
+  name: string
+  isAdmin: boolean
+}
+
+const user: TestUser = {
+  id: 'profile-binance-user',
+  email: 'profile.binance@example.com',
+  name: 'Profile Binance',
+  isAdmin: false,
+}
+
 async function setupApiMocks(page: any, opts?: { configured?: boolean }) {
   const configured = opts?.configured ?? false
+
+  await page.addInitScript((authUser: TestUser) => {
+    window.localStorage.setItem('auth_access_token', 'test-access-token')
+    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token')
+    window.localStorage.setItem('auth_user', JSON.stringify(authUser))
+  }, user)
 
   await page.route('**/*', (route: any) => {
     const url = new URL(route.request().url())
@@ -10,6 +30,26 @@ async function setupApiMocks(page: any, opts?: { configured?: boolean }) {
     }
     return route.abort('blockedbyclient')
   })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(user),
+    })
+  )
+
+  await page.route('**/api/users/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...user,
+        createdAt: '2026-05-01T10:00:00Z',
+        lastLogin: '2026-05-02T10:00:00Z',
+      }),
+    })
+  )
 
   await page.route('**/api/user/binance-credentials', async (route: any) => {
     const method = route.request().method()
@@ -46,12 +86,12 @@ async function setupApiMocks(page: any, opts?: { configured?: boolean }) {
   })
 }
 
-test('user preferences page manages Binance credentials', async ({ page }) => {
+test('user profile manages Binance credentials', async ({ page }) => {
   await setupApiMocks(page)
 
-  await page.goto('/preferences')
+  await page.goto('/profile')
 
-  await expect(page.getByRole('heading', { name: 'Preferências', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Meu Perfil', exact: true })).toBeVisible()
   await expect(page.getByText('Credenciais Binance')).toBeVisible()
   await expect(
     page.getByText(
@@ -81,4 +121,12 @@ test('user preferences page manages Binance credentials', async ({ page }) => {
   await expect(page.getByText('Configurada')).toBeVisible()
   await expect(page.getByText('abcd****wxyz')).toBeVisible()
   await expect(apiSecret).toHaveValue('')
+})
+
+test('legacy preferences route redirects to profile', async ({ page }) => {
+  await setupApiMocks(page)
+  await page.goto('/preferences')
+  await expect(page).toHaveURL(/\/profile$/)
+  await expect(page.getByRole('heading', { name: 'Meu Perfil', exact: true })).toBeVisible()
+  await expect(page.getByText('Credenciais Binance')).toBeVisible()
 })

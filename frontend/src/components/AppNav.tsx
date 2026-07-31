@@ -44,7 +44,6 @@ const strategyNavItems: NavItemConfig[] = [
 
 const accountNavItems: NavItemConfig[] = [
   { to: '/external/balances', label: 'Carteira', icon: Wallet },
-  { to: '/preferences', label: 'Preferências', icon: Settings },
   { to: '/help', label: 'Ajuda', icon: HelpCircle },
 ]
 
@@ -65,7 +64,6 @@ function resolvePageTitle(pathname: string) {
   if (pathname.startsWith('/external')) return 'Carteira'
   if (pathname.startsWith('/help')) return 'Ajuda'
   if (pathname.startsWith('/profile')) return 'Meu Perfil'
-  if (pathname === '/preferences' || pathname.startsWith('/preferences/')) return 'Preferências'
   if (pathname.startsWith('/change-password')) return 'Alterar senha'
   if (pathname.startsWith('/system/preferences')) return 'Preferências do sistema'
   if (pathname.startsWith('/admin/users')) return 'Usuários'

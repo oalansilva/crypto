@@ -57,7 +57,7 @@ test('external balances page loads and shows balances', async ({ page }) => {
   await expect(hbarRow.getByText('+25.00%')).toBeVisible()
 })
 
-test('wallet shows credential status and links to preferences', async ({ page }) => {
+test('wallet shows credential status and links to profile', async ({ page }) => {
   await setupApiMocks(page)
 
   await page.goto('/external/balances')
@@ -65,7 +65,7 @@ test('wallet shows credential status and links to preferences', async ({ page })
   await expect(page.getByText('O Cripto Farol não solicita e-mail nem senha da Binance.')).toBeVisible()
   await expect(page.getByText('Credenciais Binance')).toBeVisible()
   await expect(page.getByText('Não configurada')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Configurar em Preferências' })).toHaveAttribute('href', '/preferences')
+  await expect(page.getByRole('link', { name: 'Configurar no Perfil' })).toHaveAttribute('href', '/profile')
   await expect(page.getByLabel('Binance API Key read-only')).toHaveCount(0)
   await expect(page.getByLabel('Binance API Secret read-only')).toHaveCount(0)
 })

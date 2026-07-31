@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { CalendarClock, Mail, Save, UserRound } from 'lucide-react'
 
+import { BinanceCredentialsForm } from '@/components/binance/BinanceCredentialsForm'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -108,7 +109,7 @@ export default function ProfilePage() {
             </div>
             <h1 className="section-title mt-2">Meu Perfil</h1>
             <p className="section-copy mt-2">
-              Atualize seu nome e revise as informações básicas da sua conta.
+              Atualize seu nome, revise os dados da conta e configure a chave API read-only da Binance usada pela Home e pela carteira.
             </p>
           </div>
         </div>
@@ -175,6 +176,8 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <BinanceCredentialsForm mode="full" />
     </div>
   )
 }
