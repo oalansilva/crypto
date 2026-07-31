@@ -134,7 +134,7 @@ export function BinanceCredentialsForm({
               Credenciais Binance
             </div>
             <div className="mt-2 max-w-3xl text-sm text-slate-400">
-              Gerencie a chave API read-only em Preferências. A Home e a carteira usam a chave vinculada ao usuário logado.
+              Gerencie a chave API read-only em Meu Perfil (menu da conta na barra). A Home e a carteira usam a chave vinculada ao usuário logado.
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -146,10 +146,10 @@ export function BinanceCredentialsForm({
               {maskedApiKey ? <span className="text-slate-500">· {maskedApiKey}</span> : null}
             </div>
             <Link
-              to="/preferences"
+              to="/profile"
               className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 bg-slate-950/40 px-4 text-xs font-semibold text-slate-100 hover:bg-white/10"
             >
-              Configurar em Preferências
+              Configurar no Perfil
             </Link>
           </div>
         </div>

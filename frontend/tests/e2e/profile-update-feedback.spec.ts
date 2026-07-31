@@ -63,6 +63,14 @@ async function setupAuthenticatedProfile(page: any) {
       }),
     })
   })
+
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
 }
 
 test('profile save shows visible success feedback', async ({ page }) => {

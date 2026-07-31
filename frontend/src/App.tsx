@@ -18,7 +18,6 @@ import KanbanPage from './pages/KanbanPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import SystemPreferencesPage from './pages/SystemPreferencesPage'
-import UserPreferencesPage from './pages/UserPreferencesPage'
 import ProfilePage from './pages/ProfilePage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import AdminUsersPage from './pages/AdminUsersPage'
@@ -80,7 +79,7 @@ function App() {
           <Route path="/external/balances" element={<ExternalBalancesPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/preferences" element={<UserPreferencesPage />} />
+          <Route path="/preferences" element={<Navigate to="/profile" replace />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/system/preferences" element={<ProtectedRoute requireAdmin><SystemPreferencesPage /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsersPage /></ProtectedRoute>} />
