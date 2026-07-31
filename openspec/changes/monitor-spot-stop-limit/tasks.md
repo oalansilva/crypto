@@ -19,4 +19,10 @@
 ## 4. Fechamento
 
 - [x] 4.1 Code Review + commit/push + PR develop
-- [ ] 4.2 QA gate verde + merge + `./restart` + Done técnico
+- [x] 4.2 QA gate verde + merge + `./restart` + Done técnico
+
+## 5. Homologação — stop externo Binance
+
+- [x] 5.1 Detectar `STOP_LOSS`/`STOP_LOSS_LIMIT` SELL externo (não só `cfstop_`)
+- [x] 5.2 UI: não oferecer Proteger quando stop já aberto; Remover + nota “fora do app”
+- [ ] 5.3 Code Review + CI + merge develop + restart (manter Status=Done)
