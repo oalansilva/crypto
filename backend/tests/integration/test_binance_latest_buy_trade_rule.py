@@ -32,7 +32,9 @@ def test_compute_avg_buy_cost_prefers_newer_usdc_buy_over_older_usdt(monkeypatch
         if symbol == "ETHUSDT":
             return [{"isBuyer": True, "qty": "0.05", "price": "2247.87", "time": 1_700_000_000_000}]
         if symbol == "ETHUSDC":
-            return [{"isBuyer": True, "qty": "0.052", "price": "1920.42", "time": 1_721_080_367_000}]
+            return [
+                {"isBuyer": True, "qty": "0.052", "price": "1920.42", "time": 1_721_080_367_000}
+            ]
         return []
 
     monkeypatch.setattr("app.services.binance_trades.fetch_my_trades", fake_fetch)
