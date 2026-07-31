@@ -20,5 +20,5 @@
 
 ## 4. Fechamento técnico
 
-- [ ] 4.1 Code Review no diff + commit/push + PR develop
-- [ ] 4.2 QA gate verde + merge + `./restart` + Done técnico no #346
+- [x] 4.1 Code Review no diff + commit/push + PR develop
+- [x] 4.2 QA gate verde + merge + `./restart` + Done técnico no #346
