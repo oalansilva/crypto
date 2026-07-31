@@ -235,7 +235,7 @@ test('Proteção Spot: stop externo Binance bloqueia Proteger e oferece Remover'
   await page.goto('/monitor')
   await page.getByRole('button', { name: /Abrir Gráfico ETH\/USDT/i }).first().click()
   await expect(page.getByTestId('spot-protect-stop-panel')).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByTestId('spot-protect-summary')).toContainText('1682.28')
+  await expect(page.getByTestId('spot-protect-summary')).toContainText(/1,?682\.28/)
   await expect(page.getByTestId('spot-protect-external-note')).toBeVisible()
   await expect(page.getByTestId('spot-protect-remove')).toBeVisible()
   await expect(page.getByTestId('spot-protect-place')).toHaveCount(0)
