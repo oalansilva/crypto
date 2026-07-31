@@ -62,9 +62,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 10. Apos validacao e evidencia, o agente tem autonomia para executar o fluxo manual de fechamento previsto no `AGENTS.md` e em `alan-workflow`, sem solicitar nova autorizacao para cada etapa.
    - Essa autonomia nao autoriza pular teste, OpenSpec, homologacao, isolamento por branch, pedido explicito de lote/release ou merge manual.
 
-11. Usar a skill `caveman` em modo `lite` como padrao de comunicacao com Alan.
-   - Manter respostas curtas, diretas e sem filler, preservando clareza tecnica, seguranca e ordem correta em instrucoes criticas.
-   - Desativar somente quando Alan pedir explicitamente `stop caveman` ou `normal mode`.
+11. Comunicacao com Alan em PT-BR direto e conciso, sem filler; preservar clareza tecnica, seguranca e ordem correta em instrucoes criticas.
 
 12. Toda tela, componente visual ou funcionalidade com impacto de UI/UX deve seguir obrigatoriamente o `DESIGN.md`.
    - Vale para telas novas e antigas, ajustes pequenos, refactors visuais, cards de produto e correcoes de interface.

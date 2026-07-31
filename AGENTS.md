@@ -18,7 +18,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 ## TL;DR
 
 - **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
-- **Comunicação padrão com Alan:** usar sempre a skill `caveman` em modo `lite`: curto, direto, sem filler, mantendo clareza técnica. Só desligar se Alan pedir explicitamente `stop caveman` ou `normal mode`.
+- **Comunicação padrão com Alan:** PT-BR direto e conciso, sem filler; clareza técnica e evidências concretas.
 - **Colunas/Status:** seguir `alan-workflow`; no cripto, o campo `Status` e a fonte principal das colunas visuais. `Code Review` = diff pronto para review Codex antes do commit; `QA` = SHA revisado em validacao automatizada, incluindo `qa-gate` e Playwright visual; `Done` = Done tecnico: QA verde, integrado em `develop`, restart/runtime validados, aguardando aprovacao do Alan; `Homologado` = Alan testou e aprovou em `develop`; `Pronto` = já subiu para `main`/produção com evidencia.
 - **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
@@ -414,7 +414,7 @@ O time é composto por 5 agentes, cada um com papel definido:
 **Template base:** Orion (productivity)
 
 Orquestra o time, coordena workflow, delegation, status reports, prazos.
-- Mantém conversa com Alan curta/gerencial, usando `caveman lite` como padrão permanente
+- Mantém conversa com Alan curta/gerencial, direta e concisa
 - Consulte workflow DB e OpenSpec como fonte principal.
 - Move status de mudança no workflow, celebra marcos, identifica riscos proativamente
 - Fornece próximo passo após completar tarefa

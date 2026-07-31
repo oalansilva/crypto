@@ -14,4 +14,4 @@
 - [x] 3.1 Run focused backend/frontend/OpenSpec validation for the integrated scope.
 - [x] 3.2 Merge the change through `develop` and `main`, restart runtime from the main repo worktree, and update issue evidence.
 
-Note: use project skills when applicable; this change uses OpenSpec skills for new/ff/apply/verify and caveman lite for Alan communication.
+Note: use project skills when applicable; this change uses OpenSpec skills for new/ff/apply/verify.
