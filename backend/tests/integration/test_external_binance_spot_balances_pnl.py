@@ -49,11 +49,13 @@ def test_balances_snapshot_includes_avg_cost_and_pnl(monkeypatch):
         api_secret=None,
         base_url=None,
     ):
-        assert symbol == "ABCUSDT"
+        assert symbol in {"ABCUSDT", "ABCUSDC"}
         assert limit
-        return [
-            {"isBuyer": True, "qty": "2", "price": "2"},
-        ]
+        if symbol == "ABCUSDT":
+            return [
+                {"isBuyer": True, "qty": "2", "price": "2"},
+            ]
+        return []
 
     monkeypatch.setattr(binance_spot, "_signed_get", fake_signed_get)
     monkeypatch.setattr(binance_spot, "fetch_all_binance_prices", fake_fetch_all_prices)
