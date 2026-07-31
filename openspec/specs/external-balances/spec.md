@@ -1,7 +1,7 @@
 # external-balances Specification
 
 ## Purpose
-TBD - created by archiving change external-balances-dashboard. Update Purpose after archive.
+Display Binance Spot and Earn wallet balances with USD valuation for the authenticated user.
 ## Requirements
 ### Requirement: System MUST provide a Binance Spot balances snapshot endpoint
 The system MUST provide a backend endpoint that returns the current Binance Spot balances using a configured read-only API key.
@@ -96,6 +96,8 @@ The Wallet balances endpoint MUST return an `as_of` timestamp so the UI can disp
 ### Requirement: Wallet API MUST support dust threshold override
 The Wallet balances endpoint MUST accept a query param `min_usd` (optional float) to override dust filtering.
 
+Dust filtering MUST NOT drop a supported stable (`USDT`, `USDC`, and other assets treated as USD stables for display pricing) that has `total > 0` when its computed `value_usd` is at or above the active threshold. Missing ticker data MUST NOT force-omit those stables: the endpoint MUST fall back to the stable USD reference price instead of skipping the row.
+
 #### Scenario: Default dust behavior
 - **WHEN** `min_usd` is not provided
 - **THEN** the endpoint MUST behave with the default dust threshold (currently 0.02)
@@ -103,6 +105,11 @@ The Wallet balances endpoint MUST accept a query param `min_usd` (optional float
 #### Scenario: Include dust
 - **WHEN** `min_usd=0`
 - **THEN** the endpoint MUST include rows that would otherwise be filtered as dust
+
+#### Scenario: Stable without self-pair ticker is still valued
+- **WHEN** a supported stable has Spot balance and no self-pair ticker exists in the price map
+- **THEN** the endpoint MUST still return the row using the stable USD reference price
+- **AND** MUST NOT skip the row with `value_usd=null`
 
 ### Requirement: Wallet UI MUST provide search and locked-only filtering
 
@@ -168,3 +175,53 @@ PnL fields MUST be computed from the multi-quote reference buy cost and the curr
 - **THEN** the system MUST compute:
   - `pnl_usd = (price_usdt - avg_cost_usdt) * total`
   - `pnl_pct = (price_usdt / avg_cost_usdt - 1) * 100`
+
+### Requirement: Wallet MUST list Spot stablecoin balances with USD value
+The Wallet balances snapshot MUST include Spot balances for supported USD stables (at least `USDT` and `USDC`) whenever the account has `total > 0` for that asset. The system MUST value those assets with a stable USD reference (`price_usdt` of `1.0` unless a more accurate ticker is available) so `value_usd` is never omitted solely because no self-pair ticker exists.
+
+#### Scenario: USDT balance is listed
+- **WHEN** the authenticated user has Spot `USDT` with `total > 0`
+- **THEN** the balances response MUST include a row with `asset=USDT`
+- **AND** `price_usdt` MUST be `1.0` (or an equivalent stable ticker)
+- **AND** `value_usd` MUST equal `total * price_usdt`
+- **AND** that `value_usd` MUST be included in `total_usd`
+
+#### Scenario: USDC balance is listed
+- **WHEN** the authenticated user has Spot `USDC` with `total > 0`
+- **THEN** the balances response MUST include a row with `asset=USDC`
+- **AND** `price_usdt` MUST be `1.0` (or an equivalent stable ticker)
+- **AND** `value_usd` MUST equal `total * price_usdt`
+- **AND** that `value_usd` MUST be included in `total_usd`
+
+#### Scenario: Stable listing is independent of avg-cost trade lookup
+- **WHEN** a stable asset appears in the Spot snapshot
+- **THEN** the system MUST NOT omit the row because avg-cost / trade-history lookup was skipped
+- **AND** `avg_cost_usdt` for known stables MAY be `1.0` (PnL ≈ 0) without blocking display
+
+### Requirement: Wallet UI MUST send dust threshold to the balances API
+The Carteira UI MUST pass the user-selected dust threshold as `min_usd` on `GET /api/external/binance/spot/balances` so server-side filtering matches the control.
+
+#### Scenario: Default threshold is forwarded
+- **WHEN** the user opens Carteira with the default dust threshold
+- **THEN** the UI MUST request balances with `min_usd` equal to that default
+
+#### Scenario: Include-dust control reaches the API
+- **WHEN** the user sets dust threshold to `0`
+- **THEN** the UI MUST request balances with `min_usd=0`
+- **AND** previously dust-filtered rows that the API returns MUST become visible
+
+#### Scenario: Material stables remain visible under default dust
+- **WHEN** USDT or USDC has `value_usd` at or above the active `min_usd`
+- **THEN** the Carteira list MUST show the stable row
+- **AND** the visible total MUST include its `value_usd`
+
+### Requirement: Wallet MUST prefer Simple Earn positions over incomplete LD* wrappers
+When the Binance Simple Earn API succeeds, the Wallet MUST use flexible/locked Earn positions instead of incomplete `LD*` wrappers from `/api/v3/account`. If the Earn API fails, the Wallet MAY fall back to `LD*` balances from the account snapshot.
+
+#### Scenario: Earn API succeeds
+- **WHEN** Simple Earn flexible/locked positions are available
+- **THEN** the Wallet MUST prefer those Earn positions over incomplete `LD*` account wrappers
+
+#### Scenario: Earn API fails
+- **WHEN** the Simple Earn API fails
+- **THEN** the Wallet MAY fall back to `LD*` balances from `/api/v3/account`
