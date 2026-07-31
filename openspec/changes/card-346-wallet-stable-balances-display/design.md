@@ -41,6 +41,7 @@ Stakeholders: Alan (usuário/trader), Codex (DEV), Designer/Critic Agent (este g
 - [Saldo stable < dust default 0.02 some] → Mitigação: wiring `min_usd=0` funciona; documentar que default continua 0.02 para dust real.
 - [Outros stables BUSD/TUSD/FDUSD sem preço] → Mitigação: alinhar set de display-pricing ao `STABLE_ASSETS` no mesmo card se custo for baixo.
 - [Caixa em Binance Flexible Earn aparece como `LDUSDT`/`LDUSDC` no `/api/v3/account`, sem ticker] → Mitigação: `is_usd_stable_asset()` cobre Spot stables e wrappers Earn `LD*` + stable; valorizar a `1.0` e listar (rótulo UI “USDT/USDC (Earn)”).
+- [LD* subestima Simple Earn Flexible vs Vista Binance (~50 USD)] → Mitigação: buscar `/sapi/v1/simple-earn/flexible/position` (+ locked), preferir montantes Earn como `USDT`/`USDC`, ignorar LD* correspondente; fallback para LD* se Earn falhar.
 - [Total UI vs `total_usd` server divergem com double-filter] → Mitigação: após wiring, preferir `serverTotalUsd` ou aplicar dust só no servidor.
 
 ## Migration Plan

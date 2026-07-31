@@ -7,11 +7,15 @@ import os
 import time
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.config import get_settings
 from app.services.binance_prices import compute_usdt_price_for_asset, fetch_all_binance_prices
-from app.services.binance_trades import compute_avg_buy_cost_usdt, is_usd_stable_asset
+from app.services.binance_trades import (
+    EARN_STABLE_PREFIX,
+    compute_avg_buy_cost_usdt,
+    is_usd_stable_asset,
+)
 
 # Ensure .env files are loaded before runtime os.getenv lookups below.
 get_settings()
@@ -60,6 +64,89 @@ def _signed_get(
         return json.load(f)
 
 
+def _earn_base_asset(asset: str) -> Optional[str]:
+    """Return base asset for Binance Earn LD* wrappers (e.g. LDUSDC -> USDC)."""
+    a = (asset or "").strip().upper()
+    if not a.startswith(EARN_STABLE_PREFIX) or len(a) <= len(EARN_STABLE_PREFIX):
+        return None
+    base = a[len(EARN_STABLE_PREFIX) :]
+    return base if is_usd_stable_asset(base) else None
+
+
+def _fetch_simple_earn_positions(
+    *,
+    base_url: str,
+    api_key: str,
+    api_secret: str,
+    timeout_s: int,
+) -> Tuple[Dict[str, float], bool]:
+    """Fetch Simple Earn flexible + locked positions aggregated by asset.
+
+    Returns (amounts_by_asset, success). On failure returns ({}, False).
+    """
+    ts = int(time.time() * 1000)
+    amounts: Dict[str, float] = {}
+
+    for path in (
+        "/sapi/v1/simple-earn/flexible/position",
+        "/sapi/v1/simple-earn/locked/position",
+    ):
+        try:
+            payload = _signed_get(
+                base_url,
+                api_key,
+                api_secret,
+                path,
+                {"timestamp": ts, "size": 100},
+                timeout_s=timeout_s,
+            )
+        except Exception:
+            return {}, False
+
+        if not isinstance(payload, dict):
+            return {}, False
+
+        for row in payload.get("rows") or []:
+            asset = (row.get("asset") or "").strip().upper()
+            if not asset:
+                continue
+            try:
+                amount = float(row.get("totalAmount") or 0)
+            except Exception:
+                continue
+            if amount <= 0:
+                continue
+            amounts[asset] = amounts.get(asset, 0.0) + amount
+
+    return amounts, True
+
+
+def _append_balance_row(
+    out: List[Dict[str, Any]],
+    *,
+    asset: str,
+    free: float,
+    locked: float,
+    total: float,
+    price_usdt: float,
+    value_usd: float,
+) -> None:
+    is_stable = is_usd_stable_asset(asset)
+    out.append(
+        {
+            "asset": asset,
+            "free": free,
+            "locked": locked,
+            "total": total,
+            "price_usdt": price_usdt,
+            "value_usd": value_usd,
+            "avg_cost_usdt": 1.0 if is_stable else None,
+            "pnl_usd": 0.0 if is_stable else None,
+            "pnl_pct": 0.0 if is_stable else None,
+        }
+    )
+
+
 def fetch_spot_balances_snapshot(
     *,
     lookback_days: Optional[int] = None,
@@ -90,6 +177,8 @@ def fetch_spot_balances_snapshot(
 
     Notes:
     - Pricing is computed as USDT value (USDT≈USD) with fallbacks.
+    - Simple Earn flexible/locked positions are preferred over incomplete LD* wrappers
+      on /api/v3/account when the Earn API succeeds.
     """
 
     api_key = (api_key or _get_env("BINANCE_API_KEY")).strip()
@@ -113,20 +202,31 @@ def fetch_spot_balances_snapshot(
 
     balances = payload.get("balances") or []
 
-    # Fetch all prices once (public endpoint) and compute USD values.
+    earn_amounts, earn_ok = _fetch_simple_earn_positions(
+        base_url=base_url,
+        api_key=api_key,
+        api_secret=api_secret,
+        timeout_s=timeout_s,
+    )
+    earn_assets = set(earn_amounts.keys()) if earn_ok else set()
+
     symbol_prices = fetch_all_binance_prices()
 
-    # Build the list first (cheap), then run trade-history lookups only for the most relevant items.
     out: List[Dict[str, Any]] = []
+    by_asset: Dict[str, Dict[str, Any]] = {}
     total_usd = 0.0
 
-    # Dust threshold (backward-compatible default): hide positions with value_usd < 0.02
     MIN_USD_VALUE_TO_SHOW = float(min_usd) if min_usd is not None else 0.02
 
     for b in balances:
         asset = (b.get("asset") or "").strip().upper()
         if not asset:
             continue
+
+        earn_base = _earn_base_asset(asset)
+        if earn_ok and earn_base and earn_base in earn_assets:
+            continue
+
         try:
             free = float(b.get("free") or 0)
             locked = float(b.get("locked") or 0)
@@ -137,36 +237,58 @@ def fetch_spot_balances_snapshot(
             continue
 
         price_usdt = compute_usdt_price_for_asset(asset, symbol_prices)
-        # Stables (Spot + Earn LD*) must never be omitted for missing ticker.
         if price_usdt is None and is_usd_stable_asset(asset):
             price_usdt = 1.0
         value_usd = (total * price_usdt) if price_usdt is not None else None
         if value_usd is None:
             continue
-
-        # Hide dust: do not include in response nor total
         if float(value_usd) < MIN_USD_VALUE_TO_SHOW:
             continue
 
         total_usd += float(value_usd)
-
-        is_stable = is_usd_stable_asset(asset)
-        out.append(
-            {
-                "asset": asset,
-                "free": free,
-                "locked": locked,
-                "total": total,
-                "price_usdt": price_usdt,
-                "value_usd": value_usd,
-                # Stables: cost reference 1.0 without waiting for trade-history top-N.
-                "avg_cost_usdt": 1.0 if is_stable else None,
-                "pnl_usd": 0.0 if is_stable else None,
-                "pnl_pct": 0.0 if is_stable else None,
-            }
+        _append_balance_row(
+            out,
+            asset=asset,
+            free=free,
+            locked=locked,
+            total=total,
+            price_usdt=float(price_usdt),
+            value_usd=float(value_usd),
         )
+        by_asset[asset] = out[-1]
 
-    # Prefer spending limited trade-history calls on largest positions.
+    if earn_ok:
+        for asset, amount in earn_amounts.items():
+            if amount <= 0:
+                continue
+
+            price_usdt = compute_usdt_price_for_asset(asset, symbol_prices)
+            if price_usdt is None and is_usd_stable_asset(asset):
+                price_usdt = 1.0
+            value_usd = (amount * price_usdt) if price_usdt is not None else None
+            if value_usd is None:
+                continue
+            if float(value_usd) < MIN_USD_VALUE_TO_SHOW:
+                continue
+
+            total_usd += float(value_usd)
+            if asset in by_asset:
+                row = by_asset[asset]
+                row["free"] = float(row["free"]) + amount
+                row["total"] = float(row["total"]) + amount
+                row["value_usd"] = float(row["value_usd"]) + float(value_usd)
+            else:
+                _append_balance_row(
+                    out,
+                    asset=asset,
+                    free=amount,
+                    locked=0.0,
+                    total=amount,
+                    price_usdt=float(price_usdt),
+                    value_usd=float(value_usd),
+                )
+                by_asset[asset] = out[-1]
+
     out.sort(key=lambda x: -(float(x.get("value_usd") or 0.0)))
 
     lookups_started = time.time()
@@ -182,7 +304,6 @@ def fetch_spot_balances_snapshot(
 
         asset = str(row.get("asset") or "").strip().upper()
         if is_usd_stable_asset(asset):
-            # Already valued at 1.0 / PnL 0 in the first pass; skip trade lookups.
             continue
 
         avg_cost_usdt = compute_avg_buy_cost_usdt(
@@ -207,7 +328,6 @@ def fetch_spot_balances_snapshot(
         row["pnl_usd"] = pnl_usd
         row["pnl_pct"] = pnl_pct
 
-    # Default sort: value desc (when present), else total desc, then asset asc
     def _sort_key(x: Dict[str, Any]):
         v = x.get("value_usd")
         v_sort = float(v) if v is not None else -1.0
