@@ -26,7 +26,11 @@ class SpotStopPlacePayload(BaseModel):
 
 def _require_user_binance_creds(db: Session, user_id: str):
     cred = get_user_exchange_credential(db, user_id, BINANCE_PROVIDER)
-    if cred is None or not str(cred.api_key or "").strip() or not str(cred.api_secret or "").strip():
+    if (
+        cred is None
+        or not str(cred.api_key or "").strip()
+        or not str(cred.api_secret or "").strip()
+    ):
         raise HTTPException(
             status_code=400,
             detail="Configure a chave Binance em Meu Perfil. Para Proteger stop, habilite Spot Trading (sem withdraw).",

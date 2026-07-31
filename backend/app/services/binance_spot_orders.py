@@ -87,7 +87,9 @@ def signed_request(
         raise BinanceOrderError(f"Falha ao falar com a Binance: {exc}", status_code=502) from exc
 
 
-def public_get(path: str, params: Optional[Dict[str, Any]] = None, *, base_url: Optional[str] = None) -> Any:
+def public_get(
+    path: str, params: Optional[Dict[str, Any]] = None, *, base_url: Optional[str] = None
+) -> Any:
     base = (base_url or _env_base_url()).rstrip("/")
     query = urllib.parse.urlencode(params or {}, doseq=True)
     url = f"{base}{path}" + (f"?{query}" if query else "")
@@ -238,7 +240,9 @@ def compute_order_prices_and_qty(
     tick = Decimal(str(price_filter.get("tickSize") or "0.01"))
     step = Decimal(str(lot_filter.get("stepSize") or "0.0001"))
     min_qty = Decimal(str(lot_filter.get("minQty") or "0"))
-    min_notional = Decimal(str(notional_filter.get("minNotional") or notional_filter.get("notional") or "0"))
+    min_notional = Decimal(
+        str(notional_filter.get("minNotional") or notional_filter.get("notional") or "0")
+    )
 
     stop = decimal_floor(Decimal(str(stop_price)), tick)
     if stop <= 0:
@@ -391,7 +395,9 @@ def cancel_protective_stop(
         base_url=base_url,
     )
     if not order:
-        raise BinanceOrderError("Nenhuma ordem protetiva do Cripto Farol encontrada para este símbolo")
+        raise BinanceOrderError(
+            "Nenhuma ordem protetiva do Cripto Farol encontrada para este símbolo"
+        )
 
     cid = str(order.get("clientOrderId") or "")
     if not cid.startswith(CLIENT_ORDER_PREFIX):
