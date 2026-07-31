@@ -189,18 +189,18 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     """Derive the Kanban column from gate statuses.
 
     Column selection algorithm (first match wins):
-    1) archived -> Archived
-    2) PO != done -> PO
-    3) DESIGN not in {done, skipped} -> DESIGN
-    4) Approval != approved -> Approval
-    5) DEV != done -> DEV
+    1) archived -> Homologado (archive alone is not publication)
+    2) PO != done -> Todo
+    3) DESIGN not in {done, skipped} -> Design
+    4) Approval != approved -> Aprovação de Design
+    5) DEV != done -> Em desenvolvimento
     6) QA != done -> QA
-    7) Homologation != approved -> Homologation
-    8) else -> Archived
+    7) Homologation != approved -> Done
+    8) else -> Homologado
     """
 
     if archived:
-        return "Archived"
+        return "Homologado"
 
     po = _get_gate(status, "PO")
     design = _design_field(status)
@@ -210,18 +210,18 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     alan_homologation = _alan_field(status, "Homologation")
 
     if po != "done":
-        return "PO"
+        return "Todo"
     if design not in {"done", "skipped"}:
-        return "DESIGN"
+        return "Design"
     if alan_approval != "approved":
-        return "Approval"
+        return "Aprovação de Design"
     if dev != "done":
-        return "DEV"
+        return "Em desenvolvimento"
     if qa != "done":
         return "QA"
     if alan_homologation != "approved":
-        return "Homologation"
-    return "Archived"
+        return "Done"
+    return "Homologado"
 
 
 def _archived_change_ids_from_openspec() -> set[str]:
@@ -277,7 +277,7 @@ def list_coordination_changes() -> List[Dict[str, Any]]:
         # Determine archived. OpenSpec archive status wins to avoid inconsistencies
         # between file-based coordination and the actual OpenSpec archive state.
         archived = is_archived(md, status) or (change_id in openspec_archived_ids)
-        column = "Archived" if archived else derive_column(status, archived=archived)
+        column = derive_column(status, archived=archived)
 
         out.append(
             {

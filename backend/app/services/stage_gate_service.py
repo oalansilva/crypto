@@ -7,28 +7,25 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.workflow_models import Change, WorkItem
+from app.services.workflow_transition_service import (
+    KANBAN_COLUMNS,
+    canonicalize_status,
+    validate_kanban_transition,
+)
 
-STAGE_ORDER = [
-    "Pending",
-    "PO",
-    "DESIGN",
-    "Approval",
-    "DEV",
-    "QA",
-    "Homologation",
-    "Archived",
-    "Canceled",
-]
+STAGE_ORDER = KANBAN_COLUMNS
 
 STAGE_GATES = {
-    "PO": {"required_agent": "PO", "previous_stage": "Pending"},
-    "DESIGN": {"required_agent": "DESIGN", "previous_stage": "PO"},
-    "Approval": {"required_agent": "DESIGN", "previous_stage": "DESIGN"},
-    "DEV": {"required_agent": "DEV", "previous_stage": "Approval"},
-    "QA": {"required_agent": "DEV", "previous_stage": "DEV"},
-    "Homologation": {"required_agent": "QA", "previous_stage": "QA"},
-    "Archived": {"required_agent": None, "previous_stage": "Homologation"},
-    "Canceled": {"required_agent": None, "previous_stage": None},
+    "Design": {"required_agent": "DESIGN"},
+    "Aprovação de Design": {"required_agent": "DESIGN"},
+    "Pronto para Dev": {"required_agent": None},
+    "Em desenvolvimento": {"required_agent": "DEV"},
+    "Code Review": {"required_agent": "DEV"},
+    "QA": {"required_agent": "QA"},
+    "Done": {"required_agent": "QA"},
+    "Homologado": {"required_agent": None},
+    "Pronto": {"required_agent": None},
+    "Cancelado": {"required_agent": None},
 }
 
 
@@ -42,19 +39,7 @@ class StageGateResult:
 
 
 def _normalize_stage(stage: Optional[str]) -> str:
-    """Normalize stage string to a valid stage name."""
-    if not stage:
-        return "Pending"
-    normalized = stage.strip()
-    if normalized == "Alan homologation":
-        return "Homologation"
-    if normalized.lower() == "archived":
-        return "Archived"
-    if normalized.lower() == "canceled":
-        return "Canceled"
-    if normalized not in STAGE_ORDER:
-        return "Pending"
-    return normalized
+    return canonicalize_status(stage)
 
 
 def get_stage_index(stage: str) -> int:
@@ -77,56 +62,23 @@ def validate_stage_transition(current_stage: Optional[str], target_stage: str) -
     Returns:
         StageGateResult with validation result
     """
-    current = _normalize_stage(current_stage)
-    target = _normalize_stage(target_stage)
-
-    if current == target:
-        return StageGateResult(
-            allowed=True,
-            current_stage=current,
-            target_stage=target,
+    try:
+        current, target = validate_kanban_transition(
+            current_column=current_stage, target_column=target_stage
         )
-
-    current_idx = get_stage_index(current)
-    target_idx = get_stage_index(target)
-
-    if target_idx <= current_idx:
-        if target in {"Archived", "Canceled"}:
-            return StageGateResult(
-                allowed=True,
-                current_stage=current,
-                target_stage=target,
-            )
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, dict) else {}
+        current = str(detail.get("current") or current_stage or "")
+        target = str(detail.get("target") or target_stage)
+        allowed = detail.get("allowed_targets") or []
         return StageGateResult(
             allowed=False,
             current_stage=current,
             target_stage=target,
-            message=f"Backward transitions are not allowed. Current: {current}, Target: {target}",
+            skipped_stage=allowed[0] if allowed else None,
+            message=str(detail.get("message") or exc.detail),
         )
-
-    expected_stage_idx = current_idx + 1
-    if target_idx != expected_stage_idx:
-        # Backward moves to Canceled/Archived are always allowed
-        if target in {"Archived", "Canceled"}:
-            return StageGateResult(
-                allowed=True,
-                current_stage=current,
-                target_stage=target,
-            )
-        skipped_stage = STAGE_ORDER[expected_stage_idx]
-        return StageGateResult(
-            allowed=False,
-            current_stage=current,
-            target_stage=target,
-            skipped_stage=skipped_stage,
-            message=f"Cannot skip stage '{skipped_stage}'. Move through stages sequentially.",
-        )
-
-    return StageGateResult(
-        allowed=True,
-        current_stage=current,
-        target_stage=target,
-    )
+    return StageGateResult(allowed=True, current_stage=current, target_stage=target)
 
 
 def can_transition_to_stage(
@@ -167,14 +119,14 @@ def can_transition_to_stage(
             message=f"Change not found for work item '{work_item_id}'",
         )
 
-    current_stage = change.status or "Pending"
+    current_stage = change.status or "Todo"
 
     gate_result = validate_stage_transition(current_stage, target_stage)
 
     if not gate_result.allowed:
         return gate_result
 
-    gate_config = STAGE_GATES.get(target_stage, {})
+    gate_config = STAGE_GATES.get(canonicalize_status(target_stage), {})
     required_agent = gate_config.get("required_agent")
 
     if required_agent and agent and agent != required_agent:

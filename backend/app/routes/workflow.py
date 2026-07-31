@@ -17,23 +17,29 @@ import re
 from contextlib import contextmanager
 from typing import Dict, List, Literal, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 import json
-import subprocess
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.services.change_tasks_service import toggle_task_checkbox
-from app.services.retrospective_service import generate_retrospective_for_change
 from app.services.coordination_service import resolve_change_relative_path
-from app.services.upstream_guard import (
-    ENFORCED_STATUSES,
-    UpstreamGuardError,
-    require_upstream_published,
+from app.services.workflow_auth import (
+    WorkflowActor,
+    design_approver_emails,
+    get_trusted_qa_actor,
+    get_workflow_actor,
+    homologation_approver_emails,
+    release_approver_emails,
 )
 from app.services.workflow_transition_service import (
     KANBAN_COLUMNS,
-    sync_change_gates_for_column,
+    canonicalize_status,
+    approve_current_qa_round,
+    invalidate_design_approval,
+    invalidate_qa_round,
+    transition_change,
+    validate_work_item_transition,
 )
 from app.workflow_database import (
     bootstrap_project_workflow_db,
@@ -343,7 +349,11 @@ def list_projects(db: Session = Depends(get_workflow_db)):
 
 
 @router.post("/projects", response_model=ProjectOut)
-def create_project(payload: ProjectCreate, db: Session = Depends(get_workflow_db)):
+def create_project(
+    payload: ProjectCreate,
+    db: Session = Depends(get_workflow_db),
+    _workflow_actor: WorkflowActor = Depends(get_workflow_actor),
+):
     slug = payload.slug.strip()
     name = payload.name.strip()
     workflow_database_url = (
@@ -419,7 +429,13 @@ class ChangeCreate(BaseModel):
     change_id: str = Field(min_length=1, max_length=128)
     title: str = Field(default="", max_length=256)
     description: str = Field(default="", max_length=2000)
-    status: str = Field(default="in_progress", max_length=32)
+    status: str = Field(default="Todo", max_length=32)
+    ui_impact: Literal["unknown", "affected", "none"] = "unknown"
+    ui_impact_justification: str = Field(default="", max_length=4000)
+    design_ref: str = Field(default="", max_length=2000)
+    prototype_ref: str = Field(default="", max_length=2000)
+    prototype_digest: Optional[str] = Field(default=None, max_length=64)
+    design_critique_verdict: str = Field(default="", max_length=32)
     image_data: List[dict] = Field(default_factory=list)
 
 
@@ -430,6 +446,13 @@ class ChangeUpdate(BaseModel):
     reorder: Optional[Literal["up", "down"]] = None
     cancel_archive: bool = False
     image_data: Optional[List[dict]] = Field(default=None)
+    ui_impact: Optional[Literal["unknown", "affected", "none"]] = None
+    ui_impact_justification: Optional[str] = Field(default=None, max_length=4000)
+    design_ref: Optional[str] = Field(default=None, max_length=2000)
+    prototype_ref: Optional[str] = Field(default=None, max_length=2000)
+    prototype_digest: Optional[str] = Field(default=None, max_length=64)
+    design_critique_verdict: Optional[str] = Field(default=None, max_length=32)
+    rework_reason: Optional[str] = Field(default=None, max_length=4000)
 
 
 class ChangeOut(BaseModel):
@@ -441,6 +464,27 @@ class ChangeOut(BaseModel):
     status: str
     card_number: Optional[int] = None
     image_data: List[dict] = Field(default_factory=list)
+    ui_impact: str
+    ui_impact_justification: str
+    design_ref: str
+    design_digest: Optional[str] = None
+    prototype_ref: str
+    prototype_digest: Optional[str] = None
+    design_critique_verdict: str
+    design_delivered_at: Optional[datetime] = None
+    design_approved_by_user_id: Optional[str] = None
+    design_approved_by: Optional[str] = None
+    design_approved_at: Optional[datetime] = None
+    approved_design_digest: Optional[str] = None
+    approved_prototype_digest: Optional[str] = None
+    design_approval_valid: bool
+    qa_round_id: Optional[str] = None
+    qa_commit_sha: Optional[str] = None
+    qa_round_started_at: Optional[datetime] = None
+    qa_approved_round_id: Optional[str] = None
+    qa_approved_commit_sha: Optional[str] = None
+    qa_approved_at: Optional[datetime] = None
+    publication_commit_sha: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -500,9 +544,15 @@ class ApprovalCreate(BaseModel):
     scope: WorkflowScope = "change"
     gate: str = Field(min_length=1, max_length=64)
     state: ApprovalState
-    actor: str = Field(min_length=1, max_length=64)
+    actor: Optional[str] = Field(default=None, max_length=64)
     note: str = Field(default="", max_length=4000)
     work_item_id: Optional[str] = None
+
+
+class TrustedQaApprovalCreate(BaseModel):
+    round_id: str = Field(min_length=1, max_length=36)
+    commit_sha: str = Field(min_length=7, max_length=40)
+    evidence: str = Field(min_length=1, max_length=4000)
 
 
 class ApprovalOut(BaseModel):
@@ -629,6 +679,27 @@ def _change_out(change: Change) -> ChangeOut:
         status=change.status,
         card_number=change.card_number,
         image_data=_parse_json_field(change.image_data),
+        ui_impact=change.ui_impact,
+        ui_impact_justification=change.ui_impact_justification,
+        design_ref=change.design_ref,
+        design_digest=change.design_digest,
+        prototype_ref=change.prototype_ref,
+        prototype_digest=change.prototype_digest,
+        design_critique_verdict=change.design_critique_verdict,
+        design_delivered_at=change.design_delivered_at,
+        design_approved_by_user_id=change.design_approved_by_user_id,
+        design_approved_by=change.design_approved_by,
+        design_approved_at=change.design_approved_at,
+        approved_design_digest=change.approved_design_digest,
+        approved_prototype_digest=change.approved_prototype_digest,
+        design_approval_valid=change.design_approval_valid,
+        qa_round_id=change.qa_round_id,
+        qa_commit_sha=change.qa_commit_sha,
+        qa_round_started_at=change.qa_round_started_at,
+        qa_approved_round_id=change.qa_approved_round_id,
+        qa_approved_commit_sha=change.qa_approved_commit_sha,
+        qa_approved_at=change.qa_approved_at,
+        publication_commit_sha=change.publication_commit_sha,
         created_at=change.created_at,
         updated_at=change.updated_at,
     )
@@ -703,7 +774,12 @@ def list_changes(project_slug: str, db: Session = Depends(get_workflow_db)):
 
 
 @router.post("/projects/{project_slug}/changes", response_model=ChangeOut)
-def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depends(get_workflow_db)):
+def create_change(
+    project_slug: str,
+    payload: ChangeCreate,
+    db: Session = Depends(get_workflow_db),
+    _workflow_actor: WorkflowActor = Depends(get_workflow_actor),
+):
     with _project_db_session(db, project_slug) as (_project, project_db):
         p = _get_project_by_slug(project_db, project_slug)
         change_id = payload.change_id.strip()
@@ -719,12 +795,29 @@ def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depend
             project_db.refresh(existing)
             return _change_out(existing)
 
+        initial_status = canonicalize_status(payload.status)
+        if initial_status != "Todo":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "initial_status_must_be_todo",
+                    "message": "New workflow cards must be created in Todo and advance through transitions.",
+                    "requested_status": initial_status,
+                },
+            )
+
         c = Change(
             project_id=p.id,
             change_id=change_id,
             title=payload.title.strip(),
             description=payload.description.strip(),
-            status=payload.status.strip(),
+            status="Todo",
+            ui_impact=payload.ui_impact,
+            ui_impact_justification=payload.ui_impact_justification.strip(),
+            design_ref=payload.design_ref.strip(),
+            prototype_ref=payload.prototype_ref.strip(),
+            prototype_digest=(payload.prototype_digest or "").strip().lower() or None,
+            design_critique_verdict=payload.design_critique_verdict.strip().upper(),
             card_number=_next_card_number(project_db, p.id),
             image_data=payload.image_data or [],
         )
@@ -750,12 +843,12 @@ def update_change(
     change_id: str,
     payload: ChangeUpdate,
     db: Session = Depends(get_workflow_db),
-    background_tasks: BackgroundTasks = None,
+    workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ):
     with _project_db_session(db, project_slug) as (_project, project_db):
         c = _get_change_by_slug_and_id(project_db, project_slug, change_id)
         _ensure_change_card_number(project_db, c)
-        current_column = _normalize_column(c.status)
+        current_column = canonicalize_status(c.status)
 
         if payload.title is not None:
             c.title = payload.title.strip()
@@ -763,153 +856,146 @@ def update_change(
             c.description = payload.description.strip()
         if payload.image_data is not None:
             c.image_data = payload.image_data
+        normalized_evidence_updates: dict[str, str | None] = {}
+        design_updates = {
+            "design_ref": payload.design_ref,
+            "prototype_ref": payload.prototype_ref,
+            "prototype_digest": payload.prototype_digest,
+            "design_critique_verdict": payload.design_critique_verdict,
+        }
+        for field_name, raw_value in design_updates.items():
+            if raw_value is None:
+                continue
+            normalized = raw_value.strip()
+            if field_name in {"prototype_digest", "design_critique_verdict"}:
+                normalized = (
+                    normalized.lower() if field_name == "prototype_digest" else normalized.upper()
+                )
+            normalized_value = normalized or (None if field_name == "prototype_digest" else "")
+            if getattr(c, field_name) != normalized_value:
+                normalized_evidence_updates[field_name] = normalized_value
+        if payload.ui_impact is not None and c.ui_impact != payload.ui_impact:
+            normalized_evidence_updates["ui_impact"] = payload.ui_impact
+        if payload.ui_impact_justification is not None:
+            justification = payload.ui_impact_justification.strip()
+            if c.ui_impact_justification != justification:
+                normalized_evidence_updates["ui_impact_justification"] = justification
+
+        evidence_changed = bool(normalized_evidence_updates)
+        if evidence_changed and current_column in {"Done", "Homologado", "Pronto"}:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "design_evidence_immutable_after_done",
+                    "message": "Design and bypass evidence cannot be edited after Done.",
+                    "status": current_column,
+                },
+            )
+        for field_name, normalized_value in normalized_evidence_updates.items():
+            setattr(c, field_name, normalized_value)
+
+        approval_invalidated = invalidate_design_approval(c) if evidence_changed else False
+        had_design_approval = bool(c.approved_design_digest or c.approved_prototype_digest)
+        if approval_invalidated or (evidence_changed and had_design_approval):
+            project_db.add(
+                WorkflowApproval(
+                    scope=ApprovalScope.change,
+                    gate="Design Approval",
+                    state=ApprovalState.rejected,
+                    change_pk=c.id,
+                    work_item_id=None,
+                    actor=workflow_actor.email,
+                    note="Approval obsolete: design or prototype evidence changed.",
+                )
+            )
+            if current_column in {
+                "Pronto para Dev",
+                "Em desenvolvimento",
+                "Code Review",
+                "QA",
+            }:
+                previous_column = current_column
+                if previous_column == "QA":
+                    invalidate_qa_round(
+                        project_db,
+                        c,
+                        actor=workflow_actor.email,
+                        reason="design evidence changed",
+                    )
+                c.status = "Aprovação de Design"
+                _normalize_column_sort_orders(project_db, c.project_id, previous_column)
+                c.sort_order = _next_sort_order(
+                    project_db,
+                    c.project_id,
+                    "Aprovação de Design",
+                    exclude_change_pk=c.id,
+                )
+                current_column = "Aprovação de Design"
         if payload.reorder is not None:
             _reorder_change_within_column(project_db, c, payload.reorder)
         if payload.status is not None:
-            new_status = _normalize_column(payload.status)
+            new_status = canonicalize_status(payload.status)
             if new_status != current_column:
-                from app.services.stage_gate_service import validate_stage_transition
-
-                gate_result = validate_stage_transition(current_column, new_status)
-                if not gate_result.allowed:
-                    raise HTTPException(
-                        status_code=400,
-                        detail={
-                            "code": "stage_skip_blocked",
-                            "message": gate_result.message
-                            or f"Cannot skip stages. Current: {current_column}, Target: {new_status}",
-                            "current_stage": gate_result.current_stage,
-                            "target_stage": gate_result.target_stage,
-                            "skipped_stage": gate_result.skipped_stage,
-                        },
-                    )
-
-                if new_status == "DEV":
-                    _validate_dev_branch(project_db, c, REPO_ROOT)
-
-                if new_status == "DEV" and current_column == "PO":
+                is_rework = (current_column, new_status) in {
+                    ("Aprovação de Design", "Design"),
+                    ("Code Review", "Em desenvolvimento"),
+                    ("QA", "Em desenvolvimento"),
+                }
+                if is_rework and not (payload.rework_reason or "").strip():
                     raise HTTPException(
                         status_code=409,
                         detail={
-                            "code": "po_cannot_act_as_dev",
-                            "message": "PO cannot move directly to DEV. PO only creates artifacts. Move to DESIGN (if UI) or Approval first.",
-                            "current_status": current_column,
-                            "target_status": new_status,
+                            "code": "rework_reason_required",
+                            "message": "Controlled rework requires a non-empty reason.",
                         },
                     )
-
-                if new_status == "DEV" and current_column == "DESIGN":
-                    raise HTTPException(
-                        status_code=409,
-                        detail={
-                            "code": "design_cannot_skip_approval",
-                            "message": "Cannot move from DESIGN directly to DEV. Must go through Approval first.",
-                            "current_status": current_column,
-                            "target_status": new_status,
-                        },
+                try:
+                    transition_change(
+                        project_db,
+                        change=c,
+                        target_status=new_status,
+                        actor=workflow_actor,
+                        repo_root=REPO_ROOT,
+                        design_approver_emails=design_approver_emails(),
+                        homologation_approver_emails=homologation_approver_emails(),
+                        release_approver_emails=release_approver_emails(),
                     )
-
-                if new_status in {"Homologation", "Archived"}:
-                    approvals = (
-                        project_db.query(WorkflowApproval)
-                        .filter(
-                            WorkflowApproval.change_pk == c.id,
-                            WorkflowApproval.scope == ApprovalScope.change,
+                except HTTPException as exc:
+                    detail = exc.detail if isinstance(exc.detail, dict) else {}
+                    if (
+                        detail.get("code") == "design_approval_obsolete"
+                        and not c.design_approval_valid
+                    ):
+                        project_db.add(
+                            WorkflowApproval(
+                                scope=ApprovalScope.change,
+                                gate="Design Approval",
+                                state=ApprovalState.rejected,
+                                change_pk=c.id,
+                                work_item_id=None,
+                                actor=workflow_actor.email,
+                                note="Approval obsolete: current evidence no longer matches the approved digest.",
+                            )
                         )
-                        .all()
+                        # Persist the obsolete marker/regression even though
+                        # the requested status move is rejected.
+                        project_db.commit()
+                    raise
+                if is_rework:
+                    project_db.add(
+                        WorkflowComment(
+                            scope=CommentScope.change,
+                            change_pk=c.id,
+                            work_item_id=None,
+                            author=workflow_actor.email,
+                            body=f"Rework: {(payload.rework_reason or '').strip()}",
+                        )
                     )
-                    gate_status = {a.gate: a.state.value for a in approvals}
-
-                    dev_approved = gate_status.get("DEV") == "approved"
-                    qa_approved = gate_status.get("QA") == "approved"
-
-                    if not dev_approved:
-                        raise HTTPException(
-                            status_code=409,
-                            detail={
-                                "code": "dev_not_approved",
-                                "message": f"Cannot move to {new_status} without DEV approval",
-                            },
-                        )
-                    if not qa_approved:
-                        raise HTTPException(
-                            status_code=409,
-                            detail={
-                                "code": "qa_not_approved",
-                                "message": f"Cannot move to {new_status} without QA approval",
-                            },
-                        )
-
-                if new_status == "Approval":
-                    change_slug = c.change_id
-                    openspec_dir = Path(REPO_ROOT) / "openspec" / "changes" / change_slug
-                    required_files = ["proposal.md", "review-ptbr.md", "tasks.md"]
-                    missing_files = [f for f in required_files if not (openspec_dir / f).exists()]
-                    if missing_files:
-                        raise HTTPException(
-                            status_code=409,
-                            detail={
-                                "code": "missing_openspec_artifacts",
-                                "message": f"Cannot move to Approval without required files: {', '.join(missing_files)}",
-                                "missing_files": missing_files,
-                                "target": new_status,
-                            },
-                        )
-
-                if new_status == "Archived" and current_column != "Archived":
-                    open_bugs = (
-                        project_db.query(WorkItem)
-                        .filter(
-                            WorkItem.change_pk == c.id,
-                            WorkItem.type == WorkItemType.bug,
-                            WorkItem.state.not_in([WorkItemState.done, WorkItemState.canceled]),
-                        )
-                        .all()
-                    )
-                    if open_bugs:
-                        bug_titles = [b.title for b in open_bugs[:5]]
-                        raise HTTPException(
-                            status_code=409,
-                            detail={
-                                "code": "open_bugs_block_archive",
-                                "message": f"Cannot archive change with {len(open_bugs)} open bug(s). Close or cancel bugs first.",
-                                "open_bugs": bug_titles,
-                                "target": new_status,
-                            },
-                        )
-
-                    c.status = "Archived"
-                    c.sort_order = _next_sort_order(
-                        project_db, c.project_id, "Archived", exclude_change_pk=c.id
-                    )
-                    if background_tasks:
-                        background_tasks.add_task(
-                            generate_retrospective_for_change, project_slug, change_id
-                        )
-                else:
-                    if new_status in ENFORCED_STATUSES:
-                        try:
-                            require_upstream_published(REPO_ROOT, target_statuses=[new_status])
-                        except UpstreamGuardError as exc:
-                            raise HTTPException(
-                                status_code=409,
-                                detail={
-                                    "code": "upstream_guard_blocked",
-                                    "message": str(exc),
-                                    "target": new_status,
-                                },
-                            ) from exc
-                    sync_change_gates_for_column(project_db, change=c, target_column=new_status)
-                    _normalize_column_sort_orders(project_db, c.project_id, current_column)
-                    c.sort_order = _next_sort_order(
-                        project_db, c.project_id, new_status, exclude_change_pk=c.id
-                    )
-                    project_db.commit()
-            elif (c.status or "").strip() != new_status:
-                c.status = new_status
-                project_db.commit()
-        if payload.status is None or new_status == "Archived":
-            project_db.commit()
+                _normalize_column_sort_orders(project_db, c.project_id, current_column)
+                c.sort_order = _next_sort_order(
+                    project_db, c.project_id, new_status, exclude_change_pk=c.id
+                )
+        project_db.commit()
         project_db.refresh(c)
         return _change_out(c)
 
@@ -936,6 +1022,7 @@ def create_task(
     change_id: str,
     payload: WorkItemCreate,
     db: Session = Depends(get_workflow_db),
+    _workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ):
     with _project_db_session(db, project_slug) as (_project, project_db):
         change = _get_change_by_slug_and_id(project_db, project_slug, change_id)
@@ -961,6 +1048,7 @@ def update_task(
     payload: WorkItemUpdate,
     project_slug: Optional[str] = Query(default=None),
     db: Session = Depends(get_workflow_db),
+    _workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ):
     target_slug = project_slug
     if not target_slug:
@@ -987,6 +1075,7 @@ def update_task(
         if payload.description is not None:
             item.description = payload.description.strip()
         if payload.state is not None:
+            validate_work_item_transition(project_db, item, payload.state)
             item.state = payload.state
         if payload.priority is not None:
             item.priority = payload.priority
@@ -1045,6 +1134,7 @@ def create_comment(
     change_id: str,
     payload: CommentCreate,
     db: Session = Depends(get_workflow_db),
+    workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ):
     with _project_db_session(db, project_slug) as (_project, project_db):
         change = _get_change_by_slug_and_id(project_db, project_slug, change_id)
@@ -1060,7 +1150,7 @@ def create_comment(
             scope=CommentScope(payload.scope),
             change_pk=change.id if payload.scope == "change" else None,
             work_item_id=work_item_id,
-            author=payload.author.strip(),
+            author=workflow_actor.email,
             body=payload.body.strip(),
         )
         project_db.add(item)
@@ -1100,6 +1190,7 @@ def create_approval(
     change_id: str,
     payload: ApprovalCreate,
     db: Session = Depends(get_workflow_db),
+    workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ):
     with _project_db_session(db, project_slug) as (_project, project_db):
         change = _get_change_by_slug_and_id(project_db, project_slug, change_id)
@@ -1111,19 +1202,56 @@ def create_approval(
                     detail="work_item_id is required for work_item scoped approvals",
                 )
             work_item_id = _get_work_item(project_db, change.id, payload.work_item_id).id
+        gate = payload.gate.strip()
+        protected_gates = {"design approval", "qa", "homologation", "publication"}
+        if gate.casefold() in protected_gates:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "approval_requires_transition",
+                    "message": f"Record {gate} through its authenticated canonical transition.",
+                },
+            )
         item = WorkflowApproval(
             scope=ApprovalScope(payload.scope),
-            gate=payload.gate.strip(),
+            gate=gate,
             state=payload.state,
             change_pk=change.id if payload.scope == "change" else None,
             work_item_id=work_item_id,
-            actor=payload.actor.strip(),
+            actor=workflow_actor.email,
             note=payload.note.strip(),
         )
         project_db.add(item)
         project_db.commit()
         project_db.refresh(item)
         return _approval_out(item)
+
+
+@router.post(
+    "/projects/{project_slug}/changes/{change_id}/qa-approvals",
+    response_model=ApprovalOut,
+)
+def create_trusted_qa_approval(
+    project_slug: str,
+    change_id: str,
+    payload: TrustedQaApprovalCreate,
+    db: Session = Depends(get_workflow_db),
+    trusted_actor: WorkflowActor = Depends(get_trusted_qa_actor),
+):
+    with _project_db_session(db, project_slug) as (_project, project_db):
+        change = _get_change_by_slug_and_id(project_db, project_slug, change_id)
+        approval = approve_current_qa_round(
+            project_db,
+            change=change,
+            actor=trusted_actor,
+            round_id=payload.round_id,
+            commit_sha=payload.commit_sha,
+            note=payload.evidence,
+            repo_root=REPO_ROOT,
+        )
+        project_db.commit()
+        project_db.refresh(approval)
+        return _approval_out(approval)
 
 
 @router.get(
@@ -1157,6 +1285,7 @@ def create_handoff(
     change_id: str,
     payload: HandoffCreate,
     db: Session = Depends(get_workflow_db),
+    _workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ):
     with _project_db_session(db, project_slug) as (_project, project_db):
         change = _get_change_by_slug_and_id(project_db, project_slug, change_id)
@@ -1205,6 +1334,17 @@ class KanbanChangeItem(BaseModel):
     image_data: List[dict] = Field(default_factory=list)
     # Days since the card was moved to Archived (None if not archived)
     days_in_archived: Optional[int] = None
+    ui_impact: str = "unknown"
+    ui_impact_justification: str = ""
+    design_ref: str = ""
+    design_digest: Optional[str] = None
+    prototype_ref: str = ""
+    prototype_digest: Optional[str] = None
+    design_critique_verdict: str = ""
+    design_delivered_at: Optional[datetime] = None
+    design_approved_by: Optional[str] = None
+    design_approved_at: Optional[datetime] = None
+    design_approval_valid: bool = False
 
 
 class KanbanChangeListResponse(BaseModel):
@@ -1298,102 +1438,17 @@ def _latest_change_gate_status(db: Session, change_pk: str) -> Dict[str, str]:
     return out
 
 
-def _publish_state_for_change(change: Change) -> str:
-    try:
-        result = require_upstream_published(REPO_ROOT, target_statuses=["Homologation"])
-        return "ready" if result.ok else "blocked"
-    except UpstreamGuardError:
-        return "blocked"
-
-
-def _homologation_readiness(change: Change, gate_status: Dict[str, str], column: str) -> str:
-    qa_functional = gate_status.get("QA") or "pending"
-    publish_state = _publish_state_for_change(change)
-
-    if qa_functional != "approved":
-        return "blocked: QA functional pending"
-    if publish_state != "ready":
-        return "blocked: publish/reconcile pending"
-    if column not in {"Homologation", "Archived", "Canceled"}:
-        return f"blocked: runtime stage still in {column}"
-    return "ready"
-
-
 def _kanban_change_status(db: Session, change: Change) -> Dict[str, str]:
     gate_status = _latest_change_gate_status(db, change.id)
     column = _normalize_column(change.status)
     out = dict(gate_status)
-    out["QA functional"] = gate_status.get("QA") or "pending"
-    out["Publish"] = _publish_state_for_change(change)
     out["Runtime stage"] = column
-    out["Homologation readiness"] = _homologation_readiness(change, gate_status, column)
+    out["Design approval"] = "valid" if change.design_approval_valid else "pending"
     return out
 
 
 def _normalize_column(raw: Optional[str]) -> str:
-    col = raw.strip() if raw else "DEV"
-    if col == "Alan homologation":
-        col = "Homologation"
-    if col.lower() == "archived":
-        col = "Archived"
-    if col.lower() == "canceled":
-        col = "Canceled"
-    if col not in KANBAN_COLUMNS:
-        col = "DEV"
-    return col
-
-
-def _get_current_git_branch(repo_root: Path) -> str:
-    """Returns the current git branch name, or 'main' if detached HEAD."""
-    try:
-        result = subprocess.run(
-            ["git", "branch", "--show-current"],
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode == 0:
-            branch = result.stdout.strip()
-            return branch if branch else "main"
-    except Exception:
-        pass
-    return "main"
-
-
-def _validate_dev_branch(db: Session, change: Change, repo_root: Path) -> None:
-    """Validate that current git branch matches the expected feature branch for this card.
-
-    Raises HTTPException if branch mismatch.
-    """
-    if change.card_number is None:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": "missing_card_number",
-                "message": f"Card {change.change_id} has no card_number assigned. Cannot validate branch.",
-            },
-        )
-
-    expected_branch = f"feature/card{change.card_number}-{change.change_id}"
-    current_branch = _get_current_git_branch(repo_root)
-
-    if current_branch != expected_branch:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "wrong_git_branch",
-                "message": (
-                    f"DEV work must be done on branch '{expected_branch}', "
-                    f"but currently on '{current_branch}'. "
-                    f"Run: git checkout -b {expected_branch} (or git checkout {expected_branch})"
-                ),
-                "current_branch": current_branch,
-                "expected_branch": expected_branch,
-                "card_number": change.card_number,
-                "change_id": change.change_id,
-            },
-        )
+    return canonicalize_status(raw)
 
 
 def _next_sort_order(
@@ -1451,6 +1506,7 @@ def kanban_create_change(
     payload: KanbanChangeCreateRequest,
     project_slug: Optional[str] = Query(default=None),
     db: Session = Depends(get_workflow_db),
+    _workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ) -> KanbanChangeCreateResponse:
     slug = _kanban_project_slug(db, project_slug)
     with _project_db_session(db, slug) as (_project, project_db):
@@ -1472,8 +1528,8 @@ def kanban_create_change(
             change_id=change_id,
             title=payload.title.strip(),
             description=payload.description.strip(),
-            status="Pending",
-            sort_order=_next_sort_order(project_db, project.id, "Pending"),
+            status="Todo",
+            sort_order=_next_sort_order(project_db, project.id, "Todo"),
             card_number=_next_card_number(project_db, project.id),
             image_data=payload.image_data or [],
         )
@@ -1490,9 +1546,11 @@ def kanban_create_change(
                 path=f"openspec/changes/{change.change_id}/proposal",
                 status=_kanban_change_status(project_db, change),
                 archived=False,
-                column="Pending",
+                column="Todo",
                 position=change.sort_order,
                 image_data=_parse_json_field(change.image_data),
+                ui_impact=change.ui_impact,
+                ui_impact_justification=change.ui_impact_justification,
             )
         )
 
@@ -1516,19 +1574,12 @@ def kanban_list_changes(
         )
         out: List[KanbanChangeItem] = []
 
-        from app.services.workflow_reconcile_service import reconcile_change_forward
-        from app.services.coordination_service import _archived_change_ids_from_openspec
-
-        openspec_archived_ids = _archived_change_ids_from_openspec()
         change_map = {c.id: c for c in items}
 
         for c in items:
-            reconcile_change_forward(project_db, change=c)
             status = _kanban_change_status(project_db, c)
             col = _normalize_column(c.status)
-            archived = col == "Archived" or c.change_id in openspec_archived_ids
-            if archived:
-                col = "Archived"
+            archived = col in {"Pronto", "Cancelado"}
             days_in_archived: Optional[int] = None
             if archived:
                 days_in_archived = (datetime.utcnow() - c.updated_at.replace(tzinfo=None)).days
@@ -1555,10 +1606,23 @@ def kanban_list_changes(
                     parent_story_title=None,
                     image_data=_parse_json_field(c.image_data),
                     days_in_archived=days_in_archived,
+                    ui_impact=c.ui_impact,
+                    ui_impact_justification=c.ui_impact_justification,
+                    design_ref=c.design_ref,
+                    design_digest=c.design_digest,
+                    prototype_ref=c.prototype_ref,
+                    prototype_digest=c.prototype_digest,
+                    design_critique_verdict=c.design_critique_verdict,
+                    design_delivered_at=c.design_delivered_at,
+                    design_approved_by=c.design_approved_by,
+                    design_approved_at=c.design_approved_at,
+                    design_approval_valid=c.design_approval_valid,
                 )
             )
 
-        active_change_ids = [c.id for c in items if c.change_id not in openspec_archived_ids]
+        active_change_ids = [
+            c.id for c in items if _normalize_column(c.status) not in {"Pronto", "Cancelado"}
+        ]
         bugs = (
             project_db.query(WorkItem)
             .filter(WorkItem.type == WorkItemType.bug)
@@ -1584,8 +1648,6 @@ def kanban_list_changes(
                 continue
 
             bug_col = _normalize_column(parent_change.status)
-            if parent_change.change_id in openspec_archived_ids:
-                bug_col = "Archived"
 
             bug_status = {
                 "status": bug.state.value if bug.state else "unknown",
@@ -1600,7 +1662,7 @@ def kanban_list_changes(
                     card_number=None,
                     path=resolve_change_relative_path(parent_change.change_id, "tasks.md"),
                     status=bug_status,
-                    archived=bug_col == "Archived",
+                    archived=bug_col in {"Pronto", "Cancelado"},
                     column=bug_col,
                     position=999,
                     has_bugs=False,
@@ -1767,6 +1829,7 @@ def kanban_post_comment(
     payload: KanbanCommentCreateRequest,
     project_slug: Optional[str] = Query(default=None),
     db: Session = Depends(get_workflow_db),
+    workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ) -> KanbanCommentCreateResponse:
     slug = _kanban_project_slug(db, project_slug)
     with _project_db_session(db, slug) as (_project, project_db):
@@ -1776,7 +1839,7 @@ def kanban_post_comment(
             scope=CommentScope.change,
             change_pk=change.id,
             work_item_id=None,
-            author=payload.author.strip(),
+            author=workflow_actor.email,
             body=payload.body.strip(),
         )
         project_db.add(item)
@@ -1865,7 +1928,9 @@ def scheduler_status() -> SuppressorStatusResponse:
 
 
 @router.post("/scheduler/force-run")
-def scheduler_force_run() -> dict:
+def scheduler_force_run(
+    _workflow_actor: WorkflowActor = Depends(get_workflow_actor),
+) -> dict:
     """Force the next scheduler turn to run (ignore suppression).
 
     Use this to override suppression behavior when needed.
@@ -1883,6 +1948,7 @@ def scheduler_configure(
     suppression_enabled: bool = True,
     max_suppressed_turns: int = 5,
     suppression_timeout_minutes: int = 60,
+    _workflow_actor: WorkflowActor = Depends(get_workflow_actor),
 ) -> dict:
     """Configure suppression behavior."""
     from app.services.workflow_polling_suppressor import get_suppressor

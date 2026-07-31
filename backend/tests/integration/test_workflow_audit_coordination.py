@@ -7,13 +7,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
-from app.workflow_database import WorkflowBase, get_workflow_db
+from app.services.workflow_auth import WorkflowActor, get_workflow_actor
+from app.workflow_database import WorkflowBase, get_workflow_db, init_workflow_schema_for_url
+
+TEST_ACTOR = WorkflowActor(
+    user_id="33333333-3333-3333-3333-333333333333", email="tester@example.com"
+)
 
 
 def _build_client():
-    engine = create_engine(
-        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
-    )
+    url = "postgresql://postgres:postgres@127.0.0.1:5432/postgres"
+    init_workflow_schema_for_url(url)
+    engine = create_engine(url)
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -25,6 +30,7 @@ def _build_client():
             db.close()
 
     app.dependency_overrides[get_workflow_db] = override_get_db
+    app.dependency_overrides[get_workflow_actor] = lambda: TEST_ACTOR
     client = TestClient(app)
     client.engine = engine  # type: ignore[attr-defined]
     return client
@@ -50,14 +56,14 @@ def test_audit_coordination_reports_missing_changes(monkeypatch):
     assert (
         client.post(
             f"/api/workflow/projects/{project_slug}/changes",
-            json={"change_id": "a", "title": "A", "status": "DEV"},
+            json={"change_id": "a", "title": "A", "status": "Todo"},
         ).status_code
         == 200
     )
     assert (
         client.post(
             f"/api/workflow/projects/{project_slug}/changes",
-            json={"change_id": "c", "title": "C", "status": "DEV"},
+            json={"change_id": "c", "title": "C", "status": "Todo"},
         ).status_code
         == 200
     )

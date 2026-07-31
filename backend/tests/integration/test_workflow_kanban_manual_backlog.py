@@ -9,13 +9,18 @@ from sqlalchemy.orm import sessionmaker
 from app.routes import workflow as workflow_routes
 
 from app.main import app
-from app.workflow_database import WorkflowBase, get_workflow_db
+from app.services.workflow_auth import WorkflowActor, get_workflow_actor
+from app.workflow_database import WorkflowBase, get_workflow_db, init_workflow_schema_for_url
+
+TEST_ACTOR = WorkflowActor(
+    user_id="22222222-2222-2222-2222-222222222222", email="tester@example.com"
+)
 
 
 def _build_client():
-    engine = create_engine(
-        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
-    )
+    url = "postgresql://postgres:postgres@127.0.0.1:5432/postgres"
+    init_workflow_schema_for_url(url)
+    engine = create_engine(url)
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -27,6 +32,7 @@ def _build_client():
             db.close()
 
     app.dependency_overrides[get_workflow_db] = override_get_db
+    app.dependency_overrides[get_workflow_actor] = lambda: TEST_ACTOR
     client = TestClient(app)
     client.engine = engine  # type: ignore[attr-defined]
     client.session_local = SessionLocal  # type: ignore[attr-defined]
@@ -43,7 +49,7 @@ def _project_slug() -> str:
     return f"crypto-{uuid4().hex[:8]}"
 
 
-def test_kanban_create_change_starts_in_pending_with_description():
+def test_kanban_create_change_starts_in_todo_with_description():
     client = _build_client()
     project_slug = _project_slug()
     assert (
@@ -60,14 +66,14 @@ def test_kanban_create_change_starts_in_pending_with_description():
     assert created.status_code == 200
     item = created.json()["item"]
     assert item["id"] == "manual-backlog-card"
-    assert item["column"] == "Pending"
+    assert item["column"] == "Todo"
     assert item["description"] == "Created directly from Kanban"
     assert item["card_number"] == 1
 
     listed = client.get(f"/api/workflow/kanban/changes?project_slug={project_slug}")
     assert listed.status_code == 200
     board_item = listed.json()["items"][0]
-    assert board_item["column"] == "Pending"
+    assert board_item["column"] == "Todo"
     assert board_item["description"] == "Created directly from Kanban"
     assert board_item["card_number"] == 1
 
@@ -161,7 +167,7 @@ def test_kanban_backfills_missing_card_numbers_for_legacy_rows():
                 "change_id": "legacy-a",
                 "title": "Legacy A",
                 "description": "old row",
-                "status": "Pending",
+                "status": "Todo",
             },
         ).status_code
         == 200
@@ -173,7 +179,7 @@ def test_kanban_backfills_missing_card_numbers_for_legacy_rows():
                 "change_id": "legacy-b",
                 "title": "Legacy B",
                 "description": "old row",
-                "status": "Pending",
+                "status": "Todo",
             },
         ).status_code
         == 200
@@ -253,34 +259,34 @@ def test_reorder_does_not_move_between_columns():
         == 200
     )
 
-    for title in ["Pending A", "Pending B"]:
+    for title in ["Todo A", "Todo B"]:
         assert (
             client.post(
                 f"/api/workflow/kanban/changes?project_slug={project_slug}",
-                json={"title": title, "description": "Pending reorder scope"},
+                json={"title": title, "description": "Todo reorder scope"},
             ).status_code
             == 200
         )
 
     assert (
         client.patch(
-            f"/api/workflow/projects/{project_slug}/changes/pending-b",
-            json={"status": "PO"},
+            f"/api/workflow/projects/{project_slug}/changes/todo-b",
+            json={"status": "Design"},
         ).status_code
         == 200
     )
 
     reordered = client.patch(
-        f"/api/workflow/projects/{project_slug}/changes/pending-a",
+        f"/api/workflow/projects/{project_slug}/changes/todo-a",
         json={"reorder": "down"},
     )
     assert reordered.status_code == 200
 
     board = client.get(f"/api/workflow/kanban/changes?project_slug={project_slug}")
     items = board.json()["items"]
-    pending_ids = [item["id"] for item in items if item["column"] == "Pending"]
-    po_ids = [item["id"] for item in items if item["column"] == "PO"]
-    assert pending_ids == ["pending-a"]
-    assert po_ids == ["pending-b"]
+    todo_ids = [item["id"] for item in items if item["column"] == "Todo"]
+    design_ids = [item["id"] for item in items if item["column"] == "Design"]
+    assert todo_ids == ["todo-a"]
+    assert design_ids == ["todo-b"]
 
     _close_client(client)

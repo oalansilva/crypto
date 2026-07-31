@@ -131,11 +131,12 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
 
   await page.goto('/kanban')
 
-  await expect(page.getByText('Opportunity Board')).toBeVisible()
+  await expect(page.getByText('Kanban', { exact: true }).first()).toBeVisible()
+  await page.getByRole('tab', { name: 'Entrega' }).click()
   await expect(page.getByRole('tab', { name: /QA 2/i })).toBeVisible()
-  await page.getByRole('tab', { name: /DEV 0/i }).click()
+  await page.getByRole('tab', { name: /Em desenvolvimento 0/i }).click()
   await expect(page.getByText('Current stage')).toBeVisible()
-  await expect(page.locator('section').filter({ hasText: 'Current stage' }).getByText('DEV', { exact: true })).toBeVisible()
+  await expect(page.locator('section').filter({ hasText: 'Current stage' }).getByText('Em desenvolvimento', { exact: true })).toBeVisible()
   await expect(page.getByText('Nenhum card nesta etapa.')).toBeVisible()
 
   await page.getByRole('tab', { name: /QA 2/i }).click()
@@ -165,7 +166,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
 
 })
 
-test('Kanban normalizes legacy gate labels in board and drawer', async ({ page }) => {
+test('Kanban renders a known legacy column with its canonical label', async ({ page }) => {
   const mockedChangeId = 'legacy-approval-render'
 
   await mockAuthenticatedSession(page)
@@ -221,17 +222,39 @@ test('Kanban normalizes legacy gate labels in board and drawer', async ({ page }
   })
 
   await page.goto('/kanban')
-  await page.getByRole('tab', { name: /DEV 1/i }).click()
+  await page.getByRole('tab', { name: 'Entrega' }).click()
+  await page.getByRole('tab', { name: /Em desenvolvimento 1/i }).click()
   const card = page.getByRole('button', { name: `Open details for ${mockedChangeId}` })
   await expect(card).toBeVisible()
-  await expect(card.getByText('Approval · approved')).toBeVisible()
-  await expect(card.getByText('Ready for homologation · queued')).toBeVisible()
 
   await card.click()
   const detailsSheet = page.getByRole('complementary')
-  await expect(detailsSheet.getByText('Stage atual: DEV')).toBeVisible()
+  await expect(detailsSheet.getByText('Etapa atual: Em desenvolvimento')).toBeVisible()
   await expect(detailsSheet.getByText('Status', { exact: true })).toBeVisible()
-  await expect(detailsSheet.getByText('Approval', { exact: true })).toBeVisible()
-  await expect(detailsSheet.getByText('Homologation', { exact: true })).toBeVisible()
-  await expect(detailsSheet.getByText('queued')).toBeVisible()
+})
+
+test('Kanban reports an unknown status instead of placing it under development', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/workflow/kanban/changes**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      items: [{
+        id: 'unknown-status-card',
+        title: 'Unknown status card',
+        path: 'openspec/changes/unknown-status-card/proposal',
+        status: {},
+        archived: false,
+        column: 'Mystery stage',
+      }],
+    }),
+  }))
+
+  await page.goto('/kanban')
+
+  await expect(page.getByRole('alert')).toContainText('Unknown status card (Mystery stage)')
+  await page.getByRole('tab', { name: 'Entrega' }).click()
+  await page.getByRole('tab', { name: /Em desenvolvimento 0/i }).click()
+  await expect(page.getByRole('button', { name: 'Open details for unknown-status-card' })).toHaveCount(0)
 })

@@ -10,8 +10,8 @@ This script is intentionally small and side-effect limited.
 Examples:
   WORKFLOW_DB_ENABLED=1 \
     .venv/bin/python backend/scripts/set_change_status.py \
-      --project crypto --change my-change --status Archived \
-      --approve-gates "PO,DEV,QA,Approval,Homologation"
+      --project crypto --change my-change --status Homologado \
+      --approve-gates "Design Approval,Code Review,QA"
 
 Exit codes:
   0 success
@@ -36,6 +36,7 @@ from app.workflow_models import (
     Project,
     WorkflowApproval,
 )
+from app.services.workflow_transition_service import canonicalize_status
 
 
 def _latest_gate_states(db: Session, *, change_pk: str) -> dict[str, str]:
@@ -97,7 +98,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--project", default="crypto")
     ap.add_argument("--change", required=True, help="Change id (Change.change_id)")
-    ap.add_argument("--status", required=True, help="New Change.status (e.g. Archived)")
+    ap.add_argument("--status", required=True, help="New canonical Change.status")
     ap.add_argument(
         "--approve-gates",
         default=None,
@@ -131,10 +132,11 @@ def main() -> int:
             print(f"ERROR: change not found in workflow DB: {args.project}/{args.change}")
             return 2
 
-        prev = (c.status or "").strip() or "DEV"
-        new = (args.status or "").strip()
-        if not new:
-            print("ERROR: empty --status")
+        prev = canonicalize_status(c.status, allow_legacy=True)
+        try:
+            new = canonicalize_status(args.status)
+        except Exception as exc:
+            print(f"ERROR: invalid --status: {exc}")
             return 1
 
         c.status = new

@@ -50,10 +50,10 @@ async def test_coordination_changes_lists_active_and_archived(monkeypatch, tmp_p
     by_id = {i["id"]: i for i in payload["items"]}
 
     assert by_id["a-change"]["archived"] is False
-    assert by_id["a-change"]["column"] == "DEV"
+    assert by_id["a-change"]["column"] == "Em desenvolvimento"
 
     assert by_id["b-archived"]["archived"] is True
-    assert by_id["b-archived"]["column"] == "Archived"
+    assert by_id["b-archived"]["column"] == "Homologado"
 
 
 async def test_coordination_changes_normalize_legacy_homologation_status(monkeypatch, tmp_path):

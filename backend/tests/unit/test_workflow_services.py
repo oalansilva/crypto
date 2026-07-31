@@ -1,35 +1,33 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
-from app.services import stage_gate_service, workflow_reconcile_service, workflow_transition_service
-from app.services.stage_gate_service import (
-    can_transition_to_stage,
-    record_stage_completion,
-    record_stage_start,
-    require_handoff_fields,
-    validate_stage_transition,
-)
-from app.services.workflow_reconcile_service import (
-    infer_gates_from_artifacts,
-    reconcile_change_forward,
-)
+from app.services.stage_gate_service import validate_stage_transition
+from app.services.workflow_auth import WorkflowActor
+from app.services import workflow_reconcile_service, workflow_transition_service
+from app.services.upstream_guard import MainPublicationEvidence
+from app.services.workflow_reconcile_service import reconcile_change_forward
 from app.services.workflow_transition_service import (
-    desired_gate_states_for_column,
-    sync_change_gates_for_column,
+    KANBAN_COLUMNS,
+    LEGACY_STATUS_ALIASES,
+    approval_matches_current_evidence,
+    canonicalize_status,
+    transition_change,
     validate_kanban_transition,
-    validate_transition_hooks,
     validate_work_item_transition,
 )
-from app.workflow_database import WorkflowBase
+from app.workflow_database import (
+    WorkflowBase,
+    init_workflow_schema_for_url,
+    migrate_legacy_workflow_statuses,
+)
 from app.workflow_models import (
-    ApprovalScope,
     ApprovalState,
     Change,
     Project,
@@ -42,382 +40,341 @@ from app.workflow_models import (
 
 @pytest.fixture
 def workflow_session():
-    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
+    url = "postgresql://postgres:postgres@127.0.0.1:5432/postgres"
+    init_workflow_schema_for_url(url)
+    engine = create_engine(url)
     WorkflowBase.metadata.create_all(bind=engine)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    db = SessionLocal()
-    db.execute(text("SET session_replication_role = replica"))
+    connection = engine.connect()
+    transaction = connection.begin()
+    db = Session(bind=connection, autoflush=False)
     try:
         yield db
     finally:
         db.close()
+        transaction.rollback()
+        connection.close()
         engine.dispose()
 
 
-def _make_change_with_story(db, *, status: str = "Approval") -> tuple[Project, Change, WorkItem]:
-    project = Project(slug="crypto", name="Crypto")
+def _make_change(db: Session, *, status: str = "Todo", change_id: str | None = None) -> Change:
+    project = Project(slug=f"crypto-{uuid4().hex[:8]}", name="Crypto")
     db.add(project)
     db.flush()
-
     change = Change(
-        project_id=project.id, change_id="coverage-ratchet", title="Coverage", status=status
+        project_id=project.id,
+        change_id=change_id or f"change-{uuid4().hex[:8]}",
+        title="Workflow",
+        status=status,
     )
     db.add(change)
     db.flush()
+    return change
 
+
+def _write_design_delivery(root: Path, change: Change) -> None:
+    design = root / "openspec" / "changes" / change.change_id / "design.md"
+    design.parent.mkdir(parents=True)
+    design.write_text(
+        "# Design\n\n## Prototype\nVersioned HTML\n\n## Design Critique\nPASS\n",
+        encoding="utf-8",
+    )
+    prototype = root / "frontend" / "public" / "prototypes" / change.change_id / "index.html"
+    prototype.parent.mkdir(parents=True)
+    prototype.write_text("<main>prototype v1</main>", encoding="utf-8")
+    change.ui_impact = "affected"
+    change.design_ref = str(design.relative_to(root))
+    change.prototype_ref = str(prototype.relative_to(root))
+    change.design_critique_verdict = "PASS"
+
+
+def test_canonical_statuses_aliases_and_unknown_rejection():
+    assert KANBAN_COLUMNS == [
+        "Todo",
+        "Design",
+        "Aprovação de Design",
+        "Pronto para Dev",
+        "Em desenvolvimento",
+        "Code Review",
+        "QA",
+        "Done",
+        "Homologado",
+        "Pronto",
+        "Cancelado",
+    ]
+    assert canonicalize_status("Todo") == "Todo"
+    for legacy, canonical in LEGACY_STATUS_ALIASES.items():
+        assert canonicalize_status(legacy, allow_legacy=True) == canonical
+    with pytest.raises(HTTPException) as exc:
+        canonicalize_status("mystery")
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "unknown_workflow_status"
+
+
+def test_legacy_status_migration_is_idempotent_and_rejects_unknown():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE wf_changes ("
+                "id TEXT PRIMARY KEY, status TEXT NOT NULL, "
+                "ui_impact TEXT NOT NULL DEFAULT 'unknown', "
+                "ui_impact_justification TEXT NOT NULL DEFAULT '')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO wf_changes (id, status) VALUES ('1', 'Pending'), ('2', 'DEV'), ('3', 'Archived')"
+            )
+        )
+        migrate_legacy_workflow_statuses(conn)
+        migrate_legacy_workflow_statuses(conn)
+        rows = {
+            str(row[0]): str(row[1])
+            for row in conn.execute(text("SELECT id, status FROM wf_changes"))
+        }
+        assert rows == {"1": "Todo", "2": "Em desenvolvimento", "3": "Homologado"}
+        legacy_ui = conn.execute(
+            text("SELECT ui_impact, ui_impact_justification FROM wf_changes WHERE id = '2'")
+        ).one()
+        assert legacy_ui[0] == "none"
+        assert "Grandfathered" in legacy_ui[1]
+        conn.execute(text("INSERT INTO wf_changes (id, status) VALUES ('4', 'Mystery')"))
+        with pytest.raises(RuntimeError, match="Mystery"):
+            migrate_legacy_workflow_statuses(conn)
+    engine.dispose()
+
+
+def test_canonical_transition_matrix_rework_and_terminals():
+    for current, target in zip(KANBAN_COLUMNS[:9], KANBAN_COLUMNS[1:10]):
+        assert validate_kanban_transition(current_column=current, target_column=target) == (
+            current,
+            target,
+        )
+
+    for current, target in [
+        ("Aprovação de Design", "Design"),
+        ("Code Review", "Em desenvolvimento"),
+        ("QA", "Em desenvolvimento"),
+    ]:
+        assert validate_kanban_transition(current_column=current, target_column=target) == (
+            current,
+            target,
+        )
+
+    with pytest.raises(HTTPException):
+        validate_kanban_transition(current_column="Todo", target_column="QA")
+    with pytest.raises(HTTPException):
+        validate_kanban_transition(current_column="Done", target_column="QA")
+    with pytest.raises(HTTPException):
+        validate_kanban_transition(current_column="Pronto", target_column="Homologado")
+    with pytest.raises(HTTPException):
+        validate_kanban_transition(current_column="Cancelado", target_column="Todo")
+
+    assert validate_stage_transition("Todo", "Design").allowed is True
+    assert validate_stage_transition("Todo", "QA").allowed is False
+
+
+def test_non_ui_bypass_requires_justification(workflow_session, tmp_path):
+    change = _make_change(workflow_session)
+    actor = WorkflowActor(user_id=str(uuid4()), email="dev@example.com")
+    with pytest.raises(HTTPException) as exc:
+        transition_change(
+            workflow_session,
+            change=change,
+            target_status="Pronto para Dev",
+            actor=actor,
+            repo_root=tmp_path,
+            design_approver_emails={"alan@example.com"},
+        )
+    assert exc.value.detail["code"] == "ui_bypass_requires_justification"
+
+    change.ui_impact = "none"
+    change.ui_impact_justification = "Backend-only database migration."
+    transition_change(
+        workflow_session,
+        change=change,
+        target_status="Pronto para Dev",
+        actor=actor,
+        repo_root=tmp_path,
+        design_approver_emails={"alan@example.com"},
+    )
+    assert change.status == "Pronto para Dev"
+
+
+def test_design_delivery_approval_is_server_actor_and_digest_bound(workflow_session, tmp_path):
+    change = _make_change(workflow_session, status="Design")
+    _write_design_delivery(tmp_path, change)
+    agent = WorkflowActor(user_id=str(uuid4()), email="agent@example.com")
+    alan = WorkflowActor(user_id=str(uuid4()), email="alan@example.com")
+
+    transition_change(
+        workflow_session,
+        change=change,
+        target_status="Aprovação de Design",
+        actor=agent,
+        repo_root=tmp_path,
+        design_approver_emails={alan.email},
+    )
+    assert change.design_digest
+    assert change.prototype_digest
+    delivered_at = change.design_delivered_at
+    assert delivered_at is not None
+
+    with pytest.raises(HTTPException) as exc:
+        transition_change(
+            workflow_session,
+            change=change,
+            target_status="Pronto para Dev",
+            actor=agent,
+            repo_root=tmp_path,
+            design_approver_emails={alan.email},
+        )
+    assert exc.value.status_code == 403
+    assert change.status == "Aprovação de Design"
+
+    result = transition_change(
+        workflow_session,
+        change=change,
+        target_status="Pronto para Dev",
+        actor=alan,
+        repo_root=tmp_path,
+        design_approver_emails={alan.email},
+    )
+    workflow_session.flush()
+    assert result.approval_created is True
+    assert change.design_approved_by == alan.email
+    assert change.design_approved_by_user_id == alan.user_id
+    assert change.design_approval_valid is True
+    assert change.design_delivered_at == delivered_at
+    assert change.approved_design_digest == change.design_digest
+    assert change.approved_prototype_digest == change.prototype_digest
+    approval = (
+        workflow_session.query(WorkflowApproval)
+        .filter(WorkflowApproval.change_pk == change.id)
+        .one()
+    )
+    assert approval.actor == alan.email
+    assert approval.state == ApprovalState.approved
+
+
+def test_changed_evidence_invalidates_approval_and_blocks_development(
+    workflow_session, tmp_path, monkeypatch
+):
+    change = _make_change(workflow_session, status="Design")
+    _write_design_delivery(tmp_path, change)
+    alan = WorkflowActor(user_id=str(uuid4()), email="alan@example.com")
+    transition_change(
+        workflow_session,
+        change=change,
+        target_status="Aprovação de Design",
+        actor=alan,
+        repo_root=tmp_path,
+        design_approver_emails={alan.email},
+    )
+    transition_change(
+        workflow_session,
+        change=change,
+        target_status="Pronto para Dev",
+        actor=alan,
+        repo_root=tmp_path,
+        design_approver_emails={alan.email},
+    )
+    assert approval_matches_current_evidence(change, tmp_path) is True
+
+    prototype = tmp_path / change.prototype_ref
+    prototype.write_text("<main>prototype v2</main>", encoding="utf-8")
+    with pytest.raises(HTTPException) as exc:
+        transition_change(
+            workflow_session,
+            change=change,
+            target_status="Em desenvolvimento",
+            actor=alan,
+            repo_root=tmp_path,
+            design_approver_emails={alan.email},
+        )
+    assert exc.value.detail["code"] == "design_approval_obsolete"
+    assert change.design_approval_valid is False
+    assert change.status == "Aprovação de Design"
+
+    # Reconciliation never approves or advances; it only returns stale evidence
+    # to the human approval gate.
+    change.status = "Pronto para Dev"
+    change.design_approval_valid = True
+    monkeypatch.setattr(workflow_reconcile_service, "project_root", lambda: tmp_path)
+    assert reconcile_change_forward(workflow_session, change=change) is True
+    assert change.status == "Aprovação de Design"
+
+
+def test_story_completion_still_blocks_open_child_bugs(workflow_session):
+    change = _make_change(workflow_session, status="Em desenvolvimento")
     story = WorkItem(
         change_pk=change.id,
         type=WorkItemType.story,
         state=WorkItemState.active,
-        title="Improve coverage",
+        title="Story",
     )
-    db.add(story)
-    db.commit()
-    db.refresh(project)
-    db.refresh(change)
-    db.refresh(story)
-    return project, change, story
-
-
-def test_stage_gate_validate_transition_and_handoff_fields():
-    same = validate_stage_transition("PO", "PO")
-    skipped = validate_stage_transition("PO", "Approval")
-    backward = validate_stage_transition("DEV", "PO")
-    archived = validate_stage_transition("QA", "Archived")
-    canceled = validate_stage_transition("PO", "Canceled")
-    normalized = validate_stage_transition("Alan homologation", "Archived")
-    pending = validate_stage_transition(None, "PO")
-    invalid = validate_stage_transition("mystery", "PO")
-    backward_terminal = validate_stage_transition("Canceled", "Archived")
-
-    assert same.allowed is True
-    assert skipped.allowed is False and skipped.skipped_stage == "DESIGN"
-    assert backward.allowed is False and "Backward transitions" in (backward.message or "")
-    assert archived.allowed is True
-    assert canceled.allowed is True
-    assert normalized.current_stage == "Homologation"
-    assert pending.current_stage == "Pending"
-    assert invalid.current_stage == "Pending"
-    assert backward_terminal.allowed is True
-
-    with pytest.raises(HTTPException) as exc:
-        require_handoff_fields({"status": "done", "evidence": ""})
-    assert exc.value.detail["code"] == "missing_handoff_fields"
-
-    assert (
-        require_handoff_fields({"status": "done", "evidence": "link", "next_step": "QA"})[
-            "next_step"
-        ]
-        == "QA"
-    )
-
-
-def test_stage_gate_can_transition_and_record_stage_timestamps(workflow_session):
-    _project, change, story = _make_change_with_story(workflow_session, status="Approval")
-
-    wrong_agent = can_transition_to_stage(workflow_session, story.id, "DEV", agent="PO")
-    missing_work_item = can_transition_to_stage(workflow_session, "missing", "DEV", agent="DEV")
-    orphan_story = WorkItem(
-        change_pk="missing-change",
-        type=WorkItemType.story,
-        state=WorkItemState.active,
-        title="Orphan",
-    )
-    workflow_session.add(orphan_story)
-    workflow_session.commit()
-    missing_change = can_transition_to_stage(workflow_session, orphan_story.id, "DEV", agent="DEV")
-    skipped_stage = can_transition_to_stage(workflow_session, story.id, "Homologation", agent="DEV")
-    allowed_stage = can_transition_to_stage(workflow_session, story.id, "DEV", agent="DEV")
-
-    assert wrong_agent.allowed is False
-    assert "requires agent 'DEV'" in (wrong_agent.message or "")
-    assert missing_work_item.allowed is False
-    assert missing_change.allowed is False
-    assert skipped_stage.allowed is False and skipped_stage.skipped_stage == "DEV"
-    assert allowed_stage.allowed is True and allowed_stage.target_stage == "DEV"
-
-    started = record_stage_start(workflow_session, story.id, "DEV")
-    completed = record_stage_completion(workflow_session, story.id, "DEV")
-
-    assert started.stage_started_at is not None
-    assert completed.stage_completed_at is not None
-    assert completed.last_agent_acted == "DEV"
-    assert change.status == "Approval"
-
-    with pytest.raises(HTTPException) as start_exc:
-        record_stage_start(workflow_session, "missing", "DEV")
-    with pytest.raises(HTTPException) as complete_exc:
-        record_stage_completion(workflow_session, "missing", "DEV")
-    assert start_exc.value.status_code == 404
-    assert complete_exc.value.status_code == 404
-
-
-def test_workflow_transition_desired_states_sync_and_validation_hooks(
-    workflow_session, monkeypatch
-):
-    _project, change, story = _make_change_with_story(workflow_session, status="PO")
-
-    states = desired_gate_states_for_column("QA")
-    assert [decision.gate for decision in states] == [
-        "PO",
-        "DESIGN",
-        "Approval",
-        "DEV",
-        "QA",
-        "Homologation",
-    ]
-    assert [decision.state for decision in states[:4]] == [ApprovalState.approved] * 4
-    assert states[-1].state == ApprovalState.pending
-    assert desired_gate_states_for_column("Pending")[0].state == ApprovalState.pending
-    assert desired_gate_states_for_column("Approval")[1].state == ApprovalState.approved
-    assert desired_gate_states_for_column("DEV")[2].state == ApprovalState.approved
-    assert desired_gate_states_for_column("Alan homologation")[4].state == ApprovalState.approved
-    assert desired_gate_states_for_column("Archived")[-1].state == ApprovalState.approved
-    assert desired_gate_states_for_column("canceled")[-1].state == ApprovalState.approved
-    assert desired_gate_states_for_column("unexpected")[2].state == ApprovalState.approved
-
-    current, target = validate_kanban_transition(current_column="PO", target_column="DESIGN")
-    assert (current, target) == ("PO", "DESIGN")
-    assert validate_kanban_transition(current_column="DEV", target_column="DEV") == ("DEV", "DEV")
-
-    with pytest.raises(HTTPException) as transition_exc:
-        validate_kanban_transition(current_column="PO", target_column="QA")
-    assert transition_exc.value.detail["code"] == "invalid_kanban_transition"
-    with pytest.raises(HTTPException) as archived_exc:
-        validate_kanban_transition(current_column="Archived", target_column="PO")
-    assert archived_exc.value.detail["code"] == "invalid_kanban_transition"
-
-    mutated = sync_change_gates_for_column(workflow_session, change=change, target_column="DESIGN")
-    workflow_session.commit()
-
-    approvals = (
-        workflow_session.query(WorkflowApproval)
-        .filter(WorkflowApproval.change_pk == change.id)
-        .all()
-    )
-    latest_states = {approval.gate: approval.state for approval in approvals}
-
-    assert mutated is True
-    assert change.status == "DESIGN"
-    assert latest_states["PO"] == ApprovalState.approved
-    assert latest_states["DESIGN"] == ApprovalState.pending
-
-    monkeypatch.setattr(
-        workflow_transition_service,
-        "_validate_dev_to_qa",
-        lambda db, change: setattr(change, "_validated_dev_to_qa", True),
-    )
-    monkeypatch.setattr(
-        workflow_transition_service,
-        "_validate_qa_to_homologation",
-        lambda db, change: setattr(change, "_validated_qa_to_homologation", True),
-    )
-    monkeypatch.setattr(
-        workflow_transition_service,
-        "_validate_homologation_to_archived",
-        lambda db, change: setattr(change, "_validated_homologation_to_archived", True),
-    )
-
-    validate_transition_hooks(workflow_session, change, "QA")
-    validate_transition_hooks(workflow_session, change, "Homologation")
-    validate_transition_hooks(workflow_session, change, "Archived")
-
-    assert getattr(change, "_validated_dev_to_qa") is True
-    assert getattr(change, "_validated_qa_to_homologation") is True
-    assert getattr(change, "_validated_homologation_to_archived") is True
-
-    monkeypatch.setitem(
-        __import__("sys").modules,
-        "app.services.workflow_validation_service",
-        SimpleNamespace(
-            validate_story_closure=lambda db, story_id: SimpleNamespace(
-                is_valid=False, blocking_bugs=["bug-1"]
-            ),
-            validate_approval_gate=lambda _change_id: SimpleNamespace(
-                is_valid=True, missing_files=[]
-            ),
-        ),
-    )
-
-    with pytest.raises(HTTPException) as story_exc:
-        validate_work_item_transition(workflow_session, story, WorkItemState.done)
-    assert story_exc.value.detail["code"] == "blocking_child_bugs"
-
+    workflow_session.add(story)
+    workflow_session.flush()
     bug = WorkItem(
         change_pk=change.id,
+        parent_id=story.id,
         type=WorkItemType.bug,
         state=WorkItemState.active,
-        title="Bug item",
+        title="Bug",
     )
     workflow_session.add(bug)
-    workflow_session.commit()
-    validate_work_item_transition(workflow_session, bug, WorkItemState.done)
+    workflow_session.flush()
+    with pytest.raises(HTTPException) as exc:
+        validate_work_item_transition(workflow_session, story, WorkItemState.done)
+    assert exc.value.detail["code"] == "blocking_child_bugs"
+
+    bug.state = WorkItemState.done
+    workflow_session.flush()
+    validate_work_item_transition(workflow_session, story, WorkItemState.done)
 
 
-def test_workflow_transition_validation_errors_for_qa_and_homologation(
-    workflow_session, monkeypatch
+def test_done_and_homologado_do_not_revalidate_or_regress_design_evidence(
+    workflow_session, tmp_path, monkeypatch
 ):
-    _project, change, story = _make_change_with_story(workflow_session, status="DEV")
+    alan = WorkflowActor(user_id=str(uuid4()), email="alan@example.com")
+    change = _make_change(workflow_session, status="Done", change_id="card-340-archived-design")
+    change.ui_impact = "affected"
+    change.design_approval_valid = True
+    change.design_ref = "openspec/changes/archive/moved-design.md"
+    change.prototype_ref = "frontend/public/prototypes/removed/index.html"
 
-    monkeypatch.setitem(
-        __import__("sys").modules,
-        "app.services.workflow_validation_service",
-        SimpleNamespace(
-            validate_approval_gate=lambda _change_id: SimpleNamespace(
-                is_valid=False, missing_files=["proposal.md", "review-ptbr.md"]
-            ),
-            validate_story_closure=lambda db, story_id: SimpleNamespace(
-                is_valid=True, blocking_bugs=[]
-            ),
+    assert reconcile_change_forward(workflow_session, change=change) is False
+    assert change.status == "Done"
+    assert change.design_approval_valid is True
+    transition_change(
+        workflow_session,
+        change=change,
+        target_status="Homologado",
+        actor=alan,
+        repo_root=tmp_path,
+        design_approver_emails={alan.email},
+        homologation_approver_emails={alan.email},
+    )
+    assert change.status == "Homologado"
+    assert change.design_approval_valid is True
+
+    monkeypatch.setattr(
+        workflow_transition_service,
+        "require_card_main_publication",
+        lambda _root, **_kwargs: MainPublicationEvidence(
+            head_sha="c" * 40,
+            main_sha="d" * 40,
+            main_ref="origin/main",
         ),
     )
-
-    with pytest.raises(HTTPException) as qa_exc:
-        validate_transition_hooks(workflow_session, change, "QA")
-    assert qa_exc.value.detail["code"] == "approval_gate_not_met"
-
-    change.status = "QA"
-    workflow_session.commit()
-    story.state = WorkItemState.active
-    workflow_session.commit()
-    with pytest.raises(HTTPException) as homologation_exc:
-        validate_transition_hooks(workflow_session, change, "Homologation")
-    assert homologation_exc.value.detail["code"] == "open_work_items"
-
-    story.state = WorkItemState.done
-    workflow_session.commit()
-    validate_transition_hooks(workflow_session, change, "Homologation")
-    validate_transition_hooks(workflow_session, change, "Archived")
-
-
-def test_workflow_transition_sync_can_still_fill_missing_gate_history(workflow_session):
-    _project, change, _story = _make_change_with_story(workflow_session, status="DEV")
-    workflow_session.add(
-        WorkflowApproval(
-            scope=ApprovalScope.change,
-            gate="PO",
-            state=ApprovalState.approved,
-            change_pk=change.id,
-            actor="kanban",
-            note="existing",
-        )
+    transition_change(
+        workflow_session,
+        change=change,
+        target_status="Pronto",
+        actor=alan,
+        repo_root=tmp_path,
+        design_approver_emails={alan.email},
+        release_approver_emails={alan.email},
     )
-    workflow_session.add(
-        WorkflowApproval(
-            scope=ApprovalScope.change,
-            gate="DESIGN",
-            state=ApprovalState.approved,
-            change_pk=change.id,
-            actor="kanban",
-            note="existing",
-        )
-    )
-    workflow_session.add(
-        WorkflowApproval(
-            scope=ApprovalScope.change,
-            gate="Approval",
-            state=ApprovalState.approved,
-            change_pk=change.id,
-            actor="kanban",
-            note="existing",
-        )
-    )
-    for gate in ["DEV", "QA", "Homologation"]:
-        workflow_session.add(
-            WorkflowApproval(
-                scope=ApprovalScope.change,
-                gate=gate,
-                state=ApprovalState.pending,
-                change_pk=change.id,
-                actor="kanban",
-                note="existing",
-            )
-        )
-    workflow_session.commit()
-
-    mutated = sync_change_gates_for_column(workflow_session, change=change, target_column="DEV")
-    approvals = (
-        workflow_session.query(WorkflowApproval)
-        .filter(WorkflowApproval.change_pk == change.id)
-        .all()
-    )
-    assert change.status == "DEV"
-    assert len(approvals) >= 6
-    assert {approval.gate for approval in approvals}.issuperset(
-        {"PO", "DESIGN", "Approval", "DEV", "QA", "Homologation"}
-    )
-
-
-def test_workflow_reconcile_infers_artifacts_and_advances_change(
-    tmp_path, workflow_session, monkeypatch
-):
-    _project, change, _story = _make_change_with_story(workflow_session, status="PO")
-    change.change_id = "coverage-ratchet"
-    workflow_session.commit()
-
-    base = tmp_path / "openspec" / "changes" / change.change_id
-    (base / "specs").mkdir(parents=True)
-    (base / "proposal.md").write_text("proposal", encoding="utf-8")
-    (base / "tasks.md").write_text("tasks", encoding="utf-8")
-    (base / "specs" / "delta.md").write_text("spec", encoding="utf-8")
-    (base / "design.md").write_text("design", encoding="utf-8")
-    (tmp_path / "frontend" / "public" / "prototypes" / change.change_id).mkdir(parents=True)
-
-    monkeypatch.setattr(workflow_reconcile_service, "project_root", lambda: tmp_path)
-
-    inferred = infer_gates_from_artifacts(change.change_id)
-    mutated = reconcile_change_forward(workflow_session, change=change)
-
-    approvals = (
-        workflow_session.query(WorkflowApproval)
-        .filter(WorkflowApproval.change_pk == change.id)
-        .all()
-    )
-    latest_states = {approval.gate: approval.state for approval in approvals}
-
-    assert inferred.po_done is True
-    assert inferred.design_done is True
-    assert mutated is True
-    assert change.status == "Approval"
-    assert latest_states["PO"] == ApprovalState.approved
-    assert latest_states["DESIGN"] == ApprovalState.approved
-
-
-def test_workflow_reconcile_does_not_touch_pending_or_canceled_changes(
-    tmp_path, workflow_session, monkeypatch
-):
-    _project, change, _story = _make_change_with_story(workflow_session, status="Pending")
-    change.change_id = "pending-change"
-    workflow_session.commit()
-
-    base = tmp_path / "openspec" / "changes" / change.change_id
-    (base / "specs").mkdir(parents=True)
-    (base / "proposal.md").write_text("proposal", encoding="utf-8")
-    (base / "tasks.md").write_text("tasks", encoding="utf-8")
-    (base / "specs" / "delta.md").write_text("spec", encoding="utf-8")
-    monkeypatch.setattr(workflow_reconcile_service, "project_root", lambda: tmp_path)
-
-    assert reconcile_change_forward(workflow_session, change=change) is False
-
-    change.status = "Canceled"
-    workflow_session.commit()
-    assert reconcile_change_forward(workflow_session, change=change) is False
-
-
-def test_workflow_reconcile_can_advance_from_homologation_to_archived(workflow_session):
-    _project, change, _story = _make_change_with_story(workflow_session, status="Alan homologation")
-    for gate in ["PO", "DESIGN", "Approval", "DEV", "QA", "Homologation"]:
-        workflow_session.add(
-            WorkflowApproval(
-                scope=ApprovalScope.change,
-                gate=gate,
-                state=ApprovalState.approved,
-                change_pk=change.id,
-                actor="qa",
-                note="approved",
-            )
-        )
-    workflow_session.commit()
-
-    assert reconcile_change_forward(workflow_session, change=change) is True
-    assert change.status == "Archived"
+    assert change.status == "Pronto"
+    assert change.publication_commit_sha == "c" * 40

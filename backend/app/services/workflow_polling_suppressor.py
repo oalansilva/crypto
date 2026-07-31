@@ -32,6 +32,7 @@ from app.workflow_models import (
     AgentRun,
 )
 from app.workflow_database import get_workflow_db
+from app.services.workflow_transition_service import TERMINAL_STATUSES, canonicalize_status
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +178,9 @@ class WorkflowPollingSuppressor:
         # Count active changes (not archived/canceled)
         changes = db.query(Change).all()
         active_changes = {
-            c.change_id for c in changes if c.status not in ("archived", "canceled", "done")
+            c.change_id
+            for c in changes
+            if canonicalize_status(c.status, allow_legacy=True) not in TERMINAL_STATUSES
         }
 
         # Get work item states

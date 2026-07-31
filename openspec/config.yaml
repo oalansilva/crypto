@@ -1,29 +1,30 @@
 schema: spec-driven
 
 context: |
-  Purpose: Build a cryptocurrency backtester to fetch historical data, simulate trading strategies, and visualize performance (ROI, Drawdown).
+  Purpose: Build Cripto Farol, a cryptocurrency analysis, monitoring, and backtesting product with an auditable operational workflow.
 
   Tech Stack:
-  - Python 3.x
-  - pandas (Data manipulation)
-  - ccxt (Crypto data fetching)
-  - matplotlib (Visualization)
+  - Backend: Python, FastAPI, PostgreSQL
+  - Frontend: React, TypeScript, Vite
+  - Integrations/data: exchange APIs, workers, market and backtest services
 
   Project Conventions:
-  - PEP 8
-  - Type hinting for all function signatures
-  - Docstrings for all classes and methods
+  - PostgreSQL is mandatory for runtime, QA, and workflow state.
+  - Follow DESIGN.md and the versioned brand system for every UI/UX change.
+  - Status is the canonical Kanban field; Fluxo is secondary/legacy.
 
   Architecture Patterns:
-  - Modular design: DataLoader, Strategy, Backtester, Visualization
-  - Strategy Pattern for different trading strategies
-
-  External Dependencies:
-  - CCXT (Exchange APIs)
+  - FastAPI routes delegate business rules to services and repositories/workers.
+  - React screens consume backend APIs; the frontend never accesses the database directly.
+  - UI-impact work follows Design -> Aprovação de Design -> Pronto para Dev before implementation.
 
 rules:
   tasks:
-    - Include a short note reminding to use project skills (.codex/skills) when applicable (architecture, tests, debugging, frontend).
+    - Include a short note reminding to use project skills available to Codex and Cursor when applicable (.agents/skills, .codex/skills, .cursor/skills).
+    - For UI-impact work, include the design gate before implementation: Design -> Aprovação de Design -> Pronto para Dev, using the design-critic skill and waiting for Alan's human approval.
+  design:
+    - For UI-impact work, include Prototype and Design Critique sections with versioned evidence and an explicit Design Agent verdict.
+    - The Designer/Critic Agent may hand off Design -> Aprovação de Design only; it must never approve Aprovação de Design -> Pronto para Dev.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
