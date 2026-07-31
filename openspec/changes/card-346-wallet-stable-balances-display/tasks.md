@@ -10,6 +10,7 @@
 - [x] 2.3 Definir `avg_cost_usdt=1.0` para stables na montagem do snapshot (PnL ≈ 0) sem depender do top-N de trades
 - [x] 2.4 Tratar wrappers Earn `LDUSDT`/`LDUSDC` (e `LD*`+stable) como stable de display (~1 USD) para não sumirem da Carteira
 - [x] 2.4 Testes unit/integration: snapshot com USDT+USDC presentes, dust default e `min_usd=0`
+- [x] 2.5 Preferir Simple Earn API (`/sapi/v1/simple-earn/flexible/position` + locked) sobre LD* incompleto; fallback LD* se Earn indisponível
 
 ## 3. Frontend — Carteira
 

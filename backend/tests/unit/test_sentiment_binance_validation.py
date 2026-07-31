@@ -221,6 +221,8 @@ def test_binance_spot_helpers_signed_get_and_snapshot_filters(monkeypatch):
 
     def fake_signed_get(base_url, api_key, api_secret, path, params, *, timeout_s):
         signed_get_calls.append((path, timeout_s))
+        if path.startswith("/sapi/v1/simple-earn/"):
+            return {"rows": []}
         return {
             "balances": [
                 {"asset": "", "free": "1", "locked": "0"},
@@ -257,7 +259,11 @@ def test_binance_spot_helpers_signed_get_and_snapshot_filters(monkeypatch):
         api_key="key",
         api_secret="secret",
     )
-    assert signed_get_calls == [("/api/v3/account", 10)]
+    assert signed_get_calls == [
+        ("/api/v3/account", 10),
+        ("/sapi/v1/simple-earn/flexible/position", 10),
+        ("/sapi/v1/simple-earn/locked/position", 10),
+    ]
     assert avg_cost_calls == ["AAA"]
     assert snapshot["as_of"] == "2023-11-14T22:13:20Z"
     assert snapshot["total_usd"] == pytest.approx(410.0)
