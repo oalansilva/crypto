@@ -14,14 +14,12 @@ import { ComboEditPage } from './pages/ComboEditPage'
 import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
-import KanbanPage from './pages/KanbanPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import SystemPreferencesPage from './pages/SystemPreferencesPage'
 import ProfilePage from './pages/ProfilePage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import AdminUsersPage from './pages/AdminUsersPage'
-import AdminBackfillPage from './pages/AdminBackfillPage'
 import HelpPage from './pages/HelpPage'
 import { Toaster } from "@/components/ui/toaster"
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -65,7 +63,7 @@ function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
-          <Route path="/kanban" element={<KanbanPage />} />
+          <Route path="/kanban" element={<Navigate to="/monitor" replace />} />
           <Route path="/combo/select" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />
           {/* Backward-compat route (old link/bookmark) */}
           <Route path="/combo/selectCrypto" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />
@@ -83,7 +81,6 @@ function App() {
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/system/preferences" element={<ProtectedRoute requireAdmin><SystemPreferencesPage /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsersPage /></ProtectedRoute>} />
-          <Route path="/admin/backfill" element={<ProtectedRoute requireAdmin><AdminBackfillPage /></ProtectedRoute>} />
         </Route>
       </Routes>
       <Toaster />

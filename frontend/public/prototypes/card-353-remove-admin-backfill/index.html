@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Protótipo #353 — Remover Backfill (shell atual)</title>
+  <style>
+    :root {
+      --bg-primary: #0b0e11;
+      --bg-secondary: #181a20;
+      --bg-elevated: #1e2329;
+      --bg-input: #2b3139;
+      --accent-primary: #fcd535;
+      --accent-success: #0ecb81;
+      --accent-danger: #f6465d;
+      --text-primary: #ffffff;
+      --text-secondary: #eaecef;
+      --text-tertiary: #929aa5;
+      --text-muted: #707a8a;
+      --border-subtle: rgba(43, 49, 57, 0.72);
+      --border-default: #2b3139;
+      --app-sidebar-width: 224px;
+      --font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-family);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+    .review-bar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-default);
+      background: rgba(11, 14, 17, 0.96);
+      backdrop-filter: blur(12px);
+    }
+    .review-bar p {
+      margin: 0;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      max-width: 62ch;
+    }
+    .review-bar strong { color: var(--accent-primary); }
+    .toggle {
+      display: inline-flex;
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-elevated);
+    }
+    .toggle button {
+      border: 0;
+      background: transparent;
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .toggle button[aria-pressed="true"] {
+      background: rgba(252, 213, 53, 0.12);
+      color: var(--accent-primary);
+    }
+    .shell { min-height: calc(100vh - 52px); }
+    aside.sidebar {
+      position: fixed;
+      inset: 52px auto 0 0;
+      z-index: 40;
+      width: var(--app-sidebar-width);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-subtle);
+      background: rgba(24, 26, 32, 0.96);
+      backdrop-filter: blur(18px);
+      padding: 12px 10px;
+    }
+    .brand-wrap { display: flex; align-items: center; padding: 0 8px 16px; }
+    .brand-wrap img { height: 48px; width: 172px; object-fit: contain; object-position: left; }
+    .page-card-muted {
+      margin: 0 4px 16px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(30, 35, 41, 0.72);
+    }
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .panel-title {
+      margin-top: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .env {
+      margin-top: 12px;
+      display: inline-flex;
+      height: 36px;
+      min-width: 132px;
+      align-items: center;
+      gap: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(252, 213, 53, 0.46);
+      background: rgba(252, 213, 53, 0.12);
+      color: var(--accent-primary);
+      padding: 0 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .env .dot {
+      width: 8px; height: 8px; border-radius: 999px;
+      background: var(--accent-primary);
+    }
+    .env .label-muted { color: var(--text-muted); }
+    nav.main-nav {
+      flex: 1;
+      overflow: auto;
+      padding: 0 4px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .nav-section-title {
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .nav-link {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+    .nav-link svg { width: 20px; height: 20px; color: var(--text-tertiary); flex-shrink: 0; }
+    .nav-link.active {
+      border-color: rgba(252, 213, 53, 0.36);
+      background: rgba(252, 213, 53, 0.1);
+      color: var(--text-primary);
+    }
+    .nav-link.active::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 8px; bottom: 8px;
+      width: 4px;
+      border-radius: 999px;
+      background: var(--accent-primary);
+    }
+    .nav-link.active svg { color: var(--accent-primary); }
+    /* Remoção real: display:none vence o display:flex do .nav-link */
+    .nav-link.is-removed,
+    .nav-link[hidden] {
+      display: none !important;
+    }
+    .collapse-btn {
+      margin-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 12px;
+    }
+    .collapse-btn button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 12px;
+      cursor: default;
+    }
+    header.top {
+      position: fixed;
+      top: 52px;
+      right: 0;
+      left: var(--app-sidebar-width);
+      z-index: 30;
+      height: 80px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(11, 14, 17, 0.88);
+      backdrop-filter: blur(18px);
+    }
+    .top-inner {
+      height: 100%;
+      max-width: calc(1480px + 4rem);
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .workspace-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .workspace-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .top-actions { display: flex; align-items: center; gap: 12px; }
+    .env-compact {
+      display: inline-flex;
+      height: 36px;
+      min-width: 72px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(252, 213, 53, 0.46);
+      background: rgba(252, 213, 53, 0.12);
+      color: var(--accent-primary);
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .account-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-elevated);
+      padding: 8px 10px;
+      color: inherit;
+    }
+    .avatar {
+      width: 40px; height: 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(252, 213, 53, 0.24);
+      background: rgba(252, 213, 53, 0.1);
+      color: var(--accent-primary);
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .account-meta .small {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .account-meta .name {
+      max-width: 10rem;
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .icon-btn {
+      width: 44px; height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      display: grid;
+      place-items: center;
+    }
+    main.content {
+      margin-left: var(--app-sidebar-width);
+      padding: calc(80px + 24px) 24px 48px;
+    }
+    .content-card {
+      max-width: 920px;
+      border: 1px solid var(--border-default);
+      border-radius: 12px;
+      background: var(--bg-elevated);
+      padding: 18px 20px;
+    }
+    .content-card h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .content-card p {
+      margin: 0;
+      color: var(--text-tertiary);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .delta {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-left: 3px solid var(--accent-primary);
+      background: rgba(252, 213, 53, 0.06);
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+    .delta code {
+      color: var(--accent-primary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+    .mobile-only { display: none; }
+    @media (max-width: 1023px) {
+      aside.sidebar, header.top { display: none; }
+      .mobile-only { display: block; }
+      main.content {
+        margin-left: 0;
+        padding: 88px 16px 40px;
+      }
+      .mobile-header {
+        position: fixed;
+        inset: 52px 0 auto 0;
+        z-index: 50;
+        height: 72px;
+        border-bottom: 1px solid var(--border-subtle);
+        background: rgba(11, 14, 17, 0.92);
+        backdrop-filter: blur(18px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 0 16px;
+      }
+      .mobile-menu {
+        border: 1px solid var(--border-default);
+        border-radius: 12px;
+        background: var(--bg-secondary);
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+    }
+  </style>
+</head>
+<body data-mode="depois">
+  <div class="review-bar">
+    <p>
+      Base: shell autenticado atual (`AppNav` + Monitor).
+      <strong>Delta #353:</strong> remover item Admin <strong>Backfill</strong> e rota <code>/admin/backfill</code>.
+    </p>
+    <div class="toggle" role="group" aria-label="Comparar antes e depois">
+      <button type="button" id="btn-antes" aria-pressed="false">Antes</button>
+      <button type="button" id="btn-depois" aria-pressed="true">Depois</button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="brand-wrap">
+        <img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol" />
+      </div>
+      <div class="page-card-muted">
+        <div class="eyebrow">Painel</div>
+        <div class="panel-title">Monitor de sinais</div>
+        <div class="env" aria-label="Ambiente Development">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="label-muted">Ambiente</span>
+          <span>DEV</span>
+        </div>
+      </div>
+      <nav class="main-nav" aria-label="Navegacao principal">
+        <section>
+          <div class="nav-section-title">Principal</div>
+          <a class="nav-link" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>Favoritos</span></a>
+          <a class="nav-link active" href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg><span>Monitor</span></a>
+        </section>
+        <section>
+          <div class="nav-section-title">Estratégias</div>
+          <a class="nav-link" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg><span>Combo</span></a>
+        </section>
+        <section>
+          <div class="nav-section-title">Carteira</div>
+          <a class="nav-link" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/><path d="M3 11h18a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3"/></svg><span>Carteira</span></a>
+          <a class="nav-link" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span>Ajuda</span></a>
+        </section>
+        <section>
+          <div class="nav-section-title">Admin</div>
+          <a class="nav-link" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span>Preferências do sistema</span></a>
+          <a class="nav-link" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Usuários</span></a>
+          <a class="nav-link backfill-item" id="backfill-desktop" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg><span>Backfill</span></a>
+        </section>
+      </nav>
+      <div class="collapse-btn">
+        <button type="button"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg><span>Recolher menu</span></button>
+      </div>
+    </aside>
+
+    <header class="top">
+      <div class="top-inner">
+        <div>
+          <div class="workspace-label">Workspace</div>
+          <div class="workspace-title">Monitor de sinais</div>
+        </div>
+        <div class="top-actions">
+          <div class="env-compact" aria-label="Ambiente Development"><span class="dot" style="width:8px;height:8px;border-radius:999px;background:var(--accent-primary);display:inline-block"></span> DEV</div>
+          <div class="account-btn" aria-label="Abrir conta">
+            <div class="avatar">A</div>
+            <div class="account-meta">
+              <div class="small">Account</div>
+              <div class="name">Admin</div>
+            </div>
+          </div>
+          <div class="icon-btn" aria-label="Configurações">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="mobile-only">
+      <div class="mobile-header">
+        <div class="icon-btn" aria-label="Abrir menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+        </div>
+        <div class="min-w-0" style="flex:1">
+          <div style="font-size:14px;font-weight:600">Monitor de sinais</div>
+          <div style="font-size:12px;color:var(--text-tertiary)">Navegação principal</div>
+        </div>
+        <div class="env-compact">DEV</div>
+        <div class="avatar">A</div>
+      </div>
+    </div>
+
+    <main class="content">
+      <div class="mobile-only mobile-menu" aria-label="Menu admin mobile">
+        <div class="nav-section-title">Admin</div>
+        <a class="nav-link" href="#">Preferências do sistema</a>
+        <a class="nav-link" href="#">Usuários</a>
+        <a class="nav-link backfill-item" id="backfill-mobile" href="#">Backfill</a>
+      </div>
+
+      <section class="content-card">
+        <h1>Monitor de sinais</h1>
+        <p>Protótipo de fidelidade do shell atual. Conteúdo da página é placeholder; a validação do card é a navegação Admin.</p>
+        <div class="delta" id="delta-copy">
+          <strong>Depois:</strong> Admin mantém Preferências do sistema e Usuários.
+          Item <code>Backfill</code> e rota <code>/admin/backfill</code> não existem.
+          Serviço OHLCV / full history permanece fora desta UI.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const body = document.body
+    const btnAntes = document.getElementById('btn-antes')
+    const btnDepois = document.getElementById('btn-depois')
+    const delta = document.getElementById('delta-copy')
+    const items = () => document.querySelectorAll('.backfill-item')
+
+    function setMode(mode) {
+      body.dataset.mode = mode
+      btnAntes.setAttribute('aria-pressed', mode === 'antes' ? 'true' : 'false')
+      btnDepois.setAttribute('aria-pressed', mode === 'depois' ? 'true' : 'false')
+      items().forEach((el) => {
+        const gone = mode === 'depois'
+        el.hidden = gone
+        el.classList.toggle('is-removed', gone)
+        el.setAttribute('aria-hidden', gone ? 'true' : 'false')
+        if (gone) el.setAttribute('tabindex', '-1')
+        else el.removeAttribute('tabindex')
+      })
+      delta.innerHTML = mode === 'antes'
+        ? '<strong>Antes (sistema atual):</strong> Admin mostra Preferências, Usuários e <code>Backfill</code> → <code>/admin/backfill</code>.'
+        : '<strong>Depois:</strong> Admin mantém Preferências do sistema e Usuários. Item <code>Backfill</code> e rota <code>/admin/backfill</code> não existem. Serviço OHLCV / full history permanece fora desta UI.'
+    }
+
+    btnAntes.addEventListener('click', () => setMode('antes'))
+    btnDepois.addEventListener('click', () => setMode('depois'))
+    setMode('depois')
+  </script>
+</body>
+</html>

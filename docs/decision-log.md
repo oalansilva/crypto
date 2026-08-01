@@ -1,12 +1,38 @@
 # Decision Log
 
+## 2026-08-01 - Browser gate obrigatório para protótipos
+
+**Decisao:** nenhum protótipo com UI pode receber `Design Agent verdict: PASS` apenas por build, HTTP 200, `curl` ou inspeção do código. A versão final servida deve ser aberta em navegador real, validada em desktop/mobile e ter estado padrão, interações e critérios críticos comprovados por asserts observáveis.
+
+**Remoções:** o estado final precisa provar que o elemento removido não existe ou não está visível. O incidente do #353 mostrou que `hidden=true` podia ser neutralizado por CSS (`display:flex`), algo que HTTP 200 não detecta.
+
+**Evidência:** registrar URL, viewports, ações/asserts e resultado em `design.md` (`## Prototype Validation`). Alteração posterior em HTML/CSS/JS ou rebuild/restart invalida a evidência. Sem navegador ou com falha, o card permanece em `Design` com veredito `BLOCKED`.
+
+**Onde:** `rules.md`, `AGENTS.md`, `.agents/skills/design-critic`, `alan-workflow`.
+
+## 2026-08-01 - Protótipo baseado no sistema atual (quando a tela já existir)
+
+**Decisao:** em Design, se a tela/rota/shell já existir no produto, o protótipo deve partir da UI atual e redesenhar só o delta do card, para Alan validar a diferença. Proibido mock paralelo/genérico. Tela ainda inexistente pode ser desenhada do zero, alinhada a `DESIGN.md` e ao shell autenticado.
+
+**Onde:** `rules.md`, `AGENTS.md`, `.agents/skills/design-critic` (+ adaptadores), `alan-workflow`.
+
+## 2026-08-01 - Design gate obrigatório sem bypass
+
+**Decisao:** todo card do Project 1/Cripto deve passar por `Design -> Aprovação de Design -> Pronto para Dev` antes de qualquer implementação. Não existe bypass `Todo -> Pronto para Dev`.
+
+**Escopo:** vale para UI e não-UI, remoções, bugs, docs com card e pedidos de chat como `implemente` / `pode codar`. `UI impact: none` só reduz o peso da evidência (Prototype pode ser N/A explícito); não pula colunas.
+
+**Aprovação:** apenas Alan autenticado move `Aprovação de Design -> Pronto para Dev`. OpenSpec `design.md` não substitui a coluna Kanban `Design`.
+
+**Relação com decisões anteriores:** esta decisão altera a regra de bypass registrada em 2026-07-31 e alinha `rules.md`, `AGENTS.md`, `design-critic`, `alan-workflow` e `github-project-board`.
+
 ## 2026-07-31 - Gate humano de design antes do desenvolvimento
 
 **Decisao:** substituir `In Progress` por `Em desenvolvimento` e adotar o fluxo `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto` no Project 1, Kanban interno e instruções de Codex/Cursor.
 
 **Aprovação:** para cards com impacto de UI, o Designer/Critic Agent produz ou refatora o protótipo, executa crítica de produto, UX, acessibilidade, responsividade e estados e move apenas `Design -> Aprovação de Design` quando a evidência estiver completa. Alan aprova a versão revisada arrastando `Aprovação de Design -> Pronto para Dev`; nenhum agente pode executar ou simular essa transição.
 
-**Bypass:** cards com `UI impact: none` podem usar `Todo -> Pronto para Dev` somente com justificativa não vazia e auditável. Mudança posterior no `design.md` ou no protótipo invalida a aprovação anterior.
+**Bypass (revogado em 2026-08-01):** a permissão antiga de `Todo -> Pronto para Dev` com `UI impact: none` foi removida. Todo card passa por Design.
 
 **Agentes:** o contrato canônico do Designer/Critic Agent fica em `.agents/skills/design-critic/SKILL.md`, com adaptadores finos para Codex e Cursor. OpenSpec usa a mesma ordem operacional por `/opsx:*` e pelos aliases Cursor `/opsx-*`.
 

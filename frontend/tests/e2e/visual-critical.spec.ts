@@ -364,21 +364,3 @@ test('visual critical profile', async ({ page }) => {
   await capture(page, 'profile.png')
 })
 
-test('visual critical kanban design approval', async ({ page }) => {
-  await installStableApiMocks(page)
-  if ((page.viewportSize()?.width || 0) < 640) {
-    await page.addInitScript(() => window.localStorage.setItem('cripto-farol-onboarding-dismissed', '1'))
-  }
-  await page.goto('/kanban')
-  await expect(page.getByRole('heading', { name: 'Kanban', exact: true })).toBeVisible()
-  const approvalStage = page.getByRole('tab', { name: /Aprovação de Design 1/i })
-  if (await approvalStage.isVisible()) await approvalStage.click()
-  await expect(page.getByRole('button', { name: 'Open details for visual-qa' })).toBeVisible()
-  await capture(page, 'kanban.png')
-
-  await page.getByRole('button', { name: 'Open details for visual-qa' }).click()
-  const drawer = page.getByRole('complementary')
-  await expect(drawer.getByText('Entrega de design')).toBeVisible()
-  await expect(drawer.getByRole('button', { name: 'Aprovar design' })).toBeVisible()
-  await capture(page, 'kanban-design-approval.png')
-})
