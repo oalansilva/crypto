@@ -4,7 +4,6 @@ import fs from 'node:fs';
 const outDir = new URL('../public/reports/mobile-pwa-kanban-mvp/', import.meta.url).pathname;
 fs.mkdirSync(outDir, { recursive: true });
 const pages = [
-  { name: 'current-kanban', url: 'http://72.60.150.140:5173/kanban' },
   { name: 'prototype', url: 'http://72.60.150.140:5173/prototypes/mobile-pwa-kanban-mvp/index.html' },
 ];
 const viewports = [

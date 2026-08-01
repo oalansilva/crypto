@@ -14,7 +14,6 @@ import { ComboEditPage } from './pages/ComboEditPage'
 import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
-import KanbanPage from './pages/KanbanPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import SystemPreferencesPage from './pages/SystemPreferencesPage'
@@ -65,7 +64,7 @@ function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
-          <Route path="/kanban" element={<KanbanPage />} />
+          <Route path="/kanban" element={<Navigate to="/monitor" replace />} />
           <Route path="/combo/select" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />
           {/* Backward-compat route (old link/bookmark) */}
           <Route path="/combo/selectCrypto" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />
