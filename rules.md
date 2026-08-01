@@ -27,7 +27,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `Todo`: backlog ou pronto para comecar.
    - `Design`: Designer/Critic Agent prepara prototipo, critica e evidencias.
    - `Aprovação de Design`: entrega de design completa aguardando Alan.
-   - `Pronto para Dev`: Alan aprovou o design por arraste ou o bypass sem UI foi auditado.
+   - `Pronto para Dev`: Alan aprovou o design por arraste; desenvolvimento liberado.
    - `Em desenvolvimento`: Codex/Clara esta trabalhando ou validando tecnicamente.
    - `Code Review`: diff pronto para revisao Codex antes do commit; achados bloqueantes corrigidos ou classificados.
    - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
@@ -35,16 +35,21 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
    - `Pronto`: alteracao ja subiu para `main`/producao com evidencia; este e o fechamento final.
    - `Cancelado`: nao sera feito ou foi substituido.
-   - Caminho normal: `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
-   - Cards com `UI impact: none` podem usar `Todo -> Pronto para Dev` somente com justificativa não vazia e auditável.
+   - Caminho obrigatório de todo card: `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
+   - **Guardrail anti-bypass de Design:** nenhum card pode pular `Design`, `Aprovação de Design` ou `Pronto para Dev`. Vale para UI e não-UI, remoções, bugs, docs técnicas com card e pedidos `implemente`/`pode codar`. Não existe bypass `Todo -> Pronto para Dev` nem `Todo -> Em desenvolvimento`.
    - Somente Alan autenticado aprova `Aprovação de Design -> Pronto para Dev`; agentes nunca autoaprovam. Mudança no design/protótipo aprovado invalida o gate.
+   - Código de produção / `/opsx:apply` só depois de `Status=Pronto para Dev`. Pedido de implementação antecipa OpenSpec/Design, não autoriza pular colunas.
    - Falha de QA que exige codigo: `QA -> Em desenvolvimento -> Code Review -> QA`; falha de infraestrutura permanece em `QA` para rerun documentado.
    - Nao descreva `Status=Done` como card fechado/finalizado; use `Done tecnico` ou `aguardando homologacao`.
 
-4. Cards com impacto de UI usam o contrato canônico `.agents/skills/design-critic/SKILL.md` antes da implementação.
+4. Todo card em `Status=Design` usa o contrato canônico `.agents/skills/design-critic/SKILL.md` antes da implementação.
    - Codex invoca `$design-critic`; Cursor invoca `/design-critic`.
-   - O agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
-   - Protótipo HTML deve ser navegável em `frontend/public/prototypes/<slug>/` via URL DEV; o Gist OpenSpec lista só Markdown e nunca HTML.
+   - Com `UI impact: affected`, o agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
+   - Com `UI impact: none`, ainda passa por `Design` e `Aprovação de Design`; a entrega de design é enxuta (decisão, escopo, riscos, `Design Critique`) e registra explicitamente a ausência de superfície visual nova.
+   - Protótipo HTML, quando houver, deve ser navegável em `frontend/public/prototypes/<slug>/` via URL DEV; o Gist OpenSpec lista só Markdown e nunca HTML.
+   - **Fidelidade ao sistema atual:** quando a tela/rota/shell já existir no produto, o protótipo MUST partir do UI atual (shell, nav, tokens, densidade, componentes) e redesenhar só a mudança em cima dele, para Alan validar o delta. Proibido inventar layout/marketing paralelo. Tela nova (ainda inexistente) pode ser desenhada do zero, ainda assim obedecendo `DESIGN.md` e o shell do app quando for superfície autenticada.
+   - **Validação obrigatória do protótipo:** antes de `Design Agent verdict: PASS`, abrir a URL final em navegador real, validar desktop/mobile, estado padrão, interações e asserts dos critérios críticos. Para remoção, provar que o elemento não está visível/existe no estado final. HTTP 200, build, leitura do HTML ou `curl` não bastam. Registrar URL, viewports, ações/asserts e resultado em `design.md` (`## Prototype Validation`). Qualquer falha ou navegador indisponível mantém `BLOCKED`.
+   - Depois de qualquer alteração no protótipo ou rebuild/restart, repetir a validação no navegador; evidência anterior fica inválida.
    - O agente pode mover somente `Design -> Aprovação de Design` quando a evidência estiver completa; nunca pode executar a aprovação humana.
 
 5. Homologacao e release seguem `alan-workflow`.

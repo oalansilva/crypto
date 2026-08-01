@@ -39,7 +39,6 @@ from app.routes.monitor_spot_stop import router as monitor_spot_stop_router
 from app.routes.system_preferences import router as system_preferences_router
 from app.routes.retrospectives import router as retrospectives_router
 from app.routes.admin_users import router as admin_users_router
-from app.routes.admin_backfill import router as admin_backfill_router
 from app.routes.admin_market_indicators import router as admin_market_indicators_router
 from app.routes.monitor_telegram_alerts import router as monitor_telegram_alerts_router
 from app.services.signal_monitor import signal_monitor
@@ -310,7 +309,6 @@ app.include_router(monitor_spot_stop_router)
 app.include_router(system_preferences_router)
 app.include_router(retrospectives_router)
 app.include_router(admin_users_router)
-app.include_router(admin_backfill_router)
 app.include_router(admin_market_indicators_router)
 app.include_router(monitor_telegram_alerts_router)
 
