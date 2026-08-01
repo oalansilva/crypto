@@ -40,7 +40,7 @@ Exemplos de evidencia:
   - `Todo`: backlog ou pronto para comecar.
   - `Design`: Designer/Critic Agent prepara protótipo, crítica e evidências.
   - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan.
-  - `Pronto para Dev`: design aprovado por Alan ou bypass sem UI auditado.
+  - `Pronto para Dev`: design aprovado por Alan via arraste; único status que libera desenvolvimento.
   - `Em desenvolvimento`: trabalho técnico ativo.
   - `Code Review`: diff pronto para revisao Codex antes do commit.
   - `QA`: SHA revisado em validacao automatizada, incluindo `qa-gate` e Playwright visual.
@@ -54,12 +54,17 @@ Exemplos de evidencia:
 
 ### Gate de design
 
-- Card com `UI impact: affected` passa por `Design` e usa a skill canônica `.agents/skills/design-critic/SKILL.md` (`$design-critic` no Codex; `/design-critic` no Cursor).
-- A entrega precisa conter `design.md`, protótipo versionado ou verificável, `Design Critique` cobrindo produto, UX, acessibilidade, responsividade e estados, e veredito explícito do agente.
+- **Todo card** passa por `Design -> Aprovação de Design -> Pronto para Dev` antes de implementação. Não existe bypass.
+- Todo card em `Design` usa a skill canônica `.agents/skills/design-critic/SKILL.md` (`$design-critic` no Codex; `/design-critic` no Cursor).
+- Com `UI impact: affected`, a entrega precisa conter `design.md`, protótipo versionado ou verificável, `Design Critique` e veredito explícito do agente.
+- Quando a tela já existir, o protótipo parte do UI atual e redesenha só o delta; tela nova segue `DESIGN.md` + shell do app.
+- Antes de `PASS`, a URL final precisa ser validada em navegador real nos viewports desktop/mobile, cobrindo estado padrão, interações e asserts dos critérios críticos. HTTP 200/build não bastam; a evidência fica registrada em `## Prototype Validation`.
+- Em remoções, o estado final precisa provar ausência/invisibilidade do elemento. Mudança posterior no protótipo ou rebuild/restart exige nova validação.
+- Com `UI impact: none`, a entrega de design é enxuta (`design.md` + `Design Critique` + Prototype N/A justificado), mas as colunas continuam obrigatórias.
 - O Designer/Critic Agent pode mover apenas `Design -> Aprovação de Design` quando a entrega estiver completa.
-- Alan aprova arrastando `Aprovação de Design -> Pronto para Dev`. O gesto aprova a versão específica do design e do protótipo; agentes não podem executar essa transição.
+- Alan aprova arrastando `Aprovação de Design -> Pronto para Dev`. O gesto aprova a versão específica do design e do protótipo (quando houver); agentes não podem executar essa transição.
+- Pedidos como `implemente` / `pode codar` não autorizam pular o gate.
 - Se o design ou protótipo aprovado mudar, a aprovação fica obsoleta e o desenvolvimento permanece bloqueado até nova aprovação.
-- Card com `UI impact: none` pode usar `Todo -> Pronto para Dev` somente com justificativa não vazia e auditável.
 
 Para reduzir largura sem alterar status, o Kanban oferece as lentes `Produto e Design` (`Todo`, `Design`, `Aprovação de Design`, `Pronto para Dev`), `Entrega` (`Pronto para Dev`, `Em desenvolvimento`, `Code Review`, `QA`, `Done`, `Homologado`, `Pronto`) e `Todas`.
 

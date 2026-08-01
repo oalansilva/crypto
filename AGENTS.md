@@ -19,12 +19,12 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 - **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
 - **Comunicação padrão com Alan:** usar sempre a skill `caveman` em modo `lite`: curto, direto, sem filler, mantendo clareza técnica. Só desligar se Alan pedir explicitamente `stop caveman` ou `normal mode`.
-- **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. O fluxo canônico é `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal. O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo `main`/produção com evidencia.
+- **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. O fluxo obrigatório de **todo** card é `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal. **Proibido** pular `Design`, `Aprovação de Design` ou `Pronto para Dev` (inclusive com `UI impact: none`, remoção, bug ou pedido `implemente`). O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo `main`/produção com evidencia.
 - **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
 - **Regra de merge de release/lote:** após abrir um PR para `main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
 - **Regra de autonomia operacional:** dentro de fechamento de lote/release solicitado por Alan, após validação e evidência, o agente tem autonomia para repetir tentativas manuais de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
-- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, concluir o gate de design quando houver UI, aguardar `Status=Pronto para Dev`, mover para `Status=Em desenvolvimento` antes de aplicar tarefas de código, mover para `Status=Code Review` antes do commit, rodar review Codex no diff exato, commit/push do SHA revisado, mover para `Status=QA`/`Fluxo=QA`, aguardar `qa-gate` e Playwright visual verdes, integrar por PR em `develop`, executar `./restart`, validar a URL e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
+- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, **sempre** concluir o gate `Design -> Aprovação de Design` e só então aguardar `Status=Pronto para Dev`, mover para `Status=Em desenvolvimento` antes de aplicar tarefas de código, mover para `Status=Code Review` antes do commit, rodar review Codex no diff exato, commit/push do SHA revisado, mover para `Status=QA`/`Fluxo=QA`, aguardar `qa-gate` e Playwright visual verdes, integrar por PR em `develop`, executar `./restart`, validar a URL e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
 - **Regra de conclusão de correção:** para qualquer correção de bug ou ajuste solicitado por Alan, só diga `concluído` depois de validar, fazer merge/integração da branch de trabalho em `develop`, executar `./restart` e confirmar que a URL do sistema está servindo o bundle/resultado novo. Antes disso, reporte como `corrigido na branch`, `validado localmente` ou `aguardando integração`, conforme o estado real.
 - **Regra de homologação direta por card (solicitação do cliente):** seguir `alan-workflow`; no cripto, homologacao significa aprovacao funcional em `develop`.
 - **Guardrail anti-release acidental:** seguir `alan-workflow`; no cripto, homologacao nao autoriza `main`, PR, merge, archive ou release.
@@ -83,7 +83,7 @@ De-para principal:
 | --- | --- | --- | --- | --- |
 | `/opsx:new <change>` | `/opsx-new <change>` | `$openspec-new-change` | `openspec new change "<change>"`; `openspec status --change "<change>"`; `openspec instructions <artifact-id> --change "<change>"` | Cria apenas o scaffold da change, mostra status e instrução do primeiro artifact. Não cria artifacts ainda. |
 | `/opsx:ff <change>` | `/opsx-ff <change>` | `$openspec-ff-change` | `openspec status --change "<change>" --json`; `openspec instructions <artifact-id> --change "<change>" --json` | Gera todos os artifacts necessários para ficar pronto para implementação, respeitando dependências e templates retornados pela CLI. |
-| `/opsx:apply <change>` | `/opsx-apply <change>` | `$openspec-apply-change` | `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Lê `contextFiles` e implementa as tasks pendentes. Em cards com UI, só começa código depois de `Pronto para Dev`. |
+| `/opsx:apply <change>` | `/opsx-apply <change>` | `$openspec-apply-change` | `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Lê `contextFiles` e implementa as tasks pendentes. Em **todo** card, só começa código depois de `Pronto para Dev`. |
 | `/opsx:verify <change>` | `/opsx-verify <change>` | `$openspec-verify-change` | `openspec list --json` quando a change estiver ambígua; `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Verifica completude, corretude e coerência entre artifacts, specs, tasks, design, testes e implementação real. |
 | `/opsx:archive <change>` | `/opsx-archive <change>` | `$openspec-archive-change` | `openspec status --change "<change>" --json`; avaliar sync de specs; mover para `openspec/changes/archive/YYYY-MM-DD-<change>/` | Arquiva somente no fechamento de lote/release após homologação, checando artifacts, tasks, delta specs e registrando warnings se algo ficar incompleto. |
 
@@ -114,18 +114,18 @@ publicar artifacts OpenSpec no card
   -> seguir alan-workflow; no cripto, usar Gist `crypto openspec <change>` ou links permanentes
   -> comentar o card com change, arquivos e comandos gh gist view
 
-gate de design quando UI impact = affected
-  -> mover para Design e concluir design.md, Prototype e Design Critique
+gate de design obrigatório (todo card)
+  -> mover para Design; declarar UI impact affected|none com justificativa
+  -> invocar design-critic; concluir design.md + Design Critique
+  -> se UI impact = affected: Prototype verificável também obrigatório
+  -> se UI impact = none: Prototype pode ser N/A explícito, sem pular colunas
   -> mover para Aprovação de Design e aguardar Alan
   -> Alan aprova arrastando para Pronto para Dev
-
-bypass quando UI impact = none
-  -> registrar justificativa não vazia
-  -> mover Todo para Pronto para Dev
+  -> proibido bypass Todo->Pronto para Dev ou Todo/Design->Em desenvolvimento
 
 /opsx:apply <change>
   -> usar $openspec-apply-change
-  -> mover Pronto para Dev para Em desenvolvimento
+  -> somente com Status=Pronto para Dev: mover para Em desenvolvimento
   -> implementar tasks e atualizar tasks.md
 
 /opsx:verify <change>
@@ -146,10 +146,13 @@ Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover ar
 ### Designer/Critic Agent compartilhado
 
 - O contrato canônico fica em `.agents/skills/design-critic/SKILL.md`. `.codex/skills/design-critic/SKILL.md` e `.cursor/skills/design-critic/SKILL.md` são adaptadores finos e não devem duplicar regras.
-- No Codex, invoque `$design-critic`; no Cursor, invoque `/design-critic`. Pedido equivalente em linguagem natural também deve acionar a skill durante `Status=Design`.
-- O Designer/Critic Agent produz ou refatora o protótipo, critica produto, UX, acessibilidade, responsividade e estados, resolve achados bloqueantes no escopo e registra `Design Agent verdict` no `design.md`.
-- O agente só pode mover `Design -> Aprovação de Design` quando `design.md`, `Prototype` e `Design Critique` estiverem completos. Nunca pode mover `Aprovação de Design -> Pronto para Dev`, autoaprovar ou alegar identidade de Alan.
+- No Codex, invoque `$design-critic`; no Cursor, invoque `/design-critic`. Pedido equivalente em linguagem natural também deve acionar a skill durante `Status=Design` de **qualquer** card.
+- O Designer/Critic Agent prepara a entrega de design: com UI, produz/refatora o protótipo e critica produto/UX/a11y/responsividade/estados; sem UI nova, registra decisão enxuta e ausência de superfície visual. Resolve achados bloqueantes no escopo e registra `Design Agent verdict` no `design.md`.
+- O agente só pode mover `Design -> Aprovação de Design` quando `design.md` e `Design Critique` estiverem completos e, se `UI impact: affected`, o `Prototype` também. Nunca pode mover `Aprovação de Design -> Pronto para Dev`, autoaprovar ou alegar identidade de Alan.
 - **Protótipos HTML navegáveis (Cripto):** publicar em `frontend/public/prototypes/<change-or-card-slug>/` (preferir `index.html`). URL canônica de revisão: `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/`. Não use Gist como superfície de visualização de HTML (Gist mostra código-fonte). No comentário do card, o bloco **OpenSpec** lista só Markdown do Gist; o bloco **Protótipo navegável** traz o link HTTP da tela. Após gravar o arquivo em `public/`, rebuild/restart do frontend DEV se necessário para o `preview` servir o `dist/` atualizado. Helper: `publish-openspec-card-artifacts.sh` com `--prototype-url` (nunca faz upload de HTML no Gist).
+- **Fidelidade do protótipo ao sistema atual:** se a tela/rota/shell já existir, o protótipo deve clonar a UI atual (sidebar/header, tokens de `DESIGN.md`/`index.css`, tipografia, densidade, estados) e redesenhar apenas o delta do card por cima. Alan valida diferença, não uma tela inventada. Se a tela ainda não existir, desenhar a nova superfície alinhada a `DESIGN.md` e ao shell autenticado do app; não usar layouts genéricos/marketing.
+- **Browser gate antes do PASS:** abrir a URL final do protótipo em navegador real (preferir Playwright), em desktop e mobile, e exercitar estado padrão + todas as interações relevantes. Transformar critérios críticos em asserts; em remoções, provar `count=0`/`not visible`/`display:none` no estado final. Verificar console/page errors. Registrar comando/URL/viewports/asserts em `design.md` sob `## Prototype Validation`. `curl`, HTTP 200, build ou inspeção estática não substituem esse gate.
+- **Evidência vinculada à versão:** qualquer alteração posterior em HTML/CSS/JS, rebuild ou restart invalida a validação anterior e exige nova execução. Sem navegador disponível ou com assert falhando, manter `Status=Design` e `Design Agent verdict: BLOCKED`.
 
 ### Falhas antigas em `openspec validate --all`
 
@@ -183,9 +186,9 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 
 1. Atualizar `develop`.
 2. Criar branch `change-<id>-<slug>` ou `card-<id>-<slug>`.
-3. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia.
+3. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia (classificação de evidência; **não** autoriza pular colunas).
 4. Executar OpenSpec (`/opsx:new`, `/opsx:ff`) e publicar os artifacts no card.
-5. Com UI afetada, mover para `Status=Design`, invocar `design-critic`, concluir `design.md`, `Prototype` e `Design Critique`, mover para `Status=Aprovação de Design` e aguardar Alan arrastar para `Pronto para Dev`. Sem UI, registrar o bypass e mover `Todo -> Pronto para Dev`.
+5. Mover para `Status=Design`, invocar `design-critic`, concluir `design.md` + `Design Critique` (e `Prototype` quando UI impact = affected), mover para `Status=Aprovação de Design` e **aguardar Alan** arrastar para `Pronto para Dev`. Pedidos como `implemente` / `pode codar` **não** autorizam pular este gate.
 6. Somente em `Pronto para Dev`, mover para `Status=Em desenvolvimento`, executar `/opsx:apply` e `/opsx:verify` e implementar.
 7. Rodar testes proporcionais/focados e validação OpenSpec da change.
 8. Mover card para `Status=Code Review` e sincronizar `Fluxo=Code Review` quando existir.
@@ -200,9 +203,9 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 
 - O campo `Status` e a fonte principal das colunas. O campo `Fluxo`, quando existir, e substatus/legado; se houver divergencia, `Status` prevalece.
 - `Todo`: backlog ou pronto para comecar.
-- `Design`: Designer/Critic Agent prepara protótipo, crítica e evidências da solução.
-- `Aprovação de Design`: entrega completa aguardando decisão humana de Alan.
-- `Pronto para Dev`: design aprovado por Alan ou bypass sem UI auditado; desenvolvimento liberado.
+- `Design`: Designer/Critic Agent prepara evidências da solução (protótipo quando houver UI; decisão enxuta quando não houver).
+- `Aprovação de Design`: entrega completa aguardando decisão humana de Alan. Coluna obrigatória para todo card.
+- `Pronto para Dev`: design aprovado por Alan via arraste; único status que libera desenvolvimento.
 - `Em desenvolvimento`: Codex/Clara esta implementando, investigando, validando ou corrigindo achados de review.
 - `Code Review`: diff pronto para review Codex antes do commit; achados bloqueantes precisam ser corrigidos ou classificados.
 - `QA`: SHA revisado em validacao automatizada; `qa-gate`, Playwright visual e demais checks obrigatorios precisam terminar verdes.
@@ -211,7 +214,7 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 - `Pronto`: conteúdo do card entrou em `main`/produção com evidencia; este e o fechamento final.
 - `Cancelado`: nao sera feito ou foi substituido.
 
-O arraste `Aprovação de Design -> Pronto para Dev` aprova a versão específica do `design.md` e do protótipo. Apenas Alan autenticado pode executá-lo. Se uma dessas evidências mudar, a aprovação fica obsoleta e o desenvolvimento deve permanecer bloqueado até nova aprovação. Retornos controlados antes de `Done` são `Aprovação de Design -> Design`, `Code Review -> Em desenvolvimento` e `QA -> Em desenvolvimento`.
+O arraste `Aprovação de Design -> Pronto para Dev` aprova a versão específica do `design.md` e, quando existir, do protótipo. Apenas Alan autenticado pode executá-lo. Se uma dessas evidências mudar, a aprovação fica obsoleta e o desenvolvimento deve permanecer bloqueado até nova aprovação. Retornos controlados antes de `Done` são `Aprovação de Design -> Design`, `Code Review -> Em desenvolvimento` e `QA -> Em desenvolvimento`. Se um agente tiver avançado indevidamente para `Em desenvolvimento` sem passar por `Design`/`Aprovação de Design`/`Pronto para Dev`, deve regredir o card para `Design` (ou `Aprovação de Design` se a evidência de design já estiver completa), preservar o trabalho em branch e parar o `/opsx:apply` até a aprovação humana.
 
 Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main`.
 

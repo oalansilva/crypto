@@ -7,7 +7,8 @@ type TestUser = {
   isAdmin: boolean
 }
 
-const adminOnlyLabels = ['Combo', 'Backfill']
+const adminOnlyLabels = ['Combo']
+const discontinuedAdminLabels = ['Backfill']
 
 async function setupAuthenticatedUser(page: any, user: TestUser) {
   await page.addInitScript((authUser: TestUser) => {
@@ -74,6 +75,9 @@ test('common user does not see admin-only navigation entries', async ({ page }) 
   for (const label of adminOnlyLabels) {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toHaveCount(0)
   }
+  for (const label of discontinuedAdminLabels) {
+    await expect(navigation.getByRole('link', { name: label, exact: true })).toHaveCount(0)
+  }
 })
 
 test('common user direct admin route redirects to monitor', async ({ page }) => {
@@ -104,5 +108,8 @@ test('admin user sees admin-only navigation entries', async ({ page }) => {
 
   for (const label of adminOnlyLabels) {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible()
+  }
+  for (const label of discontinuedAdminLabels) {
+    await expect(navigation.getByRole('link', { name: label, exact: true })).toHaveCount(0)
   }
 })
