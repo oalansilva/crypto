@@ -197,13 +197,6 @@ textarea {
   padding-top: 1rem;
 }
 
-.page-shell-wide {
-  width: 100%;
-  max-width: none;
-  padding-top: clamp(0.75rem, 0.5rem + 0.6vw, 1.1rem);
-  padding-inline: clamp(0.75rem, 0.7rem + 0.9vw, 1.4rem);
-}
-
 .app-main-offset {
   padding-top: var(--app-offset-mobile);
 }
@@ -617,7 +610,6 @@ textarea {
 .balances-page .text-zinc-900,
 .balances-page .text-zinc-800,
 .balances-page .text-zinc-700,
-.kanban-page .text-zinc-900,
 .openspec-page .text-slate-900 {
   color: var(--text-primary) !important;
 }
@@ -630,8 +622,6 @@ textarea {
 .balances-page .text-zinc-500,
 .balances-page .text-zinc-600,
 .balances-page .text-zinc-700,
-.kanban-page .text-zinc-400,
-.kanban-page .text-zinc-500,
 .openspec-page .text-slate-400,
 .openspec-page .text-slate-500,
 .openspec-page .text-slate-600 {
@@ -645,8 +635,6 @@ textarea {
 .balances-page .bg-zinc-50,
 .balances-page .bg-zinc-100,
 .balances-page .bg-slate-50,
-.kanban-page .bg-zinc-950,
-.kanban-page .bg-zinc-900,
 .openspec-page .bg-slate-50,
 .openspec-page .bg-slate-100 {
   background: var(--bg-elevated) !important;
@@ -658,8 +646,6 @@ textarea {
 .favorites-page .border-zinc-300,
 .balances-page .border-zinc-200,
 .balances-page .border-zinc-300,
-.kanban-page .border-zinc-200,
-.kanban-page .border-zinc-300,
 .openspec-page .border-slate-200 {
   border-color: var(--border-default) !important;
 }
@@ -682,9 +668,7 @@ textarea {
 .favorites-page .glass-strong,
 .balances-page .glass,
 .balances-page .glass-strong,
-.openspec-page .rounded-xl.border,
-.kanban-page .bg-zinc-950\/40,
-.kanban-page .bg-zinc-950 {
+.openspec-page .rounded-xl.border {
   background: var(--bg-elevated) !important;
   box-shadow: var(--shadow-card);
 }
@@ -789,8 +773,7 @@ textarea {
   padding: 1.25rem;
 }
 
-.favorites-page .max-w-\[1920px\],
-.kanban-page .max-w-\[1920px\] {
+.favorites-page .max-w-\[1920px\] {
   width: min(100%, 1600px);
   margin: 0 auto;
   padding-inline: clamp(0.5rem, 1.2vw, 1.5rem);
@@ -1630,17 +1613,6 @@ textarea {
   }
 }
 
-.kanban-page .page-card,
-.kanban-page .page-card-muted {
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.kanban-page .glass > div,
-.kanban-page .glass .overflow-x-auto {
-  position: relative;
-}
-
 .monitor-page [data-testid="monitor-status-tab"] .container {
   width: min(100%, 1520px);
   padding-inline: clamp(1rem, 2vw, 2rem);
@@ -1663,11 +1635,6 @@ textarea {
 
   .page-shell {
     padding-top: 1rem;
-  }
-
-  .page-shell-wide {
-    padding-top: clamp(0.85rem, 0.55rem + 0.5vw, 1.2rem);
-    padding-inline: clamp(0.85rem, 0.6rem + 0.8vw, 1.5rem);
   }
 }
 
