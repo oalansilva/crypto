@@ -4,10 +4,7 @@ from app.main import app
 
 
 def test_admin_backfill_api_routes_are_not_registered():
-    paths = {
-        getattr(route, "path", "") or ""
-        for route in app.routes
-    }
+    paths = {getattr(route, "path", "") or "" for route in app.routes}
     assert not any("/admin/backfill" in path for path in paths)
 
 
