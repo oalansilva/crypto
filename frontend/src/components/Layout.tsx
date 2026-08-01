@@ -4,7 +4,6 @@ import { FirstUseOnboarding } from './onboarding/FirstUseOnboarding'
 
 export function Layout() {
   const location = useLocation()
-  const isKanbanRoute = location.pathname.startsWith('/kanban')
   const shouldShowFirstUseOnboarding =
     !location.pathname.startsWith('/help') && !location.pathname.startsWith('/profile')
 
@@ -25,7 +24,7 @@ export function Layout() {
       <AppNav />
 
       <div className="app-main-offset" style={{ marginLeft: 'var(--app-sidebar-width)' }}>
-        <div className={isKanbanRoute ? 'page-shell page-shell-wide' : 'page-shell'}>
+        <div className="page-shell">
           {shouldShowFirstUseOnboarding ? <FirstUseOnboarding /> : null}
           <Outlet />
         </div>
