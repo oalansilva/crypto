@@ -1,6 +1,6 @@
 # Backend unit-test audit (card #366)
 
-Status: implementation evidence in progress.  The machine-readable inventory
+Status: QA evidence captured for PR #371.  The machine-readable inventory
 is the source of truth: [`backend/tests/unit/test_inventory.json`](../backend/tests/unit/test_inventory.json).
 This document is the human-readable companion and must be regenerated when a
 unit-test file is added, renamed, or removed.
@@ -17,9 +17,10 @@ unit-test file is added, renamed, or removed.
 - Reference environment: GitHub Actions `ubuntu-latest`, Python 3.12,
   PostgreSQL 15 service, `coverage run --parallel-mode`, and the five-run
   wall-time comparison supplied with the card.
-- Target: optimized median at or below **198.8s** (30% below 284s). Three
-  comparable PR runs and QA evidence remain pending until the branch is
-  reviewed and executed in CI.
+- Target: optimized median at or below **198.8s** (30% below 284s).
+- Optimized PR runs on reviewed commit `ef18e81c`: **1m55s**, **1m49s**, and
+  **1m57s**.  The median is **1m55s (115s)**, a **59.5% reduction** from the
+  284s reference median.
 
 The baseline runner started one `pytest`/coverage process per file.  The
 optimized runner uses one coverage session for `backend/tests/unit`, retains
@@ -45,12 +46,12 @@ private schema.  SQLite is not used by unit persistence tests.
 Opportunity-service dataframe and in-memory service cases remain
 pure fakes and do not request the PostgreSQL fixture.
 
-The card-366 rework owner is the backend test-harness lane.  Its current
-status is `Em desenvolvimento`: background services, combo templates, runtime
-worker schema setup, and opportunity persistence cases use explicit
-case-level fixtures; their pure/mock cases do not pay reset cost.  The
-inventory evidence records this split.  Performance proof (5.3) and final QA
-(5.4) remain open.
+The card-366 rework owner is the backend test-harness lane.  Background
+services, combo templates, runtime worker schema setup, and opportunity
+persistence cases use explicit case-level fixtures; their pure/mock cases do
+not pay reset cost.  The inventory evidence records this split.  Performance
+proof and final QA were completed on PR #371 without changing the reviewed
+implementation commit.
 
 ## Portfolio decisions
 
@@ -146,17 +147,21 @@ SECONDS=0
 timeout 20m coverage run --parallel-mode --source=backend/app -m pytest \
   -vv --durations=20 --junitxml=artifacts/backend-unit/junit.xml \
   backend/tests/unit 2>&1 | tee artifacts/backend-unit/pytest.log
+pytest_status=${PIPESTATUS[0]}
 python scripts/benchmark_backend_unit_tests.py \
   --junit-xml artifacts/backend-unit/junit.xml \
   --pytest-log artifacts/backend-unit/pytest.log \
   --output artifacts/backend-unit/timing.json \
   --markdown-output artifacts/backend-unit/timing.md \
   --started-at 0 --finished-at "$SECONDS"
+benchmark_status=$?
+if [ "$pytest_status" -ne 0 ]; then exit "$pytest_status"; fi
+exit "$benchmark_status"
 ```
 
-The branch-level evidence is intentionally not a claim of the 30% target:
-three comparable optimized GitHub runs, combined total/diff coverage, and
-the final QA/visual gates are pending tasks 5.3/5.4.
+The commands above preserve the test/timeout result even when the benchmark
+can still summarize a partial JUnit/log.  The CI implementation additionally
+creates fallback timing files when JUnit is absent or incomplete.
 
 ## Local implementation verification
 
@@ -177,5 +182,30 @@ diff, so the differential gate had no changed production lines to score.
 The local timing artifact is generated at
 `/tmp/card366-artifacts/rework-full-2/timing.json` (with matching JUnit/log/
 Markdown files); CI will upload the same JSON/JUnit/log bundle from
-`backend-unit-tests`.  These local timings are not substituted for the three
-comparable PR runs required by task 5.3.
+`backend-unit-tests`.
+
+## Final QA and performance evidence
+
+All three comparable GitHub Actions attempts used the same reviewed commit,
+Linux runner, Python 3.12, PostgreSQL 15, consolidated unit selection, and
+coverage mode:
+
+| Attempt | `backend-unit-tests` | Result |
+| --- | ---: | --- |
+| 1 | 1m55s | green |
+| 2 | 1m49s | green |
+| 3 | 1m57s | green |
+
+The optimized median is **1m55s (115s)**.  Against the **4m44s (284s)**
+reference median, the reduction is `(284 - 115) / 284 = 59.5%`, exceeding the
+30% acceptance target.  Across the three attempts, backend integration tests,
+the 70% coverage gate, OpenSpec validation, frontend checks, required
+Playwright visual QA, and `qa-gate` all reached terminal success.  The complete
+check history is available on [PR #371](https://github.com/oalansilva/crypto/pull/371/checks).
+
+Code Review left two preventive, non-blocking guardrail observations for
+future hardening: the inventory validator recognizes safe-URL fixtures as
+isolation evidence even though current persistence entries also request the
+reset fixture, and the CI records pytest's pipeline status but does not
+separately fail on a rare `tee` write error.  Neither gap affected the observed
+three green attempts or PostgreSQL isolation in the current inventory.

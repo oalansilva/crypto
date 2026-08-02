@@ -27,5 +27,5 @@
 
 - [x] 5.1 Run focused harness/configuration tests and the complete backend unit suite against PostgreSQL until green.
 - [x] 5.2 Run backend integration tests against PostgreSQL and verify combined total and differential coverage remain at least 70%.
-- [ ] 5.3 Record at least three comparable optimized runs and prove a median improvement of at least 30%, or isolate the external bottleneck and create/link the required follow-up action.
-- [ ] 5.4 Run OpenSpec validation, required Playwright visual QA, `qa-gate`, and document the final audit table, commands, timings, coverage, and CI links on card #366.
+- [x] 5.3 Record at least three comparable optimized runs and prove a median improvement of at least 30%, or isolate the external bottleneck and create/link the required follow-up action.
+- [x] 5.4 Run OpenSpec validation, required Playwright visual QA, `qa-gate`, and document the final audit table, commands, timings, coverage, and CI links on card #366.
