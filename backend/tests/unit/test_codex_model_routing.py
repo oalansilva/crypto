@@ -210,7 +210,7 @@ def test_routing_contract_covers_fixed_stages_bootstrap_and_activation() -> None
         "Before spawn",
         "After return",
         "Any unclassified mutation or action outside the packet blocks the stage",
-        "`fork_turns=\"none\"` is separate control-plane evidence",
+        '`fork_turns="none"` is separate control-plane evidence',
         "explicit spawn request and the native spawn result",
         "allowlists only five runtime fields",
         "does not inspect or prove `fork_turns`",
@@ -247,26 +247,22 @@ def test_routing_contract_covers_fixed_stages_bootstrap_and_activation() -> None
     assert "contenção comportamental" in agents_md
     assert "sandbox efetivo mais amplo que o pedido não bloqueia sozinho" in agents_md
     assert "estado relevante registrado antes do spawn" in agents_md
-    assert "`fork_turns=\"none\"` é evidência separada" in agents_md
+    assert '`fork_turns="none"` é evidência separada' in agents_md
     assert "inspector local `inspect-agent-runtime.sh` prova somente os cinco campos" in agents_md
     assert "nenhuma mutação observada dentro do inventário obrigatório" in agents_md
     assert "não significa zero mutação global" in agents_md
     assert "sandbox efetivo mais amplo" in rules
     assert "Toda lane Luna usa contenção comportamental" in rules
-    assert "`fork_turns=\"none\"` deve ser provado separadamente" in rules
+    assert '`fork_turns="none"` deve ser provado separadamente' in rules
     assert "nenhuma mutação observada dentro do inventário obrigatório" in rules
 
 
 def test_behavioral_containment_contract_rejects_scope_and_review_mutation() -> None:
     skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
     skill_contract = " ".join(skill.split())
-    implementer = (AGENTS_DIR / "crypto-luna-implementer.toml").read_text(
-        encoding="utf-8"
-    )
+    implementer = (AGENTS_DIR / "crypto-luna-implementer.toml").read_text(encoding="utf-8")
     reviewer = (AGENTS_DIR / "crypto-luna-reviewer.toml").read_text(encoding="utf-8")
-    release_manager = (AGENTS_DIR / "crypto-luna-release-manager.toml").read_text(
-        encoding="utf-8"
-    )
+    release_manager = (AGENTS_DIR / "crypto-luna-release-manager.toml").read_text(encoding="utf-8")
 
     # These assertions are the static contract for the absent runtime
     # orchestrator: a lane is accepted only after independent before/after
@@ -275,7 +271,10 @@ def test_behavioral_containment_contract_rejects_scope_and_review_mutation() -> 
     assert "Only assigned paths changed" in skill_contract
     assert "Any out-of-scope mutation" in implementer
     reviewer_contract = " ".join(reviewer.split())
-    assert "Any mutation, new artifact or unauthorized external action observed in that inventory rejects" in reviewer_contract
+    assert (
+        "Any mutation, new artifact or unauthorized external action observed in that inventory rejects"
+        in reviewer_contract
+    )
     assert "Any code change, unhomologated content" in release_manager
     assert "Any unclassified mutation or action outside the packet blocks" in skill_contract
     assert "the reviewer does not repair it" in skill_contract
@@ -294,9 +293,7 @@ def test_behavioral_containment_contract_rejects_scope_and_review_mutation() -> 
 def test_fork_control_is_separate_from_allowlisted_runtime_inspector() -> None:
     skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
     skill_contract = " ".join(skill.split())
-    inspector = (SKILL_DIR / "scripts" / "inspect-agent-runtime.sh").read_text(
-        encoding="utf-8"
-    )
+    inspector = (SKILL_DIR / "scripts" / "inspect-agent-runtime.sh").read_text(encoding="utf-8")
 
     assert '`fork_turns="none"` is separate control-plane evidence' in skill_contract
     assert "explicit spawn request and the native spawn result" in skill_contract
