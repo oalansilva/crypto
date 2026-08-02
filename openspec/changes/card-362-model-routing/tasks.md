@@ -27,7 +27,7 @@
 
 - [x] 5.1 Validate the installed routing statically through TOML parsing, exact profile/model/effort/sandbox assertions, skill validation, OpenSpec and focused tests; query `${CODEX_HOME:-$HOME/.codex}/models_cache.json` with `jq -e` and prove Sol supports `high` while Luna supports `max`; document that runtime evidence is collected only when each lane is naturally used, without pre-spawning agents or changing server security.
 - [x] 5.2 Run a fresh independent read-only Codex review on the bootstrap diff, resolve/classify findings, commit/push that content as the reviewed SHA, and move the card to QA. Require the exact Luna reviewer for tasks started after the profiles are versioned and loaded.
-- [ ] 5.3 Run Sol High `/opsx:verify` and mandatory QA evidence on the reviewed SHA, integrate in `develop`, prove integrated-tree equivalence or revalidate affected checks, execute `./restart`, validate application health at the DEV URL (not agent-routing runtime proof), and publish the Done technical handoff.
+- [x] 5.3 Run Sol High `/opsx:verify` and mandatory QA evidence on the reviewed SHA, integrate in `develop`, prove integrated-tree equivalence or revalidate affected checks, execute `./restart`, and validate application health at the DEV URL (not agent-routing runtime proof).
 
 Bootstrap decision (2026-08-02): Alan explicitly rejected changes to server
 configuration for runtime smoke tests. The card accepts profile installation by
@@ -38,6 +38,20 @@ authorized release.
 Code Review evidence (2026-08-02): fresh independent read-only review returned
 PASS with no findings after rework; reviewed SHA `d4c6e9a3` was pushed to
 `origin/card-362-model-routing`, and both `Status` and `Fluxo` advanced to `QA`.
+
+QA and integration evidence (2026-08-02): formatting rework was independently
+reviewed and published as `0079256a` (card evidence: issue comment
+`5154872411`); CI run `30729738750` finished with
+`qa-gate`, Playwright, backend, coverage, frontend, OpenSpec and format green.
+PR #363 squash-merged into `develop` as `12427819`; the integrated tree matched
+the reviewed tree. Canonical `./restart` completed with PostgreSQL migrations,
+frontend build and DEV services active; `https://dev.criptofarol.com.br/api/health`
+returned `status=ok` and the frontend returned HTTP 200. This is application
+health evidence, not a claim of post-activation Luna runtime routing.
+
+The mandatory Done handoff is a post-integration Project/issue transition, not
+a versioned implementation checkbox; it is published only after this factual
+closeout record is integrated and the final restart/health check is repeated.
 
 Rework gate (2026-08-02): Alan reapproved the revised design by moving the card
 to `Pronto para Dev`; implementation resumed under the bootstrap exception and
