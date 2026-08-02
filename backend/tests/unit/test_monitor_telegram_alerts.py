@@ -24,8 +24,8 @@ from app.services.monitor_telegram_alerts import (
 
 
 @pytest.fixture
-def monitor_alert_db_session():
-    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
+def monitor_alert_db_session(postgres_isolation, unit_database_url):
+    engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
