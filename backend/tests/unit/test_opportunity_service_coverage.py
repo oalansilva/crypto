@@ -5,7 +5,7 @@ import pytest
 import time
 from uuid import uuid4
 
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 
 from app.database import SessionLocal
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
@@ -18,15 +18,21 @@ from app.services.opportunity_service import (
 from app.services import opportunity_service
 
 
-@pytest.fixture(autouse=True)
-def _ensure_notify_telegram_column():
-    with SessionLocal() as db:
-        db.execute(
-            text(
-                "ALTER TABLE favorite_strategies ADD COLUMN IF NOT EXISTS notify_telegram BOOLEAN NOT NULL DEFAULT TRUE"
+@pytest.fixture
+def opportunity_postgres(postgres_isolation, unit_database_url):
+    engine = create_engine(unit_database_url, pool_pre_ping=True)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE favorite_strategies "
+                    "ADD COLUMN IF NOT EXISTS notify_telegram BOOLEAN "
+                    "NOT NULL DEFAULT TRUE"
+                )
             )
-        )
-        db.commit()
+        yield
+    finally:
+        engine.dispose()
 
 
 def _sample_ohlcv():
@@ -180,7 +186,7 @@ def test_normalize_market_timeframe():
     assert _normalize_market_timeframe("BTC/USDT", "4h", CCXT_SOURCE) == "4h"
 
 
-def test_get_favorites_falls_back_to_admin_curated_rows(monkeypatch):
+def test_get_favorites_falls_back_to_admin_curated_rows(monkeypatch, opportunity_postgres):
     monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
     admin = _db_user("admin@example.com")
     common = _db_user("common@example.com")
@@ -204,7 +210,9 @@ def test_get_favorites_falls_back_to_admin_curated_rows(monkeypatch):
     assert favorites[0]["symbol"] == "BTC/USDT"
 
 
-def test_get_favorites_prefers_user_monitor_candidates_over_admin_catalog(monkeypatch):
+def test_get_favorites_prefers_user_monitor_candidates_over_admin_catalog(
+    monkeypatch, opportunity_postgres
+):
     monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
     admin = _db_user("admin@example.com")
     common = _db_user("common@example.com")
@@ -230,7 +238,7 @@ def test_get_favorites_prefers_user_monitor_candidates_over_admin_catalog(monkey
     assert favorites[0]["tier"] == 1
 
 
-def test_get_favorites_fallback_respects_tier_filter(monkeypatch):
+def test_get_favorites_fallback_respects_tier_filter(monkeypatch, opportunity_postgres):
     monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
     admin = _db_user("admin@example.com")
     common = _db_user("common@example.com")
@@ -259,7 +267,9 @@ def test_get_favorites_fallback_respects_tier_filter(monkeypatch):
     assert favorites[0]["name"] == "Tier two"
 
 
-def test_get_favorites_falls_back_when_user_rows_are_not_monitor_candidates(monkeypatch):
+def test_get_favorites_falls_back_when_user_rows_are_not_monitor_candidates(
+    monkeypatch, opportunity_postgres
+):
     monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
     admin = _db_user("admin@example.com")
     common = _db_user("common@example.com")
@@ -283,7 +293,7 @@ def test_get_favorites_falls_back_when_user_rows_are_not_monitor_candidates(monk
     assert favorites[0]["is_curated_fallback"] is True
 
 
-def test_get_favorites_loads_configured_admin_catalog(monkeypatch):
+def test_get_favorites_loads_configured_admin_catalog(monkeypatch, opportunity_postgres):
     monkeypatch.setenv("ADMIN_EMAILS", "second@example.com,first@example.com")
     first = _db_user("first@example.com")
     second = _db_user("second@example.com")
@@ -314,7 +324,9 @@ def test_get_favorites_loads_configured_admin_catalog(monkeypatch):
     assert {favorite["symbol"] for favorite in favorites} == {"BTC/USDT", "ETH/USDT"}
 
 
-def test_get_catalog_favorites_uses_admin_catalog_without_user_preferences(monkeypatch):
+def test_get_catalog_favorites_uses_admin_catalog_without_user_preferences(
+    monkeypatch, opportunity_postgres
+):
     monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
     admin = _db_user("admin@example.com")
     common = _db_user("common@example.com")
@@ -340,7 +352,7 @@ def test_get_catalog_favorites_uses_admin_catalog_without_user_preferences(monke
     assert {favorite["symbol"] for favorite in favorites} == {"BTC/USDT", "ETH/USDT"}
 
 
-def test_get_catalog_favorites_respects_tier_filter(monkeypatch):
+def test_get_catalog_favorites_respects_tier_filter(monkeypatch, opportunity_postgres):
     monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
     admin = _db_user("admin@example.com")
 
@@ -363,7 +375,7 @@ def test_get_catalog_favorites_respects_tier_filter(monkeypatch):
     assert favorites[0]["name"] == "Tier two"
 
 
-def test_get_catalog_favorites_alerts_only_uses_notify_telegram(monkeypatch):
+def test_get_catalog_favorites_alerts_only_uses_notify_telegram(monkeypatch, opportunity_postgres):
     monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
     admin = _db_user("admin@example.com")
 
@@ -385,7 +397,7 @@ def test_get_catalog_favorites_alerts_only_uses_notify_telegram(monkeypatch):
     assert [favorite["name"] for favorite in favorites] == ["Notify"]
 
 
-def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
+def test_get_opportunities_marks_curated_fallback_payload(monkeypatch, opportunity_postgres):
     monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
     admin = _db_user("admin@example.com")
     common = _db_user("common@example.com")
@@ -438,7 +450,9 @@ def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
     assert out[0]["details"]["status"] == "EXIT"
 
 
-def test_get_opportunities_resolves_public_exit_from_cached_favorite_trade(monkeypatch):
+def test_get_opportunities_resolves_public_exit_from_cached_favorite_trade(
+    monkeypatch, opportunity_postgres
+):
     user = _db_user("cached-exit@example.com")
     metrics = {
         "trades": [

@@ -43,8 +43,8 @@ import app.symbols_config as symbols_config
 
 
 @pytest.fixture
-def app_db_session():
-    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
+def app_db_session(postgres_isolation, unit_database_url):
+    engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
@@ -265,8 +265,10 @@ def test_change_tasks_service_handles_missing_changes(monkeypatch, tmp_path):
     assert exc.value.status_code == 404
 
 
-def test_system_preferences_service_handles_missing_table_and_crud(app_db_session):
-    broken_engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
+def test_system_preferences_service_handles_missing_table_and_crud(
+    app_db_session, unit_database_url
+):
+    broken_engine = create_engine(unit_database_url)
     BrokenSession = sessionmaker(autocommit=False, autoflush=False, bind=broken_engine)
     broken_db = BrokenSession()
     try:

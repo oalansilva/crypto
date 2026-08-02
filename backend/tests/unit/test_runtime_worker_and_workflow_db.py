@@ -89,8 +89,10 @@ def test_workflow_db_helpers_cover_env_url_and_project_resolution(monkeypatch, t
         workflow_database.get_project_workflow_db_url(project)
 
 
-def test_workflow_db_init_sync_bootstrap_and_dependency(monkeypatch, tmp_path):
-    workflow_url = "postgresql://workflow-db"
+def test_workflow_db_init_sync_bootstrap_and_dependency(
+    monkeypatch, tmp_path, postgres_isolation, unit_workflow_database_url
+):
+    workflow_url = unit_workflow_database_url
     workflow_database.init_workflow_schema_for_url(workflow_url)
 
     engine = workflow_database.get_workflow_engine_for_url(workflow_url)
