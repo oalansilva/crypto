@@ -72,15 +72,19 @@ def turn_context(
     effort: str = "max",
     sandbox: str = "read-only",
     permission: str = "disabled",
+    fork_turns: str | None = None,
 ) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "model": model,
+        "effort": effort,
+        "sandbox_policy": {"type": sandbox},
+        "permission_profile": {"type": permission},
+    }
+    if fork_turns is not None:
+        payload["fork_turns"] = fork_turns
     return {
         "type": "turn_context",
-        "payload": {
-            "model": model,
-            "effort": effort,
-            "sandbox_policy": {"type": sandbox},
-            "permission_profile": {"type": permission},
-        },
+        "payload": payload,
     }
 
 
@@ -92,22 +96,64 @@ def test_primary_session_is_pinned_to_sol_high() -> None:
     assert config["agents"]["max_depth"] == 1  # type: ignore[index]
 
 
-def test_stage_profiles_have_exact_model_effort_and_sandbox() -> None:
+def test_stage_profiles_pin_exact_model_effort_and_declared_sandbox_intent() -> None:
     expected = {
         "crypto-luna-implementer.toml": (
             "crypto_luna_implementer",
             "workspace-write",
-            ("Em desenvolvimento", "OpenSpec", "focused verification"),
+            (
+                "Em desenvolvimento",
+                "OpenSpec",
+                "focused verification",
+                "Behavioral containment",
+                "before-state",
+                "only assigned paths",
+                "out-of-scope mutation",
+                'fork_turns="none"',
+                "inspect-agent-runtime.sh",
+                "must not be cited as fork evidence",
+                "operating-system",
+            ),
         ),
         "crypto-luna-reviewer.toml": (
             "crypto_luna_reviewer",
             "read-only",
-            ("strictly read-only", "exact diff", "Never review from inherited"),
+            (
+                "strictly read-only",
+                "exact diff",
+                "Never review from inherited",
+                "behavioral contract",
+                "before-state",
+                "after-state",
+                "Any mutation",
+                "sandbox-equality gate",
+                'fork_turns="none"',
+                "mandatory inventory",
+                "refs/branches/tags",
+                "config and hooks",
+                "tracked/untracked and ignored",
+                "no mutation observed within the required inventory",
+                "not zero global mutation",
+                "undeclared exclusion",
+                "operating-system isolation",
+            ),
         ),
         "crypto-luna-release-manager.toml": (
             "crypto_luna_release_manager",
             "danger-full-access",
-            ("explicitly", "Homologado", "Do not edit product code"),
+            (
+                "explicitly",
+                "Homologado",
+                "Do not edit product code",
+                "Behavioral containment",
+                "package inventory",
+                "out-of-package mutation",
+                "residual risk",
+                'fork_turns="none"',
+                "inspect-agent-runtime.sh",
+                "must not be cited as fork evidence",
+                "operating-system isolation",
+            ),
         ),
     }
 
@@ -118,12 +164,14 @@ def test_stage_profiles_have_exact_model_effort_and_sandbox() -> None:
         assert profile["model_reasoning_effort"] == "max"
         assert profile["sandbox_mode"] == sandbox
         instructions = str(profile["developer_instructions"])
+        instructions_contract = " ".join(instructions.split())
         for fragment in instruction_fragments:
-            assert fragment in instructions
+            assert fragment in instructions_contract
 
 
 def test_routing_contract_covers_fixed_stages_bootstrap_and_activation() -> None:
     skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    skill_contract = " ".join(skill.split())
     agents_md = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     rules = (ROOT / "rules.md").read_text(encoding="utf-8")
 
@@ -158,10 +206,34 @@ def test_routing_contract_covers_fixed_stages_bootstrap_and_activation() -> None
         "Only this authorized release lane may run OpenSpec sync/archive",
         "${CODEX_HOME:-$HOME/.codex}/models_cache.json",
         "supported_reasoning_levels",
+        "Behavioral containment (option 2)",
+        "Before spawn",
+        "After return",
+        "Any unclassified mutation or action outside the packet blocks the stage",
+        "`fork_turns=\"none\"` is separate control-plane evidence",
+        "explicit spawn request and the native spawn result",
+        "allowlists only five runtime fields",
+        "does not inspect or prove `fork_turns`",
+        "A new thread id is not proof",
+        "Reviewer mandatory inventory",
+        "GIT_OPTIONAL_LOCKS=0",
+        "git worktree list",
+        "refs/branches/tags",
+        "repository's config and hooks",
+        "tracked/untracked and ignored",
+        "no mutation observed within the required inventory",
+        "does not mean zero global mutation",
+        "Ignored roots explicitly excluded for cost",
+        "Any observed difference or undeclared exclusion blocks",
+        "sandbox-equality gate",
+        "operating-system isolation",
+        "Implementer",
+        "Reviewer",
+        "Release manager",
     ):
-        assert required in skill
+        assert required in skill_contract
 
-    assert "não existe fallback" in agents_md
+    assert "não existe fallback" in agents_md.lower()
     assert "Exceção de bootstrap do roteamento" in agents_md
     assert "Nenhuma lane é pre-spawned" in agents_md
     assert "sync/archive somente dentro de release explicitamente autorizada" in agents_md
@@ -172,6 +244,84 @@ def test_routing_contract_covers_fixed_stages_bootstrap_and_activation() -> None
     assert "sync/archive so podem ocorrer dentro de release explicitamente autorizada" in rules
     assert "Nao alterar AppArmor, sysctl, bubblewrap" in rules
     assert "Cursor e outros clientes ficam fora" in rules
+    assert "contenção comportamental" in agents_md
+    assert "sandbox efetivo mais amplo que o pedido não bloqueia sozinho" in agents_md
+    assert "estado relevante registrado antes do spawn" in agents_md
+    assert "`fork_turns=\"none\"` é evidência separada" in agents_md
+    assert "inspector local `inspect-agent-runtime.sh` prova somente os cinco campos" in agents_md
+    assert "nenhuma mutação observada dentro do inventário obrigatório" in agents_md
+    assert "não significa zero mutação global" in agents_md
+    assert "sandbox efetivo mais amplo" in rules
+    assert "Toda lane Luna usa contenção comportamental" in rules
+    assert "`fork_turns=\"none\"` deve ser provado separadamente" in rules
+    assert "nenhuma mutação observada dentro do inventário obrigatório" in rules
+
+
+def test_behavioral_containment_contract_rejects_scope_and_review_mutation() -> None:
+    skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    skill_contract = " ".join(skill.split())
+    implementer = (AGENTS_DIR / "crypto-luna-implementer.toml").read_text(
+        encoding="utf-8"
+    )
+    reviewer = (AGENTS_DIR / "crypto-luna-reviewer.toml").read_text(encoding="utf-8")
+    release_manager = (AGENTS_DIR / "crypto-luna-release-manager.toml").read_text(
+        encoding="utf-8"
+    )
+
+    # These assertions are the static contract for the absent runtime
+    # orchestrator: a lane is accepted only after independent before/after
+    # inspection, and a mutation is a blocker rather than something the lane
+    # repairs itself.
+    assert "Only assigned paths changed" in skill_contract
+    assert "Any out-of-scope mutation" in implementer
+    reviewer_contract = " ".join(reviewer.split())
+    assert "Any mutation, new artifact or unauthorized external action observed in that inventory rejects" in reviewer_contract
+    assert "Any code change, unhomologated content" in release_manager
+    assert "Any unclassified mutation or action outside the packet blocks" in skill_contract
+    assert "the reviewer does not repair it" in skill_contract
+    assert "do not repair" in reviewer.lower()
+    assert "mandatory inventory" in reviewer_contract
+    assert "GIT_OPTIONAL_LOCKS=0" in reviewer_contract
+    assert "refs/branches/tags" in reviewer_contract
+    assert "repository config and hooks" in reviewer_contract
+    assert "tracked/untracked and ignored" in reviewer_contract
+    assert "no mutation observed within the required inventory" in reviewer_contract
+    assert "not zero global mutation" in reviewer_contract
+    assert "Any observed difference or undeclared exclusion" in reviewer_contract
+    assert "stop and return the technical work" in " ".join(release_manager.split())
+
+
+def test_fork_control_is_separate_from_allowlisted_runtime_inspector() -> None:
+    skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    skill_contract = " ".join(skill.split())
+    inspector = (SKILL_DIR / "scripts" / "inspect-agent-runtime.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert '`fork_turns="none"` is separate control-plane evidence' in skill_contract
+    assert "explicit spawn request and the native spawn result" in skill_contract
+    assert "allowlists only five runtime fields" in skill_contract
+    assert "does not inspect or prove `fork_turns`" in skill_contract
+    assert "fork_turns" not in inspector
+
+
+def test_sandbox_broadening_is_risk_evidence_not_an_equality_gate() -> None:
+    skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    agents_md = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    rules = (ROOT / "rules.md").read_text(encoding="utf-8")
+    forbidden_active_gate = (
+        "Require observed `read-only` sandbox",
+        "observed read-only sandbox",
+        "whose observed sandbox is read-only",
+    )
+
+    for text in (skill, agents_md, rules):
+        for phrase in forbidden_active_gate:
+            assert phrase not in text
+
+    assert "a broader value does not block solely" in skill
+    assert "sandbox efetivo mais amplo que o pedido não bloqueia sozinho" in agents_md
+    assert "sandbox efetivo mais amplo" in rules
 
 
 def test_runtime_inspector_emits_only_allowlisted_fields(tmp_path: Path) -> None:
@@ -213,6 +363,30 @@ def test_runtime_inspector_emits_only_allowlisted_fields(tmp_path: Path) -> None
     assert "DO_NOT_LEAK" not in result.stdout
     assert "DO_NOT_LEAK" not in result.stderr
     assert thread_id not in result.stdout
+
+
+def test_runtime_inspector_never_claims_fork_turns_evidence(tmp_path: Path) -> None:
+    thread_id = "12121212-1212-7121-8121-121212121212"
+    write_rollout(
+        tmp_path,
+        thread_id,
+        session_meta(thread_id),
+        turn_context(sandbox="danger-full-access", fork_turns="full"),
+    )
+
+    result = run_inspector(tmp_path, thread_id)
+
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    assert set(output) == {
+        "agent_type",
+        "model",
+        "effort",
+        "sandbox_policy_type",
+        "permission_profile_type",
+    }
+    assert "fork_turns" not in output
+    assert "fork_turns" not in result.stdout
 
 
 def test_runtime_inspector_fails_on_missing_metadata(tmp_path: Path) -> None:
@@ -343,6 +517,7 @@ def test_global_workflow_contract_matches_project_routing_when_available() -> No
         return
 
     contract = global_skill.read_text(encoding="utf-8")
+    contract = " ".join(contract.split())
     for required in (
         "gpt-5.6-sol",
         "high",
@@ -353,3 +528,28 @@ def test_global_workflow_contract_matches_project_routing_when_available() -> No
         "Do not weaken or change AppArmor, sysctl, bubblewrap, sandbox launchers, or other server-security policy",
     ):
         assert required in contract
+
+    # The global skill is versioned in its own worktree. When the caller points
+    # this test at that worktree, require the option-2 language as well; the
+    # default installed skill may be the pre-change baseline until integration.
+    if "ALAN_WORKFLOW_SKILL_PATH" in os.environ:
+        for required in (
+            "behavioral read-only contract",
+            "broader effective sandbox",
+            "Behavioral containment is the standard option 2",
+            "before spawn",
+            "after return",
+            "out-of-scope mutation",
+            "not operating-system isolation",
+            "local inspector allowlists only those five runtime fields",
+            "explicit spawn request/result",
+            "GIT_OPTIONAL_LOCKS=0",
+            "git worktree list",
+            "refs/branches/tags",
+            "repository config/hooks",
+            "tracked/untracked and ignored",
+            "no mutation observed within the required inventory",
+            "not zero global mutation",
+            "undeclared exclusion blocks",
+        ):
+            assert required in contract
