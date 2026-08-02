@@ -91,3 +91,13 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Dispensa so vale com label `qa-visual-skip` e comentario explicito de Alan no card no formato `QA visual dispensado por Alan.` seguido de motivo.
    - Label isolada, comentario isolado, filtro de path ou variavel de repositorio nao autorizam skip.
    - `Done` exige `qa-gate` verde, artifacts/evidencias quando aplicaveis, integracao em `develop`, `./restart` e URL servindo o resultado novo.
+
+15. No Codex, o roteamento de modelo e fixo por etapa e automatico.
+   - Design/OpenSpec e QA usam a sessao principal `gpt-5.6-sol` com effort `high`.
+   - `Em desenvolvimento` usa `crypto_luna_implementer`; `Code Review` usa nova `crypto_luna_reviewer` read-only; release explicitamente solicitada usa nova `crypto_luna_release_manager`. As tres usam `gpt-5.6-luna` com effort `max` e `fork_turns="none"`.
+   - `/opsx:apply` pertence a Luna implementer; `/opsx:verify` pertence a Sol QA; sync/archive so podem ocorrer dentro de release explicitamente autorizada e pertencem a Luna release manager.
+   - Nao selecionar por complexidade, nao usar Terra, built-ins ou fallback. Perfil/modelo/effort/sandbox nao observavel ou divergente bloqueia a etapa.
+   - O bootstrap que instala os perfis e aceito por TOML/catalogo/skill/testes/OpenSpec estaticos e revisao Codex independente read-only. Nenhuma lane e pre-spawned; runtime e exigido somente quando a lane Luna for usada naturalmente por tarefa nova depois da configuracao versionada e carregada.
+   - Nao alterar AppArmor, sysctl, bubblewrap, user namespaces, sandbox launcher ou seguranca do host/servidor para provar o roteamento. Diagnostico pre-ativacao bloqueado nao substitui nem invalida a aceitacao estatica.
+   - Depois da ativacao, Code Review exige a Luna reviewer exata; a excecao de review Codex independente vale somente para o bootstrap.
+   - Cursor e outros clientes ficam fora da implementacao e validacao deste roteamento automatico.

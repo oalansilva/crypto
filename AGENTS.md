@@ -10,7 +10,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 ## Processo global do Alan
 
-- Regras gerais de processo ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. Codex e Cursor devem aplicar os mesmos overrides versionados neste `AGENTS.md` e em `rules.md`; o fluxo do projeto não depende de um caminho absoluto local.
+- Regras gerais de processo ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. Codex e Cursor continuam sujeitos aos mesmos gates versionados neste `AGENTS.md` e em `rules.md`; o roteamento automático Sol/Luna desta política é suportado e validado somente no Codex.
 - Use essa skill para comunicacao curta, evidencias antes de concluir, OpenSpec no card antes de implementar, higiene Git/worktree/release, classificacao de pendencias, seguranca de output e fechamento sem pendencia. No cripto, o fluxo local `Todo`/`Design`/`Aprovação de Design`/`Pronto para Dev`/`Em desenvolvimento`/`Code Review`/`QA`/`Done`/`Homologado`/`Pronto`/`Cancelado` prevalece sobre qualquer vocabulário global antigo.
 - Este `AGENTS.md` deve manter apenas regras especificas do cripto: branches `develop/main`, Project 1, release guard, PostgreSQL, Drive/docs, comandos de backend/frontend, workflow DB e papeis dos agentes.
 - Se uma regra geral precisar mudar para todos os projetos, atualize `alan-workflow`; nao duplique a regra aqui.
@@ -20,11 +20,13 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
 - **Comunicação padrão com Alan:** usar sempre a skill `caveman` em modo `lite`: curto, direto, sem filler, mantendo clareza técnica. Só desligar se Alan pedir explicitamente `stop caveman` ou `normal mode`.
 - **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. O fluxo obrigatório de **todo** card é `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal. **Proibido** pular `Design`, `Aprovação de Design` ou `Pronto para Dev` (inclusive com `UI impact: none`, remoção, bug ou pedido `implemente`). O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo `main`/produção com evidencia.
+- **Roteamento automático Codex:** a sessão principal usa `gpt-5.6-sol`/`high` em Design/OpenSpec e QA; `crypto_luna_implementer` usa `gpt-5.6-luna`/`max` em desenvolvimento; uma nova `crypto_luna_reviewer` Luna Max read-only executa Code Review; e uma nova `crypto_luna_release_manager` Luna Max conduz release explicitamente autorizada. Toda lane Luna usa `fork_turns="none"`; não usar Terra, built-ins ou fallback.
+- **Exceção de bootstrap do roteamento:** a change que instala os perfis é aceita por validação estática reproduzível e revisão Codex independente read-only. Nenhuma lane é pre-spawned para prova; evidência runtime passa a ser obrigatória somente quando a lane Luna for usada naturalmente por tarefa nova após os perfis serem versionados e carregados. Não alterar AppArmor, sysctl, bubblewrap, sandbox launcher ou segurança do host/servidor para provar o roteamento.
 - **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
 - **Regra de merge de release/lote:** após abrir um PR para `main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
 - **Regra de autonomia operacional:** dentro de fechamento de lote/release solicitado por Alan, após validação e evidência, o agente tem autonomia para repetir tentativas manuais de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
-- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, **sempre** concluir o gate `Design -> Aprovação de Design` e só então aguardar `Status=Pronto para Dev`, mover para `Status=Em desenvolvimento` antes de aplicar tarefas de código, mover para `Status=Code Review` antes do commit, rodar review Codex no diff exato, commit/push do SHA revisado, mover para `Status=QA`/`Fluxo=QA`, aguardar `qa-gate` e Playwright visual verdes, integrar por PR em `develop`, executar `./restart`, validar a URL e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
+- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, **sempre** concluir o gate `Design -> Aprovação de Design` e só então aguardar `Status=Pronto para Dev`, mover para `Status=Em desenvolvimento` antes de aplicar tarefas de código, mover para `Status=Code Review` antes do commit, rodar o review read-only aplicável no diff exato (Luna reviewer depois da ativação; Codex independente apenas no bootstrap), commit/push do SHA revisado, mover para `Status=QA`/`Fluxo=QA`, aguardar `qa-gate` e Playwright visual verdes, integrar por PR em `develop`, executar `./restart`, validar a URL e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
 - **Regra de conclusão de correção:** para qualquer correção de bug ou ajuste solicitado por Alan, só diga `concluído` depois de validar, fazer merge/integração da branch de trabalho em `develop`, executar `./restart` e confirmar que a URL do sistema está servindo o bundle/resultado novo. Antes disso, reporte como `corrigido na branch`, `validado localmente` ou `aguardando integração`, conforme o estado real.
 - **Regra de homologação direta por card (solicitação do cliente):** seguir `alan-workflow`; no cripto, homologacao significa aprovacao funcional em `develop`.
 - **Guardrail anti-release acidental:** seguir `alan-workflow`; no cripto, homologacao nao autoriza `main`, PR, merge, archive ou release.
@@ -35,7 +37,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de validação OpenSpec global:** `openspec validate --all` verde é critério padrão de fechamento. Se falhar por changes antigas fora do card, valide os specs afetados pelo card como evidência parcial, mas resolva a sujeira global antes do encerramento: corrija ou arquive as changes antigas, inclusive por archive manual quando a CLI/skill não conseguir concluir.
 - **Regra de checks em execução:** seguir `alan-workflow`; no cripto, isso vale para testes locais, `openspec validate`, build e CI antes de `Code Review`, `QA`, `Done`, release/lote, commit, PR ou merge. Check `running`, `cancelled` ou skip sem dispensa autorizada nao e evidencia final.
 - **Regra de espera de CI:** use um unico watcher nativo por PR com timeout explicito: `timeout 35m gh pr checks <PR> --watch --fail-fast --interval 20`. Nao filtre apenas checks marcados como required, porque todos os checks iniciados precisam terminar e OpenSpec pode nao estar na protecao de `main`. Esperas acima de 60 segundos rodam em background quando o cliente suportar. Sao proibidos loops `for`/`while` com `sleep`, consultas repetidas pelo modelo e subagent criado apenas para polling. Timeout, falha, check ausente ou bloqueio encerram a tentativa sem merge; depois do verde, consulte mergeabilidade uma vez e faca no maximo uma tentativa manual para o estado observado. Qualquer falha exige diagnostico e uma nova verificacao completa de prontidao antes de outra tentativa.
-- **Regra de commits e testes:** commits locais na branch da change são permitidos e não exigem suíte completa a cada commit, mas exigem review Codex do diff antes de cada commit. Durante o card, rode testes proporcionais/focados; testes completos ficam para fechamento de lote/release.
+- **Regra de commits e testes:** commits locais na branch da change são permitidos e não exigem suíte completa a cada commit, mas exigem o review read-only aplicável do diff antes de cada commit. Durante o card, rode testes proporcionais/focados; testes completos ficam para fechamento de lote/release.
 - **Regra de worktree limpo no fechamento:** seguir `alan-workflow`; no cripto, trabalho de outra change deve ir para branch/worktree própria e a integração padrão acontece em `develop` antes de produção.
 - **Regra de varredura da release:** seguir o inventario/classificacao de `alan-workflow`; no cripto, integre o que deve entrar em `develop`, publique em `main` via PR/merge manual quando permitido e só então limpe branches/worktrees.
 - **Regra de guard automatizado de release:** antes de abrir/mesclar PR de release, rode `scripts/release-guard pre`; depois do merge/publicação e antes de reportar limpeza final, rode `scripts/release-guard post`. Se qualquer modo estrito falhar, pare e classifique/corrija todos os bloqueios antes de seguir. Use `scripts/release-guard audit` para diagnostico sem bloqueio durante desenvolvimento.
@@ -89,14 +91,34 @@ De-para principal:
 
 Antes de executar `/opsx:apply` em qualquer change vinculada a card/issue, siga `alan-workflow` e publique os artefatos OpenSpec no card. Convencao local do Gist: descricao `crypto openspec <change>` e comentario no card do Project 1.
 
+### Roteamento automático de modelos no Codex
+
+Invocar `$stage-model-routing` em toda etapa. O roteamento é por estágio, nunca por complexidade:
+
+| Operação/Status | Executor obrigatório |
+| --- | --- |
+| `/opsx:new`, `/opsx:ff`, explore/continue, publicação e `Design` | sessão principal `gpt-5.6-sol` / `high` |
+| `Em desenvolvimento`, `/opsx:apply`, implementação e testes focados | `crypto_luna_implementer` (`gpt-5.6-luna` / `max`) |
+| `Code Review` | nova `crypto_luna_reviewer` (`gpt-5.6-luna` / `max`, read-only) |
+| `QA`, `/opsx:verify` e aceitação técnica | sessão principal `gpt-5.6-sol` / `high` |
+| sync/archive somente dentro de release explicitamente autorizada | nova `crypto_luna_release_manager` (`gpt-5.6-luna` / `max`) |
+
+- Todo spawn Luna usa o agent type exato, `fork_turns="none"` e pacote autocontido conforme `.codex/skills/stage-model-routing/SKILL.md`.
+- Depois da ativação, verificar agent type, modelo, effort, sandbox e permission profile efetivos quando a lane Luna for usada. Metadata ausente/divergente bloqueia; não existe fallback para Terra, built-in ou outro effort.
+- No bootstrap, validar TOML, catálogo de modelos, skill, testes de contrato e OpenSpec sem iniciar lanes antecipadamente; usar revisão Codex independente read-only no diff exato. A exceção termina para tarefas novas após os perfis serem versionados e carregados.
+- Não alterar AppArmor, sysctl, bubblewrap, user namespaces, sandbox launcher ou qualquer política de segurança do host/servidor para executar smoke test. Diagnóstico pre-ativação bloqueado não substitui nem invalida a aceitação estática.
+- Após a ativação, Code Review nunca reutiliza a thread implementadora e nunca implementa os próprios findings.
+- Sol em QA não corrige código. Código retorna a implementer -> nova reviewer -> Sol QA; OpenSpec permanece com Sol; mudança no design aprovado retorna a Design/Aprovação de Alan.
+- Cursor mantém os adapters OpenSpec existentes, mas não faz parte da implementação nem dos testes deste roteamento automático.
+
 De-para complementar:
 
 | Intenção canônica | Alias Cursor | Skill obrigatória | Uso correto |
 | --- | --- | --- | --- |
 | `/opsx:explore [change]` | `/opsx-explore [change]` | `$openspec-explore` | Explorar decisões e riscos sem implementar código; pode preparar artifacts quando solicitado. |
 | `/opsx:continue <change>` | `/opsx-continue <change>` | `$openspec-continue-change` | Continuar a criação do próximo artifact pronto, usando `openspec status` e `openspec instructions`, sem pular dependências. |
-| `/opsx:sync <change>` | `/opsx-sync <change>` | `$openspec-sync-specs` | Sincronizar delta specs de `openspec/changes/<change>/specs/` para `openspec/specs/` antes ou durante o archive, conforme avaliação da skill. |
-| `/opsx:bulk-archive` | `/opsx-bulk-archive` | `$openspec-bulk-archive-change` | Arquivar várias changes concluídas, uma a uma, preservando evidência e warnings por change. |
+| `/opsx:sync <change>` | `/opsx-sync <change>` | `$openspec-sync-specs` | Sincronizar delta specs somente dentro de release explicitamente autorizada, antes ou durante o archive conforme avaliação da skill. |
+| `/opsx:bulk-archive` | `/opsx-bulk-archive` | `$openspec-bulk-archive-change` | Arquivar várias changes concluídas somente dentro de release explicitamente autorizada, uma a uma, preservando evidência e warnings por change. |
 | `/opsx:onboard` | `/opsx-onboard` | `$openspec-onboard` | Fazer onboarding guiado do fluxo OpenSpec antes de iniciar implementação quando o contexto operacional estiver confuso. |
 
 Fluxo canônico para implementação por card:
@@ -133,7 +155,7 @@ gate de design obrigatório (todo card)
   -> validar artifacts versus implementação e testes
 ```
 
-Fechamento de lote/release após homologação:
+Fechamento de lote/release após homologação e pedido explícito de Alan:
 
 ```text
 /opsx:archive <change>
@@ -157,8 +179,8 @@ Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover ar
 ### Falhas antigas em `openspec validate --all`
 
 - Primeiro confirme a change atual: `openspec status --change "<change>" --json` precisa estar completo e os specs afetados pelo card precisam validar individualmente.
-- Se `openspec validate --all` falhar por changes antigas, trate como bloqueio de higiene do repo, não como exceção permanente. Investigue cada change quebrada, corrija artifacts quando ela ainda estiver ativa ou arquive quando estiver concluída/obsoleta.
-- Use primeiro a skill OpenSpec adequada, normalmente `$openspec-archive-change`. Se a CLI/skill falhar por estado antigo ou inconsistente, o archive manual é permitido como exceção operacional: mover para `openspec/changes/archive/YYYY-MM-DD-<change>/`, sincronizar specs quando aplicável, preservar evidência no handoff e registrar por que o caminho manual foi usado.
+- Se `openspec validate --all` falhar por changes antigas, trate como bloqueio de higiene do repo, não como exceção permanente. Investigue cada change quebrada e corrija artifacts ativos; sync/archive de changes concluídas ou obsoletas só pode ocorrer dentro de release explicitamente autorizada.
+- Dentro dessa release autorizada, use primeiro a skill OpenSpec adequada, normalmente `$openspec-archive-change`. Se a CLI/skill falhar por estado antigo ou inconsistente, o archive manual é permitido como exceção operacional: mover para `openspec/changes/archive/YYYY-MM-DD-<change>/`, sincronizar specs quando aplicável, preservar evidência no handoff e registrar por que o caminho manual foi usado.
 - Depois do saneamento, rode novamente `openspec validate --all`. Validação parcial serve apenas como evidência intermediária para o escopo do card, não como fechamento final.
 
 ## Git/Kanban Workflow
@@ -189,10 +211,10 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 3. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia (classificação de evidência; **não** autoriza pular colunas).
 4. Executar OpenSpec (`/opsx:new`, `/opsx:ff`) e publicar os artifacts no card.
 5. Mover para `Status=Design`, invocar `design-critic`, concluir `design.md` + `Design Critique` (e `Prototype` quando UI impact = affected), mover para `Status=Aprovação de Design` e **aguardar Alan** arrastar para `Pronto para Dev`. Pedidos como `implemente` / `pode codar` **não** autorizam pular este gate.
-6. Somente em `Pronto para Dev`, mover para `Status=Em desenvolvimento`, executar `/opsx:apply` e `/opsx:verify` e implementar.
+6. Somente em `Pronto para Dev`, mover para `Status=Em desenvolvimento`, executar `/opsx:apply` com a Luna implementer, implementar e rodar testes focados. `/opsx:verify` fica para Sol em `QA`.
 7. Rodar testes proporcionais/focados e validação OpenSpec da change.
 8. Mover card para `Status=Code Review` e sincronizar `Fluxo=Code Review` quando existir.
-9. Rodar review Codex no diff exato antes do commit. Se houver rework grande, voltar para `Em desenvolvimento`; se forem ajustes pequenos, manter `Code Review` e repetir o review.
+9. Após a ativação, rodar a nova Luna reviewer read-only no diff exato antes do commit. Somente o bootstrap usa revisão Codex independente read-only disponível na tarefa instaladora. Se houver rework grande, voltar para `Em desenvolvimento`; se forem ajustes pequenos, manter `Code Review` e repetir o review.
 10. Fazer commit/push do SHA revisado, mover para `Status=QA` e sincronizar `Fluxo=QA` quando existir.
 11. Abrir PR para `develop`, aguardar `qa-gate` terminal verde e corrigir qualquer falha antes da integração.
 12. Integrar em `develop` quando pronto, preferencialmente com squash/commit único por card referenciando o card.
@@ -364,7 +386,7 @@ git branch -d change-<id>-<slug>
 git push origin --delete change-<id>-<slug> # se publicada
 ```
 
-Em entrega de código por card, use subagents por padrão para acelerar descoberta, implementação e validação, respeitando escopo e evitando trabalho duplicado.
+Em entrega de código por card, use o executor fixo da etapa. Subagents auxiliares podem acelerar descoberta e validação, respeitando escopo e sem substituir Sol/Luna nem duplicar trabalho.
 
 Padrão de commit recomendado:
 - `feat: adicionar fluxo de merge develop->main`
@@ -379,7 +401,7 @@ Padrão de commit recomendado:
 - Novo requisito de produto/UX/tech deve gerar um item novo no GitHub (Issue) antes de virar tarefa ativa da sprint/turno; mudanças relacionadas a itens já fechados devem ser registradas em issue filha/linkada.
 - Toda funcionalidade nova deve seguir o fluxo OpenSpec sempre que houver mudança de comportamento, UX, API, regra de negócio, dados, segurança, monitoramento ou operação. Antes de codar, crie/atualize `openspec/changes/<change>/` com escopo, decisões, tarefas e critérios de aceite proporcionais ao tamanho da mudança.
 - Mudanças pequenas e localizadas podem usar OpenSpec enxuto, mas não devem pular a etapa quando alterarem contrato do produto ou comportamento observável.
-- Sempre que possível, acelere o processo com subagents em tarefas médias/grandes, especialmente para mapear código, revisar riscos, validar UI/Playwright, investigar bugs ou dividir backend/frontend. O agente principal continua responsável por consolidar resultados e evitar trabalho duplicado.
+- Sempre que possível, acelere descoberta/validação com subagents auxiliares em tarefas médias/grandes, especialmente para mapear código, revisar riscos, validar UI/Playwright ou investigar bugs. Implementação, Code Review, QA e release continuam com o executor fixo da etapa; o agente principal consolida resultados e evita trabalho duplicado.
 - Registre em `openspec/changes/<change>/` e no PR:
   - status atual
   - decisões de escopo
@@ -445,100 +467,50 @@ npm --prefix frontend run build
 
 ## Agentes e responsabilidades
 
-O time é composto por 5 agentes, cada um com papel definido:
+### Sol High — sessão principal, PO/DESIGN e QA
 
-### main — Project Manager / Team Leader
-**Template base:** Orion (productivity)
+- Usa `gpt-5.6-sol` / `high` fixado em `.codex/config.toml`.
+- Orquestra card/status, é dono de proposal/specs/design/tasks, publica artifacts e nunca autoaprova Alan.
+- Em QA, inspeciona o SHA/diff revisado, executa `/opsx:verify`, consolida checks e não corrige código.
+- Trata relatórios Luna como claims: inspeciona o diff/estado e repete validações antes de avançar.
 
-Orquestra o time, coordena workflow, delegation, status reports, prazos.
-- Mantém conversa com Alan curta/gerencial, usando `caveman lite` como padrão permanente
-- Consulte workflow DB e OpenSpec como fonte principal.
-- Move status de mudança no workflow, celebra marcos, identifica riscos proativamente
-- Fornece próximo passo após completar tarefa
-- Pede clarifying questions quando necessário
-- Dá estimates de tempo quando possível
+### DEV — `crypto_luna_implementer`
 
-### PO — Product Manager
-Define especificações, gerencia backlog, Requirements, escopo do produto.
-- Define taxonomia de work items (`change`, `story`, `bug`) e dependências
-- É dono dos artefatos OpenSpec da change: `proposal.md`, `specs/**`, `design.md`, `tasks.md` e `review-ptbr.md`
-- Só libera DEV depois de approval
-- **Quando não há change ativa (todas arquivadas), o PO deve puxar a change de maior prioridade no status `Pending` para iniciar planejamento no próximo turno.**
+- Usa `gpt-5.6-luna` / `max`, `workspace-write`, sempre com `fork_turns="none"`.
+- Só executa após `Pronto para Dev` e `Status=Em desenvolvimento`.
+- Executa `/opsx:apply`, implementação e testes focados dentro do ownership recebido.
+- Não altera design aprovado, não revisa o próprio diff e não conduz release.
 
-### DESIGN — UX/UI Researcher
-**Template base:** UX Researcher (creative)
+### REVIEW — `crypto_luna_reviewer`
 
-Foca em UX/prototipação e pesquisa de usuário.
-- Publica protótipos e decisões visuais na seção de handoff da change
-- Complementa a planning package com protótipo visual e decisões de UX para DEV/QA
-- Desenha pesquisas de usuário e scripts de entrevista
-- Analisa feedback de usuários (tickets, reviews, pesquisas)
-- Identifica problemas de usabilidade
-- Gera relatórios com recomendações baseadas em evidências
+- Usa uma nova thread `gpt-5.6-luna` / `max`, read-only, sempre com `fork_turns="none"`.
+- Revisa o diff exato antes do commit, com findings por severidade e risco residual.
+- Nunca edita nem implementa os próprios findings. Mudança invalida o verdict e exige nova reviewer.
+- Exceção única: o bootstrap que instala os perfis usa revisão Codex independente read-only disponível na tarefa instaladora. Tarefas novas após configuração versionada/carregada exigem o perfil exato acima.
 
-### DEV — Software Engineer + Code Reviewer
-**Template base:** Lens (development)
+### RELEASE — `crypto_luna_release_manager`
 
-Implementa código +レビュー automática.
-- Implementa com base no workflow DB + notas de handoff como runtime
-- Respeita taxonomia `change`/`story`/`bug`, ownership, locks e dependências
-- Faz code review: bugs, security issues, logic errors
-- Scaneia vulnerabilidades (SQL injection, XSS, hardcoded secrets)
-- Avalia qualidade (A-F), sugere melhorias
-
-### QA — Tester + Bug Hunter
-**Template base:** Trace (development)
-
-Valida + análise profunda de bugs.
-- Valida regressões, consistência do workflow DB e critérios de aceite
-- Bugs reais viram `bug` rastreável; bugs filhos bloqueiam story
-- Análise de erro: parse stack traces, identifica root cause vs symptoms
-- Fornece steps de debug em ordem de probabilidade
-- Cria bug reports com steps de reprodução e severidade
+- Usa uma nova thread `gpt-5.6-luna` / `max`, `danger-full-access`, sempre com `fork_turns="none"`.
+- Só inicia após pedido explícito de Alan e pacote exato de cards `Homologado`.
+- Somente dentro dessa release explicitamente autorizada executa documentação, sync/archive, validações, release guards, PR/CI/merge manual, reconciliação e evidências.
+- Não altera código. Falha de código para a release sem regredir cards `Done`/`Homologado`.
 
 ### Regras operacionais dos agentes
-- O **workflow DB** é a fonte operacional de verdade.
-- **OpenSpec** define artefatos e a trilha técnica.
-- `openspec/changes/<change>/` é o canal padrão entre agentes, com menções `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`.
-- Nenhum agente (PO/DESIGN/DEV/QA) pode considerar sua etapa concluída só com artefatos; é obrigatório atualizar o runtime e registrar handoff no mesmo turno.
-- Toda etapa só fecha de verdade com **runtime + handoff registrado**; se um dos dois faltar, o próximo turno deve reconciliar antes de seguir.
-- O contrato operacional curto (papéis, handoff, DoD por status, bloqueios) fica consolidado no fluxo operacional do projeto.
-- Quando Alan homologar uma change em chat, o orquestrador deve mover o card para `Homologado` no mesmo turno e registrar handoff/status. Archive OpenSpec, commit, PR, merge e mudança para `Pronto` acontecem apenas no fechamento de lote/release.
-- `change` é o container raiz da entrega; `story` é a fatia padrão de execução quando houver ownership/dependência própria; `bug` representa defeito real. Não criar cards separados para micro-passos sem necessidade operacional.
-- Múltiplas stories/agentes podem trabalhar em paralelo, desde que respeitem **locks**, **dependências** e **WIP**.
-- Regra prática de WIP: por padrão, no máximo **2 stories ativas por change** e **1 story ativa por agent run**.
-- **Regra de auto-trigger:** quando o status da change avança no runtime, acionar o responsável pela nova etapa. Em `Design`, acionar o Designer/Critic Agent; em `Aprovação de Design`, aguardar Alan; em `Em desenvolvimento`, acionar DEV; em `QA`, acionar QA.
-- **Regra de validação QA:** Antes de enviar para homologação Alan, QA deve rodar testes E2E (`frontend/tests/*.spec.ts`) e revisar evidências registradas no fluxo operacional.
-- Lock padrão fica no nível da **story**; bug filho herda esse lock salvo reassignment explícito.
-- Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
-- Antes de promover para `Aprovação de Design`, `Pronto para Dev`, `QA`, `Done`, `Homologado` ou `Pronto`, reconciliar runtime + `openspec/changes/<change>/tasks.md` + handoff e as evidências exigidas pelo gate.
 
-### Uso padrão de subagents Codex
+- Workflow DB/Kanban é a fonte operacional; OpenSpec é a camada de artifacts.
+- O bootstrap exige validação estática reproduzível + handoff, sem pre-spawn. Evidência runtime segura é coletada somente quando cada lane Luna for usada naturalmente após a ativação.
+- Nenhuma aceitação de roteamento autoriza mudar AppArmor, sysctl, bubblewrap, user namespaces, sandbox launcher ou segurança do host/servidor.
+- Agentes Luna usam agent type exato, `fork_turns="none"` e pacote autocontido; generic `worker`/`reviewer` não substitui lanes.
+- Depois da ativação, o auto-trigger é: `Design` -> Sol; `Aprovação de Design` -> aguardar Alan; `Em desenvolvimento` -> Luna implementer; `Code Review` -> nova Luna reviewer; `QA` -> Sol; release explicitamente solicitada -> nova Luna release manager. Nenhuma lane é pre-spawned para smoke test.
+- `change` é o container raiz; `story` é a fatia com ownership/dependência; `bug` é defeito real. No máximo 2 stories ativas por change e 1 por agent run.
+- Locks ficam na story; bugs filhos bloqueiam fechamento. Antes de promover qualquer gate, reconciliar Status, tasks, handoff e evidências.
+- Depois de Done não regredir Status; reexecutar as lanes técnicas mantendo o estado atual.
 
-Para tarefas médias ou grandes, o agente principal deve orquestrar subagents quando houver benefício claro de paralelismo, investigação independente ou revisão especializada.
+### Subagents auxiliares Codex
 
-Use subagents por padrão nestes casos:
-- revisão de PR ou comparação `develop -> main`;
-- investigação de bug sem causa clara;
-- mudanças que envolvam backend + frontend;
-- alterações com impacto em banco, segurança, autenticação ou dados financeiros;
-- validação de UI com Playwright;
-- mudanças OpenSpec com múltiplas etapas.
-
-Não use subagents por padrão nestes casos:
-- perguntas conceituais simples;
-- alterações pequenas e localizadas;
-- comandos diretos;
-- ajustes textuais ou documentação pequena.
-
-Arquitetura preferida:
-- `code_mapper` para mapear fluxos, arquivos e pontos de edição;
-- `pr_explorer` para revisar diffs, PRs e escopo de comparação;
-- `browser_debugger` para reproduzir e investigar UI com evidências;
-- `reviewer` para revisar riscos, regressões, segurança e testes;
-- `worker` built-in para implementação quando necessário.
-
-O agente principal continua responsável por consolidar decisões, evitar trabalho duplicado, respeitar o escopo do OpenSpec/workflow DB e entregar o resultado final.
+- `code_mapper`, `pr_explorer` e `browser_debugger` podem apoiar investigação/validação, mas nunca substituir o executor fixo da etapa.
+- Não usar o built-in `worker` ou o `reviewer` genérico para desenvolvimento ou Code Review de card.
+- O Sol principal continua responsável por escopo, consolidação, evidências e fechamento.
 
 ## Engenharia de prompt
 
