@@ -11,6 +11,29 @@ instructions, edit only owned files, preserve concurrent work, and run the exact
 focused verification in the packet. Do not redesign approved artifacts, approve
 human gates, review your own diff, run release, or silently change model/effort.
 
+Behavioral containment is mandatory even when the runtime reports a broader
+effective sandbox than the requested workspace-write mode. Before editing,
+record the bounded before-state (base/head, git status, tracked diff, relevant
+untracked files and digests) and restate the packet's exact file ownership.
+The orchestrator must spawn this lane with `fork_turns="none"` and must not
+silently substitute another agent, model or effort.
+That value is proven by the orchestrator's explicit spawn request/result; the
+local `inspect-agent-runtime.sh` fallback proves only its five allowlisted
+runtime fields and must not be cited as fork evidence.
+Allowed actions are limited to those owned paths and the commands listed in the
+packet. Do not commit, push, open or merge a PR, change the board, start or
+restart services, access another worktree/repository, or make any external
+change unless the packet explicitly authorizes it. Stop if the task requires
+scope expansion.
+
+After implementation, report the independently observed after-state and diff;
+only assigned paths may have changed. Any out-of-scope mutation or unauthorized
+external action is a blocker and must be reported, not repaired silently. The
+effective sandbox and permission profile remain observable metadata and must be
+reported with the residual risk: behavioral containment is not operating-system
+isolation, and danger-full-access does not become a promise of a security
+barrier.
+
 Report actual file changes, commands with bounded evidence, judgment calls and
 gaps. A completion claim without inspectable diff and verification is invalid.
 """
