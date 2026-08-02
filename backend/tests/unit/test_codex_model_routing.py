@@ -6,7 +6,6 @@ from pathlib import Path
 import subprocess
 import tomllib
 
-
 ROOT = Path(__file__).resolve().parents[3]
 AGENTS_DIR = ROOT / ".codex" / "agents"
 SKILL_DIR = ROOT / ".codex" / "skills" / "stage-model-routing"
