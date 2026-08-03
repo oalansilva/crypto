@@ -21,6 +21,9 @@ unit-test file is added, renamed, or removed.
 - Optimized PR runs on reviewed commit `ef18e81c`: **1m55s**, **1m49s**, and
   **1m57s**.  The median is **1m55s (115s)**, a **59.5% reduction** from the
   284s reference median.
+- Current post-rollback inventory: **55** files. The routing-contract test
+  from cards #362/#369 was intentionally removed and is not part of this
+  backend behavior inventory.
 
 The baseline runner started one `pytest`/coverage process per file.  The
 optimized runner uses one coverage session for `backend/tests/unit`, retains
@@ -57,7 +60,7 @@ implementation commit.
 
 Every discovered file has exactly one `keep`, `refactor/consolidate`, or
 `remove` decision in the JSON inventory.  Current evidence supports **keep**
-for all 56 files: each protects reachable backend behavior or a deliberate
+for all 55 files: each protects reachable backend behavior or a deliberate
 negative contract, and no removal guardrail has been met.  The table below is
 the generated audit index; details and evidence strings are in the JSON.
 
@@ -76,7 +79,6 @@ the generated audit index; details and evidence strings are in the JSON.
 | `test_canonical_candle_writer_script.py` | pure | keep | Writer lock/state contract |
 | `test_chart_pattern_service.py` | pure | keep | Pattern detection frames |
 | `test_cleanup_beta_test_users.py` | pure | keep | Cleanup policy/parser |
-| `test_codex_model_routing.py` | pure | keep | Fixed stage routing contract |
 | `test_combo_optimizer_final_execution_mode.py` | pure | keep | Optimizer mode forwarding |
 | `test_combo_service_templates.py` | postgres | keep | Template listing/seeding |
 | `test_combo_short_execution.py` | pure | keep | Short trade execution |
