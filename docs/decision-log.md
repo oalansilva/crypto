@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-08-03 - Impeccable obrigatório no Design do Codex
+
+**Decisao:** integrar o Impeccable em escopo project-local somente no Codex. Cards com `UI impact: affected` passam a registrar `Impeccable Brief`, crítica dual-agent, audit, trace, correções direcionadas, polish e nova validação em navegador real antes de `Design Agent verdict: PASS`. Cards `UI impact: none` registram Impeccable como `N/A`, sem reduzir o gate humano de Design.
+
+**Modelo:** Assessment A e Assessment B são critics read-only independentes e devem herdar exatamente o mesmo LLM/modelo e versão da sessão principal do Codex. Sem evidência observável de igualdade, o veredito é `BLOCKED`; não há fallback. Cursor permanece no contrato base `design-critic` e não recebe este provider.
+
+**Versionamento:** pacote CLI npm `impeccable@3.5.0`; payload instalado da skill declara `4.0.4`; `gitHead` npm `9a949fb543d44cfb406f61bcab99d95d7f12cf1d`. Arquivos versionados: `.agents/skills/impeccable/`, `.codex/hooks.json`, `PRODUCT.md` e o bloco oficial de ignore do `.impeccable`.
+
+**Fontes e proteção:** `PRODUCT.md` foi derivado de `docs/project-hub.md`, `docs/mvp-scope.md` e `docs/brand-system.md`. `DESIGN.md` continua a autoridade visual e não foi alterado pelo setup. A mudança não reabre nem reutiliza os cards cancelados `362` e `369`.
+
+**Rollback:** remover `.codex/hooks.json`, `.agents/skills/impeccable/`, `PRODUCT.md` e o bloco de ignore, preservando `design-critic`, `DESIGN.md`, protótipos e os gates existentes. Não há alteração de API, banco, runtime de produção ou status de card.
+
 ## 2026-08-01 - Browser gate obrigatório para protótipos
 
 **Decisao:** nenhum protótipo com UI pode receber `Design Agent verdict: PASS` apenas por build, HTTP 200, `curl` ou inspeção do código. A versão final servida deve ser aberta em navegador real, validada em desktop/mobile e ter estado padrão, interações e critérios críticos comprovados por asserts observáveis.
