@@ -17,6 +17,8 @@ const FAVORITES = [
     symbol: 'BTC/USDT',
     timeframe: '1d',
     strategy_name: 'ema_rsi',
+    strategy_display_name: 'BTC 1D Long — Médias: Virada Inicial',
+    strategy_description: 'No BTC em 1D, abre Long quando a média curta cruza a longa e já se mantém acima dela; encerra no cruzamento baixista da média longa.',
     parameters: { ema_short: 9, ema_long: 21, direction: 'long' },
     metrics: {
       total_return: 0.12,
@@ -363,4 +365,3 @@ test('visual critical profile', async ({ page }) => {
   await expect(page.getByText('Credenciais Binance')).toBeVisible()
   await capture(page, 'profile.png')
 })
-
