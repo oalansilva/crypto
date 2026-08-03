@@ -216,19 +216,19 @@ jobs:
     timeout-minutes: 30
     env:
       PYTHONPATH: ${{ github.workspace }}
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
-      WORKFLOW_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/crypto_app_test
+      WORKFLOW_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/crypto_app_test
     services:
       postgres:
         image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: crypto
+          POSTGRES_DB: crypto_app_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d crypto"
+          --health-cmd "pg_isready -U postgres -d crypto_app_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -248,23 +248,74 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r backend/requirements.txt
 
-      - name: Run backend unit tests
+      - name: Run backend unit-test harness contracts
+        run: |
+          timeout 120s python -m pytest -q backend/tests/contract
+
+      - name: Run backend unit tests (consolidated)
         shell: bash
         run: |
           set -euo pipefail
-          for test_file in backend/tests/unit/test_*.py; do
-            echo "::group::${test_file}"
-            timeout 180s coverage run --parallel-mode --source=backend/app -m pytest -q "${test_file}"
-            echo "::endgroup::"
-          done
+          mkdir -p test-artifacts/backend-unit
+          started_at="$(date +%s.%N)"
+          set +e
+          timeout 20m coverage run --parallel-mode --source=backend/app \
+            -m pytest -vv --durations=20 \
+            --junitxml=test-artifacts/backend-unit/junit.xml \
+            backend/tests/unit 2>&1 | tee test-artifacts/backend-unit/pytest.log
+          pytest_status="${PIPESTATUS[0]}"
+          set -e
+          finished_at="$(date +%s.%N)"
+          report_status=0
+          if [[ -s test-artifacts/backend-unit/junit.xml ]]; then
+            set +e
+            python scripts/benchmark_backend_unit_tests.py \
+              --junit-xml test-artifacts/backend-unit/junit.xml \
+              --pytest-log test-artifacts/backend-unit/pytest.log \
+              --output test-artifacts/backend-unit/timing.json \
+              --markdown-output test-artifacts/backend-unit/timing.md \
+              --revision "${GITHUB_SHA}" \
+              --environment "github-actions/ubuntu-latest" \
+              --started-at "${started_at}" \
+              --finished-at "${finished_at}"
+            report_status="$?"
+            set -e
+            if (( report_status != 0 )); then
+              printf '{"schema_version":1,"error":"benchmark_failed","exit_code":%s}\n' \
+                "${report_status}" > test-artifacts/backend-unit/timing.json
+              printf '# Backend unit timing unavailable\n\n- Benchmark exit code: `%s`\n' \
+                "${report_status}" > test-artifacts/backend-unit/timing.md
+            fi
+          else
+            report_status=1
+            printf '{"schema_version":1,"error":"missing_or_empty_junit"}\n' \
+              > test-artifacts/backend-unit/timing.json
+            printf '# Backend unit timing unavailable\n\n- JUnit report was missing or empty.\n' \
+              > test-artifacts/backend-unit/timing.md
+          fi
+
+          if (( pytest_status != 0 )); then
+            echo "backend unit pytest/timeout failed with status ${pytest_status}"
+            exit "${pytest_status}"
+          fi
+          exit "${report_status}"
 
       - name: Upload backend unit coverage data
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-unit-coverage-data
-          if-no-files-found: error
+          if-no-files-found: warn
           include-hidden-files: true
           path: .coverage.*
+
+      - name: Upload backend unit timing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-unit-timing-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          path: test-artifacts/backend-unit
 
   backend-tests:
     runs-on: ubuntu-latest

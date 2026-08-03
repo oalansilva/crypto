@@ -21,8 +21,8 @@ import app.services.workflow_validation_service as workflow_validation_service
 
 
 @pytest.fixture
-def workflow_session():
-    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
+def workflow_session(postgres_isolation, unit_workflow_database_url):
+    engine = create_engine(unit_workflow_database_url)
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()

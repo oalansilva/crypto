@@ -1,25 +1,21 @@
 """Unit-test fixtures and helpers.
 
-Keep a clean PostgreSQL state between unit tests to avoid flaky
-``UniqueViolation`` failures across fixtures that use shared default DB URLs.
+Database setup is deliberately opt-in.  Pure unit tests must not pay for a
+PostgreSQL connection, schema creation, or table truncation.  Tests that use
+application/workflow persistence opt in with ``pytest.mark.postgres`` (or the
+``postgres_isolation`` fixture), and receive the same deterministic reset that
+the old global fixture provided.
 """
 
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 from app.services import binance_realtime_snapshot_store
-
-from app.database import Base
-from app.workflow_database import WorkflowBase
-
-_TEST_DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
-)
 
 _FORBIDDEN_DATABASE_NAMES = {
     "crypto_app",
@@ -35,16 +31,15 @@ _FORBIDDEN_DATABASE_NAMES = {
 def _assert_safe_unit_database(database_url: str) -> None:
     url = make_url(database_url)
     backend = url.get_backend_name()
-    if backend == "sqlite":
-        return
+    if backend != "postgresql":
+        raise RuntimeError(
+            "Unit-test persistence requires PostgreSQL; refusing "
+            f"{backend or '<unknown>'}. SQLite and other backends are not supported."
+        )
 
     database_name = (url.database or "").lower()
-    explicitly_test_db = (
-        database_name == "postgres"
-        or database_name.startswith("test_")
-        or database_name.endswith("_test")
-        or database_name.endswith("_tests")
-        or database_name.endswith("_testing")
+    explicitly_test_db = database_name.startswith("test_") or database_name.endswith(
+        ("_test", "_tests", "_testing")
     )
 
     if database_name in _FORBIDDEN_DATABASE_NAMES or not explicitly_test_db:
@@ -60,32 +55,96 @@ def _qualified_table_name(table) -> str:
     return f'"{table.name}"'
 
 
-@pytest.fixture(autouse=True)
-def _isolate_unit_databases():
-    _assert_safe_unit_database(_TEST_DATABASE_URL)
-    engine = create_engine(_TEST_DATABASE_URL, pool_pre_ping=True)
+def _database_url_from_environment(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(f"{name} is required for PostgreSQL unit-test persistence")
+    _assert_safe_unit_database(value)
+    return value
+
+
+def _reset_postgres_state(database_url: str, workflow_database_url: str) -> None:
+    """Create required schemas and truncate every known table once per test."""
+
+    # Importing the application database modules creates their engines.  Keep
+    # those imports inside the opt-in path so pure tests do not open a DB at
+    # collection or fixture setup time.
+    from app.database import Base
+    from app.workflow_database import WorkflowBase
+
+    database_urls = tuple(dict.fromkeys((database_url, workflow_database_url)))
+    for url in database_urls:
+        _assert_safe_unit_database(url)
+
+    snapshot_path = binance_realtime_snapshot_store.get_snapshot_path()
     try:
-        snapshot_path = binance_realtime_snapshot_store.get_snapshot_path()
+        snapshot_path.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+    for url in database_urls:
+        engine = create_engine(url, pool_pre_ping=True)
         try:
-            snapshot_path.unlink(missing_ok=True)
-        except Exception:
-            pass
+            Base.metadata.create_all(bind=engine)
+            WorkflowBase.metadata.create_all(bind=engine)
 
-        Base.metadata.create_all(bind=engine)
-        WorkflowBase.metadata.create_all(bind=engine)
+            seen: set[tuple[str | None, str]] = set()
+            with engine.begin() as connection:
+                for table in (
+                    *Base.metadata.sorted_tables,
+                    *WorkflowBase.metadata.sorted_tables,
+                ):
+                    key = (table.schema, table.name)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    connection.execute(
+                        text(
+                            f"TRUNCATE TABLE {_qualified_table_name(table)} "
+                            "RESTART IDENTITY CASCADE"
+                        )
+                    )
+        finally:
+            engine.dispose()
 
-        seen: set[tuple[str | None, str]] = set()
-        with engine.begin() as connection:
-            for table in (
-                *Base.metadata.sorted_tables,
-                *WorkflowBase.metadata.sorted_tables,
-            ):
-                key = (table.schema, table.name)
-                if key in seen:
-                    continue
-                seen.add(key)
-                connection.execute(
-                    text(f"TRUNCATE TABLE {_qualified_table_name(table)} RESTART IDENTITY CASCADE")
-                )
-    finally:
-        engine.dispose()
+
+def _is_postgres_test_requested(request: pytest.FixtureRequest) -> bool:
+    return request.node.get_closest_marker("postgres") is not None
+
+
+@pytest.fixture
+def postgres_isolation() -> Iterator[None]:
+    """Opt-in fixture for tests that need a deterministic PostgreSQL reset."""
+
+    database_url = _database_url_from_environment("DATABASE_URL")
+    workflow_database_url = _database_url_from_environment("WORKFLOW_DATABASE_URL")
+    _reset_postgres_state(database_url, workflow_database_url)
+    yield
+
+
+@pytest.fixture
+def unit_database_url() -> str:
+    """Return the explicitly configured, safe application test database URL."""
+
+    return _database_url_from_environment("DATABASE_URL")
+
+
+@pytest.fixture
+def unit_workflow_database_url() -> str:
+    """Return the explicitly configured, safe workflow test database URL."""
+
+    return _database_url_from_environment("WORKFLOW_DATABASE_URL")
+
+
+@pytest.fixture(autouse=True)
+def _isolate_unit_databases(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Reset persistence only for tests explicitly marked ``postgres``."""
+
+    if not _is_postgres_test_requested(request):
+        yield
+        return
+
+    database_url = _database_url_from_environment("DATABASE_URL")
+    workflow_database_url = _database_url_from_environment("WORKFLOW_DATABASE_URL")
+    _reset_postgres_state(database_url, workflow_database_url)
+    yield

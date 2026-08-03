@@ -15,7 +15,7 @@ import app.services.signal_monitor as signal_monitor_service
 
 
 @pytest.fixture
-def isolated_job_manager(monkeypatch, tmp_path):
+def isolated_job_manager(monkeypatch, tmp_path, postgres_isolation, unit_database_url):
     previous = job_manager_service.JobManager._instance
     if previous is not None and hasattr(previous, "engine"):
         previous.engine.dispose()
@@ -23,7 +23,7 @@ def isolated_job_manager(monkeypatch, tmp_path):
     monkeypatch.setattr(
         job_manager_service,
         "DB_URL",
-        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
+        unit_database_url,
     )
     monkeypatch.setattr(job_manager_service.JobManager, "DATA_DIR", tmp_path / "jobs")
     job_manager_service.JobManager._instance = None

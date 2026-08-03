@@ -3,8 +3,10 @@ from app.models import ComboTemplate
 from app.services.combo_service import ComboService
 
 
-def test_list_templates_returns_existing_rows_in_expected_buckets():
-    service = ComboService("sqlite:///:memory:")
+def test_list_templates_returns_existing_rows_in_expected_buckets(
+    postgres_isolation, unit_database_url
+):
+    service = ComboService(unit_database_url)
 
     with service._session_factory() as db:
         Base.metadata.create_all(db.get_bind())
