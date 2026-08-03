@@ -22,12 +22,30 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 3. Se a superfície já existir: inspecionar a tela atual (código React/`index.css`/`DESIGN.md` e, quando útil, URL DEV) antes de prototipar. Registrar no `design.md` a base usada (rota/tela/shell).
 4. Não editar código de produção. Limitar a execução a artefatos OpenSpec, documentação de design e protótipos/wireframes explicitamente vinculados à entrega.
 
+## Integração Impeccable no Codex
+
+Esta integração é obrigatória no Codex para `UI impact: affected` e não altera o provider Cursor. O Cursor continua usando este contrato base, seus adapters e o gate de navegador já definido.
+
+Antes do `PASS`, a sessão Codex deve executar o pipeline local do Impeccable na ordem abaixo, sempre contra a superfície versionada da change:
+
+`context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`
+
+- Executar `node .agents/skills/impeccable/scripts/context.mjs --target <surface>` uma vez por sessão e conservar `PRODUCT.md` como contexto de produto. `DESIGN.md` permanece a autoridade visual canônica e não pode ser reescrito pelo setup.
+- Usar `$impeccable shape` para registrar brief, direção, escopo, estados, interação e restrições antes de editar a direção visual.
+- Executar `$impeccable critique` com Assessment A (produto/UX/a11y/responsividade/estados) e Assessment B (detector e navegador), em contextos independentes, ambos read-only.
+- Executar `$impeccable audit` e aplicar somente `harden`, `adapt` ou `clarify` quando houver achado correspondente. Agrupar a correção em uma rodada e executar `$impeccable polish` por último.
+- Repetir o gate de navegador real desktop/mobile e os asserts depois do polish. O hook pode alertar durante a edição, mas não substitui a crítica, o audit ou a validação final.
+
+### Modelo e isolamento dos critics
+
+Assessment A e Assessment B devem usar exatamente o mesmo identificador e versão de LLM/modelo da sessão principal do Codex. Esse runtime da sessão principal é a única fonte de verdade; perfis gerados pelo Impeccable não podem escolher outro modelo, fallback ou roteamento fixo. Os critics não compartilham o transcript nem os resultados antes da síntese e não podem editar arquivos. Se a disponibilidade do subagent ou a igualdade exata do LLM/modelo/versão não puder ser observada, o veredito é `BLOCKED` e nenhum `PASS` pode ser emitido.
+
 ## Produzir a solução
 
 ### Quando `UI impact: affected`
 
 1. Explicitar no `design.md` o problema, o usuário afetado, a hipótese de produto e o resultado esperado.
-2. Produzir ou refatorar um protótipo verificável. Aceitar Figma versionado, HTML navegável, arquivo versionado ou wireframe Markdown quando proporcional ao card.
+2. Incorporar o `Impeccable Brief` antes de produzir ou refatorar o protótipo verificável. Aceitar Figma versionado, HTML navegável, arquivo versionado ou wireframe Markdown quando proporcional ao card.
 3. **Base do protótipo:**
    - Tela já existente: clonar shell/estrutura visual atual (sidebar 224px, header workspace, tokens `--bg-*`/`--accent-primary`, tipografia Inter, itens de nav reais) e aplicar só a mudança do card.
    - Tela nova: compor a partir de `DESIGN.md` + shell do app; não usar landing genérica.
@@ -47,6 +65,8 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
    - fluxos e estados representados; delta destacado.
 6. Aplicar os tokens, componentes e padrões do `DESIGN.md`. Registrar qualquer exceção e sua justificativa.
 
+7. Depois da primeira entrega, completar `Impeccable Critique` e `Impeccable Audit`, classificar cada finding determinístico como resolvido ou aceito com justificativa, aplicar uma única rodada de correções direcionadas e registrar `Impeccable Trace` antes do gate final.
+
 ## Gate de validação do protótipo
 
 Antes de emitir `PASS` ou mover para `Aprovação de Design`:
@@ -62,6 +82,7 @@ Antes de emitir `PASS` ou mover para `Aprovação de Design`:
 5. Verificar erros de console/página e recursos quebrados que afetem a revisão.
 6. Registrar em `design.md`, dentro de `## Prototype Validation`, URL servida, viewports, ações/asserts e resultado.
 7. Reexecutar a validação depois de **qualquer** alteração final no HTML/CSS/JS ou rebuild/restart. Evidência de versão anterior é inválida.
+8. Confirmar que a versão validada é a mesma versão polida registrada no `Impeccable Trace`, incluindo digest e ausência de erros de console/página com impacto no fluxo.
 
 Se navegador real estiver indisponível, se qualquer assert falhar ou se a versão servida divergir da versão local, o veredito MUST ser `BLOCKED`. Não promover o card.
 
@@ -88,6 +109,8 @@ Tratar falta de fidelidade em tela existente como achado **bloqueante** (não em
 
 Sem UI nova, cobrir no mínimo: escopo, regressão de produto, riscos operacionais e confirmação de que nenhuma superfície visual nova/alterada ficou sem classificação.
 
+Para `UI impact: none`, registrar `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` como `N/A`, com justificativa explícita. Isso não reduz o gate de Design, a aprovação de Alan ou a crítica independente do card.
+
 Corrigir no protótipo (se houver) e no `design.md` todo achado bloqueante que estiver no escopo. Não marcar como resolvido um achado sem evidência correspondente.
 
 ## Registrar a entrega
@@ -99,6 +122,15 @@ Adicionar ou atualizar `## Design Critique` no `design.md` com:
 - referências exatas do design e do protótipo avaliados (ou `Prototype: N/A` justificado);
 - evidência de `## Prototype Validation` quando houver protótipo;
 - `Design Agent verdict: PASS` ou `Design Agent verdict: BLOCKED`.
+
+Para `UI impact: affected`, o mesmo `design.md` também deve conter:
+
+- `## Impeccable Brief`: problema, usuário, resultado, direção, escopo, estados, interação e restrições.
+- `## Impeccable Critique`: Assessment A e B separados, achados por dimensão, severidade e disposição.
+- `## Impeccable Audit`: acessibilidade, performance, responsividade, theming e integridade de implementação.
+- `## Impeccable Trace`: versão do CLI/payload/commit, comandos, target, digest, metadata da sessão principal e dos dois critics, prova de igualdade do modelo/versão, findings do detector e vínculo com `Prototype Validation`.
+
+`PASS` exige zero P0/P1 aberto, nenhum finding determinístico sem classificação, browser gate e asserts críticos verdes, nenhum erro de console/página com impacto no fluxo e evidência observável de que Assessment A e B usaram o mesmo LLM/modelo/versão da sessão principal. Ausência de qualquer evidência mantém `BLOCKED`.
 
 Usar `PASS` somente quando `design.md` e crítica estiverem completos/coerentes e sem achado bloqueante; com UI, o protótipo versionado/verificável e validado em navegador real também é obrigatório; com tela já existente, fidelidade ao sistema atual é obrigatória. HTTP 200 isolado nunca é evidência de PASS. Publicar novamente os artefatos OpenSpec no card quando a entrega mudar; com HTML, o comentário de handoff MUST incluir o link da tela prototipada.
 

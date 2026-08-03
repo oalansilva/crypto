@@ -45,7 +45,10 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 4. Todo card em `Status=Design` usa o contrato canônico `.agents/skills/design-critic/SKILL.md` antes da implementação.
    - Codex invoca `$design-critic`; Cursor invoca `/design-critic`.
    - Com `UI impact: affected`, o agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
+   - No Codex, `UI impact: affected` também exige o payload project-local do Impeccable na ordem `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, com `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` versionados. O `DESIGN.md` não pode ser sobrescrito.
+   - Assessment A e Assessment B devem ser critics read-only separados e herdar exatamente o mesmo LLM/modelo e versão da sessão principal do Codex. Se a igualdade não for observável, o veredito é `BLOCKED`; não usar fallback. Cursor permanece no contrato base sem exigir esta instalação Codex-only.
    - Com `UI impact: none`, ainda passa por `Design` e `Aprovação de Design`; a entrega de design é enxuta (decisão, escopo, riscos, `Design Critique`) e registra explicitamente a ausência de superfície visual nova.
+   - Com `UI impact: none`, registrar Impeccable como `N/A` com justificativa; isso não reduz nenhum gate.
    - Protótipo HTML, quando houver, deve ser navegável em `frontend/public/prototypes/<slug>/` via URL DEV; o Gist OpenSpec lista só Markdown e nunca HTML.
    - **Fidelidade ao sistema atual:** quando a tela/rota/shell já existir no produto, o protótipo MUST partir do UI atual (shell, nav, tokens, densidade, componentes) e redesenhar só a mudança em cima dele, para Alan validar o delta. Proibido inventar layout/marketing paralelo. Tela nova (ainda inexistente) pode ser desenhada do zero, ainda assim obedecendo `DESIGN.md` e o shell do app quando for superfície autenticada.
    - **Validação obrigatória do protótipo:** antes de `Design Agent verdict: PASS`, abrir a URL final em navegador real, validar desktop/mobile, estado padrão, interações e asserts dos critérios críticos. Para remoção, provar que o elemento não está visível/existe no estado final. HTTP 200, build, leitura do HTML ou `curl` não bastam. Registrar URL, viewports, ações/asserts e resultado em `design.md` (`## Prototype Validation`). Qualquer falha ou navegador indisponível mantém `BLOCKED`.
@@ -71,6 +74,10 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 9. Sempre utilizar subagentes quando houver tarefa de desenvolvimento, investigacao, validacao ou revisao tecnica com ganho claro de paralelismo.
    - O agente principal continua responsavel por escopo, consolidacao, evidencias e fechamento.
+   - A sessao principal do Codex define o LLM/modelo e a versao da tarefa; todo subagent deve herdar exatamente esse mesmo LLM/modelo e versao.
+   - Papéis, prompts, sandbox e ownership podem variar, mas nenhum subagent pode trocar de LLM/modelo, usar fallback ou aplicar roteamento fixo Sol/Luna/Terra.
+   - Se a igualdade do LLM/modelo nao puder ser imposta e observada, nao criar o subagent; continuar na sessao principal ou registrar o bloqueio.
+   - Para critica ou revisao independente, usar contextos separados e manter o subagent read-only; a sessao principal consolida e corrige.
 
 10. PostgreSQL e obrigatorio em runtime, QA, homologacao e scripts operacionais.
    - Nao usar SQLite como banco de operacao.

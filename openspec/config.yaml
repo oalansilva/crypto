@@ -24,6 +24,8 @@ rules:
     - For UI-impact work, include the design gate before implementation: Design -> Aprovação de Design -> Pronto para Dev, using the design-critic skill and waiting for Alan's human approval.
   design:
     - For UI-impact work, include Prototype and Design Critique sections with versioned evidence and an explicit Design Agent verdict.
+    - In Codex, UI-impact work also includes the project-local Impeccable context, shape, dual-agent critique, audit, targeted-fix, polish, and browser-gate trace; the critics must inherit the primary session's exact LLM/model and version, otherwise the verdict is BLOCKED. Cursor remains on the base design-critic contract.
+    - For UI impact none, record Impeccable as N/A with a non-empty justification without reducing the Design or human-approval gates.
     - The Designer/Critic Agent may hand off Design -> Aprovação de Design only; it must never approve Aprovação de Design -> Pronto para Dev.
 
 # Per-artifact rules (optional)

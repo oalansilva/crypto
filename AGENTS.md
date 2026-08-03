@@ -51,6 +51,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Protótipo HTML:** seção separada no comentário com link HTTP `https://dev.criptofarol.com.br/prototypes/<slug>/` (arquivos em `frontend/public/prototypes/<slug>/`). Helper: `publish-openspec-card-artifacts.sh --prototype-url ...`.
 - **Observação de fluxo OpenSpec:** use os comandos nesta ordem para mudanças novas; ajuste a cadência apenas com justificativa explícita.
 - **Subagents:** use subagents sempre que houver ganho claro de paralelismo, investigação independente, validação especializada ou aceleração sem duplicar trabalho.
+- **Roteamento de LLM Codex:** a sessão principal do Codex é a fonte única do LLM/modelo e da versão da tarefa. Todo subagent usado deve herdar exatamente o mesmo LLM/modelo e versão da sessão principal; papéis, prompts, sandbox e ownership podem variar, mas não o LLM. Se a igualdade não puder ser imposta e observada, não criar o subagent. Não usar Sol/Luna/Terra fixos nem fallback de modelo.
 - OpenSpec é a camada de especificação técnica (artifacts).
 - Workflow DB e OpenSpec são fontes de operação e evidência.
 - **Regra de documentação produto/Drive:** documentos de produto/projeto que existem no Google Drive e em `docs/*.md` devem ser mantidos sincronizados. Drive é a fonte de consulta/revisão para Alan; Markdown local/GitHub é espelho versionado e backup técnico. Não editar manualmente nos dois lugares de forma divergente. Ao atualizar definição aprovada, atualize o `.md` local e sincronize o Google Doc correspondente, ou atualize o Drive e depois espelhe localmente. Para código e documentação técnica de implementação, GitHub continua mandando.
@@ -148,6 +149,8 @@ Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover ar
 - O contrato canônico fica em `.agents/skills/design-critic/SKILL.md`. `.codex/skills/design-critic/SKILL.md` e `.cursor/skills/design-critic/SKILL.md` são adaptadores finos e não devem duplicar regras.
 - No Codex, invoque `$design-critic`; no Cursor, invoque `/design-critic`. Pedido equivalente em linguagem natural também deve acionar a skill durante `Status=Design` de **qualquer** card.
 - O Designer/Critic Agent prepara a entrega de design: com UI, produz/refatora o protótipo e critica produto/UX/a11y/responsividade/estados; sem UI nova, registra decisão enxuta e ausência de superfície visual. Resolve achados bloqueantes no escopo e registra `Design Agent verdict` no `design.md`.
+- **Impeccable no Codex:** para `UI impact: affected`, executar a skill local em `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, registrar `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace`, e manter `DESIGN.md` sem sobrescrita. Assessment A e B devem ser critics read-only separados usando exatamente o mesmo LLM/modelo e versão da sessão principal; sem evidência observável de igualdade, o veredito é `BLOCKED`. Para `UI impact: none`, registrar Impeccable como `N/A` com justificativa e manter todos os gates.
+- A integração Impeccable deste processo é Codex-only; Cursor continua no contrato base `design-critic` sem exigir o payload/provider Impeccable.
 - O agente só pode mover `Design -> Aprovação de Design` quando `design.md` e `Design Critique` estiverem completos e, se `UI impact: affected`, o `Prototype` também. Nunca pode mover `Aprovação de Design -> Pronto para Dev`, autoaprovar ou alegar identidade de Alan.
 - **Protótipos HTML navegáveis (Cripto):** publicar em `frontend/public/prototypes/<change-or-card-slug>/` (preferir `index.html`). URL canônica de revisão: `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/`. Não use Gist como superfície de visualização de HTML (Gist mostra código-fonte). No comentário do card, o bloco **OpenSpec** lista só Markdown do Gist; o bloco **Protótipo navegável** traz o link HTTP da tela. Após gravar o arquivo em `public/`, rebuild/restart do frontend DEV se necessário para o `preview` servir o `dist/` atualizado. Helper: `publish-openspec-card-artifacts.sh` com `--prototype-url` (nunca faz upload de HTML no Gist).
 - **Fidelidade do protótipo ao sistema atual:** se a tela/rota/shell já existir, o protótipo deve clonar a UI atual (sidebar/header, tokens de `DESIGN.md`/`index.css`, tipografia, densidade, estados) e redesenhar apenas o delta do card por cima. Alan valida diferença, não uma tela inventada. Se a tela ainda não existir, desenhar a nova superfície alinhada a `DESIGN.md` e ao shell autenticado do app; não usar layouts genéricos/marketing.
@@ -516,6 +519,14 @@ Valida + análise profunda de bugs.
 ### Uso padrão de subagents Codex
 
 Para tarefas médias ou grandes, o agente principal deve orquestrar subagents quando houver benefício claro de paralelismo, investigação independente ou revisão especializada.
+
+Contrato de modelo:
+- A sessão principal define o LLM/modelo e sua versão para todo o turno.
+- Cada subagent deve executar no mesmo LLM/modelo e versão exatos da sessão principal; a função do agente não autoriza trocar de modelo.
+- O effort deve acompanhar a sessão principal por padrão. Se divergir por exigência do cliente, registrar a exceção sem alterar o LLM/modelo.
+- Antes de aceitar o retorno, verificar a igualdade do modelo na evidência runtime disponível. Sem evidência observável, manter a tarefa na sessão principal.
+- Para críticas independentes, usar contextos separados; reviewers permanecem read-only e o agente principal consolida e corrige.
+- Não usar fallback, Terra, Sol/Luna fixos ou perfil built-in sem comprovar a herança do LLM/modelo principal.
 
 Use subagents por padrão nestes casos:
 - revisão de PR ou comparação `develop -> main`;
