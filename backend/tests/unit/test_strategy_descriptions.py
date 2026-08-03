@@ -39,7 +39,9 @@ def test_generated_quant_strategy_has_safe_product_copy():
     raw_name = "Quant BTC ROC+EMA Momentum Guard Long v3"
     description = public_strategy_description(raw_name)
 
-    assert public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade com Filtro de Força"
+    assert (
+        public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade com Filtro de Força"
+    )
     assert "força direcional do btc" in description.lower()
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 

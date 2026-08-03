@@ -160,9 +160,11 @@ def redact_favorite_strategy_payload(
         payload["strategy_display_name"] = (
             manifest.get("display_name")
             if is_manifest_available
-            else public_display_name
-            if has_known_identity
-            else "Detalhes da estratégia indisponíveis"
+            else (
+                public_display_name
+                if has_known_identity
+                else "Detalhes da estratégia indisponíveis"
+            )
         )
         if not is_manifest_available and not has_known_identity:
             payload["template_name"] = payload["strategy_display_name"]
@@ -259,9 +261,11 @@ def redact_opportunity_payload(
         payload["strategy_display_name"] = (
             manifest.get("display_name")
             if is_manifest_available
-            else public_display_name
-            if has_known_identity
-            else "Detalhes da estratégia indisponíveis"
+            else (
+                public_display_name
+                if has_known_identity
+                else "Detalhes da estratégia indisponíveis"
+            )
         )
         if not is_manifest_available and not has_known_identity:
             payload["template_name"] = payload["strategy_display_name"]
