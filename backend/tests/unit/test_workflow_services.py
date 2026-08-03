@@ -39,8 +39,8 @@ from app.workflow_models import (
 
 
 @pytest.fixture
-def workflow_session():
-    url = "postgresql://postgres:postgres@127.0.0.1:5432/postgres"
+def workflow_session(postgres_isolation, unit_workflow_database_url):
+    url = unit_workflow_database_url
     init_workflow_schema_for_url(url)
     engine = create_engine(url)
     WorkflowBase.metadata.create_all(bind=engine)
@@ -110,38 +110,53 @@ def test_canonical_statuses_aliases_and_unknown_rejection():
     assert exc.value.detail["code"] == "unknown_workflow_status"
 
 
-def test_legacy_status_migration_is_idempotent_and_rejects_unknown():
-    engine = create_engine("sqlite+pysqlite:///:memory:")
-    with engine.begin() as conn:
-        conn.execute(
-            text(
-                "CREATE TABLE wf_changes ("
-                "id TEXT PRIMARY KEY, status TEXT NOT NULL, "
-                "ui_impact TEXT NOT NULL DEFAULT 'unknown', "
-                "ui_impact_justification TEXT NOT NULL DEFAULT '')"
+def test_legacy_status_migration_is_idempotent_and_rejects_unknown(
+    postgres_isolation, unit_workflow_database_url
+):
+    # Exercise the migration against PostgreSQL only.  A private schema keeps
+    # this contract test independent from the shared workflow tables while
+    # preserving the production dialect's expanding bind parameter behavior.
+    url = unit_workflow_database_url
+    engine = create_engine(url)
+    schema = f"test_workflow_migration_{uuid4().hex[:12]}"
+    quoted_schema = '"' + schema + '"'
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(f"CREATE SCHEMA {quoted_schema}"))
+            conn.execute(text(f"SET search_path TO {quoted_schema}"))
+            conn.execute(
+                text(
+                    "CREATE TABLE wf_changes ("
+                    "id TEXT PRIMARY KEY, status TEXT NOT NULL, "
+                    "ui_impact TEXT NOT NULL DEFAULT 'unknown', "
+                    "ui_impact_justification TEXT NOT NULL DEFAULT '')"
+                )
             )
-        )
-        conn.execute(
-            text(
-                "INSERT INTO wf_changes (id, status) VALUES ('1', 'Pending'), ('2', 'DEV'), ('3', 'Archived')"
+            conn.execute(
+                text(
+                    "INSERT INTO wf_changes (id, status) VALUES "
+                    "('1', 'Pending'), ('2', 'DEV'), ('3', 'Archived')"
+                )
             )
-        )
-        migrate_legacy_workflow_statuses(conn)
-        migrate_legacy_workflow_statuses(conn)
-        rows = {
-            str(row[0]): str(row[1])
-            for row in conn.execute(text("SELECT id, status FROM wf_changes"))
-        }
-        assert rows == {"1": "Todo", "2": "Em desenvolvimento", "3": "Homologado"}
-        legacy_ui = conn.execute(
-            text("SELECT ui_impact, ui_impact_justification FROM wf_changes WHERE id = '2'")
-        ).one()
-        assert legacy_ui[0] == "none"
-        assert "Grandfathered" in legacy_ui[1]
-        conn.execute(text("INSERT INTO wf_changes (id, status) VALUES ('4', 'Mystery')"))
-        with pytest.raises(RuntimeError, match="Mystery"):
             migrate_legacy_workflow_statuses(conn)
-    engine.dispose()
+            migrate_legacy_workflow_statuses(conn)
+            rows = {
+                str(row[0]): str(row[1])
+                for row in conn.execute(text("SELECT id, status FROM wf_changes"))
+            }
+            assert rows == {"1": "Todo", "2": "Em desenvolvimento", "3": "Homologado"}
+            legacy_ui = conn.execute(
+                text("SELECT ui_impact, ui_impact_justification " "FROM wf_changes WHERE id = '2'")
+            ).one()
+            assert legacy_ui[0] == "none"
+            assert "Grandfathered" in legacy_ui[1]
+            conn.execute(text("INSERT INTO wf_changes (id, status) VALUES ('4', 'Mystery')"))
+            with pytest.raises(RuntimeError, match="Mystery"):
+                migrate_legacy_workflow_statuses(conn)
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text(f"DROP SCHEMA IF EXISTS {quoted_schema} CASCADE"))
+        engine.dispose()
 
 
 def test_canonical_transition_matrix_rework_and_terminals():

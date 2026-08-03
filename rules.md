@@ -45,7 +45,10 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 4. Todo card em `Status=Design` usa o contrato canônico `.agents/skills/design-critic/SKILL.md` antes da implementação.
    - Codex invoca `$design-critic`; Cursor invoca `/design-critic`.
    - Com `UI impact: affected`, o agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
+   - No Codex, `UI impact: affected` também exige o payload project-local do Impeccable na ordem `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, com `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` versionados. O `DESIGN.md` não pode ser sobrescrito.
+   - Assessment A e Assessment B devem ser critics read-only separados e herdar exatamente o mesmo LLM/modelo e versão da sessão principal do Codex. Se a igualdade não for observável, o veredito é `BLOCKED`; não usar fallback. Cursor permanece no contrato base sem exigir esta instalação Codex-only.
    - Com `UI impact: none`, ainda passa por `Design` e `Aprovação de Design`; a entrega de design é enxuta (decisão, escopo, riscos, `Design Critique`) e registra explicitamente a ausência de superfície visual nova.
+   - Com `UI impact: none`, registrar Impeccable como `N/A` com justificativa; isso não reduz nenhum gate.
    - Protótipo HTML, quando houver, deve ser navegável em `frontend/public/prototypes/<slug>/` via URL DEV; o Gist OpenSpec lista só Markdown e nunca HTML.
    - **Fidelidade ao sistema atual:** quando a tela/rota/shell já existir no produto, o protótipo MUST partir do UI atual (shell, nav, tokens, densidade, componentes) e redesenhar só a mudança em cima dele, para Alan validar o delta. Proibido inventar layout/marketing paralelo. Tela nova (ainda inexistente) pode ser desenhada do zero, ainda assim obedecendo `DESIGN.md` e o shell do app quando for superfície autenticada.
    - **Validação obrigatória do protótipo:** antes de `Design Agent verdict: PASS`, abrir a URL final em navegador real, validar desktop/mobile, estado padrão, interações e asserts dos critérios críticos. Para remoção, provar que o elemento não está visível/existe no estado final. HTTP 200, build, leitura do HTML ou `curl` não bastam. Registrar URL, viewports, ações/asserts e resultado em `design.md` (`## Prototype Validation`). Qualquer falha ou navegador indisponível mantém `BLOCKED`.
@@ -71,6 +74,10 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 9. Sempre utilizar subagentes quando houver tarefa de desenvolvimento, investigacao, validacao ou revisao tecnica com ganho claro de paralelismo.
    - O agente principal continua responsavel por escopo, consolidacao, evidencias e fechamento.
+   - A sessao principal do Codex define o LLM/modelo e a versao da tarefa; todo subagent deve herdar exatamente esse mesmo LLM/modelo e versao.
+   - Papéis, prompts, sandbox e ownership podem variar, mas nenhum subagent pode trocar de LLM/modelo, usar fallback ou aplicar roteamento fixo Sol/Luna/Terra.
+   - Se a igualdade do LLM/modelo nao puder ser imposta e observada, nao criar o subagent; continuar na sessao principal ou registrar o bloqueio.
+   - Para critica ou revisao independente, usar contextos separados e manter o subagent read-only; a sessao principal consolida e corrige.
 
 10. PostgreSQL e obrigatorio em runtime, QA, homologacao e scripts operacionais.
    - Nao usar SQLite como banco de operacao.
@@ -91,13 +98,3 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Dispensa so vale com label `qa-visual-skip` e comentario explicito de Alan no card no formato `QA visual dispensado por Alan.` seguido de motivo.
    - Label isolada, comentario isolado, filtro de path ou variavel de repositorio nao autorizam skip.
    - `Done` exige `qa-gate` verde, artifacts/evidencias quando aplicaveis, integracao em `develop`, `./restart` e URL servindo o resultado novo.
-
-15. No Codex, o roteamento de modelo e fixo por etapa e automatico.
-   - Design/OpenSpec e QA usam a sessao principal `gpt-5.6-sol` com effort `high`.
-   - `Em desenvolvimento` usa `crypto_luna_implementer`; `Code Review` usa nova `crypto_luna_reviewer` read-only; release explicitamente solicitada usa nova `crypto_luna_release_manager`. As tres usam `gpt-5.6-luna` com effort `max` e `fork_turns="none"`.
-   - `/opsx:apply` pertence a Luna implementer; `/opsx:verify` pertence a Sol QA; sync/archive so podem ocorrer dentro de release explicitamente autorizada e pertencem a Luna release manager.
-   - Nao selecionar por complexidade, nao usar Terra, built-ins ou fallback. Perfil/modelo/effort/sandbox nao observavel ou divergente bloqueia a etapa.
-   - O bootstrap que instala os perfis e aceito por TOML/catalogo/skill/testes/OpenSpec estaticos e revisao Codex independente read-only. Nenhuma lane e pre-spawned; runtime e exigido somente quando a lane Luna for usada naturalmente por tarefa nova depois da configuracao versionada e carregada.
-   - Nao alterar AppArmor, sysctl, bubblewrap, user namespaces, sandbox launcher ou seguranca do host/servidor para provar o roteamento. Diagnostico pre-ativacao bloqueado nao substitui nem invalida a aceitacao estatica.
-   - Depois da ativacao, Code Review exige a Luna reviewer exata; a excecao de review Codex independente vale somente para o bootstrap.
-   - Cursor e outros clientes ficam fora da implementacao e validacao deste roteamento automatico.

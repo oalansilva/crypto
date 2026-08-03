@@ -1,4 +1,0 @@
-interface:
-  display_name: "Stage Model Routing"
-  short_description: "Route Sol and Luna by delivery stage"
-  default_prompt: "Use $stage-model-routing to run the current card stage with the required Sol or Luna profile."

@@ -17,8 +17,8 @@ import app.services.openclaw_gateway_client as gateway_client
 
 
 @pytest.fixture
-def app_db_session():
-    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
+def app_db_session(postgres_isolation, unit_database_url):
+    engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()

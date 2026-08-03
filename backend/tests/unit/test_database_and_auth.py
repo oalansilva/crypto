@@ -27,8 +27,8 @@ from app.services.beta_access import verify_password, WelcomeEmail
 
 
 @pytest.fixture
-def auth_db_session():
-    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
+def auth_db_session(postgres_isolation, unit_database_url):
+    engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:
         conn.execute(
