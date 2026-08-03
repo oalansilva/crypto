@@ -75,6 +75,12 @@ Favoritos and Monitor SHALL consume the same canonical strategy transparency man
 - **THEN** both surfaces SHALL show the same display name, description, direction, timeframe, indicator configuration, entry/exit rules and risk details
 - **AND** neither surface SHALL replace those details with `Estratégia protegida`, `Protegido`, `Oculto` or a generic protected message
 
+#### Scenario: Favorite description remains fully readable
+
+- **WHEN** the authenticated trader views a favorite whose canonical strategy description exceeds the width available in the desktop table or mobile card
+- **THEN** Favoritos SHALL wrap and display the complete description without ellipsis, clipping, or horizontal page overflow
+- **AND** the strategy name MAY remain compact when needed to preserve the surrounding layout
+
 #### Scenario: Manifest details are unavailable
 
 - **WHEN** either surface cannot prove the executed configuration or the requested series belongs to another timeframe

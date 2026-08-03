@@ -26,3 +26,9 @@
 - [x] 4.3 Revisar nomes e descrições de todo o inventário visível com copy específica de tese, contexto, lado, timeframe e diferenciação, removendo fórmulas genéricas repetidas.
 - [x] 4.4 Versionar inventário auditável de todos os templates ativos do PostgreSQL e testar identidade, direção, indicadores, parâmetros e regras completas para cada entrada.
 - [x] 4.5 Atualizar testes backend/frontend/E2E necessários, executar validação focada, build, OpenSpec global, review do diff, QA visual e runtime DEV.
+
+## 5. Correção de regressão na descrição de Favoritos
+
+- [x] 5.1 Separar o comportamento visual do nome e da descrição em Favoritos, permitindo quebra integral da descrição sem alterar a compactação do nome.
+- [x] 5.2 Cobrir desktop e mobile com teste E2E que prove texto completo, ausência de ellipsis/clipping e ausência de overflow horizontal.
+- [ ] 5.3 Executar validação OpenSpec, testes focados, build, review do diff, QA visual e runtime DEV após integração.

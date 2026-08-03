@@ -164,6 +164,7 @@ const FAVORITES_PAYLOAD = [
     symbol: 'BTC/USDT',
     timeframe: '1d',
     strategy_name: 'multi_ma_crossoverV2',
+    strategy_description: 'No BTC em 1D, abre Long quando a média curta cruza a longa e já se mantém acima dela; encerra no cruzamento baixista da média longa.',
     parameters: { direction: 'long', ema_short: 10, sma_medium: 16, sma_long: 22, stop_loss: 0.035, data_source: 'ccxt' },
     metrics: {
       total_return: 0.42,
@@ -659,6 +660,43 @@ test('favorites grid keeps strategy readable on wide desktop', async ({ page }) 
     const box = await strategyCell.boundingBox();
     return Math.round(box?.width ?? 0);
   }).toBeGreaterThanOrEqual(220);
+  await expectNoHorizontalOverflow(page);
+});
+
+test('favorites shows the complete strategy description on desktop and mobile', async ({ page }) => {
+  const description = 'No BTC em 1D, abre Long quando a média curta cruza a longa e já se mantém acima dela; encerra no cruzamento baixista da média longa.';
+  await setupDeterministicApiMocks(page);
+
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto('/favorites');
+
+  const desktopDescription = page.locator('.fav-table-shell .strategy-description', { hasText: description });
+  await expect(desktopDescription).toHaveText(description);
+  await expect.poll(() => desktopDescription.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      clippedHorizontally: element.scrollWidth > element.clientWidth + 1,
+      clippedVertically: element.scrollHeight > element.clientHeight + 1,
+      textOverflow: style.textOverflow,
+      whiteSpace: style.whiteSpace,
+    };
+  })).toEqual({
+    clippedHorizontally: false,
+    clippedVertically: false,
+    textOverflow: 'clip',
+    whiteSpace: 'normal',
+  });
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  const mobileDescription = page.locator('.fav-mobile-card .fav-strategy-description', { hasText: description });
+  await expect(mobileDescription).toHaveText(description);
+  await expect.poll(() => mobileDescription.evaluate((element) => ({
+    clippedHorizontally: element.scrollWidth > element.clientWidth + 1,
+    clippedVertically: element.scrollHeight > element.clientHeight + 1,
+  }))).toEqual({ clippedHorizontally: false, clippedVertically: false });
   await expectNoHorizontalOverflow(page);
 });
 
