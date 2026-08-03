@@ -182,6 +182,36 @@ async def test_backtest_uses_template_direction_when_request_omits_it(monkeypatc
     assert payload["strategy_transparency"]["direction"] == "short"
 
 
+async def test_backtest_passes_explicit_direction_into_strategy_parameters(monkeypatch):
+    _patch_backtest_dependencies(monkeypatch)
+    received_parameters = {}
+
+    def create_strategy(_self, template_name, parameters):
+        del template_name
+        received_parameters.update(parameters)
+        return _FakeStrategy(direction=parameters["direction"])
+
+    monkeypatch.setattr(combo_service.ComboService, "create_strategy", create_strategy)
+    app = _build_app()
+
+    response = await _post_backtest(
+        app,
+        {
+            "template_name": "ema_rsi",
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "parameters": {},
+            "direction": "short",
+            "start_date": "2025-01-01",
+            "end_date": "2025-01-31",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert received_parameters["direction"] == "short"
+    assert response.json()["direction"] == "short"
+
+
 async def test_backtest_explicit_stock_data_source_rejected(monkeypatch):
     provider_calls = _patch_backtest_dependencies(monkeypatch)
     app = _build_app()
@@ -223,3 +253,85 @@ async def test_optimize_us_ticker_returns_400_not_500(monkeypatch):
     assert response.status_code == 400, response.text
     assert "MVP supports only crypto pairs" in response.json()["detail"]
     assert provider_calls == []
+
+
+async def test_optimize_uses_template_direction_when_request_omits_it(monkeypatch):
+    directions = []
+
+    monkeypatch.setattr(
+        combo_service.ComboService,
+        "get_template_metadata",
+        lambda self, template_name: {"direction": "short"},
+    )
+
+    def run_optimization(_self, **kwargs):
+        directions.append(kwargs["direction"])
+        return {
+            "job_id": "job-short-template",
+            "template_name": kwargs["template_name"],
+            "symbol": kwargs["symbol"],
+            "timeframe": kwargs["timeframe"],
+            "stages": [],
+            "best_parameters": {"direction": kwargs["direction"]},
+            "best_metrics": {},
+            "direction": kwargs["direction"],
+        }
+
+    monkeypatch.setattr(combo_optimizer.ComboOptimizer, "run_optimization", run_optimization)
+    app = _build_app()
+
+    response = await _post_optimize(
+        app,
+        {
+            "template_name": "quant_btc_1d_short_ma_breakdown_chain_w2_20260629",
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "custom_ranges": {},
+            "deep_backtest": False,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert directions == ["short"]
+    assert response.json()["direction"] == "short"
+
+
+async def test_optimize_invalid_explicit_direction_falls_back_to_template(monkeypatch):
+    directions = []
+    monkeypatch.setattr(
+        combo_service.ComboService,
+        "get_template_metadata",
+        lambda self, template_name: {"direction": "short"},
+    )
+
+    def run_optimization(_self, **kwargs):
+        directions.append(kwargs["direction"])
+        return {
+            "job_id": "job-invalid-direction",
+            "template_name": kwargs["template_name"],
+            "symbol": kwargs["symbol"],
+            "timeframe": kwargs["timeframe"],
+            "stages": [],
+            "best_parameters": {"direction": kwargs["direction"]},
+            "best_metrics": {},
+            "direction": kwargs["direction"],
+        }
+
+    monkeypatch.setattr(combo_optimizer.ComboOptimizer, "run_optimization", run_optimization)
+    app = _build_app()
+
+    response = await _post_optimize(
+        app,
+        {
+            "template_name": "quant_btc_1d_short_ma_breakdown_chain_w2_20260629",
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "direction": "sideways",
+            "custom_ranges": {},
+            "deep_backtest": False,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert directions == ["short"]
+    assert response.json()["direction"] == "short"
