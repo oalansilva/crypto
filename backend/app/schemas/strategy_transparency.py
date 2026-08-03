@@ -78,6 +78,7 @@ class StrategyTransparency(BaseModel):
     display_name: str | None = None
     description: str | None = None
     timeframe: str | None = None
+    direction: Literal["long", "short"] | None = None
     parameters: dict[str, Any] = Field(default_factory=dict)
     indicators: list[StrategyIndicatorTransparency] = Field(default_factory=list)
     # Runtime-only decision context. Excluded to avoid duplicating OHLC payloads.

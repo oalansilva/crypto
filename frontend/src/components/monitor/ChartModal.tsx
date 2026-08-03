@@ -361,7 +361,9 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             }));
         return [...indicatorItems, ...riskItems];
     }, [activeStrategyTransparency]);
-    const opportunityDirection = normalizeDirection(String(opportunity.direction ?? opportunity.parameters?.direction ?? 'long'));
+    const opportunityDirection = normalizeDirection(String(
+        opportunity.direction ?? opportunity.parameters?.direction ?? activeStrategyTransparency?.direction ?? 'long',
+    ));
 
     React.useEffect(() => {
         if (!supportedTimeframes.includes(timeframe)) {

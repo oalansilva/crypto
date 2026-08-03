@@ -4,7 +4,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from app.services.strategy_secret_visibility import redact_favorite_strategy_payload
+from app.services.strategy_secret_visibility import (
+    redact_favorite_strategy_payload,
+    redact_opportunity_payload,
+)
 from app.services.strategy_transparency import (
     attach_timestamped_series,
     build_strategy_transparency,
@@ -111,12 +114,63 @@ def test_common_user_redaction_keeps_public_manifest_but_removes_secrets():
             "strategy_name": "ema_rsi",
             "parameters": {"private": "secret"},
             "strategy_transparency": manifest,
+            "metrics": {
+                "total_return": 0.12,
+                "analysis_indicator_data": {"fast": [101.0], "raw_diagnostic": [999.0]},
+                "analysis_strategy_transparency": {**manifest, "market_series": {"private": []}},
+            },
+        },
+        include_secrets=False,
+        include_details=True,
+    )
+    assert redacted["parameters"] == manifest["parameters"]
+    assert redacted["strategy_transparency"] == manifest
+    assert "analysis_indicator_data" not in redacted["metrics"]
+    assert redacted["metrics"]["analysis_strategy_transparency"] == manifest
+    assert redacted["is_strategy_protected"] is False
+    assert "entry_logic" not in json.dumps(manifest)
+
+
+def test_common_user_redaction_allowlists_indicator_values_and_status_context():
+    manifest = build_strategy_transparency(
+        "ema_rsi",
+        _template(
+            {"type": "ema", "alias": "fast", "params": {"length": 9}},
+            entry_logic="close > fast",
+            exit_logic="close < fast",
+        ),
+        timeframe="1d",
+    ).model_dump(mode="json")
+    redacted = redact_opportunity_payload(
+        {
+            "template_name": "ema_rsi",
+            "strategy_transparency": manifest,
+            "parameters": {"private": "secret"},
+            "indicator_values": {"fast": 101.5, "raw_diagnostic": 999.0, "token": "secret"},
+            "details": {"status": "HOLD", "private": "secret"},
+        },
+        include_secrets=False,
+        include_details=True,
+    )
+
+    assert redacted["parameters"] == manifest["parameters"]
+    assert redacted["indicator_values"] == {"fast": 101.5}
+    assert redacted["details"] == {"status": "HOLD"}
+    assert "secret" not in json.dumps(redacted, ensure_ascii=False)
+
+
+def test_legacy_redaction_still_hides_functional_details_without_authenticated_gate():
+    redacted = redact_favorite_strategy_payload(
+        {
+            "strategy_name": "ema_rsi",
+            "parameters": {"private": "secret"},
         },
         include_secrets=False,
     )
+
+    assert redacted["strategy_name"] == "Estratégia protegida"
     assert redacted["parameters"] == {}
-    assert redacted["strategy_transparency"] == manifest
-    assert "entry_logic" not in json.dumps(manifest)
+    assert redacted["is_strategy_protected"] is True
 
 
 def test_exported_active_templates_have_specific_drift_safe_manifests():

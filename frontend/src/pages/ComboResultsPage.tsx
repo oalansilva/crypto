@@ -5,6 +5,7 @@ import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCand
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
 import { SignalHistoryPanel } from '../components/trades/SignalHistoryPanel'
+import { StrategyTransparencyPanel } from '../components/trades/StrategyTransparencyPanel'
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters'
@@ -117,7 +118,7 @@ export function ComboResultsPage() {
                     pnl = initialCapital * trade.profit;
                 }
                 
-                const isShortExport = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase() === 'short';
+                const isShortExport = ((result as any).direction ?? result.parameters?.direction ?? strategyTransparency?.direction ?? 'long').toString().toLowerCase() === 'short';
                 // Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
                 let signalType = (trade as any).signal_type || '';
                 if (!signalType) {
@@ -233,12 +234,9 @@ export function ComboResultsPage() {
         )
     }
 
-    const direction = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase()
+    const direction = ((result as any).direction ?? result.parameters?.direction ?? strategyTransparency?.direction ?? 'long').toString().toLowerCase()
     const isShort = direction === 'short'
-    const isProtectedResult = Boolean(result.is_strategy_protected)
-    const visibleParameters = isProtectedResult
-        ? strategyTransparency?.effective_parameters ?? {}
-        : result.parameters
+    const visibleParameters = strategyTransparency?.effective_parameters ?? result.parameters ?? {}
     const hasVisibleParameters = Object.keys(visibleParameters).length > 0
 
     // Usar métricas derivadas quando há trades; senão fallback para backend
@@ -287,9 +285,9 @@ export function ComboResultsPage() {
                             </div>
                         </div>
 
-                        {isProtectedResult && !hasVisibleParameters ? (
+                        {!hasVisibleParameters ? (
                             <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] px-4 py-3 text-sm text-[#eaecef]">
-                                Parâmetros técnicos protegidos para este perfil.
+                                Parâmetros efetivos indisponíveis: a configuração executada não pôde ser comprovada.
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" data-testid="combo-result-parameters">
@@ -314,6 +312,15 @@ export function ComboResultsPage() {
                                 })}
                             </div>
                         )}
+                        <div className="mt-4">
+                            <StrategyTransparencyPanel
+                                id="combo-result-strategy-transparency"
+                                strategyTransparency={strategyTransparency}
+                                direction={direction}
+                                timeframe={result.timeframe}
+                                fallbackName={result.template_name}
+                            />
+                        </div>
                     </div>
 
                     {/* CHART VISUALIZATION */}

@@ -142,10 +142,10 @@ def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
 
     assert [item.name for item in listed_b] == ["B favorite"]
     assert [item.name for item in listed_a] == ["A favorite"]
-    assert listed_a[0].strategy_name == "Estratégia protegida"
+    assert listed_a[0].strategy_name == "multi_ma_crossover"
     assert listed_a[0].strategy_display_name == "Médias Móveis: Tendência em Virada"
-    assert listed_a[0].parameters == {}
-    assert listed_a[0].is_strategy_protected is True
+    assert listed_a[0].parameters == listed_a[0].strategy_transparency.parameters
+    assert listed_a[0].is_strategy_protected is False
     assert "tendência" in (listed_a[0].strategy_description or "").lower()
 
 
@@ -337,12 +337,12 @@ def test_common_user_lists_admin_catalog_and_saves_own_star_tier(tmp_path: Path,
 
     assert [item.id for item in common_list] == [admin_favorite.id, admin_second_favorite.id]
     assert common_list[0].tier is None
-    assert common_list[0].strategy_name == "Estratégia protegida"
+    assert common_list[0].strategy_name == "multi_ma_crossover"
     assert common_list[0].strategy_display_name == "Médias Móveis: Tendência em Virada"
-    assert common_list[1].strategy_name == "Estratégia protegida"
+    assert common_list[1].strategy_name == "ema_rsi"
     assert common_list[1].strategy_display_name == "RSI: Retomada com Força"
-    assert common_list[0].parameters == {}
-    assert common_list[1].parameters == {}
+    assert common_list[0].parameters == common_list[0].strategy_transparency.parameters
+    assert common_list[1].parameters == common_list[1].strategy_transparency.parameters
     assert updated.tier == 1
     assert common_list_after[0].tier == 1
     assert admin_row.tier is None

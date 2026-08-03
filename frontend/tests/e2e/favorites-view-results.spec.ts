@@ -436,7 +436,11 @@ function cloneFavoritesPayload() {
   return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
 }
 
-async function setupDeterministicApiMocks(page: any, options?: { user?: Record<string, any>; hangOpportunities?: boolean }) {
+async function setupDeterministicApiMocks(page: any, options?: {
+  user?: Record<string, any>;
+  hangOpportunities?: boolean;
+  favoriteOverrides?: Record<number, Record<string, unknown>>;
+}) {
   const authUser = options?.user || {
       id: 'admin-user',
       email: 'admin@example.com',
@@ -457,7 +461,10 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
     return route.abort('blockedbyclient');
   });
 
-  let serverFavoritesPayload = cloneFavoritesPayload();
+  let serverFavoritesPayload = cloneFavoritesPayload().map((favorite: any) => ({
+    ...favorite,
+    ...(options?.favoriteOverrides?.[favorite.id] || {}),
+  }));
 
   await page.route(/\/api\/favorites\/?$/, (route: any) => {
     if (route.request().method() === 'GET') {
@@ -928,7 +935,7 @@ test('favorites analysis opens cached multi MA chart when trade recovery hangs',
   expect(dialogs).toEqual([]);
 });
 
-test('common user opens protected favorite chart without moving averages or MA values', async ({ page }) => {
+test('common user opens favorite chart with safe functional details and MA values', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page, {
     user: {
       id: 'common-user',
@@ -936,11 +943,19 @@ test('common user opens protected favorite chart without moving averages or MA v
       name: 'Common User',
       isAdmin: false,
     },
+    favoriteOverrides: {
+      3: {
+        strategy_name: 'ema_rsi',
+        strategy_display_name: 'EMA RSI Volume',
+        is_strategy_protected: false,
+        parameters: { direction: 'long', ema_short: 9, ema_long: 21, volume_window: 20 },
+      },
+    },
   });
   await page.goto('/favorites');
 
-  const protectedRow = page.locator('.fav-table-shell tbody tr', { hasText: 'ETH/USDT' });
-  const analysis = protectedRow.locator('button[title="Ver análise completa"]');
+  const favoriteRow = page.locator('.fav-table-shell tbody tr', { hasText: 'ETH/USDT' });
+  const analysis = favoriteRow.locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();
 
@@ -956,9 +971,10 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect(visibleTradeTable.getByText('May 12, 2026').first()).toBeVisible();
   await expect(visibleTradeTable.getByText('Jan 1, 2025').first()).toBeVisible();
   await expect(visibleTradeTable.getByText('Jan 2, 2025').first()).toBeVisible();
-  await expect(page.getByTestId('result-chart-overlays')).toHaveCount(0);
-  await expect(page.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0);
-  await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart-indicator-config')).toContainText('EMA curta');
+  await expect(page.getByTestId('combo-result-strategy-transparency')).toContainText('EMA curta');
+  await expect(page.getByTestId('combo-result-strategy-transparency')).toContainText('EMA longa');
+  await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toHaveCount(0);
 
   const visibleBarsBeforeWheel = await page.getByTestId('result-chart-visible-bars').textContent();
   await page.getByTestId('result-main-chart').hover();

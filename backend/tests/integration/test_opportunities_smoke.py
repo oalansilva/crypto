@@ -95,7 +95,21 @@ async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
                 "description": "Apoio à decisão por médias.",
                 "timeframe": "1d",
                 "parameters": {"short_length": 9},
-                "indicators": [],
+                "indicators": [{
+                    "key": "short",
+                    "type": "sma",
+                    "label": "SMA curta",
+                    "parameters": {"length": 9},
+                    "function": "Confirma a tendência.",
+                    "panel": "price",
+                    "scale": "price",
+                    "color": "#fcd535",
+                    "participation": ["entry"],
+                    "references": [],
+                    "execution_columns": ["short"],
+                    "series_status": "unavailable",
+                    "series": [],
+                }],
                 "logic_blocks": [],
             },
             "signal_history": [
@@ -136,14 +150,14 @@ async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
 
     assert len(response) == 1
     assert response[0]["asset_type"] == "crypto"
-    assert response[0]["template_name"] == "Estratégia protegida"
+    assert response[0]["template_name"] == "multi_ma_crossover"
     assert response[0]["strategy_display_name"] == "Médias Móveis: Tendência em Virada"
-    assert response[0]["parameters"] == {}
-    assert response[0]["indicator_values"] is None
+    assert response[0]["parameters"] == {"short_length": 9}
+    assert response[0]["indicator_values"] == {"short": 71346.57}
     assert response[0]["strategy_transparency"]["strategy_key"] == "multi_ma_crossover"
     assert response[0]["strategy_transparency"]["parameters"] == {"short_length": 9}
     assert response[0]["details"] == {}
-    assert response[0]["is_strategy_protected"] is True
+    assert response[0]["is_strategy_protected"] is False
     assert response[0]["signal_history"][0]["type"] == "entry"
     assert response[0]["signal_history"][1]["type"] == "exit"
     assert response[0]["signal_history"][1]["reason"] == "exit"
@@ -250,14 +264,14 @@ async def test_opportunities_route_redacts_curated_fallback_for_common_user(monk
     response = await opportunity_routes.get_opportunities(tier="all", current_user_id="common-user")
 
     assert captured["user_id"] == "common-user"
-    assert response[0]["template_name"] == "Estratégia protegida"
-    assert response[0]["strategy_display_name"] == "Estratégia Cripto Farol"
-    assert response[0]["name"] == "Estratégia protegida"
+    assert response[0]["template_name"] == "Detalhes da estratégia indisponíveis"
+    assert response[0]["strategy_display_name"] == "Detalhes da estratégia indisponíveis"
+    assert response[0]["name"] == "Detalhes da estratégia indisponíveis"
     assert response[0]["notes"] is None
     assert response[0]["parameters"] == {}
     assert response[0]["indicator_values"] is None
     assert response[0]["details"] == {}
-    assert response[0]["is_strategy_protected"] is True
+    assert response[0]["is_strategy_protected"] is False
 
 
 async def test_opportunities_refresh_false_serves_stale_cache_within_window(monkeypatch):
