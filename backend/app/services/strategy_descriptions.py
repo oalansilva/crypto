@@ -21,7 +21,7 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "example_scalping_ema_5_13": "Médias Móveis: Leitura Ágil",
     "example_swing_rsi_divergence": "RSI: Virada de Swing",
     "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
-    "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
+    "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade com Filtro de Força",
     "quant_btc_1d_adx_momentum_guard_long_v1": "Momentum BTC: Continuidade com Regime",
     "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607": "Momentum BTC: Continuidade com Guard RSI",
     "quant_btc_1d_ma_trend_chain_w1_20260607": "Médias BTC: Tendência com Risco Menor",
@@ -79,7 +79,7 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
         "Procura rompimentos que ganham participação do mercado. Deve ser usada como apoio para comparar cenários, não como promessa de acerto."
     ),
     "example_scalping_ema_5_13": (
-        "Apoia leituras curtas e rápidas para quem acompanha o movimento de perto. Não revela a configuração técnica usada."
+        "Compara duas médias móveis para acompanhar viradas rápidas de curto prazo. Exige acompanhamento próximo e controle de risco."
     ),
     "example_swing_rsi_divergence": (
         "Observa sinais de enfraquecimento do movimento para estudar possíveis reversões em operações de swing."
@@ -88,7 +88,7 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
         "Acompanha a força direcional do BTC com filtros de proteção para evitar entradas em contexto fraco. Use como apoio para avaliar continuidade, sempre conferindo risco e histórico."
     ),
     "quant_btc_roc_ema_momentum_guard_long_v3": (
-        "Acompanha a força direcional do BTC com filtros de proteção para evitar entradas em contexto fraco. Use como apoio para avaliar continuidade, sempre conferindo risco e histórico."
+        "Acompanha a força direcional do BTC com filtro de momentum e tendência para avaliar continuidade em diferentes janelas. Use como apoio e sempre confira risco e histórico."
     ),
     "quant_btc_1d_adx_momentum_guard_long_v1": (
         "Usa leituras de momentum, tendência e regime de mercado para avaliar continuidade no BTC. Serve como apoio à decisão e deve ser comparada com histórico, contexto do ativo e risco."

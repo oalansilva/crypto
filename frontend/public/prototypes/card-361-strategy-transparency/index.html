@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Protótipo do detalhe transparente de estratégia do Cripto Farol" />
+    <link rel="icon" href="/brand/cripto-farol-mark.svg" />
+    <title>Cripto Farol · Transparência da estratégia</title>
+    <style>
+      :root {
+        --bg-primary: #0b0e11;
+        --bg-secondary: #181a20;
+        --bg-elevated: #1e2329;
+        --bg-input: #2b3139;
+        --accent-primary: #fcd535;
+        --accent-success: #0ecb81;
+        --accent-danger: #f6465d;
+        --text-primary: #fff;
+        --text-secondary: #eaecef;
+        --text-tertiary: #929aa5;
+        --text-muted: #707a8a;
+        --border: #2b3139;
+        --sidebar: 224px;
+        --header: 80px;
+        --radius: 12px;
+        --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--text-primary);
+        background: var(--bg-primary);
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; background: var(--bg-primary); color: var(--text-primary); }
+      button { font: inherit; }
+      button:focus-visible, a:focus-visible { outline: 2px solid #3b82f6; outline-offset: 3px; }
+      .app { min-height: 100vh; background: linear-gradient(180deg, rgba(252,213,53,.16) 0, rgba(11,14,17,0) 220px) fixed; }
+      .sidebar {
+        position: fixed; inset: 0 auto 0 0; z-index: 20; width: var(--sidebar);
+        padding: 22px 16px; border-right: 1px solid rgba(43,49,57,.72);
+        background: rgba(24,26,32,.96);
+        display: flex; flex-direction: column;
+      }
+      .brand { display: flex; align-items: center; height: 56px; padding: 0 8px 14px; border-bottom: 1px solid var(--border); }
+      .brand-logo { width: 172px; height: 48px; object-fit: contain; object-position: left; }
+      .panel-card { margin: 14px 4px 18px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 8px; background: rgba(43,49,57,.42); }
+      .panel-card strong { display: block; color: var(--text-muted); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+      .panel-card span { display: block; margin-top: 4px; font-size: 13px; font-weight: 650; }
+      .panel-card .env { display: inline-flex; margin-top: 11px; font-size: 10px; font-weight: 700; }
+      .env { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; margin-top: 11px; padding: 4px 8px; border: 1px solid rgba(252,213,53,.46); border-radius: 7px; color: var(--accent-primary); background: rgba(252,213,53,.12); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+      .env-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-primary); }
+      .nav-label { margin: 28px 8px 9px; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+      .nav-button {
+        display: flex; align-items: center; width: 100%; min-height: 44px; gap: 11px; margin: 4px 0; padding: 10px 12px;
+        position: relative; border: 1px solid transparent; border-radius: 8px; color: var(--text-tertiary); background: transparent; text-align: left; text-decoration: none; cursor: pointer;
+      }
+      .nav-button:hover { color: var(--text-primary); background: var(--bg-elevated); }
+      .nav-button[aria-current="page"] { border-color: rgba(252,213,53,.36); background: rgba(252,213,53,.1); color: var(--text-primary); }
+      .nav-button[aria-current="page"]::before { position: absolute; inset: 8px auto 8px 0; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent-primary); content: ''; }
+      .nav-button[aria-disabled="true"] { color: var(--text-muted); cursor: default; opacity: .72; }
+      .nav-icon { display: inline-flex; width: 18px; align-items: center; justify-content: center; color: var(--text-muted); text-align: center; }
+      .nav-icon svg { width: 17px; height: 17px; }
+      .nav-button[aria-current="page"] .nav-icon { color: var(--accent-primary); }
+      .desktop-nav { flex: 1; overflow: auto; }
+      .sidebar-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+      .mobile-menu { display: none; }
+      .mobile-nav { display: none; }
+      .main { margin-left: var(--sidebar); min-height: 100vh; }
+      body.sidebar-collapsed .main { margin-left: 88px; }
+      .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: var(--header); padding: 0 32px; border-bottom: 1px solid rgba(43,49,57,.72); background: rgba(11,14,17,.92); backdrop-filter: blur(16px); }
+      .workspace-label { display: block; margin-bottom: 3px; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+      .topbar h1 { margin: 0; font-size: 16px; font-weight: 650; }
+      .topbar p { margin: 4px 0 0; color: var(--text-muted); font-size: 12px; }
+      .user { display: flex; align-items: center; gap: 10px; color: var(--text-tertiary); font-size: 12px; }
+      .account-wrap { position: relative; }
+      .account-button, .icon-button { display: inline-flex; align-items: center; gap: 10px; min-height: 42px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); background: var(--bg-elevated); cursor: pointer; }
+      .account-button { padding: 4px 9px 4px 5px; text-align: left; }
+      .account-button:hover, .icon-button:hover { border-color: rgba(252,213,53,.32); background: var(--bg-input); }
+      .account-label { display: block; margin-bottom: 2px; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+      .icon-button { width: 42px; justify-content: center; font-size: 17px; }
+      .account-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 30; width: 250px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-elevated); box-shadow: 0 18px 44px rgba(0,0,0,.42); }
+      .account-menu[hidden] { display: none; }
+      .account-menu strong { display: block; margin-bottom: 3px; color: var(--text-muted); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+      .account-menu p { margin: 0 0 12px; color: var(--text-secondary); font-size: 13px; }
+      .account-menu button { display: block; width: 100%; min-height: 40px; margin-top: 6px; padding: 8px 10px; border: 1px solid transparent; border-radius: 7px; color: var(--text-secondary); background: transparent; text-align: left; cursor: pointer; }
+      .account-menu button:hover { border-color: var(--border); background: var(--bg-input); }
+      .user .env { margin-top: 0; }
+      .avatar { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid rgba(252,213,53,.35); border-radius: 50%; color: var(--accent-primary); background: rgba(252,213,53,.1); font-weight: 700; }
+      .content { width: min(1180px, calc(100% - 64px)); margin: 0 auto; padding: 36px 0 72px; }
+      .eyebrow { margin: 0 0 8px; color: var(--accent-primary); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+      .page-title { margin: 0; font-size: clamp(26px, 3vw, 36px); letter-spacing: -.03em; }
+      .page-copy { max-width: 680px; margin: 10px 0 28px; color: var(--text-tertiary); font-size: 14px; line-height: 1.6; }
+      .surface { display: none; }
+      .surface.active { display: block; }
+      .surface-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+      .surface-head h2 { margin: 0; font-size: 19px; }
+      .surface-head p { margin: 5px 0 0; color: var(--text-muted); font-size: 12px; }
+      .surface-head button, .subtle-button {
+        min-height: 40px; padding: 9px 13px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-secondary); background: var(--bg-elevated); cursor: pointer;
+      }
+      .surface-head button:hover, .subtle-button:hover { border-color: #59616d; background: var(--bg-input); }
+      .manifest-status { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 7px 10px; border: 1px solid rgba(14,203,129,.28); border-radius: 7px; color: var(--accent-success); background: rgba(14,203,129,.07); font-size: 11px; font-weight: 650; }
+      .manifest-status .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+      .manifest-status.unavailable-status { border-color: rgba(252,213,53,.42); color: var(--accent-primary); background: rgba(252,213,53,.08); }
+      .strategy-card { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-secondary); }
+      .strategy-header { display: flex; align-items: start; justify-content: space-between; gap: 24px; padding: 22px 24px 18px; border-bottom: 1px solid var(--border); }
+      .strategy-title { display: flex; align-items: start; gap: 12px; }
+      .strategy-dot { width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; background: var(--accent-success); box-shadow: 0 0 0 4px rgba(14,203,129,.14); }
+      .strategy-title h3 { margin: 0; font-size: 21px; letter-spacing: -.02em; }
+      .strategy-description { max-width: 720px; margin: 7px 0 0; color: var(--text-tertiary); font-size: 13px; line-height: 1.55; }
+      .strategy-meta { display: flex; flex-wrap: wrap; justify-content: end; gap: 7px; }
+      .pill { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); background: var(--bg-elevated); font-size: 11px; white-space: nowrap; }
+      .pill.primary { border-color: rgba(252,213,53,.32); color: var(--accent-primary); background: rgba(252,213,53,.08); }
+      .strategy-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; background: rgba(11,14,17,.54); }
+      .strategy-toolbar span { color: var(--text-muted); font-size: 12px; }
+      .primary-button { min-height: 40px; padding: 9px 14px; border: 0; border-radius: 7px; color: #181a20; background: var(--accent-primary); font-size: 12px; font-weight: 700; cursor: pointer; }
+      .primary-button:hover { background: #f0b90b; }
+      .details { padding: 20px 24px 24px; }
+      .details[hidden] { display: none; }
+      .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 10px; }
+      .section-heading h4 { margin: 0; font-size: 13px; }
+      .section-heading span { color: var(--text-muted); font-size: 11px; }
+      .rule-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+      .rule, .risk, .indicator, .parameter { border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elevated); }
+      .rule { padding: 14px; }
+      .rule h5 { margin: 0 0 7px; color: var(--accent-primary); font-size: 12px; }
+      .rule p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.55; }
+      .detail-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr); gap: 18px; margin-top: 20px; }
+      .indicator-list { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+      .indicator { padding: 12px; }
+      .indicator-top { display: flex; align-items: center; gap: 8px; }
+      .indicator-swatch { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-primary); }
+      .indicator h5 { margin: 0; font-size: 12px; }
+      .indicator p { margin: 7px 0 0; color: var(--text-tertiary); font-size: 11px; line-height: 1.45; }
+      .indicator code, .parameter dd { font-family: var(--mono); color: var(--text-secondary); }
+      .risk { padding: 14px; }
+      .risk h5 { margin: 0 0 7px; font-size: 12px; }
+      .risk p { margin: 0; color: var(--text-tertiary); font-size: 12px; line-height: 1.55; }
+      .parameter-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+      .parameter { padding: 10px 12px; }
+      .parameter dt { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+      .parameter dd { margin: 6px 0 0; font-size: 13px; }
+      .unavailable { display: block; margin-top: 16px; padding: 14px; border: 1px solid rgba(252,213,53,.42); border-radius: 8px; color: var(--text-secondary); background: rgba(252,213,53,.08); font-size: 13px; line-height: 1.55; }
+      .unavailable[hidden] { display: none; }
+      .unavailable strong { display: block; margin-bottom: 4px; color: var(--accent-primary); }
+      .favorites-table { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-secondary); }
+      .table-row { display: grid; grid-template-columns: minmax(180px, 1.3fr) 110px minmax(210px, 1.4fr) 116px; align-items: center; gap: 14px; min-height: 76px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+      .table-row:last-child { border-bottom: 0; }
+      .table-row.header { min-height: 42px; color: var(--text-muted); background: rgba(11,14,17,.42); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+      .pair { display: flex; align-items: center; gap: 10px; }
+      .pair-mark { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgba(252,213,53,.35); border-radius: 50%; color: var(--accent-primary); background: rgba(252,213,53,.08); font-size: 10px; font-weight: 700; }
+      .pair strong { display: block; font-size: 13px; }
+      .pair span, .cell-muted { color: var(--text-muted); font-size: 11px; }
+      .table-action { justify-self: end; min-height: 40px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-secondary); background: transparent; cursor: pointer; }
+      .table-action:hover { background: var(--bg-elevated); }
+      .parity-note { margin-top: 14px; padding: 11px 13px; border-left: 2px solid var(--accent-success); color: var(--text-tertiary); background: rgba(14,203,129,.06); font-size: 12px; line-height: 1.5; }
+      .prototype-state { margin-top: 18px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); background: rgba(11,14,17,.42); font-size: 11px; }
+      .prototype-state summary { color: var(--text-secondary); cursor: pointer; font-weight: 650; }
+      .prototype-state .state-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+      .state-button { min-height: 36px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-secondary); background: var(--bg-elevated); cursor: pointer; }
+      .state-button:hover { background: var(--bg-input); }
+      .scenario-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+      .scenario { padding: 13px; border: 1px solid var(--border); border-radius: 8px; background: rgba(30,35,41,.72); }
+      .scenario h4 { margin: 0 0 6px; font-size: 12px; }
+      .scenario p { margin: 0; color: var(--text-tertiary); font-size: 12px; line-height: 1.5; }
+      .scenario .pill { margin-bottom: 8px; }
+      .scenario .state-button { margin-top: 12px; }
+      .short-detail { margin-top: 18px; }
+      .short-detail[hidden] { display: none; }
+      .short-detail .strategy-header { padding-top: 18px; padding-bottom: 16px; }
+      .unavailable .retry { margin-top: 12px; }
+      .detail-content[hidden] { display: none; }
+      .favorite-detail { margin-top: 16px; }
+      .favorite-detail[hidden] { display: none; }
+      .favorite-detail .details { padding-top: 18px; }
+      .disclaimer { margin: 22px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
+      .sidebar.collapsed-preview { width: 88px; padding-left: 10px; padding-right: 10px; }
+      .sidebar.collapsed-preview .brand { justify-content: center; padding-left: 0; padding-right: 0; }
+      .sidebar.collapsed-preview .brand-logo { width: 48px; object-position: center; }
+      .sidebar.collapsed-preview .panel-card { text-align: center; }
+      .collapsed-panel-title { display: none !important; }
+      .sidebar.collapsed-preview .panel-card > strong, .sidebar.collapsed-preview .panel-card > #panel-title, .sidebar.collapsed-preview .panel-card .env, .sidebar.collapsed-preview .nav-label, .sidebar.collapsed-preview .nav-button > span:last-child { display: none; }
+      .sidebar.collapsed-preview .panel-card > .collapsed-panel-title { display: block !important; margin-top: 0; color: var(--text-muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+      .sidebar.collapsed-preview .panel-card .env { margin-top: 0; padding-left: 5px; padding-right: 5px; }
+      .sidebar.collapsed-preview .nav-button { justify-content: center; padding-left: 0; padding-right: 0; }
+
+      @media (max-width: 1023px) {
+        :root { --header: 68px; }
+        .sidebar { display: none; }
+        .main { margin-left: 0; }
+        .topbar { padding: 0 18px; }
+        .mobile-menu { display: inline-grid; width: 40px; height: 40px; place-items: center; margin-right: 12px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-secondary); background: var(--bg-elevated); cursor: pointer; }
+        .topbar-left { display: flex; align-items: center; }
+        .mobile-nav { position: fixed; inset: 0; z-index: 50; padding: 0; border: 0; background: rgba(0,0,0,.68); }
+        .mobile-nav.active { display: block; }
+        .mobile-nav-scrim { position: absolute; inset: 0; width: 100%; min-height: 100%; border: 0; background: transparent; cursor: default; }
+        .mobile-drawer { position: absolute; inset: 0 auto 0 0; display: flex; width: min(88vw, 360px); flex-direction: column; gap: 16px; overflow-y: auto; padding: 20px 16px; border-right: 1px solid var(--border); background: var(--bg-secondary); box-shadow: 24px 0 60px rgba(0,0,0,.4); }
+        .mobile-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 4px; }
+        .mobile-drawer-close { display: inline-grid; width: 40px; height: 40px; place-items: center; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); background: var(--bg-elevated); cursor: pointer; }
+        .mobile-drawer .panel-card { margin: 0; }
+        .mobile-drawer nav { display: grid; gap: 10px; overflow-y: auto; }
+        .mobile-drawer .nav-label { margin: 10px 8px 2px; }
+        .mobile-drawer .nav-button { min-height: 44px; margin: 0; }
+        .mobile-drawer .mobile-account { margin-top: auto; padding: 13px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); background: rgba(43,49,57,.42); }
+        .mobile-drawer .mobile-account strong { display: block; margin-bottom: 3px; color: var(--text-muted); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+        .mobile-drawer .mobile-account span { font-size: 13px; font-weight: 650; }
+        .content { width: min(100% - 36px, 820px); padding-top: 28px; }
+        .strategy-header { display: block; }
+        .strategy-meta { justify-content: start; margin-top: 16px; }
+        .detail-grid { grid-template-columns: 1fr; }
+        .indicator-list { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 620px) {
+        .user-label { display: none; }
+        .content { width: min(100% - 24px, 520px); padding-top: 24px; }
+        .surface-head { display: block; }
+        .surface-head button { width: 100%; margin-top: 12px; }
+        .strategy-header, .details { padding-left: 16px; padding-right: 16px; }
+        .strategy-title h3 { font-size: 18px; }
+        .strategy-toolbar { align-items: stretch; display: block; padding: 12px 16px; }
+        .strategy-toolbar .primary-button { width: 100%; margin-top: 10px; }
+        .rule-grid { grid-template-columns: 1fr; }
+        .parameter-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .scenario-grid { grid-template-columns: 1fr; }
+        .table-row { grid-template-columns: minmax(0, 1fr) 90px; gap: 8px; padding: 12px; }
+        .table-row.header, .table-row > .table-hide-mobile { display: none; }
+        .table-action { grid-column: 2; grid-row: 1 / span 2; }
+      }
+    </style>
+  </head>
+  <body data-prototype-version="1.1">
+    <div class="app">
+      <aside class="sidebar" aria-label="Navegação principal">
+        <div class="brand"><img class="brand-logo" src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol" /></div>
+        <div class="panel-card"><strong>Painel</strong><span id="panel-title">Monitor de sinais</span><span class="collapsed-panel-title">Menu</span><span class="env"><i class="env-dot" aria-hidden="true"></i>DEV</span></div>
+        <nav class="desktop-nav" aria-label="Navegação principal">
+          <div class="nav-label">Principal</div>
+          <button class="nav-button" type="button" data-surface-target="favorites" aria-current="false"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12v18l-6-3-6 3z" /></svg></span>Favoritos</button>
+          <button class="nav-button" type="button" data-surface-target="monitor" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l3-8 4 16 3-8h4" /></svg></span>Monitor</button>
+          <div class="nav-label">Carteira</div>
+          <a class="nav-button" href="/external/balances"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5V19H5.5A2.5 2.5 0 0 1 3 16.5z" /><path d="M3 8h18M16 14h2" /></svg></span>Carteira</a>
+          <a class="nav-button" href="/help"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.4 2.4 0 1 1 4.2 1.6c-.9.9-1.9 1.2-1.9 2.5M12 16.5h.01" /></svg></span>Ajuda</a>
+        </nav>
+        <div class="sidebar-footer"><button class="nav-button" id="collapse-menu" type="button" aria-label="Recolher menu"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 18-6-6 6-6" /></svg></span><span>Recolher menu</span></button></div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button class="mobile-menu" type="button" id="mobile-menu" aria-expanded="false" aria-controls="mobile-nav" aria-label="Abrir menu">☰</button>
+            <div><span class="workspace-label">Workspace</span><h1 id="page-title">Monitor de sinais</h1></div>
+          </div>
+          <div class="user"><span class="env"><i class="env-dot" aria-hidden="true"></i>DEV</span><div class="account-wrap"><button class="account-button" id="account-button" type="button" aria-label="Abrir conta" aria-expanded="false" aria-controls="account-menu"><span class="account-label user-label">Account</span><span class="avatar" aria-hidden="true">AS</span></button><div class="account-menu" id="account-menu" role="menu" hidden><strong>Account</strong><p>Alan · usuário autenticado</p><button type="button" role="menuitem">Meu perfil</button><button type="button" role="menuitem">Configurações</button></div></div></div>
+        </header>
+
+        <div class="mobile-nav" id="mobile-nav" aria-label="Navegação móvel" hidden>
+          <button class="mobile-nav-scrim" type="button" data-close-mobile aria-label="Fechar menu"></button>
+          <aside class="mobile-drawer" id="mobile-drawer" role="dialog" aria-label="Menu móvel" aria-modal="true">
+            <div class="mobile-drawer-head"><img class="brand-logo" src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol" /><button class="mobile-drawer-close" id="mobile-drawer-close" type="button" data-close-mobile aria-label="Fechar menu">×</button></div>
+            <div class="panel-card"><strong>Você está em</strong><span id="mobile-panel-title">Monitor de sinais</span><span class="env"><i class="env-dot" aria-hidden="true"></i>DEV</span></div>
+            <nav aria-label="Navegação móvel">
+              <div class="nav-label">Principal</div>
+              <button class="nav-button" type="button" data-surface-target="favorites" aria-current="false"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12v18l-6-3-6 3z" /></svg></span>Favoritos</button>
+              <button class="nav-button" type="button" data-surface-target="monitor" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l3-8 4 16 3-8h4" /></svg></span>Monitor</button>
+              <div class="nav-label">Carteira</div>
+              <a class="nav-button" href="/external/balances"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5V19H5.5A2.5 2.5 0 0 1 3 16.5z" /><path d="M3 8h18M16 14h2" /></svg></span>Carteira</a>
+              <a class="nav-button" href="/help"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.4 2.4 0 1 1 4.2 1.6c-.9.9-1.9 1.2-1.9 2.5M12 16.5h.01" /></svg></span>Ajuda</a>
+            </nav>
+            <div class="mobile-account"><strong>Account</strong><span>Alan · usuário autenticado</span></div>
+          </aside>
+        </div>
+
+        <div class="content">
+          <p class="eyebrow">Estratégia transparente</p>
+          <h2 class="page-title">Entenda o que o sinal está observando</h2>
+          <p class="page-copy">A mesma identidade, regra e configuração aparecem no Monitor e em Favoritos. O detalhe funcional é visível para o trader autenticado; credenciais, código e diagnósticos continuam fora da tela.</p>
+
+          <section class="surface active" data-surface="monitor" aria-labelledby="monitor-title">
+            <div class="surface-head">
+              <div><h2 id="monitor-title">Monitor</h2><p>Oportunidades acompanhadas agora</p></div>
+              <div class="manifest-status" id="manifest-status" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span>Manifesto comprovado</span></div>
+            </div>
+            <article class="strategy-card" data-testid="prototype-strategy-card">
+              <header class="strategy-header">
+                <div class="strategy-title"><span class="strategy-dot" aria-hidden="true"></span><div><h3>Momentum BTC: Continuidade com Guard RSI</h3><p class="strategy-description">Acompanha continuidade do BTC em 1D quando tendência, momentum e força relativa convergem; o filtro RSI reduz entradas em contexto fraco. Use como apoio e confira o risco antes de agir.</p></div></div>
+                <div class="strategy-meta"><span class="pill primary">Compra · Long</span><span class="pill">BTC/USDT</span><span class="pill">1D</span><span class="pill">3 indicadores</span></div>
+              </header>
+              <div class="strategy-toolbar"><span>Manifesto executado · atualizado no último candle fechado</span><button class="primary-button" type="button" data-action="toggle-details" aria-expanded="true" aria-controls="monitor-details">Recolher detalhes técnicos</button></div>
+              <div class="details" id="monitor-details">
+                <div class="detail-content" id="monitor-detail-content">
+                  <div class="section-heading"><h4>Como funciona</h4><span>Regra permanente da estratégia</span></div>
+                  <div class="rule-grid">
+                    <div class="rule"><h5>Quando compra</h5><p>Compra quando EMA, ROC e RSI confirmam continuidade de força no movimento de alta.</p></div>
+                    <div class="rule"><h5>Quando vende</h5><p>Vende quando a regra de saída perde a confirmação de força ou o stop de proteção é acionado.</p></div>
+                  </div>
+                  <div class="detail-grid">
+                    <div>
+                      <div class="section-heading"><h4>Indicadores e participação</h4><span>Configuração efetiva</span></div>
+                      <div class="indicator-list">
+                        <div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#f6465d"></span><h5>EMA curta</h5></div><p><code>18</code> períodos · tendência recente<br>Entrada</p></div>
+                        <div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#3b82f6"></span><h5>ROC</h5></div><p><code>12</code> períodos · momentum<br>Entrada e saída</p></div>
+                        <div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#a970ff"></span><h5>RSI</h5></div><p><code>14</code> períodos · força relativa<br>Filtro de entrada</p></div>
+                      </div>
+                    </div>
+                    <aside class="risk"><h5>Risco e proteção</h5><p>Stop de proteção em <strong>4,20%</strong> abaixo da entrada para posição Long. Não há promessa de resultado; a distância atual deve ser conferida no card.</p></aside>
+                  </div>
+                  <div class="section-heading" style="margin-top:20px"><h4>Parâmetros efetivos</h4><span>Sem nomes técnicos ocultos</span></div>
+                  <dl class="parameter-grid">
+                    <div class="parameter"><dt>Direção</dt><dd>Long</dd></div>
+                    <div class="parameter"><dt>Timeframe</dt><dd>1D</dd></div>
+                    <div class="parameter"><dt>Stop de perda</dt><dd>4.20%</dd></div>
+                    <div class="parameter"><dt>ROC</dt><dd>12</dd></div>
+                    <div class="parameter"><dt>EMA curta</dt><dd>18</dd></div>
+                    <div class="parameter"><dt>RSI</dt><dd>14</dd></div>
+                  </dl>
+                </div>
+                <div class="unavailable" id="unavailable-state" role="status" aria-live="polite" hidden><strong>Configuração não disponível</strong><span id="unavailable-copy">O sistema não conseguiu comprovar o manifesto executado para esta estratégia. Nenhum indicador ou regra é inventado até a configuração estar disponível.</span><br /><button class="state-button retry" id="retry-manifest" type="button">Tentar novamente</button></div>
+              </div>
+            </article>
+            <div class="scenario-grid" aria-label="Estados importantes do manifesto">
+              <article class="scenario"><span class="pill primary">Venda · Short</span><h4>Operação Short</h4><p>Entrada abre vendendo; saída fecha recomprando. O stop fica acima da entrada. A direção é exibida junto do detalhe para não confundir compra e venda.</p><button class="state-button" type="button" data-action="show-short" aria-expanded="false" aria-controls="short-example">Ver detalhe Short</button></article>
+              <article class="scenario"><span class="pill">Configuração indisponível</span><h4>Timeframe incompatível</h4><p>Manifesto em <strong>4H</strong>, gráfico em <strong>1D</strong>. Nenhuma série ou regra é aplicada até os timeframes coincidirem.</p></article>
+            </div>
+            <article class="strategy-card short-detail" id="short-example" aria-labelledby="short-example-title" hidden>
+              <header class="strategy-header"><div class="strategy-title"><span class="strategy-dot" aria-hidden="true"></span><div><h3 id="short-example-title" tabindex="-1">Reversão ETH: Proteção Short</h3><p class="strategy-description">Exemplo de manifesto Short: vende na entrada quando a força perde alinhamento e recompra na saída; a proteção fica acima da venda.</p></div></div><div class="strategy-meta"><span class="pill primary">Venda · Short</span><span class="pill">ETH/USDT</span><span class="pill">4H</span></div></header>
+              <div class="details"><div class="section-heading"><h4>Detalhe técnico</h4><span>Semântica de venda e recompra</span></div><div class="rule-grid"><div class="rule"><h5>Quando vende</h5><p>Abre a posição vendendo quando a EMA rápida cruza abaixo da EMA lenta e o momentum confirma fraqueza.</p></div><div class="rule"><h5>Quando recompra</h5><p>Fecha a posição recomprando quando o cruzamento perde força ou o stop acima da entrada é acionado.</p></div></div><div class="detail-grid"><div><div class="section-heading" style="margin-top:20px"><h4>Indicadores</h4><span>Participação na regra</span></div><div class="indicator-list"><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#f6465d"></span><h5>EMA rápida</h5></div><p><code>9</code> períodos · venda</p></div><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#3b82f6"></span><h5>EMA lenta</h5></div><p><code>21</code> períodos · confirmação</p></div><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#a970ff"></span><h5>ROC</h5></div><p><code>12</code> períodos · momentum</p></div></div></div><aside class="risk"><h5>Risco e proteção</h5><p>Stop de proteção em <strong>3,50%</strong> acima da venda para posição Short.</p></aside></div><div class="section-heading" style="margin-top:20px"><h4>Parâmetros efetivos</h4><span>Sem nomes técnicos ocultos</span></div><dl class="parameter-grid"><div class="parameter"><dt>Direção</dt><dd>Short</dd></div><div class="parameter"><dt>Timeframe</dt><dd>4H</dd></div><div class="parameter"><dt>Stop</dt><dd>3.50%</dd></div><div class="parameter"><dt>EMA rápida</dt><dd>9</dd></div><div class="parameter"><dt>EMA lenta</dt><dd>21</dd></div><div class="parameter"><dt>ROC</dt><dd>12</dd></div></dl></div></div>
+            </article>
+            <details class="prototype-state">
+              <summary>Ver estados do manifesto (protótipo)</summary>
+              <div class="state-actions"><span>Controles de revisão; não fazem parte da tela final.</span><button class="state-button" type="button" data-demo-state="available">Disponível</button><button class="state-button" type="button" data-demo-state="unavailable">Indisponível</button><button class="state-button" type="button" data-demo-state="mismatch">Timeframe incompatível</button></div>
+            </details>
+          </section>
+
+          <section class="surface" data-surface="favorites" aria-labelledby="favorites-title">
+            <div class="surface-head"><div><h2 id="favorites-title">Favoritos</h2><p>Estratégias salvas com a mesma identidade do Monitor</p></div><button type="button" data-action="focus-detail" data-detail="btc">Abrir detalhe do BTC</button></div>
+            <div class="favorites-table" data-testid="prototype-favorites-table">
+              <div class="table-row header"><span>Estratégia</span><span>Contexto</span><span>Descrição</span><span>Ação</span></div>
+              <div class="table-row">
+                <div class="pair"><span class="pair-mark">BTC</span><div><strong>Momentum BTC: Continuidade com Guard RSI</strong><span>BTC/USDT · 1D · Long</span></div></div>
+                <span class="pill primary">Compra</span>
+                <span class="cell-muted table-hide-mobile">Tendência + momentum + força relativa com filtro de proteção.</span>
+                <button class="table-action" type="button" data-action="focus-detail" data-detail="btc">Ver detalhes</button>
+              </div>
+              <div class="table-row">
+                <div class="pair"><span class="pair-mark">ETH</span><div><strong>Médias ETH: Tendência Confirmada</strong><span>ETH/USDT · 1D · Long</span></div></div>
+                <span class="pill">Saída</span>
+                <span class="cell-muted table-hide-mobile">Médias e volume confirmam direção antes de expor a posição.</span>
+                <button class="table-action" type="button" data-action="focus-detail" data-detail="eth">Ver detalhes</button>
+              </div>
+            </div>
+            <div class="parity-note">Favoritos e Monitor usam o mesmo manifesto de transparência. Ao abrir a análise, regras, indicadores, parâmetros e risco permanecem iguais ao que foi executado.</div>
+            <article class="strategy-card favorite-detail" id="favorites-detail-btc" aria-labelledby="favorites-detail-btc-title" hidden>
+              <header class="strategy-header"><div class="strategy-title"><span class="strategy-dot" aria-hidden="true"></span><div><h3 id="favorites-detail-btc-title" tabindex="-1">Momentum BTC: Continuidade com Guard RSI</h3><p class="strategy-description">Acompanha continuidade do BTC em 1D quando tendência, momentum e força relativa convergem; o filtro RSI reduz entradas em contexto fraco. Use como apoio e confira o risco antes de agir.</p></div></div><div class="strategy-meta"><span class="pill primary">Long</span><span class="pill">BTC/USDT</span><span class="pill">1D</span></div></header>
+              <div class="details"><div class="section-heading"><h4>Detalhe técnico</h4><span>Manifesto canônico da linha BTC</span></div><div class="rule-grid"><div class="rule"><h5>Quando compra</h5><p>Compra quando EMA, ROC e RSI confirmam continuidade de força no movimento de alta.</p></div><div class="rule"><h5>Quando vende</h5><p>Vende quando a regra de saída perde a confirmação de força ou o stop de proteção é acionado.</p></div></div><div class="detail-grid"><div><div class="section-heading" style="margin-top:20px"><h4>Indicadores</h4><span>Entrada e saída</span></div><div class="indicator-list"><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#f6465d"></span><h5>EMA curta</h5></div><p><code>18</code> períodos · tendência recente<br>Entrada</p></div><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#3b82f6"></span><h5>ROC</h5></div><p><code>12</code> períodos · momentum<br>Entrada e saída</p></div><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#a970ff"></span><h5>RSI</h5></div><p><code>14</code> períodos · força relativa<br>Filtro de entrada</p></div></div></div><aside class="risk"><h5>Risco</h5><p>Stop de proteção em <strong>4,20%</strong> abaixo da entrada para posição Long.</p></aside></div><div class="section-heading" style="margin-top:20px"><h4>Parâmetros efetivos</h4><span>Mesma configuração executada</span></div><dl class="parameter-grid"><div class="parameter"><dt>Direção</dt><dd>Long</dd></div><div class="parameter"><dt>Timeframe</dt><dd>1D</dd></div><div class="parameter"><dt>Stop</dt><dd>4.20%</dd></div><div class="parameter"><dt>ROC</dt><dd>12</dd></div><div class="parameter"><dt>EMA curta</dt><dd>18</dd></div><div class="parameter"><dt>RSI</dt><dd>14</dd></div></dl></div>
+            </article>
+            <article class="strategy-card favorite-detail" id="favorites-detail-eth" aria-labelledby="favorites-detail-eth-title" hidden>
+              <header class="strategy-header"><div class="strategy-title"><span class="strategy-dot" aria-hidden="true"></span><div><h3 id="favorites-detail-eth-title" tabindex="-1">Médias ETH: Tendência Confirmada</h3><p class="strategy-description">Confirma a direção do ETH em 1D com médias e volume antes de expor a posição; a saída encerra quando a tendência perde alinhamento.</p></div></div><div class="strategy-meta"><span class="pill primary">Long</span><span class="pill">ETH/USDT</span><span class="pill">1D</span></div></header>
+              <div class="details"><div class="section-heading"><h4>Detalhe técnico</h4><span>Manifesto canônico da linha ETH</span></div><div class="rule-grid"><div class="rule"><h5>Quando compra</h5><p>Compra quando a EMA de 20 períodos permanece acima da EMA de 50, o volume confirma participação e a tendência está alinhada.</p></div><div class="rule"><h5>Quando vende</h5><p>Vende quando as médias perdem alinhamento, o volume deixa de confirmar ou o stop de proteção é acionado.</p></div></div><div class="detail-grid"><div><div class="section-heading" style="margin-top:20px"><h4>Indicadores</h4><span>Participação na regra</span></div><div class="indicator-list"><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#f6465d"></span><h5>EMA rápida</h5></div><p><code>20</code> períodos · tendência</p></div><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#3b82f6"></span><h5>EMA lenta</h5></div><p><code>50</code> períodos · confirmação</p></div><div class="indicator"><div class="indicator-top"><span class="indicator-swatch" style="background:#0ecb81"></span><h5>Volume</h5></div><p><code>20</code> períodos · filtro e participação</p></div></div></div><aside class="risk"><h5>Risco</h5><p>Stop de proteção em <strong>3,80%</strong> abaixo da entrada para posição Long.</p></aside></div><div class="section-heading" style="margin-top:20px"><h4>Parâmetros efetivos</h4><span>Mesma configuração executada</span></div><dl class="parameter-grid"><div class="parameter"><dt>Direção</dt><dd>Long</dd></div><div class="parameter"><dt>Timeframe</dt><dd>1D</dd></div><div class="parameter"><dt>Stop</dt><dd>3.80%</dd></div><div class="parameter"><dt>EMA rápida</dt><dd>20</dd></div><div class="parameter"><dt>EMA lenta</dt><dd>50</dd></div><div class="parameter"><dt>Volume</dt><dd>20</dd></div></dl></div>
+            </article>
+          </section>
+          <p class="disclaimer">O Cripto Farol é apoio educacional à decisão, não é recomendação financeira nem garantia de resultado.</p>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const surfaces = [...document.querySelectorAll('[data-surface]')]
+      const navButtons = [...document.querySelectorAll('[data-surface-target]')]
+      const pageTitle = document.querySelector('#page-title')
+      const panelTitle = document.querySelector('#panel-title')
+      const mobilePanelTitle = document.querySelector('#mobile-panel-title')
+      const mobileNav = document.querySelector('#mobile-nav')
+      const mobileMenu = document.querySelector('#mobile-menu')
+      const mobileDrawer = document.querySelector('#mobile-drawer')
+      const mobileDrawerClose = document.querySelector('#mobile-drawer-close')
+      const detail = document.querySelector('#monitor-details')
+      const detailToggle = document.querySelector('[data-action="toggle-details"]')
+      const unavailableState = document.querySelector('#unavailable-state')
+      const detailContent = document.querySelector('#monitor-detail-content')
+      const unavailableCopy = document.querySelector('#unavailable-copy')
+      const retryManifest = document.querySelector('#retry-manifest')
+      const manifestStatus = document.querySelector('#manifest-status')
+      const favoriteDetails = [...document.querySelectorAll('.favorite-detail')]
+      const collapseMenu = document.querySelector('#collapse-menu')
+      const shortExample = document.querySelector('#short-example')
+      const shortToggle = document.querySelector('[data-action="show-short"]')
+      const mobileCloseButtons = [...document.querySelectorAll('[data-close-mobile]')]
+      const accountButton = document.querySelector('#account-button')
+      const accountMenu = document.querySelector('#account-menu')
+
+      function closeAccountMenu(restoreFocus = false) {
+        accountMenu.hidden = true
+        accountButton.setAttribute('aria-expanded', 'false')
+        if (restoreFocus) accountButton.focus()
+      }
+
+      function openAccountMenu() {
+        accountMenu.hidden = false
+        accountButton.setAttribute('aria-expanded', 'true')
+        accountMenu.querySelector('button')?.focus()
+      }
+
+      function closeMobileMenu(restoreFocus = false) {
+        mobileNav.classList.remove('active')
+        mobileNav.hidden = true
+        mobileMenu.setAttribute('aria-expanded', 'false')
+        mobileMenu.setAttribute('aria-label', 'Abrir menu')
+        if (restoreFocus) mobileMenu.focus()
+      }
+
+      function openMobileMenu() {
+        mobileNav.hidden = false
+        mobileNav.classList.add('active')
+        mobileMenu.setAttribute('aria-expanded', 'true')
+        mobileMenu.setAttribute('aria-label', 'Fechar menu')
+        mobileDrawerClose.focus()
+      }
+
+      function selectSurface(target) {
+        surfaces.forEach((surface) => surface.classList.toggle('active', surface.dataset.surface === target))
+        navButtons.forEach((button) => button.setAttribute('aria-current', button.dataset.surfaceTarget === target ? 'page' : 'false'))
+        pageTitle.textContent = target === 'monitor' ? 'Monitor de sinais' : 'Favoritos'
+        panelTitle.textContent = pageTitle.textContent
+        mobilePanelTitle.textContent = pageTitle.textContent
+        closeMobileMenu(true)
+      }
+
+      navButtons.forEach((button) => button.addEventListener('click', () => selectSurface(button.dataset.surfaceTarget)))
+      mobileMenu.addEventListener('click', () => {
+        const open = mobileMenu.getAttribute('aria-expanded') !== 'true'
+        if (open) openMobileMenu()
+        else closeMobileMenu(true)
+      })
+      mobileCloseButtons.forEach((button) => button.addEventListener('click', () => closeMobileMenu(true)))
+      accountButton.addEventListener('click', () => {
+        if (accountMenu.hidden) openAccountMenu()
+        else closeAccountMenu(true)
+      })
+      document.addEventListener('mousedown', (event) => {
+        if (!accountMenu.hidden && !event.target.closest('.account-wrap')) closeAccountMenu()
+      })
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !accountMenu.hidden) {
+          closeAccountMenu(true)
+          return
+        }
+        if (event.key === 'Escape' && mobileNav.classList.contains('active')) {
+          closeMobileMenu(true)
+          return
+        }
+        if (event.key === 'Tab' && mobileNav.classList.contains('active')) {
+          const focusable = [...mobileDrawer.querySelectorAll('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')]
+          const first = focusable[0]
+          const last = focusable[focusable.length - 1]
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault()
+            last.focus()
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault()
+            first.focus()
+          }
+        }
+      })
+      detailToggle.addEventListener('click', () => {
+        const expanded = detailToggle.getAttribute('aria-expanded') !== 'true'
+        detailToggle.setAttribute('aria-expanded', String(expanded))
+        detail.hidden = !expanded
+        detailToggle.textContent = expanded ? 'Recolher detalhes técnicos' : 'Ver detalhes técnicos'
+      })
+      function setManifestState(state) {
+        const unavailable = state !== 'available'
+        if (unavailable && detail.hidden) {
+          detail.hidden = false
+          detailToggle.setAttribute('aria-expanded', 'true')
+          detailToggle.textContent = 'Recolher detalhes técnicos'
+        }
+        detailContent.hidden = unavailable
+        unavailableState.hidden = !unavailable
+        manifestStatus.classList.toggle('unavailable-status', unavailable)
+        manifestStatus.querySelector('span:last-child').textContent = state === 'mismatch' ? 'Timeframe incompatível' : unavailable ? 'Manifesto indisponível' : 'Manifesto comprovado'
+        unavailableCopy.textContent = state === 'mismatch'
+          ? 'O manifesto foi comprovado, mas está em 4H e o gráfico está em 1D. Nenhum indicador ou regra é aplicado até os timeframes coincidirem.'
+          : 'O sistema não conseguiu comprovar o manifesto executado para esta estratégia. Nenhum indicador ou regra é inventado até a configuração estar disponível.'
+      }
+      retryManifest.addEventListener('click', () => setManifestState('available'))
+      document.querySelectorAll('[data-demo-state]').forEach((button) => button.addEventListener('click', () => setManifestState(button.dataset.demoState)))
+      shortToggle.addEventListener('click', () => {
+        const expanded = shortToggle.getAttribute('aria-expanded') !== 'true'
+        shortToggle.setAttribute('aria-expanded', String(expanded))
+        shortToggle.textContent = expanded ? 'Ocultar detalhe Short' : 'Ver detalhe Short'
+        shortExample.hidden = !expanded
+        if (expanded) {
+          shortExample.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          shortExample.querySelector('h3')?.focus?.()
+        }
+      })
+      document.querySelectorAll('[data-action="focus-detail"]').forEach((button) => button.addEventListener('click', () => {
+        selectSurface('favorites')
+        favoriteDetails.forEach((detailCard) => { detailCard.hidden = detailCard.id !== `favorites-detail-${button.dataset.detail || 'btc'}` })
+        const selected = document.querySelector(`#favorites-detail-${button.dataset.detail || 'btc'}`)
+        selected?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        selected?.querySelector('h3')?.focus?.()
+      }))
+      collapseMenu.addEventListener('click', () => {
+        const collapsed = document.body.classList.toggle('sidebar-collapsed')
+        document.querySelector('.sidebar').classList.toggle('collapsed-preview', collapsed)
+        collapseMenu.querySelector('span:last-child').textContent = collapsed ? 'Expandir menu' : 'Recolher menu'
+        collapseMenu.setAttribute('aria-label', collapsed ? 'Expandir menu' : 'Recolher menu')
+      })
+    </script>
+  </body>
+</html>

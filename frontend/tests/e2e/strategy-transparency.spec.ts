@@ -238,7 +238,13 @@ test.describe('transparência em Favoritos', () => {
   test('mostra manifesto, overlay, painel e legenda timestampada para trader comum', async ({ page }) => {
     await authenticate(page)
     await blockExternalTraffic(page)
-    await mockSharedApis(page)
+    await mockSharedApis(page, transparency(), {
+      favoriteOverrides: {
+        strategy_name: 'ema_rsi',
+        is_strategy_protected: false,
+        parameters: { direction: 'long', ema_length: 20, rsi_length: 14, stop_loss: 0.02 },
+      },
+    })
     await page.route('**/api/opportunities**', (route: any) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
 
     await page.goto('/favorites')
@@ -252,7 +258,7 @@ test.describe('transparência em Favoritos', () => {
     await expect(page.getByTestId('monitor-aligned-result-chart-indicator-rsi_14')).toContainText('58.00')
     await expect(page.getByTestId('monitor-aligned-result-chart-indicator-panel-oscillator')).toBeVisible()
     await expect(page.getByText('Sobrevenda (30.00)')).toBeVisible()
-    await expect(page.getByText(/A entrada exige direção e força alinhadas/)).toBeVisible()
+    await expect(page.getByTestId('monitor-aligned-result-chart-strategy-transparency').getByText(/A entrada exige direção e força alinhadas/)).toBeVisible()
     await expect(page.getByText(/Parâmetros técnicos protegidos/)).toHaveCount(0)
     await expect(chart).toHaveAttribute('data-marker-count', '2')
   })
@@ -365,11 +371,11 @@ test.describe('transparência no Monitor mobile', () => {
         id: 1,
         symbol: 'BTC/USDT',
         timeframe: '1d',
-        template_name: 'Estratégia protegida',
+        template_name: 'ema_rsi',
         strategy_display_name: mismatchManifest.display_name,
         strategy_description: mismatchManifest.description,
         strategy_transparency: mismatchManifest,
-        is_strategy_protected: true,
+        is_strategy_protected: false,
         name: 'BTC Transparente',
         notes: '',
         tier: 1,

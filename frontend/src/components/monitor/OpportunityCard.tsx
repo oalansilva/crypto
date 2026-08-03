@@ -3,7 +3,7 @@ import { Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
-import { StrategyRuleOverview } from '../trades/StrategyRuleOverview';
+import { StrategyTransparencyPanel } from '../trades/StrategyTransparencyPanel';
 import { hasExitedOpportunity, resolveOpportunitySignal, type ResolvedMonitorSignal } from './signalResolution';
 import {
     getStrategyDisplayName,
@@ -51,16 +51,6 @@ const toDisplayValue = (value: unknown, precision = 2): string => {
     return String(value);
 };
 
-const renderKeyValueRows = (values?: Record<string, unknown>): Array<[string, string]> => {
-    if (!values || Object.keys(values).length === 0) {
-        return [['Sem dados', '-']];
-    }
-
-    return Object.entries(values).map(([label, value]) => [label, toDisplayValue(value)]);
-};
-
-const protectedRows = (): Array<[string, string]> => [['Protegido', 'Oculto']];
-
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     opportunity,
     preference,
@@ -86,10 +76,17 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         last_price,
     } = opportunity;
 
+    const strategyTransparency = React.useMemo(
+        () => normalizeStrategyTransparency(opportunity.strategy_transparency),
+        [opportunity.strategy_transparency],
+    );
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
-    const isShort = String(opportunity.direction ?? opportunity.parameters?.direction ?? 'long').trim().toLowerCase() === 'short';
-    const showTechnicalDetails = isAdmin || !strategyProtected;
+    const isShort = String(
+        opportunity.direction ?? opportunity.parameters?.direction ?? strategyTransparency?.direction ?? 'long',
+    ).trim().toLowerCase() === 'short';
+    const showFunctionalDetails = isAdmin || !strategyProtected || Boolean(opportunity.strategy_transparency);
+    const showManagementControls = isAdmin || !strategyProtected;
     const effectiveTimeframe: MonitorPriceTimeframe = '1d';
     const distance = distance_to_next_status;
     const distanceStr = distance !== null && distance !== undefined ? `${distance.toFixed(2)}%` : '-';
@@ -116,10 +113,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         if (!explanation || !['available', 'partial'].includes(explanation.status)) return null;
         return explanation.summary?.trim() || null;
     }, [opportunity.signal_history]);
-    const strategyTransparency = React.useMemo(
-        () => normalizeStrategyTransparency(opportunity.strategy_transparency),
-        [opportunity.strategy_transparency],
-    );
     const exitClassName = resolvedSignal.section === 'exit'
         ? ''
         : 'hold-msg';
@@ -136,13 +129,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         : portfolioStatusTone === 'warning'
             ? 'text-amber-300'
             : 'text-slate-300';
-
-    const parameterRows = strategyProtected
-        ? protectedRows()
-        : renderKeyValueRows(opportunity.parameters as Record<string, unknown> | undefined);
-    const indicatorRows = strategyProtected
-        ? protectedRows()
-        : renderKeyValueRows(opportunity.indicator_values as Record<string, unknown> | undefined);
 
     const priceString = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -174,18 +160,16 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const exportSummary = async () => {
         const payload = {
             symbol,
-            template_name: strategyProtected ? strategyDisplayName : template_name,
+            template_name: strategyTransparency?.display_name || (strategyProtected ? strategyDisplayName : template_name),
             timeframe,
             last_price,
             distance_to_next_status,
             is_holding,
             status: resolvedSignal.visual.badgeText,
             message: statusMessage,
-            is_strategy_protected: strategyProtected,
-            ...(strategyProtected ? {} : {
-                parameters: opportunity.parameters ?? {},
-                indicator_values: opportunity.indicator_values ?? {},
-            }),
+            is_strategy_protected: strategyProtected && !strategyTransparency,
+            parameters: strategyTransparency?.effective_parameters ?? (strategyProtected ? {} : opportunity.parameters ?? {}),
+            indicator_values: strategyProtected ? {} : opportunity.indicator_values ?? {},
             notes: notesValue,
         };
 
@@ -233,7 +217,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <span title="Timeframe da estratégia" className="detail-timeframe">{timeframe || '-'}</span>
                     <span title="Timeframe do gráfico de preço" className="detail-timeframe">Gráfico {effectiveTimeframe}</span>
                 </div>
-                {showTechnicalDetails ? (
+                {showManagementControls ? (
                     <div className="detail-controls">
                         <button
                             type="button"
@@ -288,10 +272,13 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <span>{statusMessage}</span>
                     </div>
                     <div className="mt-2">
-                        <StrategyRuleOverview
+                        <StrategyTransparencyPanel
                             id={`monitor-strategy-rules-${symbolTestKey}`}
                             strategyTransparency={strategyTransparency}
                             direction={isShort ? 'short' : 'long'}
+                            timeframe={timeframe}
+                            compact
+                            fallbackName={strategyDisplayName || name || symbol}
                         />
                     </div>
                     {latestTradeExplanation ? (
@@ -333,36 +320,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <p className="monitor-status-card-note text-slate-300 text-[11px] mt-2">Abrindo gráfico...</p>
                     ) : null}
                 </div>
-
-                {showTechnicalDetails ? (
-                    <div>
-                        <h5 className="h5-params">
-                            <span className="swatch" />
-                            Parâmetros
-                        </h5>
-                        <dl className="kv">
-                            {parameterRows.map(([label, value]) => (
-                                <React.Fragment key={`param-${label}`}>
-                                    <dt>{label}</dt>
-                                    <dd>{value}</dd>
-                                </React.Fragment>
-                            ))}
-                        </dl>
-                        <div style={{ height: '14px' }} />
-                        <h5 className="h5-indicators">
-                            <span className="swatch" />
-                            Indicadores
-                        </h5>
-                        <dl className="kv">
-                            {indicatorRows.map(([label, value]) => (
-                                <React.Fragment key={`indicator-${label}`}>
-                                    <dt>{label}</dt>
-                                    <dd>{value}</dd>
-                                </React.Fragment>
-                            ))}
-                        </dl>
-                    </div>
-                ) : null}
 
                 <div>
                     <h5 className="h5-notes">
@@ -448,30 +405,34 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             <div className="detail-foot">
                 <div className="hint">Lote {batchInfo} · ref {batchReference}</div>
                 <div className="actions">
-                    {showTechnicalDetails ? (
+                    {showFunctionalDetails ? (
                         <>
                         <button type="button" className="btn ghost" onClick={exportSummary}>
                             <Download className="h-3.5 w-3.5" />
                             Exportar
                         </button>
-                        <button
-                            type="button"
-                            className="btn"
-                            onClick={() => onToggleCardMode(symbol, nextMode)}
-                            title={`Alternar para modo ${nextMode}`}
-                        >
-                            <RefreshCw className="h-3.5 w-3.5" />
-                            Reavaliar
-                        </button>
-                        <button
-                            type="button"
-                            className="btn primary"
-                            onClick={confirmManagement}
-                            disabled={isSavingPreference}
-                        >
-                            <ShieldCheck className="h-3.5 w-3.5" />
-                            Confirmar gestão
-                        </button>
+                        {showManagementControls ? (
+                            <>
+                            <button
+                                type="button"
+                                className="btn"
+                                onClick={() => onToggleCardMode(symbol, nextMode)}
+                                title={`Alternar para modo ${nextMode}`}
+                            >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                                Reavaliar
+                            </button>
+                            <button
+                                type="button"
+                                className="btn primary"
+                                onClick={confirmManagement}
+                                disabled={isSavingPreference}
+                            >
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                Confirmar gestão
+                            </button>
+                            </>
+                        ) : null}
                         </>
                     ) : null}
                     <button type="button" className="btn" onClick={() => onOpenChart(opportunity, 'chart')}>

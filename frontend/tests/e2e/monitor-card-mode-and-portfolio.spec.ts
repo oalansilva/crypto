@@ -285,16 +285,41 @@ test('defaults to In Portfolio and hides symbols without preference', async ({ p
   await expect(page.getByTestId('monitor-card-nvda')).toHaveCount(0)
 })
 
-test('monitor hides protected strategy details for common user', async ({ page }) => {
+test('monitor exposes safe functional strategy details for common user', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
       {
         ...OPPORTUNITIES_PAYLOAD[0],
-        template_name: 'Estratégia protegida',
-        strategy_display_name: 'EMA RSI',
-        is_strategy_protected: true,
-        parameters: {},
-        indicator_values: null,
+        strategy_display_name: 'EMA + RSI: Retomada de Tendência',
+        strategy_description: 'Tendência e força relativa para apoiar a decisão.',
+        is_strategy_protected: false,
+        parameters: { ema_short: 9, ema_long: 21 },
+        strategy_transparency: {
+          status: 'available',
+          strategy_key: 'ema_rsi',
+          display_name: 'EMA + RSI: Retomada de Tendência',
+          description: 'Tendência e força relativa para apoiar a decisão.',
+          timeframe: '4h',
+          direction: 'long',
+          parameters: { ema_short: 9, ema_long: 21 },
+          indicators: [{
+            key: 'ema_short',
+            type: 'ema',
+            label: 'EMA curta',
+            parameters: { length: 9 },
+            function: 'Mostra a direção recente do preço.',
+            panel: 'price',
+            scale: 'price',
+            color: '#fcd535',
+            participation: ['entry'],
+            series_status: 'unavailable',
+            series: [],
+          }],
+          logic_blocks: [
+            { participation: 'entry', description: 'A entrada exige tendência confirmada.', status: 'available' },
+            { participation: 'exit', description: 'A saída ocorre quando a força perde ritmo.', status: 'available' },
+          ],
+        },
         details: {},
         message: 'Aguardando confirmacao do sistema para a proxima decisao.',
       },
@@ -305,20 +330,22 @@ test('monitor hides protected strategy details for common user', async ({ page }
   await expandMonitorRow(page, 'btc-usdt')
   const card = visibleMonitorCard(page, 'btc-usdt')
   await expect(card).toBeVisible()
-  await expect(card.getByText('EMA RSI')).toBeVisible()
-  await expect(card.getByText('Parâmetros')).toHaveCount(0)
-  await expect(card.getByText('Indicadores')).toHaveCount(0)
+  const transparencyPanel = card.getByTestId('monitor-strategy-rules-btc-usdt')
+  await expect(transparencyPanel).toBeVisible()
+  await expect(transparencyPanel.getByText('EMA + RSI: Retomada de Tendência')).toBeVisible()
+  await expect(transparencyPanel.getByText('Quando compra')).toBeVisible()
+  await transparencyPanel.getByText('Ver indicadores e parâmetros').click()
+  await expect(transparencyPanel.getByText('Parâmetros efetivos')).toBeVisible()
+  await expect(transparencyPanel.getByRole('heading', { name: 'Indicadores' })).toBeVisible()
   await expect(card.getByText('Protegido')).toHaveCount(0)
   await expect(card.getByText('Oculto')).toHaveCount(0)
-  await expect(card.getByText('Exportar')).toHaveCount(0)
-  await expect(card.getByText('Reavaliar')).toHaveCount(0)
+  await expect(card.getByText('Exportar')).toBeVisible()
+  await expect(card.getByText('Reavaliar')).toBeVisible()
   await expect(card.getByRole('button', { name: 'Abrir Gráfico' })).toBeVisible()
   await expect(card.getByRole('button', { name: 'Ver Trades' })).toBeVisible()
-  await expect(card.getByText('Confirmar gestão')).toHaveCount(0)
-  await expect(card.getByTestId('mode-toggle-btc-usdt')).toHaveCount(0)
-  await expect(card.getByTestId('timeframe-toggle-btc-usdt-15m')).toHaveCount(0)
-  await expect(card.getByTestId('timeframe-toggle-btc-usdt-1h')).toHaveCount(0)
-  await expect(card.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveCount(0)
+  await expect(card.getByText('Confirmar gestão')).toBeVisible()
+  await expect(card.getByTestId('mode-toggle-btc-usdt')).toBeVisible()
+  await expect(card.getByTestId('timeframe-toggle-btc-usdt-1d')).toBeVisible()
   await expect(card.getByTitle('Timeframe do gráfico de preço')).toHaveText('Gráfico 1d')
   await expect(card.getByText('ema_rsi')).toHaveCount(0)
   await expect(card.getByText('ema_short')).toHaveCount(0)

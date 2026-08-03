@@ -37,7 +37,9 @@ export interface StrategyLogicBlock {
 
 export interface StrategyTransparency {
     status: string
+    strategy_key: string
     timeframe: string
+    direction: string
     display_name: string
     description: string
     effective_parameters: Record<string, unknown>
@@ -236,7 +238,9 @@ export function normalizeStrategyTransparency(value: unknown): StrategyTranspare
 
     return {
         status: asText(record.status, indicators.length > 0 ? 'available' : 'unavailable').toLowerCase(),
+        strategy_key: asText(record.strategy_key),
         timeframe: asText(record.timeframe).toLowerCase(),
+        direction: asText(record.direction).toLowerCase(),
         display_name: asText(record.display_name ?? record.name),
         description: asText(record.description),
         effective_parameters: asRecord(record.parameters ?? record.effective_parameters),

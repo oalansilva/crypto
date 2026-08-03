@@ -17,6 +17,7 @@ test('normaliza séries exclusivamente por timestamp e preserva gaps', () => {
     const transparency = normalizeStrategyTransparency({
         status: 'available',
         timeframe: '1d',
+        direction: 'short',
         display_name: 'EMA + RSI',
         parameters: { ema_period: 20 },
         indicators: [{
@@ -37,6 +38,7 @@ test('normaliza séries exclusivamente por timestamp e preserva gaps', () => {
     })
 
     assert.ok(transparency)
+    assert.equal(transparency.direction, 'short')
     assert.deepEqual(transparency.effective_parameters, { ema_period: 20 })
     assert.deepEqual(
         transparency.indicators[0].series.map((point) => point.value),
@@ -243,6 +245,7 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     const comboSource = readFileSync(new URL('../src/pages/ComboResultsPage.tsx', import.meta.url), 'utf8')
     const favoritesSource = readFileSync(new URL('../src/pages/FavoritesDashboard.tsx', import.meta.url), 'utf8')
     const monitorSource = readFileSync(new URL('../src/components/monitor/ChartModal.tsx', import.meta.url), 'utf8')
+    const panelSource = readFileSync(new URL('../src/components/trades/StrategyTransparencyPanel.tsx', import.meta.url), 'utf8')
 
     assert.match(chartSource, /aria-label="Legenda dos indicadores da estratégia"/)
     assert.match(chartSource, /Indicadores indisponíveis/)
@@ -258,10 +261,15 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.doesNotMatch(chartSource, /shell\.addEventListener\('wheel'/)
     assert.doesNotMatch(chartSource, /onWheel=\{handleWheel\}/)
     assert.match(comboSource, /strategyTransparency=\{strategyTransparency\}/)
+    assert.match(comboSource, /StrategyTransparencyPanel/)
+    assert.doesNotMatch(comboSource, /Parâmetros técnicos protegidos/)
     assert.match(favoritesSource, /mergeStrategyTransparencySeries/)
     assert.match(favoritesSource, /strategy_transparency: recovered\.strategyTransparency/)
     assert.match(monitorSource, /mergeStrategyTransparencySeries/)
     assert.match(monitorSource, /strategyTransparency=\{activeStrategyTransparency\}/)
+    assert.match(panelSource, /Parâmetros efetivos/)
+    assert.match(panelSource, /Detalhes funcionais indisponíveis/)
+    assert.doesNotMatch(panelSource, /Estratégia protegida|Oculto/)
     assert.match(monitorSource, /viewportResetKey=\{`\$\{symbol\}\|\$\{timeframe\}`\}/)
     assert.match(monitorSource, /viewportReady=\{!loading && !analysisTradesLoading\}/)
     assert.match(monitorSource, /const \[analysisTradesLoading, setAnalysisTradesLoading\] = React\.useState\(true\)/)

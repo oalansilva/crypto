@@ -19,6 +19,7 @@ import {
     type StrategyTransparency,
     type StrategyTransparencyIndicator,
 } from '../../lib/strategyTransparency'
+import { formatStrategyParameterLabel, formatStrategyParameterValue } from '../../lib/strategyParameters'
 
 export interface StrategyChartCandle {
     timestamp_utc: string
@@ -177,6 +178,10 @@ function formatPrice(value?: number | null) {
 function formatVolume(value?: number | null) {
     if (value === null || value === undefined || Number.isNaN(value)) return '-'
     return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+}
+
+function formatParticipation(value: string): string {
+    return ({ entry: 'entrada', exit: 'saída', risk: 'risco' } as Record<string, string>)[value] || value
 }
 
 function summaryToneClass(tone?: StrategyChartSummaryItem['tone']) {
@@ -888,11 +893,11 @@ export function StrategyChartSurface({
                                                     <p className="font-semibold text-[#eaecef]">{indicator.label}</p>
                                                     {Object.keys(indicator.parameters).length > 0 ? (
                                                         <p className="text-xs text-[#929aa5]">
-                                                            Configuração: {Object.entries(indicator.parameters).map(([key, value]) => `${key}=${String(value)}`).join(', ')}
+                                                            Configuração: {Object.entries(indicator.parameters).map(([key, value]) => `${formatStrategyParameterLabel(key)}=${formatStrategyParameterValue(key, value)}`).join(', ')}
                                                         </p>
                                                     ) : null}
                                                     <p className="text-xs text-[#929aa5]">
-                                                        Painel {indicator.panel} • escala {indicator.scale} • valor {isAvailable && value !== null && value !== undefined ? formatPrice(value) : 'indisponível'}
+                                                        Painel {indicator.panel} • escala {indicator.scale} • participação {indicator.participation.map(formatParticipation).join(', ') || 'não declarada'} • valor {isAvailable && value !== null && value !== undefined ? formatPrice(value) : 'indisponível'}
                                                     </p>
                                                 </div>
                                             </div>
@@ -921,8 +926,8 @@ export function StrategyChartSurface({
                                 <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2" aria-label="Parâmetros efetivos da estratégia">
                                     {Object.entries(transparency.effective_parameters).map(([key, value]) => (
                                         <div key={key} className="flex justify-between gap-3 rounded-md bg-[#0b0e11] px-3 py-2">
-                                            <dt className="text-[#929aa5]">{key.replace(/_/g, ' ')}</dt>
-                                            <dd className="font-mono text-[#eaecef]">{String(value)}</dd>
+                                            <dt className="text-[#929aa5]">{formatStrategyParameterLabel(key)}</dt>
+                                            <dd className="font-mono text-[#eaecef]">{formatStrategyParameterValue(key, value)}</dd>
                                         </div>
                                     ))}
                                 </dl>

@@ -525,6 +525,8 @@ def build_strategy_transparency(
         public_params["stop_loss"] = stop_loss
 
     direction = str((effective_parameters or {}).get("direction") or "long").strip().lower()
+    if direction not in {"long", "short"}:
+        direction = "long"
     entry_description, entry_operator, entry_count, entry_status = _humanize_logic(
         entry_logic,
         indicators,
@@ -556,6 +558,7 @@ def build_strategy_transparency(
         display_name=PUBLIC_STRATEGY_DISPLAY_NAMES[key],
         description=PUBLIC_STRATEGY_DESCRIPTIONS[key],
         timeframe=timeframe,
+        direction=direction,
         parameters=public_params,
         indicators=indicators,
         logic_blocks=[

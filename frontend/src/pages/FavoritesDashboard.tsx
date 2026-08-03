@@ -10,6 +10,7 @@ import { ScreenHelpPanel } from '@/components/onboarding/ScreenHelpPanel';
 import {
     hasAvailableIndicatorSeries,
     mergeStrategyTransparencySeries,
+    normalizeStrategyTransparency,
     type StrategyTransparency,
 } from '@/lib/strategyTransparency';
 import type { TradeExplanation } from '@/types/tradeExplanation';
@@ -81,6 +82,14 @@ const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
     const candles = fav.metrics?.analysis_candles;
     return Array.isArray(candles) ? candles : [];
 };
+
+const getFavoriteDirection = (fav: FavoriteStrategy): string => (
+    String(
+        fav.parameters?.direction
+        || normalizeStrategyTransparency(fav.strategy_transparency)?.direction
+        || 'long',
+    ).toLowerCase() === 'short' ? 'short' : 'long'
+);
 
 const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
 
@@ -414,9 +423,9 @@ const FavoritesDashboard: React.FC = () => {
 
     const getFavoriteStrategyLabel = (fav: FavoriteStrategy): string => {
         const manifestDisplayName = fav.strategy_transparency?.display_name;
-        return fav.strategy_display_name || (typeof manifestDisplayName === 'string' ? manifestDisplayName : '') || (fav.is_strategy_protected
-            ? 'Estratégia protegida'
-            : fav.strategy_name.replace(/_/g, ' '));
+        return fav.strategy_display_name || (typeof manifestDisplayName === 'string' ? manifestDisplayName : '') || (
+            fav.is_strategy_protected ? 'Detalhes da estratégia indisponíveis' : fav.strategy_name.replace(/_/g, ' ')
+        );
     };
 
     const normalizeStrategyComparison = (value: string): string => {
@@ -460,7 +469,7 @@ const FavoritesDashboard: React.FC = () => {
     const getGridStrategyDetail = (fav: FavoriteStrategy): string | null => {
         const label = getFavoriteStrategyLabel(fav).trim();
         if (!label || label.toLowerCase() === getFavoriteStrategyName(fav).trim().toLowerCase()) return null;
-        if (fav.is_strategy_protected && label.toLowerCase() === 'estratégia protegida') return null;
+        if (fav.is_strategy_protected && label.toLowerCase() === 'detalhes da estratégia indisponíveis') return null;
         return label;
     };
 
@@ -581,7 +590,7 @@ const FavoritesDashboard: React.FC = () => {
                 };
             }
 
-            const direction = String(fav.parameters?.direction || 'long').toLowerCase();
+            const direction = getFavoriteDirection(fav);
             return {
                 trades: buildTradesFromSignalHistory(
                     history,
@@ -760,7 +769,7 @@ const FavoritesDashboard: React.FC = () => {
             indicator_data: isFavoriteProtected(fav) && !isAdmin ? {} : recovered.indicatorData || {},
             candles: recovered.candles || [],
             execution_mode: recovered.executionMode,
-            direction: (fav.parameters?.direction as string) || 'long',
+            direction: getFavoriteDirection(fav),
             is_strategy_protected: isFavoriteProtected(fav) && !isAdmin,
             strategy_transparency: recovered.strategyTransparency ?? fav.strategy_transparency ?? null,
         };
@@ -937,7 +946,7 @@ const FavoritesDashboard: React.FC = () => {
             (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
         const matchesCryptoOnly = isCryptoPair(fav.symbol);
 
-        const favDirection = ((fav.parameters?.direction as string) || 'long').toLowerCase();
+        const favDirection = getFavoriteDirection(fav);
         const matchesDirection = directionFilter === 'all' || favDirection === directionFilter;
 
         return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTimeframe && matchesTier && matchesDirection;
@@ -981,7 +990,7 @@ const FavoritesDashboard: React.FC = () => {
             const expectancy = m.expectancy ?? (m.total_pnl && tradesN ? m.total_pnl / tradesN : null);
             const stopLoss = fav.parameters.stop_loss || null;
 
-            const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
+            const direction = getFavoriteDirection(fav);
             return {
                 Name: fav.name,
                 Symbol: fav.symbol,
@@ -1024,7 +1033,7 @@ const FavoritesDashboard: React.FC = () => {
 
     // Formatters
     const formatParams = (params: Record<string, any>, protectedStrategy = false) => {
-        if (protectedStrategy) return 'Protegido';
+        if (protectedStrategy) return 'Detalhes indisponíveis';
         if (!params || Object.keys(params).length === 0) return 'Sem parametros';
         return Object.entries(params)
             .map(([k, v]) => `${k}=${v}`)
@@ -1277,7 +1286,7 @@ const FavoritesDashboard: React.FC = () => {
                                 const m = fav.metrics || {};
                                 const tier = getTierDisplay(fav.tier);
                                 const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
-                                const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
+                                const direction = getFavoriteDirection(fav);
                                 const strategyDetail = getGridStrategyDetail(fav);
                                 const strategyDescription = getFavoriteStrategyDescription(fav);
                                 const refreshStatus = formatRefreshStatus(fav);
@@ -1360,7 +1369,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const m = fav.metrics || {};
                                         const tier = getTierDisplay(fav.tier);
                                         const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
-                                        const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
+                                        const direction = getFavoriteDirection(fav);
                                         const symbol = splitSymbol(fav.symbol);
                                         const stopLoss = fav.parameters?.stop_loss ?? null;
                                         const strategyDetail = getGridStrategyDetail(fav);
