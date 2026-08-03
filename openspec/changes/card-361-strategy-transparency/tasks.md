@@ -15,6 +15,6 @@
 ## 3. Validação e integração
 
 - [x] 3.1 Executar testes focados de backend/frontend, build e `openspec validate --all`, corrigindo qualquer falha antes de avançar.
-- [ ] 3.2 Executar revisão read-only do diff exato, mover o card por Code Review/QA e registrar evidências de aceite.
+- [x] 3.2 Executar revisão read-only do diff exato, mover o card por Code Review/QA e registrar evidências de aceite.
 - [ ] 3.3 Executar `/opsx:verify`, QA visual Playwright desktop/mobile e validação da URL DEV após restart.
 - [ ] 3.4 Integrar a branch em `develop`, confirmar o bundle/resultado novo no DEV e mover o card para `Done` técnico.
