@@ -31,4 +31,4 @@
 
 - [x] 5.1 Separar o comportamento visual do nome e da descrição em Favoritos, permitindo quebra integral da descrição sem alterar a compactação do nome.
 - [x] 5.2 Cobrir desktop e mobile com teste E2E que prove texto completo, ausência de ellipsis/clipping e ausência de overflow horizontal.
-- [ ] 5.3 Executar validação OpenSpec, testes focados, build, review do diff, QA visual e runtime DEV após integração.
+- [x] 5.3 Executar validação OpenSpec, testes focados, build, review do diff, QA visual e runtime DEV após integração.
