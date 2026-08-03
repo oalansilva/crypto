@@ -77,3 +77,23 @@ def test_list_templates_seeds_runtime_when_initial_query_is_empty(monkeypatch):
 
     assert calls == {"list": 2, "seed": 1}
     assert [item["name"] for item in templates["prebuilt"]] == ["seeded_template"]
+
+
+def test_create_strategy_uses_template_direction_and_allows_effective_override(monkeypatch):
+    service = ComboService.__new__(ComboService)
+    template = {
+        "indicators": [{"type": "ema", "alias": "trend", "params": {"length": 21}}],
+        "entry_logic": "close < trend",
+        "exit_logic": "close > trend",
+        "stop_loss": 0.03,
+        "direction": "short",
+    }
+    monkeypatch.setattr(service, "get_template_metadata", lambda _name: template)
+
+    configured = service.create_strategy("short_template", parameters={})
+    overridden = service.create_strategy("short_template", parameters={"direction": "long"})
+    invalid = service.create_strategy("short_template", parameters={"direction": "sideways"})
+
+    assert configured.direction == "short"
+    assert overridden.direction == "long"
+    assert invalid.direction == "short"

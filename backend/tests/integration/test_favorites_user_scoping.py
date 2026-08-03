@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime
+import os
 from pathlib import Path
 import uuid
 
@@ -36,10 +37,8 @@ def _disable_live_favorite_candle_repository(monkeypatch):
 
 
 def _session_factory(tmp_path: Path):
-    db_file = tmp_path / "favorites_test.db"
-    engine = create_engine(
-        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
-    )
+    del tmp_path
+    engine = create_engine(os.environ["DATABASE_URL"])
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:

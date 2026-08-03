@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from fastapi import FastAPI
 import httpx
@@ -19,6 +19,12 @@ from utils.market_data_mocks import (
 @dataclass
 class _FakeStrategy:
     stop_loss: float = 0.02
+    direction: str = "long"
+    indicators: list[dict] = field(
+        default_factory=lambda: [{"type": "ema", "alias": "trend", "params": {"length": 21}}]
+    )
+    entry_logic: str = "close < trend"
+    exit_logic: str = "close > trend"
 
     def generate_signals(self, df):
         out = df.copy()
@@ -146,6 +152,34 @@ async def test_backtest_crypto_pair_defaults_to_ccxt(monkeypatch):
     payload = response.json()
     assert payload["parameters"]["data_source"] == "ccxt"
     assert provider_calls[-1] == "ccxt"
+
+
+async def test_backtest_uses_template_direction_when_request_omits_it(monkeypatch):
+    _patch_backtest_dependencies(monkeypatch)
+    monkeypatch.setattr(
+        combo_service.ComboService,
+        "create_strategy",
+        lambda self, template_name, parameters: _FakeStrategy(direction="short"),
+    )
+    app = _build_app()
+
+    response = await _post_backtest(
+        app,
+        {
+            "template_name": "quant_btc_1d_short_ma_breakdown_chain_w2_20260629",
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "parameters": {},
+            "start_date": "2025-01-01",
+            "end_date": "2025-01-31",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["direction"] == "short"
+    assert payload["parameters"]["direction"] == "short"
+    assert payload["strategy_transparency"]["direction"] == "short"
 
 
 async def test_backtest_explicit_stock_data_source_rejected(monkeypatch):
