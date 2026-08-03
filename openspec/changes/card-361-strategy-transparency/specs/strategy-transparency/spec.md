@@ -10,6 +10,12 @@ The common authenticated trader SHALL receive a functional strategy manifest tha
 - **THEN** the response SHALL include the canonical display name, description, timeframe, direction, configured indicator periods and thresholds, indicator functions, participation in entry/exit/risk, effective parameters, and trader-readable entry/exit/risk explanations when they can be proven from the executed configuration
 - **AND** the response SHALL set the strategy as unprotected for the authenticated functional view, even when the user is not an administrator
 
+#### Scenario: Complex executed rule remains fully auditable
+
+- **WHEN** an executed entry or exit rule contains more than eight conditions or uses candle-shape, rolling-window or shifted-price expressions
+- **THEN** the authenticated manifest SHALL preserve every public condition, comparator, threshold and boolean grouping in trader-readable form
+- **AND** SHALL NOT replace the rule with only a condition count or a generic `partial` summary
+
 #### Scenario: Secrets and diagnostics remain excluded
 
 - **WHEN** the authenticated functional manifest is serialized
@@ -38,6 +44,12 @@ The public name, description and manifest MUST describe only indicators and logi
 - **THEN** their display names and descriptions SHALL state the differentiating behavior
 - **AND** neither identity SHALL use a duplicated generic phrase as the sole distinction
 
+#### Scenario: Direction follows executed configuration
+
+- **WHEN** direction is present in the effective parameters or the selected template configuration
+- **THEN** the manifest SHALL expose that exact `long` or `short` direction
+- **AND** risk text and action semantics SHALL use the same direction
+
 ### Requirement: Strategy explanation catalog prevents drift
 
 The repository SHALL test explanation and identity coverage for every active strategy template.
@@ -46,6 +58,12 @@ The repository SHALL test explanation and identity coverage for every active str
 
 - **WHEN** a template is added or its configuration changes
 - **THEN** tests SHALL fail if identity is generic or duplicated, metadata announces an unused indicator, configured indicators are missing, panel/participation metadata is absent, or public entry, exit and risk explanations cannot be resolved safely
+
+#### Scenario: Runtime catalog grows beyond the previous versioned export
+
+- **WHEN** PostgreSQL contains active templates not yet represented in the versioned template export
+- **THEN** the versioned auditable inventory SHALL still cover those runtime strategy configurations
+- **AND** tests SHALL exercise every inventory entry, including direction and complete rule status
 
 ### Requirement: Authenticated strategy identity is consistent across surfaces
 

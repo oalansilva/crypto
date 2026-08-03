@@ -18,3 +18,11 @@
 - [x] 3.2 Executar revisão read-only do diff exato, mover o card por Code Review/QA e registrar evidências de aceite.
 - [x] 3.3 Executar `/opsx:verify`, QA visual Playwright desktop/mobile e validação da URL DEV após restart.
 - [x] 3.4 Integrar a branch em `develop`, confirmar o bundle/resultado novo no DEV e mover o card para `Done` técnico.
+
+## 4. Rework após revisão de aceite
+
+- [x] 4.1 Tornar a humanização de regras complexas completa, preservando condições, agrupamentos, comparadores e thresholds públicos sem fallback `partial` por quantidade.
+- [x] 4.2 Resolver direção pelo parâmetro efetivo e, na ausência dele, pelo template executado; cobrir estratégias Short e texto de risco.
+- [x] 4.3 Revisar nomes e descrições de todo o inventário visível com copy específica de tese, contexto, lado, timeframe e diferenciação, removendo fórmulas genéricas repetidas.
+- [x] 4.4 Versionar inventário auditável de todos os templates ativos do PostgreSQL e testar identidade, direção, indicadores, parâmetros e regras completas para cada entrada.
+- [x] 4.5 Atualizar testes backend/frontend/E2E necessários, executar validação focada, build, OpenSpec global, review do diff, QA visual e runtime DEV.

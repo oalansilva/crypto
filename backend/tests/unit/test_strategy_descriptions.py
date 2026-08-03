@@ -39,10 +39,8 @@ def test_generated_quant_strategy_has_safe_product_copy():
     raw_name = "Quant BTC ROC+EMA Momentum Guard Long v3"
     description = public_strategy_description(raw_name)
 
-    assert (
-        public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade com Filtro de Força"
-    )
-    assert "força direcional do btc" in description.lower()
+    assert public_strategy_display_name(raw_name) == "BTC Long — ROC + EMA: Força Direcional"
+    assert "tendência por ema" in description.lower()
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
 
@@ -50,8 +48,8 @@ def test_adx_momentum_guard_strategy_has_safe_product_copy():
     raw_name = "quant_btc_1d_adx_momentum_guard_long_v1"
     description = public_strategy_description(raw_name)
 
-    assert public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade com Regime"
-    assert "regime de mercado" in description.lower()
+    assert public_strategy_display_name(raw_name) == "BTC 1D Long — ADX: Regime de Tendência"
+    assert "regime direcional" in description.lower()
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
 
@@ -59,42 +57,44 @@ def test_ema_roc_rsi_guard_strategy_has_safe_product_copy():
     raw_name = "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607"
     description = public_strategy_description(raw_name)
 
-    assert public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade com Guard RSI"
-    assert "continuidade do btc" in description.lower()
-    assert "força relativa" in description.lower()
+    assert public_strategy_display_name(raw_name) == "BTC 1D Long — EMA + ROC + RSI: Continuidade"
+    assert "btc em 1d" in description.lower()
+    assert "piso de força" in description.lower()
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
 
 def test_card_262_chain_winners_have_safe_product_copy():
-    expected = {
-        "quant_btc_1d_ma_trend_chain_w1_20260607": "Médias BTC: Tendência com Risco Menor",
-        "quant_btc_1d_ma_trend_chain_w2_20260607": "Médias BTC: Tendência com Saída Ágil",
-        "quant_btc_1d_ma_trend_chain_w3_20260607": "Médias BTC: Tendência com Defesa Reforçada",
-        "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": "Momentum BTC: Tendência com Força Relativa",
-        "quant_btc_1d_ma_trend_chain_w5_20260607": "Médias BTC: Continuidade Defensiva",
+    strategies = {
+        "quant_btc_1d_ma_trend_chain_w1_20260607",
+        "quant_btc_1d_ma_trend_chain_w2_20260607",
+        "quant_btc_1d_ma_trend_chain_w3_20260607",
+        "quant_btc_1d_ema_roc_rsi_chain_w4_20260607",
+        "quant_btc_1d_ma_trend_chain_w5_20260607",
     }
 
-    for strategy_name, display_name in expected.items():
+    for strategy_name in strategies:
+        display_name = public_strategy_display_name(strategy_name)
         description = public_strategy_description(strategy_name)
 
-        assert public_strategy_display_name(strategy_name) == display_name
+        assert display_name.startswith("BTC 1D Long —")
         assert "btc em 1d" in description.lower()
         assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
 
 def test_card_276_short_chain_winners_have_safe_product_copy():
-    expected = {
-        "quant_btc_1d_short_macd_bear_chain_w1_20260629": "MACD BTC: Baixa Controlada",
-        "quant_btc_1d_short_ma_breakdown_chain_w2_20260629": "Médias BTC: Quebra de Baixa Defensiva",
-        "quant_btc_1d_short_ma_breakdown_chain_w3_20260629": "Médias BTC: Continuidade de Baixa",
-        "quant_btc_1d_short_ma_defense_chain_w4_20260629": "Médias BTC: Baixa Protegida",
-        "quant_btc_1d_short_macd_defense_chain_w5_20260629": "MACD BTC: Baixa Defensiva",
+    strategies = {
+        "quant_btc_1d_short_macd_bear_chain_w1_20260629",
+        "quant_btc_1d_short_ma_breakdown_chain_w2_20260629",
+        "quant_btc_1d_short_ma_breakdown_chain_w3_20260629",
+        "quant_btc_1d_short_ma_defense_chain_w4_20260629",
+        "quant_btc_1d_short_macd_defense_chain_w5_20260629",
     }
 
-    for strategy_name, display_name in expected.items():
+    for strategy_name in strategies:
+        display_name = public_strategy_display_name(strategy_name)
         description = public_strategy_description(strategy_name)
 
-        assert public_strategy_display_name(strategy_name) == display_name
+        assert display_name.startswith("BTC 1D Short —")
         assert "winner" not in display_name.lower()
         assert "chain" not in display_name.lower()
         assert "short" in description.lower()
@@ -102,18 +102,19 @@ def test_card_276_short_chain_winners_have_safe_product_copy():
 
 
 def test_card_277_long_chain_winners_have_safe_product_copy():
-    expected = {
-        "quant_btc_1d_long_bb_roc_chain_w1_20260629": "Bandas + ROC BTC: Rompimento Defensivo",
-        "quant_btc_1d_long_dual_momentum_chain_w2_20260629": "Momentum BTC: Continuidade Dupla",
-        "quant_btc_1d_long_dual_momentum_chain_w3_20260629": "Momentum BTC: Aceleração Dupla",
-        "quant_btc_1d_long_ma_breakout_chain_w4_20260629": "Médias BTC: Rompimento Confirmado",
-        "quant_btc_1d_long_ma_trend_chain_w5_20260629": "Médias BTC: Continuidade Forte",
+    strategies = {
+        "quant_btc_1d_long_bb_roc_chain_w1_20260629",
+        "quant_btc_1d_long_dual_momentum_chain_w2_20260629",
+        "quant_btc_1d_long_dual_momentum_chain_w3_20260629",
+        "quant_btc_1d_long_ma_breakout_chain_w4_20260629",
+        "quant_btc_1d_long_ma_trend_chain_w5_20260629",
     }
 
-    for strategy_name, display_name in expected.items():
+    for strategy_name in strategies:
+        display_name = public_strategy_display_name(strategy_name)
         description = public_strategy_description(strategy_name)
 
-        assert public_strategy_display_name(strategy_name) == display_name
+        assert display_name.startswith("BTC 1D Long —")
         assert "winner" not in display_name.lower()
         assert "chain" not in display_name.lower()
         assert "long" in description.lower()

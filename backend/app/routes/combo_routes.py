@@ -399,8 +399,11 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
 
         # Create strategy instance
         service = ComboService()
+        strategy_parameters = dict(request.parameters)
+        if "direction" in request.model_fields_set:
+            strategy_parameters["direction"] = request.direction
         strategy = service.create_strategy(
-            template_name=request.template_name, parameters=request.parameters
+            template_name=request.template_name, parameters=strategy_parameters
         )
         logger.info(f"Strategy instance created for {request.template_name}")
 
@@ -427,7 +430,7 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         from app.services.combo_optimizer import extract_trades_with_mode
 
         stop_loss_pct = request.stop_loss if request.stop_loss is not None else strategy.stop_loss
-        direction = getattr(request, "direction", "long") or "long"
+        direction = getattr(strategy, "direction", "long") or "long"
         if direction not in ("long", "short"):
             direction = "long"
         trades, execution_mode = extract_trades_with_mode(
@@ -572,8 +575,9 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
                     "entry_logic": getattr(strategy, "entry_logic", []),
                     "exit_logic": getattr(strategy, "exit_logic", []),
                     "stop_loss": getattr(strategy, "stop_loss", None),
+                    "direction": getattr(strategy, "direction", direction),
                 },
-                effective_parameters=request.parameters,
+                effective_parameters={**strategy_parameters, "direction": direction},
                 timeframe=request.timeframe,
                 dataframe=df_with_signals,
             ),
@@ -629,10 +633,15 @@ async def optimize_combo_strategy(
         # Create optimizer
         optimizer = ComboOptimizer()
 
-        # Run optimization (template short_ema200_pullback is short-only: force direction)
-        direction = getattr(request, "direction", "long") or "long"
-        if request.template_name == "short_ema200_pullback":
-            direction = "short"
+        # Honor an explicit request; otherwise execute the template's configured side.
+        if "direction" in request.model_fields_set:
+            direction = request.direction
+        else:
+            metadata = ComboService().get_template_metadata(request.template_name) or {}
+            direction = metadata.get("direction", "long")
+        if direction not in ("long", "short"):
+            metadata = ComboService().get_template_metadata(request.template_name) or {}
+            direction = metadata.get("direction", "long")
         if direction not in ("long", "short"):
             direction = "long"
         logger.info(f"Optimization direction: {direction} (template: {request.template_name})")

@@ -38,7 +38,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-24 23:16:10.435919"
+    "created_at": "2026-01-24T23:16:10.435919"
   },
   {
     "name": "Example: Breakout with Volume",
@@ -94,7 +94,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-18 17:52:43"
+    "created_at": "2026-01-18T17:52:43"
   },
   {
     "name": "Example: Scalping EMA 5/13",
@@ -166,7 +166,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-18 17:52:43"
+    "created_at": "2026-01-18T17:52:43"
   },
   {
     "name": "Example: Swing RSI Divergence",
@@ -219,7 +219,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-18 17:52:43"
+    "created_at": "2026-01-18T17:52:43"
   },
   {
     "name": "MACD_Cross",
@@ -266,7 +266,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-24 23:16:10.435922"
+    "created_at": "2026-01-24T23:16:10.435922"
   },
   {
     "name": "RSI_EMA_Scalping",
@@ -362,7 +362,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-24 23:16:10.435912"
+    "created_at": "2026-01-24T23:16:10.435912"
   },
   {
     "name": "bollinger_rsi_adx",
@@ -504,7 +504,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-19 01:24:41"
+    "created_at": "2026-01-19T01:24:41"
   },
   {
     "name": "ema_macd_volume",
@@ -594,7 +594,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-19 01:24:41"
+    "created_at": "2026-01-19T01:24:41"
   },
   {
     "name": "ema_rsi",
@@ -675,7 +675,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-19 01:24:41"
+    "created_at": "2026-01-19T01:24:41"
   },
   {
     "name": "ema_rsi_fibonacci",
@@ -747,7 +747,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-19 01:24:41"
+    "created_at": "2026-01-19T01:24:41"
   },
   {
     "name": "multi_ma_crossover",
@@ -819,7 +819,7 @@
         ]
       ]
     },
-    "created_at": "2026-01-19 01:24:41"
+    "created_at": "2026-01-19T01:24:41"
   },
   {
     "name": "multi_ma_crossoverV2",
@@ -887,7 +887,1518 @@
         ]
       ]
     },
-    "created_at": null
+    "created_at": "2026-06-02T03:05:43.970729"
+  },
+  {
+    "name": "quant_btc_1d_ema_roc_rsi_chain_w4_20260607",
+    "description": "Combina tendência, momentum e força relativa do BTC em 1D para buscar continuidade com queda menor na cadeia. Use como apoio e sempre confira risco e histórico.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "trend",
+          "params": {
+            "length": 55
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc",
+          "params": {
+            "length": 30
+          }
+        },
+        {
+          "type": "rsi",
+          "alias": "rsi",
+          "params": {
+            "length": 18
+          }
+        }
+      ],
+      "entry_logic": "(close > trend) & (roc > 0) & (rsi > 55)",
+      "exit_logic": "(close < trend) | (rsi < 50)",
+      "stop_loss": 0.026
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 55,
+          "max": 55,
+          "default": 55,
+          "step": 1
+        },
+        "roc": {
+          "min": 30,
+          "max": 30,
+          "default": 30,
+          "step": 1
+        },
+        "rsi": {
+          "min": 18,
+          "max": 18,
+          "default": 18,
+          "step": 1
+        },
+        "rsi_min": {
+          "min": 55,
+          "max": 55,
+          "default": 55,
+          "step": 1
+        },
+        "rsi_exit": {
+          "min": 50,
+          "max": 50,
+          "default": 50,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.026,
+          "max": 0.026,
+          "default": 0.026,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema",
+          "roc",
+          "rsi",
+          "rsi_min",
+          "rsi_exit",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-07T03:03:38.646525"
+  },
+  {
+    "name": "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607",
+    "description": "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "trend",
+          "params": {
+            "length": 32
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc",
+          "params": {
+            "length": 9
+          }
+        },
+        {
+          "type": "rsi",
+          "alias": "rsi",
+          "params": {
+            "length": 10
+          }
+        }
+      ],
+      "entry_logic": "(close > trend) & (roc > 0) & (rsi > 40)",
+      "exit_logic": "(close < trend) | (rsi < 45)",
+      "stop_loss": 0.028
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 30,
+          "max": 34,
+          "default": 32,
+          "step": 1
+        },
+        "roc": {
+          "min": 8,
+          "max": 10,
+          "default": 9,
+          "step": 1
+        },
+        "rsi": {
+          "min": 10,
+          "max": 10,
+          "default": 10,
+          "step": 1
+        },
+        "rsi_min": {
+          "min": 38,
+          "max": 42,
+          "default": 40,
+          "step": 1
+        },
+        "rsi_exit": {
+          "min": 45,
+          "max": 45,
+          "default": 45,
+          "step": 1
+        },
+        "stop_loss": {
+          "min": 0.026,
+          "max": 0.03,
+          "default": 0.028,
+          "step": 0.001
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema",
+          "roc",
+          "rsi",
+          "rsi_min",
+          "rsi_exit",
+          "stop_loss"
+        ]
+      ]
+    },
+    "created_at": "2026-06-07T01:51:20.694300"
+  },
+  {
+    "name": "quant_btc_1d_long_bb_roc_chain_w1_20260629",
+    "description": "Acompanha rompimentos Long do BTC em 1D quando volatilidade e momentum sugerem retomada, com controle de risco para formar o primeiro degrau defensivo da cadeia.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "bbands",
+          "alias": "bb",
+          "params": {
+            "length": 20,
+            "std": 3.0
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc",
+          "params": {
+            "length": 14
+          }
+        }
+      ],
+      "entry_logic": "(close > bb.upper) & (roc > -2)",
+      "exit_logic": "(close < bb.middle) | (roc < 0)",
+      "stop_loss": 0.014
+    },
+    "optimization_schema": {
+      "parameters": {
+        "bb_len": {
+          "min": 20,
+          "max": 20,
+          "default": 20,
+          "step": 1
+        },
+        "bb_std": {
+          "min": 3.0,
+          "max": 3.0,
+          "default": 3.0,
+          "step": 0.0001
+        },
+        "roc": {
+          "min": 14,
+          "max": 14,
+          "default": 14,
+          "step": 1
+        },
+        "roc_min": {
+          "min": -2,
+          "max": -2,
+          "default": -2,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.014,
+          "max": 0.014,
+          "default": 0.014,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "bb_len",
+          "bb_std",
+          "roc",
+          "roc_min",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-29T03:00:40.157768"
+  },
+  {
+    "name": "quant_btc_1d_long_dual_momentum_chain_w2_20260629",
+    "description": "Combina duas leituras de momentum e tendência do BTC em 1D para buscar continuidade Long acima do primeiro degrau, mantendo controle de queda.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "fast",
+          "params": {
+            "length": 13
+          }
+        },
+        {
+          "type": "ema",
+          "alias": "slow",
+          "params": {
+            "length": 144
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc_fast",
+          "params": {
+            "length": 8
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc_slow",
+          "params": {
+            "length": 30
+          }
+        }
+      ],
+      "entry_logic": "(fast > slow) & (roc_fast > roc_slow) & (roc_slow > 0)",
+      "exit_logic": "(fast < slow) | (roc_fast < 0)",
+      "stop_loss": 0.014
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema_fast": {
+          "min": 13,
+          "max": 13,
+          "default": 13,
+          "step": 1
+        },
+        "ema_slow": {
+          "min": 144,
+          "max": 144,
+          "default": 144,
+          "step": 1
+        },
+        "roc_fast": {
+          "min": 8,
+          "max": 8,
+          "default": 8,
+          "step": 1
+        },
+        "roc_slow": {
+          "min": 30,
+          "max": 30,
+          "default": 30,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.014,
+          "max": 0.014,
+          "default": 0.014,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema_fast",
+          "ema_slow",
+          "roc_fast",
+          "roc_slow",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-29T03:00:42.847471"
+  },
+  {
+    "name": "quant_btc_1d_long_dual_momentum_chain_w3_20260629",
+    "description": "Usa uma configuração Long de momentum mais acelerada para o BTC em 1D, buscando ampliar retorno frente ao degrau anterior sem piorar drawdown.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "fast",
+          "params": {
+            "length": 34
+          }
+        },
+        {
+          "type": "ema",
+          "alias": "slow",
+          "params": {
+            "length": 55
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc_fast",
+          "params": {
+            "length": 4
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc_slow",
+          "params": {
+            "length": 14
+          }
+        }
+      ],
+      "entry_logic": "(fast > slow) & (roc_fast > roc_slow) & (roc_slow > 0)",
+      "exit_logic": "(fast < slow) | (roc_fast < 0)",
+      "stop_loss": 0.014
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema_fast": {
+          "min": 34,
+          "max": 34,
+          "default": 34,
+          "step": 1
+        },
+        "ema_slow": {
+          "min": 55,
+          "max": 55,
+          "default": 55,
+          "step": 1
+        },
+        "roc_fast": {
+          "min": 4,
+          "max": 4,
+          "default": 4,
+          "step": 1
+        },
+        "roc_slow": {
+          "min": 14,
+          "max": 14,
+          "default": 14,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.014,
+          "max": 0.014,
+          "default": 0.014,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema_fast",
+          "ema_slow",
+          "roc_fast",
+          "roc_slow",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-29T03:00:45.499092"
+  },
+  {
+    "name": "quant_btc_1d_long_ma_breakout_chain_w4_20260629",
+    "description": "Filtra rompimentos Long do BTC em 1D com médias e confirmação de força para melhorar qualidade e retorno na sequência da cadeia.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "fast",
+          "params": {
+            "length": 13
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "trend",
+          "params": {
+            "length": 34
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc",
+          "params": {
+            "length": 8
+          }
+        }
+      ],
+      "entry_logic": "(close > trend) & crossover(fast, trend) & (roc > 0)",
+      "exit_logic": "(close < fast) | (roc < 0)",
+      "stop_loss": 0.026
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 13,
+          "max": 13,
+          "default": 13,
+          "step": 1
+        },
+        "sma_l": {
+          "min": 34,
+          "max": 34,
+          "default": 34,
+          "step": 1
+        },
+        "roc": {
+          "min": 8,
+          "max": 8,
+          "default": 8,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.026,
+          "max": 0.026,
+          "default": 0.026,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema",
+          "sma_l",
+          "roc",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-29T03:00:48.167659"
+  },
+  {
+    "name": "quant_btc_1d_long_ma_trend_chain_w5_20260629",
+    "description": "Acompanha continuidade Long forte do BTC em 1D com médias e saída defensiva, buscando fechar a cadeia com retorno maior e drawdown menor.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "short",
+          "params": {
+            "length": 16
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "medium",
+          "params": {
+            "length": 21
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "long",
+          "params": {
+            "length": 39
+          }
+        }
+      ],
+      "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+      "exit_logic": "crossunder(short, long)",
+      "stop_loss": 0.022
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 16,
+          "max": 16,
+          "default": 16,
+          "step": 1
+        },
+        "sma_m": {
+          "min": 21,
+          "max": 21,
+          "default": 21,
+          "step": 1
+        },
+        "sma_l": {
+          "min": 39,
+          "max": 39,
+          "default": 39,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.022,
+          "max": 0.022,
+          "default": 0.022,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema",
+          "sma_m",
+          "sma_l",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-29T03:00:50.774035"
+  },
+  {
+    "name": "quant_btc_1d_ma_trend_chain_w1_20260607",
+    "description": "Acompanha viradas de tendência do BTC em 1D com filtro de médias e controle de risco para reduzir quedas frente ao benchmark. Use como apoio e sempre confira risco e histórico.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "short",
+          "params": {
+            "length": 20
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "medium",
+          "params": {
+            "length": 20
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "long",
+          "params": {
+            "length": 43
+          }
+        }
+      ],
+      "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+      "exit_logic": "crossunder(short, long)",
+      "stop_loss": 0.034
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 20,
+          "max": 20,
+          "default": 20,
+          "step": 1
+        },
+        "sma_m": {
+          "min": 20,
+          "max": 20,
+          "default": 20,
+          "step": 1
+        },
+        "sma_l": {
+          "min": 43,
+          "max": 43,
+          "default": 43,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.034,
+          "max": 0.034,
+          "default": 0.034,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema",
+          "sma_m",
+          "sma_l",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-07T03:03:03.516483"
+  },
+  {
+    "name": "quant_btc_1d_ma_trend_chain_w2_20260607",
+    "description": "Acompanha continuidade do BTC em 1D com leitura de médias e saída mais ágil quando o movimento perde força. Use como apoio e sempre confira risco e histórico.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "short",
+          "params": {
+            "length": 11
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "medium",
+          "params": {
+            "length": 39
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "long",
+          "params": {
+            "length": 42
+          }
+        }
+      ],
+      "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+      "exit_logic": "crossunder(short, medium)",
+      "stop_loss": 0.05
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 11,
+          "max": 11,
+          "default": 11,
+          "step": 1
+        },
+        "sma_m": {
+          "min": 39,
+          "max": 39,
+          "default": 39,
+          "step": 1
+        },
+        "sma_l": {
+          "min": 42,
+          "max": 42,
+          "default": 42,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.05,
+          "max": 0.05,
+          "default": 0.05,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema",
+          "sma_m",
+          "sma_l",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-07T03:03:34.610081"
+  },
+  {
+    "name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+    "description": "Filtra tendências do BTC em 1D com médias próximas e proteção reforçada para buscar melhora de drawdown sem abandonar retorno. Use como apoio e sempre confira risco e histórico.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "short",
+          "params": {
+            "length": 4
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "medium",
+          "params": {
+            "length": 21
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "long",
+          "params": {
+            "length": 25
+          }
+        }
+      ],
+      "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+      "exit_logic": "crossunder(short, long)",
+      "stop_loss": 0.03
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 4,
+          "max": 4,
+          "default": 4,
+          "step": 1
+        },
+        "sma_m": {
+          "min": 21,
+          "max": 21,
+          "default": 21,
+          "step": 1
+        },
+        "sma_l": {
+          "min": 25,
+          "max": 25,
+          "default": 25,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.03,
+          "max": 0.03,
+          "default": 0.03,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema",
+          "sma_m",
+          "sma_l",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-07T03:03:36.604462"
+  },
+  {
+    "name": "quant_btc_1d_ma_trend_chain_w5_20260607",
+    "description": "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "short",
+          "params": {
+            "length": 14
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "medium",
+          "params": {
+            "length": 25
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "long",
+          "params": {
+            "length": 44
+          }
+        }
+      ],
+      "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+      "exit_logic": "crossunder(short, long)",
+      "stop_loss": 0.034
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 14,
+          "max": 14,
+          "default": 14,
+          "step": 1
+        },
+        "sma_m": {
+          "min": 25,
+          "max": 25,
+          "default": 25,
+          "step": 1
+        },
+        "sma_l": {
+          "min": 44,
+          "max": 44,
+          "default": 44,
+          "step": 1
+        },
+        "stop": {
+          "min": 0.034,
+          "max": 0.034,
+          "default": 0.034,
+          "step": 0.0001
+        },
+        "initial_capital": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "entry_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "exit_size_pct": {
+          "min": 100,
+          "max": 100,
+          "default": 100,
+          "step": 1
+        },
+        "pyramiding": {
+          "min": 0,
+          "max": 0,
+          "default": 0,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema",
+          "sma_m",
+          "sma_l",
+          "stop",
+          "initial_capital",
+          "entry_size_pct",
+          "exit_size_pct",
+          "pyramiding"
+        ]
+      ]
+    },
+    "created_at": "2026-06-07T03:03:40.662051"
+  },
+  {
+    "name": "quant_btc_1d_short_ma_breakdown_chain_w2_20260629",
+    "description": "Busca quebras de tendência do BTC em 1D para operações Short, combinando médias e controle de risco para melhorar a cadeia sem usar fallback Long.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "fast",
+          "params": {
+            "length": 3
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "mid",
+          "params": {
+            "length": 12
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "slow",
+          "params": {
+            "length": 52
+          }
+        }
+      ],
+      "entry_logic": "(fast < slow) & (crossunder(fast, mid) | crossunder(fast, slow))",
+      "exit_logic": "crossover(fast, mid) | crossover(fast, slow)",
+      "stop_loss": 0.04,
+      "direction": "short"
+    },
+    "optimization_schema": {
+      "parameters": {
+        "fast": {
+          "min": 2,
+          "max": 4,
+          "step": 1,
+          "default": 3
+        },
+        "mid": {
+          "min": 11,
+          "max": 13,
+          "step": 1,
+          "default": 12
+        },
+        "slow": {
+          "min": 51,
+          "max": 53,
+          "step": 1,
+          "default": 52
+        },
+        "stop": {
+          "min": 0.038,
+          "max": 0.042,
+          "step": 0.001,
+          "default": 0.04
+        }
+      },
+      "correlated_groups": []
+    },
+    "created_at": "2026-06-29T02:25:15.845255"
+  },
+  {
+    "name": "quant_btc_1d_short_ma_breakdown_chain_w3_20260629",
+    "description": "Filtra continuações de baixa do BTC em 1D com médias e stop ajustado para aumentar retorno e reduzir drawdown frente às vencedoras Short anteriores.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "fast",
+          "params": {
+            "length": 3
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "mid",
+          "params": {
+            "length": 12
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "slow",
+          "params": {
+            "length": 58
+          }
+        }
+      ],
+      "entry_logic": "(fast < slow) & (crossunder(fast, mid) | crossunder(fast, slow))",
+      "exit_logic": "crossover(fast, mid) | crossover(fast, slow)",
+      "stop_loss": 0.034,
+      "direction": "short"
+    },
+    "optimization_schema": {
+      "parameters": {
+        "fast": {
+          "min": 2,
+          "max": 4,
+          "step": 1,
+          "default": 3
+        },
+        "mid": {
+          "min": 11,
+          "max": 13,
+          "step": 1,
+          "default": 12
+        },
+        "slow": {
+          "min": 57,
+          "max": 59,
+          "step": 1,
+          "default": 58
+        },
+        "stop": {
+          "min": 0.032,
+          "max": 0.036,
+          "step": 0.001,
+          "default": 0.034
+        }
+      },
+      "correlated_groups": []
+    },
+    "created_at": "2026-06-29T02:25:18.715865"
+  },
+  {
+    "name": "quant_btc_1d_short_ma_defense_chain_w4_20260629",
+    "description": "Acompanha quedas do BTC em 1D com leitura defensiva de médias, priorizando melhora sequencial de drawdown em uma operação exclusivamente Short.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "fast",
+          "params": {
+            "length": 3
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "mid",
+          "params": {
+            "length": 28
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "slow",
+          "params": {
+            "length": 40
+          }
+        }
+      ],
+      "entry_logic": "(fast < slow) & (crossunder(fast, mid) | crossunder(fast, slow))",
+      "exit_logic": "crossover(fast, mid) | crossover(fast, slow)",
+      "stop_loss": 0.022,
+      "direction": "short"
+    },
+    "optimization_schema": {
+      "parameters": {
+        "fast": {
+          "min": 2,
+          "max": 4,
+          "step": 1,
+          "default": 3
+        },
+        "mid": {
+          "min": 27,
+          "max": 29,
+          "step": 1,
+          "default": 28
+        },
+        "slow": {
+          "min": 39,
+          "max": 41,
+          "step": 1,
+          "default": 40
+        },
+        "stop": {
+          "min": 0.02,
+          "max": 0.024,
+          "step": 0.001,
+          "default": 0.022
+        }
+      },
+      "correlated_groups": []
+    },
+    "created_at": "2026-06-29T02:25:21.563483"
+  },
+  {
+    "name": "quant_btc_1d_short_macd_bear_chain_w1_20260629",
+    "description": "Acompanha movimentos de baixa do BTC em 1D quando tendência e momentum favorecem operação Short, com saída para reduzir exposição quando a pressão vendedora perde força.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "trend",
+          "params": {
+            "length": 21
+          }
+        },
+        {
+          "type": "macd",
+          "alias": "macd",
+          "params": {
+            "fast": 8,
+            "slow": 21,
+            "signal": 13
+          }
+        },
+        {
+          "type": "rsi",
+          "alias": "rsi",
+          "params": {
+            "length": 10
+          }
+        }
+      ],
+      "entry_logic": "(close < trend) & (macd.histogram < 0) & (rsi < 50)",
+      "exit_logic": "(macd.histogram > 0) | (close > trend) | (rsi > 55)",
+      "stop_loss": 0.03,
+      "direction": "short"
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 20,
+          "max": 22,
+          "step": 1,
+          "default": 21
+        },
+        "fast": {
+          "min": 7,
+          "max": 9,
+          "step": 1,
+          "default": 8
+        },
+        "slow": {
+          "min": 20,
+          "max": 22,
+          "step": 1,
+          "default": 21
+        },
+        "signal": {
+          "min": 12,
+          "max": 14,
+          "step": 1,
+          "default": 13
+        },
+        "rsi": {
+          "min": 9,
+          "max": 11,
+          "step": 1,
+          "default": 10
+        },
+        "rsi_max": {
+          "min": 49,
+          "max": 51,
+          "step": 1,
+          "default": 50
+        },
+        "rsi_exit": {
+          "min": 54,
+          "max": 56,
+          "step": 1,
+          "default": 55
+        },
+        "stop": {
+          "min": 0.028,
+          "max": 0.032,
+          "step": 0.001,
+          "default": 0.03
+        }
+      },
+      "correlated_groups": []
+    },
+    "created_at": "2026-06-29T02:21:23.237953"
+  },
+  {
+    "name": "quant_btc_1d_short_macd_defense_chain_w5_20260629",
+    "description": "Combina tendência e momentum de baixa do BTC em 1D para operação Short com perfil mais defensivo que a cadeia anterior e saída quando o regime enfraquece.",
+    "is_example": false,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "trend",
+          "params": {
+            "length": 21
+          }
+        },
+        {
+          "type": "macd",
+          "alias": "macd",
+          "params": {
+            "fast": 8,
+            "slow": 21,
+            "signal": 13
+          }
+        },
+        {
+          "type": "rsi",
+          "alias": "rsi",
+          "params": {
+            "length": 14
+          }
+        }
+      ],
+      "entry_logic": "(close < trend) & (macd.histogram < 0) & (rsi < 40)",
+      "exit_logic": "(macd.histogram > 0) | (close > trend) | (rsi > 50)",
+      "stop_loss": 0.018,
+      "direction": "short"
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema": {
+          "min": 20,
+          "max": 22,
+          "step": 1,
+          "default": 21
+        },
+        "fast": {
+          "min": 7,
+          "max": 9,
+          "step": 1,
+          "default": 8
+        },
+        "slow": {
+          "min": 20,
+          "max": 22,
+          "step": 1,
+          "default": 21
+        },
+        "signal": {
+          "min": 12,
+          "max": 14,
+          "step": 1,
+          "default": 13
+        },
+        "rsi": {
+          "min": 13,
+          "max": 15,
+          "step": 1,
+          "default": 14
+        },
+        "rsi_max": {
+          "min": 39,
+          "max": 41,
+          "step": 1,
+          "default": 40
+        },
+        "rsi_exit": {
+          "min": 49,
+          "max": 51,
+          "step": 1,
+          "default": 50
+        },
+        "stop": {
+          "min": 0.016,
+          "max": 0.02,
+          "step": 0.001,
+          "default": 0.018
+        }
+      },
+      "correlated_groups": []
+    },
+    "created_at": "2026-06-29T02:25:24.610119"
   },
   {
     "name": "short_ema200_pullback",
@@ -896,6 +2407,7 @@
     "is_prebuilt": true,
     "is_readonly": false,
     "template_data": {
+      "direction": "short",
       "indicators": [
         {
           "type": "ema",
@@ -967,7 +2479,7 @@
         ]
       ]
     },
-    "created_at": null
+    "created_at": "2026-06-02T03:05:43.970738"
   },
   {
     "name": "volume_atr_breakout",
@@ -1043,6 +2555,6 @@
         ]
       ]
     },
-    "created_at": "2026-01-19 01:24:41"
+    "created_at": "2026-01-19T01:24:41"
   }
 ]
