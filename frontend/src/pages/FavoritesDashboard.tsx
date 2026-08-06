@@ -772,6 +772,7 @@ const FavoritesDashboard: React.FC = () => {
             direction: getFavoriteDirection(fav),
             is_strategy_protected: isFavoriteProtected(fav) && !isAdmin,
             strategy_transparency: recovered.strategyTransparency ?? fav.strategy_transparency ?? null,
+            strategy_description: getFavoriteStrategyDescription(fav),
         };
     };
 
