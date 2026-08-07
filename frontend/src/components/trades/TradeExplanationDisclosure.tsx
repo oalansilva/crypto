@@ -11,6 +11,8 @@ interface TradeExplanationDisclosureProps {
     currentState?: TradeExplanation | null
     strategyTransparency?: StrategyTransparency | null
     direction?: string | null
+    triggerLabel?: string
+    showPermanentRules?: boolean
 }
 
 const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
@@ -164,6 +166,8 @@ export function TradeExplanationDisclosure({
     currentState,
     strategyTransparency,
     direction,
+    triggerLabel = 'Entenda este trade',
+    showPermanentRules = true,
 }: TradeExplanationDisclosureProps) {
     const [expanded, setExpanded] = React.useState(false)
     const panelId = `${id}-trade-explanation`
@@ -182,7 +186,7 @@ export function TradeExplanationDisclosure({
                 aria-controls={panelId}
                 onClick={() => setExpanded((current) => !current)}
             >
-                Entenda este trade
+                {triggerLabel}
                 <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {expanded ? (
@@ -192,11 +196,13 @@ export function TradeExplanationDisclosure({
                     aria-label="Explicação do trade"
                     data-testid={`${id}-trade-explanation-panel`}
                 >
-                    <StrategyRuleOverview
-                        id={`${id}-permanent-rules`}
-                        strategyTransparency={strategyTransparency}
-                        direction={direction}
-                    />
+                    {showPermanentRules ? (
+                        <StrategyRuleOverview
+                            id={`${id}-permanent-rules`}
+                            strategyTransparency={strategyTransparency}
+                            direction={direction}
+                        />
+                    ) : null}
                     {explanations.length > 0 ? explanations.map((item) => (
                         <ExplanationBlock key={item.title} title={item.title} explanation={item.explanation} />
                     )) : (

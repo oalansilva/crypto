@@ -45,6 +45,8 @@ interface StrategyTradesTableProps {
     testId?: string
     strategyTransparency?: StrategyTransparency | null
     showMetrics?: boolean
+    tradeExplanationLabel?: string
+    showPermanentRulesInTradeExplanation?: boolean
 }
 
 const INITIAL_CAPITAL = 100
@@ -165,6 +167,8 @@ export function StrategyTradesTable({
     testId = 'strategy-trades-table',
     strategyTransparency,
     showMetrics = true,
+    tradeExplanationLabel,
+    showPermanentRulesInTradeExplanation = true,
 }: StrategyTradesTableProps) {
     const isShort = direction.toLowerCase() === 'short'
     const rows = buildClosedTradeRows(trades, candles, isShort)
@@ -244,7 +248,7 @@ export function StrategyTradesTable({
                                 <span className="font-mono text-sm text-[#eaecef]">{formatPrice(trade.entry_price)}</span>
                             </div>
                             <div className="mt-3">
-                                <TradeExplanationDisclosure id={`trade-mobile-open-${index}`} entry={trade.entry_explanation} currentState={trade.current_state_explanation} strategyTransparency={strategyTransparency} direction={direction} />
+                                <TradeExplanationDisclosure id={`trade-mobile-open-${index}`} entry={trade.entry_explanation} currentState={trade.current_state_explanation} strategyTransparency={strategyTransparency} direction={direction} triggerLabel={tradeExplanationLabel} showPermanentRules={showPermanentRulesInTradeExplanation} />
                             </div>
                         </article>
                     ))}
@@ -262,7 +266,7 @@ export function StrategyTradesTable({
                                 <div><dt className="text-[#929aa5]">Saída</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.exit_price)}</dd></div>
                             </dl>
                             <div className="mt-3">
-                                <TradeExplanationDisclosure id={`trade-mobile-${trade.tradeNum}`} entry={trade.entry_explanation} exit={trade.exit_explanation} strategyTransparency={strategyTransparency} direction={direction} />
+                                <TradeExplanationDisclosure id={`trade-mobile-${trade.tradeNum}`} entry={trade.entry_explanation} exit={trade.exit_explanation} strategyTransparency={strategyTransparency} direction={direction} triggerLabel={tradeExplanationLabel} showPermanentRules={showPermanentRulesInTradeExplanation} />
                             </div>
                         </article>
                     ))}
@@ -304,6 +308,8 @@ export function StrategyTradesTable({
                                             currentState={trade.current_state_explanation}
                                             strategyTransparency={strategyTransparency}
                                             direction={direction}
+                                            triggerLabel={tradeExplanationLabel}
+                                            showPermanentRules={showPermanentRulesInTradeExplanation}
                                         />
                                     </td>
                                 </tr>
@@ -328,6 +334,8 @@ export function StrategyTradesTable({
                                             exit={trade.exit_explanation}
                                             strategyTransparency={strategyTransparency}
                                             direction={direction}
+                                            triggerLabel={tradeExplanationLabel}
+                                            showPermanentRules={showPermanentRulesInTradeExplanation}
                                         />
                                     </td>
                                 </tr>,
