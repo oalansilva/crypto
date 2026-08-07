@@ -36,7 +36,7 @@
 - [x] 6.1 Clarify the permanent-rules heading and helper text without changing the strategy meaning
 - [x] 6.2 Make the results-page operation disclosure event-specific, with the label `Ver decisão da operação` and no repeated permanent-rule overview
 - [x] 6.3 Preserve the shared Monitor presentation and add focused regression coverage for both contexts
-- [ ] 6.4 Re-run review, QA, integration into `develop`, restart and served-URL validation while keeping card #384 in `Done`
+- [x] 6.4 Re-run review, QA, integration into `develop`, restart and served-URL validation while keeping card #384 in `Done`
 
 ## Verification Notes
 
@@ -45,4 +45,5 @@
 - Visual ownership is scoped to the Favorites full-analysis flow: the shared Monitor chart keeps its existing opt-in technical view, while `MonitorAlignedCandlestickChart` disables that duplicate for this page.
 - Tasks 5.3 and 5.4 were completed by PR #386, merged into `develop` as `019ef7712ad4538fa5bc2a6d311e8a8fb25b9fc9`, followed by restart and runtime validation.
 - Section 6 records copy and disclosure refinements requested after technical completion; the card remains in `Done` under the non-regression status rule.
-- `/opsx:verify` repeated on 2026-08-07: all 5 requirements and 9 scenarios map to implementation and automated coverage; 21/22 tasks are complete, with only the post-review integration/restart task 6.4 intentionally pending.
+- `/opsx:verify` repeated before integration on 2026-08-07: all 5 requirements and 9 scenarios mapped to implementation and automated coverage; at that checkpoint, only the post-review integration/restart task 6.4 was pending.
+- Feedback refinement merged through PR #387 as `1ace63653d694448b9a8f9d0a8e56ec814e66b6d`; all CI checks passed, `./restart` completed, `/api/health` returned `status: ok`, and the public `/favorites` route served bundle `index-Dy8JaFU-.js` with the updated copy. Task 6.4 is complete and card #384 remained in `Done`.
