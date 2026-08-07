@@ -11,6 +11,8 @@ A análise gráfica aberta por Favoritos repete indicadores e parâmetros em at�
 - Padronizar os rótulos visíveis da análise em português e garantir leitura responsiva sem corte ou rolagem horizontal.
 - Aplicar a mesma linguagem clara nos componentes compartilhados por Favoritos e Monitor, sem preservar defaults legados que reintroduzam a cópia removida.
 - Remover a ação e o conteúdo expansível de decisão por operação; a lista preserva somente os fatos operacionais já visíveis, evitando uma segunda camada explicativa abaixo das regras da estratégia.
+- Remover o bloco separado de histórico de sinais da análise de Favoritos: os mesmos sinais canônicos do Monitor continuam representados como marcadores no gráfico, sem uma segunda lista ou estado de sincronização concorrente.
+- Omitir a mensagem positiva `Série disponível para o timeframe atual.`; disponibilidade normal não exige explicação, enquanto indisponibilidade ou incompatibilidade continuam explícitas no detalhe técnico.
 - Preservar os contratos, métricas, regras, séries, operações, permissões e fontes de dados existentes; a mudança é de arquitetura de informação e apresentação.
 
 ## Capabilities

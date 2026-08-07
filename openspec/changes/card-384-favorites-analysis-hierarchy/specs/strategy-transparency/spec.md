@@ -14,6 +14,11 @@ Each full strategy analysis SHALL coordinate the canonical manifest between a co
 - **THEN** the parameter SHALL be listed once in technical details
 - **AND** the rule summaries MAY refer to its trader-readable meaning without restating a second parameter definition.
 
+#### Scenario: Timestamped indicator series is available
+- **WHEN** the timestamped series is available for the active timeframe
+- **THEN** the chart and technical detail SHALL expose the available evidence without rendering `Série disponível para o timeframe atual.`
+- **AND** explicit series-status copy SHALL be limited to unavailable, absent, or incompatible states.
+
 #### Scenario: Trader inspects the operation list
 - **WHEN** the trader reviews open or closed operations
 - **THEN** the list SHALL present the operation facts without an additional decision disclosure or nested explanation
