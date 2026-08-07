@@ -5,7 +5,6 @@ import {
     type StrategyChartMarker,
 } from './charts/StrategyChartSurface'
 import { normalizeStrategyTransparency, type StrategyTransparency } from '../lib/strategyTransparency'
-import { formatStrategyParameterLabel, formatStrategyParameterValue } from '../lib/strategyParameters'
 
 interface MonitorAlignedCandlestickChartProps {
     candles: StrategyChartCandle[]
@@ -26,21 +25,10 @@ export function MonitorAlignedCandlestickChart({
 }: MonitorAlignedCandlestickChartProps) {
     const transparency = normalizeStrategyTransparency(strategyTransparency)
     const configurationItems: StrategyChartConfigurationItem[] = transparency
-        ? [
-            ...transparency.indicators.map((indicator) => ({
-                label: `${indicator.label}${Object.keys(indicator.parameters).length > 0
-                    ? ` ${Object.entries(indicator.parameters)
-                        .map(([key, value]) => `${formatStrategyParameterLabel(key)}=${formatStrategyParameterValue(key, value)}`)
-                        .join(', ')}`
-                    : ''}`,
+        ? transparency.indicators.map((indicator) => ({
+                label: indicator.label,
                 color: indicator.color,
-            })),
-            ...Object.entries(transparency.effective_parameters)
-                .filter(([key]) => ['direction', 'stop_loss', 'take_profit'].includes(key))
-                .map(([key, value]) => ({
-                    label: `${formatStrategyParameterLabel(key)} ${formatStrategyParameterValue(key, value)}`,
-                })),
-        ]
+            }))
         : []
 
     return (
@@ -59,6 +47,7 @@ export function MonitorAlignedCandlestickChart({
             zoomTestIdPrefix="result-chart"
             visibleBarsTestId="result-chart-visible-bars"
             markerCount={markers?.length ?? 0}
+            showTransparencyDetails={false}
         />
     )
 }

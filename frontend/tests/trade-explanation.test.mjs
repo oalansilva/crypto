@@ -56,7 +56,8 @@ test('permanent rule overview separates strategy contract from current event', (
 
   assert.match(source, /Como funciona a estratégia/)
   assert.match(source, /Estas regras não mudam com a posição atual do trade/)
-  assert.match(source, /md:grid-cols-2/)
+  assert.match(source, /lg:grid-cols-3/)
+  assert.match(source, /rules\.risk/)
   assert.doesNotMatch(source, /sm:grid-cols-2/)
   assert.match(source, /aria-labelledby/)
   assert.match(card, /monitor-strategy-rules-/)

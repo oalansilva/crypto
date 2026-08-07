@@ -698,6 +698,21 @@ test('favorites shows the complete strategy description on desktop and mobile', 
     clippedVertically: element.scrollHeight > element.clientHeight + 1,
   }))).toEqual({ clippedHorizontally: false, clippedVertically: false });
   await expectNoHorizontalOverflow(page);
+
+  const analysis = page
+    .locator('.fav-mobile-card', { hasText: 'multi ma crossoverV2' })
+    .locator('button[title="Ver análise completa"]');
+  await analysis.click();
+  await expect(page).toHaveURL(/\/combo\/results$/);
+
+  const resultDescription = page.getByTestId('combo-result-description');
+  await expect(resultDescription).toHaveText(description);
+  await expect.poll(() => resultDescription.evaluate((element) => ({
+    clippedHorizontally: element.scrollWidth > element.clientWidth + 1,
+    clippedVertically: element.scrollHeight > element.clientHeight + 1,
+    whiteSpace: getComputedStyle(element).whiteSpace,
+  }))).toEqual({ clippedHorizontally: false, clippedVertically: false, whiteSpace: 'normal' });
+  await expectNoHorizontalOverflow(page);
 });
 
 test('favorites strategy column avoids duplicated raw strategy labels', async ({ page }) => {
@@ -953,23 +968,32 @@ test('favorites analysis opens cached multi MA chart when trade recovery hangs',
 
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
-  const parameters = page.getByTestId('combo-result-parameters');
-  await expect(parameters.getByText('Direção')).toBeVisible();
-  await expect(parameters.getByText('Compra')).toBeVisible();
-  await expect(parameters.getByText('EMA curta')).toBeVisible();
-  await expect(parameters.getByText('SMA média')).toBeVisible();
-  await expect(parameters.getByText('SMA longa')).toBeVisible();
-  await expect(parameters.getByText('Stop de perda')).toBeVisible();
-  await expect(parameters.getByText('9.00%')).toBeVisible();
-  await expect(parameters.getByText('Fonte de dados')).toBeVisible();
-  await expect(parameters.getByText('CCXT')).toBeVisible();
-  await expect(parameters.getByText('direction', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('ema short', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('sma medium', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('sma long', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('stop loss', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('data source', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('combo-result-parameters')).toHaveCount(0);
+  await expect(page.getByTestId('combo-result-summary')).toBeVisible();
+  await expect(page.getByTestId('combo-result-strategy-rules')).toBeVisible();
+  await expect(page.getByText('Proteção', { exact: true })).toBeVisible();
+
+  const technicalPanel = page.getByTestId('combo-result-strategy-transparency');
+  const technicalDisclosure = technicalPanel.getByText('Detalhes técnicos', { exact: true });
+  await expect(technicalDisclosure).toBeVisible();
+  await expect(technicalPanel.getByText('Parâmetros efetivos')).toBeHidden();
+  await technicalDisclosure.focus();
+  await expect(technicalDisclosure).toBeFocused();
+  await expect.poll(async () => Math.round((await technicalDisclosure.boundingBox())?.height ?? 0)).toBeGreaterThanOrEqual(44);
+  await page.keyboard.press('Enter');
+  await expect(technicalPanel.getByText('Parâmetros efetivos')).toBeVisible();
+  await expect(technicalPanel.getByText('Direção')).toBeVisible();
+  await expect(technicalPanel.getByText('Compra')).toBeVisible();
+  await expect(technicalPanel.getByText('EMA curta')).toBeVisible();
+  await expect(technicalPanel.getByText('SMA média')).toBeVisible();
+  await expect(technicalPanel.getByText('SMA longa')).toBeVisible();
+  await expect(technicalPanel.getByText('Stop de perda')).toBeVisible();
+  await expect(technicalPanel.getByText('9.00%')).toBeVisible();
+  await expect(technicalPanel.getByText('Fonte de dados')).toBeVisible();
+  await expect(technicalPanel.getByText('CCXT')).toBeVisible();
+  await expect(page.getByText('Parâmetros efetivos')).toHaveCount(1);
   await expect(page.getByText('HBAR/USDT • 1d • 120 velas')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
   expect(dialogs).toEqual([]);
 });
 

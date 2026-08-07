@@ -44,6 +44,7 @@ interface StrategyTradesTableProps {
     onExport?: () => void
     testId?: string
     strategyTransparency?: StrategyTransparency | null
+    showMetrics?: boolean
 }
 
 const INITIAL_CAPITAL = 100
@@ -163,6 +164,7 @@ export function StrategyTradesTable({
     onExport,
     testId = 'strategy-trades-table',
     strategyTransparency,
+    showMetrics = true,
 }: StrategyTradesTableProps) {
     const isShort = direction.toLowerCase() === 'short'
     const rows = buildClosedTradeRows(trades, candles, isShort)
@@ -173,7 +175,7 @@ export function StrategyTradesTable({
 
     return (
         <section className="space-y-4" data-testid={testId}>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {showMetrics ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] p-5">
                     <div className="mb-3 flex items-center justify-between">
                         <Activity className="h-5 w-5 text-[#fcd535]" />
@@ -204,7 +206,7 @@ export function StrategyTradesTable({
                     </div>
                     <p className="text-sm text-[#929aa5]">Lucro médio</p>
                 </div>
-            </div>
+            </div> : null}
 
             <div className="overflow-hidden rounded-lg border border-[#2b3139] bg-[#1e2329]">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2b3139] bg-[#181a20] p-4">
@@ -223,7 +225,7 @@ export function StrategyTradesTable({
                             <button
                                 type="button"
                                 onClick={onExport}
-                                className="inline-flex items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#181a20] transition-colors hover:bg-[#f0b90b]"
+                                className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#181a20] transition-colors hover:bg-[#f0b90b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
                             >
                                 <Download className="h-4 w-4" />
                                 Exportar para Excel
