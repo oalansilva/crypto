@@ -324,6 +324,7 @@ export function ComboResultsPage() {
                         id="combo-result-strategy-rules"
                         strategyTransparency={strategyTransparency}
                         direction={direction}
+                        includeRisk
                     />
 
                     {/* CHART VISUALIZATION */}

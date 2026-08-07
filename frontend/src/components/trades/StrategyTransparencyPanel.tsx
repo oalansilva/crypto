@@ -164,7 +164,7 @@ export function StrategyTransparencyPanel({
                 open={detailsOpen}
                 onToggle={(event) => setDetailsOpen(event.currentTarget.open)}
             >
-                <summary className="min-h-11 cursor-pointer rounded-md px-3 py-3 text-sm font-semibold text-[#eaecef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]">
+                <summary className={`${compact ? '' : 'min-h-11 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] '}cursor-pointer px-3 py-3 text-sm font-semibold text-[#eaecef]`}>
                     {detailsLabel || (compact ? 'Ver indicadores e parâmetros' : 'Detalhes técnicos comprovados')}
                 </summary>
                 <div className="space-y-3 border-t border-[#2b3139] p-3">
