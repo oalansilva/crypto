@@ -70,7 +70,7 @@ O cabeçalho passa de duas colunas para uma; métricas formam uma grade de duas 
 1. Voltar aos favoritos.
 2. Identidade: `BTC/USDT`, `1D`, `Long`, nome e descrição completa.
 3. Resultado e risco: retorno total, taxa de acerto, drawdown, operações e stop.
-4. Como funciona: quando compra, quando vende e proteção.
+4. Regras da estratégia: condições de entrada, saída e proteção.
 5. Gráfico da estratégia: candles, indicadores, sinais e valores no ponto selecionado.
 6. Detalhes técnicos: única fonte visual de indicadores e parâmetros efetivos.
 7. Histórico de sinais, quando existir.
@@ -83,11 +83,18 @@ O cabeçalho passa de duas colunas para uma; métricas formam uma grade de duas 
 | --- | --- | --- |
 | Identidade, timeframe e direção | Cabeçalho da análise | Contexto compacto no cabeçalho do gráfico |
 | Métricas agregadas | Resumo da análise | Resumo de operações, sem parâmetros |
-| Regras de entrada/saída/risco | `StrategyRuleOverview` | Marcadores e motivos por evento |
+| Regras de entrada/saída/risco | `StrategyRuleOverview` | Nenhuma repetição; operações mostram apenas seus motivos contextuais |
 | Série e valor no candle | `StrategyChartSurface` | Nenhuma lista técnica duplicada |
 | Função, participação e configuração de indicador | `StrategyTransparencyPanel` | Nome/cor/valor compacto na legenda |
 | Parâmetros efetivos | `StrategyTransparencyPanel` | Referência em linguagem natural nas regras, sem nova grade |
 | Indisponibilidade técnica | Contexto técnico correspondente | Estado vazio do gráfico apenas quando o próprio gráfico não existe |
+
+### Refinamento após feedback de uso
+
+- O bloco permanente usa o título `Regras da estratégia` e o apoio `Condições usadas para entrada, saída e proteção da operação.`. A frase sobre as regras não mudarem com a posição atual foi removida porque não acrescenta uma decisão útil ao contexto.
+- Nas operações, o acionador passa a se chamar `Ver decisão da operação`, descrevendo o resultado da ação em vez de repetir uma explicação genérica da estratégia.
+- O conteúdo expandido de cada operação mostra somente as evidências daquele evento — motivo da entrada, da saída ou do estado aberto. Ele não renderiza novamente `StrategyRuleOverview`, pois as regras permanentes já possuem um único dono visual acima do gráfico.
+- O comportamento do Monitor permanece inalterado; o refinamento é opt-in no fluxo de análise completa para evitar regressão no componente compartilhado.
 
 ## Accessibility and Content
 

@@ -6,6 +6,8 @@ interface StrategyRuleOverviewProps {
     direction?: string | null
     id?: string
     includeRisk?: boolean
+    title?: string
+    description?: string
 }
 
 export function StrategyRuleOverview({
@@ -13,6 +15,8 @@ export function StrategyRuleOverview({
     direction,
     id = 'strategy-rule-overview',
     includeRisk = false,
+    title = 'Como funciona a estratégia',
+    description = 'Estas regras não mudam com a posição atual do trade.',
 }: StrategyRuleOverviewProps) {
     const rules = buildStrategyRuleOverview(strategyTransparency, direction)
     const visibleRules = includeRisk
@@ -27,10 +31,10 @@ export function StrategyRuleOverview({
         >
             <div>
                 <h4 id={`${id}-title`} className="text-sm font-semibold text-[#eaecef]">
-                    Como funciona a estratégia
+                    {title}
                 </h4>
                 <p className="mt-1 text-xs leading-5 text-[#929aa5]">
-                    Estas regras não mudam com a posição atual do trade.
+                    {description}
                 </p>
             </div>
             <dl className={`mt-3 grid min-w-0 gap-2 ${includeRisk ? 'lg:grid-cols-3' : 'md:grid-cols-2'}`}>

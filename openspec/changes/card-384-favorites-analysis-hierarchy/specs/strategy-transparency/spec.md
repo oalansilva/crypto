@@ -14,6 +14,11 @@ Each full strategy analysis SHALL coordinate the canonical manifest between a co
 - **THEN** the parameter SHALL be listed once in technical details
 - **AND** the rule summaries MAY refer to its trader-readable meaning without restating a second parameter definition.
 
+#### Scenario: Trader inspects a specific operation
+- **WHEN** the trader activates the operation-decision disclosure
+- **THEN** the disclosure SHALL present only the entry, exit or current-state evidence for that operation
+- **AND** SHALL NOT repeat the permanent strategy-rule overview already presented above the chart.
+
 ### Requirement: Strategy transparency uses consistent trader-facing language
 Visible labels and actions in the full analysis SHALL use consistent Portuguese terminology while preserving canonical technical names such as EMA and SMA where they are the recognized indicator identity.
 

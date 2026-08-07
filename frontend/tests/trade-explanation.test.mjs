@@ -8,6 +8,8 @@ test('trade explanation disclosure exposes the accessible disclosure contract', 
   const source = read('src/components/trades/TradeExplanationDisclosure.tsx')
 
   assert.match(source, /Entenda este trade/)
+  assert.match(source, /triggerLabel/)
+  assert.match(source, /showPermanentRules/)
   assert.match(source, /aria-expanded=\{expanded\}/)
   assert.match(source, /aria-controls=\{panelId\}/)
   assert.match(source, /min-h-11/)
@@ -48,6 +50,17 @@ test('trade list integrates explanations without adding another table header', (
   assert.match(source, /<TradeExplanationDisclosure/)
   assert.doesNotMatch(source, /<th[^>]*>Entenda este trade<\/th>/)
   assert.match(source, /strategyTransparency=\{strategyTransparency\}/)
+  assert.match(source, /triggerLabel=\{tradeExplanationLabel\}/)
+  assert.match(source, /showPermanentRules=\{showPermanentRulesInTradeExplanation\}/)
+})
+
+test('results page separates permanent rules from operation-specific decisions', () => {
+  const source = read('src/pages/ComboResultsPage.tsx')
+
+  assert.match(source, /title="Regras da estratégia"/)
+  assert.match(source, /description="Condições usadas para entrada, saída e proteção da operação\."/)
+  assert.match(source, /tradeExplanationLabel="Ver decisão da operação"/)
+  assert.match(source, /showPermanentRulesInTradeExplanation=\{false\}/)
 })
 
 test('permanent rule overview separates strategy contract from current event', () => {
