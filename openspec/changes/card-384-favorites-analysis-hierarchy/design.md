@@ -83,7 +83,7 @@ O cabeçalho passa de duas colunas para uma; métricas formam uma grade de duas 
 | --- | --- | --- |
 | Identidade, timeframe e direção | Cabeçalho da análise | Contexto compacto no cabeçalho do gráfico |
 | Métricas agregadas | Resumo da análise | Resumo de operações, sem parâmetros |
-| Regras de entrada/saída/risco | `StrategyRuleOverview` | Nenhuma repetição; operações mostram apenas seus motivos contextuais |
+| Regras de entrada/saída/risco | `StrategyRuleOverview` | Nenhuma repetição; operações mostram somente fatos operacionais, sem explicação aninhada |
 | Série e valor no candle | `StrategyChartSurface` | Nenhuma lista técnica duplicada |
 | Função, participação e configuração de indicador | `StrategyTransparencyPanel` | Nome/cor/valor compacto na legenda |
 | Parâmetros efetivos | `StrategyTransparencyPanel` | Referência em linguagem natural nas regras, sem nova grade |
@@ -97,9 +97,22 @@ O cabeçalho passa de duas colunas para uma; métricas formam uma grade de duas 
 - O componente compartilhado usa essa redação como padrão em Favoritos e Monitor; nenhum contexto preserva `Como funciona a estratégia` ou `Estas regras não mudam com a posição atual do trade.`.
 - O disclosure de operações também usa `Ver decisão da operação` em todos os contextos e não repete `StrategyRuleOverview`. Essa correção substitui a decisão opt-in anterior, que manteve o texto legado e a duplicação no Monitor.
 
+### Refinamento final após feedback de uso
+
+- A ação `Ver decisão da operação` e todo o painel expansível associado são removidos de Favoritos e Monitor.
+- As operações preservam datas, preços, sinais, resultado, excursões e estado de posição aberta. Os campos explicativos podem continuar no contrato de dados, mas não possuem apresentação visual nessa lista.
+- A remoção reduz ações sem consequência decisória nova: regras permanentes e evidência do gráfico já explicam a estratégia antes da lista, enquanto cada linha permanece responsável apenas pelos fatos da execução.
+
+#### Impeccable final-feedback trace
+
+- `clarify`: confirmou que o controle repetia contexto já explicado e que removê-lo é mais claro do que renomeá-lo novamente.
+- `audit`: `20/20` no delta — acessibilidade, performance, responsividade, theming e integridade preservados; não há novo controle, estilo, dependência ou estado interativo. Quatro cores antigas de fixtures foram classificadas como preexistentes e fora das linhas alteradas, sem supressão.
+- `polish`: nenhuma crítica armazenada para o componente (`critique-storage` exit 2); o passe independente removeu o componente órfão, preservou os contratos de dados e confirmou Favoritos/Monitor em desktop e mobile.
+- `browser gate`: 6 cenários funcionais e 16 snapshots visuais passaram; as duas diferenças intencionais revisadas correspondem somente à ausência do botão e do painel no Monitor.
+
 ## Accessibility and Content
 
-- Semântica `main`, seções rotuladas, `button` real e `aria-expanded` no disclosure.
+- Semântica `main` e seções rotuladas; o disclosure técnico preserva `button` real e `aria-expanded`, enquanto operações não introduzem controles adicionais.
 - Foco de teclado de 2 px com contraste; alvo mínimo de 44 px para ações móveis.
 - Contraste mínimo 4.5:1 para texto corrente e 3:1 para texto grande.
 - Números tabulares; siglas EMA/SMA preservadas; rótulos de interface em português.

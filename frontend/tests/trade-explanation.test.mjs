@@ -1,32 +1,16 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('trade explanation disclosure exposes the accessible disclosure contract', () => {
-  const source = read('src/components/trades/TradeExplanationDisclosure.tsx')
+test('operation list has no per-operation decision disclosure', () => {
+  const source = read('src/components/charts/StrategyTradesTable.tsx')
+  const disclosurePath = new URL('../src/components/trades/TradeExplanationDisclosure.tsx', import.meta.url)
 
-  assert.match(source, /Ver decisão da operação/)
-  assert.match(source, /aria-expanded=\{expanded\}/)
-  assert.match(source, /aria-controls=\{panelId\}/)
-  assert.match(source, /min-h-11/)
-  assert.match(source, /focus-visible:ring-2 focus-visible:ring-\[#3b82f6\]/)
-  assert.doesNotMatch(source, /StrategyRuleOverview/)
-})
-
-test('trade explanation distinguishes event timing, evidence and safe legacy fallback', () => {
-  const source = read('src/components/trades/TradeExplanationDisclosure.tsx')
-
-  assert.match(source, /Candle que confirmou/)
-  assert.match(source, /Preço executado/)
-  assert.match(source, /exit_rule: 'Regra de saída'/)
-  assert.match(source, /stop_loss: 'Stop de perda'/)
-  assert.match(source, /Confirmada/)
-  assert.match(source, /Pendente/)
-  assert.match(source, /Saída técnica/)
-  assert.match(source, /Stop de proteção/)
-  assert.match(source, /Detalhes da decisão não estão disponíveis para este trade histórico/)
+  assert.doesNotMatch(source, /TradeExplanationDisclosure/)
+  assert.doesNotMatch(source, /Ver decisão da operação/)
+  assert.equal(existsSync(disclosurePath), false)
 })
 
 test('frontend contract mirrors the additive public API fields', () => {
@@ -39,29 +23,28 @@ test('frontend contract mirrors the additive public API fields', () => {
   assert.match(source, /evidence\?: TradeEvidenceItem\[\]/)
 })
 
-test('trade list integrates explanations without adding another table header', () => {
+test('trade list preserves explanation payload fields without rendering another control', () => {
   const source = read('src/components/charts/StrategyTradesTable.tsx')
 
   assert.match(source, /entry_explanation\?: TradeExplanation/)
   assert.match(source, /exit_explanation\?: TradeExplanation/)
   assert.match(source, /current_state_explanation\?: TradeExplanation/)
-  assert.match(source, /<TradeExplanationDisclosure/)
+  assert.doesNotMatch(source, /<TradeExplanationDisclosure/)
+  assert.doesNotMatch(source, /Ver decisão da operação/)
   assert.doesNotMatch(source, /<th[^>]*>Entenda este trade<\/th>/)
   assert.doesNotMatch(source, /strategyTransparency=/)
 })
 
-test('results page separates permanent rules from operation-specific decisions', () => {
+test('results page keeps permanent rules without per-operation decisions', () => {
   const source = read('src/pages/ComboResultsPage.tsx')
   const rules = read('src/components/trades/StrategyRuleOverview.tsx')
   const trades = read('src/components/charts/StrategyTradesTable.tsx')
-  const disclosure = read('src/components/trades/TradeExplanationDisclosure.tsx')
 
   assert.match(source, /id="combo-result-strategy-rules"/)
   assert.match(rules, /Regras da estratégia/)
   assert.match(rules, /Condições usadas para entrada, saída e proteção da operação\./)
-  assert.match(trades, /<TradeExplanationDisclosure/)
-  assert.match(disclosure, /Ver decisão da operação/)
-  assert.doesNotMatch(disclosure, /StrategyRuleOverview/)
+  assert.doesNotMatch(trades, /TradeExplanationDisclosure/)
+  assert.doesNotMatch(trades, /Ver decisão da operação/)
 })
 
 test('permanent rule overview separates strategy contract from current event', () => {

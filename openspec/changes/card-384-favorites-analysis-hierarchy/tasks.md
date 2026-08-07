@@ -45,14 +45,23 @@
 - [x] 7.3 Update functional and visual coverage for Favoritos and Monitor, including explicit absence assertions for the legacy copy
 - [x] 7.4 Re-run review, QA, integration into `develop`, restart and served-runtime validation while keeping card #384 in `Done`
 
+## 8. Remove Per-Operation Decision Disclosure
+
+- [x] 8.1 Remove `TradeExplanationDisclosure` from desktop and mobile operation rows in Favoritos and Monitor without changing operation facts or payload contracts
+- [x] 8.2 Remove the now-unused disclosure component and add regression assertions that `Ver decisão da operação` and its panels are absent
+- [x] 8.3 Update and review affected visual baselines for Favoritos and Monitor, then run focused tests, build and all OpenSpec validations
+- [ ] 8.4 Re-run Code Review, QA, integration into `develop`, restart and served-runtime validation while keeping card #384 in `Done`
+
 ## Verification Notes
 
 - `/opsx:verify` executed on 2026-08-06 with all 5 requirements and 8 scenarios mapped to implementation and automated evidence.
 - `/opsx:verify` repeated on 2026-08-07: all 5 requirements and 11 scenarios map to implementation and automated evidence; focused functional tests, the 16-snapshot visual suite, the frontend build and all 146 OpenSpec validations pass. Only the operational integration/runtime task 7.4 remains pending before the served result can be considered complete.
 - Operational evidence on 2026-08-07: PR #389 passed every initiated check, including `qa-gate` and Playwright, and was squash-merged into `develop` as `9376731c`; `./restart` built and served `index-Ck8RSED1.js`, `/api/health` returned `ok`, local and public `/favorites` returned HTTP 200, and the served bundle contains the approved labels with zero legacy-copy matches. Card #384 remained in `Done` throughout the correction.
 - No functional or API-contract deviation was found. All implementation and operational delivery tasks are complete in `develop`.
-- Visual ownership remains scoped to each surface: Favoritos owns its permanent overview above the graph, while shared Monitor and Favoritos operation disclosures render only event-specific evidence and never repeat that overview.
+- Visual ownership remains scoped to each surface: Favoritos owns its permanent overview above the graph, while shared Monitor and Favoritos operation lists contain only execution facts and render no per-operation disclosure.
 - Tasks 5.3 and 5.4 were completed by PR #386, merged into `develop` as `019ef7712ad4538fa5bc2a6d311e8a8fb25b9fc9`, followed by restart and runtime validation.
 - Section 6 records copy and disclosure refinements requested after technical completion; the card remains in `Done` under the non-regression status rule.
 - `/opsx:verify` repeated before integration on 2026-08-07: all 5 requirements and 9 scenarios mapped to implementation and automated coverage; at that checkpoint, only the post-review integration/restart task 6.4 was pending.
 - Feedback refinement merged through PR #387 as `1ace63653d694448b9a8f9d0a8e56ec814e66b6d`; all CI checks passed, `./restart` completed, `/api/health` returned `status: ok`, and the public `/favorites` route served bundle `index-Dy8JaFU-.js` with the updated copy. Task 6.4 is complete and card #384 remained in `Done`.
+- Section 8 records Alan's final feedback to remove the per-operation decision control entirely while preserving the operation list and data contracts; the card remains in `Done` under the non-regression rule.
+- `/opsx:verify` repeated locally for section 8 on 2026-08-07: all 5 requirements and 11 scenarios map to the implementation; 35 unit tests, 6 focused Playwright scenarios, 16 visual snapshots, the frontend build, focused lint and all 146 OpenSpec validations pass. Only operational task 8.4 remains pending before served-runtime completion.
