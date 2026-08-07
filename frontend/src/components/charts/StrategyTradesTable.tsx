@@ -1,5 +1,4 @@
 import { Activity, DollarSign, Download, Target, TrendingDown, TrendingUp } from 'lucide-react'
-import { TradeExplanationDisclosure } from '../trades/TradeExplanationDisclosure'
 import type { TradeExplanation } from '@/types/tradeExplanation'
 
 export interface StrategyTrade {
@@ -240,9 +239,6 @@ export function StrategyTradesTable({
                                 </div>
                                 <span className="font-mono text-sm text-[#eaecef]">{formatPrice(trade.entry_price)}</span>
                             </div>
-                            <div className="mt-3">
-                                <TradeExplanationDisclosure id={`trade-mobile-open-${index}`} entry={trade.entry_explanation} currentState={trade.current_state_explanation} />
-                            </div>
                         </article>
                     ))}
                     {rows.map((trade) => (
@@ -258,9 +254,6 @@ export function StrategyTradesTable({
                                 <div><dt className="text-[#929aa5]">Entrada</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.entry_price)}</dd></div>
                                 <div><dt className="text-[#929aa5]">Saída</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.exit_price)}</dd></div>
                             </dl>
-                            <div className="mt-3">
-                                <TradeExplanationDisclosure id={`trade-mobile-${trade.tradeNum}`} entry={trade.entry_explanation} exit={trade.exit_explanation} />
-                            </div>
                         </article>
                     ))}
                     {rows.length === 0 && openTrades.length === 0 ? <p className="p-3 text-center text-sm text-[#929aa5]">Nenhuma operação disponível.</p> : null}
@@ -295,11 +288,6 @@ export function StrategyTradesTable({
                                     <td className="px-4 py-2 text-[#eaecef]">-</td>
                                     <td colSpan={4} className="px-4 py-2 align-top">
                                         <div className="mb-2 font-medium text-[#0ecb81]">Posição aberta</div>
-                                        <TradeExplanationDisclosure
-                                            id={`trade-open-${index}`}
-                                            entry={trade.entry_explanation}
-                                            currentState={trade.current_state_explanation}
-                                        />
                                     </td>
                                 </tr>
                             ))}
@@ -316,13 +304,7 @@ export function StrategyTradesTable({
                                     <td className="px-4 py-2 text-[#eaecef]">
                                         <div>{formatUsd(trade.positionValueUSD)}</div>
                                     </td>
-                                    <td colSpan={4} className="px-4 py-2 align-top">
-                                        <TradeExplanationDisclosure
-                                            id={`trade-${trade.tradeNum}`}
-                                            entry={trade.entry_explanation}
-                                            exit={trade.exit_explanation}
-                                        />
-                                    </td>
+                                    <td colSpan={4} className="px-4 py-2 align-top" />
                                 </tr>,
                                 <tr key={`${trade.tradeNum}-exit`} className="border-b border-[#2b3139] bg-[#1e2329] transition-colors hover:bg-[#2b3139]">
                                     <td className="px-4 py-2 text-[#eaecef]">Saida</td>

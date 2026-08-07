@@ -367,9 +367,9 @@ test('visual critical monitor trade explanation', async ({ page }) => {
   }
   await page.getByRole('button', { name: 'Ver Trades' }).click()
   const dialog = page.getByRole('dialog')
-  const disclosure = dialog.getByRole('button', { name: 'Ver decisão da operação' })
-  await disclosure.click()
-  await expect(dialog.getByText('Por que continua aberto')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Ver decisão da operação' })).toHaveCount(0)
+  await expect(dialog.getByTestId(/trade-explanation/)).toHaveCount(0)
+  await expect(dialog.getByText('Por que continua aberto')).toHaveCount(0)
   await expect(dialog.getByText('Como funciona a estratégia')).toHaveCount(0)
   await expect(dialog.getByText('Estas regras não mudam com a posição atual do trade.')).toHaveCount(0)
   await expect(page).toHaveScreenshot('monitor-trade-explanation.png', {

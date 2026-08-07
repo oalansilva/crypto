@@ -14,10 +14,10 @@ Each full strategy analysis SHALL coordinate the canonical manifest between a co
 - **THEN** the parameter SHALL be listed once in technical details
 - **AND** the rule summaries MAY refer to its trader-readable meaning without restating a second parameter definition.
 
-#### Scenario: Trader inspects a specific operation
-- **WHEN** the trader activates the operation-decision disclosure
-- **THEN** the disclosure SHALL present only the entry, exit or current-state evidence for that operation
-- **AND** SHALL NOT repeat the permanent strategy-rule overview already presented above the chart.
+#### Scenario: Trader inspects the operation list
+- **WHEN** the trader reviews open or closed operations
+- **THEN** the list SHALL present the operation facts without an additional decision disclosure or nested explanation
+- **AND** SHALL rely on the permanent strategy-rule overview and chart evidence already presented in the analysis.
 
 ### Requirement: Strategy transparency uses consistent trader-facing language
 Visible labels and actions in the full analysis SHALL use consistent Portuguese terminology while preserving canonical technical names such as EMA and SMA where they are the recognized indicator identity.
@@ -32,7 +32,7 @@ Visible labels and actions in the full analysis SHALL use consistent Portuguese 
 - **THEN** it SHALL use `Regras da estratégia` and `Condições usadas para entrada, saída e proteção da operação.`
 - **AND** SHALL NOT render the legacy copy `Como funciona a estratégia` or `Estas regras não mudam com a posição atual do trade.`.
 
-#### Scenario: Shared operation disclosure renders in Favorites or Monitor
-- **WHEN** any trader-facing surface renders an operation-decision disclosure
-- **THEN** its action SHALL be labeled `Ver decisão da operação`
-- **AND** the expanded content SHALL contain event-specific evidence without another permanent-rule overview.
+#### Scenario: Shared operation list renders in Favorites or Monitor
+- **WHEN** any trader-facing surface renders the shared operation list
+- **THEN** it SHALL NOT render `Ver decisão da operação` or any per-operation explanation disclosure
+- **AND** SHALL preserve the visible dates, prices, signals, results and open-position state.

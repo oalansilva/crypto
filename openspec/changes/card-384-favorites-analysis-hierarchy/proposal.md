@@ -10,6 +10,7 @@ A análise gráfica aberta por Favoritos repete indicadores e parâmetros em at�
 - Apresentar conteúdo técnico detalhado por divulgação progressiva, com estados indisponíveis e divergências exibidos uma única vez no contexto apropriado.
 - Padronizar os rótulos visíveis da análise em português e garantir leitura responsiva sem corte ou rolagem horizontal.
 - Aplicar a mesma linguagem clara nos componentes compartilhados por Favoritos e Monitor, sem preservar defaults legados que reintroduzam a cópia removida.
+- Remover a ação e o conteúdo expansível de decisão por operação; a lista preserva somente os fatos operacionais já visíveis, evitando uma segunda camada explicativa abaixo das regras da estratégia.
 - Preservar os contratos, métricas, regras, séries, operações, permissões e fontes de dados existentes; a mudança é de arquitetura de informação e apresentação.
 
 ## Capabilities
