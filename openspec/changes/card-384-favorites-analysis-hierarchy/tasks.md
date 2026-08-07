@@ -38,9 +38,17 @@
 - [x] 6.3 Preserve the shared Monitor presentation and add focused regression coverage for both contexts
 - [x] 6.4 Re-run review, QA, integration into `develop`, restart and served-URL validation while keeping card #384 in `Done`
 
+## 7. Remove Legacy Copy From Shared Surfaces
+
+- [x] 7.1 Replace the shared `StrategyRuleOverview` defaults so the legacy title and helper text have zero occurrences in production source
+- [x] 7.2 Apply `Ver decisão da operação` and event-specific disclosure content to Monitor as well as Favorites
+- [x] 7.3 Update functional and visual coverage for Favoritos and Monitor, including explicit absence assertions for the legacy copy
+- [ ] 7.4 Re-run review, QA, integration into `develop`, restart and served-runtime validation while keeping card #384 in `Done`
+
 ## Verification Notes
 
 - `/opsx:verify` executed on 2026-08-06 with all 5 requirements and 8 scenarios mapped to implementation and automated evidence.
+- `/opsx:verify` repeated on 2026-08-07: all 5 requirements and 11 scenarios map to implementation and automated evidence; focused functional tests, the 16-snapshot visual suite, the frontend build and all 146 OpenSpec validations pass. Only the operational integration/runtime task 7.4 remains pending before the served result can be considered complete.
 - No functional or API-contract deviation was found. The remaining tasks are operational delivery gates (`Code Review`/`QA`/integration and runtime validation).
 - Visual ownership is scoped to the Favorites full-analysis flow: the shared Monitor chart keeps its existing opt-in technical view, while `MonitorAlignedCandlestickChart` disables that duplicate for this page.
 - Tasks 5.3 and 5.4 were completed by PR #386, merged into `develop` as `019ef7712ad4538fa5bc2a6d311e8a8fb25b9fc9`, followed by restart and runtime validation.

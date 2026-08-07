@@ -9,6 +9,7 @@ A análise gráfica aberta por Favoritos repete indicadores e parâmetros em at�
 - Manter no gráfico apenas o contexto necessário para interpretar candles, indicadores, valores no ponto de referência, sinais e controles de navegação.
 - Apresentar conteúdo técnico detalhado por divulgação progressiva, com estados indisponíveis e divergências exibidos uma única vez no contexto apropriado.
 - Padronizar os rótulos visíveis da análise em português e garantir leitura responsiva sem corte ou rolagem horizontal.
+- Aplicar a mesma linguagem clara nos componentes compartilhados por Favoritos e Monitor, sem preservar defaults legados que reintroduzam a cópia removida.
 - Preservar os contratos, métricas, regras, séries, operações, permissões e fontes de dados existentes; a mudança é de arquitetura de informação e apresentação.
 
 ## Capabilities
@@ -24,7 +25,7 @@ Nenhuma.
 
 ## Impact
 
-- Frontend React: `ComboResultsPage`, `StrategyTransparencyPanel`, `StrategyChartSurface` e componentes compartilhados de resumo/operações.
+- Frontend React: `ComboResultsPage`, `StrategyTransparencyPanel`, `StrategyChartSurface`, Monitor e componentes compartilhados de resumo/operações.
 - Testes unitários e Playwright da jornada Favoritos → análise completa, incluindo desktop e mobile.
 - Sem alteração planejada de API, banco de dados, cálculo de indicadores, backtest ou permissões.
 - `UI impact: affected`; exige protótipo navegável e aprovação humana de Design antes de qualquer alteração no código de produção.

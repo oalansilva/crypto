@@ -325,8 +325,6 @@ export function ComboResultsPage() {
                         strategyTransparency={strategyTransparency}
                         direction={direction}
                         includeRisk
-                        title="Regras da estratégia"
-                        description="Condições usadas para entrada, saída e proteção da operação."
                     />
 
                     {/* CHART VISUALIZATION */}
@@ -376,10 +374,7 @@ export function ComboResultsPage() {
                         metrics={metrics}
                         onExport={handleExportTrades}
                         testId="result-trades"
-                        strategyTransparency={strategyTransparency}
                         showMetrics={false}
-                        tradeExplanationLabel="Ver decisão da operação"
-                        showPermanentRulesInTradeExplanation={false}
                     />
 
                     <p className="rounded-lg border border-[#2b3139] bg-[#181a20] px-4 py-3 text-xs leading-5 text-[#929aa5]">
