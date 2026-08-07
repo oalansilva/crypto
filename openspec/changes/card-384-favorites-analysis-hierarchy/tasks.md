@@ -50,7 +50,7 @@
 - [x] 8.1 Remove `TradeExplanationDisclosure` from desktop and mobile operation rows in Favoritos and Monitor without changing operation facts or payload contracts
 - [x] 8.2 Remove the now-unused disclosure component and add regression assertions that `Ver decisão da operação` and its panels are absent
 - [x] 8.3 Update and review affected visual baselines for Favoritos and Monitor, then run focused tests, build and all OpenSpec validations
-- [ ] 8.4 Re-run Code Review, QA, integration into `develop`, restart and served-runtime validation while keeping card #384 in `Done`
+- [x] 8.4 Re-run Code Review, QA, integration into `develop`, restart and served-runtime validation while keeping card #384 in `Done`
 
 ## Verification Notes
 
@@ -65,3 +65,4 @@
 - Feedback refinement merged through PR #387 as `1ace63653d694448b9a8f9d0a8e56ec814e66b6d`; all CI checks passed, `./restart` completed, `/api/health` returned `status: ok`, and the public `/favorites` route served bundle `index-Dy8JaFU-.js` with the updated copy. Task 6.4 is complete and card #384 remained in `Done`.
 - Section 8 records Alan's final feedback to remove the per-operation decision control entirely while preserving the operation list and data contracts; the card remains in `Done` under the non-regression rule.
 - `/opsx:verify` repeated locally for section 8 on 2026-08-07: all 5 requirements and 11 scenarios map to the implementation; 35 unit tests, 6 focused Playwright scenarios, 16 visual snapshots, the frontend build, focused lint and all 146 OpenSpec validations pass. Only operational task 8.4 remains pending before served-runtime completion.
+- Operational evidence for section 8 on 2026-08-07: PR #391 passed every initiated check, including `qa-gate` and Playwright, and was squash-merged into `develop` as `49e3357c`; `./restart` built and served `index-C3GcTgTT.js`, `/api/health` returned `ok`, local and public `/favorites` returned HTTP 200, and the served bundle has zero matches for the removed action/component. Card #384 remained in `Done`.
