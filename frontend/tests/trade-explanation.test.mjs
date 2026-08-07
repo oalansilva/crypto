@@ -7,14 +7,12 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 test('trade explanation disclosure exposes the accessible disclosure contract', () => {
   const source = read('src/components/trades/TradeExplanationDisclosure.tsx')
 
-  assert.match(source, /Entenda este trade/)
-  assert.match(source, /triggerLabel/)
-  assert.match(source, /showPermanentRules/)
+  assert.match(source, /Ver decisão da operação/)
   assert.match(source, /aria-expanded=\{expanded\}/)
   assert.match(source, /aria-controls=\{panelId\}/)
   assert.match(source, /min-h-11/)
   assert.match(source, /focus-visible:ring-2 focus-visible:ring-\[#3b82f6\]/)
-  assert.match(source, /<StrategyRuleOverview/)
+  assert.doesNotMatch(source, /StrategyRuleOverview/)
 })
 
 test('trade explanation distinguishes event timing, evidence and safe legacy fallback', () => {
@@ -49,26 +47,31 @@ test('trade list integrates explanations without adding another table header', (
   assert.match(source, /current_state_explanation\?: TradeExplanation/)
   assert.match(source, /<TradeExplanationDisclosure/)
   assert.doesNotMatch(source, /<th[^>]*>Entenda este trade<\/th>/)
-  assert.match(source, /strategyTransparency=\{strategyTransparency\}/)
-  assert.match(source, /triggerLabel=\{tradeExplanationLabel\}/)
-  assert.match(source, /showPermanentRules=\{showPermanentRulesInTradeExplanation\}/)
+  assert.doesNotMatch(source, /strategyTransparency=/)
 })
 
 test('results page separates permanent rules from operation-specific decisions', () => {
   const source = read('src/pages/ComboResultsPage.tsx')
+  const rules = read('src/components/trades/StrategyRuleOverview.tsx')
+  const trades = read('src/components/charts/StrategyTradesTable.tsx')
+  const disclosure = read('src/components/trades/TradeExplanationDisclosure.tsx')
 
-  assert.match(source, /title="Regras da estratégia"/)
-  assert.match(source, /description="Condições usadas para entrada, saída e proteção da operação\."/)
-  assert.match(source, /tradeExplanationLabel="Ver decisão da operação"/)
-  assert.match(source, /showPermanentRulesInTradeExplanation=\{false\}/)
+  assert.match(source, /id="combo-result-strategy-rules"/)
+  assert.match(rules, /Regras da estratégia/)
+  assert.match(rules, /Condições usadas para entrada, saída e proteção da operação\./)
+  assert.match(trades, /<TradeExplanationDisclosure/)
+  assert.match(disclosure, /Ver decisão da operação/)
+  assert.doesNotMatch(disclosure, /StrategyRuleOverview/)
 })
 
 test('permanent rule overview separates strategy contract from current event', () => {
   const source = read('src/components/trades/StrategyRuleOverview.tsx')
   const card = read('src/components/monitor/OpportunityCard.tsx')
 
-  assert.match(source, /Como funciona a estratégia/)
-  assert.match(source, /Estas regras não mudam com a posição atual do trade/)
+  assert.match(source, /Regras da estratégia/)
+  assert.match(source, /Condições usadas para entrada, saída e proteção da operação\./)
+  assert.doesNotMatch(source, /Como funciona a estratégia/)
+  assert.doesNotMatch(source, /Estas regras não mudam com a posição atual do trade/)
   assert.match(source, /lg:grid-cols-3/)
   assert.match(source, /rules\.risk/)
   assert.doesNotMatch(source, /sm:grid-cols-2/)

@@ -26,3 +26,13 @@ Visible labels and actions in the full analysis SHALL use consistent Portuguese 
 - **WHEN** legacy presentation labels such as `Winning Configuration`, `List of trades`, `Type`, or `Date and time` would otherwise be shown
 - **THEN** the analysis SHALL render approved Portuguese equivalents
 - **AND** technical acronyms and numeric values SHALL remain unchanged.
+
+#### Scenario: Shared rule overview renders in Favorites or Monitor
+- **WHEN** any trader-facing surface renders the shared permanent-rule overview
+- **THEN** it SHALL use `Regras da estratégia` and `Condições usadas para entrada, saída e proteção da operação.`
+- **AND** SHALL NOT render the legacy copy `Como funciona a estratégia` or `Estas regras não mudam com a posição atual do trade.`.
+
+#### Scenario: Shared operation disclosure renders in Favorites or Monitor
+- **WHEN** any trader-facing surface renders an operation-decision disclosure
+- **THEN** its action SHALL be labeled `Ver decisão da operação`
+- **AND** the expanded content SHALL contain event-specific evidence without another permanent-rule overview.

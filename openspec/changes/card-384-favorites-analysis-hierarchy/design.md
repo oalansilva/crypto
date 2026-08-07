@@ -94,7 +94,8 @@ O cabeçalho passa de duas colunas para uma; métricas formam uma grade de duas 
 - O bloco permanente usa o título `Regras da estratégia` e o apoio `Condições usadas para entrada, saída e proteção da operação.`. A frase sobre as regras não mudarem com a posição atual foi removida porque não acrescenta uma decisão útil ao contexto.
 - Nas operações, o acionador passa a se chamar `Ver decisão da operação`, descrevendo o resultado da ação em vez de repetir uma explicação genérica da estratégia.
 - O conteúdo expandido de cada operação mostra somente as evidências daquele evento — motivo da entrada, da saída ou do estado aberto. Ele não renderiza novamente `StrategyRuleOverview`, pois as regras permanentes já possuem um único dono visual acima do gráfico.
-- O comportamento do Monitor permanece inalterado; o refinamento é opt-in no fluxo de análise completa para evitar regressão no componente compartilhado.
+- O componente compartilhado usa essa redação como padrão em Favoritos e Monitor; nenhum contexto preserva `Como funciona a estratégia` ou `Estas regras não mudam com a posição atual do trade.`.
+- O disclosure de operações também usa `Ver decisão da operação` em todos os contextos e não repete `StrategyRuleOverview`. Essa correção substitui a decisão opt-in anterior, que manteve o texto legado e a duplicação no Monitor.
 
 ## Accessibility and Content
 

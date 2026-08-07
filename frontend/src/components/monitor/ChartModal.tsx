@@ -895,7 +895,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             loading={analysisTradesLoading}
                             error={analysisTradesError}
                             testId="chart-modal-trades"
-                            strategyTransparency={activeStrategyTransparency}
                         />
                     ) : undefined}
                     showTransparencyDetails={!isTradesView}
