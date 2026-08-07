@@ -183,9 +183,6 @@ export function StrategyTransparencyPanel({
                             ) : null}
                             <ul className="mt-2 grid gap-2 md:grid-cols-2" aria-label="Indicadores da estratégia">
                                 {transparency.indicators.map((indicator) => {
-                                    const available = !timeframeMismatch
-                                        && indicator.availability === 'available'
-                                        && indicator.series.length > 0
                                     return (
                                         <li key={indicator.key} className="min-w-0 rounded-md border border-[#2b3139] bg-[#0b0e11] p-3">
                                             <div className="flex items-start gap-2">
@@ -203,9 +200,6 @@ export function StrategyTransparencyPanel({
                                                 </div>
                                             </div>
                                             {indicator.function ? <p className="mt-2 text-xs leading-5 text-[#929aa5]">Função: {indicator.function}</p> : null}
-                                            {available ? (
-                                                <p className="mt-2 text-xs text-emerald-300" role="status">Série disponível para o timeframe atual.</p>
-                                            ) : null}
                                         </li>
                                     )
                                 })}

@@ -42,7 +42,7 @@ Restrições:
 
 ### 1. Um único fluxo vertical, sem painel técnico concorrente
 
-`ComboResultsPage` será o orquestrador da hierarquia: cabeçalho/resumo, regras, gráfico, detalhe técnico, histórico de sinais e operações. A alternativa de manter a configuração campeã acima do painel de transparência foi rejeitada porque preserva a duplicação e desloca o gráfico para baixo.
+`ComboResultsPage` será o orquestrador da hierarquia: cabeçalho/resumo, regras, gráfico, detalhe técnico e operações. Os sinais canônicos do Monitor aparecem como marcadores no gráfico, sem uma lista separada. A alternativa de manter a configuração campeã acima do painel de transparência foi rejeitada porque preserva a duplicação e desloca o gráfico para baixo.
 
 ### 2. Donos visuais separados por propósito
 
@@ -73,9 +73,8 @@ O cabeçalho passa de duas colunas para uma; métricas formam uma grade de duas 
 4. Regras da estratégia: condições de entrada, saída e proteção.
 5. Gráfico da estratégia: candles, indicadores, sinais e valores no ponto selecionado.
 6. Detalhes técnicos: única fonte visual de indicadores e parâmetros efetivos.
-7. Histórico de sinais, quando existir.
-8. Operações e exportação.
-9. Aviso educacional.
+7. Operações e exportação.
+8. Aviso educacional.
 
 ## Component Ownership
 
@@ -88,6 +87,7 @@ O cabeçalho passa de duas colunas para uma; métricas formam uma grade de duas 
 | Função, participação e configuração de indicador | `StrategyTransparencyPanel` | Nome/cor/valor compacto na legenda |
 | Parâmetros efetivos | `StrategyTransparencyPanel` | Referência em linguagem natural nas regras, sem nova grade |
 | Indisponibilidade técnica | Contexto técnico correspondente | Estado vazio do gráfico apenas quando o próprio gráfico não existe |
+| Sinais do Monitor na análise de Favoritos | Marcadores de entrada e saída no gráfico | Nenhuma lista ou painel de histórico separado |
 
 ### Refinamento após feedback de uso
 
@@ -109,6 +109,20 @@ O cabeçalho passa de duas colunas para uma; métricas formam uma grade de duas 
 - `audit`: `20/20` no delta — acessibilidade, performance, responsividade, theming e integridade preservados; não há novo controle, estilo, dependência ou estado interativo. Quatro cores antigas de fixtures foram classificadas como preexistentes e fora das linhas alteradas, sem supressão.
 - `polish`: nenhuma crítica armazenada para o componente (`critique-storage` exit 2); o passe independente removeu o componente órfão, preservou os contratos de dados e confirmou Favoritos/Monitor em desktop e mobile.
 - `browser gate`: 6 cenários funcionais e 16 snapshots visuais passaram; as duas diferenças intencionais revisadas correspondem somente à ausência do botão e do painel no Monitor.
+
+### Refinamento de sinais e disponibilidade após feedback de uso
+
+- A análise de Favoritos remove o bloco `Histórico de sinais` e todos os seus estados de carregamento, erro e vazio. Ele repetia os mesmos eventos já usados como marcadores no gráfico e apresentava uma sincronização interna como se fosse outra fonte de verdade.
+- `signal_history` continua no contrato e alimenta os marcadores do gráfico. Na indisponibilidade transitória da sincronização, o fallback de marcadores de operações continua válido; o Monitor preserva seu próprio histórico em sua tela.
+- O detalhe técnico não mostra `Série disponível para o timeframe atual.`. A disponibilidade é o estado normal e fica evidente pela série/valor no gráfico; somente indisponibilidade, ausência ou incompatibilidade exigem mensagem.
+- Esse refinamento não altera endpoint, cálculo, cache, manifesto, regra ou evento canônico; reduz apenas explicações redundantes na apresentação.
+
+#### Impeccable signal-noise trace
+
+- `clarify`: definiu um único dono visual para o histórico na análise de Favoritos — os marcadores do gráfico — e classificou disponibilidade positiva como ruído de estado normal.
+- `audit`: `20/20` no delta. Acessibilidade, performance, responsividade e theming não ganharam novos elementos; o hook determinístico não encontrou achados, o componente órfão foi removido e a fonte canônica dos marcadores foi preservada.
+- `polish`: não havia crítica armazenada para `ComboResultsPage` (`critique-storage` exit 2). O passe independente confirmou a hierarquia completa em desktop/mobile, ausência dos textos removidos, estados excepcionais preservados e zero churn fora do escopo.
+- `browser gate`: 20 cenários funcionais de Favoritos e 16 snapshots visuais passaram. Somente os dois baselines da análise de Favoritos mudaram; as capturas do Monitor permaneceram idênticas.
 
 ## Accessibility and Content
 

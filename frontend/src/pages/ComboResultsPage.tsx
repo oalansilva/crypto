@@ -4,7 +4,6 @@ import { BarChart3, ArrowLeft } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
-import { SignalHistoryPanel } from '../components/trades/SignalHistoryPanel'
 import { StrategyTransparencyPanel } from '../components/trades/StrategyTransparencyPanel'
 import { StrategyRuleOverview } from '../components/trades/StrategyRuleOverview'
 import { API_BASE_URL } from '../lib/apiBase'
@@ -253,7 +252,6 @@ export function ComboResultsPage() {
         ? buildSignalHistoryMarkers(signalHistory, direction, undefined)
         : buildTradeMarkers(result.trades, { direction, timeframe: result.timeframe })
 
-    const showMonitorSignalHistory = returnTo === '/favorites' || Array.isArray(result.signal_history) || Boolean(result.monitor_sync_status)
     const strategyName = strategyTransparency?.display_name || result.template_name
     const strategyDescription = String(result.strategy_description || strategyTransparency?.description || '').trim()
     const directionLabel = isShort ? 'Short / venda' : 'Long / compra'
@@ -356,16 +354,6 @@ export function ComboResultsPage() {
                         detailsLabel="Detalhes técnicos"
                         fallbackParameters={result.parameters}
                     />
-
-                    {showMonitorSignalHistory ? (
-                        <SignalHistoryPanel
-                            history={result.signal_history}
-                            direction={direction}
-                            syncStatus={result.monitor_sync_status}
-                            testId="favorites-signal-history"
-                            className="glass-strong rounded-[28px] border border-zinc-200 p-6"
-                        />
-                    ) : null}
 
                     <StrategyTradesTable
                         trades={result.trades}
