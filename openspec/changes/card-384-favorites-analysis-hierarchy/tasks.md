@@ -57,7 +57,7 @@
 - [x] 9.1 Remove the separate signal-history panel and all of its states from Favorites while preserving canonical Monitor signals as graph markers and preserving the Monitor surface
 - [x] 9.2 Remove `Série disponível para o timeframe atual.` while preserving unavailable, absent and incompatible series messages
 - [x] 9.3 Add focused absence and marker regressions, then run unit, Playwright, visual, build, lint and OpenSpec validation
-- [ ] 9.4 Re-run Code Review, QA, integration into `develop`, restart and served-runtime validation while keeping card #384 in `Done`
+- [x] 9.4 Re-run Code Review, QA, integration into `develop`, restart and served-runtime validation while keeping card #384 in `Done`
 
 ## Verification Notes
 
@@ -74,3 +74,4 @@
 - `/opsx:verify` repeated locally for section 8 on 2026-08-07: all 5 requirements and 11 scenarios map to the implementation; 35 unit tests, 6 focused Playwright scenarios, 16 visual snapshots, the frontend build, focused lint and all 146 OpenSpec validations pass. Only operational task 8.4 remains pending before served-runtime completion.
 - Operational evidence for section 8 on 2026-08-07: PR #391 passed every initiated check, including `qa-gate` and Playwright, and was squash-merged into `develop` as `49e3357c`; `./restart` built and served `index-C3GcTgTT.js`, `/api/health` returned `ok`, local and public `/favorites` returned HTTP 200, and the served bundle has zero matches for the removed action/component. Card #384 remained in `Done`.
 - Section 9 implements Alan's follow-up feedback: Favoritos consumes Monitor history only as graph markers, removes the duplicate history/sync panel, and omits positive series-availability copy while retaining exceptional states. Local evidence: 35 unit tests, all 20 Favoritos functional scenarios, all 16 visual snapshots, focused lint and the frontend build pass. Only operational task 9.4 remains pending before served-runtime completion.
+- Operational evidence for section 9 on 2026-08-07: PR #393 passed every initiated required check, including `qa-gate` and Playwright, and was squash-merged into `develop` as `631c375c`; `deploy-staging` was correctly not applicable because its workflow condition only permits pushes to `develop`. `./restart` built and served `index-k53MGBtS.js`, both local and public `/api/health` returned `ok`, local and public `/favorites` returned HTTP 200, and the served bundle has zero matches for the removed panel/copy while retaining the chart marker contract. Card #384 remained in `Done` throughout the correction.
