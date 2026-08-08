@@ -10,7 +10,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 ## Processo global do Alan
 
-- Regras gerais de processo ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O opencode aplica os mesmos overrides versionados neste `AGENTS.md` e em `rules.md`; o fluxo do projeto não depende de um caminho absoluto local.
+- Regras gerais de processo ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O opencode aplica os mesmos overrides versionados neste `AGENTS.md` e em `rules.md`; o fluxo do projeto não depende de um caminho absoluto local. **Em qualquer pedido de release, publicacao, lote, deploy, producao ou operacao que possa afetar DEV/PROD, carregue tambem a skill global `alan-workflow-ambientes` antes de agir**; ela define o mapa DEV/PROD (caminhos, services systemd, bancos, URLs) e o passo obrigatorio de deploy em PROD antes de mover cards para `Pronto`.
 - Use essa skill para comunicacao curta, evidencias antes de concluir, OpenSpec no card antes de implementar, higiene Git/worktree/release, classificacao de pendencias, seguranca de output e fechamento sem pendencia. No cripto, o fluxo local `Todo`/`Design`/`Aprovação de Design`/`Pronto para Dev`/`Em desenvolvimento`/`Code Review`/`QA`/`Done`/`Homologado`/`Pronto`/`Cancelado` prevalece sobre qualquer vocabulário global antigo.
 - Este `AGENTS.md` deve manter apenas regras especificas do cripto: branches `develop/main`, Project 1, release guard, PostgreSQL, Drive/docs, comandos de backend/frontend, workflow DB e papeis dos agentes.
 - Se uma regra geral precisar mudar para todos os projetos, atualize `alan-workflow`; nao duplique a regra aqui.
@@ -18,7 +18,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 ## TL;DR
 
 - **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
-- **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. O fluxo obrigatório de **todo** card é `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal. **Proibido** pular `Design`, `Aprovação de Design` ou `Pronto para Dev` (inclusive com `UI impact: none`, remoção, bug ou pedido `implemente`). O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo `main`/produção com evidencia.
+- **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. O fluxo obrigatório de **todo** card é `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal. **Proibido** pular `Design`, `Aprovação de Design` ou `Pronto para Dev` (inclusive com `UI impact: none`, remoção, bug ou pedido `implemente`). O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo deploy em PROD (source PROD no commit publicado + services reiniciados + URL pública validada) com evidencia; merge em `main` sozinho não é evidência de `Pronto`.
 - **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
 - **Regra de merge de release/lote:** após abrir um PR para `main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
@@ -27,7 +27,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de conclusão de correção:** para qualquer correção de bug ou ajuste solicitado por Alan, só diga `concluído` depois de validar, fazer merge/integração da branch de trabalho em `develop`, executar `./restart` e confirmar que a URL do sistema está servindo o bundle/resultado novo. Antes disso, reporte como `corrigido na branch`, `validado localmente` ou `aguardando integração`, conforme o estado real.
 - **Regra de homologação direta por card (solicitação do cliente):** seguir `alan-workflow`; no cripto, homologacao significa aprovacao funcional em `develop`.
 - **Guardrail anti-release acidental:** seguir `alan-workflow`; no cripto, homologacao nao autoriza `main`, PR, merge, archive ou release.
-- **Regra de release/lote:** seguir `alan-workflow`; no cripto, selecione todos os cards `Homologado` incluídos no pacote, confirme commits/branches, rode validação final completa, arquive OpenSpec, push, PR para `main`, merge manual, atualize `develop` e mova os cards incluídos para `Pronto`.
+- **Regra de release/lote:** seguir `alan-workflow` e `alan-workflow-ambientes`; no cripto, selecione todos os cards `Homologado` incluídos no pacote, confirme commits/branches, rode validação final completa, arquive OpenSpec, push, PR para `main`, merge manual, atualize `develop` e **então execute o deploy em PROD** (`/srv/apps/prod/criptofarol/source`: `git fetch origin && git reset --hard origin/main`, `alembic upgrade head`, build do frontend com `VITE_APP_ENV=production`, restart dos services PROD afetados e validação do endpoint público `https://criptofarol.com.br`) e só então mova os cards incluídos para `Pronto`. Deploy em PROD é parte obrigatória do fechamento; merge em `main` sem deploy e validação em PROD não autoriza `Pronto`.
 - **Regra documental de release da Clara/Alan:** quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente para cards no nome da Clara ou do Alan, antes de publicar/encerrar o pacote, pegue todos os cards `Homologado` por Alan e com `Responsavel=Clara` ou `Responsavel=Alan` incluídos na release e revise se as decisões, status e entregáveis desses cards estão refletidos na documentação do projeto/produto. A documentação precisa ficar atualizada tanto nos Markdown locais quanto nos Google Docs/Drive correspondentes. Depois da release publicada/encerrada com evidência, mova esses cards de `Homologado` para `Pronto`. Cards de `opencode` seguem o fluxo técnico próprio do opencode no mesmo pacote.
 - **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `Em desenvolvimento` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste, corrija e reteste mantendo o status atual. O card só avança: `Done` -> `Homologado` -> `Pronto`.
 - **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
@@ -221,7 +221,7 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 
 O arraste `Aprovação de Design -> Pronto para Dev` aprova a versão específica do `design.md` e, quando existir, do protótipo. Apenas Alan autenticado pode executá-lo. Se uma dessas evidências mudar, a aprovação fica obsoleta e o desenvolvimento deve permanecer bloqueado até nova aprovação. Retornos controlados antes de `Done` são `Aprovação de Design -> Design`, `Code Review -> Em desenvolvimento` e `QA -> Em desenvolvimento`. Se um agente tiver avançado indevidamente para `Em desenvolvimento` sem passar por `Design`/`Aprovação de Design`/`Pronto para Dev`, deve regredir o card para `Design` (ou `Aprovação de Design` se a evidência de design já estiver completa), preservar o trabalho em branch e parar o `/opsx:apply` até a aprovação humana.
 
-Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main`.
+Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main` **e deploy/validação em PROD** (source PROD no commit publicado + services PROD reiniciados + URL pública `https://criptofarol.com.br` validada).
 
 ### Comentários obrigatórios no Kanban
 
@@ -256,6 +256,7 @@ Publicado em main.
 Pacote/release: <nome>
 Cards incluídos: <lista>
 Commit/merge: <referência, se disponível>
+Deploy PROD: <commit publicado no source PROD, migrations, build, services reiniciados, URL validada>
 Branches limpas: <lista ou pendência>
 Status final: pronto.
 ```
@@ -267,7 +268,7 @@ Status final: pronto.
 - Para cards da Clara ou Alan: reviso a documentação do projeto antes de fechar, atualizando Markdown local e Drive quando aplicável.
 - Se `develop` contiver só conteúdo homologado do pacote, use PR `develop -> main`.
 - Se `develop` contiver mudança não homologada, não faça merge direto `develop -> main`; crie `release-*` a partir de `main` e inclua somente commits/branches aprovados, ou peça decisão de Alan.
-- Antes de mover cards para `Pronto`, confirme que cada card realmente entrou no merge para `main`.
+- Antes de mover cards para `Pronto`, confirme que cada card realmente entrou no merge para `main` **e que o deploy em PROD foi executado e validado** (source PROD no commit publicado + services PROD reiniciados + URL pública validada).
 
 ### Testes
 
