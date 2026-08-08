@@ -13,4 +13,4 @@
 
 - [x] 3.1 Atualizar baseline do Playwright visual da tela Carteira e revisar o `diff.png` (subagent vision) — veredito EXPECTED (zebra visível, chip/textos ausentes, PnL/participação preservados, mobile inalterado)
 - [x] 3.2 Validar aderência ao `DESIGN.md` (contraste, hover, densidade) em desktop e mobile — zebra `rgba(255,255,255,0.03)` sobre `#101c2a`, hover `0.05` distinto em ambas as paridades; teste funcional de computed styles na página real
-- [ ] 3.3 Integrar em `develop`, rodar `./restart` e validar a URL DEV servindo o resultado novo
+- [x] 3.3 Integrar em `develop`, rodar `./restart` e validar a URL DEV servindo o resultado novo
