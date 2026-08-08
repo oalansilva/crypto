@@ -1,10 +1,10 @@
 ## Why
 
-Alan passa a usar o opencode como ferramenta principal no lugar do Codex. Sem migração, o opencode perde acesso a MCPs (openaiDeveloperDocs), subagents (code-mapper, pr-explorer, reviewer, browser-debugger), slash commands /opsx-*, hook de proteção de design (impeccable) e skills globais de operação (alan-workflow, GitHub Project, gh-*).
+Alan passa a usar o opencode como ferramenta principal no lugar do Codex. Sem migração, o opencode perde acesso a subagents (code-mapper, pr-explorer, reviewer, browser-debugger), slash commands /opsx-*, hook de proteção de design (impeccable) e skills globais de operação (alan-workflow, GitHub Project, gh-*).
 
 ## What Changes
 
-- Adicionar `opencode.json` versionado na raiz (model, MCP `openaiDeveloperDocs`, plugin impeccable).
+- Adicionar `opencode.json` versionado na raiz (model, plugin impeccable).
 - Converter os 4 subagents de `.codex/agents/*.toml` para `.opencode/agent/*.md`.
 - Converter os 10 commands `/opsx-*` do Cursor/Claude para `.opencode/command/opsx-*.md`.
 - Portar os hooks `PostToolUse`/`Stop` do Codex para o plugin opencode `.opencode/plugin/impeccable-hook.ts`.
