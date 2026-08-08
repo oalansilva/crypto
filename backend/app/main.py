@@ -36,6 +36,7 @@ from app.routes.leads import router as leads_router
 from app.routes.user_profile import router as user_profile_router
 from app.routes.user_credentials import router as user_credentials_router
 from app.routes.monitor_spot_stop import router as monitor_spot_stop_router
+from app.routes.monitor_spot_market import router as monitor_spot_market_router
 from app.routes.system_preferences import router as system_preferences_router
 from app.routes.retrospectives import router as retrospectives_router
 from app.routes.admin_users import router as admin_users_router
@@ -306,6 +307,7 @@ app.include_router(leads_router)
 app.include_router(user_profile_router)
 app.include_router(user_credentials_router)
 app.include_router(monitor_spot_stop_router)
+app.include_router(monitor_spot_market_router)
 app.include_router(system_preferences_router)
 app.include_router(retrospectives_router)
 app.include_router(admin_users_router)

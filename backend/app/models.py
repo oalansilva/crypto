@@ -6,9 +6,11 @@ from sqlalchemy import (
     Float,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 
 # from sqlalchemy.dialects.postgresql import UUID, JSONB  <-- Remove Postgres types
@@ -352,6 +354,57 @@ class UserExchangeCredential(Base):
     api_secret = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class MonitorSpotOrderRequest(Base):
+    """Durable, user-scoped audit and idempotency record for direct Spot orders."""
+
+    __tablename__ = "monitor_spot_order_requests"
+
+    id = Column(UUIDType, primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, nullable=False, index=True)
+    idempotency_key = Column(String(64), nullable=False)
+    client_order_id = Column(String(36), nullable=False)
+    symbol = Column(String(32), nullable=False, index=True)
+    side = Column(String(8), nullable=False)
+    state = Column(String(24), nullable=False, default="submitting", index=True)
+    submitting_account_identity_hash = Column(String(64), nullable=False)
+    requested_quote_amount = Column(Numeric(36, 18), nullable=True)
+    calculated_base_quantity = Column(Numeric(36, 18), nullable=True)
+    executed_base_quantity = Column(Numeric(36, 18), nullable=True)
+    executed_quote_amount = Column(Numeric(36, 18), nullable=True)
+    average_price = Column(Numeric(36, 18), nullable=True)
+    external_order_id = Column(String(64), nullable=True)
+    error_code = Column(String(64), nullable=True)
+    result_summary = Column(JSONType, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_reconciled_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "client_order_id",
+            name="uq_monitor_spot_order_requests_client_order_id",
+        ),
+        UniqueConstraint(
+            "user_id",
+            "idempotency_key",
+            name="uq_monitor_spot_order_requests_user_key",
+        ),
+        Index(
+            "ix_monitor_spot_order_requests_user_state_created",
+            "user_id",
+            "state",
+            "created_at",
+        ),
+        Index(
+            "uq_monitor_spot_order_requests_unresolved_symbol",
+            "user_id",
+            "symbol",
+            unique=True,
+            postgresql_where=text("state IN ('submitting', 'reconciling')"),
+        ),
+    )
 
 
 class SystemPreference(Base):

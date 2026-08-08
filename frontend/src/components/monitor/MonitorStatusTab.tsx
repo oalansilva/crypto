@@ -15,9 +15,11 @@ import {
 } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { ChartModal } from '@/components/monitor/ChartModal';
+import { SpotMarketTradePanel } from '@/components/monitor/SpotMarketTradePanel';
 import { Button } from '@/components/ui/Button';
 import {
     ChevronRight,
+    CircleDollarSign,
     LineChart,
     ListChecks,
     RefreshCw,
@@ -38,6 +40,7 @@ type StrategyFilter = 'all' | string;
 type TimeframeFilter = 'all' | '1d';
 type StarFilter = 'all' | '3' | '2' | '1';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
+type SpotEligibilityState = { eligible: boolean; reason: string | null };
 type SectionKey = 'hold' | 'exit';
 
 type BinanceBalanceRow = {
@@ -161,6 +164,32 @@ const getTierStars = (tier: number | null | undefined): string => {
 
 const isRatedOpportunity = (opportunity: Opportunity): boolean => getTierStars(opportunity.tier).length > 0;
 
+const spotSymbolKey = (symbol: string): string => String(symbol || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+const isSpotUsdtCandidate = (opportunity: Opportunity): boolean => {
+    const symbol = String(opportunity.symbol || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    return getOpportunityAssetType(opportunity) === 'crypto' && symbol.endsWith('USDT');
+};
+
+const canOperateSpotUsdt = (
+    opportunity: Opportunity,
+    eligibilityBySymbol: Record<string, SpotEligibilityState>,
+): boolean => isSpotUsdtCandidate(opportunity)
+    && eligibilityBySymbol[spotSymbolKey(opportunity.symbol)]?.eligible === true;
+
+const getSpotTradeUnavailableReason = (
+    opportunity: Opportunity,
+    eligibilityBySymbol: Record<string, SpotEligibilityState>,
+): string | null => {
+    if (getOpportunityAssetType(opportunity) !== 'crypto') return null;
+    if (!isSpotUsdtCandidate(opportunity)) {
+        return 'Operação direta disponível apenas para pares Spot cotados em USDT.';
+    }
+    const eligibility = eligibilityBySymbol[spotSymbolKey(opportunity.symbol)];
+    if (eligibility?.eligible) return null;
+    return eligibility?.reason || 'Validando disponibilidade do par na Binance Spot.';
+};
+
 const averageDistance = (values: Array<number | null | undefined>): number | null => {
     const filtered = values.filter((value) => Number.isFinite(value ?? NaN));
     if (filtered.length === 0) return null;
@@ -178,6 +207,8 @@ export const MonitorStatusTab: React.FC = () => {
         initialTimeframe: ChartTimeframe;
         viewMode: 'chart' | 'trades';
     } | null>(null);
+    const [activeTrade, setActiveTrade] = useState<Opportunity | null>(null);
+    const [spotEligibilityBySymbol, setSpotEligibilityBySymbol] = useState<Record<string, SpotEligibilityState>>({});
     const sortBy: SortOption = 'tier_distance';
     const [tierFilter, setTierFilter] = useState<TierFilter>('rated');
     const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
@@ -206,12 +237,59 @@ export const MonitorStatusTab: React.FC = () => {
         return preferences[symbol] ?? DEFAULT_PREFERENCE;
     };
 
-    const fetchWalletPortfolio = async (configured: boolean) => {
+    const fetchSpotEligibility = async (rows: Opportunity[]) => {
+        const symbols = Array.from(new Set(
+            rows.filter(isSpotUsdtCandidate).map((opportunity) => opportunity.symbol),
+        ));
+        if (symbols.length === 0) {
+            setSpotEligibilityBySymbol({});
+            return;
+        }
+        setSpotEligibilityBySymbol(Object.fromEntries(symbols.map((symbol) => [
+            spotSymbolKey(symbol),
+            { eligible: false, reason: 'Validando disponibilidade do par na Binance Spot.' },
+        ])));
+        try {
+            const batches = Array.from(
+                { length: Math.ceil(symbols.length / 100) },
+                (_, index) => symbols.slice(index * 100, (index + 1) * 100),
+            );
+            const payloads = await Promise.all(batches.map(async (batch) => {
+                const response = await authFetch(`${API_BASE_URL}/monitor/spot-market-orders/eligibility`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: batch }),
+                });
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !Array.isArray(payload?.items)) {
+                    throw new Error('Não foi possível confirmar a disponibilidade Spot.');
+                }
+                return payload.items;
+            }));
+            const next: Record<string, SpotEligibilityState> = {};
+            for (const item of payloads.flat()) {
+                const key = spotSymbolKey(String(item?.symbol || ''));
+                if (!key) continue;
+                next[key] = {
+                    eligible: item?.eligible === true,
+                    reason: typeof item?.reason === 'string' ? item.reason : null,
+                };
+            }
+            setSpotEligibilityBySymbol(next);
+        } catch {
+            setSpotEligibilityBySymbol(Object.fromEntries(symbols.map((symbol) => [
+                spotSymbolKey(symbol),
+                { eligible: false, reason: 'Não foi possível confirmar o par na Binance Spot.' },
+            ])));
+        }
+    };
+
+    const fetchWalletPortfolio = async (configured: boolean): Promise<boolean> => {
         if (!configured) {
             setWalletHoldingsByAsset({});
             setWalletSyncState('idle');
             setWalletSyncMessage(null);
-            return;
+            return false;
         }
 
         setWalletSyncState('loading');
@@ -243,11 +321,12 @@ export const MonitorStatusTab: React.FC = () => {
                 setWalletSyncMessage(
                     `Nenhum ativo com saldo minimo de US$ ${BINANCE_MONITOR_PORTFOLIO_MIN_USD} foi encontrado na Carteira Binance.`,
                 );
-                return;
+                return true;
             }
 
             setWalletSyncState('ready');
             setWalletSyncMessage(null);
+            return true;
         } catch (error) {
             console.error(error);
             setWalletHoldingsByAsset({});
@@ -257,6 +336,7 @@ export const MonitorStatusTab: React.FC = () => {
                     ? error.message
                     : 'Carteira Binance indisponível no momento.',
             );
+            return false;
         }
     };
 
@@ -311,7 +391,7 @@ export const MonitorStatusTab: React.FC = () => {
         await fetchWalletPortfolio(configured);
     };
 
-    const fetchOpportunities = async (tier?: TierFilter, options?: { refresh?: boolean }) => {
+    const fetchOpportunities = async (tier?: TierFilter, options?: { refresh?: boolean }): Promise<boolean> => {
         setLoading(true);
         try {
             const tierParam = tier || tierFilter;
@@ -334,13 +414,16 @@ export const MonitorStatusTab: React.FC = () => {
             const response = await authFetch(url);
             if (!response.ok) throw new Error('Falha ao buscar oportunidades');
             const data = await response.json();
-            setOpportunities(data);
+            const opportunityRows = Array.isArray(data) ? data as Opportunity[] : [];
+            setOpportunities(opportunityRows);
+            await fetchSpotEligibility(opportunityRows);
             setLastUpdated(new Date());
 
             toast({
                 title: 'Atualizado',
-                description: `${data.length} estratégias analisadas`,
+                description: `${opportunityRows.length} estratégias analisadas`,
             });
+            return true;
         } catch (error) {
             console.error(error);
             toast({
@@ -348,6 +431,7 @@ export const MonitorStatusTab: React.FC = () => {
                 description: 'Não foi possível carregar as estratégias.',
                 variant: 'destructive',
             });
+            return false;
         } finally {
             setLoading(false);
         }
@@ -454,6 +538,20 @@ export const MonitorStatusTab: React.FC = () => {
             });
         } finally {
             setOpeningChartOpportunityId((current) => (current === currentKey ? null : current));
+        }
+    };
+
+    const handleOpenTrade = (opportunity: Opportunity) => {
+        setActiveTrade(opportunity);
+    };
+
+    const handleTradeTerminal = async () => {
+        const refreshResults = await Promise.all([
+            fetchWalletPortfolio(binanceConfigured),
+            fetchOpportunities(undefined, { refresh: true }),
+        ]);
+        if (refreshResults.some((succeeded) => !succeeded)) {
+            throw new Error('Não foi possível confirmar a atualização dos saldos do Monitor.');
         }
     };
 
@@ -1032,11 +1130,14 @@ export const MonitorStatusTab: React.FC = () => {
                                                             resolvedSignal={resolved}
                                                             isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
                                                             isOpeningChart={openingChartOpportunityId === getOpeningChartKey(opportunity)}
+                                                            canOpenTrade={canOperateSpotUsdt(opportunity, spotEligibilityBySymbol)}
+                                                            tradeUnavailableReason={getSpotTradeUnavailableReason(opportunity, spotEligibilityBySymbol)}
                                                             isAdmin={showTechnicalColumns}
                                                             onToggleInPortfolio={handleToggleInPortfolio}
                                                             onToggleCardMode={handleToggleCardMode}
                                                             onToggleTimeframe={handleToggleTimeframe}
                                                             onOpenChart={handleOpenChart}
+                                                            onOpenTrade={handleOpenTrade}
                                                         />
                                                     </article>
                                                 );
@@ -1204,6 +1305,33 @@ export const MonitorStatusTab: React.FC = () => {
                                                                             <ListChecks className="h-4 w-4" />
                                                                             <span>Ver Trades</span>
                                                                         </button>
+                                                                        {canOperateSpotUsdt(opportunity, spotEligibilityBySymbol) ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                className="row-action spot-trade-trigger"
+                                                                                title="Comprar ou vender na Binance"
+                                                                                aria-label={`Operar ${opportunity.symbol}`}
+                                                                                data-testid={`open-spot-trade-${symbolTestKey(opportunity.symbol)}`}
+                                                                                onClick={(event) => {
+                                                                                    event.stopPropagation();
+                                                                                    handleOpenTrade(opportunity);
+                                                                                }}
+                                                                            >
+                                                                                <CircleDollarSign className="h-4 w-4" />
+                                                                                <span>Operar</span>
+                                                                            </button>
+                                                                        ) : getSpotTradeUnavailableReason(opportunity, spotEligibilityBySymbol) ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                className="row-action spot-trade-unavailable"
+                                                                                title={getSpotTradeUnavailableReason(opportunity, spotEligibilityBySymbol) ?? undefined}
+                                                                                aria-label={getSpotTradeUnavailableReason(opportunity, spotEligibilityBySymbol) ?? undefined}
+                                                                                disabled
+                                                                            >
+                                                                                <CircleDollarSign className="h-4 w-4" />
+                                                                                <span>{getSpotTradeUnavailableReason(opportunity, spotEligibilityBySymbol)}</span>
+                                                                            </button>
+                                                                        ) : null}
                                                                         </div>
                                                                     </td>
                                                                 </tr>
@@ -1227,11 +1355,14 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 resolvedSignal={resolved}
                                                                                 isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
                                                                                 isOpeningChart={openingChartOpportunityId === getOpeningChartKey(opportunity)}
+                                                                                canOpenTrade={canOperateSpotUsdt(opportunity, spotEligibilityBySymbol)}
+                                                                                tradeUnavailableReason={getSpotTradeUnavailableReason(opportunity, spotEligibilityBySymbol)}
                                                                                 isAdmin={showTechnicalColumns}
                                                                                 onToggleInPortfolio={handleToggleInPortfolio}
                                                                                 onToggleCardMode={handleToggleCardMode}
                                                                                 onToggleTimeframe={handleToggleTimeframe}
                                                                                 onOpenChart={handleOpenChart}
+                                                                                onOpenTrade={handleOpenTrade}
                                                                             />
                                                                         </td>
                                                                     </tr>
@@ -1258,6 +1389,14 @@ export const MonitorStatusTab: React.FC = () => {
                     initialTimeframe={activeChart.initialTimeframe}
                     viewMode={activeChart.viewMode}
                     onClose={() => setActiveChart(null)}
+                />
+            ) : null}
+            {activeTrade ? (
+                <SpotMarketTradePanel
+                    opportunity={activeTrade}
+                    binanceConfigured={binanceConfigured}
+                    onClose={() => setActiveTrade(null)}
+                    onTerminal={handleTradeTerminal}
                 />
             ) : null}
         </div>
