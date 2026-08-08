@@ -190,27 +190,6 @@ def _humanize_logic(
     count = _logic_condition_count(raw)
     action = "entrada" if participation == "entry" else "saída"
 
-    if count > 8:
-        participating = list(
-            dict.fromkeys(
-                indicator.label
-                for indicator in indicators
-                if participation in indicator.participation
-            )
-        )
-        if any(token in raw.lower() for token in ("open", "high", "low", "close")):
-            participating.append("preço e formato do candle")
-        subjects = ", ".join(participating)
-        combination = "uma combinação" if operator == "mixed" else "o conjunto"
-        agreement = "atendida" if operator == "mixed" else "atendido"
-        return (
-            f"A {action} é confirmada quando {combination} de {count} condições públicas "
-            f"de {subjects} é {agreement}.",
-            operator,
-            count,
-            "partial",
-        )
-
     def label_for(token: str) -> str:
         normalized = str(token).strip().lower()
         return labels.get(normalized, labels.get(normalized.replace(".", "_"), ""))
@@ -281,29 +260,11 @@ def _humanize_logic(
         )
     )
     if unsafe or not translated:
-        participating = list(
-            dict.fromkeys(
-                indicator.label
-                for indicator in indicators
-                if participation in indicator.participation
-            )
-        )
-        joined = ", ".join(participating)
-        if not joined:
-            return (
-                f"A regra de {action} não pôde ser traduzida com segurança.",
-                operator,
-                count,
-                "unavailable",
-            )
-        connector = (
-            "qualquer condição aplicável" if operator == "any" else "as condições aplicáveis"
-        )
         return (
-            f"A {action} é confirmada quando {connector} de {joined} são atendidas.",
+            f"A regra de {action} não pôde ser traduzida com segurança.",
             operator,
             count,
-            "partial",
+            "unavailable",
         )
 
     return f"A {action} é confirmada quando {translated}.", operator, count, "available"
@@ -524,7 +485,15 @@ def build_strategy_transparency(
     if isinstance(stop_loss, (int, float)):
         public_params["stop_loss"] = stop_loss
 
-    direction = str((effective_parameters or {}).get("direction") or "long").strip().lower()
+    direction = "long"
+    for candidate in (
+        (effective_parameters or {}).get("direction"),
+        template_data.get("direction"),
+    ):
+        normalized_direction = str(candidate or "").strip().lower()
+        if normalized_direction in {"long", "short"}:
+            direction = normalized_direction
+            break
     entry_description, entry_operator, entry_count, entry_status = _humanize_logic(
         entry_logic,
         indicators,
@@ -556,6 +525,7 @@ def build_strategy_transparency(
         display_name=PUBLIC_STRATEGY_DISPLAY_NAMES[key],
         description=PUBLIC_STRATEGY_DESCRIPTIONS[key],
         timeframe=timeframe,
+        direction=direction,
         parameters=public_params,
         indicators=indicators,
         logic_blocks=[

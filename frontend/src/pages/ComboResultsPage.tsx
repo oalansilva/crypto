@@ -1,13 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
-import { Activity, BarChart3, ArrowLeft } from 'lucide-react'
+import { BarChart3, ArrowLeft } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
-import { SignalHistoryPanel } from '../components/trades/SignalHistoryPanel'
+import { StrategyTransparencyPanel } from '../components/trades/StrategyTransparencyPanel'
+import { StrategyRuleOverview } from '../components/trades/StrategyRuleOverview'
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
-import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters'
 import { buildTradeMarkers } from '@/lib/tradeMarkers'
 import { buildSignalHistoryMarkers, type MonitorSyncStatus } from '@/lib/signalHistory'
 import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
@@ -18,6 +18,7 @@ interface BacktestResult {
     symbol: string
     timeframe: string
     execution_mode?: string
+    strategy_description?: string | null
     is_strategy_protected?: boolean
     parameters: Record<string, any>
     metrics: {
@@ -117,7 +118,7 @@ export function ComboResultsPage() {
                     pnl = initialCapital * trade.profit;
                 }
                 
-                const isShortExport = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase() === 'short';
+                const isShortExport = ((result as any).direction ?? result.parameters?.direction ?? strategyTransparency?.direction ?? 'long').toString().toLowerCase() === 'short';
                 // Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
                 let signalType = (trade as any).signal_type || '';
                 if (!signalType) {
@@ -224,23 +225,17 @@ export function ComboResultsPage() {
         return (
             <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
                 <div className="text-center">
-                    <p className="text-red-400">No results found</p>
+                    <p className="text-red-400">Nenhum resultado encontrado.</p>
                     <button onClick={() => navigate('/combo/select')} className="mt-4 text-blue-400">
-                        ← Back to templates
+                        ← Voltar aos modelos
                     </button>
                 </div>
             </div>
         )
     }
 
-    const direction = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase()
+    const direction = ((result as any).direction ?? result.parameters?.direction ?? strategyTransparency?.direction ?? 'long').toString().toLowerCase()
     const isShort = direction === 'short'
-    const isProtectedResult = Boolean(result.is_strategy_protected)
-    const visibleParameters = isProtectedResult
-        ? strategyTransparency?.effective_parameters ?? {}
-        : result.parameters
-    const hasVisibleParameters = Object.keys(visibleParameters).length > 0
-
     // Usar métricas derivadas quando há trades; senão fallback para backend
     const baseMetrics = result.metrics || (result as any).best_metrics || {
         total_trades: 0,
@@ -257,64 +252,78 @@ export function ComboResultsPage() {
         ? buildSignalHistoryMarkers(signalHistory, direction, undefined)
         : buildTradeMarkers(result.trades, { direction, timeframe: result.timeframe })
 
-    const showMonitorSignalHistory = returnTo === '/favorites' || Array.isArray(result.signal_history) || Boolean(result.monitor_sync_status)
+    const strategyName = strategyTransparency?.display_name || result.template_name
+    const strategyDescription = String(result.strategy_description || strategyTransparency?.description || '').trim()
+    const directionLabel = isShort ? 'Short / venda' : 'Long / compra'
+    const formatMetricPercentage = (value: number | undefined, decimals = 1) => {
+        if (value === undefined || value === null || Number.isNaN(value)) return 'Indisponível'
+        const percentage = Math.abs(value) > 1 ? value : value * 100
+        return `${percentage.toFixed(decimals)}%`
+    }
+    const summaryMetrics = [
+        {
+            label: 'Retorno total',
+            value: formatMetricPercentage(metrics.total_return, 2),
+            tone: Number(metrics.total_return) >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]',
+        },
+        { label: 'Taxa de acerto', value: formatMetricPercentage(metrics.win_rate), tone: 'text-[#eaecef]' },
+        { label: 'Drawdown máximo', value: formatMetricPercentage(metrics.max_drawdown), tone: 'text-[#eaecef]' },
+        { label: 'Operações', value: String(metrics.total_trades ?? 0), tone: 'text-[#eaecef]' },
+    ]
 
     return (
         <div className="app-page combo-page relative overflow-hidden">
-            {/* Main Content */}
-            <main className="container mx-auto px-6 py-12">
-                <div className="max-w-7xl mx-auto space-y-8">
+            <main className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
+                <div className="mx-auto max-w-7xl space-y-6 sm:space-y-8">
                     <div className="flex items-center justify-between gap-3">
                         <button
                             type="button"
                             onClick={handleBack}
-                            className="inline-flex items-center gap-2 rounded-md border border-[#2b3139] bg-[#1e2329] px-4 py-2 text-sm font-semibold text-[#eaecef] transition-colors hover:bg-[#2b3139]"
+                            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#2b3139] bg-[#1e2329] px-4 py-2 text-sm font-semibold text-[#eaecef] transition-colors hover:bg-[#2b3139] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
                         >
                             <ArrowLeft className="h-4 w-4" />
                             {returnTo === '/favorites' ? 'Voltar aos favoritos' : 'Voltar'}
                         </button>
                     </div>
 
-                    {/* Configuration Info */}
-                    <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="bg-emerald-500/20 p-2.5 rounded-lg border border-emerald-600/30">
-                                <Activity className="w-6 h-6 text-emerald-400" />
+                    <section
+                        className="min-w-0 overflow-hidden rounded-2xl border border-[#2b3139] bg-[#181a20] text-[#eaecef]"
+                        aria-label="Análise da estratégia"
+                        data-testid="combo-result-summary"
+                    >
+                        <div className="grid min-w-0 gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(360px,1fr)] lg:items-end">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                                    <span className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5">{result.symbol}</span>
+                                    <span className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5 uppercase">{result.timeframe}</span>
+                                    <span className="rounded-md border border-[#fcd535]/50 bg-[#fcd535]/10 px-2.5 py-1.5 text-[#fcd535]">{directionLabel}</span>
+                                </div>
+                                <h1 className="mt-4 break-words text-2xl font-bold leading-tight sm:text-3xl [overflow-wrap:anywhere]">
+                                    {strategyName}
+                                </h1>
+                                {strategyDescription ? (
+                                    <p className="mt-3 max-w-3xl whitespace-normal break-words text-sm leading-6 text-[#b7bdc6] [overflow-wrap:anywhere]" data-testid="combo-result-description">
+                                        {strategyDescription}
+                                    </p>
+                                ) : null}
                             </div>
-                            <div>
-                                <h2 className="text-xl font-bold text-zinc-900 leading-none">Winning Configuration</h2>
-                                <p className="text-sm text-emerald-400 mt-1 font-medium">Os parâmetros campeões escolhidos pelo algoritmo</p>
-                            </div>
+                            <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-5 border-t border-[#2b3139] pt-5 sm:grid-cols-4 lg:grid-cols-2 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" aria-label="Resumo de desempenho e risco">
+                                {summaryMetrics.map((metric) => (
+                                    <div key={metric.label} className="min-w-0">
+                                        <dt className="text-xs text-[#929aa5]">{metric.label}</dt>
+                                        <dd className={`mt-1 break-words font-mono text-xl font-semibold tabular-nums ${metric.tone}`}>{metric.value}</dd>
+                                    </div>
+                                ))}
+                            </dl>
                         </div>
+                    </section>
 
-                        {isProtectedResult && !hasVisibleParameters ? (
-                            <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] px-4 py-3 text-sm text-[#eaecef]">
-                                Parâmetros técnicos protegidos para este perfil.
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" data-testid="combo-result-parameters">
-                                {Object.entries(visibleParameters).map(([key, value]) => {
-                                    // Skip internal keys if any
-                                    if (key.startsWith('_')) return null;
-
-                                    const formattedValue = formatStrategyParameterValue(key, value);
-
-                                    return (
-                                        <div key={key} className="bg-zinc-50 rounded-[16px] p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
-                                            <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
-                                                {formatStrategyParameterLabel(key)}
-                                            </p>
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-xl font-bold text-zinc-900 font-mono">
-                                                    {formattedValue}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </div>
+                    <StrategyRuleOverview
+                        id="combo-result-strategy-rules"
+                        strategyTransparency={strategyTransparency}
+                        direction={direction}
+                        includeRisk
+                    />
 
                     {/* CHART VISUALIZATION */}
                     {(result.candles && result.candles.length > 0) ? (
@@ -329,19 +338,22 @@ export function ComboResultsPage() {
                     ) : (
                         <div className="glass-strong rounded-[28px] p-8 text-center border border-zinc-200 mb-8">
                             <BarChart3 className="w-12 h-12 mx-auto text-zinc-500 mb-4 opacity-50" />
-                            <p className="text-zinc-400">Chart data not available for this run.</p>
+                            <p className="text-zinc-400">Dados do gráfico indisponíveis para esta execução.</p>
                         </div>
                     )}
 
-                    {showMonitorSignalHistory ? (
-                        <SignalHistoryPanel
-                            history={result.signal_history}
-                            direction={direction}
-                            syncStatus={result.monitor_sync_status}
-                            testId="favorites-signal-history"
-                            className="glass-strong rounded-[28px] border border-zinc-200 p-6"
-                        />
-                    ) : null}
+                    <StrategyTransparencyPanel
+                        id="combo-result-strategy-transparency"
+                        strategyTransparency={strategyTransparency}
+                        direction={direction}
+                        timeframe={result.timeframe}
+                        fallbackName={result.template_name}
+                        showIdentity={false}
+                        showRules={false}
+                        defaultDetailsOpen={false}
+                        detailsLabel="Detalhes técnicos"
+                        fallbackParameters={result.parameters}
+                    />
 
                     <StrategyTradesTable
                         trades={result.trades}
@@ -350,8 +362,12 @@ export function ComboResultsPage() {
                         metrics={metrics}
                         onExport={handleExportTrades}
                         testId="result-trades"
-                        strategyTransparency={strategyTransparency}
+                        showMetrics={false}
                     />
+
+                    <p className="rounded-lg border border-[#2b3139] bg-[#181a20] px-4 py-3 text-xs leading-5 text-[#929aa5]">
+                        Conteúdo educacional baseado em dados históricos. Resultados passados não garantem retornos futuros.
+                    </p>
 
                 </div>
             </main>

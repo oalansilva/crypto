@@ -4,7 +4,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from app.services.strategy_secret_visibility import redact_favorite_strategy_payload
+from app.services.strategy_secret_visibility import (
+    redact_favorite_strategy_payload,
+    redact_opportunity_payload,
+)
 from app.services.strategy_transparency import (
     attach_timestamped_series,
     build_strategy_transparency,
@@ -111,12 +114,63 @@ def test_common_user_redaction_keeps_public_manifest_but_removes_secrets():
             "strategy_name": "ema_rsi",
             "parameters": {"private": "secret"},
             "strategy_transparency": manifest,
+            "metrics": {
+                "total_return": 0.12,
+                "analysis_indicator_data": {"fast": [101.0], "raw_diagnostic": [999.0]},
+                "analysis_strategy_transparency": {**manifest, "market_series": {"private": []}},
+            },
+        },
+        include_secrets=False,
+        include_details=True,
+    )
+    assert redacted["parameters"] == manifest["parameters"]
+    assert redacted["strategy_transparency"] == manifest
+    assert "analysis_indicator_data" not in redacted["metrics"]
+    assert redacted["metrics"]["analysis_strategy_transparency"] == manifest
+    assert redacted["is_strategy_protected"] is False
+    assert "entry_logic" not in json.dumps(manifest)
+
+
+def test_common_user_redaction_allowlists_indicator_values_and_status_context():
+    manifest = build_strategy_transparency(
+        "ema_rsi",
+        _template(
+            {"type": "ema", "alias": "fast", "params": {"length": 9}},
+            entry_logic="close > fast",
+            exit_logic="close < fast",
+        ),
+        timeframe="1d",
+    ).model_dump(mode="json")
+    redacted = redact_opportunity_payload(
+        {
+            "template_name": "ema_rsi",
+            "strategy_transparency": manifest,
+            "parameters": {"private": "secret"},
+            "indicator_values": {"fast": 101.5, "raw_diagnostic": 999.0, "token": "secret"},
+            "details": {"status": "HOLD", "private": "secret"},
+        },
+        include_secrets=False,
+        include_details=True,
+    )
+
+    assert redacted["parameters"] == manifest["parameters"]
+    assert redacted["indicator_values"] == {"fast": 101.5}
+    assert redacted["details"] == {"status": "HOLD"}
+    assert "secret" not in json.dumps(redacted, ensure_ascii=False)
+
+
+def test_legacy_redaction_still_hides_functional_details_without_authenticated_gate():
+    redacted = redact_favorite_strategy_payload(
+        {
+            "strategy_name": "ema_rsi",
+            "parameters": {"private": "secret"},
         },
         include_secrets=False,
     )
+
+    assert redacted["strategy_name"] == "Estratégia protegida"
     assert redacted["parameters"] == {}
-    assert redacted["strategy_transparency"] == manifest
-    assert "entry_logic" not in json.dumps(manifest)
+    assert redacted["is_strategy_protected"] is True
 
 
 def test_exported_active_templates_have_specific_drift_safe_manifests():
@@ -124,18 +178,100 @@ def test_exported_active_templates_have_specific_drift_safe_manifests():
         Path("backend/config/combo_templates_export.json").read_text(encoding="utf-8")
     )
     matrix_keys = {row["strategy_key"] for row in transparency_matrix()}
+    exported_names = [template["name"] for template in exported]
+
+    assert len(exported) == 30
+    assert len(exported_names) == len(set(exported_names))
+    assert sum(template["template_data"].get("direction") == "short" for template in exported) == 6
 
     for template in exported:
         manifest = build_strategy_transparency(
             template["name"], template["template_data"], timeframe="1d"
         )
+        template_direction = template["template_data"].get("direction", "long")
         assert manifest.strategy_key in matrix_keys
         assert manifest.status == "available", template["name"]
+        assert manifest.direction == template_direction, template["name"]
         assert manifest.indicators, template["name"]
         assert not any(
             token in (manifest.display_name or "").lower() for token in ("winner", "chain")
         )
         assert all(item.panel and item.participation for item in manifest.indicators)
+        assert manifest.parameters, template["name"]
+        decision_blocks = [
+            block for block in manifest.logic_blocks if block.participation in {"entry", "exit"}
+        ]
+        assert all(block.status == "available" for block in decision_blocks), template["name"]
+        assert all(block.condition_count > 0 for block in decision_blocks), template["name"]
+        risk = next(block for block in manifest.logic_blocks if block.participation == "risk")
+        expected_risk_status = (
+            "available" if template["template_data"].get("stop_loss") else "unavailable"
+        )
+        assert risk.status == expected_risk_status, template["name"]
+
+
+def test_complex_short_rule_preserves_every_public_condition_and_threshold():
+    exported = json.loads(
+        Path("backend/config/combo_templates_export.json").read_text(encoding="utf-8")
+    )
+    template = next(item for item in exported if item["name"] == "short_ema200_pullback")
+
+    manifest = build_strategy_transparency(
+        template["name"],
+        {**template["template_data"], "direction": "short"},
+        timeframe="1d",
+    )
+    entry = next(block for block in manifest.logic_blocks if block.participation == "entry")
+    risk = next(block for block in manifest.logic_blocks if block.participation == "risk")
+
+    assert manifest.direction == "short"
+    assert entry.status == "available"
+    assert entry.operator == "mixed"
+    assert entry.condition_count == 18
+    assert "combinação de 18 condições" not in entry.description
+    for public_detail in ("1.0", "45", "70", "0.5", "há 1 candle"):
+        assert public_detail in entry.description
+    assert "acima do preço para short" in risk.description
+
+
+def test_effective_direction_overrides_template_direction():
+    manifest = build_strategy_transparency(
+        "quant_btc_1d_short_macd_bear_chain_w1_20260629",
+        {
+            "direction": "short",
+            "indicators": [
+                {"type": "ema", "alias": "trend", "params": {"length": 21}},
+            ],
+            "entry_logic": "close < trend",
+            "exit_logic": "close > trend",
+            "stop_loss": 0.03,
+        },
+        effective_parameters={"direction": "long"},
+        timeframe="1d",
+    )
+
+    assert manifest.direction == "long"
+    assert "abaixo do preço para long" in manifest.logic_blocks[-1].description
+
+
+def test_invalid_effective_direction_does_not_erase_template_direction():
+    manifest = build_strategy_transparency(
+        "quant_btc_1d_short_macd_bear_chain_w1_20260629",
+        {
+            "direction": "short",
+            "indicators": [
+                {"type": "ema", "alias": "trend", "params": {"length": 21}},
+            ],
+            "entry_logic": "close < trend",
+            "exit_logic": "close > trend",
+            "stop_loss": 0.03,
+        },
+        effective_parameters={"direction": "sideways"},
+        timeframe="1d",
+    )
+
+    assert manifest.direction == "short"
+    assert "acima do preço para short" in manifest.logic_blocks[-1].description
 
 
 def test_multi_ma_colors_follow_semantic_roles_and_period_fallback():

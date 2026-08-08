@@ -164,6 +164,7 @@ const FAVORITES_PAYLOAD = [
     symbol: 'BTC/USDT',
     timeframe: '1d',
     strategy_name: 'multi_ma_crossoverV2',
+    strategy_description: 'No BTC em 1D, abre Long quando a média curta cruza a longa e já se mantém acima dela; encerra no cruzamento baixista da média longa.',
     parameters: { direction: 'long', ema_short: 10, sma_medium: 16, sma_long: 22, stop_loss: 0.035, data_source: 'ccxt' },
     metrics: {
       total_return: 0.42,
@@ -436,7 +437,11 @@ function cloneFavoritesPayload() {
   return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
 }
 
-async function setupDeterministicApiMocks(page: any, options?: { user?: Record<string, any>; hangOpportunities?: boolean }) {
+async function setupDeterministicApiMocks(page: any, options?: {
+  user?: Record<string, any>;
+  hangOpportunities?: boolean;
+  favoriteOverrides?: Record<number, Record<string, unknown>>;
+}) {
   const authUser = options?.user || {
       id: 'admin-user',
       email: 'admin@example.com',
@@ -457,7 +462,10 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
     return route.abort('blockedbyclient');
   });
 
-  let serverFavoritesPayload = cloneFavoritesPayload();
+  let serverFavoritesPayload = cloneFavoritesPayload().map((favorite: any) => ({
+    ...favorite,
+    ...(options?.favoriteOverrides?.[favorite.id] || {}),
+  }));
 
   await page.route(/\/api\/favorites\/?$/, (route: any) => {
     if (route.request().method() === 'GET') {
@@ -655,6 +663,58 @@ test('favorites grid keeps strategy readable on wide desktop', async ({ page }) 
   await expectNoHorizontalOverflow(page);
 });
 
+test('favorites shows the complete strategy description on desktop and mobile', async ({ page }) => {
+  const description = 'No BTC em 1D, abre Long quando a média curta cruza a longa e já se mantém acima dela; encerra no cruzamento baixista da média longa.';
+  await setupDeterministicApiMocks(page);
+
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto('/favorites');
+
+  const desktopDescription = page.locator('.fav-table-shell .strategy-description', { hasText: description });
+  await expect(desktopDescription).toHaveText(description);
+  await expect.poll(() => desktopDescription.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      clippedHorizontally: element.scrollWidth > element.clientWidth + 1,
+      clippedVertically: element.scrollHeight > element.clientHeight + 1,
+      textOverflow: style.textOverflow,
+      whiteSpace: style.whiteSpace,
+    };
+  })).toEqual({
+    clippedHorizontally: false,
+    clippedVertically: false,
+    textOverflow: 'clip',
+    whiteSpace: 'normal',
+  });
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  const mobileDescription = page.locator('.fav-mobile-card .fav-strategy-description', { hasText: description });
+  await expect(mobileDescription).toHaveText(description);
+  await expect.poll(() => mobileDescription.evaluate((element) => ({
+    clippedHorizontally: element.scrollWidth > element.clientWidth + 1,
+    clippedVertically: element.scrollHeight > element.clientHeight + 1,
+  }))).toEqual({ clippedHorizontally: false, clippedVertically: false });
+  await expectNoHorizontalOverflow(page);
+
+  const analysis = page
+    .locator('.fav-mobile-card', { hasText: 'multi ma crossoverV2' })
+    .locator('button[title="Ver análise completa"]');
+  await analysis.click();
+  await expect(page).toHaveURL(/\/combo\/results$/);
+
+  const resultDescription = page.getByTestId('combo-result-description');
+  await expect(resultDescription).toHaveText(description);
+  await expect.poll(() => resultDescription.evaluate((element) => ({
+    clippedHorizontally: element.scrollWidth > element.clientWidth + 1,
+    clippedVertically: element.scrollHeight > element.clientHeight + 1,
+    whiteSpace: getComputedStyle(element).whiteSpace,
+  }))).toEqual({ clippedHorizontally: false, clippedVertically: false, whiteSpace: 'normal' });
+  await expectNoHorizontalOverflow(page);
+});
+
 test('favorites strategy column avoids duplicated raw strategy labels', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
@@ -808,7 +868,8 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-labels', /Compra.*Venda/i);
   await expect(page.getByTestId('monitor-aligned-result-chart')).not.toHaveAttribute('data-marker-labels', /BUY|SELL|SHORT|COVER/);
-  await expect(page.getByTestId('favorites-signal-history')).toBeVisible();
+  await expect(page.getByTestId('favorites-signal-history')).toHaveCount(0);
+  await expect(page.getByText('Histórico de sinais', { exact: true })).toHaveCount(0);
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText('BTC/USDT • 4h • 160 velas')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
@@ -908,27 +969,37 @@ test('favorites analysis opens cached multi MA chart when trade recovery hangs',
 
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
-  const parameters = page.getByTestId('combo-result-parameters');
-  await expect(parameters.getByText('Direção')).toBeVisible();
-  await expect(parameters.getByText('Compra')).toBeVisible();
-  await expect(parameters.getByText('EMA curta')).toBeVisible();
-  await expect(parameters.getByText('SMA média')).toBeVisible();
-  await expect(parameters.getByText('SMA longa')).toBeVisible();
-  await expect(parameters.getByText('Stop de perda')).toBeVisible();
-  await expect(parameters.getByText('9.00%')).toBeVisible();
-  await expect(parameters.getByText('Fonte de dados')).toBeVisible();
-  await expect(parameters.getByText('CCXT')).toBeVisible();
-  await expect(parameters.getByText('direction', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('ema short', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('sma medium', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('sma long', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('stop loss', { exact: true })).toHaveCount(0);
-  await expect(parameters.getByText('data source', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('combo-result-parameters')).toHaveCount(0);
+  await expect(page.getByTestId('combo-result-summary')).toBeVisible();
+  await expect(page.getByTestId('combo-result-strategy-rules')).toBeVisible();
+  await expect(page.getByText('Proteção', { exact: true })).toBeVisible();
+
+  const technicalPanel = page.getByTestId('combo-result-strategy-transparency');
+  const technicalDisclosure = technicalPanel.getByText('Detalhes técnicos', { exact: true });
+  await expect(technicalDisclosure).toBeVisible();
+  await expect(technicalPanel.getByText('Parâmetros efetivos')).toBeHidden();
+  await technicalDisclosure.focus();
+  await expect(technicalDisclosure).toBeFocused();
+  await expect.poll(async () => Math.round((await technicalDisclosure.boundingBox())?.height ?? 0)).toBeGreaterThanOrEqual(44);
+  await page.keyboard.press('Enter');
+  await expect(technicalPanel.getByText('Parâmetros efetivos')).toBeVisible();
+  await expect(technicalPanel.getByText('Direção')).toBeVisible();
+  await expect(technicalPanel.getByText('Compra')).toBeVisible();
+  await expect(technicalPanel.getByText('EMA curta')).toBeVisible();
+  await expect(technicalPanel.getByText('SMA média')).toBeVisible();
+  await expect(technicalPanel.getByText('SMA longa')).toBeVisible();
+  await expect(technicalPanel.getByText('Stop de perda')).toBeVisible();
+  await expect(technicalPanel.getByText('9.00%')).toBeVisible();
+  await expect(technicalPanel.getByText('Fonte de dados')).toBeVisible();
+  await expect(technicalPanel.getByText('CCXT')).toBeVisible();
+  await expect(technicalPanel.getByText('Série disponível para o timeframe atual.')).toHaveCount(0);
+  await expect(page.getByText('Parâmetros efetivos')).toHaveCount(1);
   await expect(page.getByText('HBAR/USDT • 1d • 120 velas')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
   expect(dialogs).toEqual([]);
 });
 
-test('common user opens protected favorite chart without moving averages or MA values', async ({ page }) => {
+test('common user opens favorite chart with safe functional details and MA values', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page, {
     user: {
       id: 'common-user',
@@ -936,11 +1007,19 @@ test('common user opens protected favorite chart without moving averages or MA v
       name: 'Common User',
       isAdmin: false,
     },
+    favoriteOverrides: {
+      3: {
+        strategy_name: 'ema_rsi',
+        strategy_display_name: 'EMA RSI Volume',
+        is_strategy_protected: false,
+        parameters: { direction: 'long', ema_short: 9, ema_long: 21, volume_window: 20 },
+      },
+    },
   });
   await page.goto('/favorites');
 
-  const protectedRow = page.locator('.fav-table-shell tbody tr', { hasText: 'ETH/USDT' });
-  const analysis = protectedRow.locator('button[title="Ver análise completa"]');
+  const favoriteRow = page.locator('.fav-table-shell tbody tr', { hasText: 'ETH/USDT' });
+  const analysis = favoriteRow.locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();
 
@@ -956,9 +1035,10 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect(visibleTradeTable.getByText('May 12, 2026').first()).toBeVisible();
   await expect(visibleTradeTable.getByText('Jan 1, 2025').first()).toBeVisible();
   await expect(visibleTradeTable.getByText('Jan 2, 2025').first()).toBeVisible();
-  await expect(page.getByTestId('result-chart-overlays')).toHaveCount(0);
-  await expect(page.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0);
-  await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart-indicator-config')).toContainText('EMA curta');
+  await expect(page.getByTestId('combo-result-strategy-transparency')).toContainText('EMA curta');
+  await expect(page.getByTestId('combo-result-strategy-transparency')).toContainText('EMA longa');
+  await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toHaveCount(0);
 
   const visibleBarsBeforeWheel = await page.getByTestId('result-chart-visible-bars').textContent();
   await page.getByTestId('result-main-chart').hover();
@@ -1021,7 +1101,7 @@ test('favorites analysis uses full market history over stale saved analysis vela
   await expect(visibleTradeTable.getByText('Jan 1, 2025').first()).toBeVisible();
 });
 
-test('favorites analysis preserves saved trades and adds monitor signal history without duplicates', async ({ page }) => {
+test('favorites analysis uses monitor signal history only as chart markers', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
@@ -1035,11 +1115,10 @@ test('favorites analysis preserves saved trades and adds monitor signal history 
   expect(api.opportunitiesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
-  await expect(page.getByTestId('favorites-signal-history')).toBeVisible();
-  await expect(page.getByTestId('favorites-signal-history-item-0')).toContainText('Venda');
-  await expect(page.getByTestId('favorites-signal-history-item-0')).toContainText('May 20');
-  await expect(page.getByTestId('favorites-signal-history-item-1')).toContainText('Compra');
-  await expect(page.getByTestId('favorites-signal-history-item-1')).toContainText('May 10');
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-labels', /Compra.*Venda/i);
+  await expect(page.getByTestId('favorites-signal-history')).toHaveCount(0);
+  await expect(page.getByText('Histórico de sinais', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Últimos do Monitor', { exact: true })).toHaveCount(0);
   const visibleTradeTable = page.locator('table:visible');
   await expect(visibleTradeTable.getByText('Jan 1, 2025')).toHaveCount(1);
   await expect(visibleTradeTable.getByText('Jan 2, 2025')).toHaveCount(1);
@@ -1047,7 +1126,7 @@ test('favorites analysis preserves saved trades and adds monitor signal history 
   await expect(visibleTradeTable.getByText('May 20, 2026').first()).toBeVisible();
 });
 
-test('favorites shows explicit unavailable state when monitor sync times out', async ({ page }) => {
+test('favorites keeps chart fallback without exposing monitor sync state when sync times out', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page, { hangOpportunities: true });
   await page.goto('/favorites');
 
@@ -1058,7 +1137,10 @@ test('favorites shows explicit unavailable state when monitor sync times out', a
   await analysis.click();
 
   await expect(page).toHaveURL(/\/combo\/results$/, { timeout: 20_000 });
-  await expect(page.getByTestId('favorites-signal-history-unavailable')).toBeVisible();
-  await expect(page.getByText('Histórico de sinais do Monitor indisponível no momento')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '2');
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-labels', /COMPRA.*VENDA/i);
+  await expect(page.getByTestId('favorites-signal-history-unavailable')).toHaveCount(0);
+  await expect(page.getByText('Histórico de sinais do Monitor indisponível no momento')).toHaveCount(0);
   expect(api.opportunitiesTriggeredCount()).toBe(1);
 });

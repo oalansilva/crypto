@@ -10,6 +10,34 @@ const AUTH_USER = {
 
 const FIXED_NOW = new Date('2025-01-15T12:00:00.000Z')
 
+const ANALYSIS_CANDLES = Array.from({ length: 80 }, (_, index) => ({
+  timestamp_utc: new Date(Date.UTC(2024, 9, 28 + index)).toISOString(),
+  open: 60_000 + index * 80,
+  high: 60_500 + index * 80,
+  low: 59_500 + index * 80,
+  close: 60_200 + index * 80,
+  volume: 1_000 + index * 10,
+}))
+
+const ANALYSIS_TRANSPARENCY = {
+  status: 'available',
+  timeframe: '1d',
+  direction: 'long',
+  display_name: 'BTC 1D Long — Médias: Virada Inicial',
+  description: 'No BTC em 1D, abre Long quando a média curta cruza a longa e já se mantém acima dela; encerra no cruzamento baixista da média longa.',
+  effective_parameters: { short_length: 16, medium_length: 17, long_length: 33, stop_loss: 0.085 },
+  indicators: [
+    { key: 'ema_short', label: 'EMA', parameters: { length: 16 }, type: 'ema', panel: 'price', scale: 'price', color: '#f6465d', function: 'Mostra a direção recente com maior peso nos preços atuais.', participation: ['entry', 'exit'], references: [], series: [], availability: 'unavailable', unavailable_reason: 'Série timestampada ainda não disponível.' },
+    { key: 'sma_medium', label: 'SMA intermediária', parameters: { length: 17 }, type: 'sma', panel: 'price', scale: 'price', color: '#f0b90b', function: 'Suaviza o preço para tornar a tendência mais legível.', participation: ['entry'], references: [], series: [], availability: 'unavailable', unavailable_reason: 'Série timestampada ainda não disponível.' },
+    { key: 'sma_long', label: 'SMA longa', parameters: { length: 33 }, type: 'sma', panel: 'price', scale: 'price', color: '#3b82f6', function: 'Suaviza o preço para tornar a tendência mais legível.', participation: ['entry', 'exit'], references: [], series: [], availability: 'unavailable', unavailable_reason: 'Série timestampada ainda não disponível.' },
+  ],
+  logic_blocks: [
+    { participation: 'entry', description: 'Exige alinhamento entre as médias curta, intermediária e longa para confirmar tendência.', status: 'available' },
+    { participation: 'exit', description: 'A perda do alinhamento entre as médias aciona a saída.', status: 'available' },
+    { participation: 'risk', description: 'Stop de perda limitado a 8,50% por operação.', status: 'available' },
+  ],
+}
+
 const FAVORITES = [
   {
     id: 1,
@@ -17,6 +45,8 @@ const FAVORITES = [
     symbol: 'BTC/USDT',
     timeframe: '1d',
     strategy_name: 'ema_rsi',
+    strategy_display_name: 'BTC 1D Long — Médias: Virada Inicial',
+    strategy_description: 'No BTC em 1D, abre Long quando a média curta cruza a longa e já se mantém acima dela; encerra no cruzamento baixista da média longa.',
     parameters: { ema_short: 9, ema_long: 21, direction: 'long' },
     metrics: {
       total_return: 0.12,
@@ -114,6 +144,24 @@ async function installStableApiMocks(page: Page) {
   )
   await page.route('**/api/favorites/', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FAVORITES) }),
+  )
+  await page.route('**/api/favorites/1/trades', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        favorite_id: 1,
+        trades: [],
+        metrics: { ...FAVORITES[0].metrics, analysis_candles: ANALYSIS_CANDLES, analysis_strategy_transparency: ANALYSIS_TRANSPARENCY },
+        metrics_match: true,
+        metrics_deltas: {},
+        regenerated: true,
+        candles: ANALYSIS_CANDLES,
+        indicator_data: {},
+        execution_mode: 'visual_fixture',
+        strategy_transparency: ANALYSIS_TRANSPARENCY,
+      }),
+    }),
   )
   await page.route('**/api/opportunities/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(OPPORTUNITIES) }),
@@ -319,11 +367,11 @@ test('visual critical monitor trade explanation', async ({ page }) => {
   }
   await page.getByRole('button', { name: 'Ver Trades' }).click()
   const dialog = page.getByRole('dialog')
-  const disclosure = dialog.getByRole('button', { name: 'Entenda este trade' })
-  await disclosure.click()
-  await expect(dialog.getByText('Quando compra')).toBeVisible()
-  await expect(dialog.getByText('Quando vende')).toBeVisible()
-  await expect(dialog.getByText('Por que continua aberto')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Ver decisão da operação' })).toHaveCount(0)
+  await expect(dialog.getByTestId(/trade-explanation/)).toHaveCount(0)
+  await expect(dialog.getByText('Por que continua aberto')).toHaveCount(0)
+  await expect(dialog.getByText('Como funciona a estratégia')).toHaveCount(0)
+  await expect(dialog.getByText('Estas regras não mudam com a posição atual do trade.')).toHaveCount(0)
   await expect(page).toHaveScreenshot('monitor-trade-explanation.png', {
     animations: 'disabled',
     caret: 'hide',
@@ -336,6 +384,20 @@ test('visual critical favorites', async ({ page }) => {
   await page.goto('/favorites')
   await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible()
   await capture(page, 'favorites.png')
+})
+
+test('visual critical favorite analysis', async ({ page }) => {
+  await installStableApiMocks(page)
+  await page.goto('/favorites')
+  const dismissOnboarding = page.getByRole('button', { name: 'Dispensar' })
+  if (await dismissOnboarding.isVisible()) {
+    await dismissOnboarding.click()
+  }
+  await page.locator('button[title="Ver análise completa"]:visible').click()
+  await expect(page.getByTestId('combo-result-summary')).toBeVisible()
+  await expect(page.getByText('Parâmetros efetivos')).toBeHidden()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)).toBe(false)
+  await capture(page, 'favorite-analysis.png')
 })
 
 test('visual critical wallet', async ({ page }) => {
@@ -363,4 +425,3 @@ test('visual critical profile', async ({ page }) => {
   await expect(page.getByText('Credenciais Binance')).toBeVisible()
   await capture(page, 'profile.png')
 })
-

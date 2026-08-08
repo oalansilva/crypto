@@ -18,6 +18,7 @@ from app.schemas.favorite import (
 from app.services.combo_optimizer import ComboOptimizer
 from app.services.market_data_providers import resolve_data_source_for_symbol
 from app.services.strategy_secret_visibility import (
+    can_view_strategy_details,
     can_view_strategy_secrets,
     redact_favorite_strategy_payload,
 )
@@ -84,6 +85,7 @@ def _favorite_response(
     row: FavoriteStrategy,
     *,
     include_secrets: bool,
+    include_details: bool = False,
     tier_override: int | None | object = _TIER_UNSET,
     description_by_strategy: dict[str, str] | None = None,
     template_by_strategy: dict[str, dict[str, Any]] | None = None,
@@ -108,7 +110,11 @@ def _favorite_response(
     if tier_override is not _TIER_UNSET:
         payload["tier"] = tier_override
     return FavoriteStrategyResponse(
-        **redact_favorite_strategy_payload(payload, include_secrets=include_secrets)
+        **redact_favorite_strategy_payload(
+            payload,
+            include_secrets=include_secrets,
+            include_details=include_details,
+        )
     )
 
 
@@ -563,6 +569,7 @@ def list_favorites(
 ):
     """List all favorited strategies"""
     include_secrets = can_view_strategy_secrets(db, current_user_id)
+    include_details = can_view_strategy_details(db, current_user_id)
     current_user = _current_user(db, current_user_id)
 
     if include_secrets or (current_user and is_admin_email(current_user.email)):
@@ -573,6 +580,7 @@ def list_favorites(
             _favorite_response(
                 row,
                 include_secrets=include_secrets,
+                include_details=include_details,
                 description_by_strategy=descriptions,
                 template_by_strategy=templates,
             )
@@ -587,6 +595,7 @@ def list_favorites(
             _favorite_response(
                 row,
                 include_secrets=include_secrets,
+                include_details=include_details,
                 description_by_strategy=descriptions,
                 template_by_strategy=templates,
             )
@@ -611,6 +620,7 @@ def list_favorites(
             _favorite_response(
                 row,
                 include_secrets=include_secrets,
+                include_details=include_details,
                 description_by_strategy=descriptions,
                 template_by_strategy=templates,
             )
@@ -625,6 +635,7 @@ def list_favorites(
             _favorite_response(
                 row,
                 include_secrets=include_secrets,
+                include_details=include_details,
                 description_by_strategy=descriptions,
                 template_by_strategy=templates,
             )
@@ -648,6 +659,7 @@ def list_favorites(
         _favorite_response(
             row,
             include_secrets=False,
+            include_details=include_details,
             tier_override=tier_by_favorite_id.get(int(row.id)),
             description_by_strategy=descriptions,
             template_by_strategy=templates,
@@ -834,9 +846,11 @@ def create_favorite(
         db.commit()
         db.refresh(db_favorite)
         include_secrets = can_view_strategy_secrets(db, current_user_id)
+        include_details = can_view_strategy_details(db, current_user_id)
         return _favorite_response(
             db_favorite,
             include_secrets=include_secrets,
+            include_details=include_details,
             template_by_strategy=_strategy_templates_for_rows(db, [db_favorite]),
         )
     except Exception as e:
@@ -865,6 +879,7 @@ def update_favorite(
     updates = update_data.model_dump(exclude_unset=True)
     tier_override = _TIER_UNSET
     include_secrets = can_view_strategy_secrets(db, current_user_id)
+    include_details = can_view_strategy_details(db, current_user_id)
     owns_favorite = str(favorite.user_id) == str(current_user_id)
     admin_catalog_ids = set(_admin_catalog_user_ids(db, exclude_user_id=current_user_id))
 
@@ -908,6 +923,7 @@ def update_favorite(
     return _favorite_response(
         favorite,
         include_secrets=include_secrets,
+        include_details=include_details,
         tier_override=tier_override,
         template_by_strategy=_strategy_templates_for_rows(db, [favorite]),
     )

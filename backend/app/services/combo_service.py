@@ -151,7 +151,7 @@ class ComboService:
         exit_logic = metadata["exit_logic"]
         stop_loss = metadata.get("stop_loss", 0.015)
         derived_features = metadata.get("derived_features")
-        direction = "long"
+        direction = "short" if str(metadata.get("direction") or "").lower() == "short" else "long"
 
         # Handle stop_loss if it's a dict with 'default' key
         if isinstance(stop_loss, dict):
@@ -182,9 +182,9 @@ class ComboService:
             # Override stop_loss if provided
             if "stop_loss" in parameters:
                 stop_loss = parameters["stop_loss"]
-            direction = (
-                "short" if str(parameters.get("direction") or "").lower() == "short" else "long"
-            )
+            requested_direction = str(parameters.get("direction") or "").lower()
+            if requested_direction in {"long", "short"}:
+                direction = requested_direction
 
         # Create and return strategy instance
         return ComboStrategy(

@@ -37,7 +37,9 @@ export interface StrategyLogicBlock {
 
 export interface StrategyTransparency {
     status: string
+    strategy_key: string
     timeframe: string
+    direction: string
     display_name: string
     description: string
     effective_parameters: Record<string, unknown>
@@ -166,7 +168,7 @@ const normalizeLogicBlocks = (value: unknown): StrategyLogicBlock[] => {
 }
 
 export interface StrategyRuleOverviewItem {
-    title: 'Quando compra' | 'Quando vende'
+    title: 'Quando compra' | 'Quando vende' | 'Proteção'
     action: string
     summary: string
     available: boolean
@@ -175,6 +177,7 @@ export interface StrategyRuleOverviewItem {
 export interface StrategyRuleOverview {
     entry: StrategyRuleOverviewItem
     exit: StrategyRuleOverviewItem
+    risk: StrategyRuleOverviewItem
 }
 
 const RULE_UNAVAILABLE = 'Regra pública indisponível para esta estratégia.'
@@ -187,8 +190,10 @@ export function buildStrategyRuleOverview(
     const isShort = String(direction || '').trim().toLowerCase() === 'short'
     const entry = transparency?.logic_blocks.find((block) => block.participation === 'entry')
     const exit = transparency?.logic_blocks.find((block) => block.participation === 'exit')
+    const risk = transparency?.logic_blocks.find((block) => block.participation === 'risk')
     const entryAvailable = Boolean(entry?.description && entry.status !== 'unavailable')
     const exitAvailable = Boolean(exit?.description && exit.status !== 'unavailable')
+    const riskAvailable = Boolean(risk?.description && risk.status !== 'unavailable')
 
     return {
         entry: {
@@ -204,6 +209,12 @@ export function buildStrategyRuleOverview(
             action: isShort ? 'Na prática: compra para fechar (cobertura)' : '',
             summary: exitAvailable ? exit?.description || RULE_UNAVAILABLE : RULE_UNAVAILABLE,
             available: exitAvailable,
+        },
+        risk: {
+            title: 'Proteção',
+            action: '',
+            summary: riskAvailable ? risk?.description || RULE_UNAVAILABLE : RULE_UNAVAILABLE,
+            available: riskAvailable,
         },
     }
 }
@@ -236,7 +247,9 @@ export function normalizeStrategyTransparency(value: unknown): StrategyTranspare
 
     return {
         status: asText(record.status, indicators.length > 0 ? 'available' : 'unavailable').toLowerCase(),
+        strategy_key: asText(record.strategy_key),
         timeframe: asText(record.timeframe).toLowerCase(),
+        direction: asText(record.direction).toLowerCase(),
         display_name: asText(record.display_name ?? record.name),
         description: asText(record.description),
         effective_parameters: asRecord(record.parameters ?? record.effective_parameters),

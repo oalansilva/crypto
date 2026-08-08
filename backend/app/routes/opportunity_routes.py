@@ -11,6 +11,7 @@ from app.database import get_db
 from app.services.opportunity_service import OpportunityService
 from app.middleware.authMiddleware import get_current_user
 from app.services.strategy_secret_visibility import (
+    can_view_strategy_details,
     can_view_strategy_secrets,
     redact_opportunity_payload,
 )
@@ -176,6 +177,7 @@ async def get_opportunities(
     """
     try:
         include_secrets = can_view_strategy_secrets(db, current_user_id)
+        include_details = can_view_strategy_details(db, current_user_id)
         effective_tier = tier if include_secrets else _common_user_tier_filter(tier)
         if not refresh:
             # Prefer fresh cache; if expired but still within stale TTL, serve it so
@@ -190,6 +192,7 @@ async def get_opportunities(
                     redact_opportunity_payload(
                         _normalize_monitor_status_payload(dict(item)),
                         include_secrets=include_secrets,
+                        include_details=include_details,
                     )
                     for item in cached
                 ]
@@ -200,6 +203,7 @@ async def get_opportunities(
             redact_opportunity_payload(
                 _normalize_monitor_status_payload(dict(item)),
                 include_secrets=include_secrets,
+                include_details=include_details,
             )
             for item in payload
         ]
