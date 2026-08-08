@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
+import { CircleDollarSign, Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
@@ -23,11 +23,14 @@ interface OpportunityCardProps {
     resolvedSignal?: ResolvedMonitorSignal;
     isSavingPreference: boolean;
     isOpeningChart: boolean;
+    canOpenTrade: boolean;
+    tradeUnavailableReason?: string | null;
     isAdmin?: boolean;
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
     onToggleTimeframe: (symbol: string, nextTimeframe: MonitorPriceTimeframe) => void;
     onOpenChart: (opportunity: Opportunity, mode?: 'chart' | 'trades') => void;
+    onOpenTrade: (opportunity: Opportunity) => void;
 }
 
 const symbolKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
@@ -60,11 +63,14 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     resolvedSignal: resolvedSignalOverride,
     isSavingPreference,
     isOpeningChart,
+    canOpenTrade,
+    tradeUnavailableReason,
     isAdmin = false,
     onToggleInPortfolio,
     onToggleCardMode,
     onToggleTimeframe,
     onOpenChart,
+    onOpenTrade,
 }) => {
     const {
         symbol,
@@ -443,6 +449,28 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <ListChecks className="h-3.5 w-3.5" />
                         Ver Trades
                     </button>
+                    {canOpenTrade ? (
+                        <button
+                            type="button"
+                            className="btn spot-trade-trigger"
+                            data-testid={`open-spot-trade-${symbolTestKey}`}
+                            onClick={() => onOpenTrade(opportunity)}
+                        >
+                            <CircleDollarSign className="h-3.5 w-3.5" />
+                            Operar
+                        </button>
+                    ) : tradeUnavailableReason ? (
+                        <button
+                            type="button"
+                            className="btn spot-trade-unavailable"
+                            title={tradeUnavailableReason}
+                            aria-label={tradeUnavailableReason}
+                            disabled
+                        >
+                            <CircleDollarSign className="h-3.5 w-3.5" />
+                            Operar indisponível
+                        </button>
+                    ) : null}
                 </div>
             </div>
 

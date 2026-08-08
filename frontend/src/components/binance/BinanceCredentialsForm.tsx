@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/use-toast'
 
 const BINANCE_API_KEY_HELP =
-  'Use uma API Key da Binance (leitura para Carteira; Spot Trading se for usar Proteger stop). Não use e-mail ou senha.'
+  'Use uma API Key da Binance (leitura para Carteira; Spot Trading para proteger stop ou operar no Monitor). Não use e-mail ou senha.'
 const BINANCE_API_SECRET_HELP =
   'Use o API Secret da mesma chave. O Cripto Farol não pede sua senha da Binance.'
 
@@ -140,8 +140,8 @@ export function BinanceCredentialsForm({
               Credenciais Binance
             </div>
             <div className="mt-2 max-w-3xl text-sm text-slate-400">
-              Gerencie a chave API read-only em Meu Perfil (menu da conta na barra). A Home e a carteira usam a chave
-              vinculada ao usuário logado.
+              Gerencie a chave API em Meu Perfil (menu da conta na barra). Leitura atende Home e Carteira; operar no
+              Monitor exige também Spot Trading, sempre sem permissão de saque.
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -174,7 +174,7 @@ export function BinanceCredentialsForm({
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
             Chave API vinculada à sua conta. Home e Carteira precisam só de leitura. Para usar{' '}
-            <span className="text-[var(--text-primary)]">Proteger stop</span> no Monitor, habilite também{' '}
+            <span className="text-[var(--text-primary)]">Proteger stop ou comprar/vender</span> no Monitor, habilite também{' '}
             <span className="text-[var(--text-primary)]">Spot Trading</span> (sem withdraw). Mantenha IP whitelist
             na Binance.
           </p>
@@ -190,7 +190,7 @@ export function BinanceCredentialsForm({
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
                 Status da chave
               </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -199,7 +199,7 @@ export function BinanceCredentialsForm({
               </div>
               {maskedApiKey ? (
                 <div className="mt-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
                     API Key atual
                   </div>
                   <div className="mt-1 break-all font-mono text-sm text-[var(--text-secondary)]">{maskedApiKey}</div>
@@ -312,7 +312,7 @@ export function BinanceCredentialsForm({
             Credenciais Binance
           </div>
           <div className="mt-2 max-w-3xl text-sm text-slate-400">
-            A Home e a carteira usam uma chave API vinculada ao usuário logado. Leitura basta para saldos; Spot Trading é necessário para Proteger stop. Mantenha IP
+            A Home e a carteira usam uma chave API vinculada ao usuário logado. Leitura basta para saldos; Spot Trading é necessário para proteger stop ou comprar/vender no Monitor. Mantenha IP
             whitelist habilitado na Binance.
           </div>
         </div>
@@ -335,7 +335,7 @@ export function BinanceCredentialsForm({
             data-1p-ignore="true"
             spellCheck={false}
             className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
-            placeholder="API Key read-only da Binance"
+            placeholder="API Key da Binance"
             value={apiKeyInput}
             onChange={(e) => setApiKeyInput(e.target.value)}
           />
@@ -377,7 +377,7 @@ export function BinanceCredentialsForm({
           </Button>
         ) : null}
         <Button
-          className="h-10 gap-2 rounded-md border border-sky-300/20 bg-sky-300 px-4 text-xs font-semibold text-slate-950 hover:bg-sky-200"
+          className="h-10 gap-2 rounded-md border border-sky-300/20 bg-sky-300 px-4 text-xs font-semibold text-[var(--text-on-light)] hover:bg-sky-200"
           onClick={saveCredentials}
           disabled={savingCredentials || !apiKeyInput.trim() || !apiSecretInput.trim()}
         >

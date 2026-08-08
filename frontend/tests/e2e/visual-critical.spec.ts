@@ -179,6 +179,20 @@ async function installStableApiMocks(page: Page) {
   await page.route('**/api/user/binance-credentials', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ configured: false, api_key_masked: null }) }),
   )
+  await page.route('**/api/monitor/spot-market-orders/eligibility', (route) => {
+    const body = route.request().postDataJSON() as { symbols?: string[] } | null
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: (body?.symbols ?? []).map((symbol) => ({
+          symbol: symbol.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
+          eligible: true,
+          reason: null,
+        })),
+      }),
+    })
+  })
   await page.route('**/api/monitor/spot-stop-order**', (route) =>
     route.fulfill({
       status: 200,
@@ -316,6 +330,7 @@ test('visual critical monitor', async ({ page }) => {
   await installStableApiMocks(page)
   await page.goto('/monitor')
   await expect(page.getByTestId('monitor-status-tab')).toBeVisible()
+  await expect(page.locator('[data-testid="open-spot-trade-btc-usdt"]:visible').first()).toBeVisible()
   await capture(page, 'monitor.png')
 })
 
