@@ -666,6 +666,7 @@ def submit_order(
         return _record_response(record)
     return _apply_result(db, record, normalize_market_order_result(payload))
 
+
 def get_order_status(
     *,
     db: Session,

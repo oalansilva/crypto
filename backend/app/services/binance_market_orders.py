@@ -294,8 +294,7 @@ def _exchange_info_by_symbol(symbols: list[str]) -> Dict[str, Dict[str, Any]]:
             **_exchange_info_by_symbol(symbols[midpoint:]),
         }
     return {
-        str(item.get("symbol") or "").upper(): item
-        for item in exchange_info.get("symbols") or []
+        str(item.get("symbol") or "").upper(): item for item in exchange_info.get("symbols") or []
     }
 
 

@@ -150,7 +150,9 @@ def test_sell_notional_uses_binance_average_price_when_filter_requires_it():
 
     with (
         patch("app.services.binance_market_orders.get_symbol_info", return_value=symbol_info),
-        patch("app.services.binance_market_orders.public_get", side_effect=price_response) as public_get,
+        patch(
+            "app.services.binance_market_orders.public_get", side_effect=price_response
+        ) as public_get,
         patch(
             "app.services.binance_market_orders.signed_request",
             return_value={
