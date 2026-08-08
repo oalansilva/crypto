@@ -137,6 +137,7 @@ backups/
 .impeccable/hook.cache.json
 .impeccable/hook.pending.json
 .impeccable/vision-router.jsonl
+.impeccable/attachments/
 .impeccable/*.png
 .impeccable/live/server.json
 .impeccable/live/sessions/
