@@ -1017,6 +1017,18 @@ textarea {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.balances-page tbody tr.balance-row {
+  background-color: rgba(16, 28, 42, 1) !important;
+}
+
+.balances-page tbody tr.balance-row:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.balances-page tbody tr.balance-row:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
 .combo-page .text-zinc-900,
 .favorites-page .text-zinc-900,
 .balances-page .text-zinc-900,
