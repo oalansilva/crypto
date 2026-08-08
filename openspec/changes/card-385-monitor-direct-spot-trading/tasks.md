@@ -38,5 +38,5 @@
 - [x] 6.1 Executar testes focados backend/frontend, build, lint aplicável e validação da change.
 - [x] 6.2 Executar `/opsx:verify`, `openspec validate --all` e corrigir qualquer falha relevante ou higiene global bloqueante.
 - [x] 6.3 Mover para Code Review, executar review Codex independente do diff exato e corrigir/classificar achados antes do commit.
-- [ ] 6.4 Commitar/pushar o SHA revisado, mover para QA, abrir PR para `develop` e aguardar `qa-gate` e Playwright visual terminais verdes.
-- [ ] 6.5 Integrar em `develop`, executar `./restart`, validar a URL/runtime e registrar Done técnico no card sem arquivar a change.
+- [x] 6.4 Commitar/pushar o SHA revisado, mover para QA, abrir PR para `develop` e aguardar `qa-gate` e Playwright visual terminais verdes.
+- [x] 6.5 Integrar em `develop`, executar `./restart`, validar a URL/runtime e registrar Done técnico no card sem arquivar a change.
