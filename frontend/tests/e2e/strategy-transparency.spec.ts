@@ -235,7 +235,7 @@ async function mockSharedApis(
 test.describe('transparência em Favoritos', () => {
   test.use({ viewport: { width: 1366, height: 900 } })
 
-  test('mostra manifesto, overlay, painel e legenda timestampada para trader comum', async ({ page }) => {
+  test('mostra resumo, overlays e detalhes técnicos sem duplicar o gráfico', async ({ page }) => {
     await authenticate(page)
     await blockExternalTraffic(page)
     await mockSharedApis(page, transparency(), {
@@ -252,13 +252,22 @@ test.describe('transparência em Favoritos', () => {
 
     const chart = page.getByTestId('monitor-aligned-result-chart')
     await expect(chart).toBeVisible()
-    await expect(page.getByTestId('monitor-aligned-result-chart-strategy-transparency')).toBeVisible()
-    await expect(page.getByTestId('monitor-aligned-result-chart-indicator-trend')).toContainText('EMA (20)')
-    await expect(page.getByTestId('monitor-aligned-result-chart-indicator-rsi_14')).toContainText('RSI (14)')
-    await expect(page.getByTestId('monitor-aligned-result-chart-indicator-rsi_14')).toContainText('58.00')
+    await expect(page.getByTestId('monitor-aligned-result-chart-strategy-transparency')).toHaveCount(0)
+    await expect(page.getByTestId('monitor-aligned-result-chart-indicator-config')).toContainText('EMA (20)')
+    await expect(page.getByTestId('monitor-aligned-result-chart-indicator-config')).toContainText('RSI (14)')
     await expect(page.getByTestId('monitor-aligned-result-chart-indicator-panel-oscillator')).toBeVisible()
-    await expect(page.getByText('Sobrevenda (30.00)')).toBeVisible()
-    await expect(page.getByTestId('monitor-aligned-result-chart-strategy-transparency').getByText(/A entrada exige direção e força alinhadas/)).toBeVisible()
+    const permanentRules = page.getByTestId('combo-result-strategy-rules')
+    await expect(permanentRules.getByRole('heading', { name: 'Regras da estratégia' })).toBeVisible()
+    await expect(permanentRules.getByText('Condições usadas para entrada, saída e proteção da operação.')).toBeVisible()
+    await expect(permanentRules.getByText(/A entrada exige direção e força alinhadas/)).toBeVisible()
+    await expect(page.getByTestId('result-trades').getByRole('button', { name: 'Ver decisão da operação' })).toHaveCount(0)
+    await expect(page.getByTestId('result-trades').getByTestId(/trade-explanation/)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Entenda este trade' })).toHaveCount(0)
+    const technicalPanel = page.getByTestId('combo-result-strategy-transparency')
+    await technicalPanel.getByText('Detalhes técnicos', { exact: true }).click()
+    await expect(technicalPanel.getByText('EMA (20)', { exact: true })).toBeVisible()
+    await expect(technicalPanel.getByText('RSI (14)', { exact: true })).toBeVisible()
+    await expect(technicalPanel.getByText('Parâmetros efetivos')).toBeVisible()
     await expect(page.getByText(/Parâmetros técnicos protegidos/)).toHaveCount(0)
     await expect(chart).toHaveAttribute('data-marker-count', '2')
   })
@@ -296,21 +305,19 @@ test.describe('transparência em Favoritos', () => {
     expect(api.favoriteTradesRequests()).toBe(1)
     await expect(page.getByRole('heading', { name: /Médias Móveis: Tendência Confirmada - Ação de preço/ })).toBeVisible()
     const chart = page.getByTestId('monitor-aligned-result-chart')
-    const lastTimestamp = new Date(CURRENT_CANDLES.at(-1)!.timestamp_utc).toISOString()
     await expect(chart).toHaveAttribute('data-last-candle-timestamp', CURRENT_CANDLES.at(-1)!.timestamp_utc)
     await expect(chart.locator('canvas').first()).toBeVisible()
-    for (const [key, color, value] of [
-      ['short', '#f6465d', '103.00'],
-      ['medium', '#ff9f43', '101.00'],
-      ['long', '#3b82f6', '99.00'],
-    ] as const) {
-      const indicator = page.getByTestId(`monitor-aligned-result-chart-indicator-${key}`)
-      await expect(indicator).toContainText(value)
-      await expect(indicator).not.toContainText('valor indisponível')
-      await expect(indicator).toHaveAttribute('data-indicator-color', color)
-      await expect(indicator).toHaveAttribute('data-series-points', String(CURRENT_CANDLES.length))
-      await expect(indicator).toHaveAttribute('data-series-last-timestamp', lastTimestamp)
-    }
+    await expect(page.getByTestId('monitor-aligned-result-chart-strategy-transparency')).toHaveCount(0)
+    const chartConfiguration = page.getByTestId('monitor-aligned-result-chart-indicator-config')
+    await expect(chartConfiguration).toContainText('EMA curta')
+    await expect(chartConfiguration).toContainText('SMA média')
+    await expect(chartConfiguration).toContainText('SMA longa')
+    const technicalPanel = page.getByTestId('combo-result-strategy-transparency')
+    await technicalPanel.getByText('Detalhes técnicos', { exact: true }).click()
+    await expect(technicalPanel.getByText('EMA curta', { exact: true })).toBeVisible()
+    await expect(technicalPanel.getByText('SMA média', { exact: true })).toBeVisible()
+    await expect(technicalPanel.getByText('SMA longa', { exact: true })).toBeVisible()
+    await expect(technicalPanel.getByText(/Uma ou mais séries timestampadas/)).toHaveCount(0)
     await expect(page.getByText(/Série indisponível/)).toHaveCount(0)
   })
 
@@ -334,7 +341,10 @@ test.describe('transparência em Favoritos', () => {
     await expect(page).toHaveURL(/\/combo\/results$/)
     expect(api.favoriteTradesRequests()).toBe(0)
     await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible()
-    await expect(page.getByText(/Série indisponível/).first()).toBeVisible()
+    const technicalPanel = page.getByTestId('combo-result-strategy-transparency')
+    await technicalPanel.getByText('Detalhes técnicos', { exact: true }).click()
+    await expect(technicalPanel.getByText(/Uma ou mais séries timestampadas ainda não estão disponíveis/)).toBeVisible()
+    await expect(page.getByText(/Série indisponível/)).toHaveCount(0)
   })
 
   test('mantém análise cacheada quando hidratação legada é negada', async ({ page }) => {
@@ -352,7 +362,10 @@ test.describe('transparência em Favoritos', () => {
     await expect(page).toHaveURL(/\/combo\/results$/)
     expect(api.favoriteTradesRequests()).toBe(1)
     await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible()
-    await expect(page.getByText(/Série indisponível/).first()).toBeVisible()
+    const technicalPanel = page.getByTestId('combo-result-strategy-transparency')
+    await technicalPanel.getByText('Detalhes técnicos', { exact: true }).click()
+    await expect(technicalPanel.getByText(/Uma ou mais séries timestampadas ainda não estão disponíveis/)).toBeVisible()
+    await expect(page.getByText(/Série indisponível/)).toHaveCount(0)
   })
 })
 

@@ -25,7 +25,15 @@ data/*.parquet
 !.cursor/commands/**
 !.cursor/skills/
 !.cursor/skills/**
-.opencode/
+.opencode/*
+!.opencode/agent/
+!.opencode/agent/**
+!.opencode/commands/
+!.opencode/commands/**
+!.opencode/skills/
+!.opencode/skills/**
+!.opencode/plugin/
+!.opencode/plugin/**
 *.swp
 *.swo
 
@@ -128,6 +136,8 @@ backups/
 .impeccable/config.local.json
 .impeccable/hook.cache.json
 .impeccable/hook.pending.json
+.impeccable/vision-router.jsonl
+.impeccable/attachments/
 .impeccable/*.png
 .impeccable/live/server.json
 .impeccable/live/sessions/

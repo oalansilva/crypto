@@ -69,6 +69,7 @@ test('preserva regras permanentes e aplica ações direcionais long e short', ()
         logic_blocks: [
             { participation: 'entry', description: 'A entrada exige tendência confirmada.', status: 'available', operator: 'all', condition_count: 2 },
             { participation: 'exit', description: 'A saída ocorre quando a tendência perde força.', status: 'available', operator: 'any', condition_count: 2 },
+            { participation: 'risk', description: 'O stop limita a perda da posição.', status: 'available', operator: 'all', condition_count: 1 },
         ],
     }
 
@@ -84,6 +85,8 @@ test('preserva regras permanentes e aplica ações direcionais long e short', ()
     assert.equal(longRules.exit.action, '')
     assert.equal(longRules.entry.summary, 'A entrada exige tendência confirmada.')
     assert.equal(longRules.exit.summary, 'A saída ocorre quando a tendência perde força.')
+    assert.equal(longRules.risk.title, 'Proteção')
+    assert.equal(longRules.risk.summary, 'O stop limita a perda da posição.')
 
     const shortRules = buildStrategyRuleOverview(normalized, 'short')
     assert.equal(shortRules.entry.action, 'Na prática: vende para abrir (short)')
@@ -97,8 +100,10 @@ test('mantém as duas regras visíveis com fallback seguro para manifesto legado
     assert.equal(rules.exit.title, 'Quando vende')
     assert.equal(rules.entry.available, false)
     assert.equal(rules.exit.available, false)
+    assert.equal(rules.risk.available, false)
     assert.equal(rules.entry.summary, 'Regra pública indisponível para esta estratégia.')
     assert.equal(rules.exit.summary, 'Regra pública indisponível para esta estratégia.')
+    assert.equal(rules.risk.summary, 'Regra pública indisponível para esta estratégia.')
 })
 
 test('não exibe descrição de bloco explicitamente indisponível', () => {
@@ -262,13 +267,21 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.doesNotMatch(chartSource, /onWheel=\{handleWheel\}/)
     assert.match(comboSource, /strategyTransparency=\{strategyTransparency\}/)
     assert.match(comboSource, /StrategyTransparencyPanel/)
+    assert.doesNotMatch(comboSource, /SignalHistoryPanel|favorites-signal-history/)
+    assert.doesNotMatch(comboSource, /combo-result-parameters/)
+    assert.match(comboSource, /showIdentity=\{false\}/)
+    assert.match(comboSource, /showRules=\{false\}/)
+    assert.match(comboSource, /defaultDetailsOpen=\{false\}/)
+    assert.match(comboSource, /showMetrics=\{false\}/)
     assert.doesNotMatch(comboSource, /Parâmetros técnicos protegidos/)
     assert.match(favoritesSource, /mergeStrategyTransparencySeries/)
     assert.match(favoritesSource, /strategy_transparency: recovered\.strategyTransparency/)
     assert.match(monitorSource, /mergeStrategyTransparencySeries/)
     assert.match(monitorSource, /strategyTransparency=\{activeStrategyTransparency\}/)
     assert.match(panelSource, /Parâmetros efetivos/)
-    assert.match(panelSource, /Detalhes funcionais indisponíveis/)
+    assert.match(panelSource, /Uma ou mais séries timestampadas ainda não estão disponíveis/)
+    assert.match(panelSource, /Manifesto técnico completo indisponível/)
+    assert.doesNotMatch(panelSource, /Série disponível para o timeframe atual/)
     assert.doesNotMatch(panelSource, /Estratégia protegida|Oculto/)
     assert.match(monitorSource, /viewportResetKey=\{`\$\{symbol\}\|\$\{timeframe\}`\}/)
     assert.match(monitorSource, /viewportReady=\{!loading && !analysisTradesLoading\}/)

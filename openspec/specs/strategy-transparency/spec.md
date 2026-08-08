@@ -26,12 +26,32 @@ The public name, description and manifest MUST describe only indicators and logi
 - **AND** SHALL NOT mention Fibonacci.
 
 ### Requirement: Safe functional transparency
-The common-user manifest SHALL expose the functional behavior required to understand the strategy while excluding technical secrets unrelated to that understanding.
 
-#### Scenario: Common trader receives manifest
-- **WHEN** a common trader requests a visible strategy
-- **THEN** the response SHALL include configured indicator periods/thresholds, their functions and participation in entry, exit and risk
-- **AND** SHALL exclude source code, credentials, tokens, raw diagnostic columns and strategy mutation controls.
+The common authenticated trader SHALL receive a functional strategy manifest that exposes the behavior required to understand the decision while excluding technical secrets unrelated to that understanding.
+
+#### Scenario: Authenticated trader receives manifest
+
+- **WHEN** an authenticated trader requests a visible strategy used by Favoritos or Monitor
+- **THEN** the response SHALL include the canonical display name, description, timeframe, direction, configured indicator periods and thresholds, indicator functions, participation in entry/exit/risk, effective parameters, and trader-readable entry/exit/risk explanations when they can be proven from the executed configuration
+- **AND** the response SHALL set the strategy as unprotected for the authenticated functional view, even when the user is not an administrator
+
+#### Scenario: Complex executed rule remains fully auditable
+
+- **WHEN** an executed entry or exit rule contains more than eight conditions or uses candle-shape, rolling-window or shifted-price expressions
+- **THEN** the authenticated manifest SHALL preserve every public condition, comparator, threshold and boolean grouping in trader-readable form
+- **AND** SHALL NOT replace the rule with only a condition count or a generic `partial` summary
+
+#### Scenario: Secrets and diagnostics remain excluded
+
+- **WHEN** the authenticated functional manifest is serialized
+- **THEN** it SHALL exclude source code, credentials, tokens, raw diagnostic columns, internal IDs, mutation controls, and private operational metadata
+- **AND** unavailable configuration SHALL be represented explicitly instead of being replaced with a generic or invented rule
+
+#### Scenario: Unauthenticated or public surface requests strategy data
+
+- **WHEN** a request is not associated with an authenticated trader
+- **THEN** the functional manifest SHALL not be exposed through the authenticated Favoritos/Monitor contract
+- **AND** existing authentication and authorization controls SHALL remain unchanged
 
 ### Requirement: Timestamped indicator series
 The system SHALL expose only indicator series actually produced by the strategy as timestamped points.
@@ -188,3 +208,45 @@ The UI SHALL derive its permanent rule overview from the canonical logic blocks 
 - **WHEN** an active template is added or its entry/exit logic changes
 - **THEN** existing catalog coverage SHALL fail if public entry/exit summaries are absent
 - **AND** frontend tests SHALL fail if those summaries cannot be preserved and displayed as a pair.
+
+### Requirement: Strategy transparency has coordinated visual ownership
+Each full strategy analysis SHALL coordinate the canonical manifest between a concise rule overview, a chart legend for point-in-time evidence and one technical-detail disclosure. The page SHALL NOT render competing complete copies of indicators, effective parameters, participation, functions or availability messages.
+
+#### Scenario: Canonical manifest contains indicators and parameters
+- **WHEN** the full strategy analysis renders a canonical transparency manifest
+- **THEN** the permanent overview SHALL summarize entry, exit and risk behavior without repeating parameter cards
+- **AND** the chart legend SHALL identify plotted series and values for the selected or reference candle
+- **AND** one technical-detail disclosure SHALL own indicator functions, participation, configuration and effective parameters.
+
+#### Scenario: Same parameter supports more than one rule
+- **WHEN** one effective parameter participates in entry, exit or risk in multiple places
+- **THEN** the parameter SHALL be listed once in technical details
+- **AND** the rule summaries MAY refer to its trader-readable meaning without restating a second parameter definition.
+
+#### Scenario: Timestamped indicator series is available
+- **WHEN** the timestamped series is available for the active timeframe
+- **THEN** the chart and technical detail SHALL expose the available evidence without rendering `Série disponível para o timeframe atual.`
+- **AND** explicit series-status copy SHALL be limited to unavailable, absent, or incompatible states.
+
+#### Scenario: Trader inspects the operation list
+- **WHEN** the trader reviews open or closed operations
+- **THEN** the list SHALL present the operation facts without an additional decision disclosure or nested explanation
+- **AND** SHALL rely on the permanent strategy-rule overview and chart evidence already presented in the analysis.
+
+### Requirement: Strategy transparency uses consistent trader-facing language
+Visible labels and actions in the full analysis SHALL use consistent Portuguese terminology while preserving canonical technical names such as EMA and SMA where they are the recognized indicator identity.
+
+#### Scenario: Full analysis renders mixed legacy labels
+- **WHEN** legacy presentation labels such as `Winning Configuration`, `List of trades`, `Type`, or `Date and time` would otherwise be shown
+- **THEN** the analysis SHALL render approved Portuguese equivalents
+- **AND** technical acronyms and numeric values SHALL remain unchanged.
+
+#### Scenario: Shared rule overview renders in Favorites or Monitor
+- **WHEN** any trader-facing surface renders the shared permanent-rule overview
+- **THEN** it SHALL use `Regras da estratégia` and `Condições usadas para entrada, saída e proteção da operação.`
+- **AND** SHALL NOT render the legacy copy `Como funciona a estratégia` or `Estas regras não mudam com a posição atual do trade.`.
+
+#### Scenario: Shared operation list renders in Favorites or Monitor
+- **WHEN** any trader-facing surface renders the shared operation list
+- **THEN** it SHALL NOT render `Ver decisão da operação` or any per-operation explanation disclosure
+- **AND** SHALL preserve the visible dates, prices, signals, results and open-position state.

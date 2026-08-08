@@ -5,14 +5,19 @@ interface StrategyRuleOverviewProps {
     strategyTransparency?: StrategyTransparency | Record<string, unknown> | null
     direction?: string | null
     id?: string
+    includeRisk?: boolean
 }
 
 export function StrategyRuleOverview({
     strategyTransparency,
     direction,
     id = 'strategy-rule-overview',
+    includeRisk = false,
 }: StrategyRuleOverviewProps) {
     const rules = buildStrategyRuleOverview(strategyTransparency, direction)
+    const visibleRules = includeRisk
+        ? [rules.entry, rules.exit, rules.risk]
+        : [rules.entry, rules.exit]
 
     return (
         <section
@@ -22,14 +27,14 @@ export function StrategyRuleOverview({
         >
             <div>
                 <h4 id={`${id}-title`} className="text-sm font-semibold text-[#eaecef]">
-                    Como funciona a estratégia
+                    Regras da estratégia
                 </h4>
                 <p className="mt-1 text-xs leading-5 text-[#929aa5]">
-                    Estas regras não mudam com a posição atual do trade.
+                    Condições usadas para entrada, saída e proteção da operação.
                 </p>
             </div>
-            <dl className="mt-3 grid min-w-0 gap-2 md:grid-cols-2">
-                {[rules.entry, rules.exit].map((rule) => (
+            <dl className={`mt-3 grid min-w-0 gap-2 ${includeRisk ? 'lg:grid-cols-3' : 'md:grid-cols-2'}`}>
+                {visibleRules.map((rule) => (
                     <div key={rule.title} className="min-w-0 rounded-md border border-[#2b3139] bg-[#1e2329] px-3 py-2">
                         <dt className="text-xs font-semibold text-[#eaecef]">{rule.title}</dt>
                         <dd className="mt-1 min-w-0">

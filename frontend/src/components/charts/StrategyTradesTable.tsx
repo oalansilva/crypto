@@ -1,7 +1,5 @@
 import { Activity, DollarSign, Download, Target, TrendingDown, TrendingUp } from 'lucide-react'
-import { TradeExplanationDisclosure } from '../trades/TradeExplanationDisclosure'
 import type { TradeExplanation } from '@/types/tradeExplanation'
-import type { StrategyTransparency } from '@/lib/strategyTransparency'
 
 export interface StrategyTrade {
     entry_time: string
@@ -43,7 +41,7 @@ interface StrategyTradesTableProps {
     error?: string | null
     onExport?: () => void
     testId?: string
-    strategyTransparency?: StrategyTransparency | null
+    showMetrics?: boolean
 }
 
 const INITIAL_CAPITAL = 100
@@ -162,7 +160,7 @@ export function StrategyTradesTable({
     error,
     onExport,
     testId = 'strategy-trades-table',
-    strategyTransparency,
+    showMetrics = true,
 }: StrategyTradesTableProps) {
     const isShort = direction.toLowerCase() === 'short'
     const rows = buildClosedTradeRows(trades, candles, isShort)
@@ -173,7 +171,7 @@ export function StrategyTradesTable({
 
     return (
         <section className="space-y-4" data-testid={testId}>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {showMetrics ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] p-5">
                     <div className="mb-3 flex items-center justify-between">
                         <Activity className="h-5 w-5 text-[#fcd535]" />
@@ -204,7 +202,7 @@ export function StrategyTradesTable({
                     </div>
                     <p className="text-sm text-[#929aa5]">Lucro médio</p>
                 </div>
-            </div>
+            </div> : null}
 
             <div className="overflow-hidden rounded-lg border border-[#2b3139] bg-[#1e2329]">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2b3139] bg-[#181a20] p-4">
@@ -223,7 +221,7 @@ export function StrategyTradesTable({
                             <button
                                 type="button"
                                 onClick={onExport}
-                                className="inline-flex items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#181a20] transition-colors hover:bg-[#f0b90b]"
+                                className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#181a20] transition-colors hover:bg-[#f0b90b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
                             >
                                 <Download className="h-4 w-4" />
                                 Exportar para Excel
@@ -241,9 +239,6 @@ export function StrategyTradesTable({
                                 </div>
                                 <span className="font-mono text-sm text-[#eaecef]">{formatPrice(trade.entry_price)}</span>
                             </div>
-                            <div className="mt-3">
-                                <TradeExplanationDisclosure id={`trade-mobile-open-${index}`} entry={trade.entry_explanation} currentState={trade.current_state_explanation} strategyTransparency={strategyTransparency} direction={direction} />
-                            </div>
                         </article>
                     ))}
                     {rows.map((trade) => (
@@ -259,9 +254,6 @@ export function StrategyTradesTable({
                                 <div><dt className="text-[#929aa5]">Entrada</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.entry_price)}</dd></div>
                                 <div><dt className="text-[#929aa5]">Saída</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.exit_price)}</dd></div>
                             </dl>
-                            <div className="mt-3">
-                                <TradeExplanationDisclosure id={`trade-mobile-${trade.tradeNum}`} entry={trade.entry_explanation} exit={trade.exit_explanation} strategyTransparency={strategyTransparency} direction={direction} />
-                            </div>
                         </article>
                     ))}
                     {rows.length === 0 && openTrades.length === 0 ? <p className="p-3 text-center text-sm text-[#929aa5]">Nenhuma operação disponível.</p> : null}
@@ -296,13 +288,6 @@ export function StrategyTradesTable({
                                     <td className="px-4 py-2 text-[#eaecef]">-</td>
                                     <td colSpan={4} className="px-4 py-2 align-top">
                                         <div className="mb-2 font-medium text-[#0ecb81]">Posição aberta</div>
-                                        <TradeExplanationDisclosure
-                                            id={`trade-open-${index}`}
-                                            entry={trade.entry_explanation}
-                                            currentState={trade.current_state_explanation}
-                                            strategyTransparency={strategyTransparency}
-                                            direction={direction}
-                                        />
                                     </td>
                                 </tr>
                             ))}
@@ -319,15 +304,7 @@ export function StrategyTradesTable({
                                     <td className="px-4 py-2 text-[#eaecef]">
                                         <div>{formatUsd(trade.positionValueUSD)}</div>
                                     </td>
-                                    <td colSpan={4} className="px-4 py-2 align-top">
-                                        <TradeExplanationDisclosure
-                                            id={`trade-${trade.tradeNum}`}
-                                            entry={trade.entry_explanation}
-                                            exit={trade.exit_explanation}
-                                            strategyTransparency={strategyTransparency}
-                                            direction={direction}
-                                        />
-                                    </td>
+                                    <td colSpan={4} className="px-4 py-2 align-top" />
                                 </tr>,
                                 <tr key={`${trade.tradeNum}-exit`} className="border-b border-[#2b3139] bg-[#1e2329] transition-colors hover:bg-[#2b3139]">
                                     <td className="px-4 py-2 text-[#eaecef]">Saida</td>
