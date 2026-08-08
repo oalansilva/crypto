@@ -8,6 +8,7 @@ O opencode carrega automaticamente as skills do projeto em `.agents/skills/` (de
 
 - `UI impact: none` — mudança exclusivamente de ferramenta de desenvolvimento e documentação de processo; nenhuma tela, componente ou comportamento de produto é alterado.
 - **opencode-only:** Codex e Cursor deixam de ser usados; `.codex/`, `.cursor/` e `.claude/` (adaptadores openspec de clientes legados) são removidos do repo. `AGENTS.md` e `rules.md` passam a referenciar apenas o opencode.
+- **MCP openaiDeveloperDocs removido:** decisão de Alan após a primeira integração — o MCP da OpenAI não faz mais sentido no fluxo; removido de `opencode.json` e de `~/.config/opencode/opencode.jsonc`.
 - Config versionada: `opencode.json` na raiz (schema, model, MCP, plugin) + `.opencode/` (agents, commands, plugin, skills openspec). Config global fora do git: `~/.config/opencode/opencode.jsonc` (model default e MCP) e `~/.config/opencode/skills/` (symlinks).
 - Skills openspec: fonte única em `.opencode/skills/openspec-*` (geradas por `openspec init --tools opencode --force`), sem duplicação de nomes com outras localizações.
 - Subagents: converter os 4 TOML do Codex para `.opencode/agent/*.md` com `mode: subagent`; read-only mantém `permission: edit: deny`; browser-debugger mantém escrita restrita a diagnósticos.
