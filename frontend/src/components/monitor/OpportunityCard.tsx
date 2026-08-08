@@ -468,7 +468,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             disabled
                         >
                             <CircleDollarSign className="h-3.5 w-3.5" />
-                            {tradeUnavailableReason}
+                            Operar indisponível
                         </button>
                     ) : null}
                 </div>

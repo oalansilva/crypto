@@ -409,7 +409,8 @@ test('par de cripto fora de USDT explica por que a operação direta está indis
   }).first()
   await expect(unavailable).toBeVisible()
   await expect(unavailable).toBeDisabled()
-  await expect(unavailable).toContainText('Operação direta disponível apenas para pares Spot cotados em USDT.')
+  await expect(unavailable).toHaveAccessibleName('Operação direta disponível apenas para pares Spot cotados em USDT.')
+  await expect(unavailable).toContainText('Operar indisponível')
 })
 
 test('par USDT indisponível no exchangeInfo não oferece a ação Operar', async ({ page }) => {
@@ -421,7 +422,8 @@ test('par USDT indisponível no exchangeInfo não oferece a ação Operar', asyn
   }).first()
   await expect(unavailable).toBeVisible()
   await expect(unavailable).toBeDisabled()
-  await expect(unavailable).toContainText('Ativo indisponível para negociação Spot')
+  await expect(unavailable).toHaveAccessibleName('Ativo indisponível para negociação Spot')
+  await expect(unavailable).toContainText('Operar indisponível')
   await expect(page.locator('[data-testid="open-spot-trade-btc-usdt"]:visible')).toHaveCount(0)
 })
 

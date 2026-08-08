@@ -1329,7 +1329,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 disabled
                                                                             >
                                                                                 <CircleDollarSign className="h-4 w-4" />
-                                                                                <span>{getSpotTradeUnavailableReason(opportunity, spotEligibilityBySymbol)}</span>
+                                                                                <span>Operar indisponível</span>
                                                                             </button>
                                                                         ) : null}
                                                                         </div>
