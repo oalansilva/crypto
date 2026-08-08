@@ -318,14 +318,7 @@ export default function ExternalBalancesPage() {
               <span className="font-semibold text-slate-200">Carteira</span>
             </div>
             <h1 className="text-[30px] font-bold tracking-normal text-slate-50 lg:text-[34px]">Carteira</h1>
-            <div className="mt-2 max-w-3xl text-sm text-slate-400">
-              Saldos lidos da Binance Spot por chave API read-only. O Cripto Farol não solicita e-mail nem senha da Binance.
-            </div>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-              <span className="inline-flex items-center gap-2 rounded-md border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 font-mono text-emerald-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.75)]" />
-                Binance · read-only
-              </span>
               <span>Última sincronização</span>
               <span className="font-mono text-slate-200">{asOfLabel || '—'}</span>
             </div>
@@ -436,7 +429,6 @@ export default function ExternalBalancesPage() {
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
                 Balances <span className="font-normal normal-case tracking-normal text-slate-500">({summary.count} ativos)</span>
               </h2>
-              <div className="mt-1 text-xs text-slate-500">Layout responsivo: tabela no desktop e cards no mobile.</div>
             </div>
             <div className="text-xs text-slate-500">{serverTotalUsd != null ? 'total_usd do servidor disponível' : 'total calculado das linhas visíveis'}</div>
           </div>
@@ -491,7 +483,7 @@ export default function ExternalBalancesPage() {
                       const dust = !loading && value < 1
 
                       return (
-                        <tr key={row.asset} className="border-b border-white/10 last:border-b-0 hover:bg-white/[0.03]" style={{ opacity: loading ? 0.65 : 1 }}>
+                        <tr key={row.asset} className="balance-row border-b border-white/10 last:border-b-0" style={{ opacity: loading ? 0.65 : 1 }}>
                           <td className="px-4 py-3 text-left">
                             <div className="flex min-w-[160px] items-center gap-3">
                               <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md font-mono text-xs font-semibold text-white" style={assetTileStyle(row.asset)}>
