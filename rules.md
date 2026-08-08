@@ -7,7 +7,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 - `rules.md`: politica normativa, curta e obrigatoria. Use para decidir o que nunca pode ser pulado.
 - `AGENTS.md`: manual operacional detalhado. Use para comandos, ordem de execucao, mapeamento OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
 - Em caso de duvida ou conflito, siga a regra mais restritiva. Se ainda houver ambiguidade, pare e registre o conflito antes de alterar codigo, card ou Git.
-- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. Codex e Cursor devem aplicar os mesmos overrides versionados neste arquivo e em `AGENTS.md`; o fluxo do projeto não depende de um caminho absoluto local.
+- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O opencode aplica os mesmos overrides versionados neste arquivo e em `AGENTS.md`; o fluxo do projeto não depende de um caminho absoluto local.
 
 ## Regras obrigatorias
 
@@ -28,8 +28,8 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `Design`: Designer/Critic Agent prepara prototipo, critica e evidencias.
    - `Aprovação de Design`: entrega de design completa aguardando Alan.
    - `Pronto para Dev`: Alan aprovou o design por arraste; desenvolvimento liberado.
-   - `Em desenvolvimento`: Codex/Clara esta trabalhando ou validando tecnicamente.
-   - `Code Review`: diff pronto para revisao Codex antes do commit; achados bloqueantes corrigidos ou classificados.
+   - `Em desenvolvimento`: opencode/Clara esta trabalhando ou validando tecnicamente.
+   - `Code Review`: diff pronto para revisao antes do commit; achados bloqueantes corrigidos ou classificados.
    - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
    - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
@@ -43,10 +43,10 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Nao descreva `Status=Done` como card fechado/finalizado; use `Done tecnico` ou `aguardando homologacao`.
 
 4. Todo card em `Status=Design` usa o contrato canônico `.agents/skills/design-critic/SKILL.md` antes da implementação.
-   - Codex invoca `$design-critic`; Cursor invoca `/design-critic`.
+   - No opencode, invoca-se a skill `design-critic` (tool skill carregada automaticamente de `.agents/skills/`).
    - Com `UI impact: affected`, o agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
-   - No Codex, `UI impact: affected` também exige o payload project-local do Impeccable na ordem `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, com `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` versionados. O `DESIGN.md` não pode ser sobrescrito.
-   - Assessment A e Assessment B devem ser critics read-only separados e herdar exatamente o mesmo LLM/modelo e versão da sessão principal do Codex. Se a igualdade não for observável, o veredito é `BLOCKED`; não usar fallback. Cursor permanece no contrato base sem exigir esta instalação Codex-only.
+   - Com `UI impact: affected`, também exige o pipeline do Impeccable na ordem `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, com `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` versionados. O `DESIGN.md` não pode ser sobrescrito. O plugin `.opencode/plugin/impeccable-hook.ts` roda o detector automaticamente em edições de UI e no fim de turno.
+   - Assessment A e Assessment B devem ser critics read-only separados e herdar exatamente o mesmo LLM/modelo e versão da sessão principal do opencode. Se a igualdade não for observável, o veredito é `BLOCKED`; não usar fallback.
    - Com `UI impact: none`, ainda passa por `Design` e `Aprovação de Design`; a entrega de design é enxuta (decisão, escopo, riscos, `Design Critique`) e registra explicitamente a ausência de superfície visual nova.
    - Com `UI impact: none`, registrar Impeccable como `N/A` com justificativa; isso não reduz nenhum gate.
    - Protótipo HTML, quando houver, deve ser navegável em `frontend/public/prototypes/<slug>/` via URL DEV; o Gist OpenSpec lista só Markdown e nunca HTML.
@@ -74,7 +74,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 9. Sempre utilizar subagentes quando houver tarefa de desenvolvimento, investigacao, validacao ou revisao tecnica com ganho claro de paralelismo.
    - O agente principal continua responsavel por escopo, consolidacao, evidencias e fechamento.
-   - A sessao principal do Codex define o LLM/modelo e a versao da tarefa; todo subagent deve herdar exatamente esse mesmo LLM/modelo e versao.
+   - A sessao principal do opencode define o LLM/modelo e a versao da tarefa; todo subagent deve herdar exatamente esse mesmo LLM/modelo e versao.
    - Papéis, prompts, sandbox e ownership podem variar, mas nenhum subagent pode trocar de LLM/modelo, usar fallback ou aplicar roteamento fixo Sol/Luna/Terra.
    - Se a igualdade do LLM/modelo nao puder ser imposta e observada, nao criar o subagent; continuar na sessao principal ou registrar o bloqueio.
    - Para critica ou revisao independente, usar contextos separados e manter o subagent read-only; a sessao principal consolida e corrige.
@@ -85,16 +85,12 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 11. Apos validacao e evidencia, o agente tem autonomia para executar o fluxo manual de fechamento previsto no `AGENTS.md` e em `alan-workflow`, sem solicitar nova autorizacao para cada etapa.
    - Essa autonomia nao autoriza pular teste, OpenSpec, homologacao, isolamento por branch, pedido explicito de lote/release ou merge manual.
 
-12. Usar a skill `caveman` em modo `lite` como padrao de comunicacao com Alan.
-   - Manter respostas curtas, diretas e sem filler, preservando clareza tecnica, seguranca e ordem correta em instrucoes criticas.
-   - Desativar somente quando Alan pedir explicitamente `stop caveman` ou `normal mode`.
-
-13. Toda tela, componente visual ou funcionalidade com impacto de UI/UX deve seguir obrigatoriamente o `DESIGN.md`.
+12. Toda tela, componente visual ou funcionalidade com impacto de UI/UX deve seguir obrigatoriamente o `DESIGN.md`.
    - Vale para telas novas e antigas, ajustes pequenos, refactors visuais, cards de produto e correcoes de interface.
    - Antes de implementar, consultar `DESIGN.md` e registrar no OpenSpec/hand-off quais tokens, componentes, padroes e excecoes foram aplicados.
    - Validacao visual e tecnica deve confirmar aderencia ao `DESIGN.md`; se houver desvio necessario, registrar justificativa antes de fechar a entrega.
 
-14. Playwright visual e obrigatorio no QA de todo card por padrao, inclusive sem mudanca em `frontend/**`.
+13. Playwright visual e obrigatorio no QA de todo card por padrao, inclusive sem mudanca em `frontend/**`.
    - Dispensa so vale com label `qa-visual-skip` e comentario explicito de Alan no card no formato `QA visual dispensado por Alan.` seguido de motivo.
    - Label isolada, comentario isolado, filtro de path ou variavel de repositorio nao autorizam skip.
    - `Done` exige `qa-gate` verde, artifacts/evidencias quando aplicaveis, integracao em `develop`, `./restart` e URL servindo o resultado novo.
