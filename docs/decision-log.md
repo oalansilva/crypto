@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-08 - Pronto exige deploy em PROD (source + services + URL pública)
+
+**Decisao:** o fechamento de release passou a exigir deploy em PROD antes de mover cards para `Pronto`. Merge em `main` sozinho nao e evidencia de `Pronto`. Passos obrigatorios em `/srv/apps/prod/criptofarol/source`: `git fetch origin && git reset --hard origin/main`, `alembic upgrade head`, build frontend com `VITE_APP_ENV=production`, restart dos services PROD afetados e validacao do endpoint publico `https://criptofarol.com.br`.
+
+**Motivo:** na release 2026-08-08 os cards foram movidos para `Pronto` apos o merge em `main`, mas o runtime PROD continuou no commit da release anterior (`cd0a3401`), com dist antigo e migration pendente — a regra local definia `Pronto = main` sem o passo de runtime, e a skill `alan-workflow-ambientes` (mapa DEV/PROD e deploy) nao foi carregada durante o fechamento. O deploy foi corrigido depois (commit `d237b078`, migration `20260803_0001`, bundle novo, services reiniciados, endpoint validado).
+
+**Regra atualizada:** `AGENTS.md` e `rules.md` do cripto passam a exigir `alan-workflow-ambientes` em qualquer pedido de release/publicacao/lote/deploy e o passo de deploy PROD antes de `Pronto`.
+
 ## 2026-08-03 - Impeccable obrigatório no Design do Codex
 
 **Decisao:** integrar o Impeccable em escopo project-local somente no Codex. Cards com `UI impact: affected` passam a registrar `Impeccable Brief`, crítica dual-agent, audit, trace, correções direcionadas, polish e nova validação em navegador real antes de `Design Agent verdict: PASS`. Cards `UI impact: none` registram Impeccable como `N/A`, sem reduzir o gate humano de Design.

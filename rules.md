@@ -33,7 +33,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
    - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
-   - `Pronto`: alteracao ja subiu para `main`/producao com evidencia; este e o fechamento final.
+   - `Pronto`: alteracao ja subiu para `main`/producao com evidencia **incluindo deploy em PROD** (source PROD no commit publicado + services reiniciados + URL publica validada); este e o fechamento final.
    - `Cancelado`: nao sera feito ou foi substituido.
    - Caminho obrigatório de todo card: `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
    - **Guardrail anti-bypass de Design:** nenhum card pode pular `Design`, `Aprovação de Design` ou `Pronto para Dev`. Vale para UI e não-UI, remoções, bugs, docs técnicas com card e pedidos `implemente`/`pode codar`. Não existe bypass `Todo -> Pronto para Dev` nem `Todo -> Em desenvolvimento`.
@@ -59,10 +59,11 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - No cripto, homologacao e aprovacao funcional em `develop`.
    - So comandos explicitos de lote/release autorizam qualquer acao em `main`.
 
-6. Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, execute `alan-workflow` com fechamento de producao dos cards `Homologado`.
+6. Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, execute `alan-workflow` + `alan-workflow-ambientes` com fechamento de producao dos cards `Homologado`.
    - Nao usar auto-merge.
    - Se `develop` contiver mudanca nao homologada, nao fazer merge direto `develop -> main`; usar branch `release-*` com somente conteudo aprovado ou pedir decisao de Alan.
    - Usar `scripts/release-guard pre` antes de abrir/mesclar PR e `scripts/release-guard post` depois da publicacao.
+   - **Deploy em PROD e obrigatorio antes de mover qualquer card para `Pronto`:** em `/srv/apps/prod/criptofarol/source`, atualizar para o commit publicado (`git fetch origin && git reset --hard origin/main`), aplicar migrations (`alembic upgrade head`), buildar o frontend (`VITE_APP_ENV=production`) e reiniciar os services PROD afetados, validando o endpoint publico `https://criptofarol.com.br`. Merge em `main` sem deploy e validacao em PROD nao autoriza `Pronto`.
 
 7. Branches e testes seguem `alan-workflow`; no cripto, evitar commit direto em `develop` enquanto a implementacao estiver parcial.
    - Integrar em `develop` somente quando a change estiver pronta para teste integrado/homologacao, preferencialmente com commit claro ou squash referenciando o card.
