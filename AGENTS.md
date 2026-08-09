@@ -326,6 +326,8 @@ CI falha → baixar artifacts → Read/vision em todos os PNG
 ```
 
 Olhar screenshot so para aprovar mudanca intencional (`diff.png` preferivel) ou quando Alan pedir julgamento visual/exploratorio — nesses casos o julgamento é sempre do subagent `vision` (qwen3.7-plus), nunca do agente principal.
+
+**Regra de path-check antes de delegar ao vision (zero respawn):** antes de passar arquivos ao subagent `vision`, confirme a existência de cada path (`ls`/glob) e a validade da URL; path inexistente ou URL inválida bloqueia a delegação. Se o subagent reportar `File not found`/`URL inválida`, gere o artefato no caminho canônico antes de re-delegar — proibido respawnar o mesmo prompt com o mesmo path inexistente ou webfetch em URL não confirmada.
 ### Comandos esperados
 
 Criar branch em worktree limpa:
