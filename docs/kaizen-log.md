@@ -140,3 +140,43 @@
 - Timestamps de itens do board não expostos via `gh project item-list`.
 - Evidência de arraste de aprovação não visível via API (só comentários).
 - Validação de deploy/URL PROD pertence ao fechamento da sessão principal (executada: source e2c89d4d, services ativos, endpoints ok).
+
+---
+
+## Auditoria pós-release 2026-08-09 — cards #385, #413, #416 (release develop->main #437)
+
+- **Escopo**: release 2026-08-09 (cards #385 Monitor Spot Binance, #413 carteira leitura, #416 roteamento visual qwen3.7-plus). Deploy PROD `27f9e1bf` validado antes da auditoria (regra 14).
+- **Board**: 173 itens — Pronto 151, Cancelado 10, Todo 7, Homologado 3 (#385/#413/#416), Em desenvolvimento 2. Prioridade P0=30, P1=77, P2=11, vazia=55; sem Responsável: 21 (inclui #413/#416).
+- **Git**: worktree único, 0 stashes; origin/develop ancestral de origin/main com trees idênticas; branches/worktrees do pacote limpas; guard post PASS.
+- **OpenSpec**: validate 150/150 pré-archive; 3 changes do pacote arquivadas + 4 delta specs sincronizadas (`monitor-direct-spot-trading` nova, `user-preferences-binance-credentials`, `external-balances`, `visual-analysis-routing`); 148/148 pós-archive.
+- **CI**: PR #437 MERGED (27f9e1bf); 20 checks pass + 6 skipping condicionais esperados (qa-gate base develop, deploy-staging var inativa).
+- **Sessões**: 41 no window, custo $2.01; #385 ≈ $1.23, #413 ≈ $0.10, #416 ≈ $0.06; nenhuma sessão cara sem Done.
+
+### Achados
+- F-1 [minor P1] Evidência documental do deploy PROD ficou só no worktree (doc do pacote com placeholders em develop/main); dois docs de release da mesma data em paralelo. Proposta: antes de `Pronto`, commitar doc preenchida (com seção kaizen); uma doc canônica por release. Esforço S.
+- F-2 [minor P2] Campos do board incompletos em cards da release (#413 Responsável/Prioridade/Tipo vazios; #416 Responsável vazio; título board vs issue divergente). Proposta: `release-guard post` valida campos do pacote e título board/issue. Esforço S.
+- F-3 [minor P2] Caminhos inventados na delegação visual do #413 (4× File not found + respawns) e 3× webfetch 404. Proposta: path-check antes de delegar ao vision; sem respawn por arquivo inexistente. Esforço S.
+- F-4 [minor P2] Títulos de sessão não informativos em sessões caras ("Casual greeting" 4.1M tokens $0.38). Proposta: título descritivo obrigatório em sessões de trabalho. Esforço S.
+- F-5 [minor P1] Reincidência (2ª auditoria): todos do opencode nunca concluídos (card-399) e comentário OpenSpec duplicado no card. Proposta: `/opsx:verify`/Done exige todos completed; helper atualiza gist/comentário existente; elevar #423 para P1. Esforço S.
+- F-6 [info] 2× `step-finish unknown` e spawns vision gpt-5.6-luna pós-merge #419 — já conhecidos, cobertos por #430. Sem ação nova.
+
+### Cards kaizen (máx 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #43X — release-guard post valida evidência documental e campos do board antes de Pronto | P1 | F-1, F-2 | Todo |
+| #43X — path-check antes de delegar análise visual; zero respawn por arquivo inexistente | P2 | F-3 | Todo |
+| #43X — fechamento exige todos completed + título de sessão informativo; elevar #423 a P1 | P2 | F-4, F-5 | Todo |
+
+### Backlog kaizen (releases seguintes)
+- F-6: troca de modelo não propaga para sessões em voo (já em #430).
+
+### Trechos de sessão (evidência local)
+- `ses_01d6…` — 4× `File not found: /tmp/opencode/bl413/{old,new}-{desktop-table,mobile-cards}.png` após delegação vision da sessão principal do #413.
+- `ses_01db…` — 3× `webfetch 404` em `docs.github.com/en/rest/attachments/...`, `.../issues/issue-comments`, `github.com/git/git/actions/runs/1`.
+- `ses_0212ac…` — todo `in_progress` nunca atualizado ("Teste unitário do plugin vision-router ...") + 3 pendentes; título "Casual greeting", 4.1M tokens, $0.38.
+- `ses_01c807→ses_01c083/ses_01c05d` — spawns vision gpt-5.6-luna 2 min após merge #419 (sessão em source sem pull; worktree do card já usava qwen3.7-plus).
+
+### Limitações
+- Timestamps do board não expostos via `gh project item-list`.
+- Evidência de arraste `Aprovação de Design -> Pronto para Dev` não verificável via API (só comentários).
+- Cards 361/384 executados no Codex — fora do opencode DB.
