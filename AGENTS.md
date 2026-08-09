@@ -230,6 +230,10 @@ O arraste `Aprovação de Design -> Pronto para Dev` aprova a versão específic
 
 Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main` **e deploy/validação em PROD** (source PROD no commit publicado + services PROD reiniciados + URL pública `https://criptofarol.com.br` validada).
 
+**Regra de sync título board/issue:** no momento do `Done`, o título do card no board deve ser idêntico ao título da issue (`gh issue edit <id> --title ...` ou edição equivalente quando o board divergir); se uma divergência for aprovada intencionalmente, registre comentário no card com a aprovação. Divergência sem comentário de aprovação é achado de auditoria.
+
+**Regra de troca de modelo de subagent:** mudar o modelo/configuração de um subagent (ex.: `vision.md`) exige **nova sessão** (ou nova worktree) para validação da mudança — sessões/spawns em voo continuam no modelo antigo, pois a configuração é lida no spawn. Não assumir que o merge da troca propaga para sessões ativas; a auditoria kaizen reporta `modelo antigo pós-merge` nesses casos.
+
 ### Comentários obrigatórios no Kanban
 
 Ao mover para `Done`, comentar:
