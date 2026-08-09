@@ -180,3 +180,47 @@
 - Timestamps do board não expostos via `gh project item-list`.
 - Evidência de arraste `Aprovação de Design -> Pronto para Dev` não verificável via API (só comentários).
 - Cards 361/384 executados no Codex — fora do opencode DB.
+
+---
+
+## 2026-08-09 — Auditoria pós-release: release kaizen 421-440 (`/kaizen release`)
+
+- **Release/card**: 2026-08-09 — pacote kaizen #421/#422/#423/#428/#430/#438/#439/#440 (PR #451 merge `4e7c125f`; docs #452/#453; limpeza dívida #454/#455 `c25e662f`).
+- **Fontes consultadas**: board (176 itens), issues/comentários 421-440, PRs 443-455 + checks, git/refs/worktrees/stash + release-guard audit, OpenSpec validate 144/144 + status (8 changes do pacote), docs/release-2026-08-09.md, opencode DB (45 sessões, mode=ro).
+- **Sessões analisadas**: 45 no window — custo total $2.505; pacote ≈ $0.05/card; todos 10/10 completed na sessão de implementação (`ses_0198` $0.417); erros pré-fix #439 (5 file_not_found, 3 webfetch 404) e pré-fix #440/#423 (ses_0212 "Casual greeting" $0.385/4.1M tokens, 4 todos incompletos) sem reincidência pós-fix.
+
+### Métricas
+- **Board**: Pronto 154, Homologado 8 (pacote), Cancelado 11, Em desenvolvimento 2 (#197/#259), Todo 1 (#195). Pacote 8/8 com campos (Resp/Prio/Tipo) e título board==issue sincronizados (fix #430/#438 funcionando).
+- **Git**: 1 worktree limpa, 0 stashes; refs órfãs runtime-*/preserve/*: 0; guard audit PASS (2 warnings, 0 blockers). Branches da release em origin aguardando closeout pós-Pronto.
+- **OpenSpec**: validate 144/144; 8 changes do pacote ativas e completas (archive pendente no fechamento); ~33 changes antigas de cards terminais ainda ativas (F-3).
+- **CI**: PRs 443-450 qa-gate verde; PRs 451-455 verdes (qa-gate skipping condicional em PR→main, padrão já documentado).
+- **Sessões**: pacote limpo — 0 loops, 0 todos eternos, 0 título genérico em sessão cara (pós-fix).
+
+### Achados
+- F-1 [minor→major por recorrência, P1] Comentários de evidência de Done duplicados em 8/8 cards do pacote (postado 2×, formato diferente). Causa: post em lote sem dedupe. Proposta: helper verifica commit ref existente antes de postar; regra 1 evidência por transição. Esforço S.
+- F-2 [minor, P1] Guard post não inventaria branches `change-*/card-*/release-*` (só runtime-*/preserve/*): dívida de releases antigas (08-03, mai-jul) sem enforcement. Proposta: estender inventário + checklist de deleção no closeout. Esforço M.
+- F-3 [minor, P2] ~33 changes OpenSpec de cards Pronto/Cancelado nunca arquivadas. Proposta: rodada `/opsx:bulk-archive` + check no guard. Esforço M.
+- F-4 [minor, P2] Cards presos há 2 auditorias: #197/#259 em Em desenvolvimento, #195 em Todo. Proposta: triagem no próximo turno. Esforço S.
+- F-5 [info, P2] Homologado sem comentário padrão "Homologado por Alan" nos 8 cards (arraste/chat não verificável via API). Proposta: warn no guard (extensão #438). Esforço S.
+- F-6 [info] "Modelo antigo pós-merge" — 2 spawns vision gpt-5.6-luna 2-5 min pós-merge #419; nenhum além desse par; regra #430 validada.
+- F-7 [info] ses_0212 (pré-fix) permanece no DB como recorrência que motivou #440/#423; sem ação nova.
+
+### Cards criados (máx 3/release — regra kaizen)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #456 — dedupe de comentários de evidência no fechamento (1 por transição) | P1 | F-1 | Todo |
+| #457 — release-guard post inventaria change-*/card-*/release-* + deleção no closeout | P1 | F-2 | Todo |
+| #458 — bulk-archive de changes de cards terminais + check no guard | P2 | F-3 | Todo |
+
+### Backlog kaizen (releases seguintes)
+- F-4: triagem dos cards presos #197/#259/#195.
+- F-5: check de comentário de homologação no guard post (extensão #438).
+- F-6/F-7: observabilidade (sem ação nova).
+
+### Trechos de sessão (evidência local)
+- `ses_0198` — 10/10 todos completed; 3× edit oldString; 1× PermissionDenied ao editar skill global (helper) antes da versão do repo — sem impacto.
+- `ses_0212` — 1 todo in_progress + 3 pending nunca atualizados (card-399); título "Casual greeting", $0.38 (pré-fix #440/#423).
+
+### Limitações
+- Timestamps do board não expostos via `gh project item-list`.
+- Evidência de arraste/homologação não verificável via API (só comentários).
