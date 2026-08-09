@@ -132,6 +132,27 @@ if [[ "$mode" == "post" ]] &&
   fi
 fi
 
+section "Prod deploy evidence"
+prod_evidence="${PROD_DEPLOY_EVIDENCE:-}"
+release_published=0
+if [[ "$mode" == "post" ]]; then
+  release_published=1
+elif [[ "$mode" == "pre" ]] &&
+     git rev-parse --verify -q origin/develop >/dev/null &&
+     git rev-parse --verify -q origin/main >/dev/null &&
+     [[ "$(git rev-parse origin/develop)" == "$(git rev-parse origin/main)" ]]; then
+  release_published=1
+fi
+if [[ "$release_published" -eq 1 ]]; then
+  if [[ -n "$prod_evidence" ]]; then
+    printf 'PROD deploy evidence: %s\n' "$prod_evidence"
+  else
+    issue "missing PROD deploy evidence; export PROD_DEPLOY_EVIDENCE with '<published-commit> services=<svc,...> url=<public-url>' (source PROD on the published commit + services restarted + public URL validated) before moving cards to Pronto"
+  fi
+else
+  printf 'PROD deploy evidence not required yet (release not published; checked in pre only after merge, required in post).\n'
+fi
+
 section "Worktrees"
 mapfile -t worktrees < <(git worktree list --porcelain | awk '$1 == "worktree" { sub(/^worktree /, ""); print }')
 for wt in "${worktrees[@]}"; do
@@ -148,6 +169,37 @@ for wt in "${worktrees[@]}"; do
     issue "extra worktree requires classification before release cleanup: $wt"
   fi
 done
+
+section "Orphan refs and preserve worktrees (post)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  orphan_refs="$(git for-each-ref refs/heads refs/remotes/origin --format='%(refname:short)' | grep -E '^(runtime-|rollback-|release-post-|sync-|preserve/)' || true)"
+  if [[ -n "$orphan_refs" ]]; then
+    issue "orphan refs require classification (integrate/preserve/cleanup with authorization):"
+    printf '%s\n' "$orphan_refs" | sort -u | indent
+  else
+    printf 'No orphan refs (runtime-*/rollback-*/release-post-*/sync-*/preserve/*).\n'
+  fi
+
+  for wt in "${worktrees[@]}"; do
+    wt_branch="$(git -C "$wt" symbolic-ref --short HEAD 2>/dev/null || true)"
+    case "$wt_branch" in
+      preserve/*)
+        wt_status="$(git -C "$wt" status --porcelain=v1 --untracked-files=all)"
+        if [[ -n "$wt_status" ]]; then
+          issue "preserve worktree has uncommitted WIP requiring classification: $wt [$wt_branch]"
+          printf '%s\n' "$wt_status" | indent
+        else
+          printf 'Preserve worktree clean: %s [%s]\n' "$wt" "$wt_branch"
+        fi
+        ;;
+      runtime-*|rollback-*|release-post-*|sync-*)
+        issue "worktree on orphan branch requires classification: $wt [$wt_branch]"
+        ;;
+    esac
+  done
+else
+  printf 'Skipped (orphan inventory runs in post/audit; legacy debt does not block pre).\n'
+fi
 
 section "Local branches"
 if git rev-parse --verify -q origin/develop >/dev/null &&

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -28,12 +29,15 @@ def _init_repo(tmp_path: Path) -> Path:
 
 
 def _run_post_guard(repo: Path) -> subprocess.CompletedProcess[str]:
+    env = dict(os.environ)
+    env["PROD_DEPLOY_EVIDENCE"] = "test-commit services=app url=https://example.com"
     return subprocess.run(
         [str(RELEASE_GUARD), "post"],
         cwd=repo,
         check=False,
         capture_output=True,
         text=True,
+        env=env,
     )
 
 
