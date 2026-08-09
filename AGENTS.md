@@ -38,6 +38,9 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de worktree limpo no fechamento:** seguir `alan-workflow`; no cripto, trabalho de outra change deve ir para branch/worktree própria e a integração padrão acontece em `develop` antes de produção.
 - **Regra de varredura da release:** seguir o inventario/classificacao de `alan-workflow`; no cripto, integre o que deve entrar em `develop`, publique em `main` via PR/merge manual quando permitido e só então limpe branches/worktrees.
 - **Regra de guard automatizado de release:** antes de abrir/mesclar PR de release, rode `scripts/release-guard pre`; depois do merge/publicação e antes de reportar limpeza final, rode `scripts/release-guard post`. Se qualquer modo estrito falhar, pare e classifique/corrija todos os bloqueios antes de seguir. Use `scripts/release-guard audit` para diagnostico sem bloqueio durante desenvolvimento.
+- **Regra de evidência de deploy PROD no guard:** `release-guard post` (e `pre` após a publicação) exige `PROD_DEPLOY_EVIDENCE` com `<commit-publicado> services=<svcs> url=<url-publica>` antes de mover cards para `Pronto`; sem evidência, o guard falha em modo estrito. No `pre` antes do merge a evidência ainda não é exigida (deploy ocorre após o merge).
+- **Regra de inventário de refs órfãs no guard post:** `release-guard post` lista refs `runtime-*`/`rollback-*`/`release-post-*`/`sync-*`/`preserve/*` e worktrees em branch órfã, exigindo classificação (integrar/preservar/limpar com autorização) e sinalizando WIP não commitado; itens não classificados são blockers no fechamento.
+- **Regra de evidência documental e campos do board no guard post:** antes de mover cards para `Pronto`, o `release-guard post` valida: doc de release commitada e sem placeholders (TBD/TODO/lorem/`<!--`/FIXME), uma doc canônica por data (2+ docs da mesma data com conteúdo divergente = blocker) e campos do board (Responsável/Prioridade/Tipo) preenchidos; no fechamento, exporte `RELEASE_CARDS=<n1,n2,...>` com os cards do pacote para o guard validar exatamente o pacote (cards fora do pacote com campos faltando são warn/dívida legada, não bloqueiam). Falha do próprio check (gh/jq) também é blocker (fail-closed).
 - **Regra de comparação oficial:** estado publicado deve ser comparado contra `origin/develop` e `origin/main` depois de `git fetch --prune origin`. `main` local ou `develop` local atrasados servem apenas como alerta, nunca como prova final de merge ou falta de merge.
 - **Regra anti-stash órfão:** seguir `alan-workflow`; nenhuma release/lote pode terminar com stash novo ou antigo sem classificacao explicita.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
@@ -91,6 +94,16 @@ De-para principal:
 | `/opsx:archive <change>` | `/opsx:archive <change>` | `$openspec-archive-change` | `openspec status --change "<change>" --json`; avaliar sync de specs; mover para `openspec/changes/archive/YYYY-MM-DD-<change>/` | Arquiva somente no fechamento de lote/release após homologação, checando artifacts, tasks, delta specs e registrando warnings se algo ficar incompleto. |
 
 Antes de executar `/opsx:apply` em qualquer change vinculada a card/issue, siga `alan-workflow` e publique os artefatos OpenSpec no card. Convencao local do Gist: descricao `crypto openspec <change>` e comentario no card do Project 1.
+
+**Republicação de artefatos (sem Gist sprawl):** ao republicar os artefatos OpenSpec de uma change já publicada, use `publish-openspec-card-artifacts.sh --gist-id <id>` com o Gist da publicação anterior (e `--comment-id <id>` para atualizar o comentário existente) — nunca criar novo Gist nem novo comentário para a mesma change. O Gist novo só é criado na primeira publicação. Depois da republicação, registre o `gist_url`/`comment_url` atualizados no handoff.
+
+**Retrigger de CI sem commit vazio:** para reagendar checks sem mudança de código, use `workflow_dispatch` em vez de commit vazio, ex.:
+```bash
+gh workflow run <workflow-name>.yml --repo oalansilva/crypto --ref <branch> [--field <name>=<value>]
+# ou, para reagendar todos os checks do PR:
+gh pr checks <PR> --watch --fail-fast --interval 20
+```
+Commit vazio como retrigger é proibido. Agrupe ajustes pós-review de um card em um único commit/PR, evitando PRs fragmentados por ajuste.
 
 De-para complementar:
 
@@ -221,7 +234,15 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 
 O arraste `Aprovação de Design -> Pronto para Dev` aprova a versão específica do `design.md` e, quando existir, do protótipo. Apenas Alan autenticado pode executá-lo. Se uma dessas evidências mudar, a aprovação fica obsoleta e o desenvolvimento deve permanecer bloqueado até nova aprovação. Retornos controlados antes de `Done` são `Aprovação de Design -> Design`, `Code Review -> Em desenvolvimento` e `QA -> Em desenvolvimento`. Se um agente tiver avançado indevidamente para `Em desenvolvimento` sem passar por `Design`/`Aprovação de Design`/`Pronto para Dev`, deve regredir o card para `Design` (ou `Aprovação de Design` se a evidência de design já estiver completa), preservar o trabalho em branch e parar o `/opsx:apply` até a aprovação humana.
 
+**Evidência obrigatória de aprovação de Design:** nenhum código é aplicado (nem `/opsx:apply`, nem edição de arquivos de implementação) sem evidência registrada de aprovação de Design: comentário explícito de Alan no card ou arraste `Aprovação de Design -> Pronto para Dev` no board. A regra vale para todo card, inclusive `UI impact: none`, remoções, bugs e tooling — não existe exceção. Se o veredito do design for `BLOCKED`, o `design.md` deve conter seção de resolução (o que bloqueou, como foi resolvido, quem aprovou) antes de qualquer avanço para `Pronto para Dev`/implementação; `BLOCKED` sem resolução registrada bloqueia o card.
+
+**Checklist de gates no PR/commit de integração:** o PR (e o commit de squash de integração) deve listar, mesmo para mudanças de tooling/docs: change OpenSpec, `design.md`/verdict, `UI impact` e evidência de aprovação de Design (link do comentário ou arraste). O `/opsx:verify` valida essa checklist; PR sem os gates registrados não é integrado.
+
 Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main` **e deploy/validação em PROD** (source PROD no commit publicado + services PROD reiniciados + URL pública `https://criptofarol.com.br` validada).
+
+**Regra de sync título board/issue:** no momento do `Done`, o título do card no board deve ser idêntico ao título da issue (`gh issue edit <id> --title ...` ou edição equivalente quando o board divergir); se uma divergência for aprovada intencionalmente, registre comentário no card com a aprovação. Divergência sem comentário de aprovação é achado de auditoria.
+
+**Regra de troca de modelo de subagent:** mudar o modelo/configuração de um subagent (ex.: `vision.md`) exige **nova sessão** (ou nova worktree) para validação da mudança — sessões/spawns em voo continuam no modelo antigo, pois a configuração é lida no spawn. Não assumir que o merge da troca propaga para sessões ativas; a auditoria kaizen reporta `modelo antigo pós-merge` nesses casos.
 
 ### Comentários obrigatórios no Kanban
 
@@ -276,6 +297,7 @@ Status final: pronto.
 - Antes de `Code Review`: checks focados e validação OpenSpec da change precisam ter sinal suficiente para revisar o diff.
 - Antes de `QA`: review precisa estar limpo/classificado e o SHA revisado deve estar commitado/pushado.
 - Antes de `Done`: `qa-gate` precisa estar verde, checks iniciados precisam terminar, Playwright visual e artifacts precisam estar registrados, e `./restart`/runtime precisam validar o resultado. Status "rodando", `cancelled` ou skip sem dispensa autorizada nao vale como evidência final.
+- **Regra de todos completos no fechamento:** `Done`/`/opsx:verify` exige 0 todos `in_progress`/`pending` nas sessões do opencode associadas ao card (consulta read-only do `opencode.db`; sessão com todo não concluído não fecha como Done sem classificação explícita). Sessões com custo > $0.10 devem ter título descritivo (card/contexto); título genérico em sessão cara é achado de auditoria kaizen.
 - No fechamento de lote/release: `openspec validate --all`, testes completos proporcionais ao pacote, build e CI até resultado final.
 - Se teste local ou CI falhar, corrija, revalide e só então siga para próximo status.
 
@@ -315,6 +337,8 @@ CI falha → baixar artifacts → Read/vision em todos os PNG
 ```
 
 Olhar screenshot so para aprovar mudanca intencional (`diff.png` preferivel) ou quando Alan pedir julgamento visual/exploratorio — nesses casos o julgamento é sempre do subagent `vision` (qwen3.7-plus), nunca do agente principal.
+
+**Regra de path-check antes de delegar ao vision (zero respawn):** antes de passar arquivos ao subagent `vision`, confirme a existência de cada path (`ls`/glob) e a validade da URL; path inexistente ou URL inválida bloqueia a delegação. Se o subagent reportar `File not found`/`URL inválida`, gere o artefato no caminho canônico antes de re-delegar — proibido respawnar o mesmo prompt com o mesmo path inexistente ou webfetch em URL não confirmada.
 ### Comandos esperados
 
 Criar branch em worktree limpa:
@@ -346,7 +370,8 @@ scripts/release-guard pre
 openspec validate --all
 gh pr create --base main --head develop --title "<titulo>" --body "<resumo>"
 gh pr merge --merge --delete-branch=false
-scripts/release-guard post
+scripts/release-guard post   # inclui check de change OpenSpec duplicada (ativa + arquivada)
+# sync main -> develop (quando necessário) deve rodar release-guard post novamente após o merge de sync
 ```
 
 Publicar com branch de release quando `develop` tiver conteúdo não homologado:

@@ -17,7 +17,7 @@ Scope of evidence (read-only commands):
 1. Board (Project 1, owner oalansilva):
    - `gh project view 1 --owner oalansilva --format json`
    - `gh project item-list 1 --owner oalansilva --format json --limit 200` (Project 1 has >100 items; paginate if needed)
-   - Check: cards stuck in a column (compare Created/Updated), Status vs Fluxo divergence, Done/Homologado/Pronto without evidence comment, gate violations (cards that never passed Design/Aprovação de Design), cards per status distribution.
+    - Check: cards stuck in a column (compare Created/Updated), Status vs Fluxo divergence, Done/Homologado/Pronto without evidence comment, gate violations (cards that never passed Design/Aprovação de Design), cards per status distribution, board title vs issue title divergence on closed cards (a closed card whose board title differs from the issue title without an approved-divergence comment is a finding).
 2. Git hygiene:
    - `git fetch --prune origin` then inventory: `git status -sb`, `git worktree list`, `git stash list`, `git for-each-ref refs/heads refs/remotes/origin --format='%(objectname:short) %(refname:short)'`, `git log --oneline origin/main..HEAD origin/develop..HEAD`
    - Run `scripts/release-guard audit` for diagnostics.
@@ -38,10 +38,12 @@ Scope of evidence (read-only commands):
      - loop without progress: same tool + same error >= 2 consecutive times without strategy change
      - lost session: `step-finish` reason `unknown`; session with high cost/tokens and no completed tool flow or no terminal stop
      - eternal todo: todo rows rewritten/never completed
-     - routing drift: compare `json_extract(session.model, '$.id')` vs `json_extract(message.data, '$.modelID')` — session.model is a JSON object string (`{"id": ..., "providerID": ..., "variant": ...}`) while message.modelID is a bare string; a literal comparison flags every message (false positives). Only the `vision` exception legitimately differs.
+      - routing drift: compare `json_extract(session.model, '$.id')` vs `json_extract(message.data, '$.modelID')` — session.model is a JSON object string (`{"id": ..., "providerID": ..., "variant": ...}`) while message.modelID is a bare string; a literal comparison flags every message (false positives). Only the `vision` exception legitimately differs.
+      - stale-model-after-merge: a subagent session spawned after the merge commit that changed that agent's model still reports the OLD model (config is read at spawn from the session/worktree state; model changes do not propagate to in-flight sessions). Cross-check the session/spawn timestamp against the merge SHA time and against the model now configured in `.opencode/agent/*.md` at HEAD; report as "modelo antigo pós-merge".
      - failing subagent: `task` tool with error on child session
      - tool misuse: grep/read output over limits (e.g. "exceeded 65536 bytes"), apply_patch failures
-   - Output cost/effectiveness per card: tokens + cost per session vs final board status (expensive session that never reached Done).
+    - Output cost/effectiveness per card: tokens + cost per session vs final board status (expensive session that never reached Done).
+    - Session titles: sessions with cost > $0.10 (or high token counts) MUST have a descriptive title (card/context); a generic title (e.g. "Casual greeting") on an expensive session is a finding ("título de sessão não informativo").
 6. Tech debt (when requested or in full audit):
    - Test coverage gaps: `./backend/.venv/bin/python -m pytest --cov --cov-report=term -q` scoped to recent modules
    - Dependencies: `pip-audit` / `npm audit --prefix frontend` (read-only reports), outdated packages

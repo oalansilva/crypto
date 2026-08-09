@@ -103,6 +103,21 @@ Verify that an implementation matches the change artifacts (specs, tasks, design
        - Recommendation: "Update implementation or revise design.md to match reality"
    - If no design.md: Skip design adherence check, note "No design.md to verify against"
 
+   **Gate Checklist (card/issue integration)**:
+   - If the change is linked to a card/issue (`card-<id>`/`#<id>` naming):
+     - Verify the PR/commit of integration lists: change OpenSpec, `design.md`/verdict, `UI impact` (affected|none with justification), and evidence of Design approval (comment by Alan or `Aprovação de Design -> Pronto para Dev` drag).
+     - If `Design Agent verdict: BLOCKED` is present in design.md, require a resolution section (what blocked, how resolved, who approved) before advancing.
+     - If the gate evidence is missing from the PR/commit description:
+       - Add CRITICAL: "Design approval gate evidence missing from integration PR/commit"
+       - Recommendation: "Add design.md/verdict, UI impact and approval evidence to the PR description before integration"
+
+   **Todos Completion Check (openCode sessions)**:
+   - For card Done/close validation, check todos of the associated opencode sessions (query `~/.local/share/opencode/opencode.db` READ-ONLY, e.g. `python3 -c "import sqlite3; ..."` with `file:...opencode.db?mode=ro` URI): every `todo` row for the session(s) linked to the card must be `completed`.
+   - If any todo is `in_progress`/`pending`/`not_started`:
+     - Add CRITICAL: "OpenCode todos incomplete for card <id>: N todos not completed"
+     - Recommendation: "Complete the pending todos (or mark them as explicitly abandoned with justification) before closing the card"
+   - If the DB cannot be queried, note it as a limitation (does not fail the check by itself, but must be declared).
+
    **Code Pattern Consistency**:
    - Review new code for consistency with project patterns
    - Check file naming, directory structure, coding style

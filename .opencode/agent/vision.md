@@ -22,3 +22,4 @@ Rules:
 - Reference exact file paths and, when useful, coordinates/regions of findings.
 - Keep the final output concise and actionable: verdict, findings ordered by severity, and recommended next step.
 - Do not edit files. Do not run long test suites. Do not alter product data.
+- If a provided file path does not exist or a URL is invalid (404/error), do NOT retry the same path; report `File not found`/`URL inválida` with the exact path/URL and stop. The main session must generate the artifact at the canonical path before delegating again.
