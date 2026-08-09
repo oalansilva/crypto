@@ -96,3 +96,11 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Dispensa so vale com label `qa-visual-skip` e comentario explicito de Alan no card no formato `QA visual dispensado por Alan.` seguido de motivo.
    - Label isolada, comentario isolado, filtro de path ou variavel de repositorio nao autorizam skip.
    - `Done` exige `qa-gate` verde, artifacts/evidencias quando aplicaveis, integracao em `develop`, `./restart` e URL servindo o resultado novo.
+
+14. Kaizen e a melhoria continua de processo: quanto mais o processo e usado, melhor ele fica.
+   - Toda release/lote roda `/kaizen release` apos o deploy PROD validado e antes de mover cards para `Pronto`; evidencia em `docs/kaizen-log.md`.
+   - O Kaizen audita board, Git hygiene, OpenSpec, CI, tech debt e sessoes do opencode (SQL `mode=ro` em `~/.local/share/opencode/opencode.db`), detectando onde o modelo se perde ou alucina.
+   - Melhorias sao registradas como cards: 1 card por melhoria, formato PO, label `kaizen`, **sempre em `Status=Todo`** (nunca em coluna de execucao), seguindo o fluxo normal do board.
+   - **Maximo 3 cards kaizen por release**; a priorizacao (campo `Prioridade` P0/P1/P2, regra severidade x frequencia / esforco) define os 3 que entram; o restante fica no backlog kaizen.
+   - Kaizen propoe, Alan aprova: o agente nunca implementa mudancas de regra/skill/script sem aprovacao explicita; pode propor melhorias de skills e pesquisar alternativas (busca read-only).
+   - Issues publicas: apenas metricas agregadas e IDs; trechos de sessoes somente em `docs/kaizen-log.md`.

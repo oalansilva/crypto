@@ -55,7 +55,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - OpenSpec é a camada de especificação técnica (artifacts).
 - Workflow DB e OpenSpec são fontes de operação e evidência.
 - **Regra de documentação produto/Drive:** documentos de produto/projeto que existem no Google Drive e em `docs/*.md` devem ser mantidos sincronizados. Drive é a fonte de consulta/revisão para Alan; Markdown local/GitHub é espelho versionado e backup técnico. Não editar manualmente nos dois lugares de forma divergente. Ao atualizar definição aprovada, atualize o `.md` local e sincronize o Google Doc correspondente, ou atualize o Drive e depois espelhe localmente. Para código e documentação técnica de implementação, GitHub continua mandando.
-- **Caminhos locais/versionados de documentação:** use `crypto/docs/project-hub.md` como hub central do projeto; `crypto/docs/decision-log.md` para decisões relevantes; `crypto/docs/mvp-scope.md` para escopo do MVP; `crypto/docs/backlog-operating-model.md` para modelo operacional do backlog/release; `crypto/docs/landing-page.md` para definição/copy da landing; `crypto/docs/brand-system.md` para marca, tom e identidade; `crypto/docs/beta-*.md` para materiais do beta, validação, convite, Telegram e conteúdo; e `crypto/docs/release-*.md` para registro de release.
+- **Caminhos locais/versionados de documentação:** use `crypto/docs/project-hub.md` como hub central do projeto; `crypto/docs/decision-log.md` para decisões relevantes; `crypto/docs/mvp-scope.md` para escopo do MVP; `crypto/docs/backlog-operating-model.md` para modelo operacional do backlog/release; `crypto/docs/landing-page.md` para definição/copy da landing; `crypto/docs/brand-system.md` para marca, tom e identidade; `crypto/docs/beta-*.md` para materiais do beta, validação, convite, Telegram e conteúdo; `crypto/docs/release-*.md` para registro de release; e `crypto/docs/kaizen-log.md` para o log de melhoria contínua de processo (quanto mais o processo é usado, melhor ele fica — cada auditoria alimenta regras/skills/scripts).
 - **Fontes externas de consulta/status:** use o Google Drive da Clara, na pasta do projeto cripto (`https://drive.google.com/drive/folders/1OE0D_nsb7BAMQ_ntZXUonnsfX9MtXhT9`), com documentos de texto sempre na subpasta `Docs` (`1X01niQNrPh2wLy5WqJb2iBN8QnzTKGBx`) e planilhas na subpasta `Planilhas` quando aplicável; o GitHub Project `MVP Cripto - Beta Fechado` como fonte operacional dos cards/status; e Issues/PRs do GitHub quando o item tiver evidência técnica ou comentário de release.
 - **Regra prática de sincronização:** documento de produto/processo atualiza local em `crypto/docs/` e sincroniza no Drive. Execução/status atualiza GitHub Project e, quando houver código, Issue/PR. Não edite Drive e Markdown de forma divergente.
 - **DoD de documentação sincronizada:** uma atualização documental só está concluída quando os dois lados estão atualizados e conferidos: Markdown local/versionado em `crypto/docs/` e Google Doc/Sheet correspondente no Drive. Se apenas o Drive foi atualizado, espelhe imediatamente no Markdown local; se apenas o Markdown local foi atualizado, sincronize imediatamente no Drive. Não mova card para `Pronto`, não feche release e não reporte documentação como concluída sem evidência dos dois lados.
@@ -451,7 +451,7 @@ npm --prefix frontend run build
 
 ## Agentes e responsabilidades
 
-O time é composto por 5 agentes, cada um com papel definido:
+O time é composto por 6 agentes, cada um com papel definido:
 
 ### main — Project Manager / Team Leader
 **Template base:** Orion (productivity)
@@ -501,6 +501,17 @@ Valida + análise profunda de bugs.
 - Análise de erro: parse stack traces, identifica root cause vs symptoms
 - Fornece steps de debug em ordem de probabilidade
 - Cria bug reports com steps de reprodução e severidade
+
+### Kaizen — Process Improvement (melhoria contínua)
+Audita como o processo está sendo executado e transforma fricções em melhorias. Princípio: **quanto mais o processo é usado, melhor ele fica** — cada auditoria gera evidência, as correções aprovadas viram regras/skills/scripts, e o próximo ciclo valida se a fricção sumiu.
+- Execução: `/kaizen` (completa), `/kaizen card <id>` (pós-card), `/kaizen release` (pós-release, obrigatória no fechamento de lote).
+- **Read-only na auditoria**: subagent `.opencode/agent/kaizen.md` coleta evidências (board, Git, OpenSpec, CI, sessões opencode via SQL `mode=ro`, tech debt); o principal consolida e cadastra.
+- **Análise de sessões opencode** (escopo = release): correlaciona cards do pacote (`#<id>`/`card-<id>`) com sessões em `~/.local/share/opencode/opencode.db` e detecta onde o modelo se perde/alucina (caminho/URL inventado, loop sem progresso, `step-finish unknown`, custo alto sem `Done`, deriva de roteamento, subagent falhando, TODO eterno).
+- **Atua como PO ao registrar melhorias**: 1 card por melhoria (formato `## Proposta (PO)`, critérios de aceite, classificação change/story/bug), labels `kaizen`, campos do board preenchidos, dependências linkadas. **Todo card kaizen é criado em `Status=Todo`** (backlog) e segue o fluxo normal do board a partir daí — nunca é criado direto em coluna de execução. **Máximo 3 cards kaizen por release** — a priorização define os 3 que entram; o resto fica no backlog para releases seguintes.
+- **Priorização visível**: campo `Prioridade` P0/P1/P2 preenchido na criação (regra severidade × frequência / esforço; P0 = risco/segurança/falha recorrente/alucinação cara → semana atual; P1 = quick win/higiene → próxima; P2 = desejável → backlog); View "Kaizen" no board agrupada por prioridade (criada manualmente no Project 1 — não automatizável via CLI; ver card #420); override humano sempre possível.
+- **Propõe, Alan aprova**: Kaizen nunca implementa. Pode propor melhorias de skills e pesquisar alternativas (busca read-only) quando a atual não atender; troca/criação só após aprovação de Alan.
+- **Segurança**: issues públicas só com métricas agregadas e IDs; trechos de sessões apenas em `docs/kaizen-log.md`.
+- Registro de achados: `docs/kaizen-log.md` (append-only) + `decision-log.md` para mudanças de processo. Padrão recorrente em 2+ auditorias eleva severidade e vira candidato a promoção de regra.
 
 ### Regras operacionais dos agentes
 - O **workflow DB** é a fonte operacional de verdade.
