@@ -42,7 +42,8 @@ Scope of evidence (read-only commands):
       - stale-model-after-merge: a subagent session spawned after the merge commit that changed that agent's model still reports the OLD model (config is read at spawn from the session/worktree state; model changes do not propagate to in-flight sessions). Cross-check the session/spawn timestamp against the merge SHA time and against the model now configured in `.opencode/agent/*.md` at HEAD; report as "modelo antigo pós-merge".
      - failing subagent: `task` tool with error on child session
      - tool misuse: grep/read output over limits (e.g. "exceeded 65536 bytes"), apply_patch failures
-   - Output cost/effectiveness per card: tokens + cost per session vs final board status (expensive session that never reached Done).
+    - Output cost/effectiveness per card: tokens + cost per session vs final board status (expensive session that never reached Done).
+    - Session titles: sessions with cost > $0.10 (or high token counts) MUST have a descriptive title (card/context); a generic title (e.g. "Casual greeting") on an expensive session is a finding ("título de sessão não informativo").
 6. Tech debt (when requested or in full audit):
    - Test coverage gaps: `./backend/.venv/bin/python -m pytest --cov --cov-report=term -q` scoped to recent modules
    - Dependencies: `pip-audit` / `npm audit --prefix frontend` (read-only reports), outdated packages

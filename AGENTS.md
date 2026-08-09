@@ -297,6 +297,7 @@ Status final: pronto.
 - Antes de `Code Review`: checks focados e validação OpenSpec da change precisam ter sinal suficiente para revisar o diff.
 - Antes de `QA`: review precisa estar limpo/classificado e o SHA revisado deve estar commitado/pushado.
 - Antes de `Done`: `qa-gate` precisa estar verde, checks iniciados precisam terminar, Playwright visual e artifacts precisam estar registrados, e `./restart`/runtime precisam validar o resultado. Status "rodando", `cancelled` ou skip sem dispensa autorizada nao vale como evidência final.
+- **Regra de todos completos no fechamento:** `Done`/`/opsx:verify` exige 0 todos `in_progress`/`pending` nas sessões do opencode associadas ao card (consulta read-only do `opencode.db`; sessão com todo não concluído não fecha como Done sem classificação explícita). Sessões com custo > $0.10 devem ter título descritivo (card/contexto); título genérico em sessão cara é achado de auditoria kaizen.
 - No fechamento de lote/release: `openspec validate --all`, testes completos proporcionais ao pacote, build e CI até resultado final.
 - Se teste local ou CI falhar, corrija, revalide e só então siga para próximo status.
 
