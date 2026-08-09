@@ -266,47 +266,59 @@ else
 fi
 
 section "Release docs and board fields (post)"
-release_docs="$(ls docs/release-*.md 2>/dev/null | sort)"
-if [[ -z "$release_docs" ]]; then
-  issue "no release doc found in docs/; commit the release doc before moving cards to Pronto"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  release_docs="$(ls docs/release-*.md 2>/dev/null | sort)"
+  if [[ -z "$release_docs" ]]; then
+    issue "no release doc found in docs/; commit the release doc before moving cards to Pronto"
+  fi
+  for doc in $release_docs; do
+    if git ls-files --error-unmatch "$doc" >/dev/null 2>&1; then
+      placeholders="$(grep -nE 'TBD|TODO|lorem|<!--|FIXME|<[A-Z_]+>' "$doc" 2>/dev/null | head -5)"
+      if [[ -n "$placeholders" ]]; then
+        issue "release doc contains placeholders and is not ready: $doc"
+        printf '%s\n' "$placeholders" | indent
+      fi
+    else
+      issue "release doc not committed: $doc (commit it before moving cards to Pronto)"
+    fi
+  done
+  # Duplicate release docs for the same date with divergent content
+  declare -A seen_docs
+  for doc in $release_docs; do
+    date="$(basename "$doc" | sed -E 's/^release-([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\1/')"
+    if [[ -z "$date" || "$date" == "$doc" ]]; then
+      continue
+    fi
+    if [[ -n "${seen_docs[$date]:-}" ]]; then
+      if ! diff -q "${seen_docs[$date]}" "$doc" >/dev/null 2>&1; then
+        issue "duplicate release docs with divergent content for date $date: ${seen_docs[$date]} vs $doc (consolidate into one canonical doc)"
+      fi
+    else
+      seen_docs["$date"]="$doc"
+    fi
+  done
+else
+  printf 'Skipped (release docs and board fields check runs in post/audit; legacy debt does not block pre).\n'
 fi
-for doc in $release_docs; do
-  if git ls-files --error-unmatch "$doc" >/dev/null 2>&1; then
-    placeholders="$(grep -nE 'TBD|TODO|lorem|<!--|FIXME|<[A-Z_]+>' "$doc" 2>/dev/null | head -5)"
-    if [[ -n "$placeholders" ]]; then
-      issue "release doc contains placeholders and is not ready: $doc"
-      printf '%s\n' "$placeholders" | indent
-    fi
-  else
-    issue "release doc not committed: $doc (commit it before moving cards to Pronto)"
-  fi
-done
-# Duplicate release docs for the same date with divergent content
-declare -A seen_docs
-for doc in $release_docs; do
-  date="$(basename "$doc" | sed -E 's/^release-([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\1/')"
-  if [[ -z "$date" || "$date" == "$doc" ]]; then
-    continue
-  fi
-  if [[ -n "${seen_docs[$date]:-}" ]]; then
-    if ! diff -q "${seen_docs[$date]}" "$doc" >/dev/null 2>&1; then
-      issue "duplicate release docs with divergent content for date $date: ${seen_docs[$date]} vs $doc (consolidate into one canonical doc)"
-    fi
-  else
-    seen_docs["$date"]="$doc"
-  fi
-done
 # Board fields for package cards (Responsável/Prioridade/Tipo)
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  release_cards="${RELEASE_CARDS:-}"
   if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
     if [[ -z "$board_json" ]]; then
-      issue "board fields check could not run (gh project item-list returned no data; check auth/rate limit)"
+      if [[ -n "$release_cards" ]]; then
+        issue "board fields check could not run (gh project item-list returned no data; check auth/rate limit/project scope)"
+      else
+        warn "board fields check unavailable (no board data; gh may lack project scope). Set RELEASE_CARDS to enforce package checks."
+      fi
     else
       if ! printf '%s' "$board_json" | jq -e . >/dev/null 2>&1; then
-        issue "board fields check could not run (invalid JSON from gh project item-list)"
+        if [[ -n "$release_cards" ]]; then
+          issue "board fields check could not run (invalid JSON from gh project item-list)"
+        else
+          warn "board fields check unavailable (invalid JSON from gh project item-list)."
+        fi
       else
-        release_cards="${RELEASE_CARDS:-}"
         if [[ -n "$release_cards" ]]; then
           card_list="$(printf '%s' "$release_cards" | tr ',' ' ')"
           filter=''
@@ -333,7 +345,11 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
       fi
     fi
   else
-    issue "board fields check could not run (gh unavailable or not authenticated)"
+    if [[ -n "$release_cards" ]]; then
+      issue "board fields check could not run (gh unavailable or not authenticated) with RELEASE_CARDS set"
+    else
+      warn "board fields check unavailable (gh unavailable or not authenticated). Set RELEASE_CARDS to enforce package checks."
+    fi
   fi
 else
   printf 'Skipped (board fields check runs in post/audit).\n'
