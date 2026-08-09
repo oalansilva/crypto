@@ -20,10 +20,20 @@ LIMIT_OFFSET_RATIO = Decimal("0.001")
 
 
 class BinanceOrderError(RuntimeError):
-    def __init__(self, message: str, *, status_code: int = 400, code: Optional[int] = None):
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int = 400,
+        code: Optional[int] = None,
+        outcome_unknown: bool = False,
+        safe_for_user: bool = False,
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.code = code
+        self.outcome_unknown = outcome_unknown
+        self.safe_for_user = safe_for_user
 
 
 def _env_base_url() -> str:
@@ -69,22 +79,39 @@ def signed_request(
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")
         code = None
-        message = raw or str(exc)
+        message = "A Binance recusou a solicitação."
         try:
             parsed = json.loads(raw)
             code = parsed.get("code")
             message = str(parsed.get("msg") or message)
         except Exception:
             pass
-        status = 403 if code in (-2014, -2015, -1022) else 400
+        is_order_submit = method.upper() == "POST" and path == "/api/v3/order"
+        # 429/418 (rate limit) are enforced before order processing by Binance, so a
+        # rejected submit here is a definitive non-execution, not an unknown outcome.
+        outcome_unknown = is_order_submit and (
+            int(exc.code or 0) >= 500 or int(exc.code or 0) == 408 or code in {-1006, -1007}
+        )
+        status = 403 if code in (-2014, -2015, -1022) else (502 if outcome_unknown else 400)
         if code in (-2014, -2015):
             message = (
                 "Chave Binance sem permissão de Spot Trading ou inválida. "
                 "Atualize a chave em Meu Perfil com Spot Trading habilitado (sem withdraw)."
             )
-        raise BinanceOrderError(message, status_code=status, code=code) from exc
+        raise BinanceOrderError(
+            message,
+            status_code=status,
+            code=code,
+            outcome_unknown=outcome_unknown,
+            safe_for_user=code in (-2014, -2015),
+        ) from exc
     except Exception as exc:
-        raise BinanceOrderError(f"Falha ao falar com a Binance: {exc}", status_code=502) from exc
+        is_order_submit = method.upper() == "POST" and path == "/api/v3/order"
+        raise BinanceOrderError(
+            "Falha ao falar com a Binance.",
+            status_code=502,
+            outcome_unknown=is_order_submit,
+        ) from exc
 
 
 def public_get(
@@ -97,6 +124,18 @@ def public_get(
     try:
         with urllib.request.urlopen(req, timeout=float(_timeout_s())) as resp:
             return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        code = None
+        message = "A Binance recusou a consulta pública."
+        try:
+            parsed = json.loads(raw)
+            code = parsed.get("code")
+            message = str(parsed.get("msg") or message)
+        except Exception:
+            pass
+        status = 502 if int(exc.code or 0) >= 500 or int(exc.code or 0) == 429 else 400
+        raise BinanceOrderError(message, status_code=status, code=code) from exc
     except Exception as exc:
         raise BinanceOrderError(f"Falha ao consultar exchangeInfo: {exc}", status_code=502) from exc
 

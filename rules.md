@@ -79,7 +79,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Papéis, prompts, sandbox e ownership podem variar, mas nenhum subagent pode trocar de LLM/modelo, usar fallback ou aplicar roteamento fixo Sol/Luna/Terra.
    - Se a igualdade do LLM/modelo nao puder ser imposta e observada, nao criar o subagent; continuar na sessao principal ou registrar o bloqueio.
    - Para critica ou revisao independente, usar contextos separados e manter o subagent read-only; a sessao principal consolida e corrige.
-   - **Excecao explicita - roteamento visual:** o modelo da sessao (deepseek-v4-flash) nao tem visao. Toda analise de imagem (anexos no chat, screenshots de tools, imagens de cards/issues do GitHub, diff.png/baselines do QA visual, artifacts do CI, qa_artifacts, graficos/sinais exportados) e feita pelo subagent `vision` com model fixo `opencode-go/gpt-5.6-luna`, chaveado automaticamente pelo plugin `vision-router`; o agente principal nunca interpreta pixels.
+   - **Excecao explicita - roteamento visual:** o modelo da sessao (deepseek-v4-flash) nao tem visao. Toda analise de imagem (anexos no chat, screenshots de tools, imagens de cards/issues do GitHub, diff.png/baselines do QA visual, artifacts do CI, qa_artifacts, graficos/sinais exportados) e feita pelo subagent `vision` com model fixo `opencode-go/qwen3.7-plus`, chaveado automaticamente pelo plugin `vision-router`; o agente principal nunca interpreta pixels.
 
 10. PostgreSQL e obrigatorio em runtime, QA, homologacao e scripts operacionais.
    - Nao usar SQLite como banco de operacao.

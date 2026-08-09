@@ -1,8 +1,8 @@
 ---
-description: Analisa uma ou mais imagens (arquivos, URLs de anexo do GitHub, artifacts do CI) com o agente vision (gpt-5.6-luna) — julgamento visual rigoroso.
+description: Analisa uma ou mais imagens (arquivos, URLs de anexo do GitHub, artifacts do CI) com o agente vision (qwen3.7-plus) — julgamento visual rigoroso.
 ---
 
-Analyze the image(s) with the vision subagent (gpt-5.6-luna). Input: `$ARGUMENTS` — one or more image paths, GitHub attachment URLs, or CI artifact paths (e.g. `diff.png`, `actual.png`, screenshot, baseline, before/after pair).
+Analyze the image(s) with the vision subagent (qwen3.7-plus). Input: `$ARGUMENTS` — one or more image paths, GitHub attachment URLs, or CI artifact paths (e.g. `diff.png`, `actual.png`, screenshot, baseline, before/after pair).
 
 Steps:
 
@@ -18,7 +18,7 @@ Steps:
      - before/after comparison (fidelity of prototype, UI change, desktop vs mobile);
      - chart/signal exports, CI artifact screenshots, bug reproduction screenshots;
      - a11y checks visible in pixels (contrast, clipping, overflow, focus).
-   - The vision subagent opens the real files with vision (`gpt-5.6-luna`) — never describe pixels yourself.
+   - The vision subagent opens the real files with vision (`qwen3.7-plus`) — never describe pixels yourself.
 
 3. **Report**
    - Return the vision verdict and findings ordered by severity, with file references, and the recommended next step (e.g. fix, accept baseline change, update baseline, reopen bug).

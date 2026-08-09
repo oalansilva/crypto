@@ -1,6 +1,6 @@
 /**
  * vision-router — roteamento automático de análise de imagem para o agente
- * vision (gpt-5.6-luna).
+ * vision (qwen3.7-plus).
  *
  * O modelo default da sessão (deepseek-v4-flash) não aceita imagens. Quando
  * uma imagem entra no contexto (anexo no chat, screenshot de tool, imagem
@@ -11,7 +11,7 @@
  *   - substitui image parts por placeholder de texto com o caminho do
  *     arquivo (o request do modelo sem visão nunca recebe pixels);
  *   - injeta instrução de sistema para delegar o julgamento visual ao
- *     subagent `vision` (Luna);
+ *     subagent `vision` (qwen3.7-plus);
  *   - registra evidência em `.impeccable/vision-router.jsonl`.
  *
  * Contract: nunca quebra o turno. Falhas são registradas e engolidas.
@@ -28,7 +28,7 @@ const ATTACHMENTS_DIR = path.join(PROJECT_ROOT, ".impeccable", "attachments");
 const LOG_FILE = path.join(PROJECT_ROOT, ".impeccable", "vision-router.jsonl");
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".heic"]);
-const VISION_MODEL_ID = "gpt-5.6-luna";
+const VISION_MODEL_ID = "qwen3.7-plus";
 
 /** sessões com imagem detectada no turno corrente */
 const SESSIONS_WITH_IMAGE = new Set<string>();
@@ -155,8 +155,8 @@ export default (async () => {
           parts[i] = {
             type: "text",
             text: filePath
-              ? `[imagem anexada: ${filePath} — não analisar pixels aqui; delegar o julgamento visual ao subagent vision (gpt-5.6-luna)]`
-              : "[imagem anexada — não analisar pixels aqui; delegar o julgamento visual ao subagent vision (gpt-5.6-luna)]",
+              ? `[imagem anexada: ${filePath} — não analisar pixels aqui; delegar o julgamento visual ao subagent vision (qwen3.7-plus)]`
+              : "[imagem anexada — não analisar pixels aqui; delegar o julgamento visual ao subagent vision (qwen3.7-plus)]",
           };
         }
       }
@@ -173,7 +173,7 @@ export default (async () => {
         [
           "[vision-router] Uma imagem está no contexto desta sessão e o modelo atual não tem visão.",
           "Regra obrigatória: NUNCA interprete pixels nem descreva a imagem a partir de suposições.",
-          "Delegue o julgamento visual ao subagent `vision` (model gpt-5.6-luna) via a ferramenta task e retorne o resultado ao usuário.",
+          "Delegue o julgamento visual ao subagent `vision` (model qwen3.7-plus) via a ferramenta task e retorne o resultado ao usuário.",
           "Use o caminho do arquivo informado no placeholder da imagem para o subagent vision abrir o arquivo real.",
         ].join("\n"),
       );

@@ -1,0 +1,25 @@
+## MODIFIED Requirements
+
+### Requirement: User profile page exposes Binance credentials management
+The system MUST provide Binance API credentials management on the authenticated user profile page (`/profile`). Credentials used for Wallet remain usable with read permission; credentials used for Monitor direct purchase, full-balance market sale or protective stop MUST be allowed to include Spot trading permission. The UI MUST NOT request withdraw permission and MUST continue to reject email/password values in the key/secret fields.
+
+#### Scenario: Copy mentions optional Spot trading
+- **WHEN** a logged-in user opens `/profile` Credenciais Binance
+- **THEN** the UI MUST explain that read-only is enough for Home/Carteira and that Spot trading permission is required to use Comprar, Vender 100% or Proteger stop no Monitor
+- **AND** the UI MUST recommend IP whitelist, MUST explicitly say not to enable withdraw, and MUST NOT ask for the Binance account password
+
+#### Scenario: Open profile without credentials
+- **WHEN** a logged-in user opens `/profile` and has no Binance credentials saved
+- **THEN** the page MUST show the Credenciais Binance block with status `Não configurada` and empty API Key / API Secret inputs
+
+#### Scenario: Save read-only credentials from profile
+- **WHEN** the user submits a valid Binance API Key and API Secret on `/profile`
+- **THEN** the system MUST persist the credentials for that user via `/api/user/binance-credentials` and show status `Configurada` with a masked API Key
+
+#### Scenario: Remove credentials from profile
+- **WHEN** the user removes Binance credentials from `/profile`
+- **THEN** the system MUST delete the stored credentials for that user and return the status to `Não configurada`
+
+#### Scenario: Secret is not re-displayed after save
+- **WHEN** credentials are already configured and the user reloads `/profile`
+- **THEN** the UI MUST NOT show the API Secret in clear text and MUST only show the masked API Key in the status area

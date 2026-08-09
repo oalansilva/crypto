@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prototype — Carteira zebra (card #413)</title>
+    <style>
+      :root {
+        --canvas: #07111a;
+        --panel: #101c2a;
+        --row: #101c2a;
+        --row-alt: #16243a;
+        --hairline: rgba(255, 255, 255, 0.1);
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --text-faint: #64748b;
+        --sky: #7dd3fc;
+        --up: #6ee7b7;
+        --down: #fda4af;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--text);
+        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        font-size: 14px;
+      }
+      .skip {
+        position: absolute; left: -9999px; top: 0;
+      }
+      .skip:focus { left: 8px; top: 8px; background: var(--sky); color: #0b1220; padding: 8px 12px; z-index: 50; }
+      .page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 20px 14px 40px;
+      }
+      .breadcrumb {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+        font-size: 12px; color: var(--text-muted); margin-bottom: 8px;
+      }
+      .breadcrumb .sep { color: #475569; }
+      .breadcrumb strong { color: var(--text); font-weight: 600; }
+      .title-row {
+        display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+        border-bottom: 1px solid var(--hairline); padding-bottom: 16px; margin-bottom: 16px;
+      }
+      h1 { font-size: 30px; font-weight: 700; margin: 0; color: #f8fafc; }
+      .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--text-muted); }
+      .chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        border: 1px solid rgba(52, 211, 153, 0.2); background: rgba(52, 211, 153, 0.1);
+        color: #a7f3d0; border-radius: 6px; padding: 4px 10px; font-family: ui-monospace, monospace;
+      }
+      .chip .dot { width: 6px; height: 6px; border-radius: 999px; background: #6ee7b7; box-shadow: 0 0 10px rgba(52, 211, 153, 0.75); }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #f1f5f9; }
+      .btn-sync {
+        border: 1px solid rgba(125, 211, 252, 0.2); background: var(--sky); color: #0b1220;
+        border-radius: 6px; padding: 10px 16px; font-weight: 600; font-size: 14px; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+      }
+      .btn-sync:hover { background: #bae6fd; }
+      .kpis { display: grid; grid-template-columns: 1fr; gap: 0; border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.06); margin-bottom: 16px; }
+      @media (min-width: 768px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+      .kpi { padding: 20px; border-bottom: 1px solid var(--hairline); }
+      .kpi:last-child { border-bottom: none; }
+      @media (min-width: 768px) { .kpi { border-bottom: none; border-right: 1px solid var(--hairline); } .kpi:last-child { border-right: none; } }
+      .kpi .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+      .kpi .value { font-size: 24px; font-weight: 700; margin-top: 8px; }
+      .kpi .value.big { font-size: 30px; }
+      .kpi .value.up { color: var(--up); }
+      .kpi .value.down { color: var(--down); }
+      .kpi .sub { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+      .filters {
+        display: grid; grid-template-columns: 1fr; gap: 12px; align-items: end;
+        border: 1px solid var(--hairline); border-radius: 8px; background: var(--panel);
+        padding: 16px; margin-bottom: 16px;
+      }
+      @media (min-width: 1024px) { .filters { grid-template-columns: 1.4fr 0.7fr 0.85fr auto; } }
+      .field { display: grid; gap: 6px; }
+      .field .flabel { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); }
+      .input, .select {
+        height: 36px; border: 1px solid var(--hairline); border-radius: 6px;
+        background: rgba(2, 6, 23, 0.35); color: var(--text); padding: 0 12px; font-size: 14px; width: 100%;
+      }
+      .input:focus, .select:focus { outline: 2px solid rgba(125, 211, 252, 0.5); border-color: transparent; }
+      .btn-sec {
+        height: 36px; border: 1px solid var(--hairline); border-radius: 6px; background: rgba(2,6,23,0.35);
+        color: var(--text); font-size: 12px; padding: 0 12px; cursor: pointer;
+      }
+      .btn-sec:hover { background: rgba(255,255,255,0.1); }
+      .filters .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      .filters .actions .spacer { flex-basis: 100%; }
+      .meta-line { font-family: ui-monospace, monospace; font-size: 10px; color: var(--text-faint); align-self: center; }
+      @media (min-width: 1024px) { .meta-line { text-align: right; } }
+      .panel { border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; background: var(--panel); }
+      .panel-head {
+        display: flex; flex-direction: column; gap: 12px; align-items: flex-start; justify-content: space-between;
+        padding: 16px; border-bottom: 1px solid var(--hairline);
+      }
+      @media (min-width: 640px) { .panel-head { flex-direction: row; align-items: flex-end; } }
+      .panel-head h2 { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #cbd5e1; margin: 0; }
+      .panel-head h2 .count { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-faint); }
+      .panel-head .right { font-size: 12px; color: var(--text-faint); }
+      table { width: 100%; border-collapse: collapse; }
+      thead th {
+        text-align: right; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--text-faint); padding: 12px 16px; border-bottom: 1px solid var(--hairline);
+        background: var(--panel); position: sticky; top: 0;
+      }
+      thead th:first-child { text-align: left; }
+      tbody tr { border-bottom: 1px solid var(--hairline); }
+      tbody tr:last-child { border-bottom: none; }
+      tbody tr:nth-child(odd) { background: var(--row); }
+      tbody tr:nth-child(even) { background: var(--row-alt); }
+      tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
+      td { padding: 12px 16px; text-align: right; font-family: ui-monospace, monospace; font-size: 13px; }
+      td:first-child { text-align: left; }
+      .asset-cell { display: flex; align-items: center; gap: 12px; min-width: 160px; }
+      .tile {
+        width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center;
+        font-family: ui-monospace, monospace; font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0;
+      }
+      .asset-name { font-family: inherit; }
+      .asset-name .sym { font-weight: 600; color: #f1f5f9; }
+      .asset-name .full { font-size: 12px; color: var(--text-faint); margin-top: 1px; }
+      .num { color: var(--text-muted); }
+      .num.strong { color: #f1f5f9; font-weight: 600; }
+      .pnl { display: inline-flex; flex-direction: column; align-items: flex-end; }
+      .pnl .usd { font-weight: 400; }
+      .pnl .pct { font-size: 11px; }
+      .pnl .usd.up, .pnl .pct.up { color: var(--up); }
+      .pnl .usd.down, .pnl .pct.down { color: var(--down); }
+      .share-cell .pct { font-family: ui-monospace, monospace; font-size: 12px; color: var(--text-muted); }
+      .bar { height: 6px; border-radius: 999px; background: #1e293b; overflow: hidden; margin-top: 4px; }
+      .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--sky), var(--up)); }
+      .foot {
+        display: flex; flex-direction: column; gap: 4px; align-items: flex-start; justify-content: space-between;
+        border-top: 1px solid var(--hairline); background: rgba(2, 6, 23, 0.25);
+        padding: 12px 16px; font-size: 12px; color: var(--text-faint);
+      }
+      @media (min-width: 640px) { .foot { flex-direction: row; align-items: center; } }
+      .foot .left { display: inline-flex; align-items: center; gap: 8px; }
+      /* mobile cards */
+      .mobile-cards { display: none; }
+      @media (max-width: 767px) {
+        table.desktop-table { display: none; }
+        .mobile-cards { display: block; }
+      }
+      .mcard { border-bottom: 1px solid var(--hairline); padding: 16px; }
+      .mcard:last-child { border-bottom: none; }
+      .mcard .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .mcard .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+      .mcard .cell { border: 1px solid var(--hairline); border-radius: 6px; background: rgba(2,6,23,0.3); padding: 12px; }
+      .mcard .cell .l { font-size: 11px; color: var(--text-faint); }
+      .mcard .cell .v { font-family: ui-monospace, monospace; font-size: 12px; margin-top: 4px; color: var(--text); }
+      .mcard .val { font-family: ui-monospace, monospace; font-size: 16px; font-weight: 600; text-align: right; }
+      .mcard .share { font-family: ui-monospace, monospace; font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+      .note {
+        margin-top: 12px; padding: 10px 14px; border: 1px dashed rgba(125, 211, 252, 0.35);
+        border-radius: 6px; font-size: 12px; color: var(--sky);
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Pular para o conteúdo</a>
+    <main id="main" class="page">
+      <nav class="breadcrumb" aria-label="Trilha">
+        <span>Workspace</span><span class="sep">/</span><span>Conta</span><span class="sep">/</span>
+        <strong>Carteira</strong>
+      </nav>
+
+      <section class="title-row" aria-label="Cabeçalho">
+        <div>
+          <h1>Carteira</h1>
+          <div class="meta">
+            <span>Última sincronização</span>
+            <span class="mono">2026-08-08 16:00 UTC</span>
+          </div>
+        </div>
+        <button class="btn-sync" type="button">↻ Sincronizar</button>
+      </section>
+
+      <section class="kpis" aria-label="Resumo">
+        <article class="kpi">
+          <div class="label">Total da carteira <span style="background:#1e293b;border-radius:4px;padding:1px 6px;font-size:10px;font-family:ui-monospace,monospace;color:#cbd5e1;">USD</span></div>
+          <div class="value big">$591.92</div>
+          <div class="sub">8 ativos · filtro min USD 0.02</div>
+        </article>
+        <article class="kpi">
+          <div class="label">Total USD</div>
+          <div class="value">8</div>
+          <div class="sub">ativos visíveis</div>
+        </article>
+        <article class="kpi">
+          <div class="label">PnL parcial</div>
+          <div class="value up">+$5.42</div>
+          <div class="sub">5 símbolos · com avg cost</div>
+        </article>
+        <article class="kpi">
+          <div class="label">Performance</div>
+          <div class="value up">+0.97%</div>
+          <div class="sub">média ponderada</div>
+        </article>
+      </section>
+
+      <section class="filters" aria-label="Filtros">
+        <label class="field">
+          <span class="flabel">Buscar</span>
+          <input class="input" placeholder="BTC, ETH, SOL..." aria-label="Buscar" value="" />
+        </label>
+        <label class="field">
+          <span class="flabel">Dust threshold</span>
+          <input class="input mono" value="0.02" inputmode="decimal" aria-label="Dust threshold" />
+        </label>
+        <label class="field">
+          <span class="flabel">Ordenar</span>
+          <select class="select" aria-label="Ordenar">
+            <option>Maior valor</option>
+            <option>Menor valor</option>
+            <option>Ativo (A-Z)</option>
+            <option>Ativo (Z-A)</option>
+            <option>PnL (maior)</option>
+            <option>PnL (menor)</option>
+          </select>
+        </label>
+        <div class="actions">
+          <button class="btn-sec" type="button">Reset filtros</button>
+          <button class="btn-sec" type="button">⇩ Exportar CSV</button>
+          <div class="spacer"></div>
+          <span class="meta-line">min USD: 0.02 · sort: value/desc</span>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Balances">
+        <div class="panel-head">
+          <h2>Balances <span class="count">(8 ativos)</span></h2>
+          <div class="right">total_usd do servidor disponível</div>
+        </div>
+
+        <table class="desktop-table" aria-label="Tabela de saldos">
+          <thead>
+            <tr>
+              <th scope="col">Ativo</th>
+              <th scope="col">Total</th>
+              <th scope="col">Free</th>
+              <th scope="col">Valor USD</th>
+              <th scope="col">Preço</th>
+              <th scope="col">Avg cost</th>
+              <th scope="col">PnL</th>
+              <th scope="col">Participação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="asset-cell"><div class="tile" style="background:linear-gradient(135deg,#f7931a,#8b5108)">BTC</div><div class="asset-name"><div class="sym">BTC</div><div class="full">Bitcoin</div></div></div></td>
+              <td class="num">0.00231000</td><td class="num">0.00231000</td>
+              <td class="num strong">$262.10</td><td class="num">$113,464.00</td><td class="num">$61,200.00</td>
+              <td><span class="pnl"><span class="usd up">+$120.71</span><span class="pct up">+84.63%</span></span></td>
+              <td class="share-cell"><div class="pct">44.28%</div><div class="bar"><i style="width:44%"></i></div></td>
+            </tr>
+            <tr>
+              <td><div class="asset-cell"><div class="tile" style="background:linear-gradient(135deg,#627eea,#2a3d8b)">ETH</div><div class="asset-name"><div class="sym">ETH</div><div class="full">Ethereum</div></div></div></td>
+              <td class="num">0.50000000</td><td class="num">0.50000000</td>
+              <td class="num strong">$1,415.50</td><td class="num">$2,831.00</td><td class="num">$2,900.00</td>
+              <td><span class="pnl"><span class="usd down">-$34.50</span><span class="pct down">-2.38%</span></span></td>
+              <td class="share-cell"><div class="pct">100.00%</div><div class="bar"><i style="width:100%"></i></div></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="mobile-cards" aria-label="Cards de saldos (mobile)">
+          <article class="mcard">
+            <div class="top">
+              <div class="asset-cell"><div class="tile" style="background:linear-gradient(135deg,#f7931a,#8b5108)">BTC</div><div class="asset-name"><div class="sym">BTC</div><div class="full">Bitcoin</div></div></div>
+              <div><div class="val">$262.10</div><div class="share">44.28%</div></div>
+            </div>
+            <div class="grid">
+              <div class="cell"><div class="l">Total</div><div class="v">0.00231000</div></div>
+              <div class="cell"><div class="l">Free</div><div class="v">0.00231000</div></div>
+              <div class="cell"><div class="l">Preço</div><div class="v">$113,464.00</div></div>
+              <div class="cell"><div class="l">PnL</div><div class="v" style="color:var(--up)">+$120.71 (+84.63%)</div></div>
+            </div>
+          </article>
+          <article class="mcard">
+            <div class="top">
+              <div class="asset-cell"><div class="tile" style="background:linear-gradient(135deg,#627eea,#2a3d8b)">ETH</div><div class="asset-name"><div class="sym">ETH</div><div class="full">Ethereum</div></div></div>
+              <div><div class="val">$1,415.50</div><div class="share">100.00%</div></div>
+            </div>
+            <div class="grid">
+              <div class="cell"><div class="l">Total</div><div class="v">0.50000000</div></div>
+              <div class="cell"><div class="l">Free</div><div class="v">0.50000000</div></div>
+              <div class="cell"><div class="l">Preço</div><div class="v">$2,831.00</div></div>
+              <div class="cell"><div class="l">PnL</div><div class="v" style="color:var(--down)">-$34.50 (-2.38%)</div></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="foot">
+          <span class="left">▤ Carteira · 2 linhas visíveis</span>
+          <span>as_of 2026-08-08 16:00 UTC</span>
+        </div>
+      </section>
+
+      <div class="note" role="note">
+        Protótipo do card #413: linhas intercaladas (zebra) na tabela desktop e remoção do subtítulo do header,
+        da nota técnica sob Balances e do chip de status Binance.
+      </div>
+    </main>
+  </body>
+</html>
