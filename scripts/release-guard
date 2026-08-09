@@ -297,19 +297,46 @@ for doc in $release_docs; do
   fi
 done
 # Board fields for package cards (Responsável/Prioridade/Tipo)
-if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  board_json="$(gh project item-list 1 --owner oalansilva --limit 300 --format json 2>/dev/null || true)"
-  if [[ -n "$board_json" ]]; then
-    missing="$(printf '%s' "$board_json" | jq -r '.items[] | select(.status == "Pronto" or .status == "Homologado") | select((.content.number|tostring|length) > 0) | [.content.number, (.responsavel // "VAZIO"), (.prioridade // "VAZIO"), (.tipo // "VAZIO")] | @tsv' 2>/dev/null | awk -F'\t' '$2=="VAZIO" || $3=="VAZIO" || $4=="VAZIO" {print}' )"
-    if [[ -n "$missing" ]]; then
-      issue "package cards missing board fields (Responsável/Prioridade/Tipo):"
-      printf '%s\n' "$missing" | indent
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
+    if [[ -z "$board_json" ]]; then
+      issue "board fields check could not run (gh project item-list returned no data; check auth/rate limit)"
     else
-      printf 'Board fields present for Pronto/Homologado cards.\n'
+      if ! printf '%s' "$board_json" | jq -e . >/dev/null 2>&1; then
+        issue "board fields check could not run (invalid JSON from gh project item-list)"
+      else
+        release_cards="${RELEASE_CARDS:-}"
+        if [[ -n "$release_cards" ]]; then
+          card_list="$(printf '%s' "$release_cards" | tr ',' ' ')"
+          filter=''
+          for num in $card_list; do
+            filter+=" or .content.number == $num"
+          done
+          filter="select(${filter# or })"
+          missing="$(printf '%s' "$board_json" | jq -r ".items[] | ${filter} | [.content.number, (.responsavel // \"VAZIO\"), (.prioridade // \"VAZIO\"), (.tipo // \"VAZIO\")] | @tsv" 2>/dev/null | awk -F'\t' '$2=="VAZIO" || $3=="VAZIO" || $4=="VAZIO" {print}')"
+          if [[ -n "$missing" ]]; then
+            issue "package cards (RELEASE_CARDS) missing board fields (Responsável/Prioridade/Tipo):"
+            printf '%s\n' "$missing" | indent
+          else
+            printf 'Board fields present for RELEASE_CARDS package.\n'
+          fi
+        else
+          missing="$(printf '%s' "$board_json" | jq -r '.items[] | select(.status == "Pronto" or .status == "Homologado") | select((.content.number|tostring|length) > 0) | [.content.number, (.responsavel // "VAZIO"), (.prioridade // "VAZIO"), (.tipo // "VAZIO")] | @tsv' 2>/dev/null | awk -F'\t' '$2=="VAZIO" || $3=="VAZIO" || $4=="VAZIO" {print}')"
+          if [[ -n "$missing" ]]; then
+            warn "Pronto/Homologado cards missing board fields (set RELEASE_CARDS to scope to the package):"
+            printf '%s\n' "$missing" | indent
+          else
+            printf 'Board fields present for Pronto/Homologado cards.\n'
+          fi
+        fi
+      fi
     fi
+  else
+    issue "board fields check could not run (gh unavailable or not authenticated)"
   fi
 else
-  warn "gh unavailable or not authenticated; skipping board fields check"
+  printf 'Skipped (board fields check runs in post/audit).\n'
 fi
 
 section "Summary"
