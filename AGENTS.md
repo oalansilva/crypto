@@ -352,7 +352,8 @@ scripts/release-guard pre
 openspec validate --all
 gh pr create --base main --head develop --title "<titulo>" --body "<resumo>"
 gh pr merge --merge --delete-branch=false
-scripts/release-guard post
+scripts/release-guard post   # inclui check de change OpenSpec duplicada (ativa + arquivada)
+# sync main -> develop (quando necessário) deve rodar release-guard post novamente após o merge de sync
 ```
 
 Publicar com branch de release quando `develop` tiver conteúdo não homologado:
