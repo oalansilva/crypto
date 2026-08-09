@@ -20,7 +20,13 @@ def _init_repo(tmp_path: Path) -> Path:
     _git(repo, "config", "user.name", "Test User")
     _git(repo, "remote", "add", "origin", str(bare))
     (repo / "README.md").write_text("initial\n", encoding="utf-8")
-    _git(repo, "add", "README.md")
+    release_dir = repo / "docs"
+    release_dir.mkdir()
+    (release_dir / "release-2026-01-01.md").write_text(
+        "# Release 2026-01-01\n\nRelease de teste commitada sem placeholders.\n",
+        encoding="utf-8",
+    )
+    _git(repo, "add", "README.md", "docs/release-2026-01-01.md")
     _git(repo, "commit", "-m", "initial")
     _git(repo, "branch", "-M", "main")
     _git(repo, "branch", "develop")
