@@ -201,6 +201,22 @@ else
   printf 'Skipped (orphan inventory runs in post/audit; legacy debt does not block pre).\n'
 fi
 
+section "OpenSpec duplicate changes (post)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  dup_changes="$(comm -12 \
+    <(find openspec/changes -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null | sort) \
+    <(find openspec/changes/archive -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null | sed 's/^[0-9-]*//' | sort))"
+  if [[ -n "$dup_changes" ]]; then
+    issue "OpenSpec change is BOTH active and archived (verify content with git diff and remove the duplicated copy):"
+    printf '%s\n' "$dup_changes" | indent
+    printf 'Fix: openspec/changes/<name>/ exists next to openspec/changes/archive/*/<name>/; compare contents and remove the duplicate with: git rm -r openspec/changes/<name>\n' | indent
+  else
+    printf 'No OpenSpec change duplicated across active and archive.\n'
+  fi
+else
+  printf 'Skipped (duplicate OpenSpec check runs in post/audit; legacy debt does not block pre).\n'
+fi
+
 section "Local branches"
 if git rev-parse --verify -q origin/develop >/dev/null &&
    git rev-parse --verify -q origin/main >/dev/null; then
