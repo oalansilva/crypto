@@ -100,3 +100,43 @@
 - Cards 361/384 executados no Codex — sessões ausentes do opencode DB.
 - Timestamps de itens do board não expostos via `gh project item-list`.
 - `npm audit` com snapshot local (sem rede completa).
+
+## 2026-08-09 — Auditoria pós-release: release 2026-08-09 (`/kaizen release`)
+
+- **Release/card**: 2026-08-09 — card 420 (Agente Kaizen). Pacote único `Homologado`.
+- **Fontes consultadas**: board (170 itens), issues #385/#413/#416/#420, git/refs/worktrees/stash + release-guard audit, OpenSpec (validate 151/151, archive, specs), CI PRs #424/#425/#426, opencode DB (14 sessões no window, read-only).
+- **Sessões analisadas**: 14 no window (08-08→09) — custo total $0.2526, 1.69M tokens in, 0 todos incompletos, 0 drift, 0 `step-finish unknown`, 2 erros de tool (1 `task` "Unknown agent type: kaizen" no bootstrap; 1 edit miss). Sessão principal #420 `ses_01c171a3` $0.1153 → Done.
+
+### Métricas
+- **Board**: Pronto 150, Done 3 (#385/#413/#416), Homologado 1 (#420 — movido a Pronto após esta auditoria), Todo 4 (#195 + kaizen #421/#422/#423). Divergências Status vs Fluxo legadas (#416, #395, #361, #384, #353, #355).
+- **Git**: release-guard audit PASS (15 warnings/0 blockers); refs órfãs antigas persistem (F-6 da auditoria 08-08, card #422 ainda Todo); refs da própria release pendentes de limpeza.
+- **OpenSpec**: validate 151/151; **F-1: change card-420 duplicada em develop (ativa + arquivada)** — corrigida no mesmo turno via PR #427.
+- **Sessões**: custo baixo, sem alucinação significativa; 2 spawns vision gpt-5.6-luna pós-merge #419 (troca qwen3.7-plus não propaga para sessões em voo).
+
+### Achados
+- F-1 [major] Archive OpenSpec não propagou para develop — change card-420 duplicada (ativa + arquivada). Causa: sync back `main -> develop` adicionou o archive sem remover a pasta ativa. **Corrigido imediatamente** (PR #427, `972d620a`). Proposta: `release-guard post` detecta duplicação change ativa+arquivada. Esforço S | P1.
+- F-2 [major] Regressão de status `Homologado -> Done` em #385/#413/#416 sem evidência de autorização. Causa: rework/closure iniciado sem classificar regressão; regra "só avança" não prevê retorno. Proposta: regra/checklist — rework pós-Homologado exige comentário de Alan autorizando regressão. Esforço S | P1.
+- F-3 [minor] Divergência de título #416: board "MiMo-V2.5" vs issue "Qwen3.7 Plus" vs implementação qwen3.7-plus. Proposta: regra de sync título board/issue no fechamento. Esforço S | P2.
+- F-4 [minor] Troca de modelo do vision não propaga para sessões/spawns em voo (2 spawns gpt-5.6-luna pós-merge). Proposta: troca de modelo de agente exige sessão nova. Esforço S | P2.
+- F-5 [info] Erro `task` "Unknown agent type: kaizen" durante bootstrap do próprio agente. Proposta: não invocar subagent recém-criado no mesmo turno. Esforço S | P2.
+- F-6 [info] Refs da release pendentes de limpeza pós-Pronto; refs antigas persistem (depende de #422). Esforço M | P2.
+
+### Cards criados (máx 3/release — regra kaizen)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #428 — release-guard post detecta change OpenSpec duplicada ativa+arquivada | P1 | F-1 | Todo |
+| #429 — rework pós-Homologado exige comentário de autorização e classificação no card | P1 | F-2 | Todo |
+| #430 — sync título board/issue + sessão nova após troca de modelo de subagent | P2 | F-3, F-4 | Todo |
+
+### Backlog kaizen (releases seguintes)
+- F-5: checklist de fechamento — não invocar subagent recém-criado no mesmo turno (P2).
+- F-6: limpeza de refs órfãs antigas (já em #422) + refs da release após Pronto (P2).
+
+### Trechos de sessão (evidência local)
+- `ses_01c171a3` — 1× task error "Unknown agent type: kaizen" (bootstrap do próprio agente; recuperado; 5/5 todos completed, $0.1153).
+- `ses_01c807cb` (tree) — spawns vision `ses_01c08305`/`ses_01c05d64` pós-merge #419 ainda com gpt-5.6-luna; título de sessão "trocar GPT Luna por MiMo-V2.5" divergente do issue.
+
+### Limitações
+- Timestamps de itens do board não expostos via `gh project item-list`.
+- Evidência de arraste de aprovação não visível via API (só comentários).
+- Validação de deploy/URL PROD pertence ao fechamento da sessão principal (executada: source e2c89d4d, services ativos, endpoints ok).
