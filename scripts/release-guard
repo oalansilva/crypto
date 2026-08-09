@@ -171,31 +171,35 @@ for wt in "${worktrees[@]}"; do
 done
 
 section "Orphan refs and preserve worktrees (post)"
-orphan_refs="$(git for-each-ref refs/heads refs/remotes/origin --format='%(refname:short)' | grep -E '^(runtime-|rollback-|release-post-|sync-|preserve/)' || true)"
-if [[ -n "$orphan_refs" ]]; then
-  issue "orphan refs require classification (integrate/preserve/cleanup with authorization):"
-  printf '%s\n' "$orphan_refs" | sort -u | indent
-else
-  printf 'No orphan refs (runtime-*/rollback-*/release-post-*/sync-*/preserve/*).\n'
-fi
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  orphan_refs="$(git for-each-ref refs/heads refs/remotes/origin --format='%(refname:short)' | grep -E '^(runtime-|rollback-|release-post-|sync-|preserve/)' || true)"
+  if [[ -n "$orphan_refs" ]]; then
+    issue "orphan refs require classification (integrate/preserve/cleanup with authorization):"
+    printf '%s\n' "$orphan_refs" | sort -u | indent
+  else
+    printf 'No orphan refs (runtime-*/rollback-*/release-post-*/sync-*/preserve/*).\n'
+  fi
 
-for wt in "${worktrees[@]}"; do
-  wt_branch="$(git -C "$wt" symbolic-ref --short HEAD 2>/dev/null || true)"
-  case "$wt_branch" in
-    preserve/*)
-      wt_status="$(git -C "$wt" status --porcelain=v1 --untracked-files=all)"
-      if [[ -n "$wt_status" ]]; then
-        issue "preserve worktree has uncommitted WIP requiring classification: $wt [$wt_branch]"
-        printf '%s\n' "$wt_status" | indent
-      else
-        printf 'Preserve worktree clean: %s [%s]\n' "$wt" "$wt_branch"
-      fi
-      ;;
-    runtime-*|rollback-*|release-post-*|sync-*)
-      issue "worktree on orphan branch requires classification: $wt [$wt_branch]"
-      ;;
-  esac
-done
+  for wt in "${worktrees[@]}"; do
+    wt_branch="$(git -C "$wt" symbolic-ref --short HEAD 2>/dev/null || true)"
+    case "$wt_branch" in
+      preserve/*)
+        wt_status="$(git -C "$wt" status --porcelain=v1 --untracked-files=all)"
+        if [[ -n "$wt_status" ]]; then
+          issue "preserve worktree has uncommitted WIP requiring classification: $wt [$wt_branch]"
+          printf '%s\n' "$wt_status" | indent
+        else
+          printf 'Preserve worktree clean: %s [%s]\n' "$wt" "$wt_branch"
+        fi
+        ;;
+      runtime-*|rollback-*|release-post-*|sync-*)
+        issue "worktree on orphan branch requires classification: $wt [$wt_branch]"
+        ;;
+    esac
+  done
+else
+  printf 'Skipped (orphan inventory runs in post/audit; legacy debt does not block pre).\n'
+fi
 
 section "Local branches"
 if git rev-parse --verify -q origin/develop >/dev/null &&
