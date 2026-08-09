@@ -18,7 +18,7 @@ Republicações de artefatos OpenSpec criaram 3 Gists e 3 comentários quase id�
 ## Decisões
 
 - **D1 — `--gist-id` explícito, sem auto-busca.** O chamador informa o Gist da change em republicações; o helper atualiza arquivos via `gh gist edit`. Alternativa (buscar por description `crypto openspec <change>`) mais propensa a colisões com mudanças de slug/descrição; o id explícito é auditable.
-- **D2 — Comentário do card: atualizar em vez de duplicar.** Na republicação com `--gist-id`, o helper não cria novo comentário; registra a atualização do Gist (via edição do comentário anterior quando o `--issue-comment-id` for informado, senão apenas reporta gist atualizado). Mantém 1 comentário OpenSpec por card.
+- **D2 — Comentário do card: atualizar em vez de duplicar.** Na republicação com `--gist-id`, o helper não cria novo comentário; registra a atualização do Gist (via edição do comentário anterior quando o `--comment-id` for informado, senão apenas reporta gist atualizado). Mantém 1 comentário OpenSpec por card.
 - **D3 — Retrigger via `gh workflow run` com workflow/ref explícitos.** Documentar o comando real no AGENTS.md; commit vazio fica proibido como retrigger.
 - **D4 — Agrupamento de ajustes pós-review em 1 commit/PR.** Regra de fluxo no AGENTS.md (docs) — sem script adicional.
 
