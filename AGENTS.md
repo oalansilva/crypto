@@ -51,7 +51,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Observação de fluxo OpenSpec:** use os comandos nesta ordem para mudanças novas; ajuste a cadência apenas com justificativa explícita.
 - **Subagents:** use subagents sempre que houver ganho claro de paralelismo, investigação independente, validação especializada ou aceleração sem duplicar trabalho.
 - **Roteamento de LLM:** a sessão principal do opencode é a fonte única do LLM/modelo e da versão da tarefa. Todo subagent usado deve herdar exatamente o mesmo LLM/modelo e versão da sessão principal; papéis, prompts, sandbox e ownership podem variar, mas não o LLM. Se a igualdade não puder ser imposta e observada, não criar o subagent. Não usar Sol/Luna/Terra fixos nem fallback de modelo.
-- **Exceção explícita — análise de imagem (roteamento visual):** o modelo da sessão (`deepseek-v4-flash`) não tem visão. Toda análise de imagem é feita pelo subagent `vision` (`.opencode/agent/vision.md`) com `model: opencode-go/gpt-5.6-luna` fixo — essa é a ÚNICA exceção à herança de modelo. O plugin `vision-router` (`.opencode/plugin/vision-router.ts`) chaveia automaticamente: detecta imagem no contexto (anexo no chat, screenshot de tool, imagem de card/issue do GitHub, `diff.png`/baseline do QA visual, artifact do CI, `qa_artifacts/`, `artifacts-signals-*.png`), substitui pixels por placeholder com o caminho do arquivo e instrui a delegação ao `vision`. Evidência em `.impeccable/vision-router.jsonl`. Para análise explícita use `/vision <arquivo|url>` (aceita múltiplas imagens para antes/depois). O agente principal nunca interpreta pixels.
+- **Exceção explícita — análise de imagem (roteamento visual):** o modelo da sessão (`deepseek-v4-flash`) não tem visão. Toda análise de imagem é feita pelo subagent `vision` (`.opencode/agent/vision.md`) com `model: opencode-go/qwen3.7-plus` fixo — essa é a ÚNICA exceção à herança de modelo. O plugin `vision-router` (`.opencode/plugin/vision-router.ts`) chaveia automaticamente: detecta imagem no contexto (anexo no chat, screenshot de tool, imagem de card/issue do GitHub, `diff.png`/baseline do QA visual, artifact do CI, `qa_artifacts/`, `artifacts-signals-*.png`), substitui pixels por placeholder com o caminho do arquivo e instrui a delegação ao `vision`. Evidência em `.impeccable/vision-router.jsonl`. Para análise explícita use `/vision <arquivo|url>` (aceita múltiplas imagens para antes/depois). O agente principal nunca interpreta pixels.
 - OpenSpec é a camada de especificação técnica (artifacts).
 - Workflow DB e OpenSpec são fontes de operação e evidência.
 - **Regra de documentação produto/Drive:** documentos de produto/projeto que existem no Google Drive e em `docs/*.md` devem ser mantidos sincronizados. Drive é a fonte de consulta/revisão para Alan; Markdown local/GitHub é espelho versionado e backup técnico. Não editar manualmente nos dois lugares de forma divergente. Ao atualizar definição aprovada, atualize o `.md` local e sincronize o Google Doc correspondente, ou atualize o Drive e depois espelhe localmente. Para código e documentação técnica de implementação, GitHub continua mandando.
@@ -303,7 +303,7 @@ Seguir `alan-workflow` Visual QA. Quem compara pixels e o Playwright; o agente n
    ```bash
    npm --prefix frontend run test:e2e:visual -- --update-snapshots
    ```
-2. Revisar **somente** o `diff.png` (ou o diff git dos snapshots) dos cenarios que mudaram, uma vez, para confirmar que a mudanca e esperada. **Todo julgamento visual de `diff.png`/`actual.png`/baseline é feito pelo subagent `vision` (gpt-5.6-luna)** — o agente principal nunca interpreta pixels; use `/vision <diff.png>` ou delegação automática do `vision-router`.
+2. Revisar **somente** o `diff.png` (ou o diff git dos snapshots) dos cenarios que mudaram, uma vez, para confirmar que a mudanca e esperada. **Todo julgamento visual de `diff.png`/`actual.png`/baseline é feito pelo subagent `vision` (qwen3.7-plus)** — o agente principal nunca interpreta pixels; use `/vision <diff.png>` ou delegação automática do `vision-router`.
 3. Commitar os novos arquivos em `frontend/tests/e2e/**/*-snapshots/` junto com a mudanca de UI.
 4. Push → CI revalida contra a baseline nova.
 
@@ -314,7 +314,7 @@ CI falha → baixar artifacts → Read/vision em todos os PNG
 → patch baseline → push → Waiting/polling → repetir
 ```
 
-Olhar screenshot so para aprovar mudanca intencional (`diff.png` preferivel) ou quando Alan pedir julgamento visual/exploratorio — nesses casos o julgamento é sempre do subagent `vision` (Luna), nunca do agente principal.
+Olhar screenshot so para aprovar mudanca intencional (`diff.png` preferivel) ou quando Alan pedir julgamento visual/exploratorio — nesses casos o julgamento é sempre do subagent `vision` (qwen3.7-plus), nunca do agente principal.
 ### Comandos esperados
 
 Criar branch em worktree limpa:
@@ -550,7 +550,7 @@ Arquitetura preferida (agentes definidos em `.opencode/agent/`):
 - `pr-explorer` para revisar diffs, PRs e escopo de comparação;
 - `browser-debugger` para reproduzir e investigar UI com evidências;
 - `reviewer` para revisar riscos, regressões, segurança e testes;
-- `vision` (gpt-5.6-luna) para TODA análise de imagem/julgamento visual;
+- `vision` (qwen3.7-plus) para TODA análise de imagem/julgamento visual;
 - `explore` (built-in) para descoberta rápida de código.
 
 O agente principal continua responsável por consolidar decisões, evitar trabalho duplicado, respeitar o escopo do OpenSpec/workflow DB e entregar o resultado final.
