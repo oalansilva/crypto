@@ -221,6 +221,10 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 
 O arraste `Aprovação de Design -> Pronto para Dev` aprova a versão específica do `design.md` e, quando existir, do protótipo. Apenas Alan autenticado pode executá-lo. Se uma dessas evidências mudar, a aprovação fica obsoleta e o desenvolvimento deve permanecer bloqueado até nova aprovação. Retornos controlados antes de `Done` são `Aprovação de Design -> Design`, `Code Review -> Em desenvolvimento` e `QA -> Em desenvolvimento`. Se um agente tiver avançado indevidamente para `Em desenvolvimento` sem passar por `Design`/`Aprovação de Design`/`Pronto para Dev`, deve regredir o card para `Design` (ou `Aprovação de Design` se a evidência de design já estiver completa), preservar o trabalho em branch e parar o `/opsx:apply` até a aprovação humana.
 
+**Evidência obrigatória de aprovação de Design:** nenhum código é aplicado (nem `/opsx:apply`, nem edição de arquivos de implementação) sem evidência registrada de aprovação de Design: comentário explícito de Alan no card ou arraste `Aprovação de Design -> Pronto para Dev` no board. A regra vale para todo card, inclusive `UI impact: none`, remoções, bugs e tooling — não existe exceção. Se o veredito do design for `BLOCKED`, o `design.md` deve conter seção de resolução (o que bloqueou, como foi resolvido, quem aprovou) antes de qualquer avanço para `Pronto para Dev`/implementação; `BLOCKED` sem resolução registrada bloqueia o card.
+
+**Checklist de gates no PR/commit de integração:** o PR (e o commit de squash de integração) deve listar, mesmo para mudanças de tooling/docs: change OpenSpec, `design.md`/verdict, `UI impact` e evidência de aprovação de Design (link do comentário ou arraste). O `/opsx:verify` valida essa checklist; PR sem os gates registrados não é integrado.
+
 Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main` **e deploy/validação em PROD** (source PROD no commit publicado + services PROD reiniciados + URL pública `https://criptofarol.com.br` validada).
 
 ### Comentários obrigatórios no Kanban

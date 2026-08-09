@@ -103,6 +103,14 @@ Verify that an implementation matches the change artifacts (specs, tasks, design
        - Recommendation: "Update implementation or revise design.md to match reality"
    - If no design.md: Skip design adherence check, note "No design.md to verify against"
 
+   **Gate Checklist (card/issue integration)**:
+   - If the change is linked to a card/issue (`card-<id>`/`#<id>` naming):
+     - Verify the PR/commit of integration lists: change OpenSpec, `design.md`/verdict, `UI impact` (affected|none with justification), and evidence of Design approval (comment by Alan or `Aprovação de Design -> Pronto para Dev` drag).
+     - If `Design Agent verdict: BLOCKED` is present in design.md, require a resolution section (what blocked, how resolved, who approved) before advancing.
+     - If the gate evidence is missing from the PR/commit description:
+       - Add CRITICAL: "Design approval gate evidence missing from integration PR/commit"
+       - Recommendation: "Add design.md/verdict, UI impact and approval evidence to the PR description before integration"
+
    **Code Pattern Consistency**:
    - Review new code for consistency with project patterns
    - Check file naming, directory structure, coding style
