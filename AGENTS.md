@@ -95,6 +95,16 @@ De-para principal:
 
 Antes de executar `/opsx:apply` em qualquer change vinculada a card/issue, siga `alan-workflow` e publique os artefatos OpenSpec no card. Convencao local do Gist: descricao `crypto openspec <change>` e comentario no card do Project 1.
 
+**Republicação de artefatos (sem Gist sprawl):** ao republicar os artefatos OpenSpec de uma change já publicada, use `publish-openspec-card-artifacts.sh --gist-id <id>` com o Gist da publicação anterior (e `--comment-id <id>` para atualizar o comentário existente) — nunca criar novo Gist nem novo comentário para a mesma change. O Gist novo só é criado na primeira publicação. Depois da republicação, registre o `gist_url`/`comment_url` atualizados no handoff.
+
+**Retrigger de CI sem commit vazio:** para reagendar checks sem mudança de código, use `workflow_dispatch` em vez de commit vazio, ex.:
+```bash
+gh workflow run <workflow-name>.yml --repo oalansilva/crypto --ref <branch> [--field <name>=<value>]
+# ou, para reagendar todos os checks do PR:
+gh pr checks <PR> --watch --fail-fast --interval 20
+```
+Commit vazio como retrigger é proibido. Agrupe ajustes pós-review de um card em um único commit/PR, evitando PRs fragmentados por ajuste.
+
 De-para complementar:
 
 | Intenção canônica | Comando opencode | Skill obrigatória | Uso correto |
