@@ -80,6 +80,55 @@ def test_buy_plan_uses_quote_amount_and_free_usdt(_info, public_get, signed_requ
 @patch("app.services.binance_market_orders.signed_request")
 @patch("app.services.binance_market_orders.public_get", return_value={"price": "2000"})
 @patch("app.services.binance_market_orders.get_symbol_info", return_value=SYMBOL_INFO)
+def test_buy_plan_insufficient_balance_mentions_earn_balance(_info, _price, signed_request):
+    signed_request.return_value = {
+        "canTrade": True,
+        "balances": [
+            {"asset": "USDT", "free": "0.65"},
+            {"asset": "LDUSDT", "free": "100.00"},
+            {"asset": "ETH", "free": "1"},
+        ],
+    }
+    with pytest.raises(BinanceOrderError) as exc:
+        market.build_market_order_plan(
+            api_key="key",
+            api_secret="secret",
+            symbol="ETHUSDT",
+            side="BUY",
+            quote_amount=Decimal("10"),
+        )
+    message = str(exc.value)
+    assert "Saldo livre em USDT insuficiente" in message
+    assert "0.65 USDT disponíveis" in message
+    assert "Simple Earn" in message
+    assert "não é elegível para compra direta" in message
+
+
+@patch("app.services.binance_market_orders.signed_request")
+@patch("app.services.binance_market_orders.public_get", return_value={"price": "2000"})
+@patch("app.services.binance_market_orders.get_symbol_info", return_value=SYMBOL_INFO)
+def test_buy_plan_insufficient_balance_without_earn_has_no_earn_hint(_info, _price, signed_request):
+    signed_request.return_value = {
+        "canTrade": True,
+        "balances": [{"asset": "USDT", "free": "0.65"}, {"asset": "ETH", "free": "1"}],
+    }
+    with pytest.raises(BinanceOrderError) as exc:
+        market.build_market_order_plan(
+            api_key="key",
+            api_secret="secret",
+            symbol="ETHUSDT",
+            side="BUY",
+            quote_amount=Decimal("10"),
+        )
+    message = str(exc.value)
+    assert "Saldo livre em USDT insuficiente" in message
+    assert "0.65 USDT disponíveis" in message
+    assert "Simple Earn" not in message
+
+
+@patch("app.services.binance_market_orders.signed_request")
+@patch("app.services.binance_market_orders.public_get", return_value={"price": "2000"})
+@patch("app.services.binance_market_orders.get_symbol_info", return_value=SYMBOL_INFO)
 def test_sell_plan_uses_maximum_valid_free_balance(_info, _price, signed_request):
     signed_request.return_value = {
         "canTrade": True,

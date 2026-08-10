@@ -54,7 +54,7 @@ test('painel de confirmação Spot preserva o Monitor em desktop e mobile', asyn
       payload = { items: [{ symbol: 'BTCUSDT', eligible: true, reason: null }] }
     } else if (path.includes('/api/external/binance/spot/balances')) {
       payload = {
-        balances: [{ asset: 'BTC', total: 0.01842 }, { asset: 'USDT', total: 1250 }],
+        balances: [{ asset: 'BTC', total: 0.01842, free: 0.01842 }, { asset: 'USDT', total: 1250, free: 1250 }],
         total_usd: 2447,
         as_of: '2026-08-06T20:00:00Z',
       }
