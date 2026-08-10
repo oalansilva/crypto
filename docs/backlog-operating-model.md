@@ -37,6 +37,7 @@ Exemplos de evidencia:
 ## Colunas do GitHub Project
 
 - `Status` e a fonte principal das colunas:
+  - `Em Refinamento`: primeira coluna e entrada obrigatoria de todo card novo; Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ir para `Todo`. Cards kaizen tambem nascem aqui.
   - `Todo`: backlog ou pronto para comecar.
   - `Design`: Designer/Critic Agent prepara protótipo, crítica e evidências.
   - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan.
@@ -48,7 +49,7 @@ Exemplos de evidencia:
   - `Homologado`: Alan aprovou funcionalmente em `develop`.
   - `Pronto`: publicado/operacional em producao com evidencia.
   - `Cancelado`: item substituido ou descartado.
-- Caminho normal: `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
+- Caminho normal: `Em Refinamento -> Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
 - Retornos controlados antes de `Done`: `Aprovação de Design -> Design`, `Code Review -> Em desenvolvimento` e `QA -> Em desenvolvimento`.
 - `Fluxo` e substatus/legado: `Backlog`, `Ready`, `In-progress`, `Code Review`, `QA`, `Blocked`, `Validate` e `Done`. Espelhar somente quando houver valor equivalente; `Status` sempre prevalece e o nome legado `In-progress` não substitui `Em desenvolvimento`.
 

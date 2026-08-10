@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-08-10 - Coluna Em Refinamento como primeira coluna e entrada obrigatoria de todo card novo
+
+**Decisao:** adicionar a coluna `Em Refinamento` como primeira coluna do board Project 1 (opcao do campo `Status` na posicao 0, antes de `Todo`) e como entrada obrigatoria de todo card novo. Em `Em Refinamento`, Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ele ir para `Todo`. Cards kaizen tambem nascem em `Em Refinamento` (nao mais em `Todo`).
+
+**Motivo:** Alan pediu uma coluna de triagem/priorizacao antes do backlog; cards novos entram nela e so seguem para `Todo` apos refinamento humano.
+
+**Regra atualizada:** `AGENTS.md`, `rules.md`, `docs/backlog-operating-model.md` e `.opencode/commands/kaizen.md` passam a refletir o fluxo `Em Refinamento -> Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`, com `Cancelado` terminal e acionavel inclusive a partir de `Em Refinamento`. Os 4 cards que estavam em `Todo` (Backup de ambiente, #456, #457, #458) foram movidos para `Em Refinamento` para triagem de Alan.
+
+**Nota operacional:** a API GraphQL (`updateProjectV2Field`) recria as opcoes do campo single-select com IDs novos ao atualizar `singleSelectOptions`, invalidando os valores de Status existentes; a reconstrucao do board foi feita a partir de snapshot anterior e validada contra o estado original (162 Pronto, 13 Cancelado, 4 Em Refinamento, 2 Em desenvolvimento). A definicao de opcao padrao do campo `Status` nao e exposta pela API; se desejado, setar o default (Em Refinamento) na UI do board (Settings do campo).
+
 ## 2026-08-08 - Pronto exige deploy em PROD (source + services + URL pública)
 
 **Decisao:** o fechamento de release passou a exigir deploy em PROD antes de mover cards para `Pronto`. Merge em `main` sozinho nao e evidencia de `Pronto`. Passos obrigatorios em `/srv/apps/prod/criptofarol/source`: `git fetch origin && git reset --hard origin/main`, `alembic upgrade head`, build frontend com `VITE_APP_ENV=production`, restart dos services PROD afetados e validacao do endpoint publico `https://criptofarol.com.br`.
