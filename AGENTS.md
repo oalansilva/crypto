@@ -18,7 +18,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 ## TL;DR
 
 - **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
-- **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. O fluxo obrigatório de **todo** card é `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal. **Proibido** pular `Design`, `Aprovação de Design` ou `Pronto para Dev` (inclusive com `UI impact: none`, remoção, bug ou pedido `implemente`). O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo deploy em PROD (source PROD no commit publicado + services reiniciados + URL pública validada) com evidencia; merge em `main` sozinho não é evidência de `Pronto`.
+- **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. `Em Refinamento` é a **primeira coluna** (antes de `Todo`) e a **entrada obrigatória de todo card novo**: em `Em Refinamento`, Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ir para `Todo`. O fluxo obrigatório de **todo** card é `Em Refinamento -> Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal (acionável inclusive a partir de `Em Refinamento`). Cards kaizen também nascem em `Em Refinamento`. **Proibido** pular `Design`, `Aprovação de Design` ou `Pronto para Dev` (inclusive com `UI impact: none`, remoção, bug ou pedido `implemente`). O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo deploy em PROD (source PROD no commit publicado + services reiniciados + URL pública validada) com evidencia; merge em `main` sozinho não é evidência de `Pronto`.
 - **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
 - **Regra de merge de release/lote:** após abrir um PR para `main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
@@ -131,13 +131,15 @@ publicar artifacts OpenSpec no card
   -> comentar o card com change, arquivos e comandos gh gist view
 
 gate de design obrigatório (todo card)
+  -> todo card novo entra em Em Refinamento (primeira coluna; Alan escolhe/prioriza/cancela)
+  -> mover para Todo após refinamento e seguir o fluxo normal
   -> mover para Design; declarar UI impact affected|none com justificativa
   -> invocar design-critic; concluir design.md + Design Critique
   -> se UI impact = affected: Prototype verificável também obrigatório
   -> se UI impact = none: Prototype pode ser N/A explícito, sem pular colunas
   -> mover para Aprovação de Design e aguardar Alan
   -> Alan aprova arrastando para Pronto para Dev
-  -> proibido bypass Todo->Pronto para Dev ou Todo/Design->Em desenvolvimento
+  -> proibido bypass Em Refinamento/Todo->Pronto para Dev ou Todo/Design->Em desenvolvimento
 
 /opsx:apply <change>
   -> usar $openspec-apply-change
@@ -205,7 +207,7 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 1. Atualizar `develop`.
 2. Criar branch `change-<id>-<slug>` ou `card-<id>-<slug>`.
 3. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia (classificação de evidência; **não** autoriza pular colunas).
-4. Executar OpenSpec (`/opsx:new`, `/opsx:ff`) e publicar os artifacts no card.
+4. Cards novos entram em `Status=Em Refinamento` (primeira coluna): Alan escolhe/prioriza/cancela; após refinamento, mover para `Status=Todo`. Executar OpenSpec (`/opsx:new`, `/opsx:ff`) e publicar os artifacts no card.
 5. Mover para `Status=Design`, invocar `design-critic`, concluir `design.md` + `Design Critique` (e `Prototype` quando UI impact = affected), mover para `Status=Aprovação de Design` e **aguardar Alan** arrastar para `Pronto para Dev`. Pedidos como `implemente` / `pode codar` **não** autorizam pular este gate.
 6. Somente em `Pronto para Dev`, mover para `Status=Em desenvolvimento`, executar `/opsx:apply` e `/opsx:verify` e implementar.
 7. Rodar testes proporcionais/focados e validação OpenSpec da change.
@@ -220,6 +222,7 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 ### Colunas Kanban
 
 - O campo `Status` e a fonte principal das colunas. O campo `Fluxo`, quando existir, e substatus/legado; se houver divergencia, `Status` prevalece.
+- `Em Refinamento`: primeira coluna e entrada obrigatória de todo card novo; Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ir para `Todo`. Cards kaizen também nascem aqui.
 - `Todo`: backlog ou pronto para comecar.
 - `Design`: Designer/Critic Agent prepara evidências da solução (protótipo quando houver UI; decisão enxuta quando não houver).
 - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan. Coluna obrigatória para todo card.
@@ -532,7 +535,7 @@ Audita como o processo está sendo executado e transforma fricções em melhoria
 - Execução: `/kaizen` (completa), `/kaizen card <id>` (pós-card), `/kaizen release` (pós-release, obrigatória no fechamento de lote).
 - **Read-only na auditoria**: subagent `.opencode/agent/kaizen.md` coleta evidências (board, Git, OpenSpec, CI, sessões opencode via SQL `mode=ro`, tech debt); o principal consolida e cadastra.
 - **Análise de sessões opencode** (escopo = release): correlaciona cards do pacote (`#<id>`/`card-<id>`) com sessões em `~/.local/share/opencode/opencode.db` e detecta onde o modelo se perde/alucina (caminho/URL inventado, loop sem progresso, `step-finish unknown`, custo alto sem `Done`, deriva de roteamento, subagent falhando, TODO eterno).
-- **Atua como PO ao registrar melhorias**: 1 card por melhoria (formato `## Proposta (PO)`, critérios de aceite, classificação change/story/bug), labels `kaizen`, campos do board preenchidos, dependências linkadas. **Todo card kaizen é criado em `Status=Todo`** (backlog) e segue o fluxo normal do board a partir daí — nunca é criado direto em coluna de execução. **Máximo 3 cards kaizen por release** — a priorização define os 3 que entram; o resto fica no backlog para releases seguintes.
+- **Atua como PO ao registrar melhorias**: 1 card por melhoria (formato `## Proposta (PO)`, critérios de aceite, classificação change/story/bug), labels `kaizen`, campos do board preenchidos, dependências linkadas. **Todo card kaizen é criado em `Status=Em Refinamento`** (entrada obrigatória de todo card novo) e segue o fluxo normal do board a partir daí (`Em Refinamento -> Todo -> ...`) — nunca é criado direto em coluna de execução. **Máximo 3 cards kaizen por release** — a priorização define os 3 que entram; o resto fica no backlog para releases seguintes.
 - **Priorização visível**: campo `Prioridade` P0/P1/P2 preenchido na criação (regra severidade × frequência / esforço; P0 = risco/segurança/falha recorrente/alucinação cara → semana atual; P1 = quick win/higiene → próxima; P2 = desejável → backlog); View "Kaizen" no board agrupada por prioridade (criada manualmente no Project 1 — não automatizável via CLI; ver card #420); override humano sempre possível.
 - **Propõe, Alan aprova**: Kaizen nunca implementa. Pode propor melhorias de skills e pesquisar alternativas (busca read-only) quando a atual não atender; troca/criação só após aprovação de Alan.
 - **Segurança**: issues públicas só com métricas agregadas e IDs; trechos de sessões apenas em `docs/kaizen-log.md`.

@@ -27,7 +27,7 @@ Audita o processo de execução do projeto, detecta fricções (incluindo sessõ
 3. **Registrar cards (atuar como PO)**: cada melhoria acionável vira **1 issue separada** no repo `oalansilva/crypto`:
    - Formato PO: `## Proposta (PO)` com Contexto (evidência + link `docs/kaizen-log.md`), Escopo, Critérios de aceite, classificação change/story/bug
    - Labels: `kaizen` + `enhancement` (ou `bug` quando for defeito de processo)
-   - Campos do Project 1: `Status=Todo` (obrigatório — cards kaizen nascem no backlog e seguem o fluxo normal do board; nunca criar direto em coluna de execução), `Prioridade` (regra abaixo), `Tipo` (Operacao/Codigo/QA/Seguranca/Metrica), `Frente`, `Responsavel` (Codex/Clara/Alan), `Semana` (alvo de execução)
+   - Campos do Project 1: `Status=Em Refinamento` (obrigatório — cards kaizen nascem na primeira coluna, entrada obrigatória de todo card novo, e seguem o fluxo normal do board; nunca criar direto em coluna de execução), `Prioridade` (regra abaixo), `Tipo` (Operacao/Codigo/QA/Seguranca/Metrica), `Frente`, `Responsavel` (Codex/Clara/Alan), `Semana` (alvo de execução)
    - Dependências entre melhorias: issue filha/linkada
    - **Limite de capacidade: máximo 3 cards kaizen por release.** A priorização (P0/P1/P2) define os 3 que entram; o restante fica no backlog kaizen para releases seguintes. Vaga só libera com `Pronto`/`Cancelado`.
 4. **Reportar**: resumo gerencial curto com os cards criados e links.
