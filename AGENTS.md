@@ -302,6 +302,8 @@ Status final: pronto.
 - Se `develop` contiver só conteúdo homologado do pacote, use PR `develop -> main`.
 - Se `develop` contiver mudança não homologada, não faça merge direto `develop -> main`; crie `release-*` a partir de `main` e inclua somente commits/branches aprovados, ou peça decisão de Alan.
 - Antes de mover cards para `Pronto`, confirme que cada card realmente entrou no merge para `main` **e que o deploy em PROD foi executado e validado** (source PROD no commit publicado + services PROD reiniciados + URL pública validada).
+- **Regra de deleção das branches do pacote:** após os cards do pacote moverem para `Pronto`, as branches `change-*`/`card-*`/`release-*` do pacote devem ser deletadas (local e remota) no closeout. O `release-guard post` inventaria e valida: sem `RELEASE_BRANCHES`, lista todas como pendência de classificação (warn/blocker); com `RELEASE_BRANCHES=<branch1,branch2,...>`, exige ausência local+remota. Branch de card não terminal (em fluxo) ou com worktree ativa é preservada e classificada, não deletada.
+- **Regra de inventário do guard:** `scripts/release-guard post|audit` lista branches locais e remotas `change-*`/`card-*`/`release-*` com SHA, estado de merge (patch-equivalent via `git cherry origin/develop`) e PR aberto; em `post` estrito, branches não classificadas (não mergeadas ou não deletadas após `Pronto`) são blockers.
 
 ### Testes
 
