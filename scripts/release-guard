@@ -241,12 +241,36 @@ fi
 
 section "OpenSpec terminal changes (post/audit)"
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
-  terminal_pending=0
-  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  candidates=0
+  for change_dir in openspec/changes/*/; do
+    [[ -d "$change_dir" ]] || continue
+    change_name="$(basename "$change_dir")"
+    [[ "$change_name" =~ ^(archive|.*\.md)$ ]] && continue
+    tasks_done=1
+    while IFS= read -r line; do
+      if [[ "$line" == "- [ ]"* ]]; then
+        tasks_done=0
+        break
+      fi
+    done < <(grep -E '^- \[[ x]\]' "$change_dir/tasks.md" 2>/dev/null || true)
+    artifacts_done=0
+    if [[ -f "$change_dir/proposal.md" && -f "$change_dir/design.md" && -f "$change_dir/tasks.md" && -d "$change_dir/specs" ]]; then
+      artifacts_done=1
+    fi
+    [[ "$artifacts_done" -eq 0 || "$tasks_done" -eq 0 ]] && continue
+    card_num="$(printf '%s' "$change_name" | grep -oE '^(card|issue)-[0-9]+' | grep -oE '[0-9]+$' | head -1 || true)"
+    [[ -z "$card_num" ]] && continue
+    candidates=$((candidates + 1))
+  done
+
+  if [[ "$candidates" -eq 0 ]]; then
+    printf 'No active OpenSpec changes with all artifacts done on terminal cards (Pronto/Cancelado).\n'
+  elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
     if [[ -z "$board_json" ]] || ! printf '%s' "$board_json" | jq -e . >/dev/null 2>&1; then
       issue "OpenSpec terminal-changes check could not run (gh project item-list returned no/invalid data; check auth/rate limit/project scope)"
     else
+      terminal_pending=0
       for change_dir in openspec/changes/*/; do
         [[ -d "$change_dir" ]] || continue
         change_name="$(basename "$change_dir")"
@@ -286,7 +310,7 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
       fi
     fi
   else
-    issue "OpenSpec terminal-changes check could not run (gh unavailable or not authenticated)"
+    issue "OpenSpec terminal-changes check could not run (gh unavailable or not authenticated) with $candidates candidate change(s) to verify"
   fi
 else
   printf 'Skipped (OpenSpec terminal changes check runs in post/audit).\n'
