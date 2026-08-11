@@ -249,6 +249,15 @@ Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover pa
 
 ### Comentários obrigatórios no Kanban
 
+Os comentários de evidência nas transições `Done`, `Homologado` e `Pronto` devem ser postados via `scripts/post-card-evidence-comment.sh` (dedupe por transição + commit ref; 1 comentário por transição por card), com `--transition done|homologado|pronto`, `--card <n>` e `--commit <sha>`:
+
+```bash
+scripts/post-card-evidence-comment.sh --transition done --card <n> --commit <sha> --pr <n> --branch <branch> --summary "..." --tests "..." --qa "..." --review "..."
+scripts/post-card-evidence-comment.sh --transition pronto --card <n> --commit <sha> --package <release> --cards "<lista>" --deploy "<evidência>" --branches "<lista>"
+```
+
+O helper usa os templates abaixo, normaliza a referência de commit (URL, "PR N (sha)", "Commit/merge: <ref>") e não posta duplicado (fail-closed se `gh` falhar ao listar comentários). Use `--dry-run` para validar antes de postar.
+
 Ao mover para `Done`, comentar:
 ```text
 Implementação concluída.
