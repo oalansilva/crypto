@@ -11,6 +11,7 @@ type BalanceRow = {
   free: number
   locked: number
   total: number
+  earn_amount?: number
   price_usdt?: number | null
   value_usd?: number | null
   avg_cost_usdt?: number | null
@@ -263,7 +264,7 @@ export default function ExternalBalancesPage() {
   }
 
   const exportCsv = () => {
-    const headers = ['asset', 'total', 'free', 'locked', 'value_usd', 'price_usdt', 'avg_cost_usdt', 'pnl_usd', 'pnl_pct']
+    const headers = ['asset', 'total', 'free', 'locked', 'earn_amount', 'value_usd', 'price_usdt', 'avg_cost_usdt', 'pnl_usd', 'pnl_pct']
     const csv = [
       headers.join(','),
       ...view.items.map((row) =>
@@ -272,6 +273,7 @@ export default function ExternalBalancesPage() {
           row.total,
           row.free,
           row.locked,
+          row.earn_amount ?? '',
           row.value_usd ?? '',
           row.price_usdt ?? '',
           row.avg_cost_usdt ?? '',
@@ -493,6 +495,9 @@ export default function ExternalBalancesPage() {
                                 <div className="truncate font-semibold text-slate-100">
                                   {loading ? '—' : row.asset}
                                   {dust ? <><span> </span><span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">DUST</span></> : null}
+                                  {!loading && typeof row.earn_amount === 'number' && row.earn_amount > 0 ? (
+                                    <><span> </span><span className="ml-2 rounded bg-yellow-400/15 px-1.5 py-0.5 font-mono text-[10px] text-yellow-300" data-testid="earn-badge">inclui {fmtNum(row.earn_amount, 8)} em Simple Earn</span></>
+                                  ) : null}
                                 </div>
                                 <div className="truncate text-xs text-slate-500">{loading ? 'Carregando' : assetName(row.asset)}</div>
                               </div>
@@ -538,7 +543,11 @@ export default function ExternalBalancesPage() {
                             {String(row.asset || '—').slice(0, 3)}
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate font-semibold text-slate-100">{loading ? '—' : row.asset}</div>
+                            <div className="truncate font-semibold text-slate-100">{loading ? '—' : row.asset}
+                              {!loading && typeof row.earn_amount === 'number' && row.earn_amount > 0 ? (
+                                <><span> </span><span className="ml-2 rounded bg-yellow-400/15 px-1.5 py-0.5 font-mono text-[10px] text-yellow-300" data-testid="earn-badge">inclui {fmtNum(row.earn_amount, 8)} em Simple Earn</span></>
+                              ) : null}
+                            </div>
                             <div className="truncate text-xs text-slate-500">{loading ? 'Carregando' : assetName(row.asset)}</div>
                           </div>
                         </div>

@@ -10,6 +10,7 @@ type TradeSide = 'BUY' | 'SELL';
 type PanelStep = 'entry' | 'previewing' | 'review' | 'submitting' | 'resuming' | 'result';
 type OrderState = 'submitting' | 'reconciling' | 'filled' | 'partial' | 'rejected';
 type RefreshState = 'idle' | 'pending' | 'success' | 'failed';
+type BalanceState = 'loading' | 'value' | 'unavailable';
 
 type Preview = {
     preview_token: string;
@@ -123,12 +124,15 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
     const [acknowledged, setAcknowledged] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [refreshState, setRefreshState] = useState<RefreshState>('idle');
+    const [quoteBalanceState, setQuoteBalanceState] = useState<BalanceState>('loading');
+    const [quoteBalanceValue, setQuoteBalanceValue] = useState<number | null>(null);
     const panelRef = useRef<HTMLElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
     const headingRef = useRef<HTMLHeadingElement>(null);
     const amountRef = useRef<HTMLInputElement>(null);
     const returnFocusRef = useRef<HTMLElement | null>(null);
     const requestGenerationRef = useRef(0);
+    const quoteBalanceGenerationRef = useRef(0);
     const submitLockedRef = useRef(false);
     const missingStatusCountRef = useRef(0);
     const pollAttemptsRef = useRef(0);
@@ -136,16 +140,52 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
     const busy = step === 'previewing' || step === 'submitting';
     const refreshingAfterTerminal = refreshState === 'pending';
 
+    const refreshQuoteBalance = useCallback(async () => {
+        const generation = ++quoteBalanceGenerationRef.current;
+        setQuoteBalanceState('loading');
+        try {
+            const response = await authFetch(`${API_BASE_URL}/external/binance/spot/balances?min_usd=0`);
+            const payload = await response.json().catch(() => null);
+            if (generation !== quoteBalanceGenerationRef.current) return;
+            if (!response.ok || !payload || typeof payload !== 'object') {
+                setQuoteBalanceState('unavailable');
+                return;
+            }
+            const balances = (payload as { balances?: unknown }).balances;
+            if (!Array.isArray(balances)) {
+                setQuoteBalanceState('unavailable');
+                return;
+            }
+            if (balances.length === 0) {
+                setQuoteBalanceValue(0);
+                setQuoteBalanceState('value');
+                return;
+            }
+            const quote = balances.find((row) => String(row?.asset ?? '').trim().toUpperCase() === 'USDT');
+            const free = Number(quote?.free ?? NaN);
+            if (!Number.isFinite(free)) {
+                setQuoteBalanceState('unavailable');
+                return;
+            }
+            setQuoteBalanceValue(free);
+            setQuoteBalanceState('value');
+        } catch {
+            if (generation !== quoteBalanceGenerationRef.current) return;
+            setQuoteBalanceState('unavailable');
+        }
+    }, []);
+
     const refreshAfterTerminal = useCallback(async () => {
         setRefreshState('pending');
         try {
             await onTerminalRef.current();
             sessionStorage.removeItem(pendingStorageKey(opportunity.symbol));
             setRefreshState('success');
+            void refreshQuoteBalance();
         } catch {
             setRefreshState('failed');
         }
-    }, [opportunity.symbol]);
+    }, [opportunity.symbol, refreshQuoteBalance]);
 
     const completeTerminal = useCallback(async (terminalResult: OrderResult) => {
         if (terminalResult.state === 'rejected') {
@@ -186,12 +226,17 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         document.body.style.overflow = 'hidden';
         if (applicationRoot) applicationRoot.inert = true;
         window.requestAnimationFrame(() => closeRef.current?.focus());
+        if (binanceConfigured) {
+            void refreshQuoteBalance();
+        } else {
+            setQuoteBalanceState('unavailable');
+        }
         return () => {
             document.body.style.overflow = previousOverflow;
             if (applicationRoot) applicationRoot.inert = applicationWasInert;
             returnFocusRef.current?.focus();
         };
-    }, []);
+    }, [binanceConfigured, refreshQuoteBalance]);
 
     useEffect(() => {
         const key = sessionStorage.getItem(pendingStorageKey(opportunity.symbol));
@@ -455,6 +500,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         setAmount('');
         setRefreshState('idle');
         setStep('entry');
+        void refreshQuoteBalance();
     };
 
     const unknownOutcome = result?.error_code === 'BINANCE_QUERY_FAILED'
@@ -547,17 +593,24 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                             >Vender 100%</button>
                         </div>
 
-                        <div className="spot-trade-balances">
-                            <span>Saldo livre</span>
-                            <b>Confirmado pela Binance na próxima etapa</b>
-                        </div>
-
                         <div
                             id="spot-buy-panel"
                             role="tabpanel"
                             aria-labelledby="spot-buy-tab"
                             hidden={side !== 'BUY'}
                         >
+                            <div className="spot-trade-balances">
+                                <span>Saldo livre em USDT{' '}
+                                    {quoteBalanceState === 'loading' ? (
+                                        <b className="spot-trade-balance-loading" role="status" aria-live="polite">carregando…</b>
+                                    ) : quoteBalanceState === 'value' ? (
+                                        <b role="status" aria-live="polite">{formatUsdt(quoteBalanceValue)} USDT</b>
+                                    ) : (
+                                        <b role="status" aria-live="polite">indisponível</b>
+                                    )}
+                                </span>
+                                <span>Consultado agora na Binance</span>
+                            </div>
                             <label className="spot-trade-label" htmlFor="spot-buy-amount">
                                 <span>Quanto deseja usar?</span><span>USDT</span>
                             </label>

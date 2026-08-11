@@ -158,7 +158,7 @@ async function setup(page: Page, options?: {
         await new Promise((resolve) => setTimeout(resolve, options.terminalRefreshDelayMs))
       }
       return fulfillJson(route, {
-        balances: [{ asset: 'BTC', total: 0.01842 }, { asset: 'USDT', total: 1250 }],
+        balances: [{ asset: 'BTC', total: 0.01842, free: 0.01842 }, { asset: 'USDT', total: 1250, free: 1250 }],
         total_usd: 2447,
         as_of: '2026-08-06T20:00:00Z',
       })
@@ -235,8 +235,9 @@ test('compra usa valor em USDT, confirmação explícita e um único submit', as
 
   await expect(visibleTradeTrigger(page)).toBeVisible()
   await visibleTradeTrigger(page).click()
-  await expect(page.getByRole('dialog')).toContainText('Saldo livreConfirmado pela Binance na próxima etapa')
-  await expect(page.getByRole('dialog')).not.toContainText('1.250,00 USDT')
+  await expect(page.getByRole('dialog')).toContainText('Saldo livre em USDT')
+  await expect(page.getByRole('dialog')).toContainText('1.250,00 USDT')
+  await expect(page.getByRole('dialog')).toContainText('Consultado agora na Binance')
   await page.getByTestId('spot-buy-amount').fill('250')
   await page.getByTestId('spot-continue-order').click()
 
@@ -547,4 +548,26 @@ test('404 repetido na reconciliação libera nova prévia sem manter estado infi
   })
   await expect(page.getByTestId('spot-buy-amount')).toBeVisible()
   expect(calls.statusQueries).toBeGreaterThanOrEqual(3)
+})
+
+test('nova operação reconsulta o saldo livre no mesmo mount', async ({ page }) => {
+  const calls = await setup(page, { submitState: 'filled' })
+  await page.goto('/monitor')
+  await visibleTradeTrigger(page).click()
+  await expect(page.getByRole('dialog')).toContainText('Saldo livre em USDT')
+  await expect(page.getByRole('dialog')).toContainText('1.250,00 USDT')
+  const balanceQueriesOnOpen = calls.balanceQueries
+
+  await page.getByTestId('spot-buy-amount').fill('250')
+  await page.getByTestId('spot-continue-order').click()
+  await page.getByRole('checkbox').check()
+  await page.getByTestId('spot-confirm-order').click()
+  await expect(page.getByRole('heading', { name: 'Compra executada' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Nova operação' })).toBeEnabled()
+
+  const balanceQueriesAfterTerminal = calls.balanceQueries
+  await page.getByRole('button', { name: 'Nova operação' }).click()
+  await expect(page.getByTestId('spot-buy-amount')).toBeVisible()
+  await expect.poll(() => calls.balanceQueries).toBeGreaterThan(balanceQueriesAfterTerminal)
+  expect(calls.balanceQueries).toBeGreaterThanOrEqual(balanceQueriesOnOpen + 2)
 })

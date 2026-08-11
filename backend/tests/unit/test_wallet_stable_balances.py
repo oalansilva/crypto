@@ -158,6 +158,58 @@ def test_balances_snapshot_prefers_simple_earn_over_ld_wrappers(monkeypatch):
     assert out["total_usd"] == pytest.approx(387.17788437 + 101.79216207 + 100.0)
 
 
+def test_balances_snapshot_keeps_earn_out_of_free_and_exposes_earn_amount(monkeypatch):
+    binance_spot = importlib.import_module("app.services.binance_spot")
+
+    def fake_signed_get(base_url, api_key, api_secret, path, params, *, timeout_s):
+        if path == "/api/v3/account":
+            return {
+                "balances": [
+                    {"asset": "USDT", "free": "0.65270319", "locked": "0"},
+                    {"asset": "LDUSDT", "free": "100.00", "locked": "0"},
+                ]
+            }
+        if path == "/sapi/v1/simple-earn/flexible/position":
+            return {"rows": [{"asset": "USDT", "totalAmount": "100.00"}]}
+        if path == "/sapi/v1/simple-earn/locked/position":
+            return {"rows": []}
+        raise AssertionError(f"unexpected path: {path}")
+
+    monkeypatch.setattr(binance_spot, "_signed_get", fake_signed_get)
+    monkeypatch.setattr(binance_spot, "fetch_all_binance_prices", lambda: {})
+    monkeypatch.setattr(binance_spot, "compute_avg_buy_cost_usdt", lambda *a, **k: None)
+
+    out = binance_spot.fetch_spot_balances_snapshot(api_key="k", api_secret="s", min_usd=0)
+    usdt = next(r for r in out["balances"] if r["asset"] == "USDT")
+    assert usdt["free"] == pytest.approx(0.65270319)
+    assert usdt["total"] == pytest.approx(100.65270319)
+    assert usdt["earn_amount"] == pytest.approx(100.00)
+    assert out["total_usd"] == pytest.approx(100.65270319)
+
+
+def test_balances_snapshot_earn_amount_zero_when_no_earn(monkeypatch):
+    binance_spot = importlib.import_module("app.services.binance_spot")
+
+    def fake_signed_get(base_url, api_key, api_secret, path, params, *, timeout_s):
+        if path == "/api/v3/account":
+            return {"balances": [{"asset": "USDT", "free": "50", "locked": "0"}]}
+        if path == "/sapi/v1/simple-earn/flexible/position":
+            return {"rows": []}
+        if path == "/sapi/v1/simple-earn/locked/position":
+            return {"rows": []}
+        raise AssertionError(f"unexpected path: {path}")
+
+    monkeypatch.setattr(binance_spot, "_signed_get", fake_signed_get)
+    monkeypatch.setattr(binance_spot, "fetch_all_binance_prices", lambda: {})
+    monkeypatch.setattr(binance_spot, "compute_avg_buy_cost_usdt", lambda *a, **k: None)
+
+    out = binance_spot.fetch_spot_balances_snapshot(api_key="k", api_secret="s", min_usd=0)
+    usdt = next(r for r in out["balances"] if r["asset"] == "USDT")
+    assert usdt["free"] == pytest.approx(50)
+    assert usdt["total"] == pytest.approx(50)
+    assert usdt["earn_amount"] == pytest.approx(0)
+
+
 def test_balances_snapshot_skips_non_stable_ld_when_earn_lists_base(monkeypatch):
     binance_spot = importlib.import_module("app.services.binance_spot")
 

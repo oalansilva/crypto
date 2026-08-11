@@ -252,9 +252,19 @@
   font-size: 0.8125rem;
 }
 
+.spot-trade-balances > span {
+  white-space: nowrap;
+}
+
 .spot-trade-balances b {
   color: var(--text-on-light);
   font-family: var(--font-number);
+  white-space: nowrap;
+}
+
+.spot-trade-balance-loading {
+  font-family: var(--font-family);
+  font-style: italic;
 }
 
 .spot-trade-label {

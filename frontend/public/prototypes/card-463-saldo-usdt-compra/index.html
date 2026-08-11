@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fcd535'/%3E%3Ctext x='5' y='21' font-size='13' font-family='sans-serif' font-weight='700'%3ECF%3C/text%3E%3C/svg%3E" />
+  <title>Card #463 — Saldo USDT real no modal de compra</title>
+  <style>
+    :root {
+      --canvas: #0b0e11;
+      --surface: #1e2329;
+      --surface-2: #1e2329;
+      --surface-3: #2b3139;
+      --text: #eaecef;
+      --muted: #707a8a;
+      --hairline: #2b3139;
+      --primary: #fcd535;
+      --primary-hover: #f0b90b;
+      --primary-active: #f0b90b;
+      --ink: #181a20;
+      --buy: #0ecb81;
+      --sell: #d64555;
+      --panel: #ffffff;
+      --panel-soft: #f5f5f5;
+      --panel-text: #181a20;
+      --panel-muted: #5e6673;
+      --panel-line: #eaecef;
+      --focus: #3b82f6;
+      --info: #3b82f6;
+      --border-strong: #cdd1d6;
+      --on-dark: #ffffff;
+      --overlay: color-mix(in srgb, var(--canvas) 68%, transparent);
+      --panel-shadow: color-mix(in srgb, var(--canvas) 35%, transparent);
+      --font: BinanceNova, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: BinancePlex, "SFMono-Regular", Consolas, monospace;
+      --wallet-bg: #07111a;
+      --wallet-panel: #101c2a;
+      --wallet-line: rgba(255, 255, 255, .1);
+      --wallet-text: #e2e8f0;
+      --wallet-muted: #94a3b8;
+      --wallet-soft: rgba(2, 6, 23, .3);
+    }
+
+    * { box-sizing: border-box; }
+    html { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .hidden { display: none !important; }
+
+    .app { min-height: 100vh; display: grid; grid-template-columns: 224px minmax(0, 1fr); }
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; padding: 20px 14px;
+      border-right: 1px solid var(--hairline); background: var(--canvas);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 26px; font-weight: 700; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; background: var(--primary); color: var(--ink); border-radius: 4px; font-weight: 900; }
+    .nav-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 14px 10px 8px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; color: var(--muted); border-radius: 4px; }
+    .nav-item.active { background: var(--surface-2); color: var(--text); border-left: 2px solid var(--primary); }
+    .nav-glyph { width: 18px; text-align: center; font-size: 12px; }
+
+    .workspace { min-width: 0; }
+    .topbar {
+      min-height: 64px; display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 24px; border-bottom: 1px solid var(--hairline); background: rgba(11, 14, 17, .96);
+    }
+    .topbar h1 { font-size: 20px; margin: 0; font-weight: 600; }
+    .topbar small { display: block; color: var(--muted); margin-top: 3px; }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .icon-btn, .ghost-btn, .trade-trigger {
+      min-height: 36px; border: 1px solid var(--hairline); border-radius: 4px;
+      background: transparent; color: var(--text); padding: 7px 11px;
+    }
+    .icon-btn { width: 36px; padding: 0; }
+    .trade-trigger { border-color: var(--primary-active); color: var(--primary); font-weight: 650; }
+    .trade-trigger:hover { background: rgba(252, 213, 53, .08); }
+
+    main { padding: 22px 24px 48px; max-width: 1500px; margin: 0 auto; }
+    .monitor-table, .wallet-card {
+      border: 1px solid var(--hairline); background: var(--surface); border-radius: 6px; overflow: hidden;
+    }
+    .monitor-table table, .wallet-card table { width: 100%; border-collapse: collapse; }
+    .monitor-table th, .monitor-table td { padding: 13px 14px; text-align: left; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+    .monitor-table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; }
+    .pair { display: flex; align-items: center; gap: 9px; font-weight: 650; }
+    .coin { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--primary); color: var(--ink); font-weight: 800; }
+    .signal { display: inline-flex; align-items: center; gap: 6px; color: var(--buy); }
+    .signal::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .mobile-list { display: none; }
+
+    .wallet-card { background: var(--wallet-bg); border: 1px solid var(--wallet-line); }
+    .wallet-card th { background: var(--wallet-panel); color: var(--wallet-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; position: sticky; top: 0; }
+    .wallet-card th, .wallet-card td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--wallet-line); white-space: nowrap; }
+    .wallet-card td { color: var(--wallet-text); }
+    .wallet-card td.num { font-family: var(--mono); color: var(--wallet-muted); }
+    .wallet-card td.num.strong { color: var(--wallet-text); font-weight: 600; }
+    .wallet-scroll { overflow-x: auto; }
+    .wallet-coin { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 6px; font-family: var(--mono); font-size: 12px; font-weight: 600; color: #fff; background: #26a17b; }
+    .wallet-name { font-weight: 600; color: var(--wallet-text); }
+    .wallet-sub { font-size: 12px; color: var(--wallet-muted); margin-top: 2px; }
+    .badge { display: inline-block; margin-left: 8px; border-radius: 4px; background: rgba(255,255,255,.1); padding: 1px 6px; font-family: var(--mono); font-size: 10px; color: var(--wallet-muted); vertical-align: 1px; }
+    .badge--earn { background: rgba(252, 213, 53, .14); color: #fcd535; }
+    .wallet-mobile { display: none; }
+
+    .backdrop { display: none; position: fixed; inset: 0; z-index: 50; background: var(--overlay); }
+    .backdrop.open { display: block; }
+    .trade-panel {
+      position: absolute; right: 0; top: 0; width: min(460px, 100%); min-height: 100%;
+      background: var(--panel); color: var(--panel-text);
+      box-shadow: -12px 0 40px var(--panel-shadow); padding: 22px; overflow-y: auto;
+    }
+    .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+    .eyebrow { color: var(--panel-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+    .panel-head h2 { margin: 0; font-size: 20px; }
+    .panel-head p { color: var(--panel-muted); margin: 5px 0 0; }
+    .close-btn { width: 36px; height: 36px; border: 1px solid var(--panel-line); background: var(--panel); color: var(--panel-text); border-radius: 4px; font-size: 20px; }
+
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--panel-line); margin-bottom: 20px; }
+    .tab { border: 0; background: transparent; color: var(--panel-muted); padding: 12px; border-bottom: 2px solid transparent; font-weight: 650; }
+    .tab[aria-selected="true"][data-side="buy"] { color: var(--ink); border-color: var(--buy); }
+    .tab[aria-selected="true"][data-side="sell"] { color: var(--ink); border-color: var(--sell); }
+
+    .balance-strip { display: flex; justify-content: space-between; gap: 12px; color: var(--panel-muted); font-size: 13px; margin-bottom: 18px; }
+    .balance-strip b { color: var(--panel-text); font-family: var(--mono); }
+    .balance-strip .loading { color: var(--panel-muted); font-family: var(--font); font-style: italic; }
+
+    .form-label { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 7px; }
+    .amount-field {
+      min-height: 52px; display: flex; align-items: center; border: 1px solid var(--border-strong);
+      border-radius: 4px; padding: 0 12px; background: var(--panel);
+    }
+    .amount-field:focus-within { border-color: var(--primary-active); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent); }
+    .amount-field input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--panel-text); font: 650 20px var(--mono); }
+    .amount-field span { color: var(--panel-muted); font-weight: 650; }
+    .quick-amounts { display: flex; gap: 6px; margin: 8px 0 18px; }
+    .quick-amounts button { border: 1px solid var(--panel-line); background: var(--panel-soft); color: var(--panel-text); border-radius: 4px; padding: 6px 10px; }
+
+    .sell-total { border: 1px solid var(--sell); background: var(--panel-soft); padding: 14px; border-radius: 4px; margin-bottom: 18px; }
+    .sell-total strong { display: block; color: var(--ink); margin-bottom: 5px; }
+    .sell-total b { font: 650 20px var(--mono); }
+
+    .warning { display: flex; gap: 9px; background: var(--panel-soft); border: 1px solid var(--primary-active); padding: 11px 12px; color: var(--ink); line-height: 1.45; margin-bottom: 18px; font-size: 13px; }
+
+    .validation { min-height: 20px; color: var(--sell); font-size: 13px; margin: 4px 0 6px; font-weight: 600; line-height: 1.45; }
+    .panel-actions { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-top: 12px; }
+    .panel-btn { min-height: 44px; border-radius: 4px; padding: 10px 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+    .panel-btn.secondary { background: var(--panel); border: 1px solid var(--border-strong); color: var(--panel-text); }
+    .panel-btn.primary { border: 0; background: var(--primary); color: var(--ink); }
+    .panel-btn.primary:hover { background: var(--primary-hover); }
+
+    .prototype-note { color: var(--muted); font-size: 12px; margin: 12px 2px 0; }
+    .prototype-scenarios { margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .prototype-scenarios summary { cursor: pointer; color: var(--text); }
+    .scenario-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .scenario-actions button { border: 1px solid var(--hairline); background: var(--surface-2); color: var(--text); padding: 7px 9px; border-radius: 4px; }
+
+    @media (max-width: 900px) {
+      .app { display: block; }
+      .sidebar { display: none; }
+      .topbar { padding: 10px 14px; }
+      main { padding: 14px 12px 36px; }
+      .monitor-table { display: none; }
+      .mobile-list { display: block; }
+      .mobile-card { padding: 14px; border: 1px solid var(--hairline); background: var(--surface); border-radius: 6px; }
+      .mobile-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+      .wallet-scroll { display: none; }
+      .wallet-mobile { display: block; }
+      .trade-panel { top: auto; bottom: 0; width: 100%; min-height: 0; max-height: 94vh; border-radius: 8px 8px 0 0; padding: 18px 16px 24px; }
+    }
+    @media (max-width: 520px) {
+      .topbar small, .top-actions .icon-btn { display: none; }
+      .panel-actions { grid-template-columns: 1fr; }
+      .panel-actions .secondary { order: 2; }
+      .balance-strip { display: grid; }
+      .actions { display: grid; grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="brand"><span class="brand-mark">CF</span> Cripto Farol</div>
+      <div class="nav-label">Decisão</div>
+      <div class="nav-item active" id="nav-monitor"><span class="nav-glyph">◆</span> Monitor</div>
+      <div class="nav-item" id="nav-wallet"><span class="nav-glyph">▥</span> Carteira</div>
+      <div class="nav-label">Conta</div>
+      <div class="nav-item"><span class="nav-glyph">●</span> Meu perfil</div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div>
+          <h1 id="page-title">Monitor de ativos</h1>
+          <small id="page-subtitle">Acompanhe sinais e gerencie suas decisões</small>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" type="button" aria-label="Alternar tema">◐</button>
+          <button class="icon-btn" type="button" aria-label="Atualizar monitor">↻</button>
+        </div>
+      </header>
+
+      <main>
+        <section id="monitor-view" class="monitor-table" aria-label="Ativos monitorados">
+          <table>
+            <thead><tr><th>Ativo</th><th>Status</th><th>Preço</th><th>Estratégia</th><th style="text-align:right">Ações</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="pair"><span class="coin" style="background:#1f6feb; color:#fff">HB</span> HBAR/USDT</span></td>
+                <td><span class="signal">Oportunidade</span></td>
+                <td class="num">$ 0,06828</td>
+                <td>Farol Tendência</td>
+                <td><div class="actions"><button class="trade-trigger" data-testid="open-trade" data-open-symbol="HBARUSDT" type="button">Operar</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="prototype-note">Protótipo navegável do card #463. Nenhuma ordem real é enviada.</p>
+          <details class="prototype-scenarios">
+            <summary>Revisar cenários do card #463</summary>
+            <div class="scenario-actions">
+              <button type="button" data-scenario="entry" data-testid="scenario-entry">Modal: saldo real visível</button>
+              <button type="button" data-scenario="loading" data-testid="scenario-loading">Modal: saldo carregando</button>
+              <button type="button" data-scenario="unavailable" data-testid="scenario-unavailable">Modal: saldo indisponível</button>
+              <button type="button" data-scenario="insufficient" data-testid="scenario-insufficient">Erro saldo insuficiente + Simple Earn</button>
+              <button type="button" data-scenario="wallet" data-testid="scenario-wallet">Carteira: nota Simple Earn</button>
+            </div>
+          </details>
+        </section>
+
+        <section id="mobile-monitor-view" class="mobile-list" aria-label="Ativos monitorados em cards">
+          <article class="mobile-card">
+            <div class="mobile-head"><span class="pair"><span class="coin" style="background:#1f6feb; color:#fff">HB</span> HBAR/USDT</span><span class="signal">Oportunidade</span></div>
+            <div class="actions" style="margin-top:12px"><button class="trade-trigger" data-testid="open-trade-mobile" data-open-symbol="HBARUSDT" type="button">Operar</button></div>
+          </article>
+          <p class="prototype-note">Protótipo navegável do card #463. Nenhuma ordem real é enviada.</p>
+          <details class="prototype-scenarios">
+            <summary>Revisar cenários do card #463</summary>
+            <div class="scenario-actions">
+              <button type="button" data-scenario="entry" data-testid="scenario-entry-m">Modal: saldo real visível</button>
+              <button type="button" data-scenario="loading" data-testid="scenario-loading-m">Modal: saldo carregando</button>
+              <button type="button" data-scenario="unavailable" data-testid="scenario-unavailable-m">Modal: saldo indisponível</button>
+              <button type="button" data-scenario="insufficient" data-testid="scenario-insufficient-m">Erro saldo insuficiente + Simple Earn</button>
+              <button type="button" data-scenario="wallet" data-testid="scenario-wallet-m">Carteira: nota Simple Earn</button>
+            </div>
+          </details>
+        </section>
+
+        <section id="wallet-view" class="wallet-card hidden" aria-label="Carteira Binance">
+          <div style="padding:14px 16px; border-bottom:1px solid var(--wallet-line)">
+            <h2 style="margin:0; font-size:15px; font-weight:600; color:var(--wallet-text)">Balances <span style="font-weight:400; color:var(--wallet-muted)">(2 ativos)</span></h2>
+          </div>
+          <div class="wallet-scroll">
+            <table>
+              <thead><tr><th>Ativo</th><th style="text-align:right">Total</th><th style="text-align:right">Free</th><th style="text-align:right">Valor USD</th><th style="text-align:right">Preço</th><th style="text-align:right">Avg cost</th><th style="text-align:right">PnL</th><th style="text-align:right">Participação</th></tr></thead>
+              <tbody>
+                <tr data-testid="usdt-row">
+                  <td>
+                    <div style="display:flex; align-items:center; gap:12px; min-width:170px">
+                      <span class="wallet-coin">US</span>
+                      <span>
+                        <span class="wallet-name">USDT</span><span class="badge badge--earn" data-testid="earn-note">inclui 100,00 em Simple Earn</span>
+                        <div class="wallet-sub">Tether USD</div>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="num">100,65270319</td>
+                  <td class="num strong">0,65270319</td>
+                  <td class="num strong">$ 100,65</td>
+                  <td class="num">$ 1,000000</td>
+                  <td class="num">$ 1,000000</td>
+                  <td class="num">$ 0,00</td>
+                  <td class="num strong">17,10%</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div style="display:flex; align-items:center; gap:12px; min-width:170px">
+                      <span class="wallet-coin" style="background:#1f6feb">HB</span>
+                      <span>
+                        <span class="wallet-name">HBAR</span>
+                        <div class="wallet-sub">Hedera</div>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="num">1,05007444</td>
+                  <td class="num strong">1,05007444</td>
+                  <td class="num strong">$ 0,07</td>
+                  <td class="num">$ 0,068280</td>
+                  <td class="num">$ 0,066500</td>
+                  <td class="num">$ 0,00</td>
+                  <td class="num strong">0,01%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="wallet-mobile">
+            <article style="border-bottom:1px solid var(--wallet-line); padding:16px" data-testid="usdt-mobile-row">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                <div style="display:flex; align-items:center; gap:12px; min-width:0">
+                  <span class="wallet-coin">US</span>
+                  <div style="min-width:0">
+                    <div class="wallet-name">USDT<span class="badge badge--earn">inclui 100,00 em Simple Earn</span></div>
+                    <div class="wallet-sub">Tether USD</div>
+                  </div>
+                </div>
+                <div style="text-align:right"><div class="num strong" style="font-family:var(--mono); font-weight:600">$ 100,65</div><div class="wallet-sub">17,10%</div></div>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px">
+                <div style="border:1px solid var(--wallet-line); border-radius:6px; background:var(--wallet-soft); padding:10px 12px"><div class="wallet-sub">Total</div><div class="num" style="font-family:var(--mono); font-size:13px; color:var(--wallet-text); margin-top:2px">100,65270319</div></div>
+                <div style="border:1px solid var(--wallet-line); border-radius:6px; background:var(--wallet-soft); padding:10px 12px"><div class="wallet-sub">Free (Spot)</div><div class="num" style="font-family:var(--mono); font-size:13px; color:var(--wallet-text); margin-top:2px">0,65270319</div></div>
+              </div>
+            </article>
+          </div>
+          <p class="prototype-note" style="padding:0 16px 12px">Delta do card #463: o Free passa a refletir o saldo Spot livre real (sem Simple Earn), com badge explicando o montante em rendimento.</p>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="backdrop" data-testid="trade-dialog" aria-hidden="true">
+    <section class="trade-panel" role="dialog" aria-modal="true" aria-labelledby="trade-title" aria-describedby="trade-price">
+      <div class="panel-head">
+        <div><div class="eyebrow">Ordem Spot · Binance</div><h2 id="trade-title">Operar HBAR/USDT</h2><p id="trade-price">Preço indicativo: $ 0,06828 USDT</p></div>
+        <button class="close-btn" data-testid="close-trade" type="button" aria-label="Fechar operação">×</button>
+      </div>
+
+      <div class="entry" data-testid="entry-step">
+        <div class="tabs" role="tablist" aria-label="Tipo de operação">
+          <button class="tab" role="tab" aria-selected="true" aria-controls="buy-panel" data-side="buy" id="buy-tab">Comprar</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="sell-panel" data-side="sell" id="sell-tab">Vender 100%</button>
+        </div>
+
+        <div class="balance-strip" role="status" aria-live="polite">
+          <span>Saldo livre em USDT <b id="quote-balance" data-testid="quote-balance">0,65 USDT</b></span>
+          <span>Consultado agora na Binance</span>
+        </div>
+
+        <div class="buy-form" id="buy-panel" role="tabpanel" aria-labelledby="buy-tab" data-testid="buy-form">
+          <label class="form-label" for="buy-amount"><span>Quanto deseja usar?</span><span>USDT</span></label>
+          <div class="amount-field"><input id="buy-amount" data-testid="buy-amount" inputmode="decimal" autocomplete="off" value="" placeholder="0,00" aria-describedby="buy-error" /><span>USDT</span></div>
+          <div class="quick-amounts" aria-label="Valores rápidos"><button type="button" data-amount="100" aria-label="Usar 100 USDT">100</button><button type="button" data-amount="250" aria-label="Usar 250 USDT">250</button><button type="button" data-amount="500" aria-label="Usar 500 USDT">500</button></div>
+          <div id="buy-error" class="validation" aria-live="polite"></div>
+        </div>
+
+        <div class="sell-form hidden" id="sell-panel" role="tabpanel" aria-labelledby="sell-tab" data-testid="sell-form">
+          <div class="sell-total"><strong>Venda de 100% do saldo livre</strong><b id="sell-free">1,05007444 HBAR</b><p style="color:var(--panel-muted); margin:6px 0 0">O backend consultará o saldo atual e enviará a maior quantidade válida.</p></div>
+        </div>
+
+        <div class="warning"><span aria-hidden="true">!</span><span>Uma ordem MARKET pode executar em preço diferente da estimativa. Você revisará os dados antes do envio.</span></div>
+        <div class="panel-actions"><button class="panel-btn secondary" data-action="cancel" type="button">Cancelar</button><button class="panel-btn primary" data-testid="continue-order" type="button">Continuar</button></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const dialog = document.querySelector('[data-testid="trade-dialog"]');
+      const panel = dialog.querySelector('.trade-panel');
+      const entry = dialog.querySelector('[data-testid="entry-step"]');
+      const buyTab = dialog.querySelector('[data-side="buy"]');
+      const sellTab = dialog.querySelector('[data-side="sell"]');
+      const buyForm = dialog.querySelector('[data-testid="buy-form"]');
+      const sellForm = dialog.querySelector('[data-testid="sell-form"]');
+      const amount = dialog.querySelector('[data-testid="buy-amount"]');
+      const error = dialog.querySelector('#buy-error');
+      const quoteBalance = dialog.querySelector('[data-testid="quote-balance"]');
+      const closeButton = dialog.querySelector('[data-testid="close-trade"]');
+      const monitorView = document.querySelector('#monitor-view');
+      const mobileMonitorView = document.querySelector('#mobile-monitor-view');
+      const walletView = document.querySelector('#wallet-view');
+      const navWallet = document.querySelector('#nav-wallet');
+      const navMonitor = document.querySelector('#nav-monitor');
+      const pageTitle = document.querySelector('#page-title');
+      const pageSubtitle = document.querySelector('#page-subtitle');
+      let side = 'buy';
+      let lastFocus = null;
+      let currentScenario = 'entry';
+
+      const formatUsdt = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const parseAmount = () => Number(amount.value.replace(/\./g, '').replace(',', '.'));
+
+      function selectSide(nextSide, options = {}) {
+        side = nextSide;
+        const buying = side === 'buy';
+        buyTab.setAttribute('aria-selected', String(buying));
+        sellTab.setAttribute('aria-selected', String(!buying));
+        buyTab.tabIndex = buying ? 0 : -1;
+        sellTab.tabIndex = buying ? -1 : 0;
+        buyForm.classList.toggle('hidden', !buying);
+        sellForm.classList.toggle('hidden', buying);
+        if (!options.keepError) error.textContent = '';
+      }
+
+      function setBalance(label, mode) {
+        if (mode === 'loading') {
+          quoteBalance.className = 'loading';
+          quoteBalance.textContent = 'carregando…';
+          return;
+        }
+        quoteBalance.className = '';
+        quoteBalance.textContent = label;
+      }
+
+      function showDialog() {
+        dialog.classList.add('open');
+        dialog.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        document.querySelector('.app').inert = true;
+      }
+
+      function closeDialog() {
+        dialog.classList.remove('open');
+        dialog.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        document.querySelector('.app').inert = false;
+        lastFocus?.focus();
+      }
+
+      function showMonitor() {
+        walletView.classList.add('hidden');
+        monitorView.classList.remove('hidden');
+        mobileMonitorView.classList.remove('hidden');
+        pageTitle.textContent = 'Monitor de ativos';
+        pageSubtitle.textContent = 'Acompanhe sinais e gerencie suas decisões';
+        navWallet.classList.remove('active');
+        navMonitor.classList.add('active');
+      }
+
+      function openDialog(event) {
+        lastFocus = event.currentTarget;
+        showDialog();
+        applyScenario('entry');
+        requestAnimationFrame(() => closeButton.focus());
+      }
+
+      function applyScenario(scenario) {
+        currentScenario = scenario;
+        selectSide('buy', { keepError: true });
+        error.textContent = '';
+        if (scenario === 'loading') {
+          setBalance('carregando…', 'loading');
+        } else if (scenario === 'unavailable') {
+          setBalance('indisponível', 'value');
+          error.textContent = 'Não foi possível consultar o saldo livre na Binance agora. Confirme a conexão em Meu Perfil e tente novamente.';
+        } else if (scenario === 'insufficient') {
+          setBalance('0,65 USDT', 'value');
+          amount.value = '10';
+          error.innerHTML = 'Saldo livre em USDT insuficiente (0,65 USDT disponíveis). Seu saldo restante está em <b>Simple Earn</b> (rendimento) e não é elegível para compra direta.';
+        } else {
+          setBalance('100,65 USDT', 'value');
+          amount.value = '';
+        }
+      }
+
+      function showScenario(scenario, event) {
+        lastFocus = event.currentTarget;
+        if (scenario === 'wallet') {
+          monitorView.classList.add('hidden');
+          mobileMonitorView.classList.add('hidden');
+          walletView.classList.remove('hidden');
+          pageTitle.textContent = 'Carteira';
+          pageSubtitle.textContent = 'Saldos Binance em tempo real';
+          navMonitor.classList.remove('active');
+          navWallet.classList.add('active');
+          return;
+        }
+        showMonitor();
+        showDialog();
+        applyScenario(scenario);
+        requestAnimationFrame(() => closeButton.focus());
+      }
+
+      document.querySelectorAll('[data-testid="open-trade"], [data-testid="open-trade-mobile"]').forEach((b) => b.addEventListener('click', openDialog));
+      document.querySelectorAll('[data-scenario]').forEach((b) => b.addEventListener('click', (e) => showScenario(b.dataset.scenario, e)));
+      navWallet.addEventListener('click', (e) => showScenario('wallet', e));
+      navMonitor.addEventListener('click', (e) => { showMonitor(); });
+      closeButton.addEventListener('click', closeDialog);
+      dialog.querySelectorAll('[data-action="cancel"]').forEach((b) => b.addEventListener('click', closeDialog));
+      buyTab.addEventListener('click', () => selectSide('buy'));
+      sellTab.addEventListener('click', () => selectSide('sell'));
+      [buyTab, sellTab].forEach((tab) => tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? buyTab : event.key === 'End' ? sellTab : (tab === buyTab ? sellTab : buyTab);
+        next.focus();
+        selectSide(next.dataset.side);
+      }));
+      dialog.querySelectorAll('[data-amount]').forEach((b) => b.addEventListener('click', () => { amount.value = b.dataset.amount; selectSide('buy'); }));
+
+      dialog.querySelector('[data-testid="continue-order"]').addEventListener('click', () => {
+        if (currentScenario === 'insufficient') return;
+        if (currentScenario === 'unavailable') return;
+        const value = parseAmount();
+        if (!Number.isFinite(value) || value <= 0) { error.textContent = 'Informe quanto deseja usar em USDT.'; amount.focus(); return; }
+        if (value > 100.65) {
+          error.innerHTML = `Saldo livre em USDT insuficiente (${formatUsdt(100.65)} USDT disponíveis).`;
+          amount.focus();
+          return;
+        }
+        error.innerHTML = 'Prévia validada. A revisão final aparece na etapa seguinte (não faz parte do delta deste card).';
+      });
+
+      dialog.addEventListener('mousedown', (event) => { if (event.target === dialog) closeDialog(); });
+      document.addEventListener('keydown', (event) => {
+        if (!dialog.classList.contains('open')) return;
+        if (event.key === 'Escape') { closeDialog(); return; }
+        if (event.key !== 'Tab') return;
+        const focusable = [...panel.querySelectorAll('button:not([disabled]), input:not([disabled])')].filter((el) => !el.closest('.hidden'));
+        const first = focusable[0]; const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      });
+    })();
+  </script>
+</body>
+</html>

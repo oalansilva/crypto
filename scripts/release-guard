@@ -53,6 +53,28 @@ indent() {
   sed 's/^/  /'
 }
 
+branch_merged() {
+  local branch="$1"
+  if git merge-base --is-ancestor "$branch" origin/develop >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ "$(git rev-parse "$branch^{tree}" 2>/dev/null)" == "$(git rev-parse 'origin/develop^{tree}' 2>/dev/null)" ]]; then
+    return 0
+  fi
+  if [[ -z "$(git cherry origin/develop "$branch" 2>/dev/null | grep '^+' || true)" ]]; then
+    return 0
+  fi
+  local base files
+  base="$(git merge-base "$branch" origin/develop 2>/dev/null || true)"
+  if [[ -n "$base" ]]; then
+    files="$(git diff --name-only "$base" "$branch" 2>/dev/null)"
+    if [[ -n "$files" ]] && git diff --quiet "$branch" origin/develop -- $files 2>/dev/null; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [[ -z "$repo_root" ]]; then
   printf 'ERROR: not inside a Git repository\n' >&2
@@ -217,6 +239,237 @@ else
   printf 'Skipped (duplicate OpenSpec check runs in post/audit; legacy debt does not block pre).\n'
 fi
 
+section "OpenSpec terminal changes (post/audit)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  candidates=0
+  for change_dir in openspec/changes/*/; do
+    [[ -d "$change_dir" ]] || continue
+    change_name="$(basename "$change_dir")"
+    [[ "$change_name" =~ ^(archive|.*\.md)$ ]] && continue
+    tasks_done=1
+    while IFS= read -r line; do
+      if [[ "$line" == "- [ ]"* ]]; then
+        tasks_done=0
+        break
+      fi
+    done < <(grep -E '^- \[[ x]\]' "$change_dir/tasks.md" 2>/dev/null || true)
+    artifacts_done=0
+    if [[ -f "$change_dir/proposal.md" && -f "$change_dir/design.md" && -f "$change_dir/tasks.md" && -d "$change_dir/specs" ]]; then
+      artifacts_done=1
+    fi
+    [[ "$artifacts_done" -eq 0 || "$tasks_done" -eq 0 ]] && continue
+    card_num="$(printf '%s' "$change_name" | grep -oE '^(card|issue)-[0-9]+' | grep -oE '[0-9]+$' | head -1 || true)"
+    [[ -z "$card_num" ]] && continue
+    candidates=$((candidates + 1))
+  done
+
+  if [[ "$candidates" -eq 0 ]]; then
+    printf 'No active OpenSpec changes with all artifacts done on terminal cards (Pronto/Cancelado).\n'
+  elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
+    if [[ -z "$board_json" ]] || ! printf '%s' "$board_json" | jq -e . >/dev/null 2>&1; then
+      issue "OpenSpec terminal-changes check could not run (gh project item-list returned no/invalid data; check auth/rate limit/project scope)"
+    else
+      terminal_pending=0
+      for change_dir in openspec/changes/*/; do
+        [[ -d "$change_dir" ]] || continue
+        change_name="$(basename "$change_dir")"
+        [[ "$change_name" =~ ^(archive|.*\.md)$ ]] && continue
+        tasks_done=1
+        while IFS= read -r line; do
+          if [[ "$line" == "- [ ]"* ]]; then
+            tasks_done=0
+            break
+          fi
+        done < <(grep -E '^- \[[ x]\]' "$change_dir/tasks.md" 2>/dev/null || true)
+        artifacts_done=0
+        if [[ -f "$change_dir/proposal.md" && -f "$change_dir/design.md" && -f "$change_dir/tasks.md" && -d "$change_dir/specs" ]]; then
+          artifacts_done=1
+        fi
+        if [[ "$artifacts_done" -eq 0 || "$tasks_done" -eq 0 ]]; then
+          continue
+        fi
+        card_num="$(printf '%s' "$change_name" | grep -oE '^(card|issue)-[0-9]+' | grep -oE '[0-9]+$' | head -1 || true)"
+        if [[ -z "$card_num" ]]; then
+          continue
+        fi
+        status="$(printf '%s' "$board_json" | jq -r --argjson n "$card_num" '.items[] | select(.content.number == $n) | .status' 2>/dev/null | head -1 || true)"
+        case "$status" in
+          Pronto|Cancelado)
+            terminal_pending=$((terminal_pending + 1))
+            if [[ "$strict" -eq 1 ]]; then
+              blocker "OpenSpec change of terminal card is still active (archive or classify): $change_name (card #$card_num is $status)"
+            else
+              warn "OpenSpec change of terminal card is still active (archive or classify): $change_name (card #$card_num is $status)"
+            fi
+            ;;
+        esac
+      done
+      if [[ "$terminal_pending" -eq 0 ]]; then
+        printf 'No active OpenSpec changes with all artifacts done on terminal cards (Pronto/Cancelado).\n'
+      fi
+    fi
+  else
+    issue "OpenSpec terminal-changes check could not run (gh unavailable or not authenticated) with $candidates candidate change(s) to verify"
+  fi
+else
+  printf 'Skipped (OpenSpec terminal changes check runs in post/audit).\n'
+fi
+
+section "Change/card/release branch inventory (post/audit)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  preserved_branches="${PRESERVED_BRANCHES:-}"
+
+  branch_is_preserved() {
+    local name="$1"
+    [[ -z "$preserved_branches" ]] && return 1
+    local p
+    IFS=',' read -ra p <<< "$preserved_branches"
+    local item
+    for item in "${p[@]}"; do
+      [[ "$item" == "$name" ]] && return 0
+    done
+    return 1
+  }
+
+  branch_has_worktree() {
+    local name="$1"
+    git worktree list --porcelain | awk -v b="refs/heads/$name" '$1 == "branch" && $2 == b { found=1 } END { exit !found }'
+  }
+
+  card_is_terminal() {
+    local name="$1" card_num=""
+    card_num="$(printf '%s' "$name" | grep -oE '(^|/)(card|change|issue)-[0-9]+' | grep -oE '[0-9]+$' | head -1 || true)"
+    if [[ -z "$card_num" ]]; then
+      return 1
+    fi
+    if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+      return 1
+    fi
+    local board_json status
+    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
+    status="$(printf '%s' "$board_json" | jq -r --argjson n "$card_num" '.items[] | select(.content.number == $n) | .status' 2>/dev/null | head -1 || true)"
+    case "$status" in
+      Pronto|Cancelado) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
+
+  local_branches="$(git for-each-ref refs/heads --format='%(refname:short)' | grep -E '^(change-|card-|release-)' | sort -u || true)"
+  remote_branches="$(git for-each-ref refs/remotes/origin --format='%(refname:short)' | grep -E '^origin/(change-|card-|release-)' | sed 's/^origin\///' | sort -u || true)"
+  all_names="$(printf '%s\n%s\n' "$local_branches" "$remote_branches" | grep -v '^$' | sort -u)"
+
+  if [[ -n "$all_names" ]]; then
+    pending=0
+    pending_list=""
+    while IFS= read -r name; do
+      if [[ "$name" == "$current_branch" || "origin/$name" == "$current_branch" ]]; then
+        printf '  %s (current branch, excluded from cleanup check)\n' "$name"
+        continue
+      fi
+      local_sha="$(git rev-parse --short "refs/heads/$name" 2>/dev/null || printf 'none')"
+      remote_sha="$(git rev-parse --short "refs/remotes/origin/$name" 2>/dev/null || printf 'none')"
+      if [[ "$local_sha" == "none" ]]; then
+        sha="$remote_sha"
+        ref="refs/remotes/origin/$name"
+      else
+        sha="$local_sha"
+        ref="refs/heads/$name"
+      fi
+      has_local=0
+      has_remote=0
+      [[ "$local_sha" != "none" ]] && has_local=1
+      [[ "$remote_sha" != "none" ]] && has_remote=1
+
+      merged="no"
+      if branch_merged "$ref"; then
+        merged="yes"
+      fi
+      open_pr="unknown"
+      if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+        pr_count="$(gh pr list --repo oalansilva/crypto --state open --head "$name" --json number -q 'length' 2>/dev/null || printf '0')"
+        if [[ "$pr_count" =~ ^[0-9]+$ ]]; then
+          [[ "$pr_count" -gt 0 ]] && open_pr="yes" || open_pr="no"
+        else
+          open_pr="unknown"
+        fi
+      fi
+
+      state=""
+      if branch_is_preserved "$name" || branch_has_worktree "$name"; then
+        state="preserved (classified; not deleted)"
+      elif ! card_is_terminal "$name"; then
+        state="preserved (card in flight; not deleted)"
+      elif [[ "$merged" == "no" ]]; then
+        state="not merged (requires classification/integrate or cancel)"
+      elif [[ "$open_pr" == "yes" ]]; then
+        state="merged but has open PR (classify before delete)"
+      elif [[ "$open_pr" == "unknown" ]]; then
+        state="merged but PR status unknown (classify before delete)"
+      else
+        state="merged, no open PR (delete after Pronto)"
+      fi
+
+      printf '  %s %s local=%s remote=%s merged=%s pr_open=%s -> %s\n' "$name" "$sha" "$has_local" "$has_remote" "$merged" "$open_pr" "$state"
+
+      case "$state" in
+        preserved*)
+          ;;
+        "merged, no open PR"*|"not merged"*|"merged but"*)
+          pending=$((pending + 1))
+          pending_list+="    $name ($state)"$'\n'
+          ;;
+      esac
+    done <<< "$all_names"
+
+    if [[ "$pending" -gt 0 ]]; then
+      if [[ "$strict" -eq 1 ]]; then
+        blocker "unclassified change-*/card-*/release-* branches require classification or deletion in closeout:"
+      else
+        warn "unclassified change-*/card-*/release-* branches; classify (integrate/preserve/delete) in closeout:"
+      fi
+      printf '%s' "$pending_list" | indent
+    else
+      printf 'All change-*/card-*/release-* branches classified or preserved.\n'
+    fi
+  else
+    printf 'No change-*/card-*/release-* branches.\n'
+  fi
+
+  section "Package branch cleanup (post)"
+  if [[ "$mode" == "post" ]]; then
+    release_branches="${RELEASE_BRANCHES:-}"
+    if [[ -n "$release_branches" ]]; then
+      remaining=0
+      IFS=',' read -ra pkg_arr <<< "$release_branches"
+      for branch in "${pkg_arr[@]}"; do
+        [[ -z "$branch" ]] && continue
+        local_ok=0
+        remote_ok=0
+        git rev-parse --verify -q "refs/heads/$branch" >/dev/null && local_ok=1
+        git rev-parse --verify -q "refs/remotes/origin/$branch" >/dev/null && remote_ok=1
+        if [[ "$local_ok" -eq 1 || "$remote_ok" -eq 1 ]]; then
+          printf '  package branch still present: %s local=%s remote=%s\n' "$branch" "$local_ok" "$remote_ok"
+          remaining=$((remaining + 1))
+        else
+          printf '  package branch deleted: %s\n' "$branch"
+        fi
+      done
+      if [[ "$remaining" -gt 0 ]]; then
+        issue "package branches not deleted after Pronto (RELEASE_BRANCHES): delete locally and remotely in closeout"
+      else
+        printf 'All RELEASE_BRANCHES deleted (local and remote).\n'
+      fi
+    else
+      warn "RELEASE_BRANCHES not set; package branch deletion check skipped (list change-*/card-* as pending classification above)"
+    fi
+  else
+    printf 'Skipped (package branch cleanup check runs in post).\n'
+  fi
+else
+  printf 'Skipped (change/card/release branch inventory runs in post/audit; legacy debt does not block pre).\n'
+fi
+
 section "Local branches"
 if git rev-parse --verify -q origin/develop >/dev/null &&
    git rev-parse --verify -q origin/main >/dev/null; then
@@ -226,12 +479,11 @@ if git rev-parse --verify -q origin/develop >/dev/null &&
       continue
     fi
 
-    develop_contains=0
-    main_contains=0
-    git merge-base --is-ancestor "$branch" origin/develop >/dev/null 2>&1 && develop_contains=1
-    git merge-base --is-ancestor "$branch" origin/main >/dev/null 2>&1 && main_contains=1
+    if [[ "$branch" == "$current_branch" ]]; then
+      continue
+    fi
 
-    if [[ "$develop_contains" -eq 0 && "$main_contains" -eq 0 ]]; then
+    if ! branch_merged "$branch"; then
       issue "local branch not merged into origin/develop or origin/main: $branch"
     fi
   done

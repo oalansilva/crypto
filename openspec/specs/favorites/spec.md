@@ -117,7 +117,7 @@ The Favorites page MUST allow users to set the existing favorite tier through a 
 - **AND** the backend MUST clear that tier for the current user's preference when the favorite belongs to an admin
 
 ### Requirement: Favorites Strategy filter uses only strategy labels
-The Favorites page Strategy filter MUST list and match only strategy labels, not symbols, timeframes, hours, or free-form favorite names.
+The Favorites page Strategy filter MUST list and match only strategy labels, not symbols, timeframes, hours, or free-form favorite names. For protected favorites shown to common users, the system MUST provide a distinct safe strategy display label for filtering while keeping raw strategy implementation details redacted.
 
 #### Scenario: Favorites page builds Strategy options
 - **WHEN** the Favorites page loads crypto favorites
@@ -130,6 +130,23 @@ The Favorites page Strategy filter MUST list and match only strategy labels, not
 - **WHEN** the user selects a Strategy option
 - **THEN** the page MUST show favorites whose strategy label matches that option
 - **AND** the filter MUST not depend on the favorite nickname
+
+#### Scenario: Common user filters protected favorites by safe strategy label
+- **WHEN** a common user opens Favorites with multiple protected strategies
+- **THEN** the Strategy filter MUST include distinct safe strategy labels instead of only the generic protected label
+- **AND** selecting a safe strategy label MUST filter the list to favorites with that label
+- **AND** the page MUST keep raw strategy names, parameters, and indicators hidden
+
+#### Scenario: Common user opens protected favorite chart
+- **WHEN** a common user opens the chart or full analysis for a protected favorite
+- **THEN** the chart title MUST show the same safe strategy label used by the Favorites filter
+- **AND** the chart MUST NOT show raw strategy names, parameters, or protected indicator values
+
+#### Scenario: Favorite chart opens when monitor sync is slow
+- **WHEN** a user opens full analysis for a favorite that already has saved chart context
+- **AND** monitor opportunity refresh or trade sync is slow
+- **THEN** the system MUST open the favorite chart using saved or current candle data without waiting indefinitely for monitor sync
+- **AND** monitor sync MAY be skipped for that open
 
 ### Requirement: Favorites owns strategy curation for Monitor
 The Favorites screen SHALL be the canonical UI for choosing, removing, and ranking strategies that feed the Monitor. The Monitor SHALL consume Favorites ranking as read-only tier/star classification and SHALL NOT duplicate favorite curation controls.
@@ -219,13 +236,21 @@ The Favorites analysis result view SHALL use the shared Monitor-aligned chart an
 - **AND** SHALL keep implementation-only fields and unauthorized regeneration hidden.
 
 ### Requirement: Favorites analysis uses current market candles for chart rendering
-The Favorites analysis flow SHALL use the current market candles source as the primary chart candle source when opening a favorite analysis. Saved favorite trades and metrics SHALL remain the source for summary and trade evidence. Saved `metrics.analysis_candles` SHALL be used only as a fallback when current market candles cannot be loaded.
+The Favorites analysis flow SHALL merge available candle sources when opening a favorite analysis. Saved favorite trades and metrics SHALL remain the source for summary and trade evidence. The `/api/market/candles?full_history=true` data for the favorite symbol/timeframe SHALL be requested so the chart can use all persisted historical candles for the asset, independent of strategy. Saved `metrics.analysis_candles` SHALL be merged with market candles by timestamp so older backtest history and recent market candles both remain visible.
 
-#### Scenario: Stale saved candles are replaced by current market candles
+#### Scenario: Stale saved candles are replaced by full market history
 - **WHEN** a favorite has saved `metrics.analysis_candles` ending before the current market candle window
+- **AND** the full market candle series has at least as many candles as the saved chart context
 - **AND** the user opens full analysis from Favorites
-- **THEN** the result chart receives candles from `/api/market/candles`
+- **THEN** the result chart receives the merged saved and market candle series
 - **AND** the newest chart candle matches the newest candle returned by `/api/market/candles`
+- **AND** saved trades and metrics remain available in the result view
+
+#### Scenario: Saved full-history candles are longer than market history response but older
+- **WHEN** a favorite has saved `metrics.analysis_candles` covering a longer backtest history than the market candle response
+- **AND** `/api/market/candles?full_history=true` returns newer candles after the saved chart context
+- **AND** the user opens full analysis from Favorites
+- **THEN** the result chart includes the saved older candles and the newer market candles
 - **AND** saved trades and metrics remain available in the result view
 
 #### Scenario: Current candle request fails
@@ -234,9 +259,22 @@ The Favorites analysis flow SHALL use the current market candles source as the p
 - **THEN** Favorites analysis can still render the saved candles as fallback
 - **AND** the failure does not trigger favorite metric regeneration by itself
 
+#### Scenario: Full persisted market history is incomplete
+- **WHEN** Favorites analysis requests `/api/market/candles?full_history=true`
+- **AND** the persisted OHLCV table does not cover the configured historical window or is stale
+- **THEN** the backend schedules an OHLCV backfill job for the favorite symbol/timeframe
+- **AND** the current request still returns the best available candle series
+- **AND** future requests can use the backfilled candles after the job writes them
+
+#### Scenario: Backend starts with favorite symbols already registered
+- **WHEN** the OHLCV backfill scheduler starts
+- **THEN** it includes crypto symbols/timeframes found in Favorites by default
+- **AND** it runs an initial scheduler pass without waiting for the daily interval
+- **AND** missing historical candles can be fetched in the background before the user opens the chart
+
 #### Scenario: Protected common user opens favorite analysis
 - **WHEN** a common user opens a protected favorite analysis
-- **THEN** the result chart uses current market candles when available
+- **THEN** the result chart uses the most complete allowed candle source
 - **AND** the view does not show moving average overlays, moving average values, indicators, or protected parameters
 
 ### Requirement: New hard-mode Favorite has visible final metrics
@@ -461,3 +499,28 @@ The analysis SHALL preserve its information hierarchy, actions and complete read
 - **THEN** summary metrics and strategy rules SHALL reflow into a linear, scannable composition
 - **AND** chart controls and technical disclosure SHALL remain keyboard and touch accessible
 - **AND** labels, descriptions and values SHALL not be clipped.
+
+### Requirement: Favorites result parameter labels are trader-facing
+Favorites result charts SHALL render visible strategy parameter labels and common parameter values in trader-facing Portuguese instead of raw internal keys and English values.
+
+#### Scenario: Favorite result shows translated parameters
+- **WHEN** a user opens a favorite analysis result with visible parameters including `direction`, `ema_short`, `sma_medium`, `sma_long`, `stop_loss`, and `data_source`
+- **THEN** the result configuration SHALL show Portuguese labels such as `Direção`, `EMA curta`, `SMA média`, `SMA longa`, `Stop de perda`, and `Fonte de dados`
+- **AND** common values SHALL be shown as trader-facing values such as `Compra` and `CCXT`
+- **AND** raw labels such as `direction`, `ema short`, `sma medium`, `sma long`, `stop loss`, and `data source` SHALL NOT appear in that configuration block
+
+#### Scenario: Protected favorite result keeps parameters hidden
+- **WHEN** a common user opens a protected favorite result
+- **THEN** technical parameters SHALL remain hidden behind the protected-parameters message
+
+### Requirement: Favorites search supports combined terms
+Favorites SHALL match free-text searches when all typed terms appear across the combined favorite identity, including symbol, quote, strategy name, displayed strategy label, favorite name, description, and timeframe.
+
+#### Scenario: Search spans symbol and strategy
+- **WHEN** a user searches Favorites for `BTC/USDT USDT multi ma crossoverV2`
+- **THEN** the BTC/USDT favorite using `multi_ma_crossoverV2` SHALL remain visible when other filters allow it
+
+#### Scenario: Existing single-field search remains supported
+- **WHEN** a user searches Favorites for a symbol, strategy word, or favorite name fragment
+- **THEN** matching favorites SHALL remain visible
+

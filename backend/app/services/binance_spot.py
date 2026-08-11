@@ -130,6 +130,7 @@ def _append_balance_row(
     total: float,
     price_usdt: float,
     value_usd: float,
+    earn_amount: float = 0.0,
 ) -> None:
     is_stable = is_usd_stable_asset(asset)
     out.append(
@@ -138,6 +139,7 @@ def _append_balance_row(
             "free": free,
             "locked": locked,
             "total": total,
+            "earn_amount": earn_amount,
             "price_usdt": price_usdt,
             "value_usd": value_usd,
             "avg_cost_usdt": 1.0 if is_stable else None,
@@ -170,12 +172,17 @@ def fetch_spot_balances_snapshot(
 
     Returns:
       {
-        "balances": [{"asset","free","locked","total","price_usdt","value_usd"}, ...],
+        "balances": [{"asset","free","locked","total","earn_amount","price_usdt","value_usd"}, ...],
         "total_usd": <float>,
         "as_of": <iso8601 str>
       }
 
     Notes:
+      - `free` is the Spot free balance only; Simple Earn positions are NOT
+        added to `free`. The Simple Earn amount per asset is exposed in the
+        optional `earn_amount` field (0.0 when no Earn position exists).
+      - `total` and `value_usd` include Simple Earn amounts so the wallet
+        total keeps reflecting all user funds.
     - Pricing is computed as USDT value (USDT≈USD) with fallbacks.
     - Simple Earn flexible/locked positions are preferred over incomplete LD* wrappers
       on /api/v3/account when the Earn API succeeds.
@@ -274,18 +281,19 @@ def fetch_spot_balances_snapshot(
             total_usd += float(value_usd)
             if asset in by_asset:
                 row = by_asset[asset]
-                row["free"] = float(row["free"]) + amount
+                row["earn_amount"] = float(row.get("earn_amount") or 0.0) + amount
                 row["total"] = float(row["total"]) + amount
                 row["value_usd"] = float(row["value_usd"]) + float(value_usd)
             else:
                 _append_balance_row(
                     out,
                     asset=asset,
-                    free=amount,
+                    free=0.0,
                     locked=0.0,
                     total=amount,
                     price_usdt=float(price_usdt),
                     value_usd=float(value_usd),
+                    earn_amount=amount,
                 )
                 by_asset[asset] = out[-1]
 

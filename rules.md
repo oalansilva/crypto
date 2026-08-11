@@ -24,6 +24,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Nessa etapa nao arquivar OpenSpec, nao abrir PR para `main` e nao publicar.
 
 3. No cripto, o campo `Status` e a fonte principal das colunas. O campo `Fluxo`, quando existir, e substatus/legado; se houver divergencia, `Status` prevalece.
+   - `Em Refinamento`: primeira coluna e entrada obrigatoria de todo card novo; Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ir para `Todo`. Cards kaizen tambem nascem aqui.
    - `Todo`: backlog ou pronto para comecar.
    - `Design`: Designer/Critic Agent prepara prototipo, critica e evidencias.
    - `Aprovação de Design`: entrega de design completa aguardando Alan.
@@ -34,9 +35,9 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
    - `Pronto`: alteracao ja subiu para `main`/producao com evidencia **incluindo deploy em PROD** (source PROD no commit publicado + services reiniciados + URL publica validada); este e o fechamento final.
-   - `Cancelado`: nao sera feito ou foi substituido.
-   - Caminho obrigatório de todo card: `Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
-   - **Guardrail anti-bypass de Design:** nenhum card pode pular `Design`, `Aprovação de Design` ou `Pronto para Dev`. Vale para UI e não-UI, remoções, bugs, docs técnicas com card e pedidos `implemente`/`pode codar`. Não existe bypass `Todo -> Pronto para Dev` nem `Todo -> Em desenvolvimento`.
+   - `Cancelado`: nao sera feito ou foi substituido (terminal; acionavel inclusive a partir de `Em Refinamento`).
+   - Caminho obrigatório de todo card: `Em Refinamento -> Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`.
+   - **Guardrail anti-bypass de Design:** nenhum card pode pular `Em Refinamento` (entrada obrigatoria), `Design`, `Aprovação de Design` ou `Pronto para Dev`. Vale para UI e não-UI, remoções, bugs, docs técnicas com card e pedidos `implemente`/`pode codar`. Não existe bypass `Todo -> Pronto para Dev` nem `Todo -> Em desenvolvimento`.
    - Somente Alan autenticado aprova `Aprovação de Design -> Pronto para Dev`; agentes nunca autoaprovam. Mudança no design/protótipo aprovado invalida o gate.
    - **Evidência obrigatória:** nenhum codigo e aplicado sem evidencia registrada de aprovacao de Design (comentario de Alan no card ou arraste `Aprovação de Design -> Pronto para Dev`). Vale para todo card, inclusive `UI impact: none`, remocoes, bugs e tooling. Veredito `BLOCKED` exige secao de resolucao no `design.md` (o que bloqueou, como foi resolvido, quem aprovou) antes de avancar; `BLOCKED` sem resolucao bloqueia o card.
    - **Checklist de gates no PR/commit de integracao:** o PR e o commit de squash devem listar change OpenSpec, `design.md`/verdict, `UI impact` e evidencia de aprovacao de Design (link do comentario ou arraste), inclusive para tooling/docs; `/opsx:verify` valida a checklist e PR sem gates nao e integrado.
@@ -102,7 +103,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 14. Kaizen e a melhoria continua de processo: quanto mais o processo e usado, melhor ele fica.
    - Toda release/lote roda `/kaizen release` apos o deploy PROD validado e antes de mover cards para `Pronto`; evidencia em `docs/kaizen-log.md`.
    - O Kaizen audita board, Git hygiene, OpenSpec, CI, tech debt e sessoes do opencode (SQL `mode=ro` em `~/.local/share/opencode/opencode.db`), detectando onde o modelo se perde ou alucina.
-   - Melhorias sao registradas como cards: 1 card por melhoria, formato PO, label `kaizen`, **sempre em `Status=Todo`** (nunca em coluna de execucao), seguindo o fluxo normal do board.
+   - Melhorias sao registradas como cards: 1 card por melhoria, formato PO, label `kaizen`, **sempre em `Status=Em Refinamento`** (entrada obrigatoria de todo card novo; nunca em coluna de execucao), seguindo o fluxo normal do board (`Em Refinamento -> Todo -> ...`).
    - **Maximo 3 cards kaizen por release**; a priorizacao (campo `Prioridade` P0/P1/P2, regra severidade x frequencia / esforco) define os 3 que entram; o restante fica no backlog kaizen.
    - Kaizen propoe, Alan aprova: o agente nunca implementa mudancas de regra/skill/script sem aprovacao explicita; pode propor melhorias de skills e pesquisar alternativas (busca read-only).
    - Issues publicas: apenas metricas agregadas e IDs; trechos de sessoes somente em `docs/kaizen-log.md`.

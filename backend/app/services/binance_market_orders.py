@@ -83,6 +83,25 @@ def _balance_map(account: Dict[str, Any]) -> Dict[str, Decimal]:
     return balances
 
 
+def _earn_balance(account: Dict[str, Any], *, asset: str) -> Decimal:
+    """Simple Earn free balance for an asset (Binance LD<ASSET> wrapper).
+
+    Simple Earn positions are not Spot free balances and cannot be used by
+    direct Spot purchases, but they are user funds and must be surfaced when
+    an insufficient Spot balance error is raised.
+    """
+    earn_key = f"LD{asset.upper()}"
+    for row in account.get("balances") or []:
+        if str(row.get("asset") or "").upper() != earn_key:
+            continue
+        try:
+            value = Decimal(str(row.get("free") or "0"))
+        except Exception:
+            value = Decimal("0")
+        return value if value.is_finite() and value > 0 else Decimal("0")
+    return Decimal("0")
+
+
 def _filter_decimal(filter_row: Dict[str, Any], key: str) -> Decimal:
     try:
         value = Decimal(str(filter_row.get(key) or "0"))
@@ -224,7 +243,16 @@ def build_market_order_plan(
     if normalized_side == "BUY":
         requested_quote = _positive_decimal(quote_amount, "Valor em USDT")
         if requested_quote > quote_balance:
-            raise _validation_error("Saldo livre em USDT insuficiente")
+            earn_balance = _earn_balance(account, asset=quote_asset)
+            available_text = f"{format_decimal(quote_balance)} {quote_asset} disponíveis"
+            if earn_balance > 0:
+                raise _validation_error(
+                    f"Saldo livre em {quote_asset} insuficiente ({available_text}). "
+                    f"Seu saldo restante está em Simple Earn (rendimento) e não é elegível para compra direta."
+                )
+            raise _validation_error(
+                f"Saldo livre em {quote_asset} insuficiente ({available_text})."
+            )
         _validate_notional(notional=requested_quote, filters=filters)
         estimated_base_quantity = requested_quote / price
         _validate_market_quantity(
