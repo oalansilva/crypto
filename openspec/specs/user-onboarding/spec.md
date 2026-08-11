@@ -9,7 +9,8 @@ The authenticated app SHALL show new users a concise onboarding prompt that expl
 #### Scenario: New user opens the app
 - **WHEN** an authenticated user opens a protected route without dismissing onboarding in the current browser
 - **THEN** the app SHALL show a concise first-use guide with the recommended starting path
-- **AND** the guide SHALL provide direct actions to open Help and Monitor
+- **AND** the guide SHALL present Favorites as the first step
+- **AND** the guide SHALL provide direct actions to open Help and Favorites
 
 #### Scenario: User dismisses first-use guide
 - **WHEN** the user dismisses the first-use guide
@@ -21,8 +22,9 @@ The app SHALL provide a Help route that explains the recommended order of the ma
 
 #### Scenario: User opens Help
 - **WHEN** an authenticated user opens `/help`
-- **THEN** the app SHALL explain the recommended order: Carteira, Favoritos, Monitor, Grafico/Trades
+- **THEN** the app SHALL explain the recommended order: Favoritos, selecao de estrategias, Monitor, and optional Binance wallet setup
 - **AND** the page SHALL provide direct navigation actions for the core screens
+- **AND** wallet setup SHALL NOT be presented as a prerequisite to start
 
 #### Scenario: User reads responsible positioning
 - **WHEN** the user reads onboarding or Help content

@@ -373,3 +373,96 @@ The permanent rule overview SHALL preserve the existing disclosure's keyboard se
 - **WHEN** the viewport is narrower than 768px
 - **THEN** the buy and sell rule cards SHALL stack within the available width
 - **AND** SHALL NOT introduce a new table column or horizontal page overflow.
+
+### Requirement: Monitor chart hides technical indicators
+The Monitor chart modal SHALL render user-facing charts without visible technical indicator overlays, indicator toggle controls, or indicator legend entries. The chart MUST continue showing candlesticks and Compra/Venda signal markers.
+
+#### Scenario: User opens Monitor chart
+- **WHEN** the user opens a chart from `/monitor`
+- **THEN** the chart SHALL NOT display EMA, SMA, or other technical indicator overlay lines
+- **AND** the chart toolbar SHALL NOT expose indicator toggle controls
+- **AND** the footer legend SHALL NOT list indicator names
+- **AND** Compra/Venda markers SHALL remain visible when signal data is available
+
+#### Scenario: Chart context remains available
+- **WHEN** the user opens a chart from `/monitor`
+- **THEN** timeframe controls, zoom controls, candle values, risk context, and signal history SHALL remain available where applicable
+
+### Requirement: Monitor renders responsive mobile cards
+The Monitor page SHALL render opportunities in a mobile-usable card layout on narrow viewports instead of relying on the desktop table layout.
+
+#### Scenario: User opens Monitor on a phone viewport
+- **WHEN** the user opens `/monitor` on a narrow viewport
+- **THEN** opportunities SHALL be visible as stacked cards
+- **AND** the desktop signals table SHALL NOT be the primary visible layout
+- **AND** the page SHALL NOT require horizontal scrolling to read the core opportunity content
+
+#### Scenario: Mobile cards keep Monitor controls usable
+- **WHEN** the user views a Monitor opportunity on a narrow viewport
+- **THEN** timeframe controls, management actions, notes, and chart entry actions SHALL remain reachable
+- **AND** the detail sections SHALL wrap into a single-column layout that fits the viewport width
+
+### Requirement: Monitor current state matches latest visible chart signal
+Monitor SHALL render the public current-state label from the same latest valid operational signal that the chart displays for the selected strategy, symbol and timeframe.
+
+#### Scenario: Chart resolves latest signal as Venda
+- **WHEN** a Monitor opportunity for ADA/USDT, moving-average trend strategy and timeframe `1D` opens with chart data whose latest visible valid signal resolves to `Venda`
+- **THEN** the Monitor summary/current-state label SHALL render `Venda`
+- **AND** it SHALL NOT render `Compra` for that same opportunity unless the UI exposes a separate explicit explanation for the difference
+
+#### Scenario: Favorite-backed chart data exists
+- **WHEN** the Monitor opportunity maps to a saved favorite with trade/marker data
+- **THEN** Monitor state display SHALL prefer the resolved latest favorite-backed marker direction for the visible chart context
+- **AND** raw opportunity status SHALL remain available only for internal grouping and diagnostics
+
+#### Scenario: Monitor list resolves favorite-backed Venda before opening chart
+- **WHEN** the Monitor list receives an opportunity whose raw state indicates active position
+- **AND** the matching favorite-backed trade markers resolve the latest visible signal as `Venda`
+- **THEN** the Monitor list section and opportunity card SHALL render the opportunity as `Venda`
+- **AND** it SHALL NOT keep the opportunity under `Em posição · Compra` for the same strategy/timeframe
+
+#### Scenario: No chart signal is available
+- **WHEN** Monitor has no favorite-backed marker, signal history or trade evidence for the selected opportunity
+- **THEN** Monitor MAY fall back to the backend opportunity state
+- **AND** the fallback SHALL stay auditable in tests or diagnostics
+
+#### Scenario: Backend opportunity has favorite cached exit trade
+- **WHEN** the backend builds a Monitor opportunity from a saved favorite
+- **AND** the raw strategy state indicates an active position
+- **AND** the favorite's cached trade history has a latest closed trade event for the same strategy context
+- **THEN** the public opportunity payload SHALL resolve to `status=EXIT`
+- **AND** `is_holding` SHALL be `false`
+- **AND** the next public action SHALL be `entry`
+- **AND** the Monitor SHALL render the opportunity as `Venda` without waiting for a separate frontend trade fetch
+
+#### Scenario: Restart after Monitor source change
+- **WHEN** the canonical runtime is restarted after a Monitor frontend or backend fix
+- **THEN** the frontend build used by `vite preview` SHALL be regenerated from the current source
+- **AND** a live preview already answering on port `5173` SHALL NOT cause the restart flow to keep serving a stale `frontend/dist`
+
+### Requirement: Monitor chart parameter labels are trader-facing
+Monitor chart details SHALL render visible strategy parameter labels and common parameter values in trader-facing Portuguese instead of raw internal keys and English values.
+
+#### Scenario: Monitor chart shows translated parameters
+- **WHEN** a user opens a Monitor chart detail with visible parameters including `direction`, `ema_short`, `sma_medium`, `sma_long`, `stop_loss`, and `data_source`
+- **THEN** the chart parameter section SHALL show Portuguese labels such as `Direção`, `EMA curta`, `SMA média`, `SMA longa`, `Stop de perda`, and `Fonte de dados`
+- **AND** common values SHALL be shown as trader-facing values such as `Compra` and `CCXT`
+- **AND** raw labels such as `direction`, `ema_short`, `sma_medium`, `sma_long`, `stop_loss`, and `data_source` SHALL NOT appear in that parameter section
+
+#### Scenario: Protected monitor chart keeps parameters hidden
+- **WHEN** a common user opens a protected Monitor chart
+- **THEN** protected strategy parameters SHALL remain hidden
+
+### Requirement: Monitor chart modal keeps the chart mounted during data updates
+The Monitor chart modal SHALL keep the visible chart canvas mounted after opening while markers, price lines, trade context, tooltip data, or refreshed candles are applied.
+
+#### Scenario: Async chart context arrives after modal opens
+- **WHEN** a trader opens a Monitor chart
+- **AND** asynchronous marker, trade, or candle context updates after the initial render
+- **THEN** the chart canvas remains present and visible
+- **AND** the modal remains open until the trader explicitly closes it.
+
+#### Scenario: Chart data updates without destroying the chart
+- **WHEN** the Monitor chart receives updated candles, markers, or price lines for the same modal session
+- **THEN** the existing chart instance updates its series data in place
+- **AND** the chart container is not removed as part of that routine update.
