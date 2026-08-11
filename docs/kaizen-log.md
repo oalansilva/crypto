@@ -224,3 +224,39 @@
 ### Limitações
 - Timestamps do board não expostos via `gh project item-list`.
 - Evidência de arraste/homologação não verificável via API (só comentários).
+
+---
+
+## 2026-08-11 — Auditoria release 2026-08-11 (cards 463, 464, 456, 457, 458) (/kaizen release)
+
+- **Escopo**: release 2026-08-11 — cards 463, 464, 456, 457, 458 (merge main `412ed9ad`/`5619c22a`, deploy PROD validado).
+- **Fonte**: board Project 1 (184 itens), PRs 465-479 + checks, `scripts/release-guard audit`, `openspec validate --all` (131/131), 35 sessões opencode na janela 08-09..08-12 (`~/.local/share/opencode/opencode.db`, mode=ro), curl PROD.
+- **Métricas**: pacote 5/5 com 1 comentário Done cada; **zero duplicação** (dedupe #456 funcionou — cards 456/457/458 postados pós-merge do helper, 463/464 pré-merge, sem duplicatas); CI 15/15 runs success; 0 branches órfãs/worktrees/stashes pós-closeout; 4 changes ativas = pacote (archive pendente no closeout); custo de sessão do pacote ≈ $0.70 (vs $2.50 da release anterior, ~20× menor).
+
+### Achados
+- F-1 [recorrência, P1] Card #195 "Backup de ambiente" preso em Em Refinamento desde 05-12 (3ª auditoria reportando o mesmo card — estava em Todo na 08-09, agora Em Refinamento). Proposta: triagem + aviso de idade por coluna no guard audit. Esforço S.
+- F-2 [recorrência, P1] 5/5 cards do pacote em Homologado sem o comentário padrão "Homologado por Alan na develop." (mesma lacuna F-5 da auditoria 08-09; transição por arraste/chat não passa pelo helper). Proposta: guard post com RELEASE_CARDS exige comentário de homologação (warn audit / blocker post) + post retroativo em dry-run. Esforço S.
+- F-3 [minor, P2] Título board divergente da issue no #463 (rename pós-Done; Title não editável via API Projects v2; nota postada sem aprovação explícita). Proposta: regra de nota de divergência + warn no guard. Esforço S.
+- F-4 [info, P2] Branches do pacote deletadas antes do movimento para Pronto (closeout técnico precede etapa kaizen→Pronto). Proposta: documentar ordem canônica no AGENTS.md. Esforço S.
+- F-5 [info, P2] `main` local desatualizado pós-release (comparação oficial por origin correta). Proposta: passo de atualização de main local no closeout. Esforço S.
+- F-6 [info, P2] Sessão paralela swing trade fora do pacote (kimi-k3, $2.44) — validar se foi escolha de Alan; herança interna consistente. Esforço S.
+
+### Cards criados (máx 3/release — regra kaizen)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (a criar) — guard exige evidência de homologação no closeout + post retroativo | P1 | F-2 | Em Refinamento |
+| (a criar) — triagem de cards presos por coluna + alerta de idade no guard | P1 | F-1 | Em Refinamento |
+| (a criar) — divergência board/issue em rename pós-Done exige nota + warn | P2 | F-3 | Em Refinamento |
+
+### Backlog kaizen (releases seguintes)
+- F-4: ordem canônica de deleção de branches (doc AGENTS.md).
+- F-5: atualização de `main` local no closeout (guard post warn).
+- F-6: validar modelo padrão de sessão (kimi-k3 vs deepseek-v4-flash).
+
+### Trechos de sessão (evidência local)
+- `ses_013f` — 1 erro isolado de tool (JSON parse em heredoc), sem repetição; demais sessões do pacote 6/6, 7/7, 7/7 todos completed.
+- Dedupe #456: cards 456/457/458 com comentário único "Implementação concluída" formato "Commit/merge: PR N (sha)" pós-merge do helper; 463/464 pré-merge sem duplicata.
+
+### Limitações
+- Timestamps por coluna não expostos via `gh project item-list` (usado updatedAt global via GraphQL).
+- Evidência de arraste/homologação não verificável via API (só comentários) — motiva F-2.
