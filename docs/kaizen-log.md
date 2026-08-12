@@ -260,3 +260,9 @@
 ### Limitações
 - Timestamps por coluna não expostos via `gh project item-list` (usado updatedAt global via GraphQL).
 - Evidência de arraste/homologação não verificável via API (só comentários) — motiva F-2.
+
+## 2026-08-12 — Triagem do card #195 (card #481 kaizen)
+
+- **Ação**: triagem do #195 "Backup de ambiente" concluída — decisão **Cancelado** (estado já aplicado no board em 11/08; nota formal registrada no card em 12/08: https://github.com/oalansilva/crypto/issues/195#issuecomment-5272103735).
+- **Motivo**: escopo de backup de ambiente (openclaw, skills, apps, banco) coberto por operação do ambiente Oracle (snapshots/backups de infra DEV/PROD); card sem dono operacional ativo e preso há 3 auditorias kaizen.
+- **Implementado (card #481)**: `release-guard audit` ganhou bloco `card_age_inventory` — inventário de cards por coluna com idade em dias (GraphQL `updatedAt` do item), warn informativo para >30 dias (default, configurável via `CARD_AGE_THRESHOLD_DAYS`), limite por coluna (`CARD_AGE_MAX_PER_COLUMN`, default 5), paginação até 20 páginas, falha de obtenção como warn sem interromper. Somente em `audit`; pre/post inalterados.
