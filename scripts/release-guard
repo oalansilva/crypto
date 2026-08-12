@@ -304,6 +304,45 @@ else
   printf 'Skipped (card age inventory runs in audit only).\n'
 fi
 
+section "Board/issue title sync (audit)"
+if [[ "$mode" == "audit" ]]; then
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
+    if [[ -z "$board_json" ]] || ! printf '%s' "$board_json" | jq -e '.items' >/dev/null 2>&1; then
+      warn "board/issue title sync check unavailable (gh project item-list returned no/invalid data; check auth/rate limit/project scope)"
+    else
+      title_mismatches=0
+      while IFS=$'\t' read -r card_num board_title issue_title; do
+        [[ -z "$card_num" ]] && continue
+        card_num="${card_num//[$'\r']/}"
+        board_title="${board_title//[$'\r']/}"
+        issue_title="${issue_title//[$'\r']/}"
+        if [[ -z "$issue_title" ]]; then
+          # Item without a linked issue (draft/PR): out of scope per change kaizen-board-issue-rename-note.
+          continue
+        fi
+        if [[ "$board_title" == "$issue_title" ]]; then
+          continue
+        fi
+        note_found="$(gh api "repos/oalansilva/crypto/issues/$card_num/comments" --paginate --jq '[.[] | select((.body // "") | test("Nota de divergência|Nota de sincronização de título"; "i"))] | length' 2>/dev/null || printf '0')"
+        if [[ "$note_found" =~ ^[0-9]+$ ]] && [[ "$note_found" -gt 0 ]]; then
+          printf '  #%s board title != issue title, divergência com nota registrada (sem warn): %s\n' "$card_num" "$board_title"
+        else
+          title_mismatches=$((title_mismatches + 1))
+          warn "board title differs from issue title without divergence note (#$card_num): \"$board_title\" vs \"$issue_title\" (poste nota de divergência no card: Motivo + Aprovado por)"
+        fi
+      done < <(printf '%s' "$board_json" | jq -r '.items[] | select(.content.number != null) | [(.content.number|tostring), (.title // ""), (.content.title // "")] | @tsv' 2>/dev/null)
+      if [[ "$title_mismatches" -eq 0 ]]; then
+        printf 'Board/issue titles consistent or divergence notes registered.\n'
+      fi
+    fi
+  else
+    warn "board/issue title sync check unavailable (gh unavailable or not authenticated)"
+  fi
+else
+  printf 'Skipped (board/issue title sync check runs in audit only).\n'
+fi
+
 section "OpenSpec duplicate changes (post)"
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   dup_changes="$(comm -12 \

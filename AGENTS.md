@@ -245,6 +245,16 @@ Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover pa
 
 **Regra de sync título board/issue:** no momento do `Done`, o título do card no board deve ser idêntico ao título da issue (`gh issue edit <id> --title ...` ou edição equivalente quando o board divergir); se uma divergência for aprovada intencionalmente, registre comentário no card com a aprovação. Divergência sem comentário de aprovação é achado de auditoria.
 
+**Regra de rename de issue com card no board:** o `Title` de item do Project v2 vinculado a issue **não é editável via API Projects v2** — renomear a issue não atualiza o título do card no board. Ao renomear uma issue que possui card no board (antes ou depois do `Done`), o autor SHALL postar no card uma nota de divergência com o formato canônico abaixo, registrando motivo e aprovação; sem a nota, o `release-guard audit` emite warn de divergência de título board/issue:
+
+```text
+Nota de divergência
+Motivo: <motivo do rename e por que o título do board não foi sincronizado>
+Aprovado por: <quem aprovou a divergência>
+```
+
+Alternativa preferida quando possível: usar o mesmo texto de título na issue e no card via criação/edição combinada. A nota só dispensa o warn enquanto a divergência existir; se o título do board for sincronizável (item criado no board sem issue vinculada), edite o card diretamente em vez de registrar nota.
+
 **Regra de troca de modelo de subagent:** mudar o modelo/configuração de um subagent (ex.: `vision.md`) exige **nova sessão** (ou nova worktree) para validação da mudança — sessões/spawns em voo continuam no modelo antigo, pois a configuração é lida no spawn. Não assumir que o merge da troca propaga para sessões ativas; a auditoria kaizen reporta `modelo antigo pós-merge` nesses casos.
 
 ### Comentários obrigatórios no Kanban
