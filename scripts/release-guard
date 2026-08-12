@@ -223,6 +223,87 @@ else
   printf 'Skipped (orphan inventory runs in post/audit; legacy debt does not block pre).\n'
 fi
 
+section "Card age inventory (audit)"
+if [[ "$mode" == "audit" ]]; then
+  age_threshold="${CARD_AGE_THRESHOLD_DAYS:-30}"
+  age_max_per_column="${CARD_AGE_MAX_PER_COLUMN:-5}"
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    card_age_query='
+      query($project: ID!, $cursor: String) {
+        node(id: $project) {
+          ... on ProjectV2 {
+            items(first: 100, after: $cursor) {
+              pageInfo { hasNextPage endCursor }
+              nodes {
+                updatedAt
+                content { ... on Issue { number title } }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { name }
+                }
+              }
+            }
+          }
+        }
+      }'
+    page_json="$(gh api graphql -f query="$card_age_query" -F project=PVT_lAHOAAHtBM4BV8b2zgrMgus 2>/dev/null || true)"
+    if [[ -z "$page_json" ]] || ! printf '%s' "$page_json" | jq -e '.data.node.items.nodes' >/dev/null 2>&1; then
+      warn "card age inventory unavailable (GraphQL project query returned no/invalid data; check auth/rate limit/project scope)"
+    else
+      nodes_json="$(printf '%s' "$page_json" | jq -c '.data.node.items.nodes')"
+      page=0
+      while [[ $page -lt 20 ]]; do
+        has_next="$(printf '%s' "$page_json" | jq -r '.data.node.items.pageInfo.hasNextPage // false' 2>/dev/null)"
+        cursor="$(printf '%s' "$page_json" | jq -r '.data.node.items.pageInfo.endCursor // ""' 2>/dev/null)"
+        [[ "$has_next" != "true" || -z "$cursor" ]] && break
+        page_json="$(gh api graphql -f query="$card_age_query" -F project=PVT_lAHOAAHtBM4BV8b2zgrMgus -F cursor="$cursor" 2>/dev/null || true)"
+        if [[ -z "$page_json" ]] || ! printf '%s' "$page_json" | jq -e '.data.node.items.nodes' >/dev/null 2>&1; then
+          warn "card age inventory pagination failed; inventory may be partial"
+          break
+        fi
+        nodes_json="$(printf '%s\n%s' "$nodes_json" "$(printf '%s' "$page_json" | jq -c '.data.node.items.nodes')" | jq -s 'add' 2>/dev/null || printf '%s' "$nodes_json")"
+        page=$((page + 1))
+      done
+
+      now_epoch="$(date +%s)"
+      rows="$(printf '%s' "$nodes_json" | jq -r --argjson now "$now_epoch" '
+        .[]
+        | select(.content.number != null)
+        | [
+            (.fieldValueByName.name // "Sem status"),
+            (.content.number|tostring),
+            (.content.title // ""),
+            ((($now - ((.updatedAt | fromdateiso8601) // $now)) / 86400) | floor)
+          ] | @tsv' 2>/dev/null | sort -t$'\t' -k4 -rn)"
+      if [[ -z "$rows" ]]; then
+        warn "card age inventory returned no rows (unexpected board shape); skipping age warnings"
+      else
+        per_column="$(printf '%s\n' "$rows" | awk -F'\t' -v col="$age_threshold" -v max="$age_max_per_column" '
+          {
+            key = $1
+            count[key]++
+            if (count[key] > max) next
+            if ($4 > col) {
+              if (!seen[key]++) {
+                printf "Cards com mais de %d dias sem atualizacao na coluna %s (max %d exibidos):\n", col, key, max
+              }
+              printf "  #%s %s (%dd)\n", $2, $3, $4
+            }
+          }')"
+        if [[ -n "$per_column" ]]; then
+          warn "cards presos por coluna (idade > ${age_threshold}d; inventario informativo):"
+          printf '%s\n' "$per_column" | indent
+        else
+          printf 'No cards older than %s days in their current column.\n' "$age_threshold"
+        fi
+      fi
+    fi
+  else
+    warn "card age inventory unavailable (gh unavailable or not authenticated)"
+  fi
+else
+  printf 'Skipped (card age inventory runs in audit only).\n'
+fi
+
 section "OpenSpec duplicate changes (post)"
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   dup_changes="$(comm -12 \
