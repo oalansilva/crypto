@@ -1794,6 +1794,21 @@ textarea {
   color: #b91c1c;
 }
 
+.favorites-workbench .fav-refresh-status.revalidated-go {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.favorites-workbench .fav-refresh-status.revalidated-no-go {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.favorites-workbench .fav-refresh-status.revalidated-error {
+  color: #b45309;
+  font-weight: 600;
+}
+
 .favorites-workbench .fav-direction,
 .favorites-workbench .tf-pill {
   display: inline-flex;

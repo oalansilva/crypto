@@ -8,6 +8,7 @@ from pathlib import Path
 import uuid
 
 from fastapi import HTTPException
+import fastapi
 import pandas as pd
 import pytest
 from sqlalchemy import create_engine, text
@@ -1465,3 +1466,97 @@ def test_favorites_list_exposes_refresh_state(tmp_path: Path, monkeypatch):
 
     assert listed[0].auto_refresh_status == REFRESH_STATUS_SUCCESS
     assert listed[0].auto_refresh_run_id == "favorite-refresh-test"
+
+
+def test_create_favorite_blocks_no_go_without_override(tmp_path: Path):
+    """Gate walk-forward (card #470): candidato NO-GO sem override é bloqueado (422)."""
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        payload = _favorite_payload("NO-GO candidate")
+        payload.oos_verdict = {
+            "status": "NO-GO",
+            "reasons": ["Sharpe Ratio muito baixo: 0.20 < 0.8"],
+        }
+        with pytest.raises(fastapi.HTTPException) as exc_info:
+            favorites.create_favorite(payload, current_user_id="user-a", db=db)
+        assert exc_info.value.status_code == 422
+        assert "walk-forward" in exc_info.value.detail.lower()
+
+    with SessionLocal() as db:
+        assert db.query(favorites.FavoriteStrategy).count() == 0
+
+
+def test_create_favorite_allows_no_go_with_admin_override(tmp_path: Path, monkeypatch):
+    """Gate walk-forward (card #470): override admin explícito libera NO-GO e
+    persiste o veredito + override nos metrics."""
+    SessionLocal = _session_factory(tmp_path)
+    monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+    with SessionLocal() as db:
+        payload = _favorite_payload("NO-GO override")
+        payload.oos_metrics = {"total_trades": 12, "sharpe_ratio": 0.2}
+        payload.oos_verdict = {"status": "NO-GO", "reasons": ["Sharpe baixo"]}
+        payload.override_oos = True
+        created = favorites.create_favorite(payload, current_user_id="user-a", db=db)
+
+    assert created.id is not None
+    with SessionLocal() as db:
+        stored = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one()
+        assert stored.metrics["oos_verdict"]["status"] == "NO-GO"
+        assert stored.metrics["oos_metrics"]["total_trades"] == 12
+
+
+def test_create_favorite_allows_go_and_legacy(tmp_path: Path):
+    """Gate walk-forward (card #470): GO permite; payload legado sem veredito mantém comportamento."""
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        go_payload = _favorite_payload("GO candidate")
+        go_payload.oos_verdict = {"status": "GO", "reasons": ["ok"]}
+        go = favorites.create_favorite(go_payload, current_user_id="user-a", db=db)
+
+        legacy = favorites.create_favorite(
+            _favorite_payload("Legacy candidate", symbol="ETH/USDT"),
+            current_user_id="user-a",
+            db=db,
+        )
+
+    assert go.id is not None
+    assert legacy.id is not None
+
+
+def test_revalidate_favorite_updates_metrics_without_touching_parameters(
+    tmp_path: Path, monkeypatch
+):
+    """Revalidação (card #470): atualiza metrics.revalidation* sem alterar parâmetros."""
+    from app.services import walk_forward_revalidation as wfr
+
+    class FakeOptimizer:
+        def run_optimization(self, **_kwargs):
+            return {
+                "best_metrics": {"total_return_pct": 9.0, "total_trades": 20},
+                "oos_metrics": {"total_trades": 5, "sharpe_ratio": 0.9},
+                "oos_verdict": {"status": "NO-GO", "reasons": ["Poucos trades"]},
+                "trades": [],
+                "candles": [],
+                "indicator_data": {},
+                "execution_mode": "fast_1d",
+            }
+
+    SessionLocal = _session_factory(tmp_path)
+    monkeypatch.setattr(wfr, "ComboOptimizer", FakeOptimizer)
+    with SessionLocal() as db:
+        created = favorites.create_favorite(
+            _favorite_payload("Revalidate me"),
+            current_user_id="user-a",
+            db=db,
+        )
+        stored_before = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one()
+        params_before = dict(stored_before.parameters)
+        result = wfr.revalidate_favorite(created, db=db)
+
+    assert result["verdict"] == "NO-GO"
+    with SessionLocal() as db:
+        stored = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one()
+        assert stored.parameters == params_before
+        assert stored.metrics["revalidation_verdict"] == "NO-GO"
+        assert stored.metrics["revalidation_at"]
+        assert stored.metrics["revalidation"]["oos_verdict"]["status"] == "NO-GO"

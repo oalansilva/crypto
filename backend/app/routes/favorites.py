@@ -9,7 +9,12 @@ from datetime import datetime, timedelta, timezone
 
 from app.database import get_db
 from app.models import ComboTemplate, FavoriteStrategy, MonitorStrategyPreference, User
-from app.middleware.authMiddleware import ADMIN_EMAILS, get_current_user, is_admin_email
+from app.middleware.authMiddleware import (
+    ADMIN_EMAILS,
+    get_current_admin,
+    get_current_user,
+    is_admin_email,
+)
 from app.schemas.favorite import (
     FavoriteStrategyCreate,
     FavoriteStrategyResponse,
@@ -32,6 +37,11 @@ from app.services.strategy_transparency import (
 )
 from app.services.trade_explanations import explain_trades
 from app.services.ohlcv_storage import MarketOhlcvRepository
+from app.services.walk_forward_revalidation import (
+    oos_gate_decision,
+    revalidate_all_favorites,
+    revalidate_favorite,
+)
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -839,13 +849,36 @@ def create_favorite(
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Save a new favorite strategy"""
+    """Save a new favorite strategy.
+
+    Walk-forward gate (card #470): quando o payload traz `oos_verdict` (fluxo do
+    otimizador com split), candidato NO-GO é bloqueado (422) a menos que admin
+    forneça override explícito. Payloads legados sem `oos_verdict` mantêm o
+    comportamento atual (compatibilidade).
+    """
     try:
-        db_favorite = FavoriteStrategy(user_id=current_user_id, **favorite.model_dump())
+        include_secrets = can_view_strategy_secrets(db, current_user_id)
+        verdict = favorite.oos_verdict
+        gate = oos_gate_decision(
+            verdict,
+            override=favorite.override_oos,
+            is_admin=include_secrets,
+        )
+        if not gate["allowed"]:
+            raise HTTPException(status_code=422, detail=gate["reason"])
+
+        payload = favorite.model_dump(exclude={"oos_metrics", "oos_verdict", "override_oos"})
+        metrics = payload.get("metrics") or {}
+        if isinstance(favorite.oos_metrics, dict):
+            metrics = {**metrics, "oos_metrics": favorite.oos_metrics}
+        if isinstance(verdict, dict):
+            metrics = {**metrics, "oos_verdict": verdict}
+        payload["metrics"] = metrics
+
+        db_favorite = FavoriteStrategy(user_id=current_user_id, **payload)
         db.add(db_favorite)
         db.commit()
         db.refresh(db_favorite)
-        include_secrets = can_view_strategy_secrets(db, current_user_id)
         include_details = can_view_strategy_details(db, current_user_id)
         return _favorite_response(
             db_favorite,
@@ -853,6 +886,8 @@ def create_favorite(
             include_details=include_details,
             template_by_strategy=_strategy_templates_for_rows(db, [db_favorite]),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         import logging
@@ -927,6 +962,49 @@ def update_favorite(
         tier_override=tier_override,
         template_by_strategy=_strategy_templates_for_rows(db, [favorite]),
     )
+
+
+@router.post("/revalidate-all")
+def revalidate_all_favorites_endpoint(
+    payload: dict | None = None,
+    admin_user_id: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Backfill em massa (card #470): roda a regra walk-forward na janela recente
+    para TODAS as estratégias salvas (favoritos e favoritos do curated catalog
+    usados pelo Monitor) e atualiza metrics.revalidation* de cada uma."""
+    body = payload or {}
+    max_favorites = body.get("max_favorites")
+    try:
+        summary = revalidate_all_favorites(
+            db=db,
+            max_favorites=int(max_favorites) if max_favorites else None,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Backfill revalidation failed: {exc}")
+    return summary
+
+
+@router.post("/{favorite_id}/revalidate")
+def revalidate_favorite_endpoint(
+    favorite_id: int,
+    admin_user_id: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Revalida um favorito na janela recente (card #470) e atualiza
+    metrics.revalidation* sem alterar parâmetros."""
+    favorite = db.query(FavoriteStrategy).filter(FavoriteStrategy.id == favorite_id).first()
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    try:
+        result = revalidate_favorite(favorite, db=db)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Revalidation failed: {exc}")
+    return result
 
 
 @router.delete("/{favorite_id}")

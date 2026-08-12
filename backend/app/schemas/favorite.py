@@ -26,7 +26,11 @@ class FavoriteStrategyBase(BaseModel):
 
 
 class FavoriteStrategyCreate(FavoriteStrategyBase):
-    pass
+    # Walk-forward gate (card #470): veredito GO/NO-GO do holdout exigido para
+    # candidatos vindos do otimizador com split; override admin explícito libera NO-GO.
+    oos_metrics: Optional[Dict[str, Any]] = None
+    oos_verdict: Optional[Dict[str, Any]] = None
+    override_oos: bool = False
 
 
 class FavoriteStrategyResponse(FavoriteStrategyBase):
