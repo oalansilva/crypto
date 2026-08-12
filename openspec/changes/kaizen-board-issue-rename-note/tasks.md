@@ -9,9 +9,9 @@
 - [x] 2.2 Comparar `title` do card (board) vs `content.title` da issue e procurar nota de divergência nos comentários
 - [x] 2.3 Emitir warn quando divergência sem nota; não emitir quando nota presente
 - [x] 2.4 Aplicar check somente a itens vinculados a issues; itens sem issue fora de escopo
-- [ ] 2.5 Validar com o #463 (com nota, sem warn) e com caso sem nota (warn) via `release-guard audit`
+- [x] 2.5 Validar com o #463 (com nota, sem warn) e com caso sem nota (warn) via `release-guard audit`
 
 ## 3. Testes e validação
 
-- [ ] 3.1 Executar `release-guard audit` e confirmar saída esperada sem regressão em pre/post
-- [ ] 3.2 Validação OpenSpec da change
+- [x] 3.1 Executar `release-guard audit` e confirmar saída esperada sem regressão em pre/post
+- [x] 3.2 Validação OpenSpec da change
