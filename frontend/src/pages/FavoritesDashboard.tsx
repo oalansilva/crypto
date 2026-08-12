@@ -1095,6 +1095,32 @@ const FavoritesDashboard: React.FC = () => {
         return { label: 'Backtest aguardando atualização', className: 'pending' };
     };
 
+    const formatRevalidationStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } | null => {
+        const metrics = fav.metrics || {};
+        const verdict = String(metrics.revalidation_verdict || '').toUpperCase();
+        const revalidatedAt = metrics.revalidation_at;
+        const formattedDate = revalidatedAt
+            ? new Date(revalidatedAt).toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            })
+            : null;
+        if (!verdict) return null;
+        if (verdict === 'GO') {
+            return { label: formattedDate ? `Revalidado (GO): ${formattedDate}` : 'Revalidado (GO)', className: 'revalidated-go' };
+        }
+        if (verdict === 'ERROR') {
+            return { label: 'Revalidação com erro', className: 'revalidated-error', title: 'Erro no holdout da revalidação' };
+        }
+        return {
+            label: formattedDate ? `Degradado (${verdict}): ${formattedDate}` : `Degradado (${verdict})`,
+            className: 'revalidated-no-go',
+            title: 'Reprovado na revalidação walk-forward (janela recente). Decisão de remoção permanece manual.',
+        };
+    };
+
     const cryptoFavorites = React.useMemo(
         () => (favorites || []).filter((fav) => isCryptoPair(fav.symbol)),
         [favorites]
@@ -1291,6 +1317,7 @@ const FavoritesDashboard: React.FC = () => {
                                 const strategyDetail = getGridStrategyDetail(fav);
                                 const strategyDescription = getFavoriteStrategyDescription(fav);
                                 const refreshStatus = formatRefreshStatus(fav);
+                                const revalidationStatus = formatRevalidationStatus(fav);
                                 return (
                                     <article key={fav.id} className={`fav-mobile-card ${tier.className}`}>
                                         <div className="fav-mobile-card-head">
@@ -1302,6 +1329,11 @@ const FavoritesDashboard: React.FC = () => {
                                                 <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
                                                     {refreshStatus.label}
                                                 </span>
+                                                {revalidationStatus ? (
+                                                    <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
+                                                        {revalidationStatus.label}
+                                                    </span>
+                                                ) : null}
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                 {direction === 'short' ? 'Short' : 'Long'}
@@ -1376,6 +1408,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const strategyDetail = getGridStrategyDetail(fav);
                                         const strategyDescription = getFavoriteStrategyDescription(fav);
                                         const refreshStatus = formatRefreshStatus(fav);
+                                        const revalidationStatus = formatRevalidationStatus(fav);
 
                                         return (
                                             <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`}>
@@ -1408,6 +1441,11 @@ const FavoritesDashboard: React.FC = () => {
                                                         <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
                                                             {refreshStatus.label}
                                                         </span>
+                                                        {revalidationStatus ? (
+                                                            <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
+                                                                {revalidationStatus.label}
+                                                            </span>
+                                                        ) : null}
                                                     </div>
                                                 </td>
                                                 <td className="direction-col">

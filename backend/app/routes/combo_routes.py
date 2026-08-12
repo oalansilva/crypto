@@ -659,6 +659,7 @@ async def optimize_combo_strategy(
             custom_ranges=request.custom_ranges,
             deep_backtest=request.deep_backtest,
             direction=direction,
+            split_train_ratio=request.split_train_ratio,
         )
 
         logger.info(f"Optimization complete. Best score: {result.get('best_score', 'N/A')}")

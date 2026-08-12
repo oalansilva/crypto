@@ -62,6 +62,20 @@ def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Option
     return df_15m
 
 
+def split_train_holdout(
+    df: pd.DataFrame, train_ratio: float
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Divide candles ordenados por tempo em treino (fração mais antiga) e
+    holdout (fração mais recente), contíguos e disjuntos (card #470)."""
+    if df is None or df.empty or len(df) < 2:
+        raise ValueError("Cannot split empty or single-candle dataframe")
+    if not (0.0 < train_ratio < 1.0):
+        raise ValueError(f"train_ratio must be between 0 and 1 (got {train_ratio})")
+    sorted_df = df.sort_index()
+    split_idx = max(1, min(len(sorted_df) - 1, int(len(sorted_df) * train_ratio)))
+    return sorted_df.iloc[:split_idx].copy(), sorted_df.iloc[split_idx:].copy()
+
+
 # -----------------------------------------------------------------------------
 # WORKER LOGGING (ProcessPoolExecutor workers run in separate processes)
 # -----------------------------------------------------------------------------
@@ -1548,7 +1562,17 @@ class ComboOptimizer:
         deep_backtest: bool = True,  # Default to Deep Backtesting
         job_id: Optional[str] = None,
         direction: str = "long",
+        split_train_ratio: Optional[float] = None,
     ) -> Dict[str, Any]:
+        """Run parameter optimization.
+
+        Args:
+            split_train_ratio: quando informado (ex.: 0.7), a otimização roda
+                somente no treino (fração mais antiga dos candles) e o resultado
+                final inclui métricas do holdout (período mais recente) com
+                veredito GO/NO-GO (walk-forward gate, card #470). None mantém o
+                comportamento legado (período inteiro, sem gate).
+        """
         if direction not in ("long", "short"):
             direction = "long"
 
@@ -1594,7 +1618,34 @@ class ComboOptimizer:
             until_str=end_date,
         )
 
-        # Prefetch 15m cache ONCE (main process) when deep backtest is enabled.
+        # Walk-forward split (card #470): when split_train_ratio is set, the
+        # optimization stages run only on the oldest fraction (train) and the
+        # final result includes holdout metrics with GO/NO-GO verdict.
+        df_holdout = None
+        df_train_tail_for_warmup = None
+        if split_train_ratio is not None:
+            try:
+                train_full, df_holdout = split_train_holdout(df, float(split_train_ratio))
+                # Burn-in: tail do treino para warmup de indicadores do holdout
+                # (SMA_200 etc. precisam de histórico antes da primeira barra).
+                burnin = max(50, int(os.getenv("WALK_FORWARD_BURNIN_CANDLES", "250")))
+                df_train_tail_for_warmup = train_full.iloc[-burnin:].copy()
+                df = train_full
+                logging.info(
+                    "Walk-forward split: train=%d candles (%.0f%%), holdout=%d candles (%.0f%%), burnin=%d",
+                    len(df),
+                    float(split_train_ratio) * 100,
+                    len(df_holdout),
+                    (1 - float(split_train_ratio)) * 100,
+                    burnin,
+                )
+            except ValueError as exc:
+                logging.warning(
+                    "Walk-forward split skipped: %s (running without split, legacy behavior)",
+                    exc,
+                )
+                df_holdout = None
+                df_train_tail_for_warmup = None
         # Workers will only READ the parquet slice (read_only=True) to avoid concurrent writes/corruption.
         # After prefetch, ensure 15m tail is up to end_date (self-healing: avoids stale cache for this symbol).
         if deep_backtest and selected_data_source == "ccxt":
@@ -1910,6 +1961,13 @@ class ComboOptimizer:
             df_final = provider.fetch_ohlcv(
                 symbol=symbol, timeframe=timeframe, since_str=start_date, until_str=end_date
             )
+            # Walk-forward (card #470): o backtest final deve refletir o TREINO
+            # (mesma janela usada na otimização); o holdout é avaliado à parte.
+            if split_train_ratio is not None and df_holdout is not None:
+                try:
+                    df_final, _ = split_train_holdout(df_final, float(split_train_ratio))
+                except ValueError as exc:
+                    logging.warning("Final backtest split skipped: %s", exc)
 
             # Enrich df_final with regime for heavy metrics calculation
             if "regime" not in df_final.columns:
@@ -2053,6 +2111,114 @@ class ComboOptimizer:
             indicator_data = {}
             execution_mode = "fast_1d"
 
+        # Walk-forward holdout (card #470): backtest the best parameters on the
+        # most recent fraction and compute GO/NO-GO verdict over holdout metrics.
+        oos_metrics: Optional[Dict[str, Any]] = None
+        oos_verdict: Optional[Dict[str, Any]] = None
+        if split_train_ratio is not None and df_holdout is not None and not df_holdout.empty:
+            try:
+                strategy_holdout = self.combo_service.create_strategy(
+                    template_name=template_name, parameters=best_params
+                )
+                # Burn-in: concatena a cauda do treino para warmup de indicadores;
+                # trades com entry fora do holdout são descartados da avaliação.
+                holdout_eval_start = df_holdout.index.min()
+                holdout_frame = df_holdout
+                if df_train_tail_for_warmup is not None and not df_train_tail_for_warmup.empty:
+                    holdout_frame = pd.concat([df_train_tail_for_warmup, df_holdout])
+                df_holdout_signals = strategy_holdout.generate_signals(holdout_frame.copy())
+                stop_loss = best_params.get("stop_loss", 0.0)
+                direction = best_params.get("direction", "long")
+                if direction not in ("long", "short"):
+                    direction = "long"
+                holdout_trades_raw, holdout_mode = extract_trades_with_mode(
+                    df_holdout_signals,
+                    stop_loss,
+                    deep_backtest=deep_backtest,
+                    symbol=symbol,
+                    since_str=str(holdout_frame.index.min().date()) if len(holdout_frame) else start_date,
+                    until_str=str(holdout_frame.index.max().date()) if len(holdout_frame) else end_date,
+                    direction=direction,
+                    return_mode=True,
+                )
+                holdout_trades = []
+                for trade in holdout_trades_raw:
+                    entry = trade.get("entry_time")
+                    if not entry:
+                        continue
+                    try:
+                        if pd.Timestamp(entry) >= holdout_eval_start:
+                            holdout_trades.append(trade)
+                    except Exception:
+                        holdout_trades.append(trade)
+                oos_metrics = _metrics_from_trades(
+                    holdout_trades, initial_capital=100, context_params=best_params
+                )
+                try:
+                    heavy_holdout = _calculate_heavy_metrics(df_holdout_signals, holdout_trades)
+                    if oos_metrics:
+                        oos_metrics.update(heavy_holdout)
+                except Exception as exc:
+                    logging.warning("Holdout heavy metrics failed: %s", exc)
+                # CAGR / Calmar / benchmark sobre o holdout (gate GO/NO-GO precisa
+                # dessas métricas; _metrics_from_trades não as produz).
+                try:
+                    from app.metrics.performance import calculate_cagr
+                    from app.metrics.benchmark import calculate_buy_and_hold
+                    from app.metrics.risk_adjusted import calculate_calmar_ratio
+
+                    equity = pd.Series([100.0])
+                    cap = 100.0
+                    for trade in sorted(
+                        holdout_trades,
+                        key=lambda t: pd.Timestamp(t.get("entry_time") or 0),
+                    ):
+                        cap *= 1.0 + float(trade.get("profit") or 0.0)
+                        equity = pd.concat([equity, pd.Series([cap])])
+                    if len(equity) >= 2 and len(holdout_trades) > 0:
+                        oos_cagr = calculate_cagr(equity)
+                    else:
+                        oos_cagr = 0.0
+                    close_series = df_holdout["close"]
+                    bh = calculate_buy_and_hold(close_series, 100.0)
+                    oos_calmar = calculate_calmar_ratio(
+                        oos_cagr, float(oos_metrics.get("max_drawdown") or 0.0)
+                    )
+                    if oos_metrics is not None:
+                        oos_metrics["cagr"] = oos_cagr
+                        oos_metrics["calmar_ratio"] = oos_calmar
+                        oos_metrics["benchmark"] = bh
+                except Exception as exc:
+                    logging.warning("Holdout CAGR/benchmark metrics failed: %s", exc)
+                from app.metrics.criteria import evaluate_go_nogo
+
+                criteria_result = evaluate_go_nogo(oos_metrics)
+                oos_verdict = {
+                    "status": criteria_result.status,
+                    "reasons": criteria_result.reasons,
+                    "warnings": criteria_result.warnings,
+                    "holdout_trades": len(holdout_trades),
+                    "execution_mode": holdout_mode,
+                    "split_train_ratio": float(split_train_ratio),
+                }
+                logging.info(
+                    "Walk-forward holdout verdict: %s (%d trades, %d reasons)",
+                    criteria_result.status,
+                    len(holdout_trades),
+                    len(criteria_result.reasons),
+                )
+            except Exception as exc:
+                logging.error("Walk-forward holdout backtest failed: %s", exc)
+                oos_metrics = None
+                oos_verdict = {
+                    "status": "ERROR",
+                    "reasons": [f"Holdout backtest falhou: {exc}"],
+                    "warnings": [],
+                    "holdout_trades": 0,
+                    "execution_mode": "holdout_error",
+                    "split_train_ratio": float(split_train_ratio),
+                }
+
         # COMPLETION SUMMARY (after final backtest so metrics match returned trades)
         logging.info("=" * 80)
         logging.info("🎯 OPTIMIZATION COMPLETE")
@@ -2083,6 +2249,8 @@ class ComboOptimizer:
             "stages": stages,
             "best_parameters": best_params,
             "best_metrics": best_metrics or {},
+            "oos_metrics": oos_metrics,
+            "oos_verdict": oos_verdict,
             "total_stages": len(stages),
             # Add complete backtest data
             "trades": trades,

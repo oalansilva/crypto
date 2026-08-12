@@ -12,6 +12,7 @@ import { buildTradeMarkers } from '@/lib/tradeMarkers'
 import { buildSignalHistoryMarkers, type MonitorSyncStatus } from '@/lib/signalHistory'
 import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
 import type { OpportunitySignalHistoryItem } from '@/components/monitor/types'
+import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison'
 
 interface BacktestResult {
     template_name: string
@@ -52,6 +53,16 @@ interface BacktestResult {
         close: number
         volume: number
     }>
+    /** Walk-forward (card #470): métricas e veredito do holdout quando split usado */
+    oos_metrics?: Record<string, any> | null
+    oos_verdict?: {
+        status?: string
+        reasons?: string[]
+        warnings?: string[]
+        holdout_trades?: number
+        execution_mode?: string
+        split_train_ratio?: number
+    } | null
 }
 
 export function ComboResultsPage() {
@@ -318,6 +329,29 @@ export function ComboResultsPage() {
                         </div>
                     </section>
 
+                    {(result.oos_verdict || result.oos_metrics) ? (
+                        <section
+                            className="min-w-0 overflow-hidden rounded-2xl border border-[#2b3139] bg-[#181a20] text-[#eaecef]"
+                            aria-label="Comparativo treino vs holdout (walk-forward)"
+                            data-testid="combo-result-oos-comparison"
+                        >
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2b3139] px-5 py-4 sm:px-6">
+                                <div>
+                                    <h2 className="text-lg font-semibold">Treino vs Holdout</h2>
+                                    <p className="mt-1 text-xs text-[#929aa5]">
+                                        Validação walk-forward (card #470): parâmetros otimizados no treino, veredito no período de validação.
+                                    </p>
+                                </div>
+                                <OosVerdictBadge verdict={result.oos_verdict} />
+                            </div>
+                            <OosMetricsTable
+                                trainMetrics={metrics}
+                                oosMetrics={result.oos_metrics}
+                                verdict={result.oos_verdict}
+                            />
+                        </section>
+                    ) : null}
+
                     <StrategyRuleOverview
                         id="combo-result-strategy-rules"
                         strategyTransparency={strategyTransparency}
@@ -382,6 +416,8 @@ export function ComboResultsPage() {
                     timeframe: result.timeframe,
                     parameters: { ...(result.parameters || (result as any).best_parameters || {}), direction: isShort ? 'short' : 'long' },
                     metrics: metrics,
+                    oos_verdict: result.oos_verdict ?? null,
+                    oos_metrics: result.oos_metrics ?? null,
                     trades: (() => {
                         // Sort trades by entry time to ensure correct chronological order for balance calculation
                         const sortedTrades = [...result.trades].sort((a, b) =>

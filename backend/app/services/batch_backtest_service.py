@@ -117,6 +117,7 @@ def run_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
     deep_backtest = payload.get("deep_backtest", True)
     custom_ranges = payload.get("custom_ranges")
     direction = payload.get("direction", "long")
+    split_train_ratio = payload.get("split_train_ratio")
     user_id = payload.get("user_id")
     if direction not in ("long", "short"):
         direction = "long"
@@ -217,6 +218,7 @@ def run_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
                 deep_backtest=deep_backtest,
                 job_id=job_id,
                 direction=direction,
+                split_train_ratio=split_train_ratio,
             )
         except KeyboardInterrupt:
             job["status"] = "cancelled"
@@ -249,6 +251,41 @@ def run_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
         if isinstance(result.get("strategy_transparency"), dict):
             metrics["analysis_strategy_transparency"] = result["strategy_transparency"]
         metrics["analysis_execution_mode"] = result.get("execution_mode")
+
+        # Walk-forward gate (card #470): candidato NO-GO/ERROR no holdout não é salvo.
+        oos_verdict = result.get("oos_verdict")
+        if isinstance(oos_verdict, dict) and (
+            str(oos_verdict.get("status") or "").strip().upper() != "GO"
+        ):
+            reasons = oos_verdict.get("reasons") or ["veredito não-GO no holdout"]
+            verdict_status = str(oos_verdict.get("status") or "UNKNOWN").strip().upper()
+            logger.info(
+                "Batch: skip %s (walk-forward %s no holdout): %s",
+                symbol,
+                verdict_status,
+                "; ".join(str(r) for r in reasons[:5]),
+            )
+            job["skipped"] = job.get("skipped", 0) + 1
+            job["skipped_reasons"] = job.get("skipped_reasons", [])
+            job["skipped_reasons"].append(
+                {
+                    "symbol": symbol,
+                    "reason": f"walk-forward {verdict_status}",
+                    "details": "; ".join(str(r) for r in reasons[:5]),
+                }
+            )
+            job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
+            if 0 < job["processed"] < total:
+                job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
+                    total - job["processed"]
+                )
+            _persist_progress(job)
+            continue
+
+        if isinstance(oos_verdict, dict):
+            metrics["oos_metrics"] = result.get("oos_metrics")
+            metrics["oos_verdict"] = oos_verdict
+
         params_with_direction = dict(best_params)
         params_with_direction["direction"] = direction
         if effective_data_source:
