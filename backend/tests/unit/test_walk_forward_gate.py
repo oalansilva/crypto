@@ -120,3 +120,238 @@ class TestHoldoutMetricsEnableGo:
         result = evaluate_go_nogo(metrics)
         assert result.status == "NO-GO"
         assert any("CAGR" in r or "Calmar" in r for r in result.reasons)
+
+
+class TestRevalidateAllFavorites:
+    def test_revalidate_all_iterates_and_aggregates(self, monkeypatch):
+        from app.services import walk_forward_revalidation as wfr
+
+        class FakeRow:
+            def __init__(self, fid, symbol):
+                self.id = fid
+                self.symbol = symbol
+                self.parameters = {"direction": "long"}
+                self.strategy_name = "multi_ma_crossover"
+                self.timeframe = "1d"
+                self.start_date = None
+                self.end_date = None
+                self.metrics = {"total_return_pct": 1.0}
+                self.user_id = "user-a"
+
+        rows = [FakeRow(1, "BTC/USDT"), FakeRow(2, "ETH/USDT")]
+
+        class FakeSession:
+            def __init__(self, *a, **k):
+                pass
+
+            def query(self, model):
+                return self
+
+            def filter(self, **kwargs):
+                return self
+
+            def order_by(self, *_a):
+                return self
+
+            def all(self):
+                return rows
+
+            def close(self):
+                pass
+
+        def fake_revalidate(row, db=None):
+            return {
+                "favorite_id": row.id,
+                "symbol": row.symbol,
+                "verdict": "GO" if row.id == 1 else "NO-GO",
+            }
+
+        monkeypatch.setattr(wfr, "SessionLocal", FakeSession)
+        monkeypatch.setattr(wfr, "revalidate_favorite", fake_revalidate)
+
+        summary = wfr.revalidate_all_favorites()
+        assert summary["total"] == 2
+        assert summary["revalidated"] == 2
+        assert summary["go"] == 1
+        assert summary["no_go"] == 1
+
+    def test_revalidate_all_continues_on_failure(self, monkeypatch):
+        from app.services import walk_forward_revalidation as wfr
+
+        class FakeRow:
+            def __init__(self, fid, symbol):
+                self.id = fid
+                self.symbol = symbol
+
+        rows = [FakeRow(1, "BTC/USDT"), FakeRow(2, "ETH/USDT")]
+
+        class FakeSession:
+            def __init__(self, *a, **k):
+                pass
+
+            def query(self, model):
+                return self
+
+            def filter(self, **kwargs):
+                return self
+
+            def order_by(self, *_a):
+                return self
+
+            def all(self):
+                return rows
+
+            def close(self):
+                pass
+
+        def fake_revalidate(row, db=None):
+            if row.id == 1:
+                raise RuntimeError("boom")
+            return {"favorite_id": row.id, "symbol": row.symbol, "verdict": "GO"}
+
+        monkeypatch.setattr(wfr, "SessionLocal", FakeSession)
+        monkeypatch.setattr(wfr, "revalidate_favorite", fake_revalidate)
+
+        summary = wfr.revalidate_all_favorites()
+        assert summary["total"] == 2
+        assert summary["revalidated"] == 1
+        assert summary["failures"] == 1
+        assert summary["results"][0]["error"] == "boom"
+
+    def test_revalidate_all_respects_max_favorites(self, monkeypatch):
+        from app.services import walk_forward_revalidation as wfr
+
+        class FakeRow:
+            def __init__(self, fid):
+                self.id = fid
+                self.symbol = "X/USDT"
+
+        rows = [FakeRow(1), FakeRow(2), FakeRow(3)]
+
+        class FakeSession:
+            def __init__(self, *a, **k):
+                pass
+
+            def query(self, model):
+                return self
+
+            def filter(self, **kwargs):
+                return self
+
+            def order_by(self, *_a):
+                return self
+
+            def all(self):
+                return rows
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(wfr, "SessionLocal", FakeSession)
+        monkeypatch.setattr(
+            wfr,
+            "revalidate_favorite",
+            lambda row, db=None: {
+                "favorite_id": row.id,
+                "symbol": row.symbol,
+                "verdict": "GO",
+            },
+        )
+
+        summary = wfr.revalidate_all_favorites(max_favorites=2)
+        assert summary["total"] == 2
+
+
+class TestRevalidateFavoriteErrors:
+    def test_revalidate_favorite_rolls_back_when_row_missing(self, monkeypatch):
+        from app.services import walk_forward_revalidation as wfr
+
+        class FakeRow:
+            id = 99
+            symbol = "BTC/USDT"
+            timeframe = "1d"
+            strategy_name = "multi_ma_crossover"
+            parameters = {"direction": "long"}
+            start_date = None
+            end_date = None
+            metrics = {}
+
+        rolled_back = []
+
+        class FakeSession:
+            def __init__(self, *a, **k):
+                pass
+
+            def query(self, model):
+                return self
+
+            def filter(self, *args, **kwargs):
+                return self
+
+            def first(self):
+                return None
+
+            def rollback(self):
+                rolled_back.append(True)
+
+            def close(self):
+                pass
+
+        class FakeOptimizer:
+            def run_optimization(self, **_kwargs):
+                return {
+                    "best_metrics": {},
+                    "oos_metrics": {},
+                    "oos_verdict": {"status": "GO", "reasons": []},
+                }
+
+        monkeypatch.setattr(wfr, "SessionLocal", FakeSession)
+        monkeypatch.setattr(wfr, "ComboOptimizer", FakeOptimizer)
+
+        with pytest.raises(ValueError):
+            wfr.revalidate_favorite(FakeRow(), db=FakeSession())
+        assert rolled_back == [True]
+
+    def test_revalidate_all_filters_by_user(self, monkeypatch):
+        from app.services import walk_forward_revalidation as wfr
+
+        class FakeRow:
+            def __init__(self, fid):
+                self.id = fid
+                self.symbol = "X/USDT"
+
+        rows = [FakeRow(1)]
+
+        class FakeSession:
+            def __init__(self, *a, **k):
+                pass
+
+            def query(self, model):
+                return self
+
+            def filter(self, *args, **kwargs):
+                return self
+
+            def order_by(self, *_a):
+                return self
+
+            def all(self):
+                return rows
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(wfr, "SessionLocal", FakeSession)
+        monkeypatch.setattr(
+            wfr,
+            "revalidate_favorite",
+            lambda row, db=None: {
+                "favorite_id": row.id,
+                "symbol": row.symbol,
+                "verdict": "GO",
+            },
+        )
+
+        summary = wfr.revalidate_all_favorites(user_id="user-a")
+        assert summary["total"] == 1
+        assert summary["revalidated"] == 1
