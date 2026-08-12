@@ -62,9 +62,7 @@ def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Option
     return df_15m
 
 
-def split_train_holdout(
-    df: pd.DataFrame, train_ratio: float
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def split_train_holdout(df: pd.DataFrame, train_ratio: float) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Divide candles ordenados por tempo em treino (fração mais antiga) e
     holdout (fração mais recente), contíguos e disjuntos (card #470)."""
     if df is None or df.empty or len(df) < 2:
@@ -2136,8 +2134,12 @@ class ComboOptimizer:
                     stop_loss,
                     deep_backtest=deep_backtest,
                     symbol=symbol,
-                    since_str=str(holdout_frame.index.min().date()) if len(holdout_frame) else start_date,
-                    until_str=str(holdout_frame.index.max().date()) if len(holdout_frame) else end_date,
+                    since_str=(
+                        str(holdout_frame.index.min().date()) if len(holdout_frame) else start_date
+                    ),
+                    until_str=(
+                        str(holdout_frame.index.max().date()) if len(holdout_frame) else end_date
+                    ),
                     direction=direction,
                     return_mode=True,
                 )

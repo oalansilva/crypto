@@ -61,9 +61,7 @@ def _favorite_direction(parameters: dict[str, Any]) -> str:
 
 def _revalidation_window(favorite: FavoriteStrategy) -> tuple[str, str]:
     end_date = datetime.now().strftime("%Y-%m-%d")
-    start_date = (datetime.now() - timedelta(days=REVALIDATION_WINDOW_DAYS)).strftime(
-        "%Y-%m-%d"
-    )
+    start_date = (datetime.now() - timedelta(days=REVALIDATION_WINDOW_DAYS)).strftime("%Y-%m-%d")
     return start_date, end_date
 
 

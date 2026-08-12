@@ -54,9 +54,7 @@ class TestOosGateDecision:
         assert oos_gate_decision({})["allowed"] is True
 
     def test_no_go_blocks_with_reason(self):
-        decision = oos_gate_decision(
-            {"status": "NO-GO", "reasons": ["Sharpe baixo", "DD alto"]}
-        )
+        decision = oos_gate_decision({"status": "NO-GO", "reasons": ["Sharpe baixo", "DD alto"]})
         assert decision["allowed"] is False
         assert "Sharpe baixo" in decision["reason"]
         assert "DD alto" in decision["reason"]

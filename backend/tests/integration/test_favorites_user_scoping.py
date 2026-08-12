@@ -1523,7 +1523,9 @@ def test_create_favorite_allows_go_and_legacy(tmp_path: Path):
     assert legacy.id is not None
 
 
-def test_revalidate_favorite_updates_metrics_without_touching_parameters(tmp_path: Path, monkeypatch):
+def test_revalidate_favorite_updates_metrics_without_touching_parameters(
+    tmp_path: Path, monkeypatch
+):
     """Revalidação (card #470): atualiza metrics.revalidation* sem alterar parâmetros."""
     from app.services import walk_forward_revalidation as wfr
 
