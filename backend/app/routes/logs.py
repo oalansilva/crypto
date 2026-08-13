@@ -24,11 +24,39 @@ LOG_MAP = {
 
 
 def _tail_lines(path: Path, lines: int) -> str:
-    # Simple + safe tail (files are small in this project). If this grows, switch to seek-from-end.
+    """Return the last ``lines`` lines of a file efficiently.
+
+    Reads from the end of the file (seek-from-end) instead of loading the whole
+    file into memory, so large log files (e.g. 300MB+ full_execution_log.txt)
+    stay fast on every poll.
+    """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        size = path.stat().st_size
     except FileNotFoundError:
         return ""
+    if size <= 0:
+        return ""
+
+    # Read backward in chunks until we have enough newlines to cover `lines`
+    # (or reach the start of the file). Cap the scanned tail to avoid unbounded
+    # reads on files with very long lines.
+    chunk = 64 * 1024
+    max_scan = max(chunk * 32, lines * 4096)
+    offset = size
+    data = b""
+    try:
+        with open(path, "rb") as fh:
+            while offset > 0 and len(data) < max_scan:
+                read_size = min(chunk, offset)
+                offset -= read_size
+                fh.seek(offset)
+                data = fh.read(read_size) + data
+                if data.count(b"\n") >= lines + 1:
+                    break
+    except OSError:
+        return ""
+
+    text = data.decode("utf-8", errors="replace")
     parts = text.splitlines()
     return "\n".join(parts[-lines:])
 

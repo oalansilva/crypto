@@ -40,3 +40,9 @@
 - [ ] 5.2 Testes de API: bloqueio sem GO, override admin, batch NO-GO não salvo
 - [ ] 5.3 Testes de revalidação: relatório de degradação sem auto-alteração; backfill em massa com atualização de dados
 - [ ] 5.4 `qa-gate` verde e validação OpenSpec da change
+
+## 6. Ajustes pós-Done (feedback Alan 2026-08-13)
+
+- [x] 6.1 `_tail_lines` reescrito com seek-from-end (leitura do fim do arquivo) — modal de logs responde <1s mesmo com full_execution_log de 335MB (era ~3s lendo o arquivo inteiro a cada poll)
+- [x] 6.2 `opportunity_service`: `_resolve_stop_loss` extrai `default` de dict (stop_loss normalizado por get_template_metadata) — corrige `float() ... not 'dict'` que pulava 10 favoritos quant_btc_1d_* no Monitor
+- [x] 6.3 Testes: tail seek (arquivo grande + linhas longas) e _resolve_stop_loss (dict/número/None)

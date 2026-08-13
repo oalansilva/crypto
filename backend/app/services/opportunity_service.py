@@ -103,6 +103,17 @@ def _coerce_positive_float(value: Any, default: float) -> float:
         return default
 
 
+def _resolve_stop_loss(value: Any, default: float = 0.0) -> Any:
+    """Normaliza stop_loss vindo de params/template_data.
+
+    `get_template_metadata` normaliza stop_loss para dict ``{"default": X}``;
+    extrai o valor real antes do ``float()`` (mesmo padrão do combo_optimizer).
+    """
+    if isinstance(value, dict):
+        return value.get("default", default)
+    return value
+
+
 def _build_market_indicator_mappings(
     indicators: list[dict[str, Any]],
 ) -> dict[str, str]:
@@ -1370,7 +1381,9 @@ class OpportunityService:
 
                 # 4. Instantiate Strategy with rules from database
                 # entry_logic and exit_logic come from combo_templates.template_data (JSON field)
-                sl_param = params.get("stop_loss", template_data.get("stop_loss", 0.0))
+                sl_param = _resolve_stop_loss(
+                    params.get("stop_loss", template_data.get("stop_loss", 0.0))
+                )
 
                 # Extract buy/sell rules dynamically from database template
                 entry_logic = template_data.get("entry_logic", "")  # Buy rule from DB
@@ -1565,7 +1578,9 @@ class OpportunityService:
                 stop_price = None
                 distance_to_stop_pct = None
                 try:
-                    sl_raw = params.get("stop_loss", template_data.get("stop_loss", None))
+                    sl_raw = _resolve_stop_loss(
+                        params.get("stop_loss", template_data.get("stop_loss", None))
+                    )
                     sl = None
                     if sl_raw is not None:
                         sl = float(sl_raw)
