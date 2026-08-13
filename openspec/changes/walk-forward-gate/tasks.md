@@ -46,3 +46,9 @@
 - [x] 6.1 `_tail_lines` reescrito com seek-from-end (leitura do fim do arquivo) — modal de logs responde <1s mesmo com full_execution_log de 335MB (era ~3s lendo o arquivo inteiro a cada poll)
 - [x] 6.2 `opportunity_service`: `_resolve_stop_loss` extrai `default` de dict (stop_loss normalizado por get_template_metadata) — corrige `float() ... not 'dict'` que pulava 10 favoritos quant_btc_1d_* no Monitor
 - [x] 6.3 Testes: tail seek (arquivo grande + linhas longas) e _resolve_stop_loss (dict/número/None)
+
+## 7. Ajuste pós-Done (feedback Alan 2026-08-13): split pela UI
+
+- [x] 7.1 `ComboConfigurePage`: toggle "Validação walk-forward (split 70/30)" com input de % de treino (default 70) — envia `split_train_ratio` no body do `/combos/optimize` (single) e do `/combos/backtest/batch`
+- [x] 7.2 Salvamento de favorito (single): envia `oos_verdict`/`oos_metrics` e bloqueia com alerta quando veredito != GO (gate NO-GO na UI)
+- [x] 7.3 Evidência runtime: optimize com split 0.7 → `Walk-forward split: train=2298 (70%), holdout=986 (30%), burnin=250` → `verdict NO-GO` (26 trades, 3 razões)
