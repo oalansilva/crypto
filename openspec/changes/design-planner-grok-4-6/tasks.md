@@ -1,7 +1,7 @@
 ## 1. Agent e config de modelo
 
-- [x] 1.1 Criar `.opencode/agent/design-planner.md` com `model: opencode/grok-4.6`, effort `high` e escopo restrito a artefatos de design/protótipo
-- [x] 1.2 Configurar variant/options `reasoningEffort: high` para `opencode/grok-4.6` no config do agent (sem cycle medium/xhigh)
+- [x] 1.1 Criar `.opencode/agent/design-planner.md` com modelo frontier fixo, effort `high` e escopo restrito a artefatos de design/protótipo (modelo final: `openai/gpt-5.6-sol`; histórico grok 4.6 preservado no design)
+- [x] 1.2 Configurar `reasoningEffort: high` no agent e confirmar no config resolvido por `opencode debug agent design-planner`
 
 ## 2. Emendas normativas
 
@@ -13,10 +13,11 @@
 ## 3. Registro e validação
 
 - [x] 3.1 Registrar decisão em `docs/decision-log.md` e plano em `.opencode/plans/design-gate-grok46.md`
-- [ ] 3.2 Validar em sessão nova que o spawn do `design-planner` usa o modelo configurado + effort `high` (feito com grok-4.6; **revalidar com GPT 5.6 Sol após o rework**)
-- [ ] 3.3 Piloto em 1 card `UI impact: affected` antes de tornar o roteamento obrigatório
+- [x] 3.2 Validar em sessão nova o spawn via `Task`: parent Go/flash; child runtime `agent=design-planner`, `model=openai/gpt-5.6-sol`; config resolvido `options.reasoningEffort=high` (2026-08-13)
+- [x] 3.3 Transferir o piloto `UI impact: affected` para o card filho #496, criado em `Em Refinamento`; #491 conclui o smoke e mantém o rollout experimental até #496 validar a promoção
 
 ## 4. Rework pós-Done (troca de modelo para GPT 5.6 Sol)
 
 - [x] 4.1 Trocar `model: opencode/grok-4.6` por `model: openai/gpt-5.6-sol` no `.opencode/agent/design-planner.md` (effort `high` mantido)
 - [x] 4.2 Atualizar OpenSpec (proposal/design/specs) e docs (AGENTS.md, rules.md, design-critic, decision-log) com GPT 5.6 Sol/OpenAI
+- [x] 4.3 Alinhar invocação ao padrão do `vision`: sessão principal delega via `Task`; proibir `opencode run --agent design-planner` e fallback para o agente default

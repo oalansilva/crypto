@@ -1,12 +1,22 @@
 ## ADDED Requirements
 
-### Requirement: Gate Design usa design-planner com GPT 5.6 Sol
-O repositório SHALL definir um subagent `design-planner` em `.opencode/agent/design-planner.md` com `model: openai/gpt-5.6-sol` fixo e effort `high` (`reasoningEffort: high`), para executar o contrato `design-critic` quando o card estiver em `Status=Design`.
+### Requirement: Gate Design disponibiliza design-planner com GPT 5.6 Sol
+O repositório SHALL definir um subagent `design-planner` em `.opencode/agent/design-planner.md` com `model: openai/gpt-5.6-sol` fixo e effort `high` (`reasoningEffort: high`), para executar o contrato `design-critic` quando o card estiver em `Status=Design`. Até o card #496 concluir o piloto `UI impact: affected` com PASS e registrar a decisão de promoção, o roteamento SHALL permanecer experimental e MUST NOT ser obrigatório globalmente.
 
 #### Scenario: Subagent disponível no gate Design
 - **WHEN** um card está em `Status=Design` e o provider OpenAI está autenticado
-- **THEN** a sessão principal SHALL delegar o contrato design-critic ao subagent `design-planner`
+- **THEN** uma sessão principal nova na worktree que contém o agent MAY delegar o contrato design-critic via ferramenta `Task` ao subagent `design-planner`, no mesmo padrão do `vision`
 - **AND** o request SHALL rodar com modelo `openai/gpt-5.6-sol` e effort `high`
+
+#### Scenario: Rollout obrigatório aguarda piloto UI
+- **WHEN** o card #496 ainda não concluiu o piloto `UI impact: affected` com PASS e decisão de promoção registrada
+- **THEN** o uso do `design-planner` MUST permanecer experimental
+- **AND** cards `UI impact: none` MAY ser usados como smoke sem promover o roteamento a regra global obrigatória
+
+#### Scenario: Subagent não pode ser iniciado como agente primário
+- **WHEN** o operador tenta usar `opencode run --agent design-planner`
+- **THEN** o fluxo MUST rejeitar essa forma de invocação porque `design-planner` usa `mode: subagent`
+- **AND** qualquer fallback para o agente/modelo default MUST invalidar o gate de Design
 
 #### Scenario: Effort não pode variar
 - **WHEN** o `design-planner` é invocado
