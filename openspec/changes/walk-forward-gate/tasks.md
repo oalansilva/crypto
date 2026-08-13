@@ -23,7 +23,7 @@
 ## 4. Revalidação de favoritos
 
 - [x] 4.1 Endpoint `POST /api/favorites/{id}/revalidate` com backtest na janela recente e relatório de degradação
-- [ ] 4.2 UI de revalidação com comparativo IS vs janela recente sem alterar favorito automaticamente
+- [x] 4.2 UI de revalidação com comparativo IS vs janela recente sem alterar favorito automaticamente
 - [x] 4.3 Cobertura de payloads legados: sem `oos_metrics`, manutenção do comportamento atual de criação
 
 ## 4b. Backfill em massa de revalidação (solicitação de Alan)
@@ -37,8 +37,8 @@
 ## 5. Testes e validação
 
 - [x] 5.1 Testes unitários: split temporal (frações, datas, disjunção), gate GO/NO-GO no holdout, mínimo de trades
-- [ ] 5.2 Testes de API: bloqueio sem GO, override admin, batch NO-GO não salvo
-- [ ] 5.3 Testes de revalidação: relatório de degradação sem auto-alteração; backfill em massa com atualização de dados
+- [x] 5.2 Testes de API: bloqueio sem GO, override admin, batch NO-GO não salvo
+- [x] 5.3 Testes de revalidação: relatório de degradação sem auto-alteração; backfill em massa com atualização de dados
 - [ ] 5.4 `qa-gate` verde e validação OpenSpec da change
 
 ## 6. Ajustes pós-Done (feedback Alan 2026-08-13)
@@ -52,3 +52,11 @@
 - [x] 7.1 `ComboConfigurePage`: toggle "Validação walk-forward (split 70/30)" com input de % de treino (default 70) — envia `split_train_ratio` no body do `/combos/optimize` (single) e do `/combos/backtest/batch`
 - [x] 7.2 Salvamento de favorito (single): envia `oos_verdict`/`oos_metrics` e bloqueia com alerta quando veredito != GO (gate NO-GO na UI)
 - [x] 7.3 Evidência runtime: optimize com split 0.7 → `Walk-forward split: train=2298 (70%), holdout=986 (30%), burnin=250` → `verdict NO-GO` (26 trades, 3 razões)
+
+## 8. Ajuste pós-Done: revisar resultado antes da promoção
+
+- [x] 8.1 Otimização single com walk-forward abre `ComboResultsPage` com o comparativo Treino vs Holdout antes de qualquer criação de favorito
+- [x] 8.2 `SaveFavoriteModal` mostra override de candidato NO-GO somente para admin e mantém o bloqueio para usuário comum
+- [x] 8.3 A ação "Salvar nos Favoritos" aparece apenas para resultado de otimização, sem duplicar favorito ao abrir uma análise existente
+- [x] 8.4 Backend assina período, parâmetros, métricas, trades e veredito OOS; promoção rejeita payload declarado OOS adulterado, inclusive com override admin
+- [x] 8.5 Deduplicação autoritativa usa chave funcional e lock transacional PostgreSQL nos fluxos single e batch, preservando períodos customizados distintos

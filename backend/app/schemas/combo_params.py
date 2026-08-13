@@ -103,6 +103,7 @@ class ComboOptimizationRequest(BaseModel):
     )
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    period_type: Optional[str] = Field(None, description="'6m' | '2y' | 'all'")
     deep_backtest: bool = Field(
         default=True,
         description="Use Deep Backtesting (15m precision) for realistic stop-loss simulation",
@@ -147,6 +148,8 @@ class ComboOptimizationResponse(BaseModel):
     # Walk-forward (card #470): holdout metrics and GO/NO-GO verdict (null when split not used)
     oos_metrics: Optional[Dict[str, Any]] = None
     oos_verdict: Optional[Dict[str, Any]] = None
+    oos_proof: Optional[str] = None
+    promotion_metrics: Optional[Dict[str, Any]] = None
     # Complete backtest data for visualization
     trades: List[Dict[str, Any]] = Field(default_factory=list)
     candles: List[Dict[str, Any]] = Field(default_factory=list)

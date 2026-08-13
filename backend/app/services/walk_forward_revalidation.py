@@ -137,6 +137,7 @@ def revalidate_favorite(
         "verdict": verdict_status,
         "oos_verdict": oos_verdict,
         "window": {"start": start, "end": end},
+        "revalidation": revalidation,
     }
 
 

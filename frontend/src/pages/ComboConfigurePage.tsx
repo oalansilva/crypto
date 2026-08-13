@@ -283,6 +283,7 @@ export function ComboConfigurePage() {
                         direction,
                         custom_ranges,
                         split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
+                        period_type: period,
                     })
                 })
                 if (!res.ok) {
@@ -298,11 +299,38 @@ export function ComboConfigurePage() {
                     trades: Array.isArray(result.trades) ? result.trades : [],
                 }
                 const oosVerdict = result.oos_verdict ?? null
-                if (oosVerdict && String(oosVerdict.status ?? '').toUpperCase() !== 'GO') {
-                    alert(
-                        `Candidato reprovado na validação walk-forward (holdout): ${(oosVerdict.reasons ?? []).join('; ') || oosVerdict.status}. Não salvo nos favoritos.`
-                    )
-                    setRunning(false)
+                // Walk-forward ativo: mostra a tela de resultados com o comparativo
+                // Treino vs Holdout e o veredito (GO/NO-GO) para o usuário decidir.
+                if (walkForwardEnabled || oosVerdict) {
+                    navigate('/combo/results', {
+                        state: {
+                            result: {
+                                template_name: result.template_name,
+                                symbol: result.symbol,
+                                timeframe: result.timeframe,
+                                start_date: start_date ?? null,
+                                end_date: end_date ?? null,
+                                period_type: period,
+                                execution_mode: result.execution_mode ?? 'fast_1d',
+                                parameters,
+                                metrics,
+                                promotion_metrics: result.promotion_metrics ?? metrics,
+                                trades: Array.isArray(result.trades) ? result.trades : [],
+                                candles: Array.isArray(result.candles) ? result.candles : [],
+                                indicator_data:
+                                    result.indicator_data && typeof result.indicator_data === 'object'
+                                        ? result.indicator_data
+                                        : {},
+                                direction: result.direction ?? direction,
+                                strategy_transparency: result.strategy_transparency ?? null,
+                                oos_verdict: oosVerdict,
+                                oos_metrics: result.oos_metrics ?? null,
+                                oos_proof: result.oos_proof ?? null,
+                            },
+                            isOptimization: true,
+                            returnTo: '/combo/configure',
+                        },
+                    })
                     return
                 }
                 const favRes = await authFetch(`${API_BASE_URL}/favorites/`, {

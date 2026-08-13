@@ -296,6 +296,24 @@ def run_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
 
         db = SessionLocal()
         try:
+            from app.services.favorite_uniqueness import lock_and_find_duplicate
+
+            if lock_and_find_duplicate(
+                db,
+                user_id=user_id,
+                strategy_name=template_name,
+                symbol=symbol,
+                timeframe=timeframe,
+                period_type=period_type,
+                start_date=start_date,
+                end_date=end_date,
+                parameters=params_with_direction,
+            ):
+                job["skipped"] = job.get("skipped", 0) + 1
+                job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
+                logger.info("Batch: skip %s (created concurrently)", symbol)
+                _persist_progress(job)
+                continue
             favorite = FavoriteStrategy(
                 user_id=user_id,
                 name=name,

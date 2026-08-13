@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
-import { BarChart3, ArrowLeft } from 'lucide-react'
+import { BarChart3, ArrowLeft, Star } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
@@ -18,6 +18,9 @@ interface BacktestResult {
     template_name: string
     symbol: string
     timeframe: string
+    start_date?: string | null
+    end_date?: string | null
+    period_type?: string | null
     execution_mode?: string
     strategy_description?: string | null
     is_strategy_protected?: boolean
@@ -30,6 +33,7 @@ interface BacktestResult {
         sharpe_ratio?: number
         max_drawdown?: number
     }
+    promotion_metrics?: Record<string, any> | null
     trades: Array<{
         entry_time: string
         entry_price: number
@@ -55,6 +59,7 @@ interface BacktestResult {
     }>
     /** Walk-forward (card #470): métricas e veredito do holdout quando split usado */
     oos_metrics?: Record<string, any> | null
+    oos_proof?: string | null
     oos_verdict?: {
         status?: string
         reasons?: string[]
@@ -70,6 +75,7 @@ export function ComboResultsPage() {
     const navigate = useNavigate()
     const result = location.state?.result as BacktestResult
     const returnTo = location.state?.returnTo as string | undefined
+    const isOptimization = location.state?.isOptimization === true
     const [isModalOpen, setIsModalOpen] = useState(false)
 
     const handleSaveFavorite = async (data: any) => {
@@ -90,8 +96,9 @@ export function ComboResultsPage() {
                 throw new Error(error.detail || 'Erro ao salvar favorito')
             }
 
-            const result = await response.json()
-            console.log('✅ Favorito salvo com sucesso:', result)
+            const savedFavorite = await response.json()
+            console.log('✅ Favorito salvo com sucesso:', savedFavorite)
+            navigate('/favorites')
         } catch (err) {
             console.error('❌ Erro ao salvar favorito:', err)
             throw err
@@ -295,6 +302,17 @@ export function ComboResultsPage() {
                             <ArrowLeft className="h-4 w-4" />
                             {returnTo === '/favorites' ? 'Voltar aos favoritos' : 'Voltar'}
                         </button>
+                        {isOptimization ? (
+                            <button
+                                type="button"
+                                onClick={() => setIsModalOpen(true)}
+                                className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#0b0e11] transition-colors hover:bg-[#fcd535]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
+                                data-testid="save-favorite-button"
+                            >
+                                <Star className="h-4 w-4" />
+                                Salvar nos Favoritos
+                            </button>
+                        ) : null}
                     </div>
 
                     <section
@@ -406,49 +424,55 @@ export function ComboResultsPage() {
                 </div>
             </main>
 
-            {/* Save Favorite Modal */}
-            <SaveFavoriteModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                backtestResult={{
-                    template_name: result.template_name,
-                    symbol: result.symbol,
-                    timeframe: result.timeframe,
-                    parameters: { ...(result.parameters || (result as any).best_parameters || {}), direction: isShort ? 'short' : 'long' },
-                    metrics: metrics,
-                    oos_verdict: result.oos_verdict ?? null,
-                    oos_metrics: result.oos_metrics ?? null,
-                    trades: (() => {
-                        // Sort trades by entry time to ensure correct chronological order for balance calculation
-                        const sortedTrades = [...result.trades].sort((a, b) =>
-                            new Date(a.entry_time).getTime() - new Date(b.entry_time).getTime()
-                        );
+            {isOptimization ? (
+                <SaveFavoriteModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    backtestResult={{
+                        template_name: result.template_name,
+                        symbol: result.symbol,
+                        timeframe: result.timeframe,
+                        start_date: result.start_date ?? null,
+                        end_date: result.end_date ?? null,
+                        period_type: result.period_type ?? null,
+                        parameters: { ...(result.parameters || (result as any).best_parameters || {}), direction: isShort ? 'short' : 'long' },
+                        metrics: metrics,
+                        promotion_metrics: result.promotion_metrics ?? null,
+                        oos_verdict: result.oos_verdict ?? null,
+                        oos_metrics: result.oos_metrics ?? null,
+                        oos_proof: result.oos_proof ?? null,
+                        trades: (() => {
+                            // Sort trades by entry time to ensure correct chronological order for balance calculation
+                            const sortedTrades = [...result.trades].sort((a, b) =>
+                                new Date(a.entry_time).getTime() - new Date(b.entry_time).getTime()
+                            );
 
-                        let currentBalance = 100; // Requirement: Start with $100
+                            let currentBalance = 100; // Requirement: Start with $100
 
-                        return sortedTrades.map(t => {
-                            const initial_capital = currentBalance;
-                            // profit is percentage (e.g., 0.05 for 5%)
-                            const profitPct = t.profit || 0;
-                            const profitAmount = initial_capital * profitPct;
-                            const final_capital = initial_capital + profitAmount;
+                            return sortedTrades.map(t => {
+                                const initial_capital = currentBalance;
+                                // profit is percentage (e.g., 0.05 for 5%)
+                                const profitPct = t.profit || 0;
+                                const profitAmount = initial_capital * profitPct;
+                                const final_capital = initial_capital + profitAmount;
 
-                            // Update balance for next trade
-                            currentBalance = final_capital;
+                                // Update balance for next trade
+                                currentBalance = final_capital;
 
-                            return {
-                                ...t,
-                                pnl_pct: profitPct,
-                                initial_capital: initial_capital,
-                                final_capital: final_capital,
-                                pnl: profitAmount, // PnL in dollars
-                                direction: isShort ? 'Short' : 'Long'
-                            };
-                        });
-                    })()
-                }}
-                onSave={handleSaveFavorite}
-            />
+                                return {
+                                    ...t,
+                                    pnl_pct: profitPct,
+                                    initial_capital: initial_capital,
+                                    final_capital: final_capital,
+                                    pnl: profitAmount, // PnL in dollars
+                                    direction: isShort ? 'Short' : 'Long'
+                                };
+                            });
+                        })()
+                    }}
+                    onSave={handleSaveFavorite}
+                />
+            ) : null}
         </div>
     )
 }
