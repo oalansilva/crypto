@@ -33,14 +33,14 @@ Hoje a sessão principal e todos os subagents herdam `opencode-go/deepseek-v4-fl
 
 5. **Piloto obrigatório** em 1 card `UI impact: affected` depois da implementação, antes de tornar o roteamento obrigatório em todo card.
 
-6. **Envelope de custo do planner.** O spawn do `design-planner` recebe packet fechado (proposal + `design.md` atual + contextFiles da change + trecho relevante de `DESIGN.md`). Proibido: AGENTS.md/rules.md inteiros, loops de `gh`/board, `openspec ff`, testes, restart. Flash faz OpenSpec/board/publicação. Teto alvo: **≤ $1,00 / card** no GPT 5.6 Sol (input $5/1M; spawn curto ~30k tokens ≈ $0,15–0,30; teto com folga para UI com protótipo); se estourar, registrar tokens e reduzir packet antes do próximo card. Effort `high` permanece, mas só nesse spawn curto.
+6. **Spawn isolado do planner.** O spawn do `design-planner` recebe packet fechado (proposal + `design.md` atual + contextFiles da change + trecho relevante de `DESIGN.md`). Proibido: AGENTS.md/rules.md inteiros, loops de `gh`/board, `openspec ff`, testes, restart. Flash faz OpenSpec/board/publicação. **Sem teto de custo por card** (decisão de Alan) — o isolamento é estrutural (frontier nunca como sessão principal), não financeiro. Effort `high` permanece, mas só nesse spawn curto.
 
 ## Risks / Trade-offs
 
 - [OpenAI sem key/OAuth] → `BLOCKED (modelo indisponível)`; fallback só com autorização de Alan.
-- [GPT 5.6 Sol é caro ($5/$30)] → spawn único e curto, teto $1,00/card; piloto mede custo real.
+- [GPT 5.6 Sol é caro ($5/$30)] → spawn isolado e curto; custo acompanhado no uso (sem teto por card).
 - [Custo: sessão principal no frontier queima cache (evidência grok 4.6: 8,5M read ≈ $3+)] → regra: frontier só no spawn isolado; flash orquestra.
-- [Custo: effort `high` + packet grande] → packet compacto + teto $0,50/card; estouro vira achado, não default.
+- [Custo: effort `high` + packet grande] → packet compacto; custo observado no uso (sem teto por card).
 - [Sessões em voo não pegam o modelo novo] → validar em sessão nova após merge (regra de troca de modelo).
 - [Confusão de providers no `/models`] → documentar Zen vs Go no AGENTS.md.
 

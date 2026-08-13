@@ -39,7 +39,7 @@ Scope (Status=Design only):
 - Do NOT edit production code (backend, product frontend, migrations, services).
 - End with `Design Agent verdict: PASS|BLOCKED` plus handoff data.
 
-Cost envelope (hard rule):
+Spawn scope (hard rule):
 - You are a single isolated spawn. Keep tool use minimal: at most the files in
   the packet plus design artifacts/prototype. Do NOT run openspec ff/new,
   gh/board commands, test suites, `./restart`, or long file scans.
