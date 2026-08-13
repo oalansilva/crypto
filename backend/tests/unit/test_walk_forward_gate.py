@@ -355,3 +355,19 @@ class TestRevalidateFavoriteErrors:
         summary = wfr.revalidate_all_favorites(user_id="user-a")
         assert summary["total"] == 1
         assert summary["revalidated"] == 1
+
+
+class TestResolveStopLoss:
+    def test_resolve_stop_loss_extracts_default_from_dict(self):
+        from app.services.opportunity_service import _resolve_stop_loss
+
+        assert _resolve_stop_loss({"default": 0.034}) == 0.034
+        assert _resolve_stop_loss({"default": 0.034}, default=0.05) == 0.034
+        assert _resolve_stop_loss({"min": 1}, default=0.05) == 0.05
+
+    def test_resolve_stop_loss_passthrough_numbers_and_none(self):
+        from app.services.opportunity_service import _resolve_stop_loss
+
+        assert _resolve_stop_loss(0.034) == 0.034
+        assert _resolve_stop_loss(0) == 0
+        assert _resolve_stop_loss(None) is None
