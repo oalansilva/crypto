@@ -2,22 +2,22 @@
 
 Card #491. Branch `change-491-design-planner-grok`. Change `design-planner-grok-4-6`.
 
-Hoje a sessão principal e todos os subagents herdam `opencode-go/deepseek-v4-flash`, com uma única exceção documentada: `vision` (`opencode-go/qwen3.7-plus`). O gate Design (specs, crítica, protótipo) é judgment-heavy e acontece uma vez por card. grok 4.6 existe no Zen (`opencode/grok-4.6`, effort `low|medium|high|xhigh`) e não existe no Go. Zen e Go coexistem no mesmo cliente: `/connect` Zen adiciona key sem remover a do Go. Sem key Zen, o `/models` esconde os pagos do Zen.
+Antes desta change, a sessão principal e todos os subagents herdavam `opencode-go/deepseek-v4-flash`, com uma única exceção documentada: `vision` (`opencode-go/qwen3.7-plus`). O gate Design (specs, crítica, protótipo) é judgment-heavy e acontece uma vez por card. A primeira versão avaliou grok 4.6 no Zen; o modelo final escolhido por Alan é `openai/gpt-5.6-sol` via OAuth OpenAI.
 
 **UI impact: none.** Mudança de processo/tooling (agent, regras, skills). Nenhuma tela, rota, componente ou token do produto muda.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Rodar o contrato `design-critic` no `Status=Design` via subagent `design-planner` com grok 4.6 e effort **sempre `high`**.
+- Rodar o contrato `design-critic` no `Status=Design` via subagent `design-planner` com `openai/gpt-5.6-sol` e effort **sempre `high`**.
 - Documentar a segunda exceção de roteamento sem enfraquecer o gate (Design → Aprovação de Design → Pronto para Dev continua obrigatório).
 - Critics A/B herdam o modelo da sessão de design designada, com igualdade observável.
 - Manter pixels no `vision` e volume diário no Go/flash.
-- Envelope de custo: grok só no spawn isolado do planner, nunca na sessão principal.
+- Isolamento estrutural: o modelo frontier só roda no spawn isolado do planner, nunca na sessão principal.
 
 **Non-Goals:**
 - Não trocar o modelo default da sessão principal.
-- Não usar grok em Code Review, QA, Kaizen ou implementação (fora do escopo deste card).
+- Não usar o modelo frontier em Code Review, QA, Kaizen ou implementação (fora do escopo deste card).
 - Não criar superfície visual de produto nem protótipo HTML.
 - Não autoaprovar Design.
 
@@ -35,6 +35,12 @@ Hoje a sessão principal e todos os subagents herdam `opencode-go/deepseek-v4-fl
 
 6. **Spawn isolado do planner.** O spawn do `design-planner` recebe packet fechado (proposal + `design.md` atual + contextFiles da change + trecho relevante de `DESIGN.md`). Proibido: AGENTS.md/rules.md inteiros, loops de `gh`/board, `openspec ff`, testes, restart. Flash faz OpenSpec/board/publicação. **Sem teto de custo por card** (decisão de Alan) — o isolamento é estrutural (frontier nunca como sessão principal), não financeiro. Effort `high` permanece, mas só nesse spawn curto.
 
+7. **Invocação igual ao `vision`.** Uma sessão principal nova, iniciada na worktree que já contém `.opencode/agent/design-planner.md`, delega via ferramenta `Task` com tipo `design-planner`. `opencode run --agent design-planner` é proibido: como o agent declara `mode: subagent`, o CLI rejeita o uso primário e cai no agente/modelo default, o que invalida a evidência do gate.
+
+   Evidência 2026-08-13: o comando negativo emitiu `agent "design-planner" is a subagent, not a primary agent. Falling back to default agent` e iniciou `build · deepseek-v4-flash`; o caminho positivo criou child `agent=design-planner`, `model=openai/gpt-5.6-sol`, com parent `build`/Go-flash. `opencode debug agent design-planner` resolveu `options.reasoningEffort: high`, compondo a evidência de modelo runtime + effort configurado.
+
+8. **Rollout experimental até o piloto UI.** O smoke `UI impact: none` valida registro, delegação, ownership e modelo sem exercer Impeccable/protótipo/browser gate. Por isso o uso global obrigatório só será promovido depois que o card filho #496 concluir o piloto `UI impact: affected` com PASS e registrar a decisão de promoção.
+
 ## Risks / Trade-offs
 
 - [OpenAI sem key/OAuth] → `BLOCKED (modelo indisponível)`; fallback só com autorização de Alan.
@@ -42,7 +48,7 @@ Hoje a sessão principal e todos os subagents herdam `opencode-go/deepseek-v4-fl
 - [Custo: sessão principal no frontier queima cache (evidência grok 4.6: 8,5M read ≈ $3+)] → regra: frontier só no spawn isolado; flash orquestra.
 - [Custo: effort `high` + packet grande] → packet compacto; custo observado no uso (sem teto por card).
 - [Sessões em voo não pegam o modelo novo] → validar em sessão nova após merge (regra de troca de modelo).
-- [Confusão de providers no `/models`] → documentar Zen vs Go no AGENTS.md.
+- [Confusão de providers no `/models`] → documentar OpenAI vs Go no AGENTS.md; Zen permanece apenas como histórico da primeira versão.
 
 ## Migration Plan
 

@@ -43,6 +43,11 @@ Spawn scope (hard rule):
 - You are a single isolated spawn. Keep tool use minimal: at most the files in
   the packet plus design artifacts/prototype. Do NOT run openspec ff/new,
   gh/board commands, test suites, `./restart`, or long file scans.
+- Invocation follows the same pattern as `vision`: a primary/orchestrator
+  session MUST delegate through the Task tool using subagent type
+  `design-planner`. Because this file declares `mode: subagent`, MUST NOT start
+  it with `opencode run --agent design-planner`; opencode rejects that as a
+  primary agent and falls back to the default model, invalidating the gate.
 - If the model is unavailable (provider/auth), report `BLOCKED (modelo indisponível)`
   and stop; fallback to `opencode-go/grok-4.5` (effort high) only with Alan's
   explicit authorization.
