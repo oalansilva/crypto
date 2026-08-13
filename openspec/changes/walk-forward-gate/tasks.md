@@ -39,7 +39,7 @@
 - [x] 5.1 Testes unitários: split temporal (frações, datas, disjunção), gate GO/NO-GO no holdout, mínimo de trades
 - [x] 5.2 Testes de API: bloqueio sem GO, override admin, batch NO-GO não salvo
 - [x] 5.3 Testes de revalidação: relatório de degradação sem auto-alteração; backfill em massa com atualização de dados
-- [ ] 5.4 `qa-gate` verde e validação OpenSpec da change
+- [x] 5.4 `qa-gate` verde e validação OpenSpec da change — PR #498, merge `d12d8e74`
 
 ## 6. Ajustes pós-Done (feedback Alan 2026-08-13)
 
