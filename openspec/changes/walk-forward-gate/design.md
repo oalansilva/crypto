@@ -173,6 +173,7 @@ P2 aceitos: modal monolítico no banner de revalidação (mock do protótipo; su
 - **Estados:** GO, NO-GO, override, holdout insuficiente, revalidação com degradação e payload legado (sem comparativo) cobertos; "trades insuficientes" e "override" eram os pontos mais fracos da rodada 1 e estão corrigidos.
 - **Fidelidade:** shell/tokens/tipografia clonados do sistema atual (base: protótipo #463 + DESIGN.md); delta óbvio (coluna holdout + vereditos + badges); nenhum layout paralelo inventado.
 - **Riscos/pendências não bloqueantes:** bypass por payload legado (Open Question para Alan — exigir `source` marker no payload); modal monolítico de revalidação (superfície real na implementação); janela default de revalidação (90d proposto).
+- **Endurecimento pós-Done:** payloads que declaram OOS recebem prova HMAC do endpoint de otimização e são rejeitados se métricas/veredito/parâmetros forem adulterados. A remoção integral dos campos continua indistinguível de payload legado e permanece como risco de compatibilidade já aprovado em D3/Open Questions; eliminar esse bypass exige decisão de produto para descontinuar criação legada ou introduzir origem persistida server-side.
 
 **Prototype Validation:** 81 asserts Playwright verdes em desktop/mobile sobre a URL DEV, 3 rodadas vision PASS, sem erros de console/página.
 

@@ -30,6 +30,7 @@ class FavoriteStrategyCreate(FavoriteStrategyBase):
     # candidatos vindos do otimizador com split; override admin explícito libera NO-GO.
     oos_metrics: Optional[Dict[str, Any]] = None
     oos_verdict: Optional[Dict[str, Any]] = None
+    oos_proof: Optional[str] = None
     override_oos: bool = False
 
 

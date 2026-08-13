@@ -664,6 +664,38 @@ async def optimize_combo_strategy(
 
         logger.info(f"Optimization complete. Best score: {result.get('best_score', 'N/A')}")
 
+        if isinstance(result.get("oos_metrics"), dict) and isinstance(
+            result.get("oos_verdict"), dict
+        ):
+            from app.services.oos_promotion_proof import (
+                issue_oos_promotion_proof,
+                promotion_payload,
+            )
+
+            result["oos_proof"] = issue_oos_promotion_proof(
+                promotion_payload(
+                    template_name=result["template_name"],
+                    symbol=result["symbol"],
+                    timeframe=result["timeframe"],
+                    start_date=request.start_date,
+                    end_date=request.end_date,
+                    period_type=request.period_type,
+                    parameters=result.get("best_parameters") or {},
+                    metrics={
+                        **(result.get("best_metrics") or {}),
+                        "trades": (
+                            result.get("trades") if isinstance(result.get("trades"), list) else []
+                        ),
+                    },
+                    oos_metrics=result["oos_metrics"],
+                    oos_verdict=result["oos_verdict"],
+                )
+            )
+            result["promotion_metrics"] = {
+                **(result.get("best_metrics") or {}),
+                "trades": result.get("trades") if isinstance(result.get("trades"), list) else [],
+            }
+
         return ComboOptimizationResponse(**result)
 
     except HTTPException:

@@ -42,6 +42,8 @@ from app.services.walk_forward_revalidation import (
     revalidate_all_favorites,
     revalidate_favorite,
 )
+from app.services.oos_promotion_proof import promotion_payload, verify_oos_promotion_proof
+from app.services.favorite_uniqueness import lock_and_find_duplicate
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -859,6 +861,30 @@ def create_favorite(
     try:
         include_secrets = can_view_strategy_secrets(db, current_user_id)
         verdict = favorite.oos_verdict
+        has_oos_payload = isinstance(verdict, dict) or isinstance(favorite.oos_metrics, dict)
+        proof_payload = None
+        if isinstance(verdict, dict) and isinstance(favorite.oos_metrics, dict):
+            proof_payload = promotion_payload(
+                template_name=favorite.strategy_name,
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+                start_date=favorite.start_date,
+                end_date=favorite.end_date,
+                period_type=favorite.period_type,
+                parameters=favorite.parameters,
+                metrics=favorite.metrics or {},
+                oos_metrics=favorite.oos_metrics,
+                oos_verdict=verdict,
+            )
+        proof_valid = bool(
+            favorite.oos_proof
+            and proof_payload
+            and verify_oos_promotion_proof(favorite.oos_proof, proof_payload)
+        )
+        if has_oos_payload and not proof_valid:
+            raise HTTPException(
+                status_code=422, detail="Prova walk-forward ausente, expirada ou inválida"
+            )
         gate = oos_gate_decision(
             verdict,
             override=favorite.override_oos,
@@ -867,13 +893,28 @@ def create_favorite(
         if not gate["allowed"]:
             raise HTTPException(status_code=422, detail=gate["reason"])
 
-        payload = favorite.model_dump(exclude={"oos_metrics", "oos_verdict", "override_oos"})
+        payload = favorite.model_dump(
+            exclude={"oos_metrics", "oos_verdict", "oos_proof", "override_oos"}
+        )
         metrics = payload.get("metrics") or {}
         if isinstance(favorite.oos_metrics, dict):
             metrics = {**metrics, "oos_metrics": favorite.oos_metrics}
         if isinstance(verdict, dict):
             metrics = {**metrics, "oos_verdict": verdict}
         payload["metrics"] = metrics
+
+        if lock_and_find_duplicate(
+            db,
+            user_id=current_user_id,
+            strategy_name=favorite.strategy_name,
+            symbol=favorite.symbol,
+            timeframe=favorite.timeframe,
+            period_type=favorite.period_type,
+            start_date=favorite.start_date,
+            end_date=favorite.end_date,
+            parameters=favorite.parameters,
+        ):
+            raise HTTPException(status_code=409, detail="Estratégia já existe nos favoritos")
 
         db_favorite = FavoriteStrategy(user_id=current_user_id, **payload)
         db.add(db_favorite)
@@ -1003,7 +1044,10 @@ def revalidate_favorite_endpoint(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Revalidation failed: {exc}")
+        import logging
+
+        logging.getLogger(__name__).exception("Favorite revalidation failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Falha interna ao revalidar estratégia")
     return result
 
 

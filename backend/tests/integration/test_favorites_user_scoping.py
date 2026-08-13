@@ -130,6 +130,25 @@ def _favorite_payload(
     )
 
 
+def _attach_oos_proof(payload: favorites.FavoriteStrategyCreate) -> None:
+    from app.services.oos_promotion_proof import issue_oos_promotion_proof, promotion_payload
+
+    payload.oos_proof = issue_oos_promotion_proof(
+        promotion_payload(
+            template_name=payload.strategy_name,
+            symbol=payload.symbol,
+            timeframe=payload.timeframe,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            period_type=payload.period_type,
+            parameters=payload.parameters,
+            metrics=payload.metrics or {},
+            oos_metrics=payload.oos_metrics or {},
+            oos_verdict=payload.oos_verdict or {},
+        )
+    )
+
+
 def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
@@ -1483,7 +1502,12 @@ def test_create_favorite_blocks_no_go_without_override(tmp_path: Path):
         assert "walk-forward" in exc_info.value.detail.lower()
 
     with SessionLocal() as db:
-        assert db.query(favorites.FavoriteStrategy).count() == 0
+        assert (
+            db.query(favorites.FavoriteStrategy)
+            .filter(favorites.FavoriteStrategy.name == "NO-GO candidate")
+            .count()
+            == 0
+        )
 
 
 def test_create_favorite_allows_no_go_with_admin_override(tmp_path: Path, monkeypatch):
@@ -1496,6 +1520,7 @@ def test_create_favorite_allows_no_go_with_admin_override(tmp_path: Path, monkey
         payload.oos_metrics = {"total_trades": 12, "sharpe_ratio": 0.2}
         payload.oos_verdict = {"status": "NO-GO", "reasons": ["Sharpe baixo"]}
         payload.override_oos = True
+        _attach_oos_proof(payload)
         created = favorites.create_favorite(payload, current_user_id="user-a", db=db)
 
     assert created.id is not None
@@ -1510,7 +1535,9 @@ def test_create_favorite_allows_go_and_legacy(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
         go_payload = _favorite_payload("GO candidate")
+        go_payload.oos_metrics = {"total_trades": 120, "sharpe_ratio": 1.2}
         go_payload.oos_verdict = {"status": "GO", "reasons": ["ok"]}
+        _attach_oos_proof(go_payload)
         go = favorites.create_favorite(go_payload, current_user_id="user-a", db=db)
 
         legacy = favorites.create_favorite(
@@ -1521,6 +1548,49 @@ def test_create_favorite_allows_go_and_legacy(tmp_path: Path):
 
     assert go.id is not None
     assert legacy.id is not None
+
+
+def test_create_favorite_rejects_tampered_oos_payload(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    payload = _favorite_payload("Tampered candidate")
+    payload.oos_metrics = {"total_trades": 5, "sharpe_ratio": 0.2}
+    payload.oos_verdict = {"status": "NO-GO", "reasons": ["Sharpe baixo"]}
+    _attach_oos_proof(payload)
+    payload.oos_verdict = {"status": "GO", "reasons": []}
+
+    with SessionLocal() as db, pytest.raises(fastapi.HTTPException) as exc_info:
+        favorites.create_favorite(payload, current_user_id="user-a", db=db)
+
+    assert exc_info.value.status_code == 422
+    assert "prova walk-forward" in exc_info.value.detail.lower()
+
+
+def test_create_favorite_rejects_duplicate_functional_key(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        favorites.create_favorite(_favorite_payload("First"), current_user_id="user-a", db=db)
+        with pytest.raises(fastapi.HTTPException) as exc_info:
+            favorites.create_favorite(_favorite_payload("Second"), current_user_id="user-a", db=db)
+
+    assert exc_info.value.status_code == 409
+
+
+def test_create_favorite_allows_distinct_custom_periods(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    first = _favorite_payload("Custom first")
+    first.period_type = None
+    first.start_date = "2024-01-01"
+    first.end_date = "2024-06-30"
+    second = _favorite_payload("Custom second")
+    second.period_type = None
+    second.start_date = "2024-07-01"
+    second.end_date = "2024-12-31"
+
+    with SessionLocal() as db:
+        favorites.create_favorite(first, current_user_id="user-a", db=db)
+        created = favorites.create_favorite(second, current_user_id="user-a", db=db)
+
+    assert created.id is not None
 
 
 def test_revalidate_favorite_updates_metrics_without_touching_parameters(
@@ -1554,6 +1624,9 @@ def test_revalidate_favorite_updates_metrics_without_touching_parameters(
         result = wfr.revalidate_favorite(created, db=db)
 
     assert result["verdict"] == "NO-GO"
+    assert result["revalidation"]["best_metrics"]["total_trades"] == 20
+    assert result["revalidation"]["oos_metrics"]["total_trades"] == 5
+    assert result["revalidation"]["oos_verdict"]["status"] == "NO-GO"
     with SessionLocal() as db:
         stored = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one()
         assert stored.parameters == params_before
