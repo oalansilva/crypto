@@ -1,12 +1,12 @@
 ## ADDED Requirements
 
-### Requirement: Gate Design usa design-planner com grok 4.6
-O repositório SHALL definir um subagent `design-planner` em `.opencode/agent/design-planner.md` com `model: opencode/grok-4.6` fixo e effort `high` (`reasoningEffort: high`), para executar o contrato `design-critic` quando o card estiver em `Status=Design`.
+### Requirement: Gate Design usa design-planner com GPT 5.6 Sol
+O repositório SHALL definir um subagent `design-planner` em `.opencode/agent/design-planner.md` com `model: openai/gpt-5.6-sol` fixo e effort `high` (`reasoningEffort: high`), para executar o contrato `design-critic` quando o card estiver em `Status=Design`.
 
 #### Scenario: Subagent disponível no gate Design
-- **WHEN** um card está em `Status=Design` e o provider Zen está autenticado
+- **WHEN** um card está em `Status=Design` e o provider OpenAI está autenticado
 - **THEN** a sessão principal SHALL delegar o contrato design-critic ao subagent `design-planner`
-- **AND** o request SHALL rodar com modelo `opencode/grok-4.6` e effort `high`
+- **AND** o request SHALL rodar com modelo `openai/gpt-5.6-sol` e effort `high`
 
 #### Scenario: Effort não pode variar
 - **WHEN** o `design-planner` é invocado
@@ -29,18 +29,18 @@ Qualquer julgamento de pixels no gate Design SHALL continuar delegado ao subagen
 - **THEN** ele SHALL delegar ao `vision`
 - **AND** MUST NOT interpretar pixels
 
-### Requirement: Coexistência Zen e Go
-O cliente SHALL manter os providers Zen (`opencode/`) e Go (`opencode-go/`) autenticados em paralelo. A sessão principal e o `vision` SHALL permanecer no Go; o frontier do gate Design SHALL usar Zen.
+### Requirement: Coexistência OpenAI e Go
+O cliente SHALL manter os providers OpenAI (`openai/`) e Go (`opencode-go/`) autenticados em paralelo. A sessão principal e o `vision` SHALL permanecer no Go; o frontier do gate Design SHALL usar OpenAI.
 
-#### Scenario: Conectar Zen não remove o Go
-- **WHEN** o operador executa `/connect` no OpenCode Zen
+#### Scenario: Conectar OpenAI não remove o Go
+- **WHEN** o operador conecta o provider OpenAI (OAuth)
 - **THEN** a key do `opencode-go` MUST permanecer
 - **AND** o default da sessão principal MUST continuar `opencode-go/deepseek-v4-flash`
 
-### Requirement: Fallback autorizado quando Zen indisponível
-Se `opencode/grok-4.6` estiver indisponível, o `design-planner` SHALL emitir `BLOCKED (modelo indisponível)` e MUST NOT cair automaticamente para outro modelo. Fallback para `opencode-go/grok-4.5` com effort `high` SHALL ocorrer somente com autorização explícita de Alan.
+### Requirement: Fallback autorizado quando o modelo frontier está indisponível
+Se `openai/gpt-5.6-sol` estiver indisponível, o `design-planner` SHALL emitir `BLOCKED (modelo indisponível)` e MUST NOT cair automaticamente para outro modelo. Fallback para `opencode-go/grok-4.5` com effort `high` SHALL ocorrer somente com autorização explícita de Alan.
 
-#### Scenario: Zen sem credencial ou saldo
-- **WHEN** o provider Zen não está autenticado ou a chamada a `opencode/grok-4.6` falha
+#### Scenario: OpenAI sem credencial ou falha
+- **WHEN** o provider OpenAI não está autenticado ou a chamada a `openai/gpt-5.6-sol` falha
 - **THEN** o veredito de Design SHALL ser `BLOCKED (modelo indisponível)`
 - **AND** nenhum fallback silencioso MAY ser usado

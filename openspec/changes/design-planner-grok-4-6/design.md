@@ -25,35 +25,35 @@ Hoje a sessão principal e todos os subagents herdam `opencode-go/deepseek-v4-fl
 
 1. **Subagent fixo, nunca sessão principal.** Molde do `vision`. A sessão principal permanece no Go/flash e só delega um packet compacto. Evidência 2026-08-13: esta sessão de exploração (`Onde incluir Grok 4.6 no fluxo`) rodou `opencode/grok-4.6` variant `medium` como **sessão principal** e gastou ~$3,03–$3,30 (589k input, 8,5M cache_read). Isso **não** é o custo do gate Design — é o custo de orquestração/board/OpenSpec no frontier. Alternativa rejeitada: `/model grok` na sessão inteira.
 
-2. **ID `opencode/grok-4.6` (Zen), effort `high` fixo.** Alan escolheu `high` (não medium/xhigh). Configurar `reasoningEffort: high` no agent/provider variants; sem cycle operacional. Fallback `opencode-go/grok-4.5` + `high` só com autorização de Alan.
+2. **ID `openai/gpt-5.6-sol` (OpenAI via OAuth), effort `high` fixo.** Alan escolheu GPT Sol High e conectou o provider OpenAI; billing direto (sem Zen). Configurar `reasoningEffort: high` no agent; sem cycle operacional. Fallback `opencode-go/grok-4.5` + `high` só com autorização de Alan. Histórico: a primeira versão deste card usava `opencode/grok-4.6` (Zen); Alan trocou para GPT 5.6 Sol após o Done (rework mantém o status, regra de não regressão).
 
-3. **Igualdade A/B = sessão de design designada.** Quando o pipeline Impeccable roda dentro do `design-planner`, A e B herdam grok 4.6 (modelo dessa sessão). Sem igualdade observável → `BLOCKED`. Alternativa rejeitada: A/B no flash enquanto o planner usa grok — perde o frontier na crítica.
+3. **Igualdade A/B = sessão de design designada.** Quando o pipeline Impeccable roda dentro do `design-planner`, A e B herdam GPT 5.6 Sol (modelo dessa sessão). Sem igualdade observável → `BLOCKED`. Alternativa rejeitada: A/B no flash enquanto o planner usa o frontier — perde o frontier na crítica.
 
 4. **Escopo de escrita do planner:** só `openspec/changes/<change>/design.md` (e seções Impeccable), `frontend/public/prototypes/<slug>/` e espelho `openspec/changes/<change>/prototype/` quando UI. Proibido código de produção. Pixels → `vision`.
 
 5. **Piloto obrigatório** em 1 card `UI impact: affected` depois da implementação, antes de tornar o roteamento obrigatório em todo card.
 
-6. **Envelope de custo do planner.** O spawn do `design-planner` recebe packet fechado (proposal + `design.md` atual + contextFiles da change + trecho relevante de `DESIGN.md`). Proibido: AGENTS.md/rules.md inteiros, loops de `gh`/board, `openspec ff`, testes, restart. Flash faz OpenSpec/board/publicação. Teto alvo: **≤ $0,50 / card** no grok; se estourar, registrar tokens e reduzir packet antes do próximo card. Effort `high` permanece, mas só nesse spawn curto.
+6. **Envelope de custo do planner.** O spawn do `design-planner` recebe packet fechado (proposal + `design.md` atual + contextFiles da change + trecho relevante de `DESIGN.md`). Proibido: AGENTS.md/rules.md inteiros, loops de `gh`/board, `openspec ff`, testes, restart. Flash faz OpenSpec/board/publicação. Teto alvo: **≤ $1,00 / card** no GPT 5.6 Sol (input $5/1M; spawn curto ~30k tokens ≈ $0,15–0,30; teto com folga para UI com protótipo); se estourar, registrar tokens e reduzir packet antes do próximo card. Effort `high` permanece, mas só nesse spawn curto.
 
 ## Risks / Trade-offs
 
-- [Zen sem key/saldo] → `BLOCKED (modelo indisponível)`; fallback só com autorização de Alan.
-- [grok 4.6 recém-lançado, sem dados de uso] → piloto antes de generalizar.
-- [Custo: sessão principal no grok queima cache (8,5M read ≈ o grosso dos $3)] → regra: grok só no spawn isolado; flash orquestra.
+- [OpenAI sem key/OAuth] → `BLOCKED (modelo indisponível)`; fallback só com autorização de Alan.
+- [GPT 5.6 Sol é caro ($5/$30)] → spawn único e curto, teto $1,00/card; piloto mede custo real.
+- [Custo: sessão principal no frontier queima cache (evidência grok 4.6: 8,5M read ≈ $3+)] → regra: frontier só no spawn isolado; flash orquestra.
 - [Custo: effort `high` + packet grande] → packet compacto + teto $0,50/card; estouro vira achado, não default.
 - [Sessões em voo não pegam o modelo novo] → validar em sessão nova após merge (regra de troca de modelo).
 - [Confusão de providers no `/models`] → documentar Zen vs Go no AGENTS.md.
 
 ## Migration Plan
 
-1. Alan conecta Zen (`/connect`) e confirma `opencode/grok-4.6` no `/models`.
+1. Alan conecta OpenAI (OAuth) e confirma `openai/gpt-5.6-sol` no `/models`.
 2. Implementar agent + emendas normativas na branch do card após `Pronto para Dev`.
 3. Validar em sessão nova; piloto em 1 card UI.
 4. Rollback: remover o agent e reverter as emendas; o fluxo volta a herdar só a sessão principal + `vision`.
 
 ## Open Questions
 
-Nenhuma. Effort `high` e coexistência Zen/Go já decididos por Alan.
+Nenhuma. Effort `high` e modelo GPT 5.6 Sol (OpenAI) já decididos por Alan.
 
 ## Prototype
 
@@ -87,14 +87,14 @@ Dimensões cobertas (sem UI): escopo, regressão de produto, riscos operacionais
 
 - **Escopo:** fechado no gate Design + exceção de roteamento. Não vaza para implementação/QA. Sem P0/P1.
 - **Regressão de produto:** nenhuma tela/API/banco muda. Risco residual: agente futuro editar código de produção no planner — mitigado por regra explícita no prompt e review do diff.
-- **Operacional:** dependência do Zen autenticado. Sem key o planner não pode ser obrigatório. Mitigação: pré-requisito no card + `BLOCKED` + fallback autorizado.
+- **Operacional:** dependência do provider OpenAI autenticado. Sem credencial o planner não pode ser obrigatório. Mitigação: pré-requisito no card + `BLOCKED` + fallback autorizado.
 - **Superfície visual:** confirmado `none`. Prototype N/A justificado. Impeccable N/A justificado.
 - **Igualdade A/B neste card:** Impeccable N/A (sem UI); crítica feita na sessão principal. Sem necessidade de spawn A/B.
 
 ### Riscos não bloqueantes
 
-- Custo de `high` no piloto pode surpreender; aceitável e observável no usage do Zen.
-- Documentação precisa deixar claro que `/models` esconde grok-4.6 até o Zen estar conectado (já no proposal).
+- Custo de `high` no piloto pode surpreender; aceitável e observável no usage da OpenAI.
+- Documentação precisa deixar claro que `/models` exige o provider OpenAI conectado para listar `openai/gpt-5.6-sol` (já no proposal).
 
 ### Referências
 
