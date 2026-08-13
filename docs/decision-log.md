@@ -8,6 +8,8 @@
 
 **Regra atualizada:** `AGENTS.md` (Roteamento de LLM, Impeccable, subagents), `rules.md` (regras 4 e 9), `.agents/skills/design-critic/SKILL.md` (igualdade A/B = sessão de design designada), `.opencode/agent/kaizen.md` (routing-drift: vision + design-planner). Go (volume) e Zen (frontier pontual) coexistem; fallback `opencode-go/grok-4.5` (effort high) só com autorização de Alan.
 
+**Rework 2026-08-13 (mesmo dia):** Alan trocou o modelo do `design-planner` de `opencode/grok-4.6` (Zen) para **`openai/gpt-5.6-sol` (OpenAI via OAuth, effort `high`)** — GPT Sol High. Ajustes: agent frontmatter, OpenSpec (proposal/design/specs), AGENTS.md, rules.md, design-critic SKILL.md. Envelope de custo atualizado para ≤ $1,00/card (input $5/1M; spawn curto ≈ $0,15–0,30). Zen permanece conectado, mas deixa de ser o provider do gate Design. Card #491 mantém `Status=Done` (regra de não regressão).
+
 ## 2026-08-10 - Coluna Em Refinamento como primeira coluna e entrada obrigatoria de todo card novo
 
 **Decisao:** adicionar a coluna `Em Refinamento` como primeira coluna do board Project 1 (opcao do campo `Status` na posicao 0, antes de `Todo`) e como entrada obrigatoria de todo card novo. Em `Em Refinamento`, Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ele ir para `Todo`. Cards kaizen tambem nascem em `Em Refinamento` (nao mais em `Todo`).

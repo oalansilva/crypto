@@ -13,5 +13,10 @@
 ## 3. Registro e validação
 
 - [x] 3.1 Registrar decisão em `docs/decision-log.md` e plano em `.opencode/plans/design-gate-grok46.md`
-- [ ] 3.2 Validar em sessão nova que o spawn do `design-planner` usa `opencode/grok-4.6` + effort `high`
+- [ ] 3.2 Validar em sessão nova que o spawn do `design-planner` usa o modelo configurado + effort `high` (feito com grok-4.6; **revalidar com GPT 5.6 Sol após o rework**)
 - [ ] 3.3 Piloto em 1 card `UI impact: affected` antes de tornar o roteamento obrigatório
+
+## 4. Rework pós-Done (troca de modelo para GPT 5.6 Sol)
+
+- [x] 4.1 Trocar `model: opencode/grok-4.6` por `model: openai/gpt-5.6-sol` no `.opencode/agent/design-planner.md` (effort `high` mantido)
+- [x] 4.2 Atualizar OpenSpec (proposal/design/specs) e docs (AGENTS.md, rules.md, design-critic, decision-log) com GPT 5.6 Sol/OpenAI
