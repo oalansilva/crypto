@@ -38,7 +38,7 @@ Scope of evidence (read-only commands):
      - loop without progress: same tool + same error >= 2 consecutive times without strategy change
      - lost session: `step-finish` reason `unknown`; session with high cost/tokens and no completed tool flow or no terminal stop
      - eternal todo: todo rows rewritten/never completed
-      - routing drift: compare `json_extract(session.model, '$.id')` vs `json_extract(message.data, '$.modelID')` — session.model is a JSON object string (`{"id": ..., "providerID": ..., "variant": ...}`) while message.modelID is a bare string; a literal comparison flags every message (false positives). Only the `vision` exception legitimately differs.
+      - routing drift: compare `json_extract(session.model, '$.id')` vs `json_extract(message.data, '$.modelID')` — session.model is a JSON object string (`{"id": ..., "providerID": ..., "variant": ...}`) while message.modelID is a bare string; a literal comparison flags every message (false positives). Only the `vision` and `design-planner` exceptions legitimately differ.
       - stale-model-after-merge: a subagent session spawned after the merge commit that changed that agent's model still reports the OLD model (config is read at spawn from the session/worktree state; model changes do not propagate to in-flight sessions). Cross-check the session/spawn timestamp against the merge SHA time and against the model now configured in `.opencode/agent/*.md` at HEAD; report as "modelo antigo pós-merge".
      - failing subagent: `task` tool with error on child session
      - tool misuse: grep/read output over limits (e.g. "exceeded 65536 bytes"), apply_patch failures
