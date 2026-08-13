@@ -32,6 +32,8 @@ export function ComboConfigurePage() {
     const [params, setParams] = useState<any[]>([])
     const [timeframe, setTimeframe] = useState('1d')
     const [deepBacktest, setDeepBacktest] = useState(true)
+    const [walkForwardEnabled, setWalkForwardEnabled] = useState(false)
+    const [walkForwardTrainRatio, setWalkForwardTrainRatio] = useState(0.7)
     const [direction, setDirection] = useState<'long' | 'short'>('long')
     const [logs, setLogs] = useState<string[]>([])
     const [logViewerOpen, setLogViewerOpen] = useState(false)
@@ -280,6 +282,7 @@ export function ComboConfigurePage() {
                         deep_backtest: deepBacktest,
                         direction,
                         custom_ranges,
+                        split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
                     })
                 })
                 if (!res.ok) {
@@ -294,6 +297,14 @@ export function ComboConfigurePage() {
                     ...(result.best_metrics ?? {}),
                     trades: Array.isArray(result.trades) ? result.trades : [],
                 }
+                const oosVerdict = result.oos_verdict ?? null
+                if (oosVerdict && String(oosVerdict.status ?? '').toUpperCase() !== 'GO') {
+                    alert(
+                        `Candidato reprovado na validação walk-forward (holdout): ${(oosVerdict.reasons ?? []).join('; ') || oosVerdict.status}. Não salvo nos favoritos.`
+                    )
+                    setRunning(false)
+                    return
+                }
                 const favRes = await authFetch(`${API_BASE_URL}/favorites/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -306,7 +317,9 @@ export function ComboConfigurePage() {
                         metrics,
                         start_date: start_date ?? null,
                         end_date: end_date ?? null,
-                        period_type: period
+                        period_type: period,
+                        oos_verdict: oosVerdict,
+                        oos_metrics: result.oos_metrics ?? null,
                     })
                 })
                 if (!favRes.ok) {
@@ -344,6 +357,7 @@ export function ComboConfigurePage() {
                     deep_backtest: deepBacktest,
                     direction,
                     custom_ranges,
+                    split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
                 })
             })
             if (!res.ok) {
@@ -753,6 +767,46 @@ export function ComboConfigurePage() {
                                 </p>
                             </div>
                         )}
+
+                        {/* Walk-forward split toggle (card #470) */}
+                        <div className="mt-6">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    checked={walkForwardEnabled}
+                                    onChange={(e) => setWalkForwardEnabled(e.target.checked)}
+                                    className="w-5 h-5 rounded border-2 border-zinc-300 bg-zinc-50 checked:bg-blue-500 checked:border-blue-500 cursor-pointer transition-all"
+                                />
+                                <div className="flex-1">
+                                    <span className="text-sm font-semibold text-zinc-900 group-hover:text-blue-400 transition-colors">
+                                        Validação walk-forward (split 70/30)
+                                    </span>
+                                    <p className="text-xs text-zinc-400 mt-1">
+                                        Otimiza parâmetros só no treino (70%) e valida no holdout (30%) com veredito GO/NO-GO.
+                                    </p>
+                                </div>
+                            </label>
+                            {walkForwardEnabled && (
+                                <div className="mt-3 flex items-center gap-4">
+                                    <label className="flex items-center gap-2 text-xs text-zinc-400">
+                                        <span>Treino</span>
+                                        <input
+                                            type="number"
+                                            min={10}
+                                            max={90}
+                                            value={Math.round(walkForwardTrainRatio * 100)}
+                                            onChange={(e) => {
+                                                const v = Number(e.target.value)
+                                                if (v >= 10 && v <= 90) setWalkForwardTrainRatio(v / 100)
+                                            }}
+                                            className="w-16 rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-sm text-zinc-900 focus:border-blue-500 focus:outline-none"
+                                        />
+                                        <span>%</span>
+                                    </label>
+                                    <span className="text-xs text-zinc-400">Holdout: {100 - Math.round(walkForwardTrainRatio * 100)}%</span>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-[16px]">
                             <p className="text-sm text-blue-300 flex items-center gap-2">
