@@ -288,7 +288,7 @@ Code Review:
 Próximo passo: Alan testar/homologar na develop.
 ```
 
-Ao mover para `Homologado`, comentar:
+Ao mover para `Homologado`, postar obrigatoriamente via `scripts/post-card-evidence-comment.sh --transition homologado`; homologação registrada por chat/arraste exige o mesmo comentário no card, inclusive retroativamente quando necessário:
 ```text
 Homologado por Alan na develop.
 Apto para próximo pacote de release.
