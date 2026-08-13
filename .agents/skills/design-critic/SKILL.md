@@ -38,7 +38,7 @@ Antes do `PASS`, a sessão Codex deve executar o pipeline local do Impeccable na
 
 ### Modelo e isolamento dos critics
 
-Assessment A e Assessment B devem usar exatamente o mesmo identificador e versão de LLM/modelo da sessão principal do Codex. Esse runtime da sessão principal é a única fonte de verdade; perfis gerados pelo Impeccable não podem escolher outro modelo, fallback ou roteamento fixo. Os critics não compartilham o transcript nem os resultados antes da síntese e não podem editar arquivos. Se a disponibilidade do subagent ou a igualdade exata do LLM/modelo/versão não puder ser observada, o veredito é `BLOCKED` e nenhum `PASS` pode ser emitido.
+Assessment A e Assessment B devem usar exatamente o mesmo identificador e versão de LLM/modelo da sessão de design designada: o `design-planner` (`opencode/grok-4.6`) quando o gate roda por esse subagent; senão, da sessão principal do opencode/Codex. Esse runtime é a única fonte de verdade; perfis gerados pelo Impeccable não podem escolher outro modelo, fallback ou roteamento fixo. Os critics não compartilham o transcript nem os resultados antes da síntese e não podem editar arquivos. Se a disponibilidade do subagent ou a igualdade exata do LLM/modelo/versão não puder ser observada, o veredito é `BLOCKED` e nenhum `PASS` pode ser emitido.
 
 ## Produzir a solução
 
@@ -128,9 +128,9 @@ Para `UI impact: affected`, o mesmo `design.md` também deve conter:
 - `## Impeccable Brief`: problema, usuário, resultado, direção, escopo, estados, interação e restrições.
 - `## Impeccable Critique`: Assessment A e B separados, achados por dimensão, severidade e disposição.
 - `## Impeccable Audit`: acessibilidade, performance, responsividade, theming e integridade de implementação.
-- `## Impeccable Trace`: versão do CLI/payload/commit, comandos, target, digest, metadata da sessão principal e dos dois critics, prova de igualdade do modelo/versão, findings do detector e vínculo com `Prototype Validation`.
+- `## Impeccable Trace`: versão do CLI/payload/commit, comandos, target, digest, metadata da sessão de design designada e dos dois critics, prova de igualdade do modelo/versão, findings do detector e vínculo com `Prototype Validation`.
 
-`PASS` exige zero P0/P1 aberto, nenhum finding determinístico sem classificação, browser gate e asserts críticos verdes, nenhum erro de console/página com impacto no fluxo e evidência observável de que Assessment A e B usaram o mesmo LLM/modelo/versão da sessão principal. Ausência de qualquer evidência mantém `BLOCKED`.
+`PASS` exige zero P0/P1 aberto, nenhum finding determinístico sem classificação, browser gate e asserts críticos verdes, nenhum erro de console/página com impacto no fluxo e evidência observável de que Assessment A e B usaram o mesmo LLM/modelo/versão da sessão de design designada (`design-planner` com grok 4.6 quando aplicável; senão a sessão principal). Ausência de qualquer evidência mantém `BLOCKED`.
 
 Usar `PASS` somente quando `design.md` e crítica estiverem completos/coerentes e sem achado bloqueante; com UI, o protótipo versionado/verificável e validado em navegador real também é obrigatório; com tela já existente, fidelidade ao sistema atual é obrigatória. HTTP 200 isolado nunca é evidência de PASS. Publicar novamente os artefatos OpenSpec no card quando a entrega mudar; com HTML, o comentário de handoff MUST incluir o link da tela prototipada.
 

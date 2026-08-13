@@ -49,7 +49,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - No opencode, invoca-se a skill `design-critic` (tool skill carregada automaticamente de `.agents/skills/`).
    - Com `UI impact: affected`, o agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
    - Com `UI impact: affected`, também exige o pipeline do Impeccable na ordem `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, com `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` versionados. O `DESIGN.md` não pode ser sobrescrito. O plugin `.opencode/plugin/impeccable-hook.ts` roda o detector automaticamente em edições de UI e no fim de turno.
-   - Assessment A e Assessment B devem ser critics read-only separados e herdar exatamente o mesmo LLM/modelo e versão da sessão principal do opencode. Se a igualdade não for observável, o veredito é `BLOCKED`; não usar fallback.
+   - Assessment A e Assessment B devem ser critics read-only separados e herdar exatamente o mesmo LLM/modelo e versão da sessão de design designada (`design-planner` com grok 4.6 quando o gate roda por subagent; senão o da sessão principal do opencode). Se a igualdade não for observável, o veredito é `BLOCKED`; não usar fallback.
    - Com `UI impact: none`, ainda passa por `Design` e `Aprovação de Design`; a entrega de design é enxuta (decisão, escopo, riscos, `Design Critique`) e registra explicitamente a ausência de superfície visual nova.
    - Com `UI impact: none`, registrar Impeccable como `N/A` com justificativa; isso não reduz nenhum gate.
    - Protótipo HTML, quando houver, deve ser navegável em `frontend/public/prototypes/<slug>/` via URL DEV; o Gist OpenSpec lista só Markdown e nunca HTML.
@@ -78,11 +78,12 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 9. Sempre utilizar subagentes quando houver tarefa de desenvolvimento, investigacao, validacao ou revisao tecnica com ganho claro de paralelismo.
    - O agente principal continua responsavel por escopo, consolidacao, evidencias e fechamento.
-   - A sessao principal do opencode define o LLM/modelo e a versao da tarefa; todo subagent deve herdar exatamente esse mesmo LLM/modelo e versao.
+   - A sessao principal do opencode define o LLM/modelo e a versao da tarefa; todo subagent deve herdar exatamente esse mesmo LLM/modelo e versao. Excecoes documentadas: `vision` (pixels) e `design-planner` (planejamento de design).
    - Papéis, prompts, sandbox e ownership podem variar, mas nenhum subagent pode trocar de LLM/modelo, usar fallback ou aplicar roteamento fixo Sol/Luna/Terra.
    - Se a igualdade do LLM/modelo nao puder ser imposta e observada, nao criar o subagent; continuar na sessao principal ou registrar o bloqueio.
    - Para critica ou revisao independente, usar contextos separados e manter o subagent read-only; a sessao principal consolida e corrige.
    - **Excecao explicita - roteamento visual:** o modelo da sessao (deepseek-v4-flash) nao tem visao. Toda analise de imagem (anexos no chat, screenshots de tools, imagens de cards/issues do GitHub, diff.png/baselines do QA visual, artifacts do CI, qa_artifacts, graficos/sinais exportados) e feita pelo subagent `vision` com model fixo `opencode-go/qwen3.7-plus`, chaveado automaticamente pelo plugin `vision-router`; o agente principal nunca interpreta pixels.
+   - **Excecao explicita - planejamento de design:** o gate `Design` (specs, critica e prototipo) usa o subagent `design-planner` com model fixo `opencode/grok-4.6` (Zen) e effort `high` (segunda excecao, junto do `vision`); critics A/B herdam o modelo da sessao de design designada com igualdade observavel (`BLOCKED` sem ela); grok nunca roda como sessao principal (envelope de custo ≤ $0,50/card no planner); fallback para `opencode-go/grok-4.5` (effort high) so com autorizacao de Alan.
 
 10. PostgreSQL e obrigatorio em runtime, QA, homologacao e scripts operacionais.
    - Nao usar SQLite como banco de operacao.
