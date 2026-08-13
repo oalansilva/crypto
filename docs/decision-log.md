@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-13 - Exceção de roteamento design-planner (grok 4.6) no gate Design
+
+**Decisão:** criar o subagent `design-planner` (`.opencode/agent/design-planner.md`) com `model: opencode/grok-4.6` fixo (provider Zen) e `reasoningEffort: high` para executar o contrato `design-critic` no `Status=Design` — segunda exceção explícita à herança de modelo, ao lado do `vision`. Critics A/B do Impeccable herdam o modelo da sessão de design designada; sem igualdade observável, `BLOCKED`.
+
+**Motivo:** o gate Design (specs, crítica, protótipo) é judgment-heavy e acontece uma vez por card; grok 4.6 existe no Zen e não no Go. Evidência de custo (2026-08-13): sessão de exploração rodando `opencode/grok-4.6` como **sessão principal** gastou ~$3,03–$3,30 (590k input, 8,5M cache_read) — orquestração no frontier não é viável. Regra resultante: **grok nunca roda como sessão principal**; o planner recebe packet compacto e visa ≤ $0,50/card.
+
+**Regra atualizada:** `AGENTS.md` (Roteamento de LLM, Impeccable, subagents), `rules.md` (regras 4 e 9), `.agents/skills/design-critic/SKILL.md` (igualdade A/B = sessão de design designada), `.opencode/agent/kaizen.md` (routing-drift: vision + design-planner). Go (volume) e Zen (frontier pontual) coexistem; fallback `opencode-go/grok-4.5` (effort high) só com autorização de Alan.
+
 ## 2026-08-10 - Coluna Em Refinamento como primeira coluna e entrada obrigatoria de todo card novo
 
 **Decisao:** adicionar a coluna `Em Refinamento` como primeira coluna do board Project 1 (opcao do campo `Status` na posicao 0, antes de `Todo`) e como entrada obrigatoria de todo card novo. Em `Em Refinamento`, Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ele ir para `Todo`. Cards kaizen tambem nascem em `Em Refinamento` (nao mais em `Todo`).
