@@ -727,6 +727,77 @@ else
   printf 'Skipped (board fields check runs in post/audit).\n'
 fi
 
+section "Homologation evidence comments (post/audit)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  release_cards="${RELEASE_CARDS:-}"
+  if [[ -z "$release_cards" ]]; then
+    warn "RELEASE_CARDS not set; package homologation-comment check skipped"
+  elif ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+    issue "homologation-comment check could not run (gh unavailable or not authenticated) with RELEASE_CARDS set"
+  else
+    if [[ ! "$release_cards" =~ ^[[:space:]]*[0-9]+[[:space:]]*(,[[:space:]]*[0-9]+[[:space:]]*)*$ ]]; then
+      issue "RELEASE_CARDS contains invalid card identifiers; expected comma-separated numeric IDs"
+    else
+      compact_cards="${release_cards//[[:space:]]/}"
+      IFS=',' read -ra raw_evidence_card_arr <<< "$compact_cards"
+      evidence_card_arr=()
+      invalid_card_id=""
+      for raw_card_num in "${raw_evidence_card_arr[@]}"; do
+        card_num="${raw_card_num#"${raw_card_num%%[!0]*}"}"
+        [[ -n "$card_num" ]] || card_num="0"
+        if [[ "$card_num" == "0" || ${#card_num} -gt 10 || (${#card_num} -eq 10 && "$card_num" > "2147483647") ]]; then
+          invalid_card_id="$raw_card_num"
+          break
+        fi
+        evidence_card_arr+=("$card_num")
+      done
+
+      evidence_board_json=""
+      if [[ -n "$invalid_card_id" ]]; then
+        issue "RELEASE_CARDS contains out-of-range card identifier: $invalid_card_id"
+      elif ! evidence_board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null)"; then
+        issue "homologation-comment check could not run (gh project item-list failed)"
+      elif [[ -z "$evidence_board_json" ]] || ! printf '%s' "$evidence_board_json" | jq -e '.items | type == "array"' >/dev/null 2>&1; then
+        issue "homologation-comment check could not run (gh project item-list returned no/invalid data)"
+      else
+        declare -A seen_evidence_cards=()
+        for card_num in "${evidence_card_arr[@]}"; do
+          if [[ -n "${seen_evidence_cards[$card_num]:-}" ]]; then
+            continue
+          fi
+          seen_evidence_cards["$card_num"]=1
+
+          card_status="$(printf '%s' "$evidence_board_json" | jq -r --argjson n "$card_num" '[.items[] | select(.content.number == $n) | .status][0] // ""' 2>/dev/null || true)"
+          if [[ -z "$card_status" ]]; then
+            issue "homologation-comment check could not find card #$card_num or its Status on Project 1"
+            continue
+          fi
+          case "$card_status" in
+            Homologado|Pronto) ;;
+            *)
+              printf 'Card #%s is %s; homologation-comment check not applicable.\n' "$card_num" "$card_status"
+              continue
+              ;;
+          esac
+
+          comments=""
+          if ! comments="$(gh api "repos/oalansilva/crypto/issues/$card_num/comments" --paginate --jq '.[].body' 2>/dev/null)"; then
+            issue "homologation-comment check could not list all comments for card #$card_num"
+            continue
+          fi
+          if printf '%s\n' "$comments" | grep -qiF 'Homologado por Alan na develop.'; then
+            printf 'Card #%s has canonical homologation evidence.\n' "$card_num"
+          else
+            issue "card #$card_num is $card_status without canonical homologation comment; confirm Alan's approval and run scripts/post-card-evidence-comment.sh --transition homologado --card $card_num --commit <sha> --dry-run before posting"
+          fi
+        done
+      fi
+    fi
+  fi
+else
+  printf 'Skipped (homologation-comment check runs in post/audit).\n'
+fi
+
 section "Summary"
 printf 'Warnings: %d\n' "$warnings"
 printf 'Blockers: %d\n' "$failures"
