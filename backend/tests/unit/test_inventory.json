@@ -228,6 +228,15 @@
       "evidence": "deterministic score rows and mocked service"
     },
     {
+      "file": "backend/tests/unit/test_logs_tail_cursor.py",
+      "protected_behavior": "cursor incremental de GET /api/logs/tail (after_offset/file_id/cursor_reset), retenção UTF-8 e compatibilidade do tail legado",
+      "production_reachability": "GET /api/logs/tail usado por BackendLogViewer na configuração de combos",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "round-trip incremental sem duplicação, burst acima de MAX_INCREMENTAL_BYTES, UTF-8 dividido, truncamento e rotação por identidade"
+    },
+    {
       "file": "backend/tests/unit/test_main_and_market_routes.py",
       "protected_behavior": "market routes and app lifespan",
       "production_reachability": "reachable",
@@ -343,6 +352,15 @@
       "regression_risk": "medium",
       "decision": "keep",
       "evidence": "metric series fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_oos_promotion_proof_digest.py",
+      "protected_behavior": "digest canônico da prova OOS estável no round-trip JSON (float integral 8953.0 ↔ 8953) e verificação fail-closed (assinatura, expiração, conteúdo diferente)",
+      "production_reachability": "issue_oos_promotion_proof no POST /api/combos/optimize e verify_oos_promotion_proof no POST /api/favorites/",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "round-trip aninhado, -0.0→0, None/str/bool preservados, ordem de listas, prova expirada/tampered/ausente rejeitada"
     },
     {
       "file": "backend/tests/unit/test_opportunity_position_state.py",
@@ -480,6 +498,24 @@
       "evidence": "PostgreSQL credential session fixture"
     },
     {
+      "file": "backend/tests/unit/test_walk_forward_combined_gate.py",
+      "protected_behavior": "gate walk-forward combinado Treino (IS) / Holdout (OOS): perfis independentes, retenção de Sharpe 50%, fail-closed e mensagens segmentadas",
+      "production_reachability": "evaluate_walk_forward no combo_optimizer (split_train_ratio) e oos_gate_decision no POST /api/favorites/",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "IS ok + OOS poucos trades/Sharpe baixo, degradação IS→OOS, caso 23/0.32, limites inclusivos, ausentes/não finitos, ordem de razões, override"
+    },
+    {
+      "file": "backend/tests/unit/test_walk_forward_gate.py",
+      "protected_behavior": "walk-forward split treino/holdout (disjunção/contiguidade) e gate GO/NO-GO na criação de favorito (override admin)",
+      "production_reachability": "ComboOptimizer.run_optimization (split_train_ratio), oos_gate_decision no POST /api/favorites/, revalidação",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "split_train_holdout, oos_gate_decision, evaluate_go_nogo com métricas OOS completas"
+    },
+    {
       "file": "backend/tests/unit/test_wallet_stable_balances.py",
       "protected_behavior": "stable balance normalization",
       "production_reachability": "reachable",
@@ -505,33 +541,6 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL workflow session fixture"
-    },
-    {
-      "file": "backend/tests/unit/test_walk_forward_gate.py",
-      "protected_behavior": "walk-forward split treino/holdout (disjunção/contiguidade) e gate GO/NO-GO na criação de favorito (override admin)",
-      "production_reachability": "ComboOptimizer.run_optimization (split_train_ratio), oos_gate_decision no POST /api/favorites/, revalidação",
-      "persistence_need": "pure",
-      "regression_risk": "high",
-      "decision": "keep",
-      "evidence": "split_train_holdout, oos_gate_decision, evaluate_go_nogo com métricas OOS completas"
-    },
-    {
-      "file": "backend/tests/unit/test_oos_promotion_proof_digest.py",
-      "protected_behavior": "digest canônico da prova OOS estável no round-trip JSON (float integral 8953.0 ↔ 8953) e verificação fail-closed (assinatura, expiração, conteúdo diferente)",
-      "production_reachability": "issue_oos_promotion_proof no POST /api/combos/optimize e verify_oos_promotion_proof no POST /api/favorites/",
-      "persistence_need": "pure",
-      "regression_risk": "high",
-      "decision": "keep",
-      "evidence": "round-trip aninhado, -0.0→0, None/str/bool preservados, ordem de listas, prova expirada/tampered/ausente rejeitada"
-    },
-    {
-      "file": "backend/tests/unit/test_logs_tail_cursor.py",
-      "protected_behavior": "cursor incremental de GET /api/logs/tail (after_offset/file_id/cursor_reset), retenção UTF-8 e compatibilidade do tail legado",
-      "production_reachability": "GET /api/logs/tail usado por BackendLogViewer na configuração de combos",
-      "persistence_need": "pure",
-      "regression_risk": "high",
-      "decision": "keep",
-      "evidence": "round-trip incremental sem duplicação, burst acima de MAX_INCREMENTAL_BYTES, UTF-8 dividido, truncamento e rotação por identidade"
     }
   ]
 }

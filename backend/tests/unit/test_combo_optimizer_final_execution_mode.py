@@ -205,7 +205,7 @@ def test_optimizer_split_produces_holdout_verdict_with_go_metrics(monkeypatch):
     """Walk-forward (card #470): com split, o resultado contém oos_metrics com
     cagr/calmar/benchmark e oos_verdict calculado pelo gate real."""
     optimizer = combo_optimizer.ComboOptimizer()
-    n_candles = 60
+    n_candles = 400
     dates = pd.date_range("2025-01-01", periods=n_candles, freq="D")
     full_df = pd.DataFrame(
         {
@@ -232,7 +232,16 @@ def test_optimizer_split_produces_holdout_verdict_with_go_metrics(monkeypatch):
         "_execute_opt_stages",
         lambda *args, **_kwargs: (
             {"direction": "long", "stop_loss": 0.02},
-            {"sharpe_ratio": 1.0, "total_trades": 5},
+            {
+                "sharpe_ratio": 1.0,
+                "total_trades": 120,
+                "cagr": 0.30,
+                "calmar_ratio": 1.5,
+                "profit_factor": 1.6,
+                "expectancy": 10.0,
+                "max_drawdown": 0.15,
+                "benchmark": {"cagr": 0.10},
+            },
         ),
     )
     monkeypatch.setattr(
@@ -276,17 +285,21 @@ def test_optimizer_split_produces_holdout_verdict_with_go_metrics(monkeypatch):
         lambda **_kwargs: _SizedStrategy(),
     )
 
-    fake_trades = [
-        {
-            "entry_time": str(full_df.index[i].isoformat()),
-            "entry_price": 100.0,
-            "exit_time": str(full_df.index[i + 1].isoformat()),
-            "exit_price": 102.0,
-            "profit": 0.02,
-            "exit_reason": "signal",
-        }
-        for i in range(0, 20)
-    ]
+    fake_trades = []
+    for i in range(0, n_candles - 1):
+        # ~10% dos trades perdem: série com Sharpe positivo (~1.4) e muitos
+        # trades, permitindo GO real no gate combinado IS/OOS.
+        profit = 0.03 if i % 10 != 9 else -0.02
+        fake_trades.append(
+            {
+                "entry_time": str(full_df.index[i].isoformat()),
+                "entry_price": 100.0,
+                "exit_time": str(full_df.index[i + 1].isoformat()),
+                "exit_price": 102.0 if profit > 0 else 98.0,
+                "profit": profit,
+                "exit_reason": "signal",
+            }
+        )
 
     def fake_extract(*_args, **kwargs):
         return list(fake_trades), "fast_1d"
@@ -311,3 +324,11 @@ def test_optimizer_split_produces_holdout_verdict_with_go_metrics(monkeypatch):
     assert result["oos_verdict"] is not None
     assert "status" in result["oos_verdict"]
     assert "split_train_ratio" in result["oos_verdict"]
+    # Card #503: o IS (Treino) é enriquecido com CAGR/Calmar/benchmark antes do
+    # gate combinado; métricas IS e OOS válidas produzem veredito GO (sem falso
+    # NO-GO por chaves ausentes do leg).
+    assert "cagr" in result["best_metrics"]
+    assert "calmar_ratio" in result["best_metrics"]
+    assert "benchmark" in result["best_metrics"]
+    assert result["oos_verdict"]["status"] == "GO"
+    assert any("GO walk-forward" in r for r in result["oos_verdict"]["reasons"])
