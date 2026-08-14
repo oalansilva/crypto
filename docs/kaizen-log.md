@@ -267,3 +267,17 @@
 - **Ação**: triagem do #195 "Backup de ambiente" concluída — decisão **Cancelado** (estado já aplicado no board em 11/08; nota formal registrada no card em 12/08: https://github.com/oalansilva/crypto/issues/195#issuecomment-5272103735).
 - **Motivo**: escopo de backup de ambiente (openclaw, skills, apps, banco) coberto por operação do ambiente Oracle (snapshots/backups de infra DEV/PROD); card sem dono operacional ativo e preso há 3 auditorias kaizen.
 - **Implementado (card #481)**: `release-guard audit` ganhou bloco `card_age_inventory` — inventário de cards por coluna com idade em dias (GraphQL `updatedAt` do item), warn informativo para >30 dias (default, configurável via `CARD_AGE_THRESHOLD_DAYS`), limite por coluna (`CARD_AGE_MAX_PER_COLUMN`, default 5), paginação até 20 páginas, falha de obtenção como warn sem interromper. Somente em `audit`; pre/post inalterados.
+
+## 2026-08-14 — Kaizen release (release 2026-08-14, cards 470/480/481/482/489/491/509)
+
+- **Ação**: auditoria kaizen pós-release concluída (read-only). F-1 a F-8 registrados abaixo.
+- **F-1 (P0)**: rate limit GraphQL como evento central do closeout — guard legado consumia ~4.900 pontos/execução (`gh project item-list --limit 500` paginado); reset de ~1h; nasceu o bug #509. Medição pós-fix: **204 pontos** por execução (item-list 500 + pr list 100), delta ~24x menor. Change `card-509-release-guard-graphql-budget` concluída (tasks 5.1–5.4) e **arquivada** em 2026-08-14 com sync de spec `release-worktree-hygiene`; `openspec validate --all` 137/137.
+- **F-2 (P1)**: check de changes OpenSpec terminais do guard cego para nomes sem id de card e in-progress em card terminal → card kaizen proposto.
+- **F-3 (P1)**: doc de release fragmentada em 6 PRs + PR de DAG #515; ordem canônica proposta (deploy → doc única sem placeholder → 1 PR).
+- **F-4 (P2)**: 8 warns de título board/issue sem nota (#469/#472 batch do #470); notas postadas apenas em #470/#491.
+- **F-5 (P2)**: frontier como sessão principal na transição do #491 (~$4.5, pré-regra formal); títulos genéricos em sessões caras.
+- **F-6 (P1)**: `/kaizen release` executado após `Pronto` com spawn vazio (0 messages) — kaizen-log sem entrada até esta edição; ordem canônica como gate proposto.
+- **F-7 (P2)**: 17 branches da release pendentes de deleção; `main` local stale (recorrência da auditoria 08-11).
+- **F-8 (P2)**: 3 todos abertos em sessão do #491; erros isolados de tool (webfetch 404, read not found) sem loop.
+- **Cards kaizen criados**: 3 (P0 bug #509 follow-up; P1 bug check changes terminais; P1 story ordem canônica de fechamento), todos em `Status=Em Refinamento`.
+- **Trechos de sessão (evidência local)**: `ses_00240169` — "Rate limit GraphQL zerou (0/5000, reset em ~57min) — o guard post consome ~4900 pontos por execução"; guard post com RELEASE_CARDS classificou branches como "preserved (card in flight; not deleted)" e o post passou (caso fail-open residual). `ses_000d79ef` — spawn kaizen com 0 messages/0 parts.
