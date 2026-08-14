@@ -316,7 +316,9 @@ def test_audit_single_board_and_pr_snapshot_with_many_branches(tmp_path: Path, m
     fake_gh = _fake_gh(tmp_path)
     call_log = tmp_path / "calls.log"
     monkeypatch.setenv("GH_CALL_LOG", str(call_log))
-    monkeypatch.setenv("FAKE_BOARD_JSON", _board((100, "Pronto"), (200, "Cancelado"), (480, "Pronto")))
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON", _board((100, "Pronto"), (200, "Cancelado"), (480, "Pronto"))
+    )
     monkeypatch.setenv("FAKE_PR_JSON", "[]")
     monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
 
