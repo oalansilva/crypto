@@ -143,16 +143,22 @@ def _make_branches(repo: Path, *names: str) -> None:
     _git(repo, "push", "origin", "develop")
 
 
-def _make_change(repo: Path, change_name: str, *, complete: bool = True, proposal: str = "") -> None:
+def _make_change(
+    repo: Path, change_name: str, *, complete: bool = True, proposal: str = ""
+) -> None:
     """Cria uma change OpenSpec ativa (complete ou in-progress) no repo."""
     base = repo / "openspec" / "changes" / change_name
     (base / "specs" / "alpha").mkdir(parents=True)
-    (base / "proposal.md").write_text(proposal or f"# {change_name}\n\nChange de teste.\n", encoding="utf-8")
+    (base / "proposal.md").write_text(
+        proposal or f"# {change_name}\n\nChange de teste.\n", encoding="utf-8"
+    )
     (base / "design.md").write_text(f"# Design {change_name}\n", encoding="utf-8")
     if complete:
         (base / "tasks.md").write_text("- [x] 1.1 Tarefa concluída\n", encoding="utf-8")
     else:
-        (base / "tasks.md").write_text("- [x] 1.1 Tarefa concluída\n- [ ] 1.2 Tarefa pendente\n", encoding="utf-8")
+        (base / "tasks.md").write_text(
+            "- [x] 1.1 Tarefa concluída\n- [ ] 1.2 Tarefa pendente\n", encoding="utf-8"
+        )
     (base / "specs" / "alpha" / "spec.md").write_text(
         "## ADDED Requirements\n\n### Requirement: alpha\n\n#### Scenario: alpha\n- **WHEN** x\n- **THEN** y\n",
         encoding="utf-8",
@@ -726,7 +732,9 @@ def test_post_known_non_eligible_status_keeps_not_applicable(tmp_path: Path, mon
 # --- Card #517: OpenSpec terminal changes check ---
 
 
-def _audit_with_terminal_changes(tmp_path: Path, monkeypatch, *, changes, board_cards, release_cards):
+def _audit_with_terminal_changes(
+    tmp_path: Path, monkeypatch, *, changes, board_cards, release_cards
+):
     repo = _init_repo(tmp_path)
     for change in changes:
         _make_change(repo, change[0], complete=change[1], proposal=change[2] or "")
@@ -739,11 +747,23 @@ def _audit_with_terminal_changes(tmp_path: Path, monkeypatch, *, changes, board_
 
 def test_audit_flags_complete_changes_without_id_mapped_by_title(tmp_path: Path, monkeypatch):
     changes = [
-        ("walk-forward-gate", True, "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout"),
-        ("kaizen-stuck-cards-age-alert", True, "Alerta de cards presos por idade nas colunas do board"),
+        (
+            "walk-forward-gate",
+            True,
+            "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+        ),
+        (
+            "kaizen-stuck-cards-age-alert",
+            True,
+            "Alerta de cards presos por idade nas colunas do board",
+        ),
     ]
     board_cards = [
-        (470, "Pronto", "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout"),
+        (
+            470,
+            "Pronto",
+            "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+        ),
         (481, "Pronto", "Kaizen: alerta de cards presos por idade nas colunas do board"),
     ]
     result = _audit_with_terminal_changes(
@@ -806,13 +826,21 @@ def test_post_blocks_complete_change_by_name_and_in_progress_by_title(tmp_path: 
     assert "Result: FAIL" in result.stdout
 
 
-def test_post_blocks_without_release_cards_when_global_terminal_change_exists(tmp_path: Path, monkeypatch):
+def test_post_blocks_without_release_cards_when_global_terminal_change_exists(
+    tmp_path: Path, monkeypatch
+):
     repo = _init_repo(tmp_path)
     _make_change(repo, "walk-forward-gate", complete=True)
     fake_gh = _fake_gh(tmp_path)
     monkeypatch.setenv(
         "FAKE_BOARD_JSON",
-        _board((470, "Pronto", "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout")),
+        _board(
+            (
+                470,
+                "Pronto",
+                "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+            )
+        ),
     )
     monkeypatch.setenv("FAKE_PR_JSON", "[]")
     result = _run_guard(repo, fake_gh=fake_gh)
@@ -837,7 +865,9 @@ def test_audit_does_not_flag_change_of_non_terminal_card(tmp_path: Path, monkeyp
 
 def test_audit_low_title_score_reports_unmapped_change(tmp_path: Path, monkeypatch):
     changes = [("random-widget", True, "Widget aleatório sem relação com cards do board")]
-    board_cards = [(470, "Pronto", "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout")]
+    board_cards = [
+        (470, "Pronto", "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout")
+    ]
     result = _audit_with_terminal_changes(
         tmp_path, monkeypatch, changes=changes, board_cards=board_cards, release_cards="470"
     )
@@ -850,7 +880,9 @@ def test_audit_low_title_score_reports_unmapped_change(tmp_path: Path, monkeypat
 
 def test_post_ambiguity_blocks_package_proof(tmp_path: Path, monkeypatch):
     repo = _init_repo(tmp_path)
-    _make_change(repo, "genetic", complete=True, proposal="Otimização genética de parâmetros do combo")
+    _make_change(
+        repo, "genetic", complete=True, proposal="Otimização genética de parâmetros do combo"
+    )
     fake_gh = _fake_gh(tmp_path)
     # Dois cards do pacote com títulos que empatam no score (mesma contagem de
     # hits de slug/proposal) → associação ambígua → blocker no post.
@@ -876,7 +908,13 @@ def test_audit_stop_flagging_after_archive_removal(tmp_path: Path, monkeypatch):
     fake_gh = _fake_gh(tmp_path)
     monkeypatch.setenv(
         "FAKE_BOARD_JSON",
-        _board((470, "Pronto", "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout")),
+        _board(
+            (
+                470,
+                "Pronto",
+                "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+            )
+        ),
     )
     monkeypatch.setenv("FAKE_PR_JSON", "[]")
     monkeypatch.setenv("FAKE_COMMENTS", "")
@@ -899,7 +937,13 @@ def test_audit_terminal_check_keeps_single_board_and_pr_snapshot(tmp_path: Path,
     monkeypatch.setenv("GH_CALL_LOG", str(call_log))
     monkeypatch.setenv(
         "FAKE_BOARD_JSON",
-        _board((470, "Pronto", "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout")),
+        _board(
+            (
+                470,
+                "Pronto",
+                "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+            )
+        ),
     )
     monkeypatch.setenv("FAKE_PR_JSON", "[]")
 
