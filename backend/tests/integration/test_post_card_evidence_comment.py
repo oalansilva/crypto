@@ -94,7 +94,7 @@ def test_homologado_fails_closed_when_gh_view_fails(tmp_path: Path):
 
 
 def test_homologado_fails_closed_for_valid_json_without_comments(tmp_path: Path):
-    result = _run(tmp_path, '{}')
+    result = _run(tmp_path, "{}")
 
     assert result.returncode == 1
     assert "returned invalid JSON" in result.stderr
@@ -102,7 +102,7 @@ def test_homologado_fails_closed_for_valid_json_without_comments(tmp_path: Path)
 
 
 def test_homologado_fails_closed_for_invalid_json(tmp_path: Path):
-    result = _run(tmp_path, 'not-json')
+    result = _run(tmp_path, "not-json")
 
     assert result.returncode == 1
     assert "returned invalid JSON" in result.stderr
