@@ -108,12 +108,16 @@ esac
     return script
 
 
-def _board(*cards: tuple[int, str], repository: str = "oalansilva/crypto") -> str:
-    items = ",".join(
-        f'{{"content":{{"number":{number},"repository":"{repository}"}},"status":"{status}",'
-        '"responsavel":"Codex","prioridade":"P1","tipo":"Operacao"}'
-        for number, status in cards
-    )
+def _board(*cards: tuple, repository: str = "oalansilva/crypto") -> str:
+    def _item(card: tuple) -> str:
+        number, status = card[0], card[1]
+        title = card[2] if len(card) > 2 else f"Card {number}"
+        return (
+            f'{{"content":{{"number":{number},"repository":"{repository}","title":"{title}"}},'
+            f'"status":"{status}","responsavel":"Codex","prioridade":"P1","tipo":"Operacao"}}'
+        )
+
+    items = ",".join(_item(card) for card in cards)
     return f'{{"items":[{items}],"totalCount":{len(cards)}}}'
 
 
@@ -137,6 +141,35 @@ def _make_branches(repo: Path, *names: str) -> None:
         _commit_file(repo, f"{name}.txt", f"{name}\n", f"branch {name}")
         _git(repo, "branch", name)
     _git(repo, "push", "origin", "develop")
+
+
+def _make_change(
+    repo: Path, change_name: str, *, complete: bool = True, proposal: str = ""
+) -> None:
+    """Cria uma change OpenSpec ativa (complete ou in-progress) no repo."""
+    base = repo / "openspec" / "changes" / change_name
+    (base / "specs" / "alpha").mkdir(parents=True)
+    (base / "proposal.md").write_text(
+        proposal or f"# {change_name}\n\nChange de teste.\n", encoding="utf-8"
+    )
+    (base / "design.md").write_text(f"# Design {change_name}\n", encoding="utf-8")
+    if complete:
+        (base / "tasks.md").write_text("- [x] 1.1 Tarefa concluída\n", encoding="utf-8")
+    else:
+        (base / "tasks.md").write_text(
+            "- [x] 1.1 Tarefa concluída\n- [ ] 1.2 Tarefa pendente\n", encoding="utf-8"
+        )
+    (base / "specs" / "alpha" / "spec.md").write_text(
+        "## ADDED Requirements\n\n### Requirement: alpha\n\n#### Scenario: alpha\n- **WHEN** x\n- **THEN** y\n",
+        encoding="utf-8",
+    )
+    _git(repo, "add", f"openspec/changes/{change_name}")
+    _git(repo, "commit", "-m", f"add change {change_name}")
+
+
+def _remove_change(repo: Path, change_name: str) -> None:
+    _git(repo, "rm", "-r", f"openspec/changes/{change_name}")
+    _git(repo, "commit", "-m", f"remove change {change_name}")
 
 
 def test_post_release_allows_identical_remote_commits(tmp_path: Path, monkeypatch):
@@ -694,3 +727,228 @@ def test_post_known_non_eligible_status_keeps_not_applicable(tmp_path: Path, mon
 
     assert result.returncode == 0
     assert "homologation-comment check not applicable" in result.stdout
+
+
+# --- Card #517: OpenSpec terminal changes check ---
+
+
+def _audit_with_terminal_changes(
+    tmp_path: Path, monkeypatch, *, changes, board_cards, release_cards
+):
+    repo = _init_repo(tmp_path)
+    for change in changes:
+        _make_change(repo, change[0], complete=change[1], proposal=change[2] or "")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board(*board_cards))
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+    result = _run_guard(repo, "audit", release_cards=release_cards, fake_gh=fake_gh)
+    return result
+
+
+def test_audit_flags_complete_changes_without_id_mapped_by_title(tmp_path: Path, monkeypatch):
+    changes = [
+        (
+            "walk-forward-gate",
+            True,
+            "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+        ),
+        (
+            "kaizen-stuck-cards-age-alert",
+            True,
+            "Alerta de cards presos por idade nas colunas do board",
+        ),
+    ]
+    board_cards = [
+        (
+            470,
+            "Pronto",
+            "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+        ),
+        (481, "Pronto", "Kaizen: alerta de cards presos por idade nas colunas do board"),
+    ]
+    result = _audit_with_terminal_changes(
+        tmp_path, monkeypatch, changes=changes, board_cards=board_cards, release_cards="470,481"
+    )
+
+    assert result.returncode == 0
+    assert "OpenSpec change of terminal card is still active" in result.stdout
+    assert "walk-forward-gate" in result.stdout
+    assert "card #470" in result.stdout
+    assert "kaizen-stuck-cards-age-alert" in result.stdout
+    assert "card #481" in result.stdout
+    assert "progress=complete" in result.stdout
+    assert "mapping=title" in result.stdout
+
+
+def test_audit_flags_in_progress_change_with_id_on_terminal_card(tmp_path: Path, monkeypatch):
+    changes = [("card-509-release-guard-graphql-budget", False, "")]
+    board_cards = [(509, "Pronto", "bug: rate limit GraphQL no closeout do release guard")]
+    result = _audit_with_terminal_changes(
+        tmp_path, monkeypatch, changes=changes, board_cards=board_cards, release_cards="509"
+    )
+
+    assert result.returncode == 0
+    assert "OpenSpec change of terminal card is still active" in result.stdout
+    assert "card-509-release-guard-graphql-budget" in result.stdout
+    assert "card #509" in result.stdout
+    assert "progress=in-progress" in result.stdout
+    assert "mapping=name" in result.stdout
+
+
+def test_post_blocks_complete_change_by_name_and_in_progress_by_title(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _make_change(repo, "card-480-kaizen-evidence", complete=True)
+    _make_change(
+        repo,
+        "hide-quant-test-templates",
+        complete=False,
+        proposal="Excluir templates de teste quantitativos do catálogo de estratégias visíveis",
+    )
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON",
+        _board(
+            (480, "Pronto", "Kaizen: comentário de evidência de homologação no card"),
+            (489, "Pronto", "Excluir templates de teste quantitativos do catálogo de estratégias"),
+        ),
+    )
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+    result = _run_guard(repo, release_cards="480,489", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "card-480-kaizen-evidence" in result.stdout
+    assert "card #480" in result.stdout
+    assert "mapping=name" in result.stdout
+    assert "hide-quant-test-templates" in result.stdout
+    assert "card #489" in result.stdout
+    assert "mapping=title" in result.stdout
+    assert "package=yes" in result.stdout
+    assert "Result: FAIL" in result.stdout
+
+
+def test_post_blocks_without_release_cards_when_global_terminal_change_exists(
+    tmp_path: Path, monkeypatch
+):
+    repo = _init_repo(tmp_path)
+    _make_change(repo, "walk-forward-gate", complete=True)
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON",
+        _board(
+            (
+                470,
+                "Pronto",
+                "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+            )
+        ),
+    )
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+    result = _run_guard(repo, fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "OpenSpec change of terminal card is still active" in result.stdout
+    assert "walk-forward-gate" in result.stdout
+    assert "package=no" in result.stdout
+
+
+def test_audit_does_not_flag_change_of_non_terminal_card(tmp_path: Path, monkeypatch):
+    changes = [("card-300-ativa", True, "")]
+    board_cards = [(300, "Em desenvolvimento", "Change ativa em andamento")]
+    result = _audit_with_terminal_changes(
+        tmp_path, monkeypatch, changes=changes, board_cards=board_cards, release_cards="300"
+    )
+
+    assert result.returncode == 0
+    assert "No active OpenSpec changes mapped to terminal cards" in result.stdout
+    assert "OpenSpec change of terminal card is still active" not in result.stdout
+
+
+def test_audit_low_title_score_reports_unmapped_change(tmp_path: Path, monkeypatch):
+    changes = [("random-widget", True, "Widget aleatório sem relação com cards do board")]
+    board_cards = [
+        (470, "Pronto", "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout")
+    ]
+    result = _audit_with_terminal_changes(
+        tmp_path, monkeypatch, changes=changes, board_cards=board_cards, release_cards="470"
+    )
+
+    assert result.returncode == 0
+    assert "random-widget" in result.stdout
+    assert "below score floor" in result.stdout
+    assert "No active OpenSpec changes mapped to terminal cards" not in result.stdout
+
+
+def test_post_ambiguity_blocks_package_proof(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _make_change(
+        repo, "genetic", complete=True, proposal="Otimização genética de parâmetros do combo"
+    )
+    fake_gh = _fake_gh(tmp_path)
+    # Dois cards do pacote com títulos que empatam no score (mesma contagem de
+    # hits de slug/proposal) → associação ambígua → blocker no post.
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON",
+        _board(
+            (470, "Pronto", "Otimização genética de parâmetros do combo"),
+            (471, "Pronto", "Otimização genética de parâmetros do combo"),
+        ),
+    )
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+    result = _run_guard(repo, release_cards="470,471", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "OpenSpec change without safe card association" in result.stdout
+    assert "genetic" in result.stdout
+    assert "package=yes" in result.stdout
+
+
+def test_audit_stop_flagging_after_archive_removal(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _make_change(repo, "walk-forward-gate", complete=True)
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON",
+        _board(
+            (
+                470,
+                "Pronto",
+                "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+            )
+        ),
+    )
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+    monkeypatch.setenv("FAKE_COMMENTS", "")
+
+    before = _run_guard(repo, "audit", release_cards="470", fake_gh=fake_gh)
+    assert "OpenSpec change of terminal card is still active" in before.stdout
+
+    _remove_change(repo, "walk-forward-gate")
+    after = _run_guard(repo, "audit", release_cards="470", fake_gh=fake_gh)
+    assert after.returncode == 0
+    assert "No active OpenSpec changes mapped to terminal cards" in after.stdout
+    assert "OpenSpec change of terminal card is still active" not in after.stdout
+
+
+def test_audit_terminal_check_keeps_single_board_and_pr_snapshot(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _make_change(repo, "walk-forward-gate", complete=True)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON",
+        _board(
+            (
+                470,
+                "Pronto",
+                "Gate walk-forward com split treino/holdout e veredito GO/NO-GO no holdout",
+            )
+        ),
+    )
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, "audit", release_cards="470", fake_gh=fake_gh)
+
+    assert result.returncode == 0
+    assert _call_count(call_log, "CALL project item-list") == 1
+    assert _call_count(call_log, "CALL pr list") == 1

@@ -571,79 +571,190 @@ else
   printf 'Skipped (duplicate OpenSpec check runs in post/audit; legacy debt does not block pre).\n'
 fi
 
-section "OpenSpec terminal changes (post/audit)"
-if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
-  candidates=0
+# --- OpenSpec terminal changes (card #517): enumerate first, map change->card,
+# then evaluate terminality. Progress (complete|in-progress) is informational
+# and never filters eligibility. ---
+
+_openspec_tokenize() {
+  # Normalize text to unique lowercase ASCII tokens without stopwords.
+  # Translitera acentos (Integração -> integracao) para casar com slugs ASCII
+  # e evita fragmentos tóxicos; tokens com menos de 3 chars são descartados.
+  local ascii
+  ascii="$(printf '%s' "$1" | iconv -f UTF-8 -t ASCII//TRANSLIT 2>/dev/null || printf '%s' "$1")"
+  printf '%s' "$ascii" | \
+    tr '[:upper:]' '[:lower:]' | \
+    sed -E -e 's/[^a-z0-9]+/ /g' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | \
+    tr ' ' '\n' | \
+    sed '/^$/d' | \
+    grep -E '^[a-z0-9]{3,}$' | \
+    grep -vE '^(card|issue|change|combo|com|de|da|do|das|dos|a|o|e|em|para|por|com|na|no|que|os|as|um|uma|ao|aos|ou|se|sao|ser|vai|foi|este|esta|essa|esse|no|nao|sim)$' | \
+    sort -u
+}
+
+_openspec_slug_fingerprint() {
+  local change="$1"
+  printf '%s' "$change" | sed -e 's/^card-[0-9]*-//' -e 's/^issue-[0-9]*-//' -e 's/^change-[0-9]*-//'
+}
+
+_openspec_title_candidates() {
+  # JSON lines: "<card_num>\t<title>", restricted to oalansilva/crypto items.
+  printf '%s' "$BOARD_JSON" | jq -r '.items[] | select((.content.number != null) and ((.content.repository // "") == "oalansilva/crypto")) | [(.content.number|tostring), (.content.title // "")] | @tsv' 2>/dev/null || true
+}
+
+_openspec_map_by_title() {
+  # Map a change to a single card by title similarity. Prints "<card_num>" on
+  # a strictly-unique high-score match, "TIE" on ambiguity, empty otherwise.
+  # No remote calls.
+  local change="$1" proposal_file="$2"
+  local slug_fp slug_tokens proposal_corpus proposal_tokens
+  slug_fp="$(_openspec_slug_fingerprint "$change")"
+  slug_tokens="$(_openspec_tokenize "$slug_fp")"
+  if [[ -f "$proposal_file" ]]; then
+    proposal_corpus="$(grep -vE '^#|^---|^$' "$proposal_file" 2>/dev/null || true)"
+  else
+    proposal_corpus=""
+  fi
+  proposal_tokens="$(_openspec_tokenize "$proposal_corpus")"
+
+  local best_card="" best_score=-1 tie=0
+  local card title title_tokens score slug_hits proposal_hits t
+  while IFS=$'\t' read -r card title; do
+    [[ -z "$card" ]] && continue
+    # Priority candidate set: RELEASE_CARDS package first, then full snapshot.
+    if [[ -n "$CANONICAL_CARDS" ]]; then
+      if ! printf ' %s ' " $CANONICAL_CARDS " | grep -q " $card "; then
+        continue
+      fi
+    fi
+    title_tokens="$(_openspec_tokenize "$title")"
+    [[ -z "$title_tokens" ]] && continue
+    slug_hits=0
+    for t in $title_tokens; do
+      if printf '%s\n' "$slug_tokens" | grep -qx "$t"; then
+        slug_hits=$((slug_hits + 1))
+      fi
+    done
+    proposal_hits=0
+    for t in $title_tokens; do
+      if printf '%s\n' "$proposal_tokens" | grep -qx "$t"; then
+        proposal_hits=$((proposal_hits + 1))
+      fi
+    done
+    score=$((5 * slug_hits + proposal_hits))
+    if [[ "$slug_hits" -lt 2 && "$proposal_hits" -lt 4 ]]; then
+      continue
+    fi
+    if [[ "$score" -gt "$best_score" ]]; then
+      best_score=$score
+      best_card="$card"
+      tie=0
+    elif [[ "$score" -eq "$best_score" ]]; then
+      tie=1
+    fi
+  done < <(_openspec_title_candidates)
+
+  if [[ "$tie" -eq 0 && -n "$best_card" ]]; then
+    printf '%s' "$best_card"
+  elif [[ "$tie" -eq 1 && -n "$best_card" ]]; then
+    printf 'TIE'
+  fi
+}
+
+_openspec_change_progress() {
+  # Prints complete|in-progress: complete = expected artifacts + zero open tasks.
+  local change_dir="$1"
+  if [[ -f "$change_dir/proposal.md" && -f "$change_dir/design.md" && -f "$change_dir/tasks.md" && -d "$change_dir/specs" ]]; then
+    if grep -qE '^- \[ \]' "$change_dir/tasks.md" 2>/dev/null; then
+      printf 'in-progress'
+    else
+      printf 'complete'
+    fi
+  else
+    printf 'in-progress'
+  fi
+}
+
+openspec_terminal_changes_check() {
+  if [[ "$mode" != "post" && "$mode" != "audit" ]]; then
+    return 0
+  fi
+  local package_set=""
+  if [[ -n "$CANONICAL_CARDS" ]]; then
+    package_set="package=yes"
+  else
+    package_set="package=no"
+  fi
+
+  if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+    issue "OpenSpec terminal-changes check could not run (gh unavailable or not authenticated)"
+    return 0
+  fi
+  if [[ "$BOARD_STATE" != "ok" ]]; then
+    issue "OpenSpec terminal-changes check could not run (board snapshot unavailable (failed or skipped))"
+    return 0
+  fi
+
+  local terminal_pending=0 ambiguity_pending=0 unmapped_pending=0
+  local change_dir change_name card_num progress mapping status
   for change_dir in openspec/changes/*/; do
     [[ -d "$change_dir" ]] || continue
     change_name="$(basename "$change_dir")"
     [[ "$change_name" =~ ^(archive|.*\.md)$ ]] && continue
-    tasks_done=1
-    while IFS= read -r line; do
-      if [[ "$line" == "- [ ]"* ]]; then
-        tasks_done=0
-        break
-      fi
-    done < <(grep -E '^- \[[ x]\]' "$change_dir/tasks.md" 2>/dev/null || true)
-    artifacts_done=0
-    if [[ -f "$change_dir/proposal.md" && -f "$change_dir/design.md" && -f "$change_dir/tasks.md" && -d "$change_dir/specs" ]]; then
-      artifacts_done=1
-    fi
-    [[ "$artifacts_done" -eq 0 || "$tasks_done" -eq 0 ]] && continue
+
+    progress="$(_openspec_change_progress "$change_dir")"
+
     card_num="$(printf '%s' "$change_name" | grep -oE '^(card|issue)-[0-9]+' | grep -oE '[0-9]+$' | head -1 || true)"
-    [[ -z "$card_num" ]] && continue
-    candidates=$((candidates + 1))
+    mapping="name"
+    if [[ -z "$card_num" ]]; then
+      card_num="$(_openspec_map_by_title "$change_name" "$change_dir/proposal.md")"
+      mapping="title"
+    fi
+    if [[ "$card_num" == "TIE" ]]; then
+      # Associação ambígua (empate no melhor score): diagnóstico em audit,
+      # blocker em post quando impede provar a higiene do pacote.
+      ambiguity_pending=$((ambiguity_pending + 1))
+      if [[ "$strict" -eq 1 ]]; then
+        blocker "OpenSpec change without safe card association (ambiguous title match, map or rename with id): $change_name ($package_set)"
+      else
+        warn "OpenSpec change without safe card association (ambiguous title match, map or rename with id): $change_name ($package_set)"
+      fi
+      continue
+    fi
+    if [[ -z "$card_num" ]]; then
+      # Sem associação segura (score abaixo do piso): sinalizado como pendência
+      # de mapeamento; a prova de higiene do pacote fica incompleta sem ele.
+      unmapped_pending=$((unmapped_pending + 1))
+      warn "OpenSpec change without safe card association (below score floor, map or rename with id): $change_name ($package_set)"
+      continue
+    fi
+
+    status="$(card_status "$card_num")"
+    case "$status" in
+      Pronto|Cancelado)
+        terminal_pending=$((terminal_pending + 1))
+        local detail
+        detail="OpenSpec change of terminal card is still active (archive or classify): $change_name (card #$card_num is $status, progress=$progress, mapping=$mapping, $package_set)"
+        if [[ "$strict" -eq 1 ]]; then
+          blocker "$detail"
+        else
+          warn "$detail"
+        fi
+        ;;
+      "")
+        ambiguity_pending=$((ambiguity_pending + 1))
+        warn "OpenSpec change mapped to card without status in snapshot: $change_name (card #$card_num, progress=$progress, mapping=$mapping, $package_set)"
+        ;;
+    esac
   done
 
-  if [[ "$candidates" -eq 0 ]]; then
-    printf 'No active OpenSpec changes with all artifacts done on terminal cards (Pronto/Cancelado).\n'
-  elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    if [[ "$BOARD_STATE" != "ok" ]]; then
-      issue "OpenSpec terminal-changes check could not run (board snapshot unavailable (failed or skipped))"
-    else
-      board_json="$BOARD_JSON"
-      terminal_pending=0
-      for change_dir in openspec/changes/*/; do
-        [[ -d "$change_dir" ]] || continue
-        change_name="$(basename "$change_dir")"
-        [[ "$change_name" =~ ^(archive|.*\.md)$ ]] && continue
-        tasks_done=1
-        while IFS= read -r line; do
-          if [[ "$line" == "- [ ]"* ]]; then
-            tasks_done=0
-            break
-          fi
-        done < <(grep -E '^- \[[ x]\]' "$change_dir/tasks.md" 2>/dev/null || true)
-        artifacts_done=0
-        if [[ -f "$change_dir/proposal.md" && -f "$change_dir/design.md" && -f "$change_dir/tasks.md" && -d "$change_dir/specs" ]]; then
-          artifacts_done=1
-        fi
-        if [[ "$artifacts_done" -eq 0 || "$tasks_done" -eq 0 ]]; then
-          continue
-        fi
-        card_num="$(printf '%s' "$change_name" | grep -oE '^(card|issue)-[0-9]+' | grep -oE '[0-9]+$' | head -1 || true)"
-        if [[ -z "$card_num" ]]; then
-          continue
-        fi
-        status="$(card_status "$card_num")"
-        case "$status" in
-          Pronto|Cancelado)
-            terminal_pending=$((terminal_pending + 1))
-            if [[ "$strict" -eq 1 ]]; then
-              blocker "OpenSpec change of terminal card is still active (archive or classify): $change_name (card #$card_num is $status)"
-            else
-              warn "OpenSpec change of terminal card is still active (archive or classify): $change_name (card #$card_num is $status)"
-            fi
-            ;;
-        esac
-      done
-      if [[ "$terminal_pending" -eq 0 ]]; then
-        printf 'No active OpenSpec changes with all artifacts done on terminal cards (Pronto/Cancelado).\n'
-      fi
-    fi
-  else
-    issue "OpenSpec terminal-changes check could not run (gh unavailable or not authenticated) with $candidates candidate change(s) to verify"
+  if [[ "$terminal_pending" -eq 0 && "$ambiguity_pending" -eq 0 && "$unmapped_pending" -eq 0 ]]; then
+    printf 'No active OpenSpec changes mapped to terminal cards (Pronto/Cancelado).\n'
   fi
+}
+
+section "OpenSpec terminal changes (post/audit)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  openspec_terminal_changes_check
 else
   printf 'Skipped (OpenSpec terminal changes check runs in post/audit).\n'
 fi
