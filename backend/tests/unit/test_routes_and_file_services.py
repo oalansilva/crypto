@@ -450,3 +450,29 @@ def test_binance_trades_helpers_and_trade_filters(monkeypatch):
         == 25.0
     )
     assert fetch_calls == [("SOLUSDT", 30), ("SOLUSDC", 30)]
+
+
+def test_tail_lines_seek_from_end_handles_large_files_and_long_lines(tmp_path):
+    """_tail_lines lê só o fim do arquivo (seek-from-end) e retorna as N últimas linhas."""
+    log_file = tmp_path / "large.log"
+    # Arquivo grande: 2000 linhas, cada uma com ~200 bytes (força múltiplos chunks)
+    content = "\n".join(f"line-{i}-" + "x" * 190 for i in range(2000)) + "\n"
+    log_file.write_text(content, encoding="utf-8")
+
+    tailed = logs_route._tail_lines(log_file, 50)
+    parts = tailed.splitlines()
+    assert len(parts) == 50
+    assert parts[-1].startswith("line-1999-")
+    assert parts[0].startswith("line-1950-")
+
+    # Linhas muito longas não estouram o limite de varredura
+    long_line_file = tmp_path / "long-line.log"
+    long_line_file.write_text(("z" * 500_000) + "\nlast-line\n", encoding="utf-8")
+    tailed_long = logs_route._tail_lines(long_line_file, 1)
+    assert tailed_long == "last-line"
+
+    # Linha única maior que o cap (2MB) sem newline final é truncada sem estourar memória
+    huge_line_file = tmp_path / "huge-line.log"
+    huge_line_file.write_text("prefix\n" + ("w" * 3_000_000), encoding="utf-8")
+    tailed_huge = logs_route._tail_lines(huge_line_file, 1)
+    assert tailed_huge == ("w" * 2_000_000) or len(tailed_huge) <= 2_100_000

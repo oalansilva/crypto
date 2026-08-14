@@ -236,6 +236,7 @@
 ### Achados
 - F-1 [recorrência, P1] Card #195 "Backup de ambiente" preso em Em Refinamento desde 05-12 (3ª auditoria reportando o mesmo card — estava em Todo na 08-09, agora Em Refinamento). Proposta: triagem + aviso de idade por coluna no guard audit. Esforço S.
 - F-2 [recorrência, P1] 5/5 cards do pacote em Homologado sem o comentário padrão "Homologado por Alan na develop." (mesma lacuna F-5 da auditoria 08-09; transição por arraste/chat não passa pelo helper). Proposta: guard post com RELEASE_CARDS exige comentário de homologação (warn audit / blocker post) + post retroativo em dry-run. Esforço S.
+- **Saneamento F-2 (card #480, 2026-08-13):** dry-run validado e comentário canônico postado exatamente uma vez nos cards [#456](https://github.com/oalansilva/crypto/issues/456#issuecomment-5287148541), [#457](https://github.com/oalansilva/crypto/issues/457#issuecomment-5287148517), [#458](https://github.com/oalansilva/crypto/issues/458#issuecomment-5287148509), [#463](https://github.com/oalansilva/crypto/issues/463#issuecomment-5287148552) e [#464](https://github.com/oalansilva/crypto/issues/464#issuecomment-5287148514), usando a evidência da release/merge `412ed9ad`; consulta posterior contou `1` ocorrência por card. O `release-guard` passou a validar o pacote informado em `RELEASE_CARDS`: warning em `audit`, blocker em `post`, com consulta fail-closed e dedupe numérico dos IDs.
 - F-3 [minor, P2] Título board divergente da issue no #463 (rename pós-Done; Title não editável via API Projects v2; nota postada sem aprovação explícita). Proposta: regra de nota de divergência + warn no guard. Esforço S.
 - F-4 [info, P2] Branches do pacote deletadas antes do movimento para Pronto (closeout técnico precede etapa kaizen→Pronto). Proposta: documentar ordem canônica no AGENTS.md. Esforço S.
 - F-5 [info, P2] `main` local desatualizado pós-release (comparação oficial por origin correta). Proposta: passo de atualização de main local no closeout. Esforço S.
@@ -260,3 +261,9 @@
 ### Limitações
 - Timestamps por coluna não expostos via `gh project item-list` (usado updatedAt global via GraphQL).
 - Evidência de arraste/homologação não verificável via API (só comentários) — motiva F-2.
+
+## 2026-08-12 — Triagem do card #195 (card #481 kaizen)
+
+- **Ação**: triagem do #195 "Backup de ambiente" concluída — decisão **Cancelado** (estado já aplicado no board em 11/08; nota formal registrada no card em 12/08: https://github.com/oalansilva/crypto/issues/195#issuecomment-5272103735).
+- **Motivo**: escopo de backup de ambiente (openclaw, skills, apps, banco) coberto por operação do ambiente Oracle (snapshots/backups de infra DEV/PROD); card sem dono operacional ativo e preso há 3 auditorias kaizen.
+- **Implementado (card #481)**: `release-guard audit` ganhou bloco `card_age_inventory` — inventário de cards por coluna com idade em dias (GraphQL `updatedAt` do item), warn informativo para >30 dias (default, configurável via `CARD_AGE_THRESHOLD_DAYS`), limite por coluna (`CARD_AGE_MAX_PER_COLUMN`, default 5), paginação até 20 páginas, falha de obtenção como warn sem interromper. Somente em `audit`; pre/post inalterados.

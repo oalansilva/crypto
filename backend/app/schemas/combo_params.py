@@ -103,6 +103,7 @@ class ComboOptimizationRequest(BaseModel):
     )
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    period_type: Optional[str] = Field(None, description="'6m' | '2y' | 'all'")
     deep_backtest: bool = Field(
         default=True,
         description="Use Deep Backtesting (15m precision) for realistic stop-loss simulation",
@@ -115,6 +116,12 @@ class ComboOptimizationRequest(BaseModel):
         description="Initial capital in USD for metrics calculation (default: $100, TradingView-style)",
     )
     direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
+    split_train_ratio: Optional[float] = Field(
+        None,
+        ge=0.01,
+        le=0.99,
+        description="Walk-forward split: train fraction for optimization (ex.: 0.7). When set, holdout metrics and GO/NO-GO verdict are produced (card #470).",
+    )
 
     @model_validator(mode="after")
     def validate_data_source(self):
@@ -138,6 +145,11 @@ class ComboOptimizationResponse(BaseModel):
     stages: List[Dict[str, Any]]
     best_parameters: Dict[str, Any]
     best_metrics: Dict[str, Any]
+    # Walk-forward (card #470): holdout metrics and GO/NO-GO verdict (null when split not used)
+    oos_metrics: Optional[Dict[str, Any]] = None
+    oos_verdict: Optional[Dict[str, Any]] = None
+    oos_proof: Optional[str] = None
+    promotion_metrics: Optional[Dict[str, Any]] = None
     # Complete backtest data for visualization
     trades: List[Dict[str, Any]] = Field(default_factory=list)
     candles: List[Dict[str, Any]] = Field(default_factory=list)
@@ -193,6 +205,12 @@ class ComboBatchBacktestRequest(BaseModel):
     custom_ranges: Optional[Dict[str, Dict[str, Any]]] = Field(None)
     initial_capital: float = Field(100)
     direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
+    split_train_ratio: Optional[float] = Field(
+        None,
+        ge=0.01,
+        le=0.99,
+        description="Walk-forward split: train fraction (ex.: 0.7). When set, holdout gate GO/NO-GO applies and NO-GO candidates are not saved (card #470).",
+    )
 
     @model_validator(mode="after")
     def validate_data_source(self):

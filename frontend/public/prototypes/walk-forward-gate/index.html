@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fcd535'/%3E%3Ctext x='5' y='21' font-size='13' font-family='sans-serif' font-weight='700'%3ECF%3C/text%3E%3C/svg%3E" />
+  <title>Card #470 — Validação walk-forward (out-of-sample)</title>
+  <style>
+    :root {
+      --canvas: #0b0e11;
+      --surface: #1e2329;
+      --surface-2: #1e2329;
+      --surface-3: #2b3139;
+      --text: #eaecef;
+      --muted: #707a8a;
+      --hairline: #2b3139;
+      --primary: #fcd535;
+      --primary-hover: #f0b90b;
+      --ink: #181a20;
+      --buy: #0ecb81;
+      --sell: #f6465d;
+      --focus: #3b82f6;
+      --info: #3b82f6;
+      --mono: BinancePlex, "SFMono-Regular", Consolas, monospace;
+      --font: BinanceNova, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--canvas); color: var(--text);
+      font-family: var(--font); font-size: 14px;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .hidden { display: none !important; }
+
+    .app { min-height: 100vh; display: grid; grid-template-columns: 224px minmax(0, 1fr); }
+    .sidebar { position: sticky; top: 0; height: 100vh; padding: 20px 14px; border-right: 1px solid var(--hairline); background: var(--canvas); }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 26px; font-weight: 700; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; background: var(--primary); color: var(--ink); border-radius: 4px; font-weight: 900; }
+    .nav-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 14px 10px 8px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; color: var(--muted); border-radius: 4px; }
+    .nav-item.active { background: var(--surface-2); color: var(--text); border-left: 2px solid var(--primary); }
+    .nav-glyph { width: 18px; text-align: center; font-size: 12px; }
+
+    .workspace { min-width: 0; }
+    .topbar {
+      min-height: 64px; display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 24px; border-bottom: 1px solid var(--hairline); background: rgba(11, 14, 17, .96);
+    }
+    .topbar h1 { font-size: 20px; margin: 0; font-weight: 600; }
+    .topbar small { display: block; color: var(--muted); margin-top: 3px; }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .icon-btn { width: 36px; height: 36px; border: 1px solid var(--hairline); border-radius: 4px; background: transparent; color: var(--text); padding: 0; }
+
+    main { padding: 22px 24px 48px; max-width: 1500px; margin: 0 auto; }
+
+    .card { border: 1px solid var(--hairline); background: var(--surface); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--hairline); }
+    .card-head h2 { margin: 0; font-size: 16px; font-weight: 650; }
+    .card-head small { color: var(--muted); display: block; margin-top: 2px; }
+    .card-body { padding: 16px; overflow-x: auto; }
+
+    .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 4px; padding: 3px 8px; font-size: 12px; font-weight: 650; }
+    .badge-go { background: rgba(14, 203, 129, .14); color: var(--buy); }
+    .badge-nogo { background: rgba(246, 70, 93, .14); color: var(--sell); }
+    .badge-warn { background: rgba(252, 213, 53, .14); color: var(--primary); }
+
+    .split-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .split-chip { border: 1px solid var(--hairline); background: var(--surface-3); border-radius: 4px; padding: 4px 9px; color: var(--muted); font-size: 12px; }
+    .split-chip b { color: var(--text); font-family: var(--mono); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; }
+    td.num, th.num { text-align: right; font-family: var(--mono); }
+    tr:last-child td { border-bottom: 0; }
+    .verdict-cell { text-align: center; }
+    .oos-col { background: rgba(252, 213, 53, .05); }
+    .oos-col-tag { color: var(--muted-strong, #929aa5); font-size: 11px; margin-left: 4px; }
+    .field label { color: var(--muted-strong, #929aa5); }
+
+    .metric-ok { color: var(--buy); }
+    .metric-bad { color: var(--sell); }
+    .metric-muted { color: var(--muted); }
+
+    .gono-banner { display: flex; align-items: flex-start; gap: 12px; border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }
+    .gono-banner.go { background: rgba(14, 203, 129, .1); border: 1px solid rgba(14, 203, 129, .3); }
+    .gono-banner.nogo { background: rgba(246, 70, 93, .1); border: 1px solid rgba(246, 70, 93, .35); }
+    .gono-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; font-weight: 900; flex-shrink: 0; }
+    .gono-banner.go .gono-icon { background: var(--buy); color: var(--ink); }
+    .gono-banner.nogo .gono-icon { background: var(--sell); color: #fff; }
+    .gono-banner h3 { margin: 0 0 4px; font-size: 15px; }
+    .gono-banner p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .gono-banner ul { margin: 8px 0 0; padding-left: 18px; color: var(--text); font-size: 13px; line-height: 1.6; }
+    .gono-banner.nogo .gono-title { color: var(--sell); }
+    .gono-banner.go .gono-title { color: var(--buy); }
+
+    .actions-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .btn { min-height: 38px; border-radius: 4px; padding: 8px 14px; font-weight: 650; border: 1px solid var(--hairline); background: var(--surface-2); color: var(--text); }
+    .btn.primary { border-color: var(--primary); background: var(--primary); color: var(--ink); }
+    .btn.primary:hover { background: var(--primary-hover); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(11, 14, 17, .68); align-items: center; justify-content: center; padding: 16px; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--surface-3); border-radius: 12px; width: 100%; max-width: 560px; padding: 20px; box-shadow: 0 24px 60px rgba(0,0,0,.5); max-height: 92vh; overflow-y: auto; }
+    .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    .modal-head h3 { margin: 0; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+    .close-btn { width: 34px; height: 34px; border: 1px solid var(--hairline); background: transparent; color: var(--muted); border-radius: 4px; font-size: 18px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+    .field input, .field textarea { width: 100%; background: var(--surface-3); border: 1px solid var(--hairline); border-radius: 6px; padding: 10px 12px; color: var(--text); }
+    .field input { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+    .field textarea { resize: vertical; min-height: 72px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; background: rgba(11, 14, 17, .5); border: 1px solid var(--hairline); border-radius: 6px; padding: 12px; }
+    .metric-grid .m { }
+    .metric-grid .m small { color: var(--muted); font-size: 11px; display: block; margin-bottom: 2px; }
+    .metric-grid .m b { font-family: var(--mono); font-size: 15px; }
+
+    .nogo-block { border: 1px solid rgba(246, 70, 93, .4); background: rgba(246, 70, 93, .08); border-radius: 6px; padding: 12px; margin-bottom: 14px; }
+    .nogo-block h4 { margin: 0 0 6px; color: var(--sell); font-size: 13px; }
+    .nogo-block ul { margin: 0; padding-left: 18px; color: var(--text); font-size: 13px; line-height: 1.6; }
+    .override-row { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 14px; color: var(--muted); font-size: 13px; }
+    .override-row input { width: 16px; height: 16px; margin-top: 1px; }
+
+    .reval-banner { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(246, 70, 93, .35); background: rgba(246, 70, 93, .08); border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; }
+    .reval-banner span { color: var(--text); font-size: 13px; }
+    .reval-banner .btn { min-height: 36px; padding: 6px 12px; font-size: 12px; margin-left: auto; white-space: nowrap; }
+    .btn.btn-xs { min-height: 26px; padding: 2px 8px; font-size: 11px; margin-left: 6px; }
+
+    .prototype-note { color: var(--muted); font-size: 12px; margin: 12px 2px 0; }
+    .prototype-scenarios { margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .prototype-scenarios summary { cursor: pointer; color: var(--text); }
+    .scenario-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .scenario-actions button { border: 1px solid var(--hairline); background: var(--surface-2); color: var(--text); padding: 7px 9px; border-radius: 4px; }
+
+    .mobile-tabs { display: none; }
+    .mobile-results, .mobile-favorites { display: none; }
+    @media (max-width: 900px) {
+      .mobile-tabs { display: flex; border-bottom: 1px solid var(--hairline); }
+      .mobile-tabs button { flex: 1; border: 0; background: transparent; color: var(--muted); padding: 12px; font-weight: 650; border-bottom: 2px solid transparent; }
+      .mobile-tabs button.active { color: var(--text); border-bottom-color: var(--primary); }
+      .desktop-only-table { display: none; }
+      .mobile-results { display: block; }
+      .mobile-favorites { display: block; }
+    }
+    .metric-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .metric-rows .row { background: rgba(11, 14, 17, .5); border: 1px solid var(--hairline); border-radius: 6px; padding: 10px 12px; }
+    .metric-rows .row small { display: block; color: var(--muted); font-size: 11px; margin-bottom: 3px; }
+    .metric-rows .row .val { font-family: var(--mono); font-size: 13px; }
+    .metric-rows .row .val span { margin-left: 6px; font-size: 11px; }
+    .metric-rows .row.full { grid-column: 1 / -1; }
+    .fav-mobile-card { border: 1px solid var(--hairline); background: rgba(11, 14, 17, .5); border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+    .fav-mobile-card .name { font-weight: 650; margin-bottom: 8px; }
+    .fav-mobile-card .pair { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+    .fav-mobile-card .pair b { color: var(--text); font-family: var(--mono); }
+
+    @media (max-width: 900px) {
+      .app { display: block; }
+      .sidebar { display: none; }
+      .topbar { padding: 10px 14px; }
+      main { padding: 14px 12px 36px; }
+      .metric-grid { grid-template-columns: 1fr; }
+      .oos-mobile-only { display: none; }
+    }
+    @media (max-width: 520px) {
+      .topbar small, .top-actions .icon-btn { display: none; }
+      .card-body { padding: 12px; }
+      th, td { padding: 9px 8px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="brand"><span class="brand-mark">CF</span> Cripto Farol</div>
+      <div class="nav-label">Decisão</div>
+      <div class="nav-item" id="nav-monitor"><span class="nav-glyph">◆</span> Monitor</div>
+      <div class="nav-item active" id="nav-results"><span class="nav-glyph">◎</span> Resultados</div>
+      <div class="nav-item" id="nav-favorites"><span class="nav-glyph">★</span> Favoritos</div>
+      <div class="nav-label">Conta</div>
+      <div class="nav-item"><span class="nav-glyph">●</span> Meu perfil</div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div>
+          <h1 id="page-title">Resultados da otimização</h1>
+          <small id="page-subtitle">Validação walk-forward — treino vs holdout</small>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" type="button" aria-label="Alternar tema">◐</button>
+        </div>
+      </header>
+
+      <nav class="mobile-tabs" aria-label="Navegação móvel">
+        <button type="button" id="tab-results" class="active">Resultados</button>
+        <button type="button" id="tab-favorites">Favoritos</button>
+      </nav>
+
+      <main>
+        <!-- ============ RESULTS VIEW (card 470 delta) ============ -->
+        <section id="results-view" aria-label="Resultado de otimização com validação out-of-sample">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h2>BTC/USDT · 1d · Farol Tendência</h2>
+                <small>Otimização executada no treino; métricas finais validadas no holdout</small>
+              </div>
+              <div class="split-banner">
+                <span class="split-chip" id="split-chip" data-testid="split-chip">Split <b>70 / 30</b></span>
+                <span class="badge" id="verdict-badge-go" data-testid="verdict-badge">GO no holdout</span>
+                <span class="badge badge-nogo hidden" id="verdict-badge-nogo" data-testid="verdict-badge-nogo">NO-GO no holdout</span>
+                <span class="badge badge-warn hidden" id="verdict-badge-warn" data-testid="verdict-badge-warn">Holdout insuficiente</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="gono-banner go" id="gono-banner">
+                <div class="gono-icon" id="gono-icon" aria-hidden="true">✓</div>
+                <div>
+                  <h3 class="gono-title" id="gono-title">Estratégia aprovada no período de validação (holdout)</h3>
+                  <p id="gono-sub">Todos os critérios GO/NO-GO foram atendidos fora da amostra.</p>
+                  <ul id="gono-list" class="hidden">
+                    <li>CAGR ≥ benchmark B&amp;H no holdout</li>
+                    <li>Drawdown máximo ≤ 35%</li>
+                    <li>Calmar ≥ 1.0 · Profit factor ≥ 1.3 · Sharpe ≥ 0.8</li>
+                  </ul>
+                </div>
+              </div>
+
+              <table class="desktop-only-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Métrica</th>
+                    <th class="num" scope="col">Treino (in-sample)</th>
+                    <th class="num oos-col" scope="col" data-testid="oos-col-head">Holdout (out-of-sample)</th>
+                    <th class="num" scope="col">Veredito</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>CAGR</td>
+                    <td class="num">24,8%</td>
+                    <td class="num oos-col">18,2%</td>
+                    <td class="num"><span class="metric-ok" id="verdict-cagr" data-testid="verdict-cagr">✓ GO</span></td>
+                  </tr>
+                  <tr>
+                    <td>Benchmark B&amp;H</td>
+                    <td class="num">19,1%</td>
+                    <td class="num oos-col">12,4%</td>
+                    <td class="num"><span class="metric-ok">✓ superou</span></td>
+                  </tr>
+                  <tr>
+                    <td>Max Drawdown</td>
+                    <td class="num">-14,2%</td>
+                    <td class="num oos-col">-19,6%</td>
+                    <td class="num"><span class="metric-ok">✓ GO</span></td>
+                  </tr>
+                  <tr>
+                    <td>Calmar</td>
+                    <td class="num">1,75</td>
+                    <td class="num oos-col">0,93</td>
+                    <td class="num"><span class="metric-bad" id="verdict-calmar" data-testid="verdict-calmar">✕ NO-GO</span></td>
+                  </tr>
+                  <tr>
+                    <td>Profit Factor</td>
+                    <td class="num">2,10</td>
+                    <td class="num oos-col">1,61</td>
+                    <td class="num"><span class="metric-ok">✓ GO</span></td>
+                  </tr>
+                  <tr>
+                    <td>Sharpe</td>
+                    <td class="num">1,42</td>
+                    <td class="num oos-col">1,15</td>
+                    <td class="num"><span class="metric-ok">✓ GO</span></td>
+                  </tr>
+                  <tr>
+                    <td>Nº de trades</td>
+                    <td class="num">342</td>
+                    <td class="num oos-col">128</td>
+                    <td class="num"><span class="metric-ok">✓ ≥ 100</span></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="mobile-results" aria-label="Comparativo Treino vs Holdout (mobile)">
+                <div class="metric-rows">
+                  <div class="row"><small>CAGR (vs B&amp;H 12,4%)</small><div class="val">24,8% <span class="metric-muted">treino</span></div><div class="val">18,2% <span class="metric-ok" data-testid="m-cagr-verdict">✓ GO</span> <span class="oos-col-tag">holdout</span></div></div>
+                  <div class="row"><small>Max Drawdown</small><div class="val">-14,2% <span class="metric-muted">treino</span></div><div class="val">-19,6% <span class="metric-ok">✓ GO</span> <span class="oos-col-tag">holdout</span></div></div>
+                  <div class="row"><small>Calmar</small><div class="val">1,75 <span class="metric-muted">treino</span></div><div class="val">0,93 <span class="metric-bad" data-testid="m-calmar-verdict">✕ NO-GO</span> <span class="oos-col-tag">holdout</span></div></div>
+                  <div class="row"><small>Profit Factor</small><div class="val">2,10 <span class="metric-muted">treino</span></div><div class="val">1,61 <span class="metric-ok">✓ GO</span> <span class="oos-col-tag">holdout</span></div></div>
+                  <div class="row"><small>Sharpe</small><div class="val">1,42 <span class="metric-muted">treino</span></div><div class="val">1,15 <span class="metric-ok">✓ GO</span> <span class="oos-col-tag">holdout</span></div></div>
+                  <div class="row"><small>Nº de trades</small><div class="val">342 <span class="metric-muted">treino</span></div><div class="val">128 <span class="metric-ok">✓ ≥ 100</span> <span class="oos-col-tag">holdout</span></div></div>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn primary" id="btn-save-go" data-testid="btn-save" type="button">Salvar nos Favoritos</button>
+                <button class="btn" type="button">Refazer otimização</button>
+                <button class="btn" type="button" id="btn-split-config" data-testid="btn-split-config">Configurar split</button>
+              </div>
+              <p class="hidden" id="btn-block-hint" data-testid="btn-block-hint" style="color:var(--muted); font-size:12px; margin:10px 0 0;"></p>
+            </div>
+          </div>
+
+          <p class="prototype-note">Protótipo navegável do card #470. Delta: comparativo Treino vs Holdout, veredito GO/NO-GO e bloqueio de promoção a favorito.</p>
+          <details class="prototype-scenarios">
+            <summary>Revisar cenários do card #470</summary>
+            <div class="scenario-actions">
+              <button type="button" data-scenario="go" data-testid="scenario-go">Candidato GO no holdout (salvar liberado)</button>
+              <button type="button" data-scenario="nogo" data-testid="scenario-nogo">Candidato NO-GO (salvar bloqueado + motivo)</button>
+              <button type="button" data-scenario="override" data-testid="scenario-override">Override admin (forçar salvar)</button>
+              <button type="button" data-scenario="insufficient" data-testid="scenario-insufficient">Holdout sem trades suficientes</button>
+              <button type="button" data-scenario="revalidate" data-testid="scenario-revalidate">Favorito revalidado com degradação</button>
+            </div>
+          </details>
+        </section>
+
+        <!-- ============ SAVE MODAL ============ -->
+        <div class="modal-backdrop" id="save-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <div class="modal">
+            <div class="modal-head">
+              <h3 id="modal-title">★ Salvar nos Favoritos</h3>
+              <button class="close-btn" data-testid="close-modal" type="button" aria-label="Fechar">×</button>
+            </div>
+            <div class="nogo-block hidden" id="nogo-block">
+              <h4>✕ Inelegível: reprovado no holdout</h4>
+              <ul data-testid="nogo-reasons">
+                <li>Calmar 0,93 &lt; mínimo 1.0 no período de validação</li>
+                <li>O candidato foi otimizado apenas no treino; o holdout não confirma o desempenho</li>
+              </ul>
+            </div>
+            <div class="field">
+              <label for="fav-name">Nome da Estratégia *</label>
+              <input id="fav-name" type="text" value="BTC/USDT 1d - Farol Tendência - 18,2% Retorno (holdout)" />
+            </div>
+            <div class="field">
+              <label for="fav-notes">Notas (Opcional)</label>
+              <textarea id="fav-notes" placeholder="Ex: Melhor resultado em mercado de alta"></textarea>
+            </div>
+            <div class="field">
+              <label>Métricas de Performance (holdout)</label>
+              <div class="metric-grid">
+                <div class="m"><small>Retorno Total</small><b class="metric-ok">18,2%</b></div>
+                <div class="m"><small>Win Rate</small><b class="metric-ok">61,4%</b></div>
+                <div class="m"><small>Total de Trades</small><b>128</b></div>
+                <div class="m"><small>Sharpe Ratio</small><b>1,15</b></div>
+              </div>
+            </div>
+            <div class="override-row hidden" id="override-row">
+              <input type="checkbox" id="override-check" data-testid="override-check" />
+              <label for="override-check">Salvar mesmo assim (override NO-GO) — requer permissão de admin; a decisão fica registrada na auditoria.</label>
+            </div>
+            <div class="actions-row" style="margin-top: 4px">
+              <button class="btn primary" id="btn-confirm-save" data-testid="btn-confirm-save" type="button" disabled>Salvar</button>
+              <button class="btn" id="btn-cancel-save" data-testid="btn-cancel-save" type="button">Cancelar</button>
+            </div>
+            <p class="prototype-note" id="modal-feedback"></p>
+          </div>
+        </div>
+
+        <!-- ============ FAVORITES VIEW (revalidation delta) ============ -->
+        <section id="favorites-view" class="hidden" aria-label="Favoritos com revalidação">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h2>Favoritos</h2>
+                <small>Revalidação na janela mais recente — não altera o favorito automaticamente</small>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="reval-banner" id="reval-banner" data-testid="reval-banner">
+                <span><b>Degradação detectada (últimos 90 dias):</b> Farol Tendência reprovou no holdout recente (Calmar 0,82 &lt; 1.0). O favorito permanece ativo — veja o relatório antes de decidir.</span>
+                <button class="btn" id="btn-view-report" data-testid="btn-view-report" type="button">Ver relatório</button>
+              </div>
+              <table class="desktop-only-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Estratégia</th>
+                    <th class="num" scope="col">Retorno (IS salvo)</th>
+                    <th class="num" scope="col">Retorno (recente)</th>
+                    <th class="num" scope="col">Revalidação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>BTC/USDT 1d · Farol Tendência <button class="btn btn-xs" data-testid="btn-revalidate" type="button">Revalidar</button></td>
+                    <td class="num">+18,2%</td>
+                    <td class="num metric-bad">-2,4%</td>
+                    <td class="verdict-cell"><span class="badge badge-nogo" data-testid="reval-badge">NO-GO recente</span></td>
+                  </tr>
+                  <tr>
+                    <td>ETH/USDT 4h · RSI Reversal</td>
+                    <td class="num">+12,1%</td>
+                    <td class="num metric-ok">+9,8%</td>
+                    <td class="verdict-cell"><span class="badge badge-go">GO recente</span></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="mobile-favorites" aria-label="Favoritos com revalidação (mobile)">
+                <div class="fav-mobile-card">
+                  <div class="name">BTC/USDT 1d · Farol Tendência</div>
+                  <div class="pair"><span>Retorno (IS salvo)</span><b class="metric-ok">+18,2%</b></div>
+                  <div class="pair"><span>Retorno (recente)</span><b class="metric-bad">-2,4%</b></div>
+                  <div class="pair"><span>Revalidação</span><span class="badge badge-nogo" data-testid="reval-badge-m">NO-GO recente</span></div>
+                  <div style="margin-top:8px"><button class="btn btn-xs" data-testid="btn-revalidate-m" type="button">Revalidar</button></div>
+                </div>
+                <div class="fav-mobile-card">
+                  <div class="name">ETH/USDT 4h · RSI Reversal</div>
+                  <div class="pair"><span>Retorno (IS salvo)</span><b class="metric-ok">+12,1%</b></div>
+                  <div class="pair"><span>Retorno (recente)</span><b class="metric-ok">+9,8%</b></div>
+                  <div class="pair"><span>Revalidação</span><span class="badge badge-go">GO recente</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var modal = document.getElementById('save-modal');
+      var nogoBlock = document.getElementById('nogo-block');
+      var overrideRow = document.getElementById('override-row');
+      var overrideCheck = document.getElementById('override-check');
+      var btnConfirm = document.getElementById('btn-confirm-save');
+      var feedback = document.getElementById('modal-feedback');
+      var gonoBanner = document.getElementById('gono-banner');
+      var gonoIcon = document.getElementById('gono-icon');
+      var gonoTitle = document.getElementById('gono-title');
+      var gonoSub = document.getElementById('gono-sub');
+      var gonoList = document.getElementById('gono-list');
+      var badgeGo = document.getElementById('verdict-badge-go');
+      var badgeNogo = document.getElementById('verdict-badge-nogo');
+      var badgeWarn = document.getElementById('verdict-badge-warn');
+      var verdictCalmar = document.getElementById('verdict-calmar');
+      var verdictCagr = document.getElementById('verdict-cagr');
+      var btnSave = document.getElementById('btn-save-go');
+      var favName = document.getElementById('fav-name');
+      var state = { scenario: 'go', override: false };
+      var lastTrigger = null;
+
+      function setModalOpen(open) {
+        modal.classList.toggle('open', open);
+        if (open) {
+          favName.focus();
+        } else if (lastTrigger) {
+          lastTrigger.focus();
+        }
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('open')) {
+          setModalOpen(false);
+        }
+      });
+
+      function renderBanner(kind) {
+        var isGo = kind === 'go';
+        gonoBanner.classList.toggle('go', isGo);
+        gonoBanner.classList.toggle('nogo', !isGo);
+        gonoIcon.textContent = isGo ? '\u2713' : '\u2715';
+        badgeGo.classList.toggle('hidden', !isGo);
+        badgeNogo.classList.toggle('hidden', isGo || kind === 'insufficient');
+        if (badgeWarn) badgeWarn.classList.toggle('hidden', kind !== 'insufficient');
+      }
+
+      function applyGo() {
+        state.scenario = 'go';
+        state.override = false;
+        renderBanner('go');
+        gonoTitle.textContent = 'Estrat\u00e9gia aprovada no per\u00edodo de valida\u00e7\u00e3o (holdout)';
+        gonoTitle.className = 'gono-title';
+        gonoSub.textContent = 'Todos os crit\u00e9rios GO/NO-GO foram atendidos fora da amostra.';
+        gonoList.classList.add('hidden');
+        verdictCalmar.textContent = '\u2713 GO';
+        verdictCalmar.className = 'metric-ok';
+        verdictCagr.textContent = '\u2713 GO';
+        verdictCagr.className = 'metric-ok';
+        btnSave.disabled = false;
+        btnSave.textContent = 'Salvar nos Favoritos';
+        document.getElementById('btn-block-hint').classList.add('hidden');
+      }
+
+      function applyNogo() {
+        state.scenario = 'nogo';
+        state.override = false;
+        renderBanner('nogo');
+        gonoTitle.textContent = 'Estrat\u00e9gia reprovada no per\u00edodo de valida\u00e7\u00e3o (holdout)';
+        gonoTitle.className = 'gono-title';
+        gonoSub.textContent = 'A otimiza\u00e7\u00e3o foi feita no treino, mas o holdout n\u00e3o confirmou o desempenho. Candidato ineleg\u00edvel a favorito.';
+        gonoList.classList.remove('hidden');
+        verdictCalmar.textContent = '\u2715 NO-GO';
+        verdictCalmar.className = 'metric-bad';
+        verdictCagr.textContent = '\u2713 GO';
+        verdictCagr.className = 'metric-ok';
+        btnSave.disabled = false;
+        btnSave.textContent = 'Salvar nos Favoritos';
+        var hint = document.getElementById('btn-block-hint');
+        hint.classList.remove('hidden');
+        hint.textContent = 'Bloqueado no holdout (NO-GO). Admin pode usar override no modal.';
+      }
+
+      function applyInsufficient() {
+        state.scenario = 'insufficient';
+        state.override = false;
+        renderBanner('insufficient');
+        gonoTitle.textContent = 'Holdout sem trades suficientes para validar';
+        gonoTitle.className = 'gono-title';
+        gonoSub.textContent = 'A otimiza\u00e7\u00e3o rodou no treino, mas o holdout produziu menos trades que o m\u00ednimo exigido (100). Candidato inv\u00e1lido para promo\u00e7\u00e3o.';
+        gonoList.classList.remove('hidden');
+        gonoList.innerHTML = '<li>Min\u00edmo exigido: 100 trades no holdout</li><li>Observado: 54 trades no holdout</li>';
+        verdictCalmar.textContent = '\u2014';
+        verdictCalmar.className = 'metric-muted';
+        verdictCagr.textContent = '\u2014';
+        verdictCagr.className = 'metric-muted';
+        btnSave.disabled = false;
+        btnSave.textContent = 'Salvar nos Favoritos';
+        var hint = document.getElementById('btn-block-hint');
+        hint.classList.remove('hidden');
+        hint.textContent = 'Resultado inv\u00e1lido no holdout (trades insuficientes).';
+      }
+
+      function applyOverride() {
+        state.scenario = 'nogo';
+        state.override = true;
+        renderBanner('nogo');
+        gonoTitle.textContent = 'Estrat\u00e9gia reprovada no per\u00edodo de valida\u00e7\u00e3o (holdout)';
+        gonoTitle.className = 'gono-title';
+        gonoSub.textContent = 'A otimiza\u00e7\u00e3o foi feita no treino, mas o holdout n\u00e3o confirmou o desempenho. Candidato ineleg\u00edvel a favorito.';
+        gonoList.classList.remove('hidden');
+        verdictCalmar.textContent = '\u2715 NO-GO';
+        verdictCalmar.className = 'metric-bad';
+        verdictCagr.textContent = '\u2713 GO';
+        verdictCagr.className = 'metric-ok';
+        btnSave.disabled = false;
+        btnSave.textContent = 'Salvar com override (admin)';
+        var hint = document.getElementById('btn-block-hint');
+        hint.classList.remove('hidden');
+        hint.textContent = 'Modo admin: veredito NO-GO vis\u00edvel, salvar exigir\u00e1 confirma\u00e7\u00e3o de override.';
+      }
+
+      function openSaveModal() {
+        lastTrigger = document.activeElement;
+        feedback.textContent = '';
+        if (state.scenario === 'nogo') {
+          nogoBlock.classList.remove('hidden');
+          overrideRow.classList.remove('hidden');
+          overrideCheck.checked = !!state.override;
+          btnConfirm.disabled = !overrideCheck.checked;
+          if (state.override) {
+            nogoBlock.querySelector('h4').textContent = '\u2715 Ineleg\u00edvel: reprovado no holdout (override permitido para admin)';
+          } else {
+            nogoBlock.querySelector('h4').textContent = '\u2715 Ineleg\u00edvel: reprovado no holdout';
+          }
+        } else {
+          nogoBlock.classList.add('hidden');
+          overrideRow.classList.add('hidden');
+          btnConfirm.disabled = false;
+        }
+        setModalOpen(true);
+      }
+
+      btnSave.addEventListener('click', openSaveModal);
+      document.querySelector('.close-btn').addEventListener('click', function () { setModalOpen(false); });
+      document.getElementById('btn-cancel-save').addEventListener('click', function () { setModalOpen(false); });
+      modal.addEventListener('click', function (e) { if (e.target === modal) setModalOpen(false); });
+
+      overrideCheck.addEventListener('change', function () {
+        btnConfirm.disabled = !overrideCheck.checked;
+      });
+
+      btnConfirm.addEventListener('click', function () {
+        if (state.scenario === 'nogo' && !overrideCheck.checked) return;
+        feedback.textContent = overrideCheck.checked
+          ? '\u2713 Favorito salvo com override NO-GO (decis\u00e3o registrada em auditoria).'
+          : '\u2713 Favorito salvo com veredito GO no holdout.';
+        setModalOpen(false);
+      });
+
+      document.getElementById('nav-results').addEventListener('click', function () {
+        switchView('results');
+      });
+      document.getElementById('nav-favorites').addEventListener('click', function () {
+        switchView('favorites');
+      });
+      document.getElementById('tab-results').addEventListener('click', function () {
+        switchView('results');
+      });
+      document.getElementById('tab-favorites').addEventListener('click', function () {
+        switchView('favorites');
+      });
+      function switchView(v) {
+        var resultsView = document.getElementById('results-view');
+        var favView = document.getElementById('favorites-view');
+        var isResults = v === 'results';
+        resultsView.classList.toggle('hidden', !isResults);
+        favView.classList.toggle('hidden', isResults);
+        document.getElementById('nav-results').classList.toggle('active', isResults);
+        document.getElementById('nav-favorites').classList.toggle('active', !isResults);
+        document.getElementById('tab-results').classList.toggle('active', isResults);
+        document.getElementById('tab-favorites').classList.toggle('active', !isResults);
+        document.getElementById('page-title').textContent = isResults ? 'Resultados da otimiza\u00e7\u00e3o' : 'Favoritos';
+        document.getElementById('page-subtitle').textContent = isResults
+          ? 'Valida\u00e7\u00e3o walk-forward \u2014 treino vs holdout'
+          : 'Revalida\u00e7\u00e3o na janela mais recente';
+      }
+      document.getElementById('btn-view-report').addEventListener('click', function () {
+        var banner = document.getElementById('reval-banner');
+        var note = document.createElement('p');
+        note.setAttribute('data-testid', 'report-note');
+        note.textContent = 'Relat\u00f3rio aberto (mock): degrada\u00e7\u00e3o de -2,4% na janela recente vs +18,2% in-sample; Calmar 0,82 < 1.0. Favorito permanece ativo.';
+        note.style.cssText = 'color: var(--text); font-size: 13px;';
+        banner.appendChild(note);
+        this.disabled = true;
+      });
+      var revalBtns = document.querySelectorAll('[data-testid="btn-revalidate"], [data-testid="btn-revalidate-m"]');
+      revalBtns.forEach(function (b) {
+        b.addEventListener('click', function () {
+          this.textContent = 'Revalidado agora';
+          this.disabled = true;
+        });
+      });
+      document.getElementById('btn-split-config').addEventListener('click', function () {
+        var chip = document.getElementById('split-chip');
+        chip.innerHTML = 'Split <b>60 / 40</b>';
+      });
+
+      document.querySelectorAll('[data-scenario]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var s = btn.getAttribute('data-scenario');
+          if (s === 'go') applyGo();
+          if (s === 'nogo') applyNogo();
+          if (s === 'override') applyOverride();
+          if (s === 'insufficient') applyInsufficient();
+          if (s === 'revalidate') {
+            document.getElementById('nav-favorites').click();
+          }
+        });
+      });
+
+      applyGo();
+    })();
+  </script></script>
+</body>
+</html>

@@ -54,6 +54,7 @@ async def test_batch_backtest_start_enqueues_job(monkeypatch):
         "custom_ranges": None,
         "initial_capital": 100,
         "direction": "long",
+        "split_train_ratio": None,
         "user_id": "user-123",
     }
 

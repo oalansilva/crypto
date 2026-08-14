@@ -116,8 +116,14 @@ transition_marker() {
 
 marker="$(transition_marker)"
 
-comments_json="$(gh issue view "$card" --repo "$repo" --json comments 2>/dev/null || true)"
-if [[ -z "$comments_json" ]] || ! printf '%s' "$comments_json" | jq -e . >/dev/null 2>&1; then
+comments_json=""
+if ! comments_json="$(gh issue view "$card" --repo "$repo" --json comments 2>/dev/null)"; then
+  error "could not fetch comments for card $card (gh issue view failed); refusing to post (fail-closed)"
+fi
+if [[ -z "$comments_json" ]] || ! printf '%s' "$comments_json" | jq -e '
+  (.comments | type == "array") and
+  (.comments | all(.[]; type == "object" and (.body | type == "string") and (.url | type == "string")))
+' >/dev/null 2>&1; then
   error "could not fetch comments for card $card (gh issue view failed or returned invalid JSON); refusing to post (fail-closed)"
 fi
 

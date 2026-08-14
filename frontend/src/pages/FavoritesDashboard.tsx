@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, Activity, BarChart3, Bell, Star } from 'lucide-react';
+import { Trash2, Search, List, Activity, BarChart3, Bell, Star, RefreshCw, X } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
@@ -15,6 +15,7 @@ import {
 } from '@/lib/strategyTransparency';
 import type { TradeExplanation } from '@/types/tradeExplanation';
 import type { MonitorSyncStatus } from '@/lib/signalHistory';
+import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison';
 
 import * as XLSX from 'xlsx';
 
@@ -68,6 +69,20 @@ interface MonitorOpportunity {
     signal_history?: MonitorSignalHistoryItem[] | null;
     trade_explanation?: TradeExplanation | null;
     strategy_transparency?: StrategyTransparency | Record<string, unknown> | null;
+}
+
+interface RevalidationReport {
+    favorite_id: number;
+    symbol: string;
+    timeframe: string;
+    strategy_name: string;
+    verdict: string;
+    window: { start: string; end: string };
+    revalidation: {
+        best_metrics: Record<string, any>;
+        oos_metrics?: Record<string, any> | null;
+        oos_verdict?: Record<string, any> | null;
+    };
 }
 
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
@@ -272,6 +287,10 @@ const FavoritesDashboard: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
+    const [revalidationReport, setRevalidationReport] = useState<RevalidationReport | null>(null);
+    const [revalidationError, setRevalidationError] = useState<string | null>(null);
+    const revalidationCloseRef = useRef<HTMLButtonElement | null>(null);
+    const revalidationTriggerRef = useRef<HTMLElement | null>(null);
     const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
 
     const [loadingAnalysisId, setLoadingAnalysisId] = useState<number | null>(null);
@@ -341,6 +360,53 @@ const FavoritesDashboard: React.FC = () => {
     const handleToggleTelegram = (fav: FavoriteStrategy) => {
         updateTelegramMutation.mutate({ id: fav.id, notify_telegram: !fav.notify_telegram });
     };
+
+    const revalidateMutation = useMutation({
+        mutationFn: async (id: number) => {
+            const res = await authFetch(`${API_BASE_URL}/favorites/${id}/revalidate`, { method: 'POST' });
+            if (!res.ok) {
+                const error = await res.json().catch(() => ({}));
+                throw new Error(error.detail || 'Falha ao revalidar estratégia');
+            }
+            return res.json() as Promise<RevalidationReport>;
+        },
+        onSuccess: (report) => {
+            setRevalidationError(null);
+            setRevalidationReport(report);
+            queryClient.invalidateQueries({ queryKey: ['favorites', user?.id ?? 'anonymous'] });
+        },
+        onError: (error) => {
+            setRevalidationError(error instanceof Error ? error.message : 'Falha ao revalidar estratégia');
+        },
+    });
+
+    const handleRevalidate = (fav: FavoriteStrategy, trigger: HTMLElement) => {
+        revalidationTriggerRef.current = trigger;
+        setRevalidationError(null);
+        revalidateMutation.mutate(fav.id);
+    };
+
+    const closeRevalidationReport = () => {
+        setRevalidationReport(null);
+        window.setTimeout(() => revalidationTriggerRef.current?.focus(), 0);
+    };
+
+    useEffect(() => {
+        if (!revalidationReport) return;
+        revalidationCloseRef.current?.focus();
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                closeRevalidationReport();
+                return;
+            }
+            if (event.key === 'Tab') {
+                event.preventDefault();
+                revalidationCloseRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [revalidationReport]);
 
     const getStarCount = (tier: number | null): number => {
         if (tier === 1) return 3;
@@ -1095,6 +1161,32 @@ const FavoritesDashboard: React.FC = () => {
         return { label: 'Backtest aguardando atualização', className: 'pending' };
     };
 
+    const formatRevalidationStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } | null => {
+        const metrics = fav.metrics || {};
+        const verdict = String(metrics.revalidation_verdict || '').toUpperCase();
+        const revalidatedAt = metrics.revalidation_at;
+        const formattedDate = revalidatedAt
+            ? new Date(revalidatedAt).toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            })
+            : null;
+        if (!verdict) return null;
+        if (verdict === 'GO') {
+            return { label: formattedDate ? `Revalidado (GO): ${formattedDate}` : 'Revalidado (GO)', className: 'revalidated-go' };
+        }
+        if (verdict === 'ERROR') {
+            return { label: 'Revalidação com erro', className: 'revalidated-error', title: 'Erro no holdout da revalidação' };
+        }
+        return {
+            label: formattedDate ? `Degradado (${verdict}): ${formattedDate}` : `Degradado (${verdict})`,
+            className: 'revalidated-no-go',
+            title: 'Reprovado na revalidação walk-forward (janela recente). Decisão de remoção permanece manual.',
+        };
+    };
+
     const cryptoFavorites = React.useMemo(
         () => (favorites || []).filter((fav) => isCryptoPair(fav.symbol)),
         [favorites]
@@ -1291,6 +1383,7 @@ const FavoritesDashboard: React.FC = () => {
                                 const strategyDetail = getGridStrategyDetail(fav);
                                 const strategyDescription = getFavoriteStrategyDescription(fav);
                                 const refreshStatus = formatRefreshStatus(fav);
+                                const revalidationStatus = formatRevalidationStatus(fav);
                                 return (
                                     <article key={fav.id} className={`fav-mobile-card ${tier.className}`}>
                                         <div className="fav-mobile-card-head">
@@ -1302,6 +1395,11 @@ const FavoritesDashboard: React.FC = () => {
                                                 <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
                                                     {refreshStatus.label}
                                                 </span>
+                                                {revalidationStatus ? (
+                                                    <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
+                                                        {revalidationStatus.label}
+                                                    </span>
+                                                ) : null}
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                 {direction === 'short' ? 'Short' : 'Long'}
@@ -1324,6 +1422,9 @@ const FavoritesDashboard: React.FC = () => {
                                             </button>
                                             {isAdmin ? (
                                                 <>
+                                                    <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente">
+                                                        <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />Revalidar
+                                                    </button>
                                                     <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
                                                 </>
                                             ) : null}
@@ -1376,6 +1477,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const strategyDetail = getGridStrategyDetail(fav);
                                         const strategyDescription = getFavoriteStrategyDescription(fav);
                                         const refreshStatus = formatRefreshStatus(fav);
+                                        const revalidationStatus = formatRevalidationStatus(fav);
 
                                         return (
                                             <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`}>
@@ -1408,6 +1510,11 @@ const FavoritesDashboard: React.FC = () => {
                                                         <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
                                                             {refreshStatus.label}
                                                         </span>
+                                                        {revalidationStatus ? (
+                                                            <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
+                                                                {revalidationStatus.label}
+                                                            </span>
+                                                        ) : null}
                                                     </div>
                                                 </td>
                                                 <td className="direction-col">
@@ -1434,6 +1541,9 @@ const FavoritesDashboard: React.FC = () => {
                                                         </button>
                                                         {isAdmin ? (
                                                             <>
+                                                                <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente" aria-label="Revalidar na janela recente">
+                                                                    <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />
+                                                                </button>
                                                                 <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
                                                             </>
                                                         ) : null}
@@ -1473,6 +1583,39 @@ const FavoritesDashboard: React.FC = () => {
                         ) : null}
                     </div>
                 </main>
+
+                {revalidationError ? (
+                    <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border border-[#f6465d]/50 bg-[#2b1720] px-4 py-3 text-sm text-[#f6465d] shadow-xl" role="alert">
+                        {revalidationError}
+                    </div>
+                ) : null}
+
+                {revalidationReport ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" data-testid="revalidation-report-modal" role="dialog" aria-modal="true" aria-labelledby="revalidation-report-title">
+                        <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-[#2b3139] bg-[#181a20] text-[#eaecef] shadow-2xl">
+                            <div className="flex items-start justify-between gap-4 border-b border-[#2b3139] p-5 sm:p-6">
+                                <div>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <h2 id="revalidation-report-title" className="text-xl font-semibold">Relatório de revalidação</h2>
+                                        <OosVerdictBadge verdict={revalidationReport.revalidation.oos_verdict} />
+                                    </div>
+                                    <p className="mt-2 text-sm text-[#929aa5]">
+                                        {revalidationReport.symbol} · {revalidationReport.timeframe} · {revalidationReport.window.start} a {revalidationReport.window.end}
+                                    </p>
+                                    <p className="mt-1 text-xs text-[#929aa5]">A revalidação atualiza somente o relatório; parâmetros e ativação permanecem inalterados.</p>
+                                </div>
+                                <button ref={revalidationCloseRef} type="button" onClick={closeRevalidationReport} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#2b3139] text-[#b7bdc6] hover:bg-[#2b3139]" aria-label="Fechar relatório">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <OosMetricsTable
+                                trainMetrics={revalidationReport.revalidation.best_metrics}
+                                oosMetrics={revalidationReport.revalidation.oos_metrics}
+                                verdict={revalidationReport.revalidation.oos_verdict}
+                            />
+                        </div>
+                    </div>
+                ) : null}
 
                 {/* Compare Modal */}
                 {

@@ -223,6 +223,126 @@ else
   printf 'Skipped (orphan inventory runs in post/audit; legacy debt does not block pre).\n'
 fi
 
+section "Card age inventory (audit)"
+if [[ "$mode" == "audit" ]]; then
+  age_threshold="${CARD_AGE_THRESHOLD_DAYS:-30}"
+  age_max_per_column="${CARD_AGE_MAX_PER_COLUMN:-5}"
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    card_age_query='
+      query($project: ID!, $cursor: String) {
+        node(id: $project) {
+          ... on ProjectV2 {
+            items(first: 100, after: $cursor) {
+              pageInfo { hasNextPage endCursor }
+              nodes {
+                updatedAt
+                content { ... on Issue { number title } }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { name }
+                }
+              }
+            }
+          }
+        }
+      }'
+    page_json="$(gh api graphql -f query="$card_age_query" -F project=PVT_lAHOAAHtBM4BV8b2zgrMgus 2>/dev/null || true)"
+    if [[ -z "$page_json" ]] || ! printf '%s' "$page_json" | jq -e '.data.node.items.nodes' >/dev/null 2>&1; then
+      warn "card age inventory unavailable (GraphQL project query returned no/invalid data; check auth/rate limit/project scope)"
+    else
+      nodes_json="$(printf '%s' "$page_json" | jq -c '.data.node.items.nodes')"
+      page=0
+      while [[ $page -lt 20 ]]; do
+        has_next="$(printf '%s' "$page_json" | jq -r '.data.node.items.pageInfo.hasNextPage // false' 2>/dev/null)"
+        cursor="$(printf '%s' "$page_json" | jq -r '.data.node.items.pageInfo.endCursor // ""' 2>/dev/null)"
+        [[ "$has_next" != "true" || -z "$cursor" ]] && break
+        page_json="$(gh api graphql -f query="$card_age_query" -F project=PVT_lAHOAAHtBM4BV8b2zgrMgus -F cursor="$cursor" 2>/dev/null || true)"
+        if [[ -z "$page_json" ]] || ! printf '%s' "$page_json" | jq -e '.data.node.items.nodes' >/dev/null 2>&1; then
+          warn "card age inventory pagination failed; inventory may be partial"
+          break
+        fi
+        nodes_json="$(printf '%s\n%s' "$nodes_json" "$(printf '%s' "$page_json" | jq -c '.data.node.items.nodes')" | jq -s 'add' 2>/dev/null || printf '%s' "$nodes_json")"
+        page=$((page + 1))
+      done
+
+      now_epoch="$(date +%s)"
+      rows="$(printf '%s' "$nodes_json" | jq -r --argjson now "$now_epoch" '
+        .[]
+        | select(.content.number != null)
+        | [
+            (.fieldValueByName.name // "Sem status"),
+            (.content.number|tostring),
+            (.content.title // ""),
+            ((($now - ((.updatedAt | fromdateiso8601) // $now)) / 86400) | floor)
+          ] | @tsv' 2>/dev/null | sort -t$'\t' -k4 -rn)"
+      if [[ -z "$rows" ]]; then
+        warn "card age inventory returned no rows (unexpected board shape); skipping age warnings"
+      else
+        per_column="$(printf '%s\n' "$rows" | awk -F'\t' -v col="$age_threshold" -v max="$age_max_per_column" '
+          {
+            key = $1
+            count[key]++
+            if (count[key] > max) next
+            if ($4 > col) {
+              if (!seen[key]++) {
+                printf "Cards com mais de %d dias sem atualizacao na coluna %s (max %d exibidos):\n", col, key, max
+              }
+              printf "  #%s %s (%dd)\n", $2, $3, $4
+            }
+          }')"
+        if [[ -n "$per_column" ]]; then
+          warn "cards presos por coluna (idade > ${age_threshold}d; inventario informativo):"
+          printf '%s\n' "$per_column" | indent
+        else
+          printf 'No cards older than %s days in their current column.\n' "$age_threshold"
+        fi
+      fi
+    fi
+  else
+    warn "card age inventory unavailable (gh unavailable or not authenticated)"
+  fi
+else
+  printf 'Skipped (card age inventory runs in audit only).\n'
+fi
+
+section "Board/issue title sync (audit)"
+if [[ "$mode" == "audit" ]]; then
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
+    if [[ -z "$board_json" ]] || ! printf '%s' "$board_json" | jq -e '.items' >/dev/null 2>&1; then
+      warn "board/issue title sync check unavailable (gh project item-list returned no/invalid data; check auth/rate limit/project scope)"
+    else
+      title_mismatches=0
+      while IFS=$'\t' read -r card_num board_title issue_title; do
+        [[ -z "$card_num" ]] && continue
+        card_num="${card_num//[$'\r']/}"
+        board_title="${board_title//[$'\r']/}"
+        issue_title="${issue_title//[$'\r']/}"
+        if [[ -z "$issue_title" ]]; then
+          # Item without a linked issue (draft/PR): out of scope per change kaizen-board-issue-rename-note.
+          continue
+        fi
+        if [[ "$board_title" == "$issue_title" ]]; then
+          continue
+        fi
+        note_found="$(gh api "repos/oalansilva/crypto/issues/$card_num/comments" --paginate --jq '[.[] | select((.body // "") | test("Nota de divergência|Nota de sincronização de título"; "i"))] | length' 2>/dev/null || printf '0')"
+        if [[ "$note_found" =~ ^[0-9]+$ ]] && [[ "$note_found" -gt 0 ]]; then
+          printf '  #%s board title != issue title, divergência com nota registrada (sem warn): %s\n' "$card_num" "$board_title"
+        else
+          title_mismatches=$((title_mismatches + 1))
+          warn "board title differs from issue title without divergence note (#$card_num): \"$board_title\" vs \"$issue_title\" (poste nota de divergência no card: Motivo + Aprovado por)"
+        fi
+      done < <(printf '%s' "$board_json" | jq -r '.items[] | select(.content.number != null) | [(.content.number|tostring), (.title // ""), (.content.title // "")] | @tsv' 2>/dev/null)
+      if [[ "$title_mismatches" -eq 0 ]]; then
+        printf 'Board/issue titles consistent or divergence notes registered.\n'
+      fi
+    fi
+  else
+    warn "board/issue title sync check unavailable (gh unavailable or not authenticated)"
+  fi
+else
+  printf 'Skipped (board/issue title sync check runs in audit only).\n'
+fi
+
 section "OpenSpec duplicate changes (post)"
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   dup_changes="$(comm -12 \
@@ -605,6 +725,77 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   fi
 else
   printf 'Skipped (board fields check runs in post/audit).\n'
+fi
+
+section "Homologation evidence comments (post/audit)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  release_cards="${RELEASE_CARDS:-}"
+  if [[ -z "$release_cards" ]]; then
+    warn "RELEASE_CARDS not set; package homologation-comment check skipped"
+  elif ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+    issue "homologation-comment check could not run (gh unavailable or not authenticated) with RELEASE_CARDS set"
+  else
+    if [[ ! "$release_cards" =~ ^[[:space:]]*[0-9]+[[:space:]]*(,[[:space:]]*[0-9]+[[:space:]]*)*$ ]]; then
+      issue "RELEASE_CARDS contains invalid card identifiers; expected comma-separated numeric IDs"
+    else
+      compact_cards="${release_cards//[[:space:]]/}"
+      IFS=',' read -ra raw_evidence_card_arr <<< "$compact_cards"
+      evidence_card_arr=()
+      invalid_card_id=""
+      for raw_card_num in "${raw_evidence_card_arr[@]}"; do
+        card_num="${raw_card_num#"${raw_card_num%%[!0]*}"}"
+        [[ -n "$card_num" ]] || card_num="0"
+        if [[ "$card_num" == "0" || ${#card_num} -gt 10 || (${#card_num} -eq 10 && "$card_num" > "2147483647") ]]; then
+          invalid_card_id="$raw_card_num"
+          break
+        fi
+        evidence_card_arr+=("$card_num")
+      done
+
+      evidence_board_json=""
+      if [[ -n "$invalid_card_id" ]]; then
+        issue "RELEASE_CARDS contains out-of-range card identifier: $invalid_card_id"
+      elif ! evidence_board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null)"; then
+        issue "homologation-comment check could not run (gh project item-list failed)"
+      elif [[ -z "$evidence_board_json" ]] || ! printf '%s' "$evidence_board_json" | jq -e '.items | type == "array"' >/dev/null 2>&1; then
+        issue "homologation-comment check could not run (gh project item-list returned no/invalid data)"
+      else
+        declare -A seen_evidence_cards=()
+        for card_num in "${evidence_card_arr[@]}"; do
+          if [[ -n "${seen_evidence_cards[$card_num]:-}" ]]; then
+            continue
+          fi
+          seen_evidence_cards["$card_num"]=1
+
+          card_status="$(printf '%s' "$evidence_board_json" | jq -r --argjson n "$card_num" '[.items[] | select(.content.number == $n) | .status][0] // ""' 2>/dev/null || true)"
+          if [[ -z "$card_status" ]]; then
+            issue "homologation-comment check could not find card #$card_num or its Status on Project 1"
+            continue
+          fi
+          case "$card_status" in
+            Homologado|Pronto) ;;
+            *)
+              printf 'Card #%s is %s; homologation-comment check not applicable.\n' "$card_num" "$card_status"
+              continue
+              ;;
+          esac
+
+          comments=""
+          if ! comments="$(gh api "repos/oalansilva/crypto/issues/$card_num/comments" --paginate --jq '.[].body' 2>/dev/null)"; then
+            issue "homologation-comment check could not list all comments for card #$card_num"
+            continue
+          fi
+          if printf '%s\n' "$comments" | grep -qiF 'Homologado por Alan na develop.'; then
+            printf 'Card #%s has canonical homologation evidence.\n' "$card_num"
+          else
+            issue "card #$card_num is $card_status without canonical homologation comment; confirm Alan's approval and run scripts/post-card-evidence-comment.sh --transition homologado --card $card_num --commit <sha> --dry-run before posting"
+          fi
+        done
+      fi
+    fi
+  fi
+else
+  printf 'Skipped (homologation-comment check runs in post/audit).\n'
 fi
 
 section "Summary"

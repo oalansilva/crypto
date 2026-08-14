@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { X, Star, AlertCircle } from 'lucide-react'
+import { X, Star, AlertCircle, ShieldAlert } from 'lucide-react'
+import { useAuth } from '@/stores/authStore'
 
 interface SaveFavoriteModalProps {
     isOpen: boolean
@@ -8,6 +9,9 @@ interface SaveFavoriteModalProps {
         template_name: string
         symbol: string
         timeframe: string
+        start_date?: string | null
+        end_date?: string | null
+        period_type?: string | null
         parameters: Record<string, any>
         metrics: {
             total_return: number
@@ -17,16 +21,32 @@ interface SaveFavoriteModalProps {
             max_drawdown?: number
             sharpe_ratio?: number
         }
+        promotion_metrics?: Record<string, any> | null
         trades?: Array<any>
+        oos_verdict?: {
+            status?: string
+            reasons?: string[]
+            holdout_trades?: number
+            split_train_ratio?: number
+        } | null
+        oos_metrics?: Record<string, any> | null
+        oos_proof?: string | null
     }
     onSave: (data: {
         name: string
         symbol: string
         timeframe: string
+        start_date?: string | null
+        end_date?: string | null
+        period_type?: string | null
         strategy_name: string
         parameters: Record<string, any>
         metrics: Record<string, any>
         notes?: string
+        oos_verdict?: Record<string, any> | null
+        oos_metrics?: Record<string, any> | null
+        oos_proof?: string | null
+        override_oos?: boolean
     }) => Promise<void>
 }
 
@@ -35,6 +55,12 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
     const [notes, setNotes] = useState('')
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [overrideOos, setOverrideOos] = useState(false)
+    const { user } = useAuth()
+    const isAdmin = Boolean(user?.isAdmin)
+
+    const verdictStatus = String(backtestResult?.oos_verdict?.status ?? '').toUpperCase()
+    const isBlocked = Boolean(backtestResult?.oos_verdict) && verdictStatus !== 'GO'
 
     // total_return é decimal (0.2939 = 29.39%); total_return_pct já é % (2939.86)
     const totalReturnPct = backtestResult?.metrics?.total_return_pct ?? ((backtestResult?.metrics?.total_return ?? 0) * 100)
@@ -47,12 +73,23 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
             setName(autoName)
             setNotes('')
             setError(null)
+            setOverrideOos(false)
         }
     }, [isOpen, backtestResult, totalReturnPct])
 
     const handleSave = async () => {
         if (!name.trim()) {
             setError('Nome é obrigatório')
+            return
+        }
+
+        if (isBlocked && !isAdmin) {
+            setError('Candidato reprovado na validação walk-forward (holdout). Apenas admin pode usar override.')
+            return
+        }
+
+        if (isBlocked && !overrideOos) {
+            setError('Candidato reprovado na validação walk-forward (holdout). Use override apenas com decisão explícita.')
             return
         }
 
@@ -64,13 +101,20 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                 name: name.trim(),
                 symbol: backtestResult.symbol,
                 timeframe: backtestResult.timeframe,
+                start_date: backtestResult.start_date ?? null,
+                end_date: backtestResult.end_date ?? null,
+                period_type: backtestResult.period_type ?? null,
                 strategy_name: backtestResult.template_name,
                 parameters: backtestResult.parameters,
                 metrics: {
-                    ...backtestResult.metrics,
-                    trades: backtestResult.trades // Include trades in metrics
+                    ...(backtestResult.promotion_metrics ?? backtestResult.metrics),
+                    trades: backtestResult.promotion_metrics?.trades ?? backtestResult.trades
                 },
-                notes: notes.trim() || undefined
+                notes: notes.trim() || undefined,
+                oos_verdict: backtestResult.oos_verdict ?? null,
+                oos_metrics: backtestResult.oos_metrics ?? null,
+                oos_proof: backtestResult.oos_proof ?? null,
+                override_oos: isBlocked && overrideOos
             })
             onClose()
         } catch (err: any) {
@@ -104,6 +148,38 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                             <p className="text-red-400 text-sm">{error}</p>
                         </div>
                     )}
+
+                    {/* Walk-forward gate (card #470) */}
+                    {backtestResult.oos_verdict ? (
+                        <div className={`rounded-lg border p-4 ${isBlocked ? 'border-red-500/50 bg-red-500/10' : 'border-green-500/40 bg-green-500/10'}`} data-testid="oos-gate-block">
+                            <div className="flex items-start gap-3">
+                                <ShieldAlert className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isBlocked ? 'text-red-500' : 'text-green-500'}`} />
+                                <div>
+                                    <p className={`text-sm font-semibold ${isBlocked ? 'text-red-400' : 'text-green-400'}`}>
+                                        Validação walk-forward: {isBlocked ? `veredito ${verdictStatus}` : 'GO no holdout'}
+                                    </p>
+                                    {isBlocked && backtestResult.oos_verdict.reasons?.length ? (
+                                        <ul className="mt-2 space-y-1 text-xs text-red-300/90">
+                                            {backtestResult.oos_verdict.reasons.slice(0, 5).map((reason, idx) => (
+                                                <li key={idx}>• {reason}</li>
+                                            ))}
+                                        </ul>
+                                    ) : null}
+                                    {isBlocked && isAdmin && (
+                                        <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-gray-300">
+                                            <input
+                                                type="checkbox"
+                                                checked={overrideOos}
+                                                onChange={(e) => setOverrideOos(e.target.checked)}
+                                                className="h-4 w-4 rounded border-gray-600"
+                                            />
+                                            Salvar mesmo assim (override de admin — só com decisão explícita)
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
 
                     {/* Name Input */}
                     <div>
@@ -176,7 +252,7 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                     {/* Save Button */}
                     <button
                         onClick={handleSave}
-                        disabled={isSaving || !name.trim()}
+                        disabled={isSaving || !name.trim() || (isBlocked && (!isAdmin || !overrideOos))}
                         className="w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSaving ? (
