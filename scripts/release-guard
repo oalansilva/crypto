@@ -824,24 +824,32 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
     git worktree list --porcelain | awk -v b="refs/heads/$name" '$1 == "branch" && $2 == b { found=1 } END { exit !found }'
   }
 
-  card_is_terminal() {
+  card_terminal_state() {
+    # Prints terminal|non-terminal|unknown for the card of a branch. Unknown
+    # (board snapshot failed, missing item, or duplicated item) is NOT
+    # non-terminal and must never be classified as preserved.
     local name="$1" card_num=""
     card_num="$(printf '%s' "$name" | grep -oE '(^|/)(card|change|issue)-[0-9]+' | grep -oE '[0-9]+$' | head -1 || true)"
     if [[ -z "$card_num" ]]; then
-      return 1
+      printf 'unknown'
+      return 0
     fi
     case "$(card_lookup "$card_num")" in
-      terminal) return 0 ;;
-      unknown)
-        if [[ "$strict" -eq 1 ]]; then
-          blocker "could not determine terminal status for card #$card_num (branch $name); remote state unknown"
-        else
-          warn "could not determine terminal status for card #$card_num (branch $name); remote state unknown"
-        fi
-        return 1
-        ;;
-      *) return 1 ;;
+      terminal) printf 'terminal' ;;
+      non-terminal) printf 'non-terminal' ;;
+      *) printf 'unknown' ;;
     esac
+  }
+
+  card_is_terminal() {
+    [[ "$(card_terminal_state "$1")" == "terminal" ]]
+  }
+
+  branch_state_unknown_status() {
+    local name="$1" card_num=""
+    card_num="$(printf '%s' "$name" | grep -oE '(^|/)(card|change|issue)-[0-9]+' | grep -oE '[0-9]+$' | head -1 || true)"
+    [[ -z "$card_num" ]] && return 1
+    [[ "$(card_terminal_state "$name")" == "unknown" ]]
   }
 
   local_branches="$(git for-each-ref refs/heads --format='%(refname:short)' | grep -E '^(change-|card-|release-)' | sort -u || true)"
@@ -878,8 +886,24 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
       open_pr="$(pr_lookup oalansilva "$name")"
 
       state=""
+      # Fatos locais primeiro: preservação explícita e worktree ativa não
+      # dependem do board e sempre vencem a indeterminação de status.
       if branch_is_preserved "$name" || branch_has_worktree "$name"; then
         state="preserved (classified; not deleted)"
+      elif branch_state_unknown_status "$name"; then
+        # Unknown status (snapshot failed/missing/duplicate) is fail-closed:
+        # never presented as preserved.
+        if [[ "$strict" -eq 1 ]]; then
+          state="unknown status (not preserved; classify before delete)"
+          pending=$((pending + 1))
+          pending_list+="    $name (unknown status; snapshot failed or card not determinable)"$'\n'
+          blocker "could not determine terminal status for branch $name; remote state unknown (board snapshot failed, missing, or duplicated item)"
+        else
+          state="unknown status (not preserved; classify)"
+          pending=$((pending + 1))
+          pending_list+="    $name (unknown status; snapshot failed or card not determinable)"$'\n'
+          warn "could not determine terminal status for branch $name; remote state unknown (board snapshot failed, missing, or duplicated item)"
+        fi
       elif ! card_is_terminal "$name"; then
         state="preserved (card in flight; not deleted)"
       elif [[ "$merged" == "no" ]]; then
