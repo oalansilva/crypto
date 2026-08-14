@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-14 - design-planner obrigatório como autor dos artefatos do gate Design
+
+**Decisão:** o `design-planner` (`openai/gpt-5.6-sol`, effort `high`) deixa de ser opcional/experimental e passa a ser **obrigatório como autor** dos artefatos do gate Design em todo card: `proposal.md`, `design.md` (com Design Critique e veredito), `specs/**` e `tasks.md`, com `UI impact: affected` ou `none`. A sessão principal (Go/flash) consolida, valida OpenSpec, publica e move `Design -> Aprovação de Design`; a crítica independente pode ser feita por segundo spawn do `design-planner` (read-only). Crítica sem artefatos redigidos pelo `design-planner` não completa o gate.
+
+**Motivo:** o card #509 expôs que os artefatos foram redigidos pela sessão principal (deepseek-v4-flash) e o `design-planner` atuou apenas como crítico. Alan aprovou em 2026-08-14 que a redação do gate Design seja sempre executada pelo frontier (`gpt-5.6-sol`), mantendo a consolidação/board na sessão principal.
+
+**Regra atualizada:** `AGENTS.md` (Roteamento de LLM), `rules.md` (regra 9). O card #509 foi refeito com essa regra (artefatos redigidos e republicados pelo `design-planner`).
+
 ## 2026-08-13 - Exceção de roteamento design-planner (grok 4.6) no gate Design
 
 **Decisão:** criar o subagent `design-planner` (`.opencode/agent/design-planner.md`) com `model: opencode/grok-4.6` fixo (provider Zen) e `reasoningEffort: high` para executar o contrato `design-critic` no `Status=Design` — segunda exceção explícita à herança de modelo, ao lado do `vision`. Critics A/B do Impeccable herdam o modelo da sessão de design designada; sem igualdade observável, `BLOCKED`.

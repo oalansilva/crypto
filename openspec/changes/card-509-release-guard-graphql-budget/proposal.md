@@ -1,16 +1,19 @@
 ## Why
 
-O `release-guard post|audit` repete consultas completas ao GitHub Project por branch e por seção, esgotando a cota GraphQL compartilhada e tornando o fechamento de release indisponível. Quando a consulta falha, parte do inventário ainda confunde estado remoto desconhecido com card em andamento, o que enfraquece o comportamento fail-closed do guard.
+O `scripts/release-guard` esgota a cota GraphQL compartilhada do GitHub. Uma execução de `gh project item-list 1 --owner oalansilva --limit 500 --format json` consumiu cerca de 202 pontos; hoje o guard pode repeti-la em até cinco checks e uma vez por branch em `card_is_terminal()` (13 nomes de branch), além de executar `gh pr list` por branch. Isso pode exceder os 5.000 pontos disponíveis por usuário/hora.
+
+Há também uma falha fail-open: se a consulta ao board falhar, `card_is_terminal()` confunde estado desconhecido com card não terminal, permitindo que `post` preserve a branch como “card in flight” sem evidência autoritativa.
 
 ## What Changes
 
-- Carregar e validar uma única fotografia completa do Project por execução do guard, sem cache entre processos.
-- Reutilizar a fotografia nos checks de títulos, changes terminais, branches, campos obrigatórios e homologação.
-- Resolver o status de cards por lookup local tri-state (`terminal`, `non-terminal`, `unknown`) e bloquear modos estritos quando a informação remota for desconhecida.
-- Carregar a lista de pull requests abertos uma única vez e indexá-la por branch, preservando `unknown` quando a consulta falhar.
-- Validar presença e unicidade dos IDs de `RELEASE_CARDS` antes de aceitar campos e status.
-- Tornar falhas por rate limit explícitas e corrigir o limite total da paginação do inventário de idade.
-- Adicionar testes que provem a quantidade máxima de consultas e a semântica fail-closed.
+- Obter uma única fotografia completa do Project e uma única lista global de PRs abertos por execução de `post|audit`, carregadas no shell principal e reutilizadas por todos os checks.
+- Validar exit code, JSON, completude do Project e estrutura/truncamento da lista de PRs antes de qualquer lookup.
+- Resolver cards e PRs localmente com estados explícitos `terminal`, `non-terminal` e `unknown`; PRs são identificados por `(headRepositoryOwner.login, headRefName)`, e desconhecido bloqueia `post` e gera warning em `audit`.
+- Tratar qualquer falha de snapshot imediatamente no nível global, mesmo sem consumidores relevantes na execução.
+- Normalizar `RELEASE_CARDS` uma vez e validar formato, intervalo e identidade inequívoca por `(repository=oalansilva/crypto, issue number)`, além da presença de Status.
+- Consultar o rate limit REST somente para diagnosticar falhas, sem retry ou polling.
+- Corrigir o teto do inventário de idade para no máximo 19 requisições GraphQL, contando a página inicial e avisando explicitamente quando o resultado ficar truncado.
+- Cobrir orçamento de chamadas e comportamento fail-closed com um fake `gh` e contadores.
 
 ## Capabilities
 
@@ -20,11 +23,11 @@ Nenhuma.
 
 ### Modified Capabilities
 
-- `release-worktree-hygiene`: o guard passa a usar snapshots remotos únicos por execução e a tratar indisponibilidade/ambiguidade como estado desconhecido bloqueante em modos estritos.
+- `release-worktree-hygiene`: passa a operar com snapshots remotos únicos e completos por execução, orçamento explícito de chamadas e estado desconhecido fail-closed.
 
 ## Impact
 
-- `scripts/release-guard`: carregamento, validação e reutilização dos snapshots de Project e PRs; inventário de branches; validação do pacote; diagnóstico de rate limit.
-- `backend/tests/integration/test_release_guard.py`: fake do GitHub CLI, contadores de chamadas e cenários de falha/ambiguidade.
-- GitHub GraphQL: redução esperada de milhares para algumas centenas de pontos por execução, sem alterar dados do board.
-- UI impact: none. Não há tela, componente, rota frontend ou interação visual afetada.
+- `scripts/release-guard`: loaders, lookups locais, validação do pacote, diagnóstico de rate limit e paginação de idade.
+- `backend/tests/integration/test_release_guard.py`: fake `gh`, contadores e cenários de falha/ambiguidade.
+- GitHub GraphQL: `post` limitado a até uma listagem de Project e uma de PRs; `audit` acrescenta no máximo 19 páginas do inventário de idade.
+- UI impact: none. A mudança afeta somente script Bash operacional e testes, sem tela, rota, componente, copy ou interação visual.

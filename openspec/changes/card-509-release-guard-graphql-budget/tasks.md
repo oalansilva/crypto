@@ -1,43 +1,44 @@
-## 1. Snapshots e loaders no release-guard
+## 1. Preparar snapshots e orçamento remoto
 
-- [ ] 1.1 Adicionar `ensure_board_snapshot` e `ensure_pr_snapshot` no shell principal (statements simples, sem command substitution), gravando `BOARD_JSON`/`BOARD_STATE` e `PRS_JSON`/`PRS_STATE`
-- [ ] 1.2 Validar completude do Project: `.items` array e `length == totalCount`; truncamento ou JSON inválido ou exit != 0 produz `BOARD_STATE=failed`
-- [ ] 1.3 Validar listagem de PRs: JSON válido, `headRefName` presente; atingir o limite configurado (1.000) ou falhar produz `PRS_STATE=failed`
-- [ ] 1.4 Invocar os loaders uma única vez no início dos modos `post`/`audit` (antes de qualquer consumidor) e nunca dentro de subshell
-- [ ] 1.5 Em falha de snapshot, consultar `gh api rate_limit` (REST) e incluir `graphql.remaining` e `reset` na mensagem quando disponíveis; sem retry loop
-- [ ] 1.6 Corrigir a paginação de idade: contar a página inicial no limite total (máx. 19 requisições: 1 inicial + 18 adicionais)
+- [ ] 1.1 Adicionar loaders de Project e PRs invocados como statements no shell principal, preenchendo `BOARD_JSON`/`BOARD_STATE` e `PRS_JSON`/`PRS_STATE`; permitir `$(gh ...)` dentro do loader, mas nunca invocar o loader em `$(...)` [D1]
+- [ ] 1.2 Carregar os dois snapshots uma vez no início de `post|audit` e manter `pre` sem `item-list`, `pr list` ou inventário de idade [D1, D3, D7]
+- [ ] 1.3 Validar exit code, JSON, `.items` array, `totalCount` presente como inteiro não negativo e igualdade exata; ausência, malformação ou mismatch para menos/mais define `BOARD_STATE=failed` [D1]
+- [ ] 1.4 Buscar PRs com `number,headRefName,headRepositoryOwner` e exigir array de topo com `headRefName` e `headRepositoryOwner.login` não vazios em cada item; objeto, entrada malformada ou 1.000 itens define `PRS_STATE=failed` [D1]
+- [ ] 1.5 Consultar REST `rate_limit` apenas após falha, no máximo uma vez por execução, incluindo `graphql.remaining/reset` sem substituir a causa original e sem retry ou polling [D5]
+- [ ] 1.6 Corrigir a paginação de idade para no máximo 19 requisições totais, contando a página inicial, e emitir warning parcial/truncado se `hasNextPage` permanecer verdadeiro [D6, D7]
 
-## 2. Consumidores migrados para o snapshot único
+## 2. Migrar decisões para lookups locais fail-closed
 
-- [ ] 2.1 Migrar o check de títulos board/issue (audit) para ler `BOARD_JSON` sem nova chamada
-- [ ] 2.2 Migrar o check de changes OpenSpec terminais (post/audit) para ler `BOARD_JSON`
-- [ ] 2.3 Migrar `card_is_terminal` para lookup local tri-state (`terminal`/`non-terminal`/`unknown`) a partir do snapshot, removendo `gh project item-list` por branch
-- [ ] 2.4 Substituir `gh pr list --head` por branch por lookup na fotografia global de PRs; falha nunca vira `pr_open=no` (vira `unknown`)
-- [ ] 2.5 Migrar o check de campos do pacote (post/audit) para ler `BOARD_JSON`
-- [ ] 2.6 Migrar o check de evidência de homologação (post/audit) para ler `BOARD_JSON`
-- [ ] 2.7 Em `post`, `BOARD_STATE=failed`/`PRS_STATE=failed`/qualquer `unknown` dependente registra blocker; em `audit`, warning explícito
+- [ ] 2.1 Implementar lookup local de card pela chave `(repository=oalansilva/crypto, issue number canônico)` com resultado `terminal|non-terminal|unknown`, rejeitando outro repositório e incluindo chave ausente/duplicada e Status ausente [D2, D4]
+- [ ] 2.2 Migrar `card_is_terminal()` e inventário de branches para o lookup local, removendo `item-list` por branch [D1, D2]
+- [ ] 2.3 Indexar PRs por `(headRepositoryOwner.login, headRefName)` e substituir `gh pr list --head` por lookup local de `(oalansilva, branch)`; fork homônimo não corresponde e snapshot falho nunca produz `pr_open=no` [D1, D2]
+- [ ] 2.4 Migrar checks de título, changes terminais, campos e homologação para `BOARD_JSON`, sem novas listagens [D1, D4]
+- [ ] 2.5 Reportar qualquer snapshot `failed` imediatamente e globalmente: blocker em `post`, warning em `audit`, mesmo sem consumidor relevante [D3]
 
-## 3. Normalização e validação do pacote
+## 3. Canonicalizar o pacote de release
 
-- [ ] 3.1 Normalizar `RELEASE_CARDS` uma única vez: trim, remoção de zeros à esquerda, dedupe e validação numérica (1..2147483647); formato inválido bloqueia em `post` antes de consultas
-- [ ] 3.2 Validar que cada ID normalizado aparece exatamente uma vez no snapshot do Project e possui Status; ausente/duplicado/sem Status é blocker em `post`
-- [ ] 3.3 Reutilizar o mesmo snapshot para campos obrigatórios e evidência de homologação sem consultas duplicadas
+- [ ] 3.1 Normalizar `RELEASE_CARDS` uma vez por trim, remoção de zeros à esquerda e dedupe, validando inteiros entre 1 e 2147483647 [D4]
+- [ ] 3.2 Em `post`, bloquear token inválido antes de qualquer chamada remota; em `audit`, emitir warning, pular chamadas dependentes do pacote e continuar checks independentes [D4]
+- [ ] 3.3 Exigir exatamente um item com Status pela tupla `(repository=oalansilva/crypto, ID canônico)`, rejeitar correspondência de outro repositório e reutilizar o item qualificado nos checks de campos e homologação [D4]
+- [ ] 3.4 Preservar “not applicable” para Status conhecido diferente de `Homologado|Pronto`, sem ampliar política de elegibilidade [D8]
 
-## 4. Testes (fake gh com contador)
+## 4. Cobrir comportamento com fake gh e contadores
 
-- [ ] 4.1 Estender o fake `gh` com contadores de chamadas (`item-list`, `pr list`, REST comments)
-- [ ] 4.2 Múltiplas branches + checks ativos produzem exatamente 1 `item-list` e 1 `pr list`
-- [ ] 4.3 Segunda execução refaz os downloads (sem cache persistente)
-- [ ] 4.4 JSON válido com exit != 0 e truncamento (`items.length < totalCount`) produzem snapshot `failed`
-- [ ] 4.5 Card ausente, duplicado ou sem Status em `RELEASE_CARDS` bloqueia `post`
-- [ ] 4.6 PR truncada ou JSON inválido produz `failed` (nunca `pr_open=no`)
-- [ ] 4.7 Mesma falha: blocker em `post`, warning em `audit`; incluir caso sem consumidores relevantes ativos (falha global imediata)
-- [ ] 4.8 Paginação de idade respeita o limite total de 19 requisições
-- [ ] 4.9 Normalização de `RELEASE_CARDS`: trim, zeros à esquerda, dedupe (`480,0480`), intervalo e token inválido (sem consulta remota)
+- [ ] 4.1 Estender o fake `gh` com log externo process-safe para contar, inclusive entre subprocessos, `item-list`, `pr list`, páginas de idade, rate limit e comments REST [D1, D5, D7]
+- [ ] 4.2 Provar que múltiplas branches e checks executam exatamente um `item-list` e um `pr list`; provar que um segundo run refaz ambos [D1]
+- [ ] 4.3 Provar que JSON válido com exit code não zero, JSON inválido, `totalCount` ausente/malformado/negativo e mismatch de tamanho para menos ou para mais falham [D1]
+- [ ] 4.4 Provar pelo log externo que JSON de PRs não-array (incluindo `{}`), item sem `headRefName`, item sem `headRepositoryOwner.login`, JSON inválido ou 1.000 itens define `PRS_STATE=failed` e nunca resulta em `pr_open=no` [D1, D2]
+- [ ] 4.5 Provar card ausente, duplicado, sem Status ou com mesmo número apenas em outro repositório como blocker/`unknown` de `post` e warning de `audit` [D2, D4]
+- [ ] 4.6 Provar a mesma falha como blocker em `post` e warning em `audit`, inclusive sem consumidores relevantes [D3]
+- [ ] 4.7 Provar trim, zeros, dedupe de `480,0480`, limites numéricos e token inválido: `post` sem qualquer chamada remota; `audit` sem chamadas dependentes do pacote e com checks independentes ativos [D4]
+- [ ] 4.8 Provar o teto total de 19 páginas de idade, warning quando `hasNextPage=true` após a 19ª, ausência da 20ª requisição e a matriz de `pre|post|audit` [D6, D7]
+- [ ] 4.9 Provar que comments REST por card permanecem permitidos sem alterar contadores GraphQL [D7]
+- [ ] 4.10 Provar zero chamadas de rate limit no caminho de sucesso, no máximo uma quando ambos os snapshots falham e preservação da causa original [D5]
+- [ ] 4.11 Provar que PR de outro `headRepositoryOwner.login` com o mesmo `headRefName` resulta em `pr_open=no` para a chave alvo, enquanto `(oalansilva, headRefName)` resulta em `pr_open=yes` [D2]
 
-## 5. Validação e fechamento
+## 5. Validar e registrar evidências
 
-- [ ] 5.1 Rodar `openspec validate --change card-509-release-guard-graphql-budget`
-- [ ] 5.2 Rodar `backend/tests/integration/test_release_guard.py` com os novos cenários
-- [ ] 5.3 Após reset da cota, medir delta `graphql.used` de uma execução real de `audit` (esperado: ~202 + idade, sem multiplicidade por branch)
-- [ ] 5.4 Registrar evidências de review, QA e runtime no fechamento do card
+- [ ] 5.1 Rodar a validação OpenSpec da change e corrigir inconsistências entre proposal, design, spec e tasks
+- [ ] 5.2 Rodar os testes focados de `backend/tests/integration/test_release_guard.py`
+- [ ] 5.3 Após reset da cota e autorização de implementação, medir uma execução real de `audit` e registrar o delta GraphQL de uma listagem do Project, uma listagem global de PRs e das páginas de idade, sem multiplicidade por branch [D7]
+- [ ] 5.4 Registrar review, QA, orçamento observado e runtime no handoff do card
