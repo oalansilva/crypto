@@ -2,6 +2,7 @@
 Avaliação de critérios GO/NO-GO para estratégias.
 """
 
+import math
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
@@ -28,6 +29,119 @@ DEFAULT_CRITERIA = {
     "max_trade_concentration": 0.70,  # 70% do lucro em poucos trades = alerta
     "warning_drawdown_pct": 30.0,  # Aviso se próximo do limite
 }
+
+# Perfil do Holdout (OOS): cópia explícita dos demais critérios globais com
+# mínimos calibrados para o segmento curto (30% da janela). Não muta
+# DEFAULT_CRITERIA; avaliações fora do walk-forward continuam com o default.
+OOS_CRITERIA = {
+    **DEFAULT_CRITERIA,
+    "min_trades": 20,
+    "min_sharpe_ratio": 0.30,
+}
+
+# Limiar relativo de retenção de Sharpe entre Treino (IS) e Holdout (OOS).
+OOS_SHARPE_RETENTION_RATIO = 0.50
+
+# Aviso de amostra pequena no holdout (não bloqueia).
+OOS_SMALL_SAMPLE_MAX = 30
+
+
+def _finite_or_none(metrics: Dict[str, any], key: str) -> Optional[float]:
+    """Retorna o valor numérico finito da métrica ou None quando ausente/inválido."""
+    value = metrics.get(key)
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
+
+
+def evaluate_walk_forward(
+    is_metrics: Dict[str, any], oos_metrics: Dict[str, any]
+) -> CriteriaResult:
+    """Avalia o gate walk-forward combinado de Treino (IS) e Holdout (OOS).
+
+    Avalia os segmentos separadamente (IS com DEFAULT_CRITERIA, OOS com
+    OOS_CRITERIA), exige retenção de ao menos 50% do Sharpe IS no OOS e
+    compõe um único CriteriaResult fail-closed: GO somente quando IS, OOS e
+    consistência forem aprovados. Razões são ordenadas por IS, OOS e
+    consistência, com valores observados e limiares.
+    """
+    is_metrics = is_metrics or {}
+    oos_metrics = oos_metrics or {}
+
+    reasons: List[str] = []
+    warnings: List[str] = []
+    fail_closed_reasons = []
+
+    is_sharpe = _finite_or_none(is_metrics, "sharpe_ratio")
+    is_trades = _finite_or_none(is_metrics, "total_trades")
+    oos_sharpe = _finite_or_none(oos_metrics, "sharpe_ratio")
+    oos_trades = _finite_or_none(oos_metrics, "total_trades")
+
+    if is_sharpe is None:
+        fail_closed_reasons.append(
+            "Treino (IS) — NO-GO: métrica obrigatória sharpe_ratio ausente, nula ou não finita."
+        )
+    if is_trades is None:
+        fail_closed_reasons.append(
+            "Treino (IS) — NO-GO: métrica obrigatória total_trades ausente, nula ou não finita."
+        )
+    if oos_sharpe is None:
+        fail_closed_reasons.append(
+            "Holdout (OOS) — NO-GO: métrica obrigatória sharpe_ratio ausente, nula ou não finita."
+        )
+    if oos_trades is None:
+        fail_closed_reasons.append(
+            "Holdout (OOS) — NO-GO: métrica obrigatória total_trades ausente, nula ou não finita."
+        )
+
+    # Segmento IS com critérios globais vigentes.
+    if is_sharpe is not None and is_trades is not None:
+        is_result = evaluate_go_nogo(is_metrics, DEFAULT_CRITERIA)
+        if is_result.status != "GO":
+            reasons.extend(f"Treino (IS) — {r}" for r in is_result.reasons)
+        warnings.extend(f"Treino (IS) — {w}" for w in is_result.warnings)
+
+    # Segmento OOS com perfil próprio.
+    if oos_sharpe is not None and oos_trades is not None:
+        oos_result = evaluate_go_nogo(oos_metrics, OOS_CRITERIA)
+        if oos_result.status != "GO":
+            reasons.extend(f"Holdout (OOS) — {r}" for r in oos_result.reasons)
+        warnings.extend(f"Holdout (OOS) — {w}" for w in oos_result.warnings)
+
+        # Aviso não bloqueante de amostra pequena (20–29 trades fechados).
+        if OOS_CRITERIA["min_trades"] <= oos_trades < OOS_SMALL_SAMPLE_MAX:
+            warnings.append(
+                f"Holdout (OOS) — aviso: {int(oos_trades)} trades; "
+                f"amostra pequena, embora acima do mínimo {OOS_CRITERIA['min_trades']}."
+            )
+
+    # Consistência de Sharpe IS→OOS: exige retenção de ao menos 50% do IS,
+    # com piso absoluto 0.30 (limiar efetivo max(0.30, 0.50 * IS)).
+    if is_sharpe is not None and is_sharpe > 0 and oos_sharpe is not None:
+        required_oos = max(
+            OOS_CRITERIA["min_sharpe_ratio"],
+            OOS_SHARPE_RETENTION_RATIO * is_sharpe,
+        )
+        if oos_sharpe < required_oos:
+            retention_pct = (oos_sharpe / is_sharpe) * 100
+            reasons.append(
+                f"Consistência IS→OOS — NO-GO: Sharpe caiu de {is_sharpe:.2f} para "
+                f"{oos_sharpe:.2f} (retenção {retention_pct:.0f}%; mínimo "
+                f"{OOS_SHARPE_RETENTION_RATIO * 100:.0f}%; exigido {required_oos:.2f})."
+            )
+
+    all_reasons = fail_closed_reasons + reasons
+    status = "GO" if not all_reasons else "NO-GO"
+    if status == "GO":
+        all_reasons.append("GO walk-forward: Treino (IS), Holdout (OOS) e consistência aprovados.")
+
+    return CriteriaResult(status=status, reasons=all_reasons, warnings=warnings)
 
 
 def evaluate_go_nogo(
@@ -60,7 +174,9 @@ def evaluate_go_nogo(
     # 2. Sharpe muito baixo
     sharpe = metrics.get("sharpe_ratio", 0)
     if sharpe < criteria["min_sharpe_ratio"]:
-        reasons.append(f"Sharpe Ratio muito baixo: {sharpe:.2f} < {criteria['min_sharpe_ratio']}")
+        reasons.append(
+            f"Sharpe Ratio muito baixo: {sharpe:.2f} < {criteria['min_sharpe_ratio']:.2f}"
+        )
 
     # 3. Lucro concentrado em poucos trades
     concentration = metrics.get("trade_concentration", 0)

@@ -1494,7 +1494,7 @@ def test_create_favorite_blocks_no_go_without_override(tmp_path: Path):
         payload = _favorite_payload("NO-GO candidate")
         payload.oos_verdict = {
             "status": "NO-GO",
-            "reasons": ["Sharpe Ratio muito baixo: 0.20 < 0.8"],
+            "reasons": ["Sharpe Ratio muito baixo: 0.20 < 0.80"],
         }
         with pytest.raises(fastapi.HTTPException) as exc_info:
             favorites.create_favorite(payload, current_user_id="user-a", db=db)
