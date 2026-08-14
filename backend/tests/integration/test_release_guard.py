@@ -857,7 +857,9 @@ def test_post_blocks_branch_card_with_unknown_status(tmp_path: Path, monkeypatch
     result = _run_guard(repo, fake_gh=fake_gh)
 
     assert result.returncode == 1
-    assert "could not determine terminal status for card #100" in result.stdout
+    assert "could not determine terminal status for branch change-100-a" in result.stdout
+    assert "unknown status (not preserved" in result.stdout
+    assert "preserved (card in flight" not in result.stdout
 
 
 def test_audit_branch_card_non_terminal_is_preserved(tmp_path: Path, monkeypatch):
@@ -1428,3 +1430,61 @@ def test_post_blocks_missing_local_main(tmp_path: Path, monkeypatch):
 
     assert result.returncode == 1
     assert "local main missing" in result.stdout
+
+
+# --- Card #516: fail-closed com snapshot do board falho (closeout #509) ---
+
+
+def test_post_snapshot_failure_never_classifies_branch_as_preserved(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "change-100-a")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((100, "Pronto")))
+    monkeypatch.setenv("FAKE_FAIL_PROJECT", "1")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "board snapshot failed or invalid" in result.stdout
+    assert "could not determine terminal status for branch change-100-a" in result.stdout
+    assert "unknown status (not preserved" in result.stdout
+    assert "preserved (card in flight" not in result.stdout
+    assert "preserved (classified" not in result.stdout
+
+
+def test_audit_snapshot_failure_warns_without_preserved_labels(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "change-100-a")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((100, "Pronto")))
+    monkeypatch.setenv("FAKE_FAIL_PROJECT", "1")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, "audit", fake_gh=fake_gh)
+
+    assert result.returncode == 0
+    assert "WARN: board snapshot failed or invalid" in result.stdout
+    assert "could not determine terminal status for branch change-100-a" in result.stdout
+    assert "preserved (card in flight" not in result.stdout
+    assert "preserved (classified" not in result.stdout
+
+
+def test_snapshot_failure_preserves_explicitly_preserved_branch(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "change-100-a")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((100, "Pronto")))
+    monkeypatch.setenv("FAKE_FAIL_PROJECT", "1")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+    monkeypatch.setenv("PRESERVED_BRANCHES", "change-100-a")
+
+    post = _run_guard(repo, fake_gh=fake_gh)
+    audit = _run_guard(repo, "audit", fake_gh=fake_gh)
+
+    # Fato local (PRESERVED_BRANCHES) vence a indeterminação de status.
+    assert "preserved (classified; not deleted)" in post.stdout
+    assert "could not determine terminal status for branch change-100-a" not in post.stdout
+    assert "unknown status (not preserved" not in post.stdout
+    assert "preserved (classified; not deleted)" in audit.stdout
+    assert "could not determine terminal status for branch change-100-a" not in audit.stdout
