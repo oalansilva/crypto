@@ -38,7 +38,7 @@
 
 ## 5. Validar e registrar evidências
 
-- [ ] 5.1 Rodar a validação OpenSpec da change e corrigir inconsistências entre proposal, design, spec e tasks
-- [ ] 5.2 Rodar os testes focados de `backend/tests/integration/test_release_guard.py`
-- [ ] 5.3 Após reset da cota e autorização de implementação, medir uma execução real de `audit` e registrar o delta GraphQL de uma listagem do Project, uma listagem global de PRs e das páginas de idade, sem multiplicidade por branch [D7]
-- [ ] 5.4 Registrar review, QA, orçamento observado e runtime no handoff do card
+- [x] 5.1 Rodar a validação OpenSpec da change e corrigir inconsistências entre proposal, design, spec e tasks
+- [x] 5.2 Rodar os testes focados de `backend/tests/integration/test_release_guard.py`
+- [x] 5.3 Após reset da cota e autorização de implementação, medir uma execução real de `audit` e registrar o delta GraphQL de uma listagem do Project, uma listagem global de PRs e das páginas de idade, sem multiplicidade por branch [D7]
+- [x] 5.4 Registrar review, QA, orçamento observado e runtime no handoff do card
