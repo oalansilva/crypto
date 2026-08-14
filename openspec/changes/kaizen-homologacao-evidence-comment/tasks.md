@@ -14,4 +14,4 @@
 
 - [x] 3.1 Atualizar `AGENTS.md` para exigir o helper na transição para `Homologado` e registrar o saneamento em `docs/kaizen-log.md`
 - [x] 3.2 Rodar testes focados dos scripts, `bash -n`, validação OpenSpec da change e `/opsx:verify`
-- [ ] 3.3 Executar review do diff exato, QA visual obrigatório/dispensa autorizada, integrar em `develop`, rodar `./restart` e validar a URL DEV antes de Done técnico
+- [x] 3.3 Executar review do diff exato, QA visual obrigatório/dispensa autorizada, integrar em `develop`, rodar `./restart` e validar a URL DEV antes de Done técnico
