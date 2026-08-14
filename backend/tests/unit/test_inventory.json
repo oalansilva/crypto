@@ -523,6 +523,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "round-trip aninhado, -0.0→0, None/str/bool preservados, ordem de listas, prova expirada/tampered/ausente rejeitada"
+    },
+    {
+      "file": "backend/tests/unit/test_logs_tail_cursor.py",
+      "protected_behavior": "cursor incremental de GET /api/logs/tail (after_offset/file_id/cursor_reset), retenção UTF-8 e compatibilidade do tail legado",
+      "production_reachability": "GET /api/logs/tail usado por BackendLogViewer na configuração de combos",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "round-trip incremental sem duplicação, burst acima de MAX_INCREMENTAL_BYTES, UTF-8 dividido, truncamento e rotação por identidade"
     }
   ]
 }
