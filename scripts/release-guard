@@ -193,6 +193,34 @@ CANONICAL_CARDS=""
 RELEASE_CARDS_INVALID=""
 RELEASE_CARDS_OUT_OF_RANGE=""
 
+# Canonical release date (card #518 D1): single resolution shared by doc and
+# kaizen checks. Defaults to current UTC date; must be a valid YYYY-MM-DD.
+RELEASE_DATE_ENV="${RELEASE_DATE:-}"
+RELEASE_DATE=""
+RELEASE_DATE_INVALID=""
+
+resolve_release_date() {
+  local raw="$RELEASE_DATE_ENV"
+  if [[ -z "$raw" ]]; then
+    raw="$(date -u +%F 2>/dev/null || true)"
+  fi
+  if [[ -z "$raw" ]]; then
+    RELEASE_DATE_INVALID="unable to resolve date"
+    return 0
+  fi
+  if ! [[ "$raw" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+    RELEASE_DATE_INVALID="$raw"
+    return 0
+  fi
+  # Validação estrita de calendário: a data normalizada deve ser idêntica à
+  # informada (rejeita 2026-02-30, 2026-13-99 e ano 0000 em qualquer coreutils).
+  if [[ "$(date -u -d "$raw" +%F 2>/dev/null)" != "$raw" ]]; then
+    RELEASE_DATE_INVALID="$raw"
+    return 0
+  fi
+  RELEASE_DATE="$raw"
+}
+
 normalize_release_cards() {
   local raw="${RELEASE_CARDS:-}"
   [[ -z "$raw" ]] && return 0
@@ -288,7 +316,15 @@ fi
 if git rev-parse --verify -q refs/heads/main >/dev/null &&
    git rev-parse --verify -q origin/main >/dev/null; then
   if [[ "$(git rev-parse refs/heads/main)" != "$(git rev-parse origin/main)" ]]; then
-    warn "local main differs from origin/main; release decisions use origin/main"
+    if [[ "$mode" == "post" ]]; then
+      blocker "local main differs from origin/main; sync with 'git switch main && git pull --ff-only origin main' before release closeout (release decisions use origin/main)"
+    else
+      warn "local main differs from origin/main; release decisions use origin/main"
+    fi
+  fi
+elif [[ "$mode" == "post" ]]; then
+  if ! git rev-parse --verify -q refs/heads/main >/dev/null; then
+    blocker "local main missing; create/sync with 'git switch main && git pull --ff-only origin main' before release closeout"
   fi
 fi
 
@@ -322,6 +358,14 @@ if [[ "$mode" == "post" ]] &&
       issue "post-release requires origin/develop and origin/main to have identical content trees"
     fi
   fi
+fi
+
+section "Release date (pre/post/audit)"
+resolve_release_date
+if [[ -n "$RELEASE_DATE_INVALID" ]]; then
+  issue "invalid RELEASE_DATE: '$RELEASE_DATE_INVALID' (expected YYYY-MM-DD valid calendar date; default is current UTC date)"
+else
+  printf 'RELEASE_DATE: %s\n' "$RELEASE_DATE"
 fi
 
 section "Release cards canonicalization (post/audit)"
@@ -845,7 +889,7 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
       elif [[ "$open_pr" == "unknown" ]]; then
         state="merged but PR status unknown (classify before delete)"
       else
-        state="merged, no open PR (delete after Pronto)"
+        state="merged, no open PR (delete in closeout before Pronto)"
       fi
 
       printf '  %s %s local=%s remote=%s merged=%s pr_open=%s -> %s\n' "$name" "$sha" "$has_local" "$has_remote" "$merged" "$open_pr" "$state"
@@ -877,11 +921,47 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   section "Package branch cleanup (post)"
   if [[ "$mode" == "post" ]]; then
     release_branches="${RELEASE_BRANCHES:-}"
-    if [[ -n "$release_branches" ]]; then
-      remaining=0
+    if [[ -z "$release_branches" ]]; then
+      issue "RELEASE_BRANCHES not set or empty: list the package branches (change-*/card-*/release-*) that must be absent locally and on origin before moving cards to Pronto"
+    else
+      # Normalize: trim, drop empty tokens, dedupe, validate format.
+      declare -A seen_pkg=()
+      pkg_clean=()
+      pkg_invalid=0
+      pkg_empty=0
       IFS=',' read -ra pkg_arr <<< "$release_branches"
-      for branch in "${pkg_arr[@]}"; do
-        [[ -z "$branch" ]] && continue
+      for raw_branch in "${pkg_arr[@]}"; do
+        branch="$(printf '%s' "$raw_branch" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+        if [[ -z "$branch" ]]; then
+          pkg_empty=$((pkg_empty + 1))
+          continue
+        fi
+        if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+          issue "RELEASE_BRANCHES contains invalid branch name: '$branch'"
+          pkg_invalid=$((pkg_invalid + 1))
+          continue
+        fi
+        case "$branch" in
+          change-*|card-*|release-*) ;;
+          *)
+            issue "RELEASE_BRANCHES token outside change-*/card-*/release-* prefixes: '$branch'"
+            pkg_invalid=$((pkg_invalid + 1))
+            continue
+            ;;
+        esac
+        if [[ -z "${seen_pkg[$branch]:-}" ]]; then
+          seen_pkg[$branch]=1
+          pkg_clean+=("$branch")
+        fi
+      done
+      if [[ "$pkg_empty" -gt 0 ]]; then
+        issue "RELEASE_BRANCHES contains empty tokens (trailing commas or whitespace-only items)"
+      fi
+      if [[ "$pkg_invalid" -gt 0 ]]; then
+        issue "RELEASE_BRANCHES contains invalid tokens; fix the list before retrying"
+      fi
+      remaining=0
+      for branch in "${pkg_clean[@]}"; do
         local_ok=0
         remote_ok=0
         git rev-parse --verify -q "refs/heads/$branch" >/dev/null && local_ok=1
@@ -894,12 +974,10 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
         fi
       done
       if [[ "$remaining" -gt 0 ]]; then
-        issue "package branches not deleted after Pronto (RELEASE_BRANCHES): delete locally and remotely in closeout"
+        issue "package branches not deleted before Pronto (RELEASE_BRANCHES): delete locally and remotely in closeout"
       else
         printf 'All RELEASE_BRANCHES deleted (local and remote).\n'
       fi
-    else
-      warn "RELEASE_BRANCHES not set; package branch deletion check skipped (list change-*/card-* as pending classification above)"
     fi
   else
     printf 'Skipped (package branch cleanup check runs in post).\n'
@@ -955,23 +1033,45 @@ else
   printf 'No tracked generated evidence/report paths.\n'
 fi
 
-section "Release docs and board fields (post)"
-if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+section "Release docs (pre/post/audit)"
+canonical_doc="docs/release-${RELEASE_DATE}.md"
+validate_release_doc() {
+  local doc="$1"
+  if ! [[ -f "$doc" ]]; then
+    return 1
+  fi
+  if ! git ls-files --error-unmatch "$doc" >/dev/null 2>&1; then
+    issue "release doc not committed: $doc (commit it before moving cards to Pronto)"
+    return 0
+  fi
+  placeholders="$(grep -nE 'TBD|TODO|lorem|<!--|FIXME|<[A-Z_]+>' "$doc" 2>/dev/null | head -5)"
+  if [[ -n "$placeholders" ]]; then
+    issue "release doc contains placeholders and is not ready: $doc"
+    printf '%s\n' "$placeholders" | indent
+  fi
+}
+if [[ "$mode" == "pre" ]]; then
+  if [[ -f "$canonical_doc" ]]; then
+    # D2: when the canonical doc exists (documental PR after deploy), pre
+    # requires evidence and clean content; a code-only PR has no doc yet.
+    if [[ -z "$prod_evidence" ]]; then
+      issue "release doc exists without PROD_DEPLOY_EVIDENCE: $canonical_doc (documental PR requires final deploy evidence)"
+    fi
+    validate_release_doc "$canonical_doc"
+  else
+    printf 'No canonical release doc yet for %s (code PR; documental PR comes after deploy).\n' "$RELEASE_DATE"
+  fi
+elif [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   release_docs="$(ls docs/release-*.md 2>/dev/null | sort)"
   if [[ -z "$release_docs" ]]; then
     issue "no release doc found in docs/; commit the release doc before moving cards to Pronto"
   fi
-  for doc in $release_docs; do
-    if git ls-files --error-unmatch "$doc" >/dev/null 2>&1; then
-      placeholders="$(grep -nE 'TBD|TODO|lorem|<!--|FIXME|<[A-Z_]+>' "$doc" 2>/dev/null | head -5)"
-      if [[ -n "$placeholders" ]]; then
-        issue "release doc contains placeholders and is not ready: $doc"
-        printf '%s\n' "$placeholders" | indent
-      fi
-    else
-      issue "release doc not committed: $doc (commit it before moving cards to Pronto)"
-    fi
-  done
+  # Canonical doc of the release date is mandatory in post/audit.
+  if [[ -f "$canonical_doc" ]]; then
+    validate_release_doc "$canonical_doc"
+  else
+    issue "canonical release doc missing: $canonical_doc (commit the release doc for $RELEASE_DATE before moving cards to Pronto)"
+  fi
   # Duplicate release docs for the same date with divergent content
   declare -A seen_docs
   for doc in $release_docs; do
@@ -988,8 +1088,26 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
     fi
   done
 else
-  printf 'Skipped (release docs and board fields check runs in post/audit; legacy debt does not block pre).\n'
+  printf 'Skipped (release docs check runs in pre/post/audit; legacy debt does not block pre).\n'
 fi
+section "Kaizen release evidence (post)"
+if [[ "$mode" == "post" ]]; then
+  kaizen_log="docs/kaizen-log.md"
+  if ! [[ -f "$kaizen_log" ]]; then
+    issue "kaizen-log missing: $kaizen_log (run /kaizen release before moving cards to Pronto)"
+  elif ! git ls-files --error-unmatch "$kaizen_log" >/dev/null 2>&1; then
+    issue "kaizen-log not committed: $kaizen_log (commit the kaizen release entry before moving cards to Pronto)"
+  elif ! grep -qE "^## ${RELEASE_DATE}[^[:alnum:]]+.*(Kaizen release|/kaizen release)" "$kaizen_log" 2>/dev/null; then
+    # A triage/card heading of the same date does NOT satisfy the release
+    # audit marker; only a "## YYYY-MM-DD — Kaizen release" heading counts.
+    issue "kaizen-log has no canonical Kaizen release entry for $RELEASE_DATE (required: heading '## $RELEASE_DATE — Kaizen release ...' before moving cards to Pronto)"
+  else
+    printf 'Kaizen release entry present for %s.\n' "$RELEASE_DATE"
+  fi
+else
+  printf 'Skipped (kaizen release evidence check runs in post).\n'
+fi
+
 # Board fields for package cards (Responsável/Prioridade/Tipo)
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
