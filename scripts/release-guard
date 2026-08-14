@@ -53,6 +53,176 @@ indent() {
   sed 's/^/  /'
 }
 
+# --- Remote snapshots (card #509): single authoritative snapshot per run ---
+BOARD_JSON=""
+BOARD_STATE="unloaded"
+PRS_JSON=""
+PRS_STATE="unloaded"
+RATE_LIMIT_DIAGNOSED=0
+
+snapshot_fail_diagnose() {
+  if [[ "$RATE_LIMIT_DIAGNOSED" -eq 0 ]]; then
+    RATE_LIMIT_DIAGNOSED=1
+    local rl
+    rl="$(gh api rate_limit --jq '.resources.graphql | "graphql: \(.remaining)/\(.limit) reset=\(.reset)"' 2>/dev/null || true)"
+    if [[ -n "$rl" ]]; then
+      printf '  rate-limit diagnostic: %s\n' "$rl"
+    fi
+  fi
+}
+
+snapshot_issue() {
+  local which="$1" detail="$2"
+  snapshot_fail_diagnose
+  if [[ "$strict" -eq 1 ]]; then
+    blocker "$which snapshot failed or invalid: $detail"
+  else
+    warn "$which snapshot failed or invalid: $detail"
+  fi
+}
+
+ensure_board_snapshot() {
+  if [[ "$BOARD_STATE" == "ok" ]]; then
+    return 0
+  fi
+  if [[ "$BOARD_STATE" == "failed" ]]; then
+    return 1
+  fi
+  local raw exit_code total_count items_count
+  raw="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null)"
+  exit_code=$?
+  BOARD_STATE="failed"
+  if [[ $exit_code -eq 0 ]] && printf '%s' "$raw" | jq -e '.items | type == "array"' >/dev/null 2>&1; then
+    total_count="$(printf '%s' "$raw" | jq -r '.totalCount // empty' 2>/dev/null)"
+    items_count="$(printf '%s' "$raw" | jq -r '.items | length' 2>/dev/null)"
+    if [[ "$total_count" =~ ^[0-9]+$ ]] && [[ "$items_count" == "$total_count" ]]; then
+      BOARD_JSON="$raw"
+      BOARD_STATE="ok"
+      return 0
+    fi
+    snapshot_issue "board" "item-list returned $items_count items but totalCount=$total_count (incomplete snapshot)"
+    return 1
+  fi
+  snapshot_issue "board" "gh project item-list failed (exit=$exit_code) or invalid JSON"
+  return 1
+}
+
+ensure_pr_snapshot() {
+  if [[ "$PRS_STATE" == "ok" ]]; then
+    return 0
+  fi
+  if [[ "$PRS_STATE" == "failed" ]]; then
+    return 1
+  fi
+  local raw exit_code count
+  raw="$(gh pr list --repo oalansilva/crypto --state open --limit 1000 --json number,headRefName,headRepositoryOwner 2>/dev/null)"
+  exit_code=$?
+  PRS_STATE="failed"
+  if [[ $exit_code -eq 0 ]] && printf '%s' "$raw" | jq -e 'type == "array"' >/dev/null 2>&1; then
+    count="$(printf '%s' "$raw" | jq 'length' 2>/dev/null)"
+    if [[ "$count" -ge 1000 ]]; then
+      snapshot_issue "prs" "open PR list reached the 1000-item limit (possible truncation)"
+      return 1
+    fi
+    if printf '%s' "$raw" | jq -e 'all(.[]; ((.headRefName? | length) > 0) and ((.headRepositoryOwner? | .login? | length) > 0))' >/dev/null 2>&1; then
+      PRS_JSON="$raw"
+      PRS_STATE="ok"
+      return 0
+    fi
+    snapshot_issue "prs" "open PR list entries missing headRefName or headRepositoryOwner.login"
+    return 1
+  fi
+  snapshot_issue "prs" "gh pr list failed (exit=$exit_code) or invalid JSON"
+  return 1
+}
+
+ensure_snapshots() {
+  local failed=0
+  ensure_board_snapshot || failed=1
+  ensure_pr_snapshot || failed=1
+  [[ "$failed" -eq 0 ]]
+}
+
+card_status() {
+  local number="$1"
+  if [[ "$BOARD_STATE" != "ok" ]]; then
+    printf ''
+    return 0
+  fi
+  printf '%s' "$BOARD_JSON" | jq -r --argjson n "$number" '[.items[] | select(.content.number == $n and (.content.repository // "") == "oalansilva/crypto") | .status][0] // ""'
+}
+
+card_lookup() {
+  local number="$1" matches status
+  if [[ "$BOARD_STATE" != "ok" ]]; then
+    printf 'unknown\n'
+    return 0
+  fi
+  matches="$(printf '%s' "$BOARD_JSON" | jq -c --argjson n "$number" '[.items[] | select(.content.number == $n and (.content.repository // "") == "oalansilva/crypto")]' 2>/dev/null)"
+  [[ -z "$matches" ]] && { printf 'unknown\n'; return 0; }
+  case "$(printf '%s' "$matches" | jq 'length' 2>/dev/null || printf '0')" in
+    0) printf 'unknown\n' ;;
+    1)
+      status="$(printf '%s' "$matches" | jq -r '.[0].status // ""' 2>/dev/null)"
+      case "$status" in
+        Pronto|Cancelado) printf 'terminal\n' ;;
+        "") printf 'unknown\n' ;;
+        *) printf 'non-terminal\n' ;;
+      esac
+      ;;
+    *) printf 'unknown\n' ;;
+  esac
+}
+
+pr_lookup() {
+  local owner="$1" head="$2" matches
+  if [[ "$PRS_STATE" != "ok" ]]; then
+    printf 'unknown\n'
+    return 0
+  fi
+  matches="$(printf '%s' "$PRS_JSON" | jq -c --arg o "$owner" --arg h "$head" '[.[] | select(.headRepositoryOwner.login == $o and .headRefName == $h)]' 2>/dev/null)"
+  [[ -z "$matches" ]] && { printf 'unknown\n'; return 0; }
+  case "$(printf '%s' "$matches" | jq 'length' 2>/dev/null || printf '0')" in
+    1) printf 'yes\n' ;;
+    *) printf 'no\n' ;;
+  esac
+}
+
+# Canonical RELEASE_CARDS (D4): normalized once, before any remote call in post.
+CANONICAL_CARDS=""
+RELEASE_CARDS_INVALID=""
+RELEASE_CARDS_OUT_OF_RANGE=""
+
+normalize_release_cards() {
+  local raw="${RELEASE_CARDS:-}"
+  [[ -z "$raw" ]] && return 0
+  local -A seen=()
+  local canonical=""
+  local raw_token token
+  IFS=',' read -ra raw_arr <<< "$raw"
+  for raw_token in "${raw_arr[@]}"; do
+    token="$(printf '%s' "$raw_token" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^0*//')"
+    if [[ -z "$token" || ! "$token" =~ ^[0-9]+$ ]]; then
+      RELEASE_CARDS_INVALID="$raw_token"
+      return 0
+    fi
+    if [[ ${#token} -gt 10 || "$token" -lt 1 || "$token" -gt 2147483647 ]]; then
+      RELEASE_CARDS_OUT_OF_RANGE="$raw_token"
+      return 0
+    fi
+    if [[ -z "${seen[$token]:-}" ]]; then
+      seen[$token]=1
+      canonical+="$token "
+    fi
+  done
+  CANONICAL_CARDS="$(printf '%s' "$canonical" | sed 's/[[:space:]]*$//')"
+}
+
+card_matches_count() {
+  local number="$1"
+  printf '%s' "$BOARD_JSON" | jq -c --argjson n "$number" '[.items[] | select(.content.number == $n and (.content.repository // "") == "oalansilva/crypto")]' | jq 'length'
+}
+
 branch_merged() {
   local branch="$1"
   if git merge-base --is-ancestor "$branch" origin/develop >/dev/null 2>&1; then
@@ -154,6 +324,42 @@ if [[ "$mode" == "post" ]] &&
   fi
 fi
 
+section "Release cards canonicalization (post/audit)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  normalize_release_cards
+  if [[ -n "$RELEASE_CARDS_INVALID" ]]; then
+    issue "RELEASE_CARDS contains invalid card identifiers: $RELEASE_CARDS_INVALID (expected comma-separated integers 1..2147483647)"
+  elif [[ -n "$RELEASE_CARDS_OUT_OF_RANGE" ]]; then
+    issue "RELEASE_CARDS contains out-of-range card identifier: $RELEASE_CARDS_OUT_OF_RANGE"
+  elif [[ -n "$CANONICAL_CARDS" ]]; then
+    printf 'RELEASE_CARDS canonicalized: %s\n' "$CANONICAL_CARDS"
+  else
+    printf 'RELEASE_CARDS not set or empty.\n'
+  fi
+else
+  printf 'Skipped (release cards canonicalization runs in post/audit).\n'
+fi
+
+section "Remote snapshots (post/audit)"
+if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+  if [[ "$strict" -eq 1 && ( -n "$RELEASE_CARDS_INVALID" || -n "$RELEASE_CARDS_OUT_OF_RANGE" ) ]]; then
+    printf 'Remote snapshot load skipped: RELEASE_CARDS invalid (blocker already emitted before any remote call).\n'
+  elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    if ensure_snapshots; then
+      printf 'Board snapshot: %s items (totalCount=%s); PR snapshot: %s open PRs.\n' \
+        "$(printf '%s' "$BOARD_JSON" | jq '.items | length')" \
+        "$(printf '%s' "$BOARD_JSON" | jq -r '.totalCount')" \
+        "$(printf '%s' "$PRS_JSON" | jq 'length')"
+    else
+      printf 'One or more remote snapshots failed; see diagnostics above (global fail-closed).\n'
+    fi
+  else
+    printf 'Skipped (gh unavailable or not authenticated; board/PR checks skip or fail-closed per mode).\n'
+  fi
+else
+  printf 'Skipped (remote snapshots load in post/audit; pre performs no board/PR queries).\n'
+fi
+
 section "Prod deploy evidence"
 prod_evidence="${PROD_DEPLOY_EVIDENCE:-}"
 release_published=0
@@ -251,10 +457,16 @@ if [[ "$mode" == "audit" ]]; then
     else
       nodes_json="$(printf '%s' "$page_json" | jq -c '.data.node.items.nodes')"
       page=0
-      while [[ $page -lt 20 ]]; do
+      while [[ $page -lt 19 ]]; do
         has_next="$(printf '%s' "$page_json" | jq -r '.data.node.items.pageInfo.hasNextPage // false' 2>/dev/null)"
         cursor="$(printf '%s' "$page_json" | jq -r '.data.node.items.pageInfo.endCursor // ""' 2>/dev/null)"
-        [[ "$has_next" != "true" || -z "$cursor" ]] && break
+        if [[ "$has_next" != "true" || -z "$cursor" ]]; then
+          break
+        fi
+        if [[ $page -eq 18 ]]; then
+          warn "card age inventory truncated at 19 GraphQL pages; results are partial"
+          break
+        fi
         page_json="$(gh api graphql -f query="$card_age_query" -F project=PVT_lAHOAAHtBM4BV8b2zgrMgus -F cursor="$cursor" 2>/dev/null || true)"
         if [[ -z "$page_json" ]] || ! printf '%s' "$page_json" | jq -e '.data.node.items.nodes' >/dev/null 2>&1; then
           warn "card age inventory pagination failed; inventory may be partial"
@@ -307,10 +519,10 @@ fi
 section "Board/issue title sync (audit)"
 if [[ "$mode" == "audit" ]]; then
   if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
-    if [[ -z "$board_json" ]] || ! printf '%s' "$board_json" | jq -e '.items' >/dev/null 2>&1; then
-      warn "board/issue title sync check unavailable (gh project item-list returned no/invalid data; check auth/rate limit/project scope)"
+    if [[ "$BOARD_STATE" != "ok" ]]; then
+      warn "board/issue title sync check skipped (board snapshot unavailable (failed or skipped))"
     else
+      board_json="$BOARD_JSON"
       title_mismatches=0
       while IFS=$'\t' read -r card_num board_title issue_title; do
         [[ -z "$card_num" ]] && continue
@@ -386,10 +598,10 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   if [[ "$candidates" -eq 0 ]]; then
     printf 'No active OpenSpec changes with all artifacts done on terminal cards (Pronto/Cancelado).\n'
   elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
-    if [[ -z "$board_json" ]] || ! printf '%s' "$board_json" | jq -e . >/dev/null 2>&1; then
-      issue "OpenSpec terminal-changes check could not run (gh project item-list returned no/invalid data; check auth/rate limit/project scope)"
+    if [[ "$BOARD_STATE" != "ok" ]]; then
+      issue "OpenSpec terminal-changes check could not run (board snapshot unavailable (failed or skipped))"
     else
+      board_json="$BOARD_JSON"
       terminal_pending=0
       for change_dir in openspec/changes/*/; do
         [[ -d "$change_dir" ]] || continue
@@ -413,7 +625,7 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
         if [[ -z "$card_num" ]]; then
           continue
         fi
-        status="$(printf '%s' "$board_json" | jq -r --argjson n "$card_num" '.items[] | select(.content.number == $n) | .status' 2>/dev/null | head -1 || true)"
+        status="$(card_status "$card_num")"
         case "$status" in
           Pronto|Cancelado)
             terminal_pending=$((terminal_pending + 1))
@@ -463,14 +675,16 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
     if [[ -z "$card_num" ]]; then
       return 1
     fi
-    if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
-      return 1
-    fi
-    local board_json status
-    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
-    status="$(printf '%s' "$board_json" | jq -r --argjson n "$card_num" '.items[] | select(.content.number == $n) | .status' 2>/dev/null | head -1 || true)"
-    case "$status" in
-      Pronto|Cancelado) return 0 ;;
+    case "$(card_lookup "$card_num")" in
+      terminal) return 0 ;;
+      unknown)
+        if [[ "$strict" -eq 1 ]]; then
+          blocker "could not determine terminal status for card #$card_num (branch $name); remote state unknown"
+        else
+          warn "could not determine terminal status for card #$card_num (branch $name); remote state unknown"
+        fi
+        return 1
+        ;;
       *) return 1 ;;
     esac
   }
@@ -506,14 +720,7 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
         merged="yes"
       fi
       open_pr="unknown"
-      if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-        pr_count="$(gh pr list --repo oalansilva/crypto --state open --head "$name" --json number -q 'length' 2>/dev/null || printf '0')"
-        if [[ "$pr_count" =~ ^[0-9]+$ ]]; then
-          [[ "$pr_count" -gt 0 ]] && open_pr="yes" || open_pr="no"
-        else
-          open_pr="unknown"
-        fi
-      fi
+      open_pr="$(pr_lookup oalansilva "$name")"
 
       state=""
       if branch_is_preserved "$name" || branch_has_worktree "$name"; then
@@ -674,28 +881,32 @@ else
 fi
 # Board fields for package cards (Responsável/Prioridade/Tipo)
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
-  release_cards="${RELEASE_CARDS:-}"
   if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null || true)"
-    if [[ -z "$board_json" ]]; then
-      if [[ -n "$release_cards" ]]; then
-        issue "board fields check could not run (gh project item-list returned no data; check auth/rate limit/project scope)"
+    if [[ "$BOARD_STATE" != "ok" ]]; then
+      if [[ -n "$CANONICAL_CARDS" ]]; then
+        issue "board fields check could not run (board snapshot unavailable (failed or skipped))"
       else
-        warn "board fields check unavailable (no board data; gh may lack project scope). Set RELEASE_CARDS to enforce package checks."
+        warn "board fields check unavailable (board snapshot unavailable (failed or skipped)). Set RELEASE_CARDS to enforce package checks."
       fi
     else
-      if ! printf '%s' "$board_json" | jq -e . >/dev/null 2>&1; then
-        if [[ -n "$release_cards" ]]; then
-          issue "board fields check could not run (invalid JSON from gh project item-list)"
+      board_json="$BOARD_JSON"
+      if [[ -n "$CANONICAL_CARDS" ]]; then
+        identity_missing=""
+        for num in $CANONICAL_CARDS; do
+          count="$(card_matches_count "$num")"
+          if [[ "$count" -ne 1 ]]; then
+            identity_missing+="    #$num (found $count matching items)"$'\n'
+          elif [[ -z "$(card_status "$num")" ]]; then
+            identity_missing+="    #$num (no Status)"$'\n'
+          fi
+        done
+        if [[ -n "$identity_missing" ]]; then
+          issue "package cards (RELEASE_CARDS) missing, duplicated, or without Status on Project 1:"
+          printf '%s' "$identity_missing" | indent
         else
-          warn "board fields check unavailable (invalid JSON from gh project item-list)."
-        fi
-      else
-        if [[ -n "$release_cards" ]]; then
-          card_list="$(printf '%s' "$release_cards" | tr ',' ' ')"
           filter=''
-          for num in $card_list; do
-            filter+=" or .content.number == $num"
+          for num in $CANONICAL_CARDS; do
+            filter+=" or (.content.number == $num and (.content.repository // \"\") == \"oalansilva/crypto\")"
           done
           filter="select(${filter# or })"
           missing="$(printf '%s' "$board_json" | jq -r ".items[] | ${filter} | [.content.number, (.responsavel // \"VAZIO\"), (.prioridade // \"VAZIO\"), (.tipo // \"VAZIO\")] | @tsv" 2>/dev/null | awk -F'\t' '$2=="VAZIO" || $3=="VAZIO" || $4=="VAZIO" {print}')"
@@ -705,19 +916,19 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
           else
             printf 'Board fields present for RELEASE_CARDS package.\n'
           fi
+        fi
+      else
+        missing="$(printf '%s' "$board_json" | jq -r '.items[] | select(.status == "Pronto" or .status == "Homologado") | select((.content.number|tostring|length) > 0) | [.content.number, (.responsavel // "VAZIO"), (.prioridade // "VAZIO"), (.tipo // "VAZIO")] | @tsv' 2>/dev/null | awk -F'\t' '$2=="VAZIO" || $3=="VAZIO" || $4=="VAZIO" {print}')"
+        if [[ -n "$missing" ]]; then
+          warn "Pronto/Homologado cards missing board fields (set RELEASE_CARDS to scope to the package):"
+          printf '%s\n' "$missing" | indent
         else
-          missing="$(printf '%s' "$board_json" | jq -r '.items[] | select(.status == "Pronto" or .status == "Homologado") | select((.content.number|tostring|length) > 0) | [.content.number, (.responsavel // "VAZIO"), (.prioridade // "VAZIO"), (.tipo // "VAZIO")] | @tsv' 2>/dev/null | awk -F'\t' '$2=="VAZIO" || $3=="VAZIO" || $4=="VAZIO" {print}')"
-          if [[ -n "$missing" ]]; then
-            warn "Pronto/Homologado cards missing board fields (set RELEASE_CARDS to scope to the package):"
-            printf '%s\n' "$missing" | indent
-          else
-            printf 'Board fields present for Pronto/Homologado cards.\n'
-          fi
+          printf 'Board fields present for Pronto/Homologado cards.\n'
         fi
       fi
     fi
   else
-    if [[ -n "$release_cards" ]]; then
+    if [[ -n "$CANONICAL_CARDS" ]]; then
       issue "board fields check could not run (gh unavailable or not authenticated) with RELEASE_CARDS set"
     else
       warn "board fields check unavailable (gh unavailable or not authenticated). Set RELEASE_CARDS to enforce package checks."
@@ -729,70 +940,50 @@ fi
 
 section "Homologation evidence comments (post/audit)"
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
-  release_cards="${RELEASE_CARDS:-}"
-  if [[ -z "$release_cards" ]]; then
-    warn "RELEASE_CARDS not set; package homologation-comment check skipped"
+  if [[ -z "$CANONICAL_CARDS" ]]; then
+    if [[ -n "$RELEASE_CARDS_INVALID" || -n "$RELEASE_CARDS_OUT_OF_RANGE" ]]; then
+      if [[ "$strict" -ne 1 ]]; then
+        warn "RELEASE_CARDS invalid; package homologation-comment check skipped"
+      fi
+    else
+      warn "RELEASE_CARDS not set; package homologation-comment check skipped"
+    fi
   elif ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
     issue "homologation-comment check could not run (gh unavailable or not authenticated) with RELEASE_CARDS set"
+  elif [[ "$BOARD_STATE" != "ok" ]]; then
+    issue "homologation-comment check could not run (board snapshot unavailable (failed or skipped))"
   else
-    if [[ ! "$release_cards" =~ ^[[:space:]]*[0-9]+[[:space:]]*(,[[:space:]]*[0-9]+[[:space:]]*)*$ ]]; then
-      issue "RELEASE_CARDS contains invalid card identifiers; expected comma-separated numeric IDs"
-    else
-      compact_cards="${release_cards//[[:space:]]/}"
-      IFS=',' read -ra raw_evidence_card_arr <<< "$compact_cards"
-      evidence_card_arr=()
-      invalid_card_id=""
-      for raw_card_num in "${raw_evidence_card_arr[@]}"; do
-        card_num="${raw_card_num#"${raw_card_num%%[!0]*}"}"
-        [[ -n "$card_num" ]] || card_num="0"
-        if [[ "$card_num" == "0" || ${#card_num} -gt 10 || (${#card_num} -eq 10 && "$card_num" > "2147483647") ]]; then
-          invalid_card_id="$raw_card_num"
-          break
-        fi
-        evidence_card_arr+=("$card_num")
-      done
-
-      evidence_board_json=""
-      if [[ -n "$invalid_card_id" ]]; then
-        issue "RELEASE_CARDS contains out-of-range card identifier: $invalid_card_id"
-      elif ! evidence_board_json="$(gh project item-list 1 --owner oalansilva --limit 500 --format json 2>/dev/null)"; then
-        issue "homologation-comment check could not run (gh project item-list failed)"
-      elif [[ -z "$evidence_board_json" ]] || ! printf '%s' "$evidence_board_json" | jq -e '.items | type == "array"' >/dev/null 2>&1; then
-        issue "homologation-comment check could not run (gh project item-list returned no/invalid data)"
-      else
-        declare -A seen_evidence_cards=()
-        for card_num in "${evidence_card_arr[@]}"; do
-          if [[ -n "${seen_evidence_cards[$card_num]:-}" ]]; then
-            continue
-          fi
-          seen_evidence_cards["$card_num"]=1
-
-          card_status="$(printf '%s' "$evidence_board_json" | jq -r --argjson n "$card_num" '[.items[] | select(.content.number == $n) | .status][0] // ""' 2>/dev/null || true)"
-          if [[ -z "$card_status" ]]; then
-            issue "homologation-comment check could not find card #$card_num or its Status on Project 1"
-            continue
-          fi
-          case "$card_status" in
-            Homologado|Pronto) ;;
-            *)
-              printf 'Card #%s is %s; homologation-comment check not applicable.\n' "$card_num" "$card_status"
-              continue
-              ;;
-          esac
-
-          comments=""
-          if ! comments="$(gh api "repos/oalansilva/crypto/issues/$card_num/comments" --paginate --jq '.[].body' 2>/dev/null)"; then
-            issue "homologation-comment check could not list all comments for card #$card_num"
-            continue
-          fi
-          if printf '%s\n' "$comments" | grep -qiF 'Homologado por Alan na develop.'; then
-            printf 'Card #%s has canonical homologation evidence.\n' "$card_num"
-          else
-            issue "card #$card_num is $card_status without canonical homologation comment; confirm Alan's approval and run scripts/post-card-evidence-comment.sh --transition homologado --card $card_num --commit <sha> --dry-run before posting"
-          fi
-        done
+    declare -A seen_evidence_cards=()
+    for card_num in $CANONICAL_CARDS; do
+      if [[ -n "${seen_evidence_cards[$card_num]:-}" ]]; then
+        continue
       fi
-    fi
+      seen_evidence_cards["$card_num"]=1
+
+      card_status="$(card_status "$card_num")"
+      if [[ -z "$card_status" ]]; then
+        issue "homologation-comment check could not find card #$card_num or its Status on Project 1"
+        continue
+      fi
+      case "$card_status" in
+        Homologado|Pronto) ;;
+        *)
+          printf 'Card #%s is %s; homologation-comment check not applicable.\n' "$card_num" "$card_status"
+          continue
+          ;;
+      esac
+
+      comments=""
+      if ! comments="$(gh api "repos/oalansilva/crypto/issues/$card_num/comments" --paginate --jq '.[].body' 2>/dev/null)"; then
+        issue "homologation-comment check could not list all comments for card #$card_num"
+        continue
+      fi
+      if printf '%s\n' "$comments" | grep -qiF 'Homologado por Alan na develop.'; then
+        printf 'Card #%s has canonical homologation evidence.\n' "$card_num"
+      else
+        issue "card #$card_num is $card_status without canonical homologation comment; confirm Alan's approval and run scripts/post-card-evidence-comment.sh --transition homologado --card $card_num --commit <sha> --dry-run before posting"
+      fi
+    done
   fi
 else
   printf 'Skipped (homologation-comment check runs in post/audit).\n'
