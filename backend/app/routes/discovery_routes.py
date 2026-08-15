@@ -113,6 +113,10 @@ def discovery_sweeps_history(
                 "state": r.state,
                 "total": r.total,
                 "processed": r.processed,
+                "succeeded": r.succeeded,
+                "failed": r.failed,
+                "skipped": r.skipped,
+                "snapshot_hash": (r.snapshot or {}).get("snapshot_hash"),
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             }
             for r in rows
@@ -172,6 +176,12 @@ def _command(sweep_id: str, command: str, db: Session) -> dict[str, Any]:
 def discovery_leaderboard(
     sweep_id: str,
     metric: str = "calmar_ratio",
+    symbol: str | None = None,
+    timeframe: str | None = None,
+    direction: str | None = None,
+    eligibility: str | None = None,
+    offset: int = 0,
+    limit: int | None = None,
     actor: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
@@ -183,8 +193,31 @@ def discovery_leaderboard(
         raise HTTPException(
             status_code=400, detail="metric must be calmar_ratio or delta_cagr_vs_bh"
         )
-    rows = service.rank_eligible(sweep_id, metric=metric, db=db)
-    return {"sweep_id": sweep_id, "metric": metric, "results": rows, "total": len(rows)}
+    if offset is None or offset < 0:
+        offset = 0
+    if limit is None:
+        limit = 50
+    limit = max(1, min(limit, 200))
+    results, total, unfiltered_total = service.leaderboard(
+        sweep_id,
+        metric=metric,
+        symbol=symbol,
+        timeframe=timeframe,
+        direction=direction,
+        eligibility=eligibility,
+        offset=offset,
+        limit=limit,
+        db=db,
+    )
+    return {
+        "sweep_id": sweep_id,
+        "metric": metric,
+        "results": results,
+        "total": total,
+        "unfiltered_total": unfiltered_total,
+        "offset": offset,
+        "limit": limit,
+    }
 
 
 @router.post("/results/{result_id}/promote", status_code=201)

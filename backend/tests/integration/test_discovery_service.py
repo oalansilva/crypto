@@ -509,6 +509,84 @@ class TestIdentityAndLeaderboard:
         assert ranked[0]["rank"] == 1
         db.close()
 
+    def test_leaderboard_filters_pagination_and_ineligible(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        sweep_id = f"sw-{uuid.uuid4().hex[:8]}"
+        now = datetime.now(timezone.utc)
+        specs = [
+            ("RS-A", "BTCUSDT", "1d", "long", 3.0, 45, "eligible", "unique"),
+            ("RS-B", "BTCUSDT", "4h", "long", 2.5, 40, "eligible", "unique"),
+            ("RS-C", "ETHUSDT", "1d", "short", 1.8, 33, "eligible", "unique"),
+            ("RS-D", "SOLUSDT", "4h", "long", 1.2, 18, "low_sample", "unique"),
+        ]
+        for i, (rid, symbol, timeframe, direction, calmar, trades, elig, dedup) in enumerate(specs):
+            db.add(
+                DiscoveryResult(
+                    id=rid,
+                    sweep_id=sweep_id,
+                    combination_id=950000 + i,
+                    template_id="t1",
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    direction=direction,
+                    parameters={},
+                    start_at=now,
+                    end_at=now + timedelta(days=1),
+                    metrics={},
+                    trades_count=trades,
+                    calmar_ratio=calmar,
+                    strategy_identity_key=f"id-{rid}",
+                    evidence_fingerprint=f"fp-{rid}",
+                    eligibility=elig,
+                    dedup_state=dedup,
+                )
+            )
+        db.commit()
+
+        # Ranking global: elegíveis ranqueados (RS-A > RS-B > RS-C); ineligible
+        # aparece por último com rank None (não re-numera posições).
+        rows, total, unfiltered_total = service.leaderboard(sweep_id, metric="calmar_ratio", db=db)
+        assert total == 4
+        assert unfiltered_total == 4
+        assert [r["result_id"] for r in rows] == ["RS-A", "RS-B", "RS-C", "RS-D"]
+        assert [r["rank"] for r in rows] == [1, 2, 3, None]
+
+        # Filtro por símbolo (aceita "BTC/USDT" e "BTCUSDT").
+        rows, total, unfiltered_total = service.leaderboard(
+            sweep_id, metric="calmar_ratio", symbol="BTC/USDT", db=db
+        )
+        assert total == 2
+        assert unfiltered_total == 4
+        assert [r["result_id"] for r in rows] == ["RS-A", "RS-B"]
+
+        # Filtro por timeframe + direção.
+        rows, total, unfiltered_total = service.leaderboard(
+            sweep_id, metric="calmar_ratio", timeframe="1d", direction="short", db=db
+        )
+        assert total == 1
+        assert unfiltered_total == 4
+        assert rows[0]["result_id"] == "RS-C"
+
+        rows, total, unfiltered_total = service.leaderboard(
+            sweep_id, metric="calmar_ratio", eligibility="low_sample", db=db
+        )
+        assert total == 1
+        assert unfiltered_total == 4
+        assert rows[0]["result_id"] == "RS-D"
+        assert rows[0]["rank"] is None
+
+        # Paginação preserva rank global e total do recorte filtrado.
+        rows, total, unfiltered_total = service.leaderboard(
+            sweep_id, metric="calmar_ratio", offset=1, limit=2, db=db
+        )
+        assert total == 4
+        assert unfiltered_total == 4
+        assert [r["result_id"] for r in rows] == ["RS-B", "RS-C"]
+        assert [r["rank"] for r in rows] == [2, 3]
+        db.close()
+
 
 @pytest.fixture
 def engine_factory():
