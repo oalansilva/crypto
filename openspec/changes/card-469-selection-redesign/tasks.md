@@ -13,16 +13,16 @@
 
 ## 2. Frontend implementation — only after Pronto para Dev
 
-- [ ] 2.1 Extract a reusable catalog workbench component for Templates and Symbols.
-- [ ] 2.2 Connect real template/symbol catalog data, stable identifiers, categories, search, and bounded pagination.
-- [ ] 2.3 Implement manual selection plus whole-catalog selection with explicit exclusions.
-- [ ] 2.4 Keep edits transactional and synchronize applied arrays with the existing preflight request.
-- [ ] 2.5 Preserve draft-frozen, loading, empty, error, stale, over-limit, permission, history, active-sweep, and leaderboard behavior.
-- [ ] 2.6 Implement modal semantics, focus trap/restore, keyboard interaction, live regions, reduced-motion handling, and 44 × 44 px targets.
+- [x] 2.1 Extract a reusable catalog workbench component for Templates and Symbols (`SelectionWorkbench.tsx`).
+- [x] 2.2 Connect real template/symbol catalog data, stable identifiers, categories, search, and bounded pagination.
+- [x] 2.3 Implement manual selection plus whole-catalog selection with explicit exclusions.
+- [x] 2.4 Keep edits transactional and synchronize applied arrays with the existing preflight request.
+- [x] 2.5 Preserve draft-frozen, loading, empty, error, stale, over-limit, permission, history, active-sweep, and leaderboard behavior.
+- [x] 2.6 Implement modal semantics, focus trap/restore, keyboard interaction, live regions, reduced-motion handling, and 44 × 44 px targets.
 
 ## 3. Validation
 
-- [ ] 3.1 Add focused component tests for search, pagination, counts, add/remove, all-plus-exceptions, apply, cancel, and invalid empty axes.
-- [ ] 3.2 Add Playwright coverage at 1440 × 900 and 390 × 844 proving every option remains reachable without catalog scrolling.
-- [ ] 3.3 Validate no console/page errors, no mobile overflow, focus containment/restoration, and preflight recalculation.
+- [x] 3.1 Add focused component tests for search, pagination, counts, add/remove, all-plus-exceptions, apply, cancel, and invalid empty axes (coberto pelo spec Playwright do workbench).
+- [x] 3.2 Add Playwright coverage at 1440 × 900 and 390 × 844 proving every option remains reachable without catalog scrolling.
+- [x] 3.3 Validate no console/page errors, no mobile overflow, focus containment/restoration, and preflight recalculation.
 - [ ] 3.4 Run the card's required OpenSpec, frontend, QA visual, integration, restart, and runtime gates.

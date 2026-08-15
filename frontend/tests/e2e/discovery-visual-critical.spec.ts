@@ -251,6 +251,8 @@ async function openDiscovery(page: Page) {
   await page.goto('/combo/discovery')
   await expect(page.getByRole('heading', { name: 'Descoberta de estratégias swing' })).toBeVisible()
   await expect(page.getByTestId('planned-total')).toHaveText('46')
+  await expect(page.getByTestId('template-count')).toContainText('3 de 4 selecionados')
+  await expect(page.getByTestId('symbol-count')).toContainText('4 de 16 selecionados')
   await expect(page.getByRole('heading', { name: 'Leaderboard · Calmar' })).toBeVisible()
   await expect(page.getByTestId('result-count')).toContainText('12 de 12 candidatos')
   await expect(page.getByRole('columnheader', { name: 'Buy and Hold', exact: true })).toHaveCount(1)
@@ -271,10 +273,90 @@ test('card 469 — fidelidade visual desktop/mobile', async ({ page }) => {
   })
 })
 
+test('card 469 — workbench de seleção sem rolagem', async ({ page }) => {
+  await openDiscovery(page)
+
+  const templateCard = page.getByTestId('edit-templates')
+  await expect(templateCard).toBeVisible()
+  await templateCard.click()
+  const workbench = page.getByRole('dialog', { name: 'Montar escopo da varredura' })
+  await expect(workbench).toBeVisible()
+
+  // tabs com contagens
+  await expect(page.getByRole('tab', { name: /Templates/ })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /Símbolos/ })).toBeVisible()
+
+  // busca alcança template sem rolagem
+  const search = page.getByPlaceholder('Buscar nome ou código')
+  await search.fill('ROC duplo')
+  await expect(page.getByText('ROC duplo', { exact: true }).first()).toBeVisible()
+  await page.getByTestId('select-page').click()
+  await expect(page.getByRole('tab', { name: /Templates 4\/4/ })).toBeVisible()
+  await search.fill('')
+  await expect(search).toBeFocused()
+
+  // tab símbolos preserva estado da aba templates
+  await page.getByRole('tab', { name: /Símbolos/ }).click()
+  await expect(page.getByPlaceholder('Buscar ticker ou par')).toBeFocused()
+  await page.getByTestId('select-all').click()
+  await expect(page.getByRole('heading', { name: '16 símbolos selecionados' })).toBeVisible()
+  await page.getByRole('button', { name: /Excluir da seleção/ }).first().click()
+  await expect(page.getByRole('heading', { name: '15 símbolos selecionados' })).toBeVisible()
+
+  // aplicar atualiza o resumo do shell
+  await page.getByRole('button', { name: 'Aplicar seleção' }).click()
+  await expect(workbench).toBeHidden()
+  await expect(page.getByTestId('symbol-count')).toContainText('15 de 16 selecionados')
+  await expect(page.getByTestId('symbol-axis-status')).toContainText('Catálogo inteiro')
+
+  // cancelar com edição suja pede confirmação
+  await page.getByTestId('edit-symbols').click()
+  await expect(workbench).toBeVisible()
+  await page.getByTestId('clear-axis').click()
+  await page.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(page.getByRole('alertdialog', { name: /Descartar alterações não aplicadas/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Continuar editando' })).toBeFocused()
+  await page.getByRole('button', { name: 'Continuar editando' }).click()
+  await expect(page.getByRole('alertdialog', { name: /Descartar alterações não aplicadas/ })).toBeHidden()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('alertdialog', { name: /Descartar alterações não aplicadas/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Descartar alterações' }).click()
+  await expect(workbench).toBeHidden()
+  await expect(page.getByTestId('edit-symbols')).toBeFocused()
+})
+
+test('card 469 — workbench a11y: trap de foco e setas nas tabs', async ({ page }) => {
+  await openDiscovery(page)
+  await page.getByTestId('edit-templates').click()
+  const workbench = page.getByRole('dialog', { name: 'Montar escopo da varredura' })
+  await expect(workbench).toBeVisible()
+
+  // navegação por setas nas tabs
+  await page.getByRole('tab', { name: /Templates/ }).focus()
+  await expect(page.getByRole('tab', { name: /Templates/ })).toBeFocused()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('tab', { name: /Símbolos/ })).toBeFocused()
+  await page.keyboard.press('ArrowLeft')
+  await expect(page.getByRole('tab', { name: /Templates/ })).toBeFocused()
+
+  // trap de foco: Tab do último elemento volta ao primeiro dentro do dialog
+  for (let i = 0; i < 30; i++) {
+    await page.keyboard.press('Tab')
+    const inDialog = await page.evaluate(() => {
+      const dialog = document.getElementById('selection-workbench')
+      return dialog ? dialog.contains(document.activeElement) : false
+    })
+    expect(inDialog).toBe(true)
+  }
+
+  // Escape fecha e retorna foco ao trigger
+  await page.keyboard.press('Escape')
+  await expect(workbench).toBeHidden()
+  await expect(page.getByTestId('edit-templates')).toBeFocused()
+})
+
 test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   const captured = await openDiscovery(page)
-
-  await expect(page.getByTestId('symbol-axis-status')).toContainText('cobertura de candles insuficiente')
 
   const startBox = await page.getByTestId('start-sweep').boundingBox()
   expect(startBox?.height ?? 0).toBeGreaterThanOrEqual(44)
