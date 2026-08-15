@@ -155,6 +155,9 @@ class TestPreflight:
         assert result["snapshot_token"]
         assert result["snapshot_hash"]
         assert result["valid_total"] == 2
+        assert result["start_date"] == "2024-01-01"
+        assert result["end_date"] == "2024-12-31"
+        assert result["period_type"] is None
 
     def test_preflight_rejects_unsupported_timeframe(self, monkeypatch):
         service = DiscoveryService()

@@ -79,6 +79,7 @@
 - [x] 7.15 Atualizar os contadores após cada combinação, manter intents `pending` quando a publicação falhar e confirmar `acked` após execução, com testes de regressão.
 - [x] 7.16 Alinhar a chamada do discovery ao contrato real do `ComboOptimizer`, convertendo `period_type` em datas e usando explicitamente o provider cripto.
 - [x] 7.17 Impedir que testes de integração discovery executem contra banco que não tenha nome de teste.
+- [x] 7.18 Persistir período no snapshot executável e usar pool Celery `solo` para permitir o multiprocessing interno do otimizador.
 
 ## Gate
 
@@ -97,3 +98,4 @@
 - Correção pós-runtime: chaves idempotentes de criação/promoção respeitam o contrato `max_length=64`; o Playwright intercepta e valida os payloads enviados.
 - Correção de execução: `./restart` provisiona dispatcher/worker `discovery`; o orquestrador reconcilia progresso após cada combinação e registra início/fim no journald.
 - Correção de contrato/runtime: `period_type` é convertido em `start_date/end_date`, o provider `ccxt` é explícito e testes discovery recusam bancos não-test.
+- Correção do smoke real: snapshot preserva período e o worker discovery usa `--pool=solo`, evitando processos filhos de worker daemon.
