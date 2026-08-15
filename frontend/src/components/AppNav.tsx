@@ -8,6 +8,7 @@ import {
   Layers,
   LogOut,
   Menu,
+  Radar,
   Settings,
   User,
   UsersRound,
@@ -38,6 +39,7 @@ const mainNavItems: NavItemConfig[] = [
 ]
 
 const strategyNavItems: NavItemConfig[] = [
+  { to: '/combo/discovery', label: 'Descoberta', icon: Radar, adminOnly: true },
   { to: '/combo/select', label: 'Combo', icon: Layers, adminOnly: true },
 ]
 
@@ -58,6 +60,7 @@ export function openMobileMenu() {
 function resolvePageTitle(pathname: string) {
   if (pathname === '/' || pathname === '/monitor') return 'Monitor de sinais'
   if (pathname === '/favorites') return 'Favoritos'
+  if (pathname.startsWith('/combo/discovery')) return 'Descoberta de estratégias'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
   if (pathname.startsWith('/help')) return 'Ajuda'
@@ -119,9 +122,11 @@ function NavSection({
           const isActive =
             to === '/monitor'
               ? pathname === '/monitor' || pathname === '/'
-              : to.startsWith('/combo')
-                ? pathname.startsWith('/combo')
-                : pathname === to || pathname.startsWith(`${to}/`)
+              : to === '/combo/discovery'
+                ? pathname.startsWith('/combo/discovery')
+                : to.startsWith('/combo')
+                  ? pathname.startsWith('/combo') && !pathname.startsWith('/combo/discovery')
+                  : pathname === to || pathname.startsWith(`${to}/`)
 
           return (
             <NavLink

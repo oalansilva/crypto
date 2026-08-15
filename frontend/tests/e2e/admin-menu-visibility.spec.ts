@@ -7,7 +7,7 @@ type TestUser = {
   isAdmin: boolean
 }
 
-const adminOnlyLabels = ['Combo']
+const adminOnlyLabels = ['Combo', 'Descoberta']
 const discontinuedAdminLabels = ['Backfill']
 
 async function setupAuthenticatedUser(page: any, user: TestUser) {
