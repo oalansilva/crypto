@@ -33,6 +33,26 @@ from app.services.discovery_service import (
 logger = logging.getLogger(__name__)
 
 
+def resolve_optimizer_date_range(
+    snapshot: dict[str, Any], now: datetime | None = None
+) -> tuple[str | None, str | None]:
+    """Converte o período do discovery para o contrato de datas do otimizador."""
+    start_date = snapshot.get("start_date")
+    end_date = snapshot.get("end_date")
+    if start_date or end_date:
+        return start_date, end_date
+
+    period_type = snapshot.get("period_type")
+    if period_type not in {"6m", "2y"}:
+        return None, None
+
+    from dateutil.relativedelta import relativedelta
+
+    end = (now or datetime.now(timezone.utc)).date()
+    delta = relativedelta(months=6) if period_type == "6m" else relativedelta(years=2)
+    return (end - delta).isoformat(), end.isoformat()
+
+
 def enqueue_sweep_orchestrator(sweep_id: str, generation: int) -> None:
     """Publica o wake-up do orquestrador (idempotente por sweep+generation)."""
     try:
@@ -148,15 +168,16 @@ def run_combination(
     from app.services.combo_optimizer import ComboOptimizer
 
     snapshot = sweep.snapshot or {}
+    start_date, end_date = resolve_optimizer_date_range(snapshot)
     try:
         optimizer = ComboOptimizer()
         result = optimizer.run_optimization(
             template_name=combination.template_id,
             symbol=combination.symbol,
             timeframe=combination.timeframe,
-            start_date=snapshot.get("start_date"),
-            end_date=snapshot.get("end_date"),
-            period_type=snapshot.get("period_type"),
+            data_source="ccxt",
+            start_date=start_date,
+            end_date=end_date,
             direction=combination.direction,
             deep_backtest=True,
         )

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
@@ -25,6 +26,18 @@ from app.services.discovery_service import (
     build_evidence_fingerprint,
     build_strategy_identity,
 )
+
+
+def _assert_safe_integration_database() -> None:
+    database_name = (make_url(os.environ["DATABASE_URL"]).database or "").lower()
+    is_test_database = database_name.startswith("test_") or database_name.endswith(
+        ("_test", "_tests", "_testing")
+    )
+    if not is_test_database:
+        raise RuntimeError(
+            "Refusing discovery integration tests against a non-test database "
+            f"({database_name or '<empty>'})."
+        )
 
 
 @pytest.fixture(autouse=True)
@@ -44,6 +57,8 @@ def _discovery_tables(monkeypatch):
     (efeito colateral que contaminaria outros testes de integração que assumem
     catálogo vazio)."""
     from app.services.combo_service import ComboService
+
+    _assert_safe_integration_database()
 
     def _fake_list_templates(*_a, **_k):
         return {"prebuilt": [], "examples": [{"name": "multi_ma_crossover", "direction": "long"}]}
@@ -77,6 +92,13 @@ def _discovery_tables(monkeypatch):
 
 def _session_factory(engine):
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def test_discovery_database_guard_rejects_non_test_database(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg2://root@/crypto_app_dev")
+
+    with pytest.raises(RuntimeError, match="non-test database"):
+        _assert_safe_integration_database()
 
 
 def _preflight_payload(service: DiscoveryService) -> dict:
