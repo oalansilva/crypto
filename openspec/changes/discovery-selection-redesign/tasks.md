@@ -1,0 +1,26 @@
+# Tasks: Discovery selection redesign
+
+## 1. Design gate
+
+- [x] 1.1 Classify UI impact and preserve the current Discovery shell and non-selection surfaces.
+- [x] 1.2 Shape the no-scroll workbench interaction and document alternatives, decisions, and risks.
+- [x] 1.3 Build the navigable prototype at `frontend/public/prototypes/discovery-selection-redesign/index.html`.
+- [x] 1.4 Run deterministic Impeccable detection and desktop/mobile browser assertions.
+- [ ] 1.5 Obtain independent Assessment A and Assessment B in separate `openai/gpt-5.6-sol` contexts; currently blocked because this spawn exposes no Task/subagent tool.
+- [ ] 1.6 Obtain Alan's design approval after the independent-critic blocker is resolved.
+
+## 2. Frontend implementation — only after Pronto para Dev
+
+- [ ] 2.1 Extract a reusable catalog workbench component for Templates and Symbols.
+- [ ] 2.2 Connect real template/symbol catalog data, stable identifiers, categories, search, and bounded pagination.
+- [ ] 2.3 Implement manual selection plus whole-catalog selection with explicit exclusions.
+- [ ] 2.4 Keep edits transactional and synchronize applied arrays with the existing preflight request.
+- [ ] 2.5 Preserve draft-frozen, loading, empty, error, stale, over-limit, permission, history, active-sweep, and leaderboard behavior.
+- [ ] 2.6 Implement modal semantics, focus trap/restore, keyboard interaction, live regions, reduced-motion handling, and 44 × 44 px targets.
+
+## 3. Validation
+
+- [ ] 3.1 Add focused component tests for search, pagination, counts, add/remove, all-plus-exceptions, apply, cancel, and invalid empty axes.
+- [ ] 3.2 Add Playwright coverage at 1440 × 900 and 390 × 844 proving every option remains reachable without catalog scrolling.
+- [ ] 3.3 Validate no console/page errors, no mobile overflow, focus containment/restoration, and preflight recalculation.
+- [ ] 3.4 Run the card's required OpenSpec, frontend, QA visual, integration, restart, and runtime gates.
