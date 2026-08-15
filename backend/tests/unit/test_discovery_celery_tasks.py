@@ -1,8 +1,30 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 from app.tasks import discovery_celery_tasks, discovery_tasks
+
+
+def test_resolve_optimizer_date_range_maps_discovery_periods():
+    now = datetime(2026, 8, 15, 12, 0, tzinfo=timezone.utc)
+
+    assert discovery_tasks.resolve_optimizer_date_range({"period_type": "6m"}, now) == (
+        "2026-02-15",
+        "2026-08-15",
+    )
+    assert discovery_tasks.resolve_optimizer_date_range({"period_type": "2y"}, now) == (
+        "2024-08-15",
+        "2026-08-15",
+    )
+    assert discovery_tasks.resolve_optimizer_date_range({"period_type": "all"}, now) == (
+        None,
+        None,
+    )
+    assert discovery_tasks.resolve_optimizer_date_range(
+        {"period_type": "6m", "start_date": "2025-01-01", "end_date": "2025-12-31"},
+        now,
+    ) == ("2025-01-01", "2025-12-31")
 
 
 def test_orchestrator_reconciles_progress_after_each_combination(monkeypatch):

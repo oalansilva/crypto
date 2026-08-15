@@ -77,6 +77,8 @@
 - [x] 7.13 Limitar as chaves idempotentes enviadas pela UI a 64 caracteres e validar os payloads reais de criação e promoção no Playwright.
 - [x] 7.14 Implementar o provisionamento DEV do dispatcher da outbox e do worker Celery da fila `discovery`, ambos gerenciados pelo `./restart` e isolados do PROD.
 - [x] 7.15 Atualizar os contadores após cada combinação, manter intents `pending` quando a publicação falhar e confirmar `acked` após execução, com testes de regressão.
+- [x] 7.16 Alinhar a chamada do discovery ao contrato real do `ComboOptimizer`, convertendo `period_type` em datas e usando explicitamente o provider cripto.
+- [x] 7.17 Impedir que testes de integração discovery executem contra banco que não tenha nome de teste.
 
 ## Gate
 
@@ -94,3 +96,4 @@
 - Julgamento de pixels delegado ao agente `vision`: veredito final `PASS`, sem P0/P1; colunas Trades/Ação visíveis no desktop e grids 2×2 alinhados ao protótipo.
 - Correção pós-runtime: chaves idempotentes de criação/promoção respeitam o contrato `max_length=64`; o Playwright intercepta e valida os payloads enviados.
 - Correção de execução: `./restart` provisiona dispatcher/worker `discovery`; o orquestrador reconcilia progresso após cada combinação e registra início/fim no journald.
+- Correção de contrato/runtime: `period_type` é convertido em `start_date/end_date`, o provider `ccxt` é explícito e testes discovery recusam bancos não-test.
