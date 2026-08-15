@@ -14,6 +14,7 @@ if config.config_file_name is not None:
 import app.models  # noqa: F401
 import app.models_onchain  # noqa: F401
 import app.models_signal_history  # noqa: F401
+import app.models_discovery  # noqa: F401
 from app.config import get_settings
 from app.database import Base
 

@@ -20,6 +20,30 @@ from app.services.binance_service import (
     stop_signal_feed_snapshot_worker,
 )
 from app.services.favorite_backtest_refresh_service import favorite_backtest_refresh_loop
+
+
+async def discovery_outbox_loop(stop_event: asyncio.Event, poll_seconds: int = 10) -> None:
+    """Dispatcher do outbox de discovery (card #469): publica wake-ups de
+    orquestração at-least-once a cada poll. Fila não é fonte de verdade; a
+    outbox persiste os intents."""
+    from app.services.discovery_service import DiscoveryService
+
+    logger.info("Discovery outbox dispatcher started (poll=%ss).", poll_seconds)
+    while not stop_event.is_set():
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=poll_seconds)
+        except asyncio.TimeoutError:
+            pass
+        if stop_event.is_set():
+            break
+        try:
+            published = await asyncio.to_thread(DiscoveryService().dispatch_outbox)
+            if published:
+                logger.info("Discovery outbox dispatched %s orchestrator wake-up(s).", published)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Discovery outbox dispatch failed (retry next poll): %s", exc)
+
+
 from app.services.signal_monitor import signal_monitor
 import app.models  # noqa: F401
 import app.models_signal_history  # noqa: F401
@@ -92,6 +116,7 @@ async def _run(stop_event: asyncio.Event) -> None:
 
     _initialize_runtime_state()
     favorite_refresh_task: asyncio.Task | None = None
+    discovery_dispatch_task: asyncio.Task | None = None
 
     if run_signal_monitor:
         signal_monitor.start()
@@ -105,9 +130,18 @@ async def _run(stop_event: asyncio.Event) -> None:
         favorite_refresh_task = asyncio.create_task(favorite_backtest_refresh_loop(stop_event))
         logger.info("Favorite backtest refresh loop started.")
 
+    if run_favorite_refresh:
+        discovery_dispatch_task = asyncio.create_task(discovery_outbox_loop(stop_event))
+        logger.info("Discovery outbox dispatcher loop started.")
+
     try:
         await stop_event.wait()
     finally:
+        if discovery_dispatch_task is not None:
+            discovery_dispatch_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await discovery_dispatch_task
+            logger.info("Discovery outbox dispatcher loop stopped.")
         if favorite_refresh_task is not None:
             favorite_refresh_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

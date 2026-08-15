@@ -18,6 +18,7 @@ from app.config import get_settings
 from app.api import router
 from app.routes.favorites import router as favorites_router
 from app.routes.combo_routes import router as combo_router
+from app.routes.discovery_routes import router as discovery_router
 from app.routes.opportunity_routes import router as opportunity_router
 from app.routes.logs import router as logs_router
 from app.routes.agent_chat import router as agent_chat_router
@@ -289,6 +290,7 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(favorites_router)
 app.include_router(combo_router)
+app.include_router(discovery_router)
 app.include_router(opportunity_router)
 app.include_router(logs_router)
 app.include_router(agent_chat_router)

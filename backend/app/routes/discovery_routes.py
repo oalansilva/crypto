@@ -1,0 +1,205 @@
+"""Discovery sweep routes (card #469).
+
+Admin-only: preflight, criação idempotente, lifecycle, leaderboard e promoção
+tier 3. `403` é reservado a autorização negada; `409` a idempotência/duplicidade.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.middleware.authMiddleware import get_current_admin
+from app.services.discovery_service import DiscoveryService
+
+router = APIRouter(prefix="/api/combos/discovery", tags=["discovery"])
+
+
+class PreflightRequest(BaseModel):
+    templates: list[str] = Field(min_length=1)
+    symbols: list[str] = Field(min_length=1)
+    timeframes: list[str] = Field(min_length=1)
+    directions: list[str] = Field(min_length=1)
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    period_type: Optional[str] = None
+
+
+class CreateSweepRequest(BaseModel):
+    templates: list[str]
+    symbols: list[str]
+    timeframes: list[str]
+    directions: list[str]
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    period_type: Optional[str] = None
+    snapshot_token: str
+    snapshot_hash: str
+    idempotency_key: str = Field(min_length=8, max_length=64)
+
+
+class PromoteRequest(BaseModel):
+    idempotency_key: str = Field(min_length=8, max_length=64)
+    tier: int = 3
+
+
+def _service() -> DiscoveryService:
+    return DiscoveryService()
+
+
+@router.post("/sweeps/preflight")
+def discovery_preflight(
+    req: PreflightRequest,
+    actor: str = Depends(get_current_admin),
+):
+    service = _service()
+    return service.preflight(
+        templates=req.templates,
+        symbols=req.symbols,
+        timeframes=req.timeframes,
+        directions=req.directions,
+        start_date=req.start_date,
+        end_date=req.end_date,
+        period_type=req.period_type,
+    )
+
+
+@router.post("/sweeps")
+def create_discovery_sweep(
+    req: CreateSweepRequest,
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    service = _service()
+    payload = req.model_dump(exclude={"snapshot_token", "snapshot_hash", "idempotency_key"})
+    payload["snapshot_hash"] = req.snapshot_hash
+    body, status = service.create_sweep(
+        actor=actor,
+        idempotency_key=req.idempotency_key,
+        snapshot_token=req.snapshot_token,
+        payload=payload,
+        db=db,
+    )
+    if status >= 400:
+        raise HTTPException(status_code=status, detail=body)
+    return body
+
+
+@router.get("/sweeps/history")
+def discovery_sweeps_history(
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    from app.models_discovery import DiscoverySweep
+
+    rows = (
+        db.query(DiscoverySweep)
+        .filter(DiscoverySweep.actor == actor)
+        .order_by(DiscoverySweep.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return {
+        "sweeps": [
+            {
+                "sweep_id": r.id,
+                "state": r.state,
+                "total": r.total,
+                "processed": r.processed,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.get("/sweeps/{sweep_id}")
+def get_discovery_sweep(
+    sweep_id: str,
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    service = _service()
+    sweep = service.get_sweep(sweep_id, db)
+    if not sweep:
+        raise HTTPException(status_code=404, detail="sweep not found")
+    return sweep
+
+
+@router.post("/sweeps/{sweep_id}/pause")
+def pause_discovery_sweep(
+    sweep_id: str,
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return _command(sweep_id, "pause", db)
+
+
+@router.post("/sweeps/{sweep_id}/resume")
+def resume_discovery_sweep(
+    sweep_id: str,
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return _command(sweep_id, "resume", db)
+
+
+@router.post("/sweeps/{sweep_id}/cancel")
+def cancel_discovery_sweep(
+    sweep_id: str,
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return _command(sweep_id, "cancel", db)
+
+
+def _command(sweep_id: str, command: str, db: Session) -> dict[str, Any]:
+    service = _service()
+    body, status = service.command(sweep_id, command, db)
+    if status >= 400:
+        raise HTTPException(status_code=status, detail=body)
+    return body
+
+
+@router.get("/sweeps/{sweep_id}/leaderboard")
+def discovery_leaderboard(
+    sweep_id: str,
+    metric: str = "calmar_ratio",
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    service = _service()
+    sweep = service.get_sweep(sweep_id, db)
+    if not sweep:
+        raise HTTPException(status_code=404, detail="sweep not found")
+    if metric not in ("calmar_ratio", "delta_cagr_vs_bh"):
+        raise HTTPException(
+            status_code=400, detail="metric must be calmar_ratio or delta_cagr_vs_bh"
+        )
+    rows = service.rank_eligible(sweep_id, metric=metric, db=db)
+    return {"sweep_id": sweep_id, "metric": metric, "results": rows, "total": len(rows)}
+
+
+@router.post("/results/{result_id}/promote")
+def promote_discovery_result(
+    result_id: str,
+    req: PromoteRequest,
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    service = _service()
+    payload = {"tier": req.tier, "result_id": result_id}
+    body, status = service.promote_result(
+        result_id=result_id,
+        actor=actor,
+        idempotency_key=req.idempotency_key,
+        payload=payload,
+        db=db,
+    )
+    if status >= 400:
+        raise HTTPException(status_code=status, detail=body)
+    return body
