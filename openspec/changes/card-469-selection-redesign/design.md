@@ -2,11 +2,11 @@
 
 ## Status do gate
 
-- Change: `discovery-selection-redesign`
-- Card de origem: `#469`
+- Change: `card-469-selection-redesign`
+- Card de origem: `#469` (mesmo card da Discovery — decisão de Alan: o redesign pertence ao tema do card, sem issue separada).
 - Status observado no packet: `Design` para esta nova change; o card original está em Done técnico/homologação.
 - **UI impact: affected** — o configurador de `/combo/discovery` muda a interação e a composição visual usadas para selecionar 30 templates e 126 símbolos; shell e superfícies operacionais adjacentes permanecem.
-- Aprovação humana: pendente. Este artefato não aprova nem libera desenvolvimento.
+- Aprovação humana: **aprovada por Alan em 2026-08-15** ("aprovado"), registrada abaixo na seção "Aprovação de Alan".
 
 ## Problema
 
@@ -88,9 +88,9 @@ O objetivo não é remover a rolagem natural da página longa da Discovery. É e
 
 ## Prototype
 
-- URL local validada: `http://127.0.0.1:4173/prototypes/discovery-selection-redesign/`
-- URL canônica esperada após publicação pela sessão principal: `https://dev.criptofarol.com.br/prototypes/discovery-selection-redesign/`
-- Caminho: `frontend/public/prototypes/discovery-selection-redesign/index.html`
+- URL local validada: `http://127.0.0.1:4173/prototypes/card-469-selection-redesign/`
+- URL canônica esperada após publicação pela sessão principal: `https://dev.criptofarol.com.br/prototypes/card-469-selection-redesign/`
+- Caminho: `frontend/public/prototypes/card-469-selection-redesign/index.html`
 - SHA-256 validado: `42fabbd3a1010349aa535c4b99a3fcf6c13cee72b13037ab114335f658da2abe`
 - Viewports: desktop `1440×900`; mobile `390×844`.
 - Estados/fluxos: default, abrir por Templates/Símbolos, abas, busca com/sem resultado, categoria, paginação, add/remove, selecionar todos, exceção, limpar, aplicar, cancelar, Escape, contagens e preflight recalculado.
@@ -201,7 +201,7 @@ Metadados:
 ## Prototype Validation
 
 - Comando de servidor: `npm --prefix frontend run dev -- --host 127.0.0.1 --port 4173`.
-- URL: `http://127.0.0.1:4173/prototypes/discovery-selection-redesign/`.
+- URL: `http://127.0.0.1:4173/prototypes/card-469-selection-redesign/`.
 - Browser: Chromium real headless via `@playwright/test` com `--no-sandbox`.
 - Viewports: desktop `1440×900`; mobile `390×844`.
 - Resultado final: **8/8 asserts de fixes + suíte anterior, 0 falhas, 0 `console.error`, 0 `pageerror`**.
@@ -248,6 +248,12 @@ A proposta resolve a fricção central sem redesenhar a Discovery: o catálogo d
 
 **Design Agent verdict: PASS**
 
+## Aprovação de Alan
+
+- Alan aprovou a proposta em 2026-08-15 (chat): "aprovado".
+- Aprovação registrada também neste artefato e no card/issue correspondente da change.
+- Próximo passo após o arraste `Aprovação de Design -> Pronto para Dev`: implementar conforme tasks.md.
+
 ## Resolução dos achados (BLOCKED → PASS)
 
 1. Rodada 1: veredito `BLOCKED` por A/B não executáveis no spawn autor (sem tool Task). Sessão principal executou A/B como spawns independentes `design-planner` (`openai/gpt-5.6-sol`).
@@ -261,6 +267,6 @@ A proposta resolve a fricção central sem redesenhar a Discovery: o catálogo d
 
 - Decisão-chave: resumos compactos + workbench transacional paginado + busca + universo com exceções.
 - Findings: todos os P1s resolvidos; P2s aceitos (projeção informativa e copy de revisão mobile).
-- Protótipo: `https://dev.criptofarol.com.br/prototypes/discovery-selection-redesign/` após publicação; local validado no caminho acima.
+- Protótipo: `https://dev.criptofarol.com.br/prototypes/card-469-selection-redesign/` após publicação; local validado no caminho acima.
 - Evidência: detector `[]`; Playwright 8/8 + suíte anterior; erros zero; digest `349b6d70…`; vision PASS; assessments A/B PASS.
 - Próximo passo: publicar o protótipo em DEV e mover `Design -> Aprovação de Design` para revisão de Alan.
