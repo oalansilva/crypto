@@ -80,6 +80,7 @@
 - [x] 7.16 Alinhar a chamada do discovery ao contrato real do `ComboOptimizer`, convertendo `period_type` em datas e usando explicitamente o provider cripto.
 - [x] 7.17 Impedir que testes de integração discovery executem contra banco que não tenha nome de teste.
 - [x] 7.18 Persistir período no snapshot executável e usar pool Celery `solo` para permitir o multiprocessing interno do otimizador.
+- [x] 7.19 Expor a rota `/combo/discovery` na navegação principal, acima de Combo, com destaque ativo exclusivo e título de página próprio.
 
 ## Gate
 

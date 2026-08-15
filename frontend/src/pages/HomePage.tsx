@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Activity, ArrowRight, FileText, Layers } from 'lucide-react'
+import { Activity, ArrowRight, FileText, Layers, Radar } from 'lucide-react'
 import { apiUrl } from '@/lib/apiBase'
 import PortfolioAllocation from '@/components/PortfolioAllocation'
 import { useAuth } from '@/stores/authStore'
@@ -568,6 +568,7 @@ export default function HomePage() {
               <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Atalhos</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {[
+                  { to: '/combo/discovery', label: 'Descoberta', icon: Radar },
                   { to: '/combo/select', label: 'Combo', icon: Layers },
                   { to: '/external/balances', label: 'Carteira', icon: Activity },
                 ].map(({ to, label, icon: Icon }) => (
