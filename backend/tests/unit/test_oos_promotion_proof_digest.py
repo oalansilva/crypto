@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 import pytest
 
 from app.services.oos_promotion_proof import (
@@ -64,6 +66,48 @@ class TestCanonicalDigest:
         changed["metrics"]["trades"] = [8953.5, 1.5]
         assert _digest(changed) != digest_issue
 
+    def test_digest_round_trip_integral_float_above_javascript_safe_range(self):
+        payload = _payload()
+        payload["metrics"]["calmar_ratio"] = 3.290195462758171e16
+
+        rebuilt = deepcopy(payload)
+        rebuilt["metrics"]["calmar_ratio"] = 32901954627581710
+
+        assert float(rebuilt["metrics"]["calmar_ratio"]) == payload["metrics"]["calmar_ratio"]
+        assert _digest(rebuilt) == _digest(payload)
+
+    @pytest.mark.parametrize("sign", [1, -1])
+    def test_javascript_safe_integer_boundary(self, sign):
+        max_safe_integer = (1 << 53) - 1
+        safe_value = sign * max_safe_integer
+        unsafe_value = sign * (max_safe_integer + 1)
+
+        assert _digest({"v": float(safe_value)}) == _digest({"v": safe_value})
+        assert _digest({"v": float(unsafe_value)}) == _digest({"v": unsafe_value})
+
+    def test_distinguishable_large_number_change_invalidates_digest(self):
+        payload = {"v": 3.290195462758171e16}
+        changed = {"v": 32901954627582710}
+
+        assert float(changed["v"]) != payload["v"]
+        assert _digest(changed) != _digest(payload)
+
+    def test_unsafe_integers_share_digest_when_javascript_number_collapses(self):
+        first = 1 << 53
+        second = first + 1
+
+        assert float(first) == float(second)
+        assert _digest({"v": first}) == _digest({"v": second})
+
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_numbers_fail_closed(self, value):
+        with pytest.raises(ValueError, match="non-finite"):
+            _digest({"v": value})
+
+    def test_integer_beyond_finite_ieee_754_range_fails_closed(self):
+        with pytest.raises(ValueError, match="finite IEEE-754 range"):
+            _digest({"v": 10**400})
+
     def test_real_content_change_invalidates(self):
         payload = _payload()
         digest_issue = _digest(payload)
@@ -100,6 +144,24 @@ class TestProofEndToEnd:
         rebuilt = _browser_roundtrip(payload)
         assert verify_oos_promotion_proof(proof, rebuilt)
 
+    def test_emitted_large_float_accepted_with_browser_integer_round_trip(self):
+        payload = _payload()
+        payload["metrics"]["calmar_ratio"] = 3.290195462758171e16
+        proof = issue_oos_promotion_proof(payload)
+
+        rebuilt = deepcopy(payload)
+        rebuilt["metrics"]["calmar_ratio"] = 32901954627581710
+
+        assert verify_oos_promotion_proof(proof, rebuilt)
+
+    def test_non_finite_verification_fails_closed(self):
+        payload = _payload()
+        proof = issue_oos_promotion_proof(payload)
+        changed = deepcopy(payload)
+        changed["metrics"]["sharpe"] = float("inf")
+
+        assert not verify_oos_promotion_proof(proof, changed)
+
     def test_different_content_rejected(self):
         payload = _payload()
         proof = issue_oos_promotion_proof(payload)
@@ -120,6 +182,13 @@ class TestProofEndToEnd:
 
     def test_nonexistent_proof_rejected(self):
         assert not verify_oos_promotion_proof("nada", _payload())
+
+    def test_wrong_purpose_rejected(self):
+        payload = _payload()
+
+        assert not verify_oos_promotion_proof(
+            _proof_with_purpose(payload, "outro-proposito"), payload
+        )
 
 
 def _digest(payload: dict) -> str:
@@ -143,6 +212,27 @@ def _expired_proof(payload: dict) -> str:
             "digest": _canonical_digest(payload),
             "iat": now - timedelta(hours=7),
             "exp": now - timedelta(hours=1),
+        },
+        os.getenv("JWT_SECRET", "dev-secret-change-in-production"),
+        algorithm="HS256",
+    )
+
+
+def _proof_with_purpose(payload: dict, purpose: str) -> str:
+    import os
+    from datetime import datetime, timedelta, timezone
+
+    import jwt
+
+    from app.services.oos_promotion_proof import _canonical_digest
+
+    now = datetime.now(timezone.utc)
+    return jwt.encode(
+        {
+            "purpose": purpose,
+            "digest": _canonical_digest(payload),
+            "iat": now,
+            "exp": now + timedelta(hours=1),
         },
         os.getenv("JWT_SECRET", "dev-secret-change-in-production"),
         algorithm="HS256",
