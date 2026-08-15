@@ -2,16 +2,37 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
 
+_JS_MAX_SAFE_INTEGER = (1 << 53) - 1
+
 
 def _canonicalize(value: Any) -> Any:
-    if isinstance(value, float) and value.is_integer():
-        return int(value)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("OOS promotion proof payload contains a non-finite number")
+        if value.is_integer() and abs(value) <= _JS_MAX_SAFE_INTEGER:
+            return int(value)
+        return value
+    if isinstance(value, int):
+        if abs(value) <= _JS_MAX_SAFE_INTEGER:
+            return value
+        try:
+            canonical = float(value)
+        except OverflowError as exc:
+            raise ValueError(
+                "OOS promotion proof payload integer exceeds finite IEEE-754 range"
+            ) from exc
+        if not math.isfinite(canonical):
+            raise ValueError("OOS promotion proof payload integer exceeds finite IEEE-754 range")
+        return canonical
     if isinstance(value, dict):
         return {key: _canonicalize(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -73,8 +94,7 @@ def verify_oos_promotion_proof(proof: str, payload: dict[str, Any]) -> bool:
             os.getenv("JWT_SECRET", "dev-secret-change-in-production"),
             algorithms=["HS256"],
         )
-    except jwt.PyJWTError:
+        digest = _canonical_digest(payload)
+    except (jwt.PyJWTError, ValueError):
         return False
-    return claims.get("purpose") == "oos-favorite-promotion" and claims.get(
-        "digest"
-    ) == _canonical_digest(payload)
+    return claims.get("purpose") == "oos-favorite-promotion" and claims.get("digest") == digest
