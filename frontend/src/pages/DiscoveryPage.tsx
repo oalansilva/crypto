@@ -82,7 +82,6 @@ type LeaderboardRow = {
 }
 
 type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
-type CriticalScenario = 'normal' | 'over-limit' | 'stale' | 'retry-error' | 'promotion-conflict' | 'permission-denied'
 
 const TERMINAL = new Set<SweepState>(['cancelled', 'failed', 'partial_failure', 'completed'])
 const PAGE_SIZE = 3
@@ -91,44 +90,6 @@ const idempotencyKey = (prefix: string, value: string) => `${prefix}-${value}`.s
 const STATE_LABEL: Record<SweepState, string> = {
   pending: 'pendente', running: 'em execução', paused: 'pausada', cancelling: 'cancelando',
   cancelled: 'cancelada', failed: 'falhou', partial_failure: 'falha parcial', completed: 'concluída',
-}
-const CRITICAL_STATES: Record<CriticalScenario, { title: string; copy: string; action: string; kind: 'normal' | 'warning' | 'error' }> = {
-  normal: {
-    title: 'Operação normal',
-    copy: 'Preflight válido e ações disponíveis conforme elegibilidade.',
-    action: '',
-    kind: 'normal',
-  },
-  'over-limit': {
-    title: 'Limite excedido',
-    copy: 'O total válido excede o limite do servidor. Nenhum sweep será criado até reduzir o escopo.',
-    action: 'Reduzir escopo',
-    kind: 'warning',
-  },
-  stale: {
-    title: 'Snapshot expirado',
-    copy: 'O catálogo mudou após o preflight. Revalide o snapshot antes de iniciar.',
-    action: 'Refazer preflight',
-    kind: 'warning',
-  },
-  'retry-error': {
-    title: 'Falha ao carregar leaderboard',
-    copy: 'A conexão foi interrompida; o sweep continua no servidor e pode ser consultado novamente.',
-    action: 'Tentar novamente',
-    kind: 'error',
-  },
-  'promotion-conflict': {
-    title: 'Conflito equivalente de promoção (409)',
-    copy: 'Outro administrador promoveu uma estratégia equivalente. Recarregue a deduplicação para obter a referência vencedora.',
-    action: 'Recarregar deduplicação',
-    kind: 'error',
-  },
-  'permission-denied': {
-    title: 'Permissão negada (403)',
-    copy: 'Sua sessão não tem autorização administrativa para operar varreduras.',
-    action: 'Voltar ao Combo',
-    kind: 'error',
-  },
 }
 
 function fmtNum(v: number | null | undefined, digits = 2): string {
@@ -229,7 +190,6 @@ export function DiscoveryPage() {
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [criticalScenario, setCriticalScenario] = useState<CriticalScenario>('normal')
 
   const pollRef = useRef<number | null>(null)
   const preflightTimer = useRef<number | null>(null)
@@ -618,35 +578,6 @@ export function DiscoveryPage() {
     applyFilters(metric, fSymbol, fTimeframe, fDirection, pg)
   }
 
-  useEffect(() => {
-    if (permissionDenied) setCriticalScenario('permission-denied')
-    else if (promoteConflict) setCriticalScenario('promotion-conflict')
-    else if (lbError) setCriticalScenario('retry-error')
-    else if (snapshotStale) setCriticalScenario('stale')
-    else if (overLimit) setCriticalScenario('over-limit')
-    else setCriticalScenario('normal')
-  }, [permissionDenied, promoteConflict, lbError, snapshotStale, overLimit])
-
-  const recoverCriticalState = () => {
-    if (criticalScenario === 'over-limit') {
-      document.querySelector<HTMLInputElement>('[aria-label="Buscar template"]')?.focus()
-      if (!overLimit) setCriticalScenario('normal')
-      return
-    }
-    if (criticalScenario === 'stale') {
-      setCriticalScenario('normal')
-      void runPreflight()
-      return
-    }
-    if (criticalScenario === 'retry-error' || criticalScenario === 'promotion-conflict') {
-      setPromoteConflict(null)
-      setCriticalScenario('normal')
-      applyFilters(metric, fSymbol, fTimeframe, fDirection, page)
-      return
-    }
-    if (criticalScenario === 'permission-denied') navigate('/combo/configure')
-  }
-
   // ---------- Promoção ----------
   const closePromotion = useCallback((returnFocus = true) => {
     setPromoteConflict(null)
@@ -777,7 +708,6 @@ export function DiscoveryPage() {
   }, [preflight, viewSweep, rows, symbols])
   const activeSnapshotHash = activeSweep?.snapshot?.snapshot_hash ?? preflight?.snapshot_hash ?? null
   const periodLabel = { '6m': '6 meses', '2y': '2 anos', all: 'Todo histórico' }[period]
-  const criticalState = CRITICAL_STATES[criticalScenario]
 
   return (
     <div className="min-h-screen text-[var(--text-primary)]">
@@ -1418,59 +1348,6 @@ export function DiscoveryPage() {
             </div>
           </section>
         ) : null}
-
-        {/* Estados críticos verificáveis */}
-        <section className="mt-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)]" aria-labelledby="critical-states-title">
-          <div className="border-b border-[var(--border-default)] px-5 py-4">
-            <h2 id="critical-states-title" className="text-lg font-semibold">Estados críticos verificáveis</h2>
-            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-              Alterne cenários de contrato e use a ação de recuperação indicada.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 items-end gap-4 p-5 md:grid-cols-[minmax(220px,320px)_1fr]">
-            <label>
-              <span className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Cenário do protótipo</span>
-              <select
-                value={criticalScenario}
-                onChange={(e) => setCriticalScenario(e.target.value as CriticalScenario)}
-                data-testid="critical-state"
-                className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
-              >
-                <option value="normal">Operação normal</option>
-                <option value="over-limit">Limite excedido</option>
-                <option value="stale">Snapshot expirado</option>
-                <option value="retry-error">Erro transitório</option>
-                <option value="promotion-conflict">Conflito equivalente de promoção (409)</option>
-                <option value="permission-denied">Permissão negada (403)</option>
-              </select>
-            </label>
-            <div
-              role="status"
-              aria-live="polite"
-              data-testid="critical-panel"
-              className={`min-h-24 rounded-lg border p-3.5 ${
-                criticalState.kind === 'error'
-                  ? 'border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)]'
-                  : criticalState.kind === 'warning'
-                    ? 'border-[rgba(245,158,11,0.4)] bg-[rgba(245,158,11,0.07)]'
-                    : 'border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.07)]'
-              }`}
-            >
-              <h3 className="font-semibold">{criticalState.title}</h3>
-              <p className="mt-1 text-xs text-[var(--text-tertiary)]">{criticalState.copy}</p>
-              {criticalState.action ? (
-                <button
-                  type="button"
-                  onClick={recoverCriticalState}
-                  className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 text-xs font-semibold text-[var(--text-secondary)]"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  {criticalState.action}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </section>
 
         {/* Leaderboard */}
         {viewSweep ? (

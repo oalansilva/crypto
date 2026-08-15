@@ -6,8 +6,9 @@
 - [x] 1.2 Shape the no-scroll workbench interaction and document alternatives, decisions, and risks.
 - [x] 1.3 Build the navigable prototype at `frontend/public/prototypes/card-469-selection-redesign/index.html`.
 - [x] 1.4 Run deterministic Impeccable detection and desktop/mobile browser assertions.
-- [ ] 1.5 Obtain independent Assessment A and Assessment B in separate `openai/gpt-5.6-sol` contexts; currently blocked because this spawn exposes no Task/subagent tool.
-- [ ] 1.6 Obtain Alan's design approval after the independent-critic blocker is resolved.
+- [x] 1.5 Obtain independent Assessment A and Assessment B in separate `openai/gpt-5.6-sol` contexts (executados pela sessão principal via Task; PASS após fixes).
+- [x] 1.6 Obtain Alan's design approval after the independent-critic blocker is resolved (aprovado em 2026-08-15).
+- [x] 1.7 Remover o simulador "Estados críticos verificáveis" da tela de produção (ferramenta de QA; estados reais continuam com superfícies próprias de recuperação).
 
 ## 2. Frontend implementation — only after Pronto para Dev
 
