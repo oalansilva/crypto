@@ -26,3 +26,4 @@
 - [x] 3.2 Add Playwright coverage at 1440 × 900 and 390 × 844 proving every option remains reachable without catalog scrolling.
 - [x] 3.3 Validate no console/page errors, no mobile overflow, focus containment/restoration, and preflight recalculation.
 - [ ] 3.4 Run the card's required OpenSpec, frontend, QA visual, integration, restart, and runtime gates.
+- [x] 3.5 Desabilitar direção Short no configurador por enquanto (apenas Long roda), com aviso "em breve" no controle.
