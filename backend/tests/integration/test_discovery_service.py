@@ -33,7 +33,10 @@ def _assert_safe_integration_database() -> None:
     is_test_database = database_name.startswith("test_") or database_name.endswith(
         ("_test", "_tests", "_testing")
     )
-    if not is_test_database:
+    is_disposable_github_database = (
+        os.getenv("GITHUB_ACTIONS", "").strip().lower() == "true" and database_name == "postgres"
+    )
+    if not is_test_database and not is_disposable_github_database:
         raise RuntimeError(
             "Refusing discovery integration tests against a non-test database "
             f"({database_name or '<empty>'})."
@@ -96,9 +99,17 @@ def _session_factory(engine):
 
 def test_discovery_database_guard_rejects_non_test_database(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg2://root@/crypto_app_dev")
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
     with pytest.raises(RuntimeError, match="non-test database"):
         _assert_safe_integration_database()
+
+
+def test_discovery_database_guard_allows_disposable_github_database(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://postgres@127.0.0.1/postgres")
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    _assert_safe_integration_database()
 
 
 def _preflight_payload(service: DiscoveryService) -> dict:
