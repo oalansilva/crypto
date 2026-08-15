@@ -27,3 +27,4 @@
 - [x] 3.3 Validate no console/page errors, no mobile overflow, focus containment/restoration, and preflight recalculation.
 - [ ] 3.4 Run the card's required OpenSpec, frontend, QA visual, integration, restart, and runtime gates.
 - [x] 3.5 Desabilitar direção Short no configurador por enquanto (apenas Long roda), com aviso "em breve" no controle.
+- [x] 3.6 Tratar 401 na discovery: parar o polling e exibir painel "Sessão expirada" com ação de recarregar, em vez de loop infinito de requisições e mensagem enganosa de "conexão interrompida".

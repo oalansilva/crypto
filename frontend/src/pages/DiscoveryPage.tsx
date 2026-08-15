@@ -214,6 +214,7 @@ export function DiscoveryPage() {
   const [totalAvailable, setTotalAvailable] = useState(0)
   const [lbLoading, setLbLoading] = useState(false)
   const [lbError, setLbError] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
   const [page, setPage] = useState(1)
   const [fSymbol, setFSymbol] = useState('all')
   const [fTimeframe, setFTimeframe] = useState('all')
@@ -489,6 +490,10 @@ export function DiscoveryPage() {
           `${API_BASE_URL}/combos/discovery/sweeps/${sweepId}/leaderboard?${params.toString()}`,
         )
         if (!res.ok) {
+          if (res.status === 401) {
+            setSessionExpired(true)
+            return
+          }
           if (res.status === 403) {
             setPermissionDenied(true)
             return
@@ -514,6 +519,14 @@ export function DiscoveryPage() {
     try {
       const res = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps/${activeSweep.sweep_id}`)
       if (!res.ok) {
+        if (res.status === 401) {
+          setSessionExpired(true)
+          if (pollRef.current !== null) {
+            window.clearInterval(pollRef.current)
+            pollRef.current = null
+          }
+          return
+        }
         if (res.status === 403) setPermissionDenied(true)
         return
       }
@@ -534,7 +547,7 @@ export function DiscoveryPage() {
   }, [activeSweep, metric, loadLeaderboard, loadHistory])
 
   useEffect(() => {
-    if (!activeSweep || TERMINAL.has(activeSweep.state)) {
+    if (!activeSweep || TERMINAL.has(activeSweep.state) || sessionExpired) {
       if (pollRef.current !== null) {
         window.clearInterval(pollRef.current)
         pollRef.current = null
@@ -548,7 +561,7 @@ export function DiscoveryPage() {
         pollRef.current = null
       }
     }
-  }, [activeSweep, refreshSweep])
+  }, [activeSweep, refreshSweep, sessionExpired])
 
   const command = useCallback(
     async (cmd: 'pause' | 'resume' | 'cancel') => {
@@ -1370,7 +1383,22 @@ export function DiscoveryPage() {
                 </span>
               </div>
 
-              {lbError ? (
+              {sessionExpired ? (
+                <div className="mt-4 rounded-lg border border-[rgba(245,158,11,0.4)] bg-[rgba(245,158,11,0.07)] p-3.5" data-testid="session-expired">
+                  <p className="text-sm font-semibold text-[var(--text-secondary)]">Sessão expirada</p>
+                  <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                    Seu acesso expirou enquanto a página estava aberta. O sweep continua no servidor; recarregue para retomar.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="mt-2.5 inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 text-xs font-semibold text-[var(--text-secondary)]"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Recarregar página
+                  </button>
+                </div>
+              ) : lbError ? (
                 <div className="mt-4 rounded-lg border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-3.5">
                   <p className="text-sm font-semibold text-[var(--text-secondary)]">Falha ao carregar leaderboard</p>
                   <p className="mt-1 text-xs text-[var(--text-tertiary)]">
