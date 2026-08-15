@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Check, ChevronLeft, ChevronRight, Copy, History, Pause, Play, RefreshCw,
+  Check, ChevronLeft, ChevronRight, Copy, Edit3, History, Pause, Play, RefreshCw,
   Shield, Square, Star, X,
 } from 'lucide-react'
 import { authFetch } from '../lib/authFetch'
 import { API_BASE_URL } from '../lib/apiBase'
+import { SelectionWorkbench } from '../components/SelectionWorkbench'
+import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
 import './DiscoveryPage.css'
 
 type PreflightResult = {
@@ -85,7 +87,6 @@ type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
 
 const TERMINAL = new Set<SweepState>(['cancelled', 'failed', 'partial_failure', 'completed'])
 const PAGE_SIZE = 3
-const AXIS_PAGE_SIZE = 4
 const idempotencyKey = (prefix: string, value: string) => `${prefix}-${value}`.slice(0, 64)
 const STATE_LABEL: Record<SweepState, string> = {
   pending: 'pendente', running: 'em execução', paused: 'pausada', cancelling: 'cancelando',
@@ -132,6 +133,41 @@ function snapshotLabel(hash: string | null | undefined, total: number | null | u
   if (!hash) return '—'
   return `#PF-${hash.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase()}-${total ?? '—'}`
 }
+function makeEmptyAxis(): WorkingAxis {
+  return { mode: 'manual', selected: new Set(), excluded: new Set(), query: '', category: 'all', page: 1, catalogState: 'ready' }
+}
+function makeEmptySelection(): SelectionSnapshot {
+  return { templates: makeEmptyAxis(), symbols: makeEmptyAxis() }
+}
+
+const TEMPLATE_CATEGORIES: Record<string, string> = {
+  multi: 'Tendência', bollinger: 'Volatilidade', ema: 'Reversão', dual: 'Momentum',
+  adx: 'Tendência', supertrend: 'Tendência', ichimoku: 'Tendência', donchian: 'Tendência',
+  macd: 'Momentum', rsi: 'Reversão', stochastic: 'Reversão', cci: 'Momentum',
+  williams: 'Reversão', atr: 'Volatilidade', keltner: 'Volatilidade', volume: 'Volume',
+  obv: 'Volume', mfi: 'Volume', vwap: 'Volume', sma: 'Tendência', roc: 'Momentum',
+  momentum: 'Momentum', volatility: 'Volatilidade', pivot: 'Reversão', support: 'Reversão',
+  breakout: 'Tendência',
+}
+
+const TOP_CODES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'AVAX', 'TRX', 'DOT'])
+
+function catalogFromTemplates(list: { name: string; description: string }[]): CatalogItem[] {
+  return list.map((t) => {
+    const prefix = t.name.split('_')[0] ?? 'outros'
+    const cat = TEMPLATE_CATEGORIES[prefix] ?? 'Outros'
+    return { id: t.name, label: t.description || t.name, category: cat, meta: t.name }
+  })
+}
+
+function catalogFromSymbols(list: string[]): CatalogItem[] {
+  return list.map((code) => {
+    const base = code.split('/')[0] ?? code
+    const cat = TOP_CODES.has(base) ? 'Alta liquidez' : 'Demais pares'
+    return { id: code, label: code, category: cat, meta: 'Spot · cotação USDT' }
+  })
+}
+
 function errorDetail(data: unknown, fallback: string): string {
   if (data && typeof data === 'object') {
     const d = (data as Record<string, unknown>).detail
@@ -145,7 +181,6 @@ export function DiscoveryPage() {
   const navigate = useNavigate()
 
   // Catálogos
-  const [templates, setTemplates] = useState<{ name: string; description: string }[]>([])
   const [symbols, setSymbols] = useState<string[]>([])
   // Seleção
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
@@ -155,11 +190,13 @@ export function DiscoveryPage() {
   const [period, setPeriod] = useState<'6m' | '2y' | 'all'>('2y')
   const [draftMetric, setDraftMetric] = useState<Metric>('calmar_ratio')
   const [metric, setMetric] = useState<Metric>('calmar_ratio')
-  // Busca dos eixos
-  const [templateSearch, setTemplateSearch] = useState('')
-  const [symbolSearch, setSymbolSearch] = useState('')
-  const [templatePage, setTemplatePage] = useState(1)
-  const [symbolPage, setSymbolPage] = useState(1)
+  // Workbench
+  const [workbenchOpen, setWorkbenchOpen] = useState(false)
+  const [workbenchTrigger, setWorkbenchTrigger] = useState<'templates' | 'symbols'>('templates')
+  const workbenchTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const [templatesCatalog, setTemplatesCatalog] = useState<CatalogItem[]>([])
+  const [symbolsCatalog, setSymbolsCatalog] = useState<CatalogItem[]>([])
+  const [committedSelection, setCommittedSelection] = useState<SelectionSnapshot>(() => makeEmptySelection())
   // Preflight
   const [preflight, setPreflight] = useState<PreflightResult | null>(null)
   const [preflightLoading, setPreflightLoading] = useState(false)
@@ -199,21 +236,44 @@ export function DiscoveryPage() {
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
   const previousActiveStateRef = useRef<SweepState | null>(null)
 
-  const visibleTemplates = useMemo(
-    () => templates.filter((t) => `${t.description} ${t.name}`.toLowerCase().includes(templateSearch.toLowerCase())),
-    [templates, templateSearch],
-  )
-  const visibleSymbols = useMemo(
-    () => symbols.filter((s) => s.toLowerCase().includes(symbolSearch.toLowerCase())),
-    [symbols, symbolSearch],
-  )
-  const templatePages = Math.max(1, Math.ceil(visibleTemplates.length / AXIS_PAGE_SIZE))
-  const symbolPages = Math.max(1, Math.ceil(visibleSymbols.length / AXIS_PAGE_SIZE))
-  const pagedTemplates = visibleTemplates.slice((templatePage - 1) * AXIS_PAGE_SIZE, templatePage * AXIS_PAGE_SIZE)
-  const pagedSymbols = visibleSymbols.slice((symbolPage - 1) * AXIS_PAGE_SIZE, symbolPage * AXIS_PAGE_SIZE)
+  // ---- catalog helpers ----
 
-  useEffect(() => setTemplatePage(1), [templateSearch])
-  useEffect(() => setSymbolPage(1), [symbolSearch])
+  function applySelectionFromWorkbench(state: SelectionSnapshot) {
+    const t = [...(state.templates.mode === 'all'
+      ? templatesCatalog.filter((i) => !state.templates.excluded.has(i.id))
+      : [...state.templates.selected].map((id) => templatesCatalog.find((i) => i.id === id)).filter(Boolean))
+    ] as CatalogItem[]
+    const s = [...(state.symbols.mode === 'all'
+      ? symbolsCatalog.filter((i) => !state.symbols.excluded.has(i.id))
+      : [...state.symbols.selected].map((id) => symbolsCatalog.find((i) => i.id === id)).filter(Boolean))
+    ] as CatalogItem[]
+    setSelectedTemplates(t.map((i) => i.id))
+    setSelectedSymbols(s.map((i) => i.id))
+    setCommittedSelection(state)
+  }
+
+  // summary helpers
+  function selectionSummary(axis: 'templates' | 'symbols') {
+    const a = committedSelection[axis]
+    const total = axis === 'templates' ? templatesCatalog.length : symbolsCatalog.length
+    if (a.mode === 'all') {
+      const excluded = [...a.excluded].map((id) => (axis === 'templates' ? templatesCatalog : symbolsCatalog).find((i) => i.id === id)?.label ?? id)
+      return {
+        count: `${Math.max(0, total - a.excluded.size)} de ${total} selecionados`,
+        detail: excluded.length ? `Catálogo inteiro · ${excluded.length} exceções` : 'Catálogo inteiro · nenhuma exceção',
+        chips: excluded.slice(0, 3),
+        extra: excluded.length > 3 ? `+${excluded.length - 3}` : '',
+      }
+    }
+    const ids = [...a.selected]
+    const chips = ids.slice(0, 3).map((id) => (axis === 'templates' ? templatesCatalog : symbolsCatalog).find((i) => i.id === id)?.label ?? id)
+    return {
+      count: `${a.selected.size} de ${total} selecionados`,
+      detail: 'Seleção manual',
+      chips,
+      extra: ids.length > 3 ? `+${ids.length - 3}` : '',
+    }
+  }
 
   const showToast = useCallback((title: string, copy: string) => {
     setToast({ title, copy })
@@ -236,8 +296,10 @@ export function DiscoveryPage() {
           name: String(t.name ?? ''),
           description: String(t.description ?? ''),
         }))
-        setTemplates(flat)
         setSelectedTemplates(flat.slice(0, 3).map((t) => t.name))
+        const catT = catalogFromTemplates(flat)
+        setTemplatesCatalog(catT)
+        setCommittedSelection((prev) => ({ ...prev, templates: { ...prev.templates, selected: new Set(flat.slice(0, 3).map((t) => t.name)) } }))
       } catch {
         /* catálogo auxiliar */
       }
@@ -253,6 +315,9 @@ export function DiscoveryPage() {
         const list: string[] = data.symbols || []
         setSymbols(list)
         setSelectedSymbols(list.slice(0, 4))
+        const catS = catalogFromSymbols(list)
+        setSymbolsCatalog(catS)
+        setCommittedSelection((prev) => ({ ...prev, symbols: { ...prev.symbols, selected: new Set(list.slice(0, 4)) } }))
       } catch {
         /* catálogo auxiliar */
       }
@@ -323,7 +388,15 @@ export function DiscoveryPage() {
     }
   }, [selectedTemplates, selectedSymbols, timeframes, directions, period, draftFrozen, runPreflight])
 
-  const axisCount = selectedTemplates.length * selectedSymbols.length * timeframes.length * directions.length
+  const axisCount = [
+    ...(committedSelection.templates.mode === 'all'
+      ? templatesCatalog.filter((i) => !committedSelection.templates.excluded.has(i.id))
+      : [...committedSelection.templates.selected].filter((id) => templatesCatalog.some((i) => i.id === id))),
+  ].length * [
+    ...(committedSelection.symbols.mode === 'all'
+      ? symbolsCatalog.filter((i) => !committedSelection.symbols.excluded.has(i.id))
+      : [...committedSelection.symbols.selected].filter((id) => symbolsCatalog.some((i) => i.id === id))),
+  ].length * timeframes.length * directions.length
   const overLimit = Boolean(preflight?.errors?.total)
   const canStart =
     preflight !== null &&
@@ -333,12 +406,6 @@ export function DiscoveryPage() {
 
   const toggleList = (list: string[], setList: (v: string[]) => void, value: string) =>
     setList(list.includes(value) ? list.filter((x) => x !== value) : [...list, value])
-  const toggleVisible = (visible: string[], list: string[], setList: (v: string[]) => void) => {
-    const all = visible.every((v) => list.includes(v))
-    const next = new Set(list)
-    visible.forEach((v) => (all ? next.delete(v) : next.add(v)))
-    setList([...next])
-  }
 
   // ---------- Sweep ----------
   const startSweep = useCallback(async () => {
@@ -829,160 +896,63 @@ export function DiscoveryPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 p-5 md:grid-cols-2">
-              {/* Templates */}
-              <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
-                <legend className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Templates</legend>
-                <p className="mb-2 text-xs text-[var(--text-muted)]" aria-live="polite" data-testid="template-count">
-                  {selectedTemplates.length} de {templates.length} selecionados · {pagedTemplates.length} visíveis
-                </p>
-                <div className="mb-2 grid grid-cols-[1fr_auto] gap-2">
-                  <input
-                    type="search"
-                    value={templateSearch}
-                    onChange={(e) => setTemplateSearch(e.target.value)}
-                    placeholder="Buscar template"
-                    aria-label="Buscar template"
-                    className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 py-2 text-sm text-[var(--text-primary)]"
-                  />
+              {/* Templates — summary card */}
+              <section className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[#181a20] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Templates</h3>
+                    <p className="mt-0.5 text-xs text-[var(--text-muted)]" data-testid="template-count">{selectionSummary('templates').count}</p>
+                    <p className="mt-0.5 text-[11px] text-[#bfdbfe]" data-testid="template-axis-status">{selectionSummary('templates').detail}</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => toggleVisible(pagedTemplates.map((t) => t.name), selectedTemplates, setSelectedTemplates)}
-                    className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 text-xs font-semibold text-[var(--text-secondary)]"
+                    onClick={(e) => { workbenchTriggerRef.current = e.currentTarget; setWorkbenchTrigger('templates'); setWorkbenchOpen(true) }}
+                    disabled={draftFrozen}
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-40"
+                    data-testid="edit-templates"
+                    aria-haspopup="dialog"
+                    aria-controls="selection-workbench"
                   >
-                    Selecionar visíveis
+                    <Edit3 className="h-3.5 w-3.5" />
+                    Editar
                   </button>
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {visibleTemplates.length === 0 ? (
-                    <p className="text-xs text-[var(--text-muted)]">Nenhum template encontrado.</p>
-                  ) : null}
-                  {pagedTemplates.map((t) => (
-                    <label
-                      key={t.name}
-                      className={`flex min-h-[46px] items-start gap-2.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] px-2.5 py-2.5 text-sm text-[var(--text-secondary)] ${
-                        selectedTemplates.includes(t.name) ? 'border-[rgba(252,213,53,0.45)] bg-[rgba(252,213,53,0.07)]' : ''
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-[17px] w-[17px] min-h-[17px] accent-[var(--accent-primary)]"
-                        checked={selectedTemplates.includes(t.name)}
-                        onChange={() => toggleList(selectedTemplates, setSelectedTemplates, t.name)}
-                      />
-                      <span className="min-w-0">
-                        <b className="block truncate text-[13px] font-semibold text-[var(--text-secondary)]">{t.description || t.name}</b>
-                        <small className="block text-[11px] text-[var(--text-muted)]">{t.name}</small>
-                      </span>
-                    </label>
+                <div className="mt-2.5 flex min-h-[32px] gap-1.5 overflow-hidden">
+                  {selectionSummary('templates').chips.map((label, idx) => (
+                    <span key={`tpl-${label}-${idx}`} className="inline-flex min-h-[28px] max-w-[160px] items-center rounded border border-[var(--border-default)] bg-[var(--bg-primary)] px-2 py-1 text-[11px] text-[var(--text-secondary)] overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
                   ))}
+                  {selectionSummary('templates').extra ? <span className="inline-flex min-h-[28px] items-center rounded border border-dashed border-[var(--border-default)] px-2 py-1 text-[11px] text-[var(--text-tertiary)]">{selectionSummary('templates').extra}</span> : null}
                 </div>
-                {templatePages > 1 ? (
-                  <div className="mt-2 flex items-center justify-between text-xs text-[var(--text-tertiary)]">
-                    <button
-                      type="button"
-                      disabled={templatePage <= 1}
-                      onClick={() => setTemplatePage((p) => Math.max(1, p - 1))}
-                      className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 disabled:opacity-40"
-                    >
-                      Anterior
-                    </button>
-                    <span>Página {templatePage} de {templatePages}</span>
-                    <button
-                      type="button"
-                      disabled={templatePage >= templatePages}
-                      onClick={() => setTemplatePage((p) => Math.min(templatePages, p + 1))}
-                      className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 disabled:opacity-40"
-                    >
-                      Próxima
-                    </button>
-                  </div>
-                ) : null}
-                <p className={`mt-2 min-h-[18px] text-[11px] ${selectedTemplates.length ? 'text-[#93c5fd]' : 'text-[#fbbf24]'}`} data-testid="template-axis-status">
-                  {selectedTemplates.length ? '' : 'Selecione ao menos um template.'}
-                </p>
-              </fieldset>
+              </section>
 
-              {/* Símbolos */}
-              <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
-                <legend className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Símbolos</legend>
-                <p className="mb-2 text-xs text-[var(--text-muted)]" aria-live="polite" data-testid="symbol-count">
-                  {selectedSymbols.length} de {symbols.length} selecionados · {pagedSymbols.length} visíveis
-                </p>
-                <div className="mb-2 grid grid-cols-[1fr_auto] gap-2">
-                  <input
-                    type="search"
-                    value={symbolSearch}
-                    onChange={(e) => setSymbolSearch(e.target.value)}
-                    placeholder="Buscar símbolo"
-                    aria-label="Buscar símbolo"
-                    className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 py-2 text-sm text-[var(--text-primary)]"
-                  />
+              {/* Symbols — summary card */}
+              <section className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[#181a20] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Símbolos</h3>
+                    <p className="mt-0.5 text-xs text-[var(--text-muted)]" data-testid="symbol-count">{selectionSummary('symbols').count}</p>
+                    <p className="mt-0.5 text-[11px] text-[#bfdbfe]" data-testid="symbol-axis-status">{selectionSummary('symbols').detail}</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => toggleVisible(pagedSymbols, selectedSymbols, setSelectedSymbols)}
-                    className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 text-xs font-semibold text-[var(--text-secondary)]"
+                    onClick={(e) => { workbenchTriggerRef.current = e.currentTarget; setWorkbenchTrigger('symbols'); setWorkbenchOpen(true) }}
+                    disabled={draftFrozen}
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-40"
+                    data-testid="edit-symbols"
+                    aria-haspopup="dialog"
+                    aria-controls="selection-workbench"
                   >
-                    Selecionar visíveis
+                    <Edit3 className="h-3.5 w-3.5" />
+                    Editar
                   </button>
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {visibleSymbols.length === 0 ? (
-                    <p className="text-xs text-[var(--text-muted)]">Nenhum símbolo encontrado.</p>
-                  ) : null}
-                  {pagedSymbols.map((s) => (
-                    <label
-                      key={s}
-                      className={`flex min-h-[46px] items-start gap-2.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] px-2.5 py-2.5 text-sm text-[var(--text-secondary)] ${
-                        selectedSymbols.includes(s) ? 'border-[rgba(252,213,53,0.45)] bg-[rgba(252,213,53,0.07)]' : ''
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-[17px] w-[17px] min-h-[17px] accent-[var(--accent-primary)]"
-                        checked={selectedSymbols.includes(s)}
-                        onChange={() => toggleList(selectedSymbols, setSelectedSymbols, s)}
-                      />
-                      <span className="min-w-0">
-                        <b className="block truncate text-[13px] font-semibold text-[var(--text-secondary)]">{s}</b>
-                      </span>
-                    </label>
+                <div className="mt-2.5 flex min-h-[32px] gap-1.5 overflow-hidden">
+                  {selectionSummary('symbols').chips.map((label, idx) => (
+                    <span key={`sym-${label}-${idx}`} className="inline-flex min-h-[28px] max-w-[160px] items-center rounded border border-[var(--border-default)] bg-[var(--bg-primary)] px-2 py-1 text-[11px] text-[var(--text-secondary)] overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
                   ))}
+                  {selectionSummary('symbols').extra ? <span className="inline-flex min-h-[28px] items-center rounded border border-dashed border-[var(--border-default)] px-2 py-1 text-[11px] text-[var(--text-tertiary)]">{selectionSummary('symbols').extra}</span> : null}
                 </div>
-                {symbolPages > 1 ? (
-                  <div className="mt-2 flex items-center justify-between text-xs text-[var(--text-tertiary)]">
-                    <button
-                      type="button"
-                      disabled={symbolPage <= 1}
-                      onClick={() => setSymbolPage((p) => Math.max(1, p - 1))}
-                      className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 disabled:opacity-40"
-                    >
-                      Anterior
-                    </button>
-                    <span>Página {symbolPage} de {symbolPages}</span>
-                    <button
-                      type="button"
-                      disabled={symbolPage >= symbolPages}
-                      onClick={() => setSymbolPage((p) => Math.min(symbolPages, p + 1))}
-                      className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 disabled:opacity-40"
-                    >
-                      Próxima
-                    </button>
-                  </div>
-                ) : null}
-                <p className={`mt-2 min-h-[18px] text-[11px] ${selectedSymbols.length ? 'text-[#93c5fd]' : 'text-[#fbbf24]'}`} data-testid="symbol-axis-status" aria-live="polite">
-                  {selectedSymbols.length
-                    ? Object.keys(preflight?.exclusions || {}).length
-                      ? `Excluídas: ${Object.entries(preflight!.exclusions)
-                          .map(([k, v]) => {
-                            const [template, ...dimensions] = k.split('|')
-                            const friendly = templates.find((item) => item.name === template)?.description || template
-                            return `${[friendly, ...dimensions].join(' × ')} — ${v.reasons.join(', ')}`
-                          })
-                          .join('; ')}`
-                      : ''
-                    : 'Selecione ao menos um símbolo.'}
-                </p>
-              </fieldset>
+              </section>
 
               {/* Timeframes */}
               <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
@@ -1348,6 +1318,21 @@ export function DiscoveryPage() {
             </div>
           </section>
         ) : null}
+
+        {/* Workbench */}
+        <SelectionWorkbench
+          open={workbenchOpen}
+          initialAxis={workbenchTrigger}
+          templates={templatesCatalog}
+          symbols={symbolsCatalog}
+          committed={committedSelection}
+          multiplier={timeframes.length * directions.length}
+          onApply={applySelectionFromWorkbench}
+          onClose={() => {
+            setWorkbenchOpen(false)
+            setTimeout(() => workbenchTriggerRef.current?.focus(), 0)
+          }}
+        />
 
         {/* Leaderboard */}
         {viewSweep ? (
