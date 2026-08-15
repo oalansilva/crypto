@@ -15,12 +15,17 @@ celery_app = Celery(
     "crypto",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
+    include=[
+        "app.tasks.batch_backtest_tasks",
+        "app.tasks.discovery_celery_tasks",
+    ],
 )
 
 celery_app.conf.update(
     task_default_queue="default",
     task_routes={
         "app.tasks.batch_backtest_tasks.run_batch_backtest_task": {"queue": "batch_backtest"},
+        "app.tasks.discovery_celery_tasks.run_sweep_orchestrator_task": {"queue": "discovery"},
     },
     task_serializer="json",
     result_serializer="json",

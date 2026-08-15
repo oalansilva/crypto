@@ -409,6 +409,46 @@ class TestClaimsAndOutbox:
         intent = db.query(DiscoveryOutbox).filter(DiscoveryOutbox.sweep_id == sweep_id).first()
         assert intent is not None
         assert intent.state == "delivered"
+        assert service.ack_outbox(sweep_id, intent.generation, db=db) == 1
+        db.refresh(intent)
+        assert intent.state == "acked"
+        assert intent.acked_at is not None
+        db.close()
+
+    def test_outbox_stays_pending_when_broker_publish_fails(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+
+        def _broker_down(*_args, **_kwargs):
+            raise ConnectionError("broker unavailable")
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", _broker_down)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        preflight = _preflight_payload(service)
+        payload = {
+            "templates": ["multi_ma_crossover"],
+            "symbols": ["BTCUSDT"],
+            "timeframes": ["1d"],
+            "directions": ["long"],
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "period_type": "all",
+            "snapshot_hash": preflight["snapshot_hash"],
+        }
+
+        body, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+
+        assert status == 201
+        intent = db.query(DiscoveryOutbox).filter_by(sweep_id=body["sweep_id"]).one()
+        assert intent.state == "pending"
+        assert intent.attempts == 1
         db.close()
 
 

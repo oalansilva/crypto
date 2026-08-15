@@ -32,8 +32,17 @@ def run_sweep_orchestrator(sweep_id: str, generation: int) -> dict[str, Any]:
     db = SessionLocal()
     try:
         claimed = service.claim_combinations(sweep_id, owner=f"orchestrator-{generation}", db=db)
+        logger.info(
+            "Discovery orchestrator started: sweep=%s generation=%s claimed=%s",
+            sweep_id,
+            generation,
+            len(claimed),
+        )
         for combination in claimed:
             run_combination(db, combination, owner=f"orchestrator-{generation}")
+            # Persist progress after each potentially long optimization so the
+            # polling UI does not remain at 0 until the whole claim finishes.
+            reconcile_sweep(sweep_id, db)
         service.release_expired_leases(db=db)
         summary = reconcile_sweep(sweep_id, db)
         if summary.get("state") == "running":
@@ -49,6 +58,8 @@ def run_sweep_orchestrator(sweep_id: str, generation: int) -> dict[str, Any]:
                 from app.tasks.discovery_tasks import enqueue_sweep_orchestrator
 
                 enqueue_sweep_orchestrator(sweep_id, generation)
+        service.ack_outbox(sweep_id, generation, db=db)
+        logger.info("Discovery orchestrator finished: sweep=%s summary=%s", sweep_id, summary)
         return summary
     finally:
         db.close()
