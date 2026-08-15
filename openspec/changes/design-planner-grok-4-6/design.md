@@ -31,7 +31,7 @@ Antes desta change, a sessão principal e todos os subagents herdavam `opencode-
 
 4. **Escopo de escrita do planner:** só `openspec/changes/<change>/design.md` (e seções Impeccable), `frontend/public/prototypes/<slug>/` e espelho `openspec/changes/<change>/prototype/` quando UI. Proibido código de produção. Pixels → `vision`.
 
-5. **Piloto obrigatório** em 1 card `UI impact: affected` depois da implementação, antes de tornar o roteamento obrigatório em todo card.
+5. **Piloto obrigatório concluído no card #502.** O card real `UI impact: affected` executou autoria pelo `design-planner`, pipeline Impeccable, protótipo navegável, critics A/B isolados em `openai/gpt-5.6-sol`, pixels via `vision` (`opencode-go/qwen3.7-plus`) e browser gate em desktop, mobile e viewport baixa. O artefato versionado terminou com `Design Agent verdict: PASS` e foi integrado em `develop` pelo PR #523 (`3954a5eb`).
 
 6. **Spawn isolado do planner.** O spawn do `design-planner` recebe packet fechado (proposal + `design.md` atual + contextFiles da change + trecho relevante de `DESIGN.md`). Proibido: AGENTS.md/rules.md inteiros, loops de `gh`/board, `openspec ff`, testes, restart. Flash faz OpenSpec/board/publicação. **Sem teto de custo por card** (decisão de Alan) — o isolamento é estrutural (frontier nunca como sessão principal), não financeiro. Effort `high` permanece, mas só nesse spawn curto.
 
@@ -39,7 +39,7 @@ Antes desta change, a sessão principal e todos os subagents herdavam `opencode-
 
    Evidência 2026-08-13: o comando negativo emitiu `agent "design-planner" is a subagent, not a primary agent. Falling back to default agent` e iniciou `build · deepseek-v4-flash`; o caminho positivo criou child `agent=design-planner`, `model=openai/gpt-5.6-sol`, com parent `build`/Go-flash. `opencode debug agent design-planner` resolveu `options.reasoningEffort: high`, compondo a evidência de modelo runtime + effort configurado.
 
-8. **Rollout experimental até o piloto UI.** O smoke `UI impact: none` valida registro, delegação, ownership e modelo sem exercer Impeccable/protótipo/browser gate. Por isso o uso global obrigatório só será promovido depois que o card filho #496 concluir o piloto `UI impact: affected` com PASS e registrar a decisão de promoção.
+8. **Rollout promovido a obrigatório.** O smoke inicial `UI impact: none` validou registro, delegação, ownership e modelo. O card #502 completou o piloto `UI impact: affected` com PASS: parent Go/flash delegou ao child `design-planner` em `openai/gpt-5.6-sol`, a configuração resolveu `reasoningEffort: high`, Assessment A/B usaram o mesmo modelo, o `vision` usou `qwen3.7-plus` e o browser gate terminou verde com 34+ asserts em três viewports e zero erros de console/página. O card #496 tornou-se duplicado operacional e foi cancelado; as regras globais obrigatórias vigentes permanecem confirmadas.
 
 ## Risks / Trade-offs
 
@@ -54,7 +54,7 @@ Antes desta change, a sessão principal e todos os subagents herdavam `opencode-
 
 1. Alan conecta OpenAI (OAuth) e confirma `openai/gpt-5.6-sol` no `/models`.
 2. Implementar agent + emendas normativas na branch do card após `Pronto para Dev`.
-3. Validar em sessão nova; piloto em 1 card UI.
+3. Validar em sessão nova e executar piloto em 1 card UI — concluído no card #502, com evidência versionada e PR #523 integrado em `develop`.
 4. Rollback: remover o agent e reverter as emendas; o fluxo volta a herdar só a sessão principal + `vision`.
 
 ## Open Questions

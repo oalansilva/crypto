@@ -14,7 +14,8 @@
 
 - [x] 3.1 Registrar decisão em `docs/decision-log.md` e plano em `.opencode/plans/design-gate-grok46.md`
 - [x] 3.2 Validar em sessão nova o spawn via `Task`: parent Go/flash; child runtime `agent=design-planner`, `model=openai/gpt-5.6-sol`; config resolvido `options.reasoningEffort=high` (2026-08-13)
-- [x] 3.3 Transferir o piloto `UI impact: affected` para o card filho #496, criado em `Em Refinamento`; #491 conclui o smoke e mantém o rollout experimental até #496 validar a promoção
+- [x] 3.3 Transferir inicialmente o piloto `UI impact: affected` para o card filho #496, criado em `Em Refinamento`, mantendo o rollout experimental naquele momento (2026-08-13)
+- [x] 3.4 Reconciliar o piloto real do card #502 como substituto do #496: autoria e critics em `openai/gpt-5.6-sol`, `vision` em `qwen3.7-plus`, Impeccable e browser gate verdes, `Design Agent verdict: PASS`; promover o roteamento a obrigatório e cancelar #496 como absorvido
 
 ## 4. Rework pós-Done (troca de modelo para GPT 5.6 Sol)
 
