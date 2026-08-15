@@ -38,7 +38,26 @@ def _mock_orchestrator_enqueue(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _discovery_tables():
+def _discovery_tables(monkeypatch):
+    """Limpa tabelas discovery e evita o seed de templates do list_templates()
+    (efeito colateral que contaminaria outros testes de integração que assumem
+    catálogo vazio)."""
+    from app.services.combo_service import ComboService
+
+    def _fake_list_templates(*_a, **_k):
+        return {"prebuilt": [], "examples": [{"name": "multi_ma_crossover", "direction": "long"}]}
+
+    def _fake_get_template_metadata(_self, template_name):
+        return {
+            "name": template_name,
+            "direction": "long",
+            "indicators": [],
+            "optimization_schema": {},
+        }
+
+    monkeypatch.setattr(ComboService, "list_templates", _fake_list_templates)
+    monkeypatch.setattr(ComboService, "get_template_metadata", _fake_get_template_metadata)
+
     engine = create_engine(os.environ["DATABASE_URL"])
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
@@ -47,14 +66,10 @@ def _discovery_tables():
         connection.exec_driver_sql("DELETE FROM discovery_results")
         connection.exec_driver_sql("DELETE FROM discovery_combinations")
         connection.exec_driver_sql("DELETE FROM discovery_sweeps")
-        connection.exec_driver_sql(
-            "CREATE TABLE IF NOT EXISTS favorite_strategies ("
-            "id SERIAL PRIMARY KEY, user_id VARCHAR(128), name VARCHAR(256),"
-            "symbol VARCHAR(32), timeframe VARCHAR(8), strategy_name VARCHAR(128),"
-            "parameters JSON, metrics JSON, tier INTEGER, notes VARCHAR(512),"
-            "start_date VARCHAR(16), end_date VARCHAR(16), period_type VARCHAR(8),"
-            "created_at TIMESTAMP)"
-        )
+        connection.exec_driver_sql("DELETE FROM discovery_idempotency")
+        # Favoritos criados por promoção de teste não podem contaminar outros
+        # testes de integração (ex.: refresh loop que conta favoritos).
+        connection.exec_driver_sql("DELETE FROM favorite_strategies")
     yield engine
     engine.dispose()
 
