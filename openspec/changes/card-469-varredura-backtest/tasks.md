@@ -74,6 +74,7 @@
 - [x] 7.10 Atualizar contratos técnicos; `docs/strategy-transparency-matrix.md` somente se novos templates forem adicionados, senão registrar N/A.
 - [x] 7.11 Rodar validações OpenSpec, `/opsx:verify`, testes focados, `qa-gate` e checks requeridos até terminal verde.
 - [x] 7.12 Testar UTC, intervalo `[start_at,end_at)`, calendário esperado por timeframe/source, gaps sem forward-fill e denominador de coverage versionado.
+- [x] 7.13 Limitar as chaves idempotentes enviadas pela UI a 64 caracteres e validar os payloads reais de criação e promoção no Playwright.
 
 ## Gate
 
@@ -89,3 +90,4 @@
 - Playwright: `frontend/tests/e2e/discovery-visual-critical.spec.ts` — 4/4 em desktop `1440×900` e mobile `390×844`, incluindo visual baseline, preflight/exclusões, ativo × histórico, pause/cancel, filtros/paginação, baixa amostra, dedup, modal tier 3, foco, nomes acessíveis, overflow e zero `console.error`/`pageerror`.
 - Baselines: `frontend/tests/e2e/discovery-visual-critical.spec.ts-snapshots/` revalidadas sem `--update-snapshots`.
 - Julgamento de pixels delegado ao agente `vision`: veredito final `PASS`, sem P0/P1; colunas Trades/Ação visíveis no desktop e grids 2×2 alinhados ao protótipo.
+- Correção pós-runtime: chaves idempotentes de criação/promoção respeitam o contrato `max_length=64`; o Playwright intercepta e valida os payloads enviados.

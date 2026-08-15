@@ -87,6 +87,7 @@ type CriticalScenario = 'normal' | 'over-limit' | 'stale' | 'retry-error' | 'pro
 const TERMINAL = new Set<SweepState>(['cancelled', 'failed', 'partial_failure', 'completed'])
 const PAGE_SIZE = 3
 const AXIS_PAGE_SIZE = 4
+const idempotencyKey = (prefix: string, value: string) => `${prefix}-${value}`.slice(0, 64)
 const STATE_LABEL: Record<SweepState, string> = {
   pending: 'pendente', running: 'em execução', paused: 'pausada', cancelling: 'cancelando',
   cancelled: 'cancelada', failed: 'falhou', partial_failure: 'falha parcial', completed: 'concluída',
@@ -396,7 +397,7 @@ export function DiscoveryPage() {
           period_type: period,
           snapshot_token: preflight.snapshot_token,
           snapshot_hash: preflight.snapshot_hash,
-          idempotency_key: `sweep-${preflight.snapshot_hash}`,
+          idempotency_key: idempotencyKey('sweep', preflight.snapshot_hash),
         }),
       })
       const data = await res.json()
@@ -665,7 +666,7 @@ export function DiscoveryPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tier: 3, idempotency_key: `promote-${promoteTarget.result_id}` }),
+          body: JSON.stringify({ tier: 3, idempotency_key: idempotencyKey('promote', promoteTarget.result_id) }),
         },
       )
       const data = await res.json().catch(() => null)
