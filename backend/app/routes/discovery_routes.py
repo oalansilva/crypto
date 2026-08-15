@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -68,7 +69,7 @@ def discovery_preflight(
     )
 
 
-@router.post("/sweeps")
+@router.post("/sweeps", status_code=201)
 def create_discovery_sweep(
     req: CreateSweepRequest,
     actor: str = Depends(get_current_admin),
@@ -86,6 +87,8 @@ def create_discovery_sweep(
     )
     if status >= 400:
         raise HTTPException(status_code=status, detail=body)
+    if status == 200:
+        return JSONResponse(status_code=200, content=body)
     return body
 
 
@@ -184,7 +187,7 @@ def discovery_leaderboard(
     return {"sweep_id": sweep_id, "metric": metric, "results": rows, "total": len(rows)}
 
 
-@router.post("/results/{result_id}/promote")
+@router.post("/results/{result_id}/promote", status_code=201)
 def promote_discovery_result(
     result_id: str,
     req: PromoteRequest,
@@ -202,4 +205,6 @@ def promote_discovery_result(
     )
     if status >= 400:
         raise HTTPException(status_code=status, detail=body)
+    if status == 200:
+        return JSONResponse(status_code=200, content=body)
     return body

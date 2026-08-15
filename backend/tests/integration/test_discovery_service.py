@@ -7,6 +7,7 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import httpx
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -690,3 +691,299 @@ class TestCoverageCalendar:
         assert _expected_candles_for_window("1d", start, end) == 365
         assert _expected_candles_for_window("4h", start, end) == 365 * 6
         assert _expected_candles_for_window("1d", end, end) == 0
+
+
+class TestDiscoveryRoutes:
+    def _build_app(self, engine=None):
+        from fastapi import FastAPI
+
+        from app.database import get_db
+        from app.routes import discovery_routes
+
+        test_app = FastAPI()
+        test_app.include_router(discovery_routes.router)
+        test_app.dependency_overrides[discovery_routes.get_current_admin] = lambda: "admin-1"
+        if engine is not None:
+            session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+            def _override_db():
+                db = session_factory()
+                try:
+                    yield db
+                finally:
+                    db.close()
+
+            test_app.dependency_overrides[get_db] = _override_db
+        return test_app, discovery_routes
+
+    async def test_preflight_endpoint_requires_admin(self, monkeypatch):
+        from fastapi import FastAPI
+
+        from app.routes import discovery_routes
+
+        app = FastAPI()
+        app.include_router(discovery_routes.router)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.post(
+                "/api/combos/discovery/sweeps/preflight",
+                json={
+                    "templates": ["t1"],
+                    "symbols": ["BTCUSDT"],
+                    "timeframes": ["1d"],
+                    "directions": ["long"],
+                },
+            )
+        assert res.status_code == 401
+
+    async def test_preflight_endpoint_ok(self, monkeypatch):
+        app, routes = self._build_app()
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.post(
+                "/api/combos/discovery/sweeps/preflight",
+                json={
+                    "templates": ["multi_ma_crossover"],
+                    "symbols": ["BTCUSDT"],
+                    "timeframes": ["1d"],
+                    "directions": ["long"],
+                    "start_date": "2024-01-01",
+                    "end_date": "2024-12-31",
+                },
+            )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["snapshot_token"]
+        assert body["snapshot_hash"]
+
+    async def test_create_and_get_sweep_endpoints(self, engine_factory):
+        engine = engine_factory()
+        app, routes = self._build_app(engine=engine)
+        service = DiscoveryService()
+        preflight = _preflight_payload(service)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            create_res = await client.post(
+                "/api/combos/discovery/sweeps",
+                json={
+                    "templates": ["multi_ma_crossover"],
+                    "symbols": ["BTCUSDT"],
+                    "timeframes": ["1d"],
+                    "directions": ["long"],
+                    "start_date": "2024-01-01",
+                    "end_date": "2024-12-31",
+                    "period_type": "all",
+                    "snapshot_token": preflight["snapshot_token"],
+                    "snapshot_hash": preflight["snapshot_hash"],
+                    "idempotency_key": "route-key-0001",
+                },
+            )
+            assert create_res.status_code == 201, create_res.text
+            sweep_id = create_res.json()["sweep_id"]
+            get_res = await client.get(f"/api/combos/discovery/sweeps/{sweep_id}")
+            assert get_res.status_code == 200
+            assert get_res.json()["state"] in ("pending", "running")
+
+    async def test_leaderboard_and_promote_endpoints(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        db.add(
+            DiscoverySweep(
+                id="sw-routes",
+                actor="admin-1",
+                state="completed",
+                idempotency_key="lb-key-0001",
+                payload_hash="x" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={},
+                total=1,
+                succeeded=1,
+            )
+        )
+        now = datetime.now(timezone.utc)
+        db.add(
+            DiscoveryResult(
+                id="RS-RTE-1",
+                sweep_id="sw-routes",
+                combination_id=900001,
+                template_id="t1",
+                symbol="BTCUSDT",
+                timeframe="1d",
+                direction="long",
+                parameters={},
+                start_at=now,
+                end_at=now + timedelta(days=30),
+                metrics={},
+                trades_count=40,
+                calmar_ratio=2.0,
+                strategy_identity_key="id-rte-1",
+                evidence_fingerprint="fp-rte-1",
+                eligibility="eligible",
+                dedup_state="unique",
+            )
+        )
+        db.commit()
+        db.close()
+
+        app, routes = self._build_app(engine=engine_factory())
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            lb = await client.get("/api/combos/discovery/sweeps/sw-routes/leaderboard")
+            assert lb.status_code == 200
+            assert lb.json()["results"][0]["result_id"] == "RS-RTE-1"
+            bad_metric = await client.get(
+                "/api/combos/discovery/sweeps/sw-routes/leaderboard?metric=sharpe"
+            )
+            assert bad_metric.status_code == 400
+            missing = await client.get("/api/combos/discovery/sweeps/sw-missing")
+            assert missing.status_code == 404
+            promote = await client.post(
+                "/api/combos/discovery/results/RS-RTE-1/promote",
+                json={"tier": 3, "idempotency_key": "promote-rte-1"},
+            )
+            assert promote.status_code == 201
+            promote2 = await client.post(
+                "/api/combos/discovery/results/RS-RTE-1/promote",
+                json={"tier": 3, "idempotency_key": "promote-rte-1"},
+            )
+            assert promote2.status_code == 200
+
+    async def test_command_endpoints(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        preflight = _preflight_payload(service)
+        body, _ = service.create_sweep(
+            actor="admin-1",
+            idempotency_key="cmd-key-0001",
+            snapshot_token=preflight["snapshot_token"],
+            payload={
+                "templates": ["multi_ma_crossover"],
+                "symbols": ["BTCUSDT"],
+                "timeframes": ["1d"],
+                "directions": ["long"],
+                "start_date": "2024-01-01",
+                "end_date": "2024-12-31",
+                "period_type": "all",
+                "snapshot_hash": preflight["snapshot_hash"],
+            },
+            db=db,
+        )
+        db.close()
+        app, routes = self._build_app(engine=engine_factory())
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            cancel = await client.post(f"/api/combos/discovery/sweeps/{body['sweep_id']}/cancel")
+            assert cancel.status_code == 200
+            pause = await client.post(f"/api/combos/discovery/sweeps/{body['sweep_id']}/pause")
+            assert pause.status_code in (200, 409)
+            unknown = await client.post("/api/combos/discovery/sweeps/nope/cancel")
+            assert unknown.status_code == 404
+
+    async def test_history_endpoint(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        preflight = _preflight_payload(service)
+        service.create_sweep(
+            actor="admin-1",
+            idempotency_key="hist-key-0001",
+            snapshot_token=preflight["snapshot_token"],
+            payload={
+                "templates": ["multi_ma_crossover"],
+                "symbols": ["BTCUSDT"],
+                "timeframes": ["1d"],
+                "directions": ["long"],
+                "start_date": "2024-01-01",
+                "end_date": "2024-12-31",
+                "period_type": "all",
+                "snapshot_hash": preflight["snapshot_hash"],
+            },
+            db=db,
+        )
+        db.close()
+        app, routes = self._build_app(engine=engine_factory())
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.get("/api/combos/discovery/sweeps/history")
+            assert res.status_code == 200
+            assert len(res.json()["sweeps"]) >= 1
+
+
+class TestOrchestratorTasks:
+    def test_reconcile_completed_and_count_claimable(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+        from app.tasks.discovery_tasks import reconcile_sweep
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        preflight = _preflight_payload(service)
+        body, _ = service.create_sweep(
+            actor="admin-1",
+            idempotency_key="rec-key-0001",
+            snapshot_token=preflight["snapshot_token"],
+            payload={
+                "templates": ["multi_ma_crossover"],
+                "symbols": ["BTCUSDT"],
+                "timeframes": ["1d"],
+                "directions": ["long"],
+                "start_date": "2024-01-01",
+                "end_date": "2024-12-31",
+                "period_type": "all",
+                "snapshot_hash": preflight["snapshot_hash"],
+            },
+            db=db,
+        )
+        sweep_id = body["sweep_id"]
+        combo = (
+            db.query(DiscoveryCombination).filter(DiscoveryCombination.sweep_id == sweep_id).first()
+        )
+        combo.state = "succeeded"
+        combo.result_id = "RS-REC-1"
+        db.commit()
+        summary = reconcile_sweep(sweep_id, db)
+        assert summary["state"] == "completed"
+        assert summary["processed"] == summary["total"] == 1
+        assert service.count_claimable(sweep_id, db=db) == 0
+        db.close()
+
+    def test_orchestrator_enqueue_and_run_with_missing_sweep(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+        from app.tasks.discovery_tasks import run_combination
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        combo = DiscoveryCombination(
+            sweep_id="sw-nonexistent",
+            template_id="t1",
+            symbol="BTCUSDT",
+            timeframe="1d",
+            direction="long",
+            state="running",
+            lease_owner="w1",
+        )
+        db.add(combo)
+        db.commit()
+        run_combination(db, combo, owner="w1")
+        db.refresh(combo)
+        assert combo.state == "skipped"
+        db.close()
+
+    def test_expected_candles_and_coverage_in_runner(self):
+        from app.tasks.discovery_tasks import _expected_candles_for_window
+
+        start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end = start + timedelta(days=10)
+        assert _expected_candles_for_window("1d", start, end) == 10
+        assert _expected_candles_for_window("4h", start, end) == 60
