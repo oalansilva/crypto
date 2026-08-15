@@ -186,7 +186,7 @@ export function DiscoveryPage() {
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
   const [timeframes, setTimeframes] = useState<string[]>(['4h', '1d'])
-  const [directions, setDirections] = useState<string[]>(['long', 'short'])
+  const [directions, setDirections] = useState<string[]>(['long'])
   const [period, setPeriod] = useState<'6m' | '2y' | 'all'>('2y')
   const [draftMetric, setDraftMetric] = useState<Metric>('calmar_ratio')
   const [metric, setMetric] = useState<Metric>('calmar_ratio')
@@ -987,28 +987,35 @@ export function DiscoveryPage() {
               <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
                 <legend className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Direção</legend>
                 <div className="grid grid-cols-2 gap-2">
-                  {(['long', 'short'] as const).map((d) => (
-                    <label key={d} className="relative">
+                  {(['long', 'short'] as const).map((d) => {
+                    const disabled = d === 'short'
+                    return (
+                    <label key={d} className={`relative ${disabled ? 'cursor-not-allowed' : ''}`}>
                       <input
                         type="checkbox"
                         className="absolute h-0 w-0 opacity-0"
                         checked={directions.includes(d)}
                         onChange={() => toggleList(directions, setDirections, d)}
+                        disabled={disabled}
                       />
                       <span
-                        className={`flex min-h-[44px] items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold ${
+                        className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold ${
                           directions.includes(d)
                             ? 'border-[rgba(252,213,53,0.5)] bg-[rgba(252,213,53,0.1)] text-[var(--accent-primary)]'
-                            : 'border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)]'
+                            : disabled
+                              ? 'border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-muted)] opacity-60'
+                              : 'border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)]'
                         }`}
                       >
                         {d === 'long' ? 'Long' : 'Short'}
+                        {disabled ? <small className="text-[10px] font-medium">em breve</small> : null}
                       </span>
                     </label>
-                  ))}
+                    )
+                  })}
                 </div>
                 <p className={`mt-2 min-h-[18px] text-[11px] ${directions.length ? 'text-[#93c5fd]' : 'text-[#fbbf24]'}`}>
-                  {directions.length ? '' : 'Selecione ao menos uma direção.'}
+                  {directions.length ? 'Short desabilitado por enquanto; apenas Long roda nesta etapa.' : 'Selecione ao menos uma direção.'}
                 </p>
               </fieldset>
 
