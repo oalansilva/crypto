@@ -115,6 +115,10 @@ test.afterEach(async ({ page }) => {
 
 async function installMocks(page: Page) {
   let activeState = 'running'
+  const captured = {
+    sweepIdempotencyKey: '',
+    promotionIdempotencyKey: '',
+  }
 
   await page.addInitScript((user) => {
     localStorage.setItem('auth_access_token', 'discovery-admin-token')
@@ -187,6 +191,7 @@ async function installMocks(page: Page) {
   )
   await page.route('**/api/combos/discovery/sweeps', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
+    captured.sweepIdempotencyKey = route.request().postDataJSON().idempotency_key
     return route.fulfill({
       status: 201,
       contentType: 'application/json',
@@ -229,17 +234,20 @@ async function installMocks(page: Page) {
       }),
     })
   })
-  await page.route('**/api/combos/discovery/results/*/promote', (route) =>
-    route.fulfill({
+  await page.route('**/api/combos/discovery/results/*/promote', (route) => {
+    captured.promotionIdempotencyKey = route.request().postDataJSON().idempotency_key
+    return route.fulfill({
       status: 201,
       contentType: 'application/json',
       body: JSON.stringify({ favorite_id: 'FT-469', result_id: 'RS-1048' }),
-    }),
-  )
+    })
+  })
+
+  return captured
 }
 
 async function openDiscovery(page: Page) {
-  await installMocks(page)
+  const captured = await installMocks(page)
   await page.goto('/combo/discovery')
   await expect(page.getByRole('heading', { name: 'Descoberta de estratégias swing' })).toBeVisible()
   await expect(page.getByTestId('planned-total')).toHaveText('46')
@@ -251,6 +259,7 @@ async function openDiscovery(page: Page) {
   await expect(page.getByRole('columnheader', { name: 'Profit Factor', exact: true })).toHaveCount(1)
   await expect(page.getByLabel('Tabela rolável de candidatos')).toHaveAttribute('tabindex', '0')
   await expect(page.getByTestId('critical-state')).toBeVisible()
+  return captured
 }
 
 test('card 469 — fidelidade visual desktop/mobile', async ({ page }) => {
@@ -264,7 +273,7 @@ test('card 469 — fidelidade visual desktop/mobile', async ({ page }) => {
 })
 
 test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
-  await openDiscovery(page)
+  const captured = await openDiscovery(page)
 
   await expect(page.getByTestId('symbol-axis-status')).toContainText('cobertura de candles insuficiente')
   await page.getByTestId('critical-state').selectOption('over-limit')
@@ -284,6 +293,8 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   await expect(page.getByTestId('progress-count')).toHaveText('13 de 46')
   await expect(page.getByTestId('active-state-chip')).toHaveText('RUNNING')
   await expect(page.getByTestId('leaderboard-meta')).toContainText(HISTORY_SWEEP.sweep_id)
+  expect(captured.sweepIdempotencyKey).toHaveLength(64)
+  expect(captured.sweepIdempotencyKey).toBe(`sweep-${PREFLIGHT.snapshot_hash}`.slice(0, 64))
 
   await page.getByTestId('pause-sweep').click()
   await expect(page.getByTestId('active-state-chip')).toHaveText('PAUSED')
@@ -324,6 +335,8 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   await expect(page.getByTestId('promote-RS-1048')).toBeFocused()
   await page.getByTestId('promote-RS-1048').click()
   await page.getByTestId('confirm-promotion').click()
+  expect(captured.promotionIdempotencyKey).toBe('promote-RS-1048')
+  expect(captured.promotionIdempotencyKey.length).toBeLessThanOrEqual(64)
   const promoted = page.locator('[data-promoted-result="RS-1048"]')
   await expect(promoted).toBeVisible()
   await expect(promoted).toBeFocused()
