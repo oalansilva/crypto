@@ -22,7 +22,7 @@
 
 - [x] 4.1 Executar os testes unitários focados do serviço/gate e registrar resultado terminal (11/11 digest + 50/50 walk-forward/favoritos)
 - [x] 4.2 Validar a change OpenSpec e reconciliar os critérios com a implementação
-- [ ] 4.3 Executar `qa-gate` e a cobertura visual padrão do projeto para card sem mudança visual, ou registrar dispensa válida de Alan conforme a política
+- [x] 4.3 Executar `qa-gate` e a cobertura visual padrão do projeto para card sem mudança visual, ou registrar dispensa válida de Alan conforme a política
 - [x] 4.4 Registrar no handoff o risco transitório de provas pré-deploy (TTL de seis horas) e orientar nova otimização quando necessário
 
 > As seções 1–4 registram a entrega original já executada. A regra concluída em 1.2 foi superada pela evidência pós-implementação para números acima de `Number.MAX_SAFE_INTEGER`; o rework pendente está definido abaixo sem apagar o histórico.
@@ -46,5 +46,5 @@
 
 - [x] 7.1 Executar os testes focados do serviço de prova e do gate/favoritos após a implementação e registrar resultado terminal
 - [x] 7.2 Validar a change OpenSpec e reconciliar proposal, design, spec e tasks com a implementação final
-- [ ] 7.3 Executar novamente o `qa-gate` e a cobertura visual padrão para card sem mudança visual, ou registrar dispensa válida de Alan conforme a política
-- [ ] 7.4 Registrar no handoff a limitação inevitável de que inteiros distintos acima de `2^53` que colapsam no mesmo `Number` não são distinguíveis pelo fluxo browser
+- [x] 7.3 Executar novamente o `qa-gate` e a cobertura visual padrão para card sem mudança visual, ou registrar dispensa válida de Alan conforme a política
+- [x] 7.4 Registrar no handoff a limitação inevitável de que inteiros distintos acima de `2^53` que colapsam no mesmo `Number` não são distinguíveis pelo fluxo browser
