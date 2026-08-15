@@ -304,6 +304,23 @@ async def test_runtime_worker_run_and_main_cover_enabled_and_disabled_paths(monk
     await runtime_worker._run(stop_event)
     assert tracker == ["init", "favorite-refresh-start"]
 
+    tracker = []
+    stop_event = asyncio.Event()
+    monkeypatch.setattr(
+        runtime_worker,
+        "_env_enabled",
+        lambda name, default="1": name == "RUN_DISCOVERY_OUTBOX_DISPATCHER",
+    )
+    monkeypatch.setattr(runtime_worker, "_initialize_runtime_state", lambda: tracker.append("init"))
+
+    async def _discovery_outbox_loop(event, poll_seconds=10):
+        tracker.append("discovery-outbox-start")
+        event.set()
+
+    monkeypatch.setattr(runtime_worker, "discovery_outbox_loop", _discovery_outbox_loop)
+    await runtime_worker._run(stop_event)
+    assert tracker == ["init", "discovery-outbox-start"]
+
     main_calls: list[str] = []
 
     async def _fake_run(event):

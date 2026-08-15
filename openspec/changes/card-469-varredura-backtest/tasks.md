@@ -75,6 +75,8 @@
 - [x] 7.11 Rodar validações OpenSpec, `/opsx:verify`, testes focados, `qa-gate` e checks requeridos até terminal verde.
 - [x] 7.12 Testar UTC, intervalo `[start_at,end_at)`, calendário esperado por timeframe/source, gaps sem forward-fill e denominador de coverage versionado.
 - [x] 7.13 Limitar as chaves idempotentes enviadas pela UI a 64 caracteres e validar os payloads reais de criação e promoção no Playwright.
+- [x] 7.14 Implementar o provisionamento DEV do dispatcher da outbox e do worker Celery da fila `discovery`, ambos gerenciados pelo `./restart` e isolados do PROD.
+- [x] 7.15 Atualizar os contadores após cada combinação, manter intents `pending` quando a publicação falhar e confirmar `acked` após execução, com testes de regressão.
 
 ## Gate
 
@@ -91,3 +93,4 @@
 - Baselines: `frontend/tests/e2e/discovery-visual-critical.spec.ts-snapshots/` revalidadas sem `--update-snapshots`.
 - Julgamento de pixels delegado ao agente `vision`: veredito final `PASS`, sem P0/P1; colunas Trades/Ação visíveis no desktop e grids 2×2 alinhados ao protótipo.
 - Correção pós-runtime: chaves idempotentes de criação/promoção respeitam o contrato `max_length=64`; o Playwright intercepta e valida os payloads enviados.
+- Correção de execução: `./restart` provisiona dispatcher/worker `discovery`; o orquestrador reconcilia progresso após cada combinação e registra início/fim no journald.

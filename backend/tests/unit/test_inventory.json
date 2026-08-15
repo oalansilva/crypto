@@ -192,6 +192,15 @@
       "evidence": "filesystem/script contract assertions"
     },
     {
+      "file": "backend/tests/unit/test_discovery_celery_tasks.py",
+      "protected_behavior": "discovery orchestrator progress and outbox acknowledgement",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "deterministic worker/service fakes assert per-combination reconciliation and ACK ordering"
+    },
+    {
       "file": "backend/tests/unit/test_gateway_and_agent_chat.py",
       "protected_behavior": "gateway and agent chat routes",
       "production_reachability": "reachable",

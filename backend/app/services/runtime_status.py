@@ -166,6 +166,7 @@ def build_runtime_status_payload(
         "signal_monitor": env_flag_enabled("RUN_SIGNAL_MONITOR", "0"),
         "signal_feed_snapshot": env_flag_enabled("RUN_SIGNAL_FEED_SNAPSHOT_WORKER", "0"),
         "favorite_backtest_refresh": env_flag_enabled("RUN_FAVORITE_BACKTEST_REFRESH", "0"),
+        "discovery_outbox_dispatcher": env_flag_enabled("RUN_DISCOVERY_OUTBOX_DISPATCHER", "0"),
     }
     runtime_worker_enabled = env_flag_enabled("CRYPTO_RUNTIME_WORKER_ENABLED", "0") and any(
         runtime_worker_routines.values()
@@ -188,6 +189,9 @@ def build_runtime_status_payload(
             },
             "celery_batch": {
                 "enabled": env_flag_enabled("CRYPTO_CELERY_WORKER_ENABLED", "0"),
+            },
+            "celery_discovery": {
+                "enabled": env_flag_enabled("CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED", "0"),
             },
             "binance_realtime_worker": {
                 "enabled": env_flag_enabled("BINANCE_REALTIME_WORKER_ENABLED", "0"),

@@ -46,6 +46,7 @@ def enqueue_sweep_orchestrator(sweep_id: str, generation: int) -> None:
         logger.info("Discovery orchestrator enqueued: sweep=%s gen=%s", sweep_id, generation)
     except Exception as exc:  # pragma: no cover - broker down
         logger.warning("Discovery orchestrator enqueue failed (outbox redelivers): %s", exc)
+        raise
 
 
 def reconcile_sweep(sweep_id: str, db: Session) -> dict[str, Any]:
@@ -119,6 +120,15 @@ def run_combination(
     owner: str,
 ) -> None:
     """Executa o otimizador para uma combinação e persiste resultado único."""
+    logger.info(
+        "Discovery combination started: sweep=%s combination=%s template=%s symbol=%s timeframe=%s direction=%s",
+        combination.sweep_id,
+        combination.id,
+        combination.template_id,
+        combination.symbol,
+        combination.timeframe,
+        combination.direction,
+    )
     sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == combination.sweep_id).first()
     if not sweep:
         combination.state = "skipped"
@@ -279,6 +289,13 @@ def run_combination(
     combination.lease_owner = owner
     combination.updated_at = datetime.now(timezone.utc)
     db.commit()
+    logger.info(
+        "Discovery combination completed: sweep=%s combination=%s result=%s eligibility=%s",
+        combination.sweep_id,
+        combination.id,
+        result_id,
+        "eligible" if eligible else "low_sample",
+    )
 
 
 def _expected_candles_for_window(timeframe: str, start_at: datetime, end_at: datetime) -> int:

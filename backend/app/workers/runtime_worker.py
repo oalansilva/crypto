@@ -106,11 +106,15 @@ async def _run(stop_event: asyncio.Event) -> None:
     run_signal_monitor = _env_enabled("RUN_SIGNAL_MONITOR")
     run_signal_feed = _env_enabled("RUN_SIGNAL_FEED_SNAPSHOT_WORKER")
     run_favorite_refresh = _env_enabled("RUN_FAVORITE_BACKTEST_REFRESH")
+    run_discovery_dispatcher = _env_enabled("RUN_DISCOVERY_OUTBOX_DISPATCHER")
 
-    if not run_signal_monitor and not run_signal_feed and not run_favorite_refresh:
+    if not any(
+        (run_signal_monitor, run_signal_feed, run_favorite_refresh, run_discovery_dispatcher)
+    ):
         logger.warning(
             "No worker routines enabled. Set RUN_SIGNAL_MONITOR, "
-            "RUN_SIGNAL_FEED_SNAPSHOT_WORKER, and/or RUN_FAVORITE_BACKTEST_REFRESH to 1."
+            "RUN_SIGNAL_FEED_SNAPSHOT_WORKER, RUN_FAVORITE_BACKTEST_REFRESH, "
+            "and/or RUN_DISCOVERY_OUTBOX_DISPATCHER to 1."
         )
         return
 
@@ -130,7 +134,7 @@ async def _run(stop_event: asyncio.Event) -> None:
         favorite_refresh_task = asyncio.create_task(favorite_backtest_refresh_loop(stop_event))
         logger.info("Favorite backtest refresh loop started.")
 
-    if run_favorite_refresh:
+    if run_discovery_dispatcher:
         discovery_dispatch_task = asyncio.create_task(discovery_outbox_loop(stop_event))
         logger.info("Discovery outbox dispatcher loop started.")
 

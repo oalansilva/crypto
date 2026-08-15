@@ -712,18 +712,51 @@ class DiscoveryService:
                     break
                 if per_sweep_running.get(intent.sweep_id, 0) >= OUTBOX_MAX_PER_SWEEP:
                     continue
-                intent.state = "delivered"
                 intent.attempts += 1
                 intent.updated_at = now
+                try:
+                    from app.tasks.discovery_tasks import enqueue_sweep_orchestrator
+
+                    enqueue_sweep_orchestrator(intent.sweep_id, intent.generation)
+                except Exception:
+                    # Keep the durable intent claimable when the broker is down.
+                    intent.state = "pending"
+                    continue
+                intent.state = "delivered"
                 global_running += 1
                 per_sweep_running[intent.sweep_id] = per_sweep_running.get(intent.sweep_id, 0) + 1
                 published += 1
-                # Publica o wake-up idempotente do orquestrador.
-                from app.tasks.discovery_tasks import enqueue_sweep_orchestrator
-
-                enqueue_sweep_orchestrator(intent.sweep_id, intent.generation)
             session.commit()
             return published
+        finally:
+            if db is None:
+                session.close()
+
+    def ack_outbox(self, sweep_id: str, generation: int, db: Session | None = None) -> int:
+        """Confirma o wake-up somente após a execução do orquestrador."""
+        from app.database import SessionLocal
+
+        session = db or SessionLocal()
+        try:
+            now = _utcnow()
+            updated = (
+                session.query(DiscoveryOutbox)
+                .filter(
+                    DiscoveryOutbox.sweep_id == sweep_id,
+                    DiscoveryOutbox.generation == generation,
+                    DiscoveryOutbox.state == "delivered",
+                )
+                .update(
+                    {
+                        DiscoveryOutbox.state: "acked",
+                        DiscoveryOutbox.acked_at: now,
+                        DiscoveryOutbox.updated_at: now,
+                    },
+                    synchronize_session=False,
+                )
+            )
+            session.commit()
+            return updated
         finally:
             if db is None:
                 session.close()
