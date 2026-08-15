@@ -730,6 +730,42 @@ class DiscoveryService:
 
     # --- Leaderboard (spec discovery-leaderboard) ---------------------------
 
+    def _result_row(self, row: DiscoveryResult, rank: int | None) -> dict[str, Any]:
+        return {
+            "rank": rank,
+            "result_id": row.id,
+            "sweep_id": row.sweep_id,
+            "template_id": row.template_id,
+            "symbol": row.symbol,
+            "timeframe": row.timeframe,
+            "direction": row.direction,
+            "parameters": row.parameters,
+            "metrics": row.metrics,
+            "calmar_ratio": row.calmar_ratio,
+            "cagr": row.cagr,
+            "benchmark_cagr": row.benchmark_cagr,
+            "delta_cagr_vs_bh": row.delta_cagr_vs_bh,
+            "max_drawdown": row.max_drawdown,
+            "sharpe_ratio": row.sharpe_ratio,
+            "profit_factor": row.profit_factor,
+            "win_rate": row.win_rate,
+            "trades_count": row.trades_count,
+            "coverage": row.coverage,
+            "eligibility": row.eligibility,
+            "eligibility_reason": row.eligibility_reason,
+            "dedup_state": row.dedup_state,
+            "dedup_reference": row.dedup_reference,
+            "strategy_identity_key": row.strategy_identity_key,
+            "evidence_fingerprint": row.evidence_fingerprint,
+            "start_at": _utc_iso(row.start_at),
+            "end_at": _utc_iso(row.end_at),
+            "candle_source": row.candle_source,
+            "candle_version": row.candle_version,
+            "expected_candles": row.expected_candles,
+            "observed_valid_candles": row.observed_valid_candles,
+            "fees_slippage": row.fees_slippage,
+        }
+
     def rank_eligible(
         self, sweep_id: str, metric: str = "calmar_ratio", db: Session | None = None
     ) -> list[dict[str, Any]]:
@@ -737,17 +773,17 @@ class DiscoveryService:
 
         session = db or SessionLocal()
         try:
-            rows = (
-                session.query(DiscoveryResult)
-                .filter(
-                    DiscoveryResult.sweep_id == sweep_id,
-                    DiscoveryResult.eligibility == "eligible",
-                )
-                .all()
-            )
+            rows = session.query(DiscoveryResult).filter(DiscoveryResult.sweep_id == sweep_id).all()
+            eligible: list[DiscoveryResult] = []
+            ineligible: list[DiscoveryResult] = []
+            for row in rows:
+                if row.eligibility == "eligible":
+                    eligible.append(row)
+                else:
+                    ineligible.append(row)
             finite: list[DiscoveryResult] = []
             na: list[DiscoveryResult] = []
-            for row in rows:
+            for row in eligible:
                 value = getattr(row, metric)
                 if value is None or (isinstance(value, float) and not math.isfinite(value)):
                     na.append(row)
@@ -756,38 +792,52 @@ class DiscoveryService:
             finite.sort(key=lambda r: (-float(getattr(r, metric)), -int(r.trades_count or 0), r.id))
             na.sort(key=lambda r: (-int(r.trades_count or 0), r.id))
             ranked = finite + na
-            return [
-                {
-                    "rank": idx + 1,
-                    "result_id": row.id,
-                    "sweep_id": row.sweep_id,
-                    "template_id": row.template_id,
-                    "symbol": row.symbol,
-                    "timeframe": row.timeframe,
-                    "direction": row.direction,
-                    "metrics": row.metrics,
-                    "calmar_ratio": row.calmar_ratio,
-                    "cagr": row.cagr,
-                    "benchmark_cagr": row.benchmark_cagr,
-                    "delta_cagr_vs_bh": row.delta_cagr_vs_bh,
-                    "max_drawdown": row.max_drawdown,
-                    "sharpe_ratio": row.sharpe_ratio,
-                    "profit_factor": row.profit_factor,
-                    "win_rate": row.win_rate,
-                    "trades_count": row.trades_count,
-                    "coverage": row.coverage,
-                    "eligibility": row.eligibility,
-                    "eligibility_reason": row.eligibility_reason,
-                    "dedup_state": row.dedup_state,
-                    "dedup_reference": row.dedup_reference,
-                    "strategy_identity_key": row.strategy_identity_key,
-                    "evidence_fingerprint": row.evidence_fingerprint,
-                }
-                for idx, row in enumerate(ranked)
+            ineligible.sort(key=lambda r: r.id)
+            return [self._result_row(row, idx + 1) for idx, row in enumerate(ranked)] + [
+                self._result_row(row, None) for row in ineligible
             ]
         finally:
             if db is None:
                 session.close()
+
+    @staticmethod
+    def _norm_symbol(value: str) -> str:
+        return value.upper().strip().replace("/", "")
+
+    def leaderboard(
+        self,
+        sweep_id: str,
+        metric: str = "calmar_ratio",
+        *,
+        symbol: str | None = None,
+        timeframe: str | None = None,
+        direction: str | None = None,
+        eligibility: str | None = None,
+        offset: int = 0,
+        limit: int | None = None,
+        db: Session | None = None,
+    ) -> tuple[list[dict[str, Any]], int, int]:
+        """Leaderboard com rank global preservado sob filtros e paginação.
+
+        Filtros e paginação não re-numeram posições: o rank é calculado sobre
+        todos os resultados elegíveis do sweep antes do recorte (spec 3.5).
+        """
+        ranked = self.rank_eligible(sweep_id, metric=metric, db=db)
+        unfiltered_total = len(ranked)
+        matched = ranked
+        if symbol:
+            norm = self._norm_symbol(symbol)
+            matched = [r for r in matched if self._norm_symbol(r["symbol"]) == norm]
+        if timeframe:
+            matched = [r for r in matched if r["timeframe"] == timeframe]
+        if direction:
+            matched = [r for r in matched if r["direction"] == direction]
+        if eligibility:
+            matched = [r for r in matched if r["eligibility"] == eligibility]
+        total = len(matched)
+        if limit is not None:
+            matched = matched[offset : offset + limit]
+        return matched, total, unfiltered_total
 
     # --- Promoção tier 3 (spec discovery-promotion) -------------------------
 

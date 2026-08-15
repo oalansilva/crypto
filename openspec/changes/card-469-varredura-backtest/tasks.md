@@ -69,8 +69,8 @@
 - [x] 7.6 Testar corrida de promoções equivalentes sob lock e política de favoritos inativos.
 - [x] 7.6.1 Testar fechamento dos contadores em `pending → failed`, `paused → failed` e `cancelling → failed`, incluindo `terminal_reason`, código operacional e `processed = total`.
 - [x] 7.7 Testar histórico de reclassificação preservando versões/evidência anterior.
-- [ ] 7.8 Executar testes frontend de preflight/exclusões, rascunho × ativo × histórico, ordenação/paginação, baixa amostra, dedup e tier fixo.
-- [ ] 7.9 Executar Playwright funcional/visual desktop/mobile e checks de a11y/console conforme gate do repo.
+- [x] 7.8 Executar testes frontend de preflight/exclusões, rascunho × ativo × histórico, ordenação/paginação, baixa amostra, dedup e tier fixo.
+- [x] 7.9 Executar Playwright funcional/visual desktop/mobile e checks de a11y/console conforme gate do repo.
 - [x] 7.10 Atualizar contratos técnicos; `docs/strategy-transparency-matrix.md` somente se novos templates forem adicionados, senão registrar N/A.
 - [x] 7.11 Rodar validações OpenSpec, `/opsx:verify`, testes focados, `qa-gate` e checks requeridos até terminal verde.
 - [x] 7.12 Testar UTC, intervalo `[start_at,end_at)`, calendário esperado por timeframe/source, gaps sem forward-fill e denominador de coverage versionado.
@@ -78,3 +78,14 @@
 ## Gate
 
 - [x] Design Agent verdict registrado e design/protótipo aprovados por Alan (`Aprovação de Design -> Pronto para Dev`) antes de qualquer item de implementação.
+
+## Evidência de remediação de fidelidade (2026-08-15)
+
+- Protótipo aprovado usado como spec de UI: `frontend/public/prototypes/card-469-varredura-backtest/index.html` e URL canônica `https://dev.criptofarol.com.br/prototypes/card-469-varredura-backtest/`.
+- Implementação: `frontend/src/pages/DiscoveryPage.tsx` + `DiscoveryPage.css`; configurador paginado com busca/seleção visível, preflight lateral, sweep ativo separado do histórico, estados críticos, leaderboard completo/paginado, dialog tier 3 e foco gerenciado.
+- Backend: `GET /combos/discovery/sweeps/{sweep_id}/leaderboard` com filtros AND, `offset/limit`, rank global preservado, `total` filtrado e `unfiltered_total`; resultados ineligible permanecem visíveis sem rank.
+- Testes backend: `backend/tests/integration/test_discovery_service.py` — 29/29 discovery integration verdes em PostgreSQL.
+- Build/lint frontend: build verde; lint com 0 erros (warnings preexistentes fora do diff).
+- Playwright: `frontend/tests/e2e/discovery-visual-critical.spec.ts` — 4/4 em desktop `1440×900` e mobile `390×844`, incluindo visual baseline, preflight/exclusões, ativo × histórico, pause/cancel, filtros/paginação, baixa amostra, dedup, modal tier 3, foco, nomes acessíveis, overflow e zero `console.error`/`pageerror`.
+- Baselines: `frontend/tests/e2e/discovery-visual-critical.spec.ts-snapshots/` revalidadas sem `--update-snapshots`.
+- Julgamento de pixels delegado ao agente `vision`: veredito final `PASS`, sem P0/P1; colunas Trades/Ação visíveis no desktop e grids 2×2 alinhados ao protótipo.
