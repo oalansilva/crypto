@@ -18,6 +18,14 @@ def test_canonical_dev_restart_is_scoped_away_from_prod_runtime():
     assert 'DEV_FRONTEND_PORT="5173"' not in dev_block
 
 
+def test_discovery_worker_uses_solo_pool_for_nested_optimizer_workers():
+    repo_root = Path(__file__).resolve().parents[3]
+    unit_source = (repo_root / "ops/systemd/criptofarol-dev-discovery-worker.service").read_text()
+
+    assert "--pool=solo" in unit_source
+    assert "-Q discovery" in unit_source
+
+
 def test_dev_worktree_restart_fails_closed_before_legacy_runtime(tmp_path):
     repo_root = Path(__file__).resolve().parents[3]
     simulated_worktree = repo_root / ".restart-contract-test"

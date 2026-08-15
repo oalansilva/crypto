@@ -326,6 +326,9 @@ class DiscoveryService:
             "expires_at": _utc_iso(expiry),
             "snapshot_token": snapshot_token,
             "snapshot_hash": snapshot_hash,
+            "start_date": start_date,
+            "end_date": end_date,
+            "period_type": period_type,
             "combinations": valid,
         }
 
