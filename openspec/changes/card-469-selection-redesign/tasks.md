@@ -9,6 +9,7 @@
 - [x] 1.5 Obtain independent Assessment A and Assessment B in separate `openai/gpt-5.6-sol` contexts (executados pela sessão principal via Task; PASS após fixes).
 - [x] 1.6 Obtain Alan's design approval after the independent-critic blocker is resolved (aprovado em 2026-08-15).
 - [x] 1.7 Remover o simulador "Estados críticos verificáveis" da tela de produção (ferramenta de QA; estados reais continuam com superfícies próprias de recuperação).
+- [x] 1.8 Remover o mesmo bloco e sua lógica do shell aprovado `card-469-varredura-backtest` (embutido via iframe no protótipo novo), eliminando CSS/JS órfãos.
 
 ## 2. Frontend implementation — only after Pronto para Dev
 
