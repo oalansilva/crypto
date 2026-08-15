@@ -4,7 +4,7 @@ O gate `Design` é o ponto de maior alavancagem do fluxo: decisões de spec, cr�
 
 ## What Changes
 
-- Introduz, em rollout experimental até um piloto `UI impact: affected`, o subagent `design-planner` com `model: openai/gpt-5.6-sol` fixo e **effort sempre `high`**, capaz de executar o contrato `design-critic` no `Status=Design`.
+- Introduz o subagent obrigatório `design-planner` com `model: openai/gpt-5.6-sol` fixo e **effort sempre `high`**, capaz de executar o contrato `design-critic` no `Status=Design`. O rollout experimental foi promovido após o piloto real `UI impact: affected` do card #502 concluir com PASS.
 - Documenta a segunda exceção explícita à herança de modelo (ao lado do `vision`): sessão principal e demais subagents continuam no modelo da sessão; `design-planner` usa GPT 5.6 Sol (high); pixels continuam no `vision`.
 - Ajusta a regra de igualdade dos critics Impeccable (Assessment A/B): herdam o modelo da **sessão de design designada** (`design-planner` quando o gate roda por esse subagent; senão o da sessão principal). Sem igualdade observável → `BLOCKED`.
 - Mantém Go e OpenAI autenticados em paralelo: default/volume no Go (`deepseek-v4-flash`); frontier só no gate Design via OpenAI (OAuth, billing direto).
@@ -15,7 +15,7 @@ O gate `Design` é o ponto de maior alavancagem do fluxo: decisões de spec, cr�
 
 ### New Capabilities
 
-- `design-planner-routing`: roteamento experimental do gate Design para o subagent `design-planner` (GPT 5.6 Sol, effort `high`) até o card #496 concluir o piloto UI com PASS e registrar a decisão de promoção, coexistência OpenAI/Go, fallback autorizado e restrição de escopo (só artefatos de design/protótipo).
+- `design-planner-routing`: roteamento obrigatório do gate Design para o subagent `design-planner` (GPT 5.6 Sol, effort `high`), promovido após o piloto UI do card #502; mantém coexistência OpenAI/Go, fallback autorizado e restrição de escopo (só artefatos de design/protótipo). O card #496 foi absorvido pelo piloto já executado e cancelado sem implementação duplicada.
 
 ### Modified Capabilities
 

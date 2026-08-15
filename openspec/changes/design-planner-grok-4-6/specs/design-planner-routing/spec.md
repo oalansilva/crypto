@@ -1,17 +1,17 @@
 ## ADDED Requirements
 
 ### Requirement: Gate Design disponibiliza design-planner com GPT 5.6 Sol
-O repositório SHALL definir um subagent `design-planner` em `.opencode/agent/design-planner.md` com `model: openai/gpt-5.6-sol` fixo e effort `high` (`reasoningEffort: high`), para executar o contrato `design-critic` quando o card estiver em `Status=Design`. Até o card #496 concluir o piloto `UI impact: affected` com PASS e registrar a decisão de promoção, o roteamento SHALL permanecer experimental e MUST NOT ser obrigatório globalmente.
+O repositório SHALL definir e usar o subagent `design-planner` em `.opencode/agent/design-planner.md` com `model: openai/gpt-5.6-sol` fixo e effort `high` (`reasoningEffort: high`), para executar o contrato `design-critic` quando o card estiver em `Status=Design`. O rollout SHALL ser obrigatório após o piloto real `UI impact: affected` do card #502 concluir com PASS e evidências versionadas; o card #496 foi absorvido por esse piloto e cancelado sem implementação duplicada.
 
 #### Scenario: Subagent disponível no gate Design
 - **WHEN** um card está em `Status=Design` e o provider OpenAI está autenticado
-- **THEN** uma sessão principal nova na worktree que contém o agent MAY delegar o contrato design-critic via ferramenta `Task` ao subagent `design-planner`, no mesmo padrão do `vision`
+- **THEN** uma sessão principal nova na worktree que contém o agent SHALL delegar o contrato design-critic via ferramenta `Task` ao subagent `design-planner`, no mesmo padrão do `vision`
 - **AND** o request SHALL rodar com modelo `openai/gpt-5.6-sol` e effort `high`
 
-#### Scenario: Rollout obrigatório aguarda piloto UI
-- **WHEN** o card #496 ainda não concluiu o piloto `UI impact: affected` com PASS e decisão de promoção registrada
-- **THEN** o uso do `design-planner` MUST permanecer experimental
-- **AND** cards `UI impact: none` MAY ser usados como smoke sem promover o roteamento a regra global obrigatória
+#### Scenario: Piloto UI promove rollout obrigatório
+- **WHEN** o card #502 conclui o gate real `UI impact: affected` com autoria e critics no modelo designado, pixels no `vision`, Impeccable completo, browser gate verde e `Design Agent verdict: PASS`
+- **THEN** o uso do `design-planner` SHALL permanecer obrigatório em todo card no gate Design
+- **AND** o card #496 MAY ser cancelado como escopo absorvido, sem repetir o piloto
 
 #### Scenario: Subagent não pode ser iniciado como agente primário
 - **WHEN** o operador tenta usar `opencode run --agent design-planner`
