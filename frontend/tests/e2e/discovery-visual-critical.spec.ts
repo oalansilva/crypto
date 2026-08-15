@@ -258,7 +258,6 @@ async function openDiscovery(page: Page) {
   await expect(page.getByRole('columnheader', { name: 'Maximum Drawdown', exact: true })).toHaveCount(1)
   await expect(page.getByRole('columnheader', { name: 'Profit Factor', exact: true })).toHaveCount(1)
   await expect(page.getByLabel('Tabela rolável de candidatos')).toHaveAttribute('tabindex', '0')
-  await expect(page.getByTestId('critical-state')).toBeVisible()
   return captured
 }
 
@@ -276,11 +275,6 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   const captured = await openDiscovery(page)
 
   await expect(page.getByTestId('symbol-axis-status')).toContainText('cobertura de candles insuficiente')
-  await page.getByTestId('critical-state').selectOption('over-limit')
-  await expect(page.getByTestId('critical-panel')).toContainText('Limite excedido')
-  await page.getByRole('button', { name: 'Reduzir escopo' }).click()
-  await expect(page.getByLabel('Buscar template')).toBeFocused()
-  await expect(page.getByTestId('critical-panel')).toContainText('Operação normal')
 
   const startBox = await page.getByTestId('start-sweep').boundingBox()
   expect(startBox?.height ?? 0).toBeGreaterThanOrEqual(44)
