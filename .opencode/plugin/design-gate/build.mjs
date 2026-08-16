@@ -49,6 +49,7 @@ const tracked = [
   ".opencode/plugin/design-gate/contract.ts",
   ".opencode/plugin/design-gate/runtime-adapter.ts",
   ".opencode/plugin/design-gate/runtime-smoke.ts",
+  ".opencode/plugin/design-gate/runtime-smoke-plugin.ts",
   ".opencode/plugin/design-gate/lease-evidence.ts",
   ".opencode/plugin/design-gate/native-writer.ts",
   ".opencode/plugin/design-gate/spawn-readonly-tools.ts",

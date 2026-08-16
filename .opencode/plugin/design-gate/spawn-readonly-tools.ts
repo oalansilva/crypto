@@ -426,7 +426,6 @@ export function createDesignGateTools(input: {
         const argsHash = sha256(canonicalJson(args));
         await runtime.assertAssistantParent(client, lease.run_id, context.messageID, context.directory);
         if (lease.state === "CREATED") store.finalBind(lease.run_id, context.messageID);
-        else if (lease.assistant_message_id !== context.messageID) throw new Error("assistant message changed during stage");
         const call = store.consumeCall(lease.run_id, args.operation_nonce, argsHash);
         const exists = fs.existsSync(resolvedPath);
         const current = exists ? fs.readFileSync(resolvedPath) : Buffer.alloc(0);
@@ -458,6 +457,7 @@ export function createDesignGateTools(input: {
           path: resolvedPath,
           before_sha256: result.before_sha256,
           after_sha256: result.after_sha256,
+          assistant_message_id: context.messageID,
         });
         store.append(lease.run_id, "writer.completed", {
           callID: call.callID,

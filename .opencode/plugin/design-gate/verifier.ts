@@ -64,13 +64,25 @@ function verifyRuntimeDatabase(databasePath: string, lease: Lease, events: Journ
     if (outputData.role !== "assistant" || outputData.parentID !== lease.input_message_id || outputData.agent !== lease.manifest.expected_agent ||
         outputData.providerID !== lease.manifest.expected_model.providerID || outputData.modelID !== lease.manifest.expected_model.modelID ||
         outputData.variant !== lease.manifest.expected_variant) throw new Error("runtime output route mismatch");
-    const writerParts = database.prepare("SELECT data FROM part WHERE message_id = ? AND session_id = ? ORDER BY time_created, id")
-      .all(lease.assistant_message_id, lease.child_session_id).map((item: any) => JSON.parse(item.data)).filter((item: any) => item.type === "tool");
-    if (writerParts.length !== lease.writes.length) throw new Error("runtime writer tool-call count mismatch");
+    const writerMessageIDs = lease.writes.map((write) => write.assistant_message_id);
+    if (writerMessageIDs.some((messageID) => !messageID) || new Set(writerMessageIDs).size !== lease.writes.length) {
+      throw new Error("runtime writer messages are missing or reused");
+    }
     for (const write of lease.writes) {
-      const part = writerParts.find((item: any) => item.tool === "design_artifact_write" && item.callID === write.callID);
+      const messageID = write.assistant_message_id;
+      const message = database.prepare("SELECT session_id, data FROM message WHERE id = ?").get(messageID) as any;
+      if (!message || message.session_id !== lease.child_session_id) throw new Error("runtime writer message session mismatch");
+      const data = JSON.parse(message.data);
+      if (data.role !== "assistant" || data.parentID !== lease.input_message_id || data.agent !== lease.manifest.expected_agent ||
+          data.providerID !== lease.manifest.expected_model.providerID || data.modelID !== lease.manifest.expected_model.modelID ||
+          data.variant !== lease.manifest.expected_variant) throw new Error("runtime writer assistant route mismatch");
+      const toolParts = database.prepare("SELECT data FROM part WHERE message_id = ? AND session_id = ? ORDER BY time_created, id")
+        .all(messageID, lease.child_session_id!).map((item: any) => JSON.parse(item.data))
+        .filter((item: any) => item.type === "tool");
+      if (toolParts.length !== 1 || toolParts[0].tool !== "design_artifact_write") throw new Error("runtime writer tool-call count mismatch");
+      const part = toolParts[0];
       const registered = events.find((event) => event.event === "writer.call.registered" && event.data?.callID === write.callID && event.data?.operationNonce === write.operation_nonce);
-      if (!part || part.state?.status !== "completed" || !registered || sha256(canonicalJson(part.state.input)) !== registered.data.argsHash) {
+      if (part.callID !== write.callID || part.state?.status !== "completed" || !registered || sha256(canonicalJson(part.state.input)) !== registered.data.argsHash) {
         throw new Error("runtime writer tool-call correlation mismatch");
       }
     }
@@ -131,7 +143,8 @@ function verifyRunEvidenceInternal(
   }
   const expectedTerminal = lease.state === "CLOSED" ? "lease.closed" : lease.state === "ABORTED" ? "lease.aborted" : null;
   const terminalIndex = expectedTerminal ? events.findIndex((event) => event.event === expectedTerminal) : -1;
-  if (terminalIndex < 0 || events.slice(terminalIndex + 1).some((event) => event.event !== "runtime.tool.after")) {
+  const observationalAfterTerminal = new Set(["runtime.tool.after", "runtime.assistant.verified"]);
+  if (terminalIndex < 0 || events.slice(terminalIndex + 1).some((event) => !observationalAfterTerminal.has(event.event))) {
     throw new Error("evidence is not terminal or has a post-terminal mutation");
   }
   const first = (name: string) => events.findIndex((event) => event.event === name);

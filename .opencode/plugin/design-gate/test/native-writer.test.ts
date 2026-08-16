@@ -26,6 +26,23 @@ test("native writer creates and atomically replaces an exact file", { skip: !fs.
   assert.equal(fs.readFileSync(artifact, "utf8"), "second\n");
 });
 
+test("native writer verifies existing files larger than one hash chunk", { skip: !fs.existsSync(executable) }, () => {
+  const worktree = fs.mkdtempSync(path.join(os.tmpdir(), "design-writer-large-"));
+  const artifact = path.join(worktree, "design.md");
+  const existing = Buffer.alloc(33_077, "a");
+  const replacement = Buffer.from("replacement\n");
+  fs.writeFileSync(artifact, existing);
+  const result = runNativeWriter({
+    worktree,
+    exactPath: artifact,
+    expectedBaseSha256: sha256(existing),
+    content: replacement,
+    executable,
+  });
+  assert.equal(result.before_sha256, sha256(existing));
+  assert.deepEqual(fs.readFileSync(artifact), replacement);
+});
+
 test("native writer rejects stale digests and symlink parents", { skip: !fs.existsSync(executable) }, () => {
   const worktree = fs.mkdtempSync(path.join(os.tmpdir(), "design-writer-negative-"));
   const artifact = path.join(worktree, "artifact.md");

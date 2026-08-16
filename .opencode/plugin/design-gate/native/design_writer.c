@@ -75,7 +75,7 @@ static int sha256_fd(int fd, char output[65]) {
     }
     size_t written = 0;
     while (written < (size_t)count) {
-      ssize_t sent = write(operation_fd, buffer + written, (size_t)count - written);
+      ssize_t sent = send(operation_fd, buffer + written, (size_t)count - written, MSG_MORE);
       if (sent < 0) {
         if (errno == EINTR) continue;
         goto failure;
@@ -83,6 +83,7 @@ static int sha256_fd(int fd, char output[65]) {
       written += (size_t)sent;
     }
   }
+  if (send(operation_fd, NULL, 0, 0) < 0) goto failure;
   if (read_full(operation_fd, digest, sizeof(digest)) < 0) goto failure;
   digest_hex(digest, output);
   close(operation_fd);
