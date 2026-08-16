@@ -22,6 +22,7 @@ def _load_script(name: str, filename: str):
 benchmark = _load_script("backend_unit_benchmark", "benchmark_backend_unit_tests.py")
 inventory = _load_script("backend_unit_inventory", "validate_backend_unit_inventory.py")
 unit_conftest = _load_script("backend_unit_conftest", "../backend/tests/unit/conftest.py")
+database_guard = _load_script("backend_test_database_guard", "../backend/tests/database_guard.py")
 
 
 def test_inventory_matches_all_unit_test_files():
@@ -193,3 +194,47 @@ def test_database_helper_is_postgres_only_and_pure_path_is_noop():
         generator.close()
     finally:
         unit_conftest._reset_postgres_state = original
+
+
+def test_global_database_guard_rejects_runtime_databases(monkeypatch):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    database_guard.assert_safe_test_database_url(
+        "postgresql://postgres:postgres@127.0.0.1:5432/crypto_app_test",
+        variable_name="DATABASE_URL",
+    )
+
+    for forbidden in (
+        "postgresql://root@/crypto_app_dev",
+        "postgresql://root@/crypto_app",
+        "postgresql://root@/crypto_workflow_dev",
+        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
+        "sqlite+pysqlite:///:memory:",
+    ):
+        with pytest.raises(RuntimeError):
+            database_guard.assert_safe_test_database_url(
+                forbidden,
+                variable_name="DATABASE_URL",
+            )
+
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    database_guard.assert_safe_test_database_url(
+        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
+        variable_name="DATABASE_URL",
+    )
+
+
+def test_root_pytest_conftest_guards_all_database_aliases_before_app_import():
+    source = (ROOT / "backend/tests/conftest.py").read_text(encoding="utf-8")
+
+    assert "crypto_app_test" in source
+    assert "crypto_workflow_test" in source
+    for variable in (
+        "DATABASE_URL",
+        "WORKFLOW_DATABASE_URL",
+        "CRYPTO_DATABASE_URL",
+        "CRYPTO_WORKFLOW_DATABASE_URL",
+    ):
+        assert f'"{variable}"' in source
+    assert source.index("assert_safe_test_database_url(") < source.index(
+        "from app.config import get_settings"
+    )

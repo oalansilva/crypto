@@ -10,7 +10,6 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
@@ -26,21 +25,14 @@ from app.services.discovery_service import (
     build_evidence_fingerprint,
     build_strategy_identity,
 )
+from database_guard import assert_safe_test_database_url
 
 
 def _assert_safe_integration_database() -> None:
-    database_name = (make_url(os.environ["DATABASE_URL"]).database or "").lower()
-    is_test_database = database_name.startswith("test_") or database_name.endswith(
-        ("_test", "_tests", "_testing")
+    assert_safe_test_database_url(
+        os.environ["DATABASE_URL"],
+        variable_name="DATABASE_URL",
     )
-    is_disposable_github_database = (
-        os.getenv("GITHUB_ACTIONS", "").strip().lower() == "true" and database_name == "postgres"
-    )
-    if not is_test_database and not is_disposable_github_database:
-        raise RuntimeError(
-            "Refusing discovery integration tests against a non-test database "
-            f"({database_name or '<empty>'})."
-        )
 
 
 @pytest.fixture(autouse=True)

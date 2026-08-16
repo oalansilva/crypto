@@ -81,6 +81,7 @@
 - [x] 7.17 Impedir que testes de integração discovery executem contra banco que não tenha nome de teste.
 - [x] 7.18 Persistir período no snapshot executável e usar pool Celery `solo` para permitir o multiprocessing interno do otimizador.
 - [x] 7.19 Expor a rota `/combo/discovery` na navegação principal, acima de Combo, com destaque ativo exclusivo e título de página próprio.
+- [x] 7.20 Bloquear globalmente a inicialização do pytest quando qualquer URL de banco app/workflow (incluindo aliases `CRYPTO_*`) apontar para DEV/PROD; usar bancos `*_test` como defaults locais, preservar somente a exceção descartável do GitHub Actions e provar o fail-closed antes de importar a aplicação.
 
 ## Gate
 
@@ -100,3 +101,5 @@
 - Correção de execução: `./restart` provisiona dispatcher/worker `discovery`; o orquestrador reconcilia progresso após cada combinação e registra início/fim no journald.
 - Correção de contrato/runtime: `period_type` é convertido em `start_date/end_date`, o provider `ccxt` é explícito e testes discovery recusam bancos não-test.
 - Correção do smoke real: snapshot preserva período e o worker discovery usa `--pool=solo`, evitando processos filhos de worker daemon.
+- Incidente de dados em DEV (2026-08-15): uma execução de `test_discovery_service.py` carregou `backend/.env` e o fixture apagou `favorite_strategies`; a remediação amplia o guard específico de Discovery para todo o processo pytest antes da coleta/import da aplicação.
+- Evidência do guard global: tentativa `pytest --collect-only` com `crypto_app_dev` abortou no `backend/tests/conftest.py`; harness contratual 10/10, Discovery integration 32/32 e templates unit 3/3 passaram em bancos `*_test` dedicados.
