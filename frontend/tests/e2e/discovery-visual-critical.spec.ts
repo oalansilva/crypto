@@ -28,6 +28,21 @@ const PREFLIGHT = {
   snapshot_hash: '30422146abcdef30422146abcdef30422146abcdef30422146abcdef30422146',
 }
 
+const ONE_COMBINATION_PREFLIGHT = {
+  ...PREFLIGHT,
+  axes: {
+    templates: ['multi_ma_crossover'],
+    symbols: ['BTC/USDT'],
+    timeframes: ['1d'],
+    directions: ['long'],
+  },
+  raw_total: 1,
+  exclusions: {},
+  excluded_count: 0,
+  valid_total: 1,
+  snapshot_hash: '10422146abcdef10422146abcdef10422146abcdef10422146abcdef10422146',
+}
+
 const HISTORY_SWEEP = {
   sweep_id: 'SW-2026-0814-07',
   state: 'completed',
@@ -355,6 +370,50 @@ test('card 469 — workbench a11y: trap de foco e setas nas tabs', async ({ page
   await expect(page.getByTestId('edit-templates')).toBeFocused()
 })
 
+test('card 469 — iniciar uma combinação revela o progresso', async ({ page }) => {
+  await installMocks(page)
+  await page.route('**/api/combos/discovery/sweeps/preflight', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ONE_COMBINATION_PREFLIGHT) }),
+  )
+  await page.route('**/api/combos/discovery/sweeps', (route) =>
+    route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ sweep_id: 'SW-ONE-469', state: 'running', total: 1 }),
+    }),
+  )
+  await page.route('**/api/combos/discovery/sweeps/SW-ONE-469', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...HISTORY_SWEEP,
+        sweep_id: 'SW-ONE-469',
+        state: 'running',
+        total: 1,
+        processed: 0,
+        succeeded: 0,
+        failed: 0,
+        skipped: 0,
+        snapshot: ONE_COMBINATION_PREFLIGHT,
+      }),
+    }),
+  )
+
+  await page.goto('/combo/discovery')
+  const start = page.getByTestId('start-sweep')
+  await expect(start).toHaveText('Iniciar 1 combinações')
+  await start.click()
+
+  const progressHeading = page.locator('#progress-heading')
+  await expect(progressHeading).toBeFocused()
+  await expect.poll(async () => progressHeading.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return rect.top >= 0 && rect.bottom <= window.innerHeight
+  })).toBe(true)
+  await expect(page.getByTestId('progress-count')).toHaveText('0 de 1')
+})
+
 test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   const captured = await openDiscovery(page)
 
@@ -366,6 +425,12 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
 
   await page.getByTestId('start-sweep').click()
   await expect(page.getByTestId('sweep-progress')).toBeVisible()
+  const progressHeading = page.locator('#progress-heading')
+  await expect(progressHeading).toBeFocused()
+  await expect.poll(async () => progressHeading.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return rect.top >= 0 && rect.bottom <= window.innerHeight
+  })).toBe(true)
   await expect(page.getByTestId('progress-count')).toHaveText('13 de 46')
   await expect(page.getByTestId('active-state-chip')).toHaveText('RUNNING')
   await expect(page.getByTestId('leaderboard-meta')).toContainText(HISTORY_SWEEP.sweep_id)

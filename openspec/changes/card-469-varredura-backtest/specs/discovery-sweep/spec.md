@@ -156,3 +156,15 @@ All read/write endpoints SHALL enforce the repository's administrative authoriza
 - **WHEN** actual valid combinations exceed the configured maximum
 - **THEN** preflight reports the calculated total and maximum
 - **AND** creation rejects the snapshot before any enqueue side effect
+
+### Requirement: Confirm a successful start in the current viewport
+
+After a successful sweep creation, the UI SHALL immediately expose the active sweep lifecycle without requiring a reload, history selection, or manual page search. It SHALL keep any historical leaderboard selection separate, move focus to the active progress heading, and scroll that heading into the current viewport. A terminal or low-sample result SHALL still remain discoverable through the active lifecycle and history even when it produces no eligible ranked candidate.
+
+#### Scenario: Start one combination while viewing historical results
+
+- **GIVEN** the administrator is viewing a historical leaderboard and the draft contains one valid combination
+- **WHEN** creation returns the active `sweep_id`
+- **THEN** the active progress block is rendered and scrolled into the current viewport
+- **AND** its heading receives focus and identifies the newly created sweep lifecycle
+- **AND** the historical leaderboard remains a separate selected run

@@ -82,6 +82,7 @@
 - [x] 7.18 Persistir período no snapshot executável e usar pool Celery `solo` para permitir o multiprocessing interno do otimizador.
 - [x] 7.19 Expor a rota `/combo/discovery` na navegação principal, acima de Combo, com destaque ativo exclusivo e título de página próprio.
 - [x] 7.20 Bloquear globalmente a inicialização do pytest quando qualquer URL de banco app/workflow (incluindo aliases `CRYPTO_*`) apontar para DEV/PROD; usar bancos `*_test` como defaults locais, preservar somente a exceção descartável do GitHub Actions e provar o fail-closed antes de importar a aplicação.
+- [x] 7.21 Após criação bem-sucedida, rolar e focar o bloco de progresso do sweep ativo sem substituir o leaderboard histórico; cobrir no Playwright o caso de uma combinação com progresso dentro do viewport e foco no heading.
 
 ## Gate
 
