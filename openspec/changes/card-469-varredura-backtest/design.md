@@ -154,6 +154,7 @@ API proposta:
 | Ranking mistura calendários/gaps | P1 | UTC, `[start,end)`, calendário/coverage versionados. |
 | Histórico parece pertencer ao ativo | P1 UX | Fixtures/snapshot completos por run e loading bloqueante. |
 | Catálogo completo degrada o DOM | P2 | Paginação/virtualização em produção; topologia explícita no protótipo. |
+| Teste destrutivo herda `backend/.env` e aponta para DEV/PROD | P0 | Guard global executado no `conftest.py` raiz antes de importar a aplicação; somente bancos `*_test` ou PostgreSQL descartável do GitHub Actions são aceitos. |
 
 ## Prototype
 
