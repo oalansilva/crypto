@@ -42,10 +42,10 @@ const HISTORY_SWEEP = {
 }
 
 const TEMPLATES = [
-  { name: 'multi_ma_crossover', description: 'Médias: tendência', is_readonly: true },
-  { name: 'bollinger_breakout', description: 'Bandas: expansão', is_readonly: true },
-  { name: 'ema_rsi_reversal', description: 'EMA + RSI', is_readonly: true },
-  { name: 'dual_momentum', description: 'ROC duplo', is_readonly: true },
+  { name: 'multi_ma_crossover', display_name: 'Médias: tendência', description: 'Compara médias de velocidades diferentes.', is_readonly: true },
+  { name: 'bollinger_breakout', display_name: 'Bandas: expansão', description: 'Opera a expansão da faixa com bandas.', is_readonly: true },
+  { name: 'ema_rsi_reversal', display_name: 'EMA + RSI', description: 'Combina média exponencial e RSI.', is_readonly: true },
+  { name: 'dual_momentum', display_name: 'ROC duplo', description: 'Compara dois momentos para acelerar.', is_readonly: true },
 ]
 
 const SYMBOLS = [
