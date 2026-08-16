@@ -1,6 +1,6 @@
 ---
 name: design-critic
-description: Preparar ou refatorar entregas de design de qualquer card, executar crítica independente (produto/UX/a11y/responsividade/estados quando houver UI), registrar evidência e veredito no design.md e entregar o card para aprovação humana. Use durante Status=Design, antes de solicitar Aprovação de Design, tanto no Codex quanto no Cursor. Todo card passa por Design; não existe bypass.
+description: Preparar ou refatorar entregas de design de qualquer card pelo guard dedicado do OpenCode, executar crítica independente zero-tool, registrar evidência e veredito no design.md e entregar o card para aprovação humana. Use durante Status=Design, antes de solicitar Aprovação de Design. Todo card passa por Design; não existe bypass.
 ---
 
 # Designer/Critic Agent
@@ -17,14 +17,15 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 
 ## Preflight
 
-1. Confirmar o card/change e ler `AGENTS.md`, `rules.md`, `DESIGN.md` (quando UI) e todos os `contextFiles` retornados por `openspec instructions apply --change <change> --json`.
+1. Confirmar o card/change e, na sessão orquestradora, ler `AGENTS.md`, `rules.md`, `DESIGN.md` (quando UI) e os `contextFiles` retornados pelo OpenSpec.
 2. Confirmar `Status=Design`. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia.
-3. Se a superfície já existir: inspecionar a tela atual (código React/`index.css`/`DESIGN.md` e, quando útil, URL DEV) antes de prototipar. Registrar no `design.md` a base usada (rota/tela/shell).
-4. Não editar código de produção. Limitar a execução a artefatos OpenSpec, documentação de design e protótipos/wireframes explicitamente vinculados à entrega.
+3. A main cria somente o scaffold. OpenSpec read-only usa `design_openspec_readonly`; cada estágio author/critic usa exclusivamente `design_spawn_stage` com manifest e packet completos. Task direto ou execução primária do subagent é inválida.
+4. O author recebe os bytes necessários no packet, usa somente `design_artifact_write` e paths exatos. Não editar código de produção, configuração, regras ou qualquer path não enumerado.
+5. Se a superfície já existir, a main inclui no packet a tela/código/tokens atuais necessários para o author registrar e preservar a base real.
 
-## Integração Impeccable no Codex
+## Integração Impeccable no OpenCode
 
-Esta integração é obrigatória no Codex para `UI impact: affected` e não altera o provider Cursor. O Cursor continua usando este contrato base, seus adapters e o gate de navegador já definido.
+Esta integração é obrigatória para `UI impact: affected`. A autoria permanece mediada pelo guard; navegador e visão são etapas externas da orquestração e nunca ampliam as tools do author/critic.
 
 Antes do `PASS`, a sessão Codex deve executar o pipeline local do Impeccable na ordem abaixo, sempre contra a superfície versionada da change:
 
@@ -32,13 +33,13 @@ Antes do `PASS`, a sessão Codex deve executar o pipeline local do Impeccable na
 
 - Executar `node .agents/skills/impeccable/scripts/context.mjs --target <surface>` uma vez por sessão e conservar `PRODUCT.md` como contexto de produto. `DESIGN.md` permanece a autoridade visual canônica e não pode ser reescrito pelo setup.
 - Usar `$impeccable shape` para registrar brief, direção, escopo, estados, interação e restrições antes de editar a direção visual.
-- Executar `$impeccable critique` com Assessment A (produto/UX/a11y/responsividade/estados) e Assessment B (detector e navegador), em contextos independentes, ambos read-only.
+- Executar Assessment A e B em child sessions distintas de `design-critic-readonly`, ambas zero-tool, sobre bytes/digest idênticos. Detector, navegador e visão entram no packet; critics não os executam.
 - Executar `$impeccable audit` e aplicar somente `harden`, `adapt` ou `clarify` quando houver achado correspondente. Agrupar a correção em uma rodada e executar `$impeccable polish` por último.
 - Repetir o gate de navegador real desktop/mobile e os asserts depois do polish. O hook pode alertar durante a edição, mas não substitui a crítica, o audit ou a validação final.
 
 ### Modelo e isolamento dos critics
 
-Assessment A e Assessment B devem usar exatamente o mesmo identificador e versão de LLM/modelo da sessão de design designada: o `design-planner` (`openai/gpt-5.6-sol`) quando o gate roda por esse subagent; senão, da sessão principal do opencode/Codex. Esse runtime é a única fonte de verdade; perfis gerados pelo Impeccable não podem escolher outro modelo, fallback ou roteamento fixo. Os critics não compartilham o transcript nem os resultados antes da síntese e não podem editar arquivos. Se a disponibilidade do subagent ou a igualdade exata do LLM/modelo/versão não puder ser observada, o veredito é `BLOCKED` e nenhum `PASS` pode ser emitido.
+Assessment A e Assessment B usam `design-critic-readonly` com `openai/gpt-5.6-sol`, `variant: high`, zero tools e sessions distintas. Eles não compartilham transcript/resultados antes da síntese. O guard preserva os outputs canônicos, aplica lineage/merge conservador e gera o verdict; o author não reclassifica findings. Modelo, variant, packet, output, runtime ou capability ausente/divergente produz `BLOCKED` sem fallback.
 
 ## Produzir a solução
 
