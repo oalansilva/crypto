@@ -62,5 +62,5 @@
 ## 8. Contrato, verificação e handoff
 
 - [x] 8.1 Atualizar `.opencode/agent/design-planner.md` para o contrato canonical Sol/high e adicionar o critic readonly e a documentação/regras mínimas relacionadas, sem mudar defaults, plugins gerais, #555, apply/verify ou Hermes.
-- [ ] 8.2 Executar `/opsx:verify` para #550 e a revisão exata do diff; depois cumprir Code Review, QA e Playwright visual padrão (ou dispensa explícita válida), registrando resultados terminais e corrigindo qualquer falha antes de avançar.
+- [x] 8.2 Executar `/opsx:verify` para #550 e a revisão exata do diff; depois cumprir Code Review, QA e Playwright visual padrão (ou dispensa explícita válida), registrando resultados terminais e corrigindo qualquer falha antes de avançar.
 - [ ] 8.3 Integrar a entrega aprovada em `develop` conforme o processo, executar `./restart`, validar o runtime em processo novo e exportar evidence bytes/digest/verifier result correlacionados para desbloquear o trabalho separado do #555.
