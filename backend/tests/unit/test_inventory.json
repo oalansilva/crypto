@@ -130,12 +130,12 @@
     },
     {
       "file": "backend/tests/unit/test_combo_optimizer_final_execution_mode.py",
-      "protected_behavior": "optimizer execution mode",
+      "protected_behavior": "optimizer execution mode and correlated stage generation",
       "production_reachability": "reachable",
       "persistence_need": "pure",
       "regression_risk": "medium",
       "decision": "keep",
-      "evidence": "monkeypatched backtest assertions"
+      "evidence": "monkeypatched backtest assertions plus production-shaped legacy schema coarse-step coverage"
     },
     {
       "file": "backend/tests/unit/test_combo_service_templates.py",

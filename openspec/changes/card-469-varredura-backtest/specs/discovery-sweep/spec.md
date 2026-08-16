@@ -95,6 +95,8 @@ Pause and resume SHALL be rejected while state is `cancelling`; cancellation is 
 
 Each combination SHALL have a unique key `(sweep_id, template_id, symbol, timeframe, direction)` and an idempotent handler. A worker SHALL claim a pending combination with a lease in a transaction that rechecks the parent sweep is `running`; only the lease owner may begin/commit that attempt. Expired leases SHALL be recoverable by a reconciler without duplicating a committed result. Scheduling SHALL enforce configurable global and per-sweep concurrency limits and SHALL use fair round-robin/age ordering so one large sweep cannot starve another.
 
+Optimization stage generation SHALL process each correlated parameter group exactly once. A legacy parameter range that provides `min` and `max` but omits `step` SHALL use the optimizer's deterministic coarse-step fallback rather than passing `None` to range generation or failing the combination.
+
 #### Scenario: Two workers claim one combination
 
 - **WHEN** two workers concurrently attempt to claim the same pending combination
@@ -106,6 +108,13 @@ Each combination SHALL have a unique key `(sweep_id, template_id, symbol, timefr
 - **WHEN** a worker crashes after claim but before committing a result
 - **THEN** the reconciler returns the expired combination to pending or awards a new lease
 - **AND** the idempotent handler/unique result key prevents a duplicate committed result
+
+#### Scenario: Legacy correlated schema omits step
+
+- **GIVEN** a template has a correlated parameter group whose ranges provide `min`, `max` and `default`, but no `step`
+- **WHEN** the discovery worker generates optimization stages
+- **THEN** each parameter receives a non-null deterministic coarse step and a finite value list
+- **AND** stage generation does not duplicate the group or fail with arithmetic against `None`
 
 ### Requirement: Enqueue atomically through an at-least-once outbox and reconcile delivery
 
