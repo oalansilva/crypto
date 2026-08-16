@@ -32,6 +32,7 @@ def _assert_safe_integration_database() -> None:
     assert_safe_test_database_url(
         os.environ["DATABASE_URL"],
         variable_name="DATABASE_URL",
+        allow_github_disposable=True,
     )
 
 

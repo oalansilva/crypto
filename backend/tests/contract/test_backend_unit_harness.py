@@ -220,6 +220,7 @@ def test_global_database_guard_rejects_runtime_databases(monkeypatch):
     database_guard.assert_safe_test_database_url(
         "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
         variable_name="DATABASE_URL",
+        allow_github_disposable=True,
     )
 
 

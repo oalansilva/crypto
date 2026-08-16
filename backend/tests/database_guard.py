@@ -5,7 +5,12 @@ import os
 from sqlalchemy.engine import make_url
 
 
-def assert_safe_test_database_url(database_url: str, *, variable_name: str) -> None:
+def assert_safe_test_database_url(
+    database_url: str,
+    *,
+    variable_name: str,
+    allow_github_disposable: bool = False,
+) -> None:
     """Fail before collection when pytest targets a persistent runtime database."""
 
     if not str(database_url or "").strip():
@@ -27,7 +32,9 @@ def assert_safe_test_database_url(database_url: str, *, variable_name: str) -> N
         ("_test", "_tests", "_testing")
     )
     disposable_github_db = (
-        os.getenv("GITHUB_ACTIONS", "").strip().lower() == "true" and database_name == "postgres"
+        allow_github_disposable
+        and os.getenv("GITHUB_ACTIONS", "").strip().lower() == "true"
+        and database_name == "postgres"
     )
     if not explicitly_test_db and not disposable_github_db:
         raise RuntimeError(

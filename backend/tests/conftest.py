@@ -39,6 +39,7 @@ for _database_variable in (
         assert_safe_test_database_url(
             _database_url,
             variable_name=_database_variable,
+            allow_github_disposable=True,
         )
 
 from app.config import get_settings
