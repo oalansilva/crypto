@@ -644,32 +644,6 @@ class ComboOptimizer:
             # Generate value lists for each parameter in the group
             value_lists = []
             param_names = []
-
-            for param_name in group:
-                if param_name not in parameters:
-                    continue  # Skip if parameter not found (validation should have caught this)
-
-                config = parameters[param_name]
-
-                # Check for custom range override
-                if custom_ranges and param_name in custom_ranges:
-                    custom = custom_ranges[param_name]
-                    values = self._generate_range_values(
-                        custom.get("min", config.get("min")),
-                        custom.get("max", config.get("max")),
-                        custom.get("step", config.get("step")),
-                    )
-                else:
-                    values = self._generate_range_values(
-                        config.get("min"), config.get("max"), config.get("step")
-                    )
-
-                value_lists.append(values)
-        # PHASE 1: Create Grid Search stages for correlated groups
-        for group in correlated_groups:
-            # Generate value lists for each parameter in the group
-            value_lists = []
-            param_names = []
             adaptive_meta = {}
 
             for param_name in group:
