@@ -232,6 +232,7 @@ export function DiscoveryPage() {
   const pollRef = useRef<number | null>(null)
   const preflightTimer = useRef<number | null>(null)
   const toastTimer = useRef<number | null>(null)
+  const focusStartedSweepRef = useRef(false)
   const modalRef = useRef<HTMLDivElement | null>(null)
   const promotionTriggerRef = useRef<HTMLButtonElement | null>(null)
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
@@ -457,6 +458,7 @@ export function DiscoveryPage() {
             terminal_code: null,
             snapshot: preflight,
           }
+      focusStartedSweepRef.current = true
       setActiveSweep(fullSweep)
       if (!viewSweep) setViewSweep(fullSweep)
       setMetric(draftMetric)
@@ -473,6 +475,18 @@ export function DiscoveryPage() {
       setBusy(false)
     }
   }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, loadHistory, showToast, viewSweep])
+
+  useEffect(() => {
+    if (!activeSweep || !focusStartedSweepRef.current) return
+    focusStartedSweepRef.current = false
+    const frame = window.requestAnimationFrame(() => {
+      const heading = progressHeadingRef.current
+      if (!heading) return
+      heading.focus({ preventScroll: true })
+      heading.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [activeSweep])
 
   const loadLeaderboard = useCallback(
     async (sweepId: string, m: Metric, symbol: string, timeframe: string, direction: string, pg: number, silent = false) => {
