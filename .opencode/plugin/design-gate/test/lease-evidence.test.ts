@@ -58,6 +58,7 @@ test("lease enforces one child, provisional/final binding, and single-flight cal
     after_sha256: sha256("written"),
     operation_nonce: "operation",
     callID: "call",
+    assistant_message_id: "assistant-message",
   });
   store.setOutput(lease.run_id, "assistant-message", "complete", sha256(canonicalJson([{ type: "text", text: "complete" }])));
   assert.equal(store.get(lease.run_id).state, "BOUND");
@@ -76,6 +77,27 @@ test("startup recovery aborts stale non-terminal leases", () => {
   const recovered = new EvidenceStore(temp, "new-module");
   assert.equal(recovered.get("stale").state, "ABORTED");
   assert.match(recovered.get("stale").failure || "", /orphaned or expired/);
+});
+
+test("startup accepts observational events after a terminal abort", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "design-gate-terminal-observation-"));
+  const worktree = fs.mkdtempSync(path.join(os.tmpdir(), "design-gate-worktree-"));
+  const first = new EvidenceStore(temp, "terminal-module");
+  first.create(createManifest(worktree, { run_id: "terminal-observation" }));
+  first.abort("terminal-observation", "expected failure");
+  first.append("terminal-observation", "runtime.assistant.verified", { assistantMessageID: "late-observation" });
+  const recovered = new EvidenceStore(temp, "new-module");
+  assert.equal(recovered.get("terminal-observation").state, "ABORTED");
+});
+
+test("startup rejects state-changing events after a terminal abort", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "design-gate-terminal-mutation-"));
+  const worktree = fs.mkdtempSync(path.join(os.tmpdir(), "design-gate-worktree-"));
+  const first = new EvidenceStore(temp, "terminal-module");
+  first.create(createManifest(worktree, { run_id: "terminal-mutation" }));
+  first.abort("terminal-mutation", "expected failure");
+  first.append("terminal-mutation", "binding.final", { assistantMessageID: "forged" });
+  assert.throws(() => new EvidenceStore(temp, "new-module"), /unrecoverable Design lease/);
 });
 
 test("lease deadline aborts without requiring another guard operation", async () => {

@@ -14,9 +14,11 @@ const sourceProjectRoot = path.resolve(opencodeRoot, "..");
 const evidenceRoot = path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"), "opencode", "design-gate");
 const runID = `runtime-smoke-${randomUUID()}`;
 const projectRoot = path.join(evidenceRoot, runID, "worktree");
+const launchRoot = path.join(evidenceRoot, runID, "launches");
 const sourceOpenCodeRoot = path.join(sourceProjectRoot, ".opencode");
 const targetOpenCodeRoot = path.join(projectRoot, ".opencode");
 fs.mkdirSync(projectRoot, { recursive: true, mode: 0o700 });
+fs.mkdirSync(launchRoot, { recursive: true, mode: 0o700 });
 for (const relative of ["opencode.json", "AGENTS.md", "rules.md"]) fs.copyFileSync(path.join(sourceProjectRoot, relative), path.join(projectRoot, relative));
 fs.cpSync(sourceOpenCodeRoot, targetOpenCodeRoot, {
   recursive: true,
@@ -34,24 +36,38 @@ const deployment = JSON.parse(fs.readFileSync(deploymentManifestPath, "utf8"));
 const deploymentDigest = fs.readFileSync(path.join(gateRoot, "dist", "deployment-manifest.sha256"), "utf8").trim();
 const proposalPath = path.join(targetChangeRoot, "proposal.md");
 const proposal = fs.readFileSync(proposalPath);
-const operationNonce = randomUUID();
-const smokeSuffix = Buffer.from(`\n<!-- ${runID} attributable writer smoke -->\n`, "utf8");
+const firstOperationNonce = randomUUID();
+const secondOperationNonce = randomUUID();
+const firstSuffix = Buffer.from(`\n<!-- ${runID} attributable first writer smoke -->\n`, "utf8");
+const secondSuffix = Buffer.from(`<!-- ${runID} attributable second writer smoke -->\n`, "utf8");
 const packet = Buffer.from(canonicalJson({
-  schema: "design-gate-runtime-smoke.v1",
-  instruction: "Call design_artifact_write exactly once. Copy manifest_sha256 from the design-gate marker. Use every other argument below byte-for-byte. Then return a short non-empty text result.",
-  writer_args: {
+  schema: "design-gate-runtime-smoke.v2",
+  instruction: "Call design_artifact_write once for each writer_args item in order. Copy manifest_sha256 from the design-gate marker. Use every other argument byte-for-byte. Wait for each tool result before issuing the next call in a new assistant message. Then return a short non-empty text result.",
+  writer_args: [{
     run_id: runID,
     manifest_nonce: `${runID}-nonce`,
-    operation_nonce: operationNonce,
+    operation_nonce: firstOperationNonce,
     exact_path: proposalPath,
     base_sha256: sha256(proposal),
     safe_patch_json: canonicalJson([{
       start: proposal.length,
       end: proposal.length,
       expected_sha256: sha256(Buffer.alloc(0)),
-      replacement_base64: smokeSuffix.toString("base64"),
+      replacement_base64: firstSuffix.toString("base64"),
     }]),
-  },
+  }, {
+    run_id: runID,
+    manifest_nonce: `${runID}-nonce`,
+    operation_nonce: secondOperationNonce,
+    exact_path: proposalPath,
+    base_sha256: sha256(Buffer.concat([proposal, firstSuffix])),
+    safe_patch_json: canonicalJson([{
+      start: proposal.length + firstSuffix.length,
+      end: proposal.length + firstSuffix.length,
+      expected_sha256: sha256(Buffer.alloc(0)),
+      replacement_base64: secondSuffix.toString("base64"),
+    }]),
+  }],
 }));
 const manifest: RunManifest = {
   schema: "design-authoring-manifest.v1",
@@ -81,17 +97,16 @@ const manifest: RunManifest = {
 
 // The parent ID is runtime-owned. The orchestrator passes a placeholder and the
 // guard binds it to ToolContext before validating the sealed manifest.
-const prompt = [
-  "Invoke design_spawn_stage with action=start and the exact manifest/packet below. Do not use another tool.",
-  "When it returns STARTED, return that result immediately. Do not collect in this turn.",
-  `run_id: ${runID}`,
-  `manifest_json: ${canonicalJson(manifest)}`,
-  `packet_base64: ${packet.toString("base64")}`,
-  "Return only the tool result.",
-].join("\n");
+const launchPath = path.join(launchRoot, `${runID}.json`);
+fs.writeFileSync(launchPath, `${canonicalJson({ manifest_json: canonicalJson(manifest), packet_base64: packet.toString("base64") })}\n`, { mode: 0o600 });
+const prompt = `Invoke design_runtime_launch_file once with path ${launchPath}. Use no other tool and return only its final result.`;
 const executable = process.env.OPENCODE_BIN || path.join(os.homedir(), ".opencode", "bin", "opencode");
 const runtimeDatabasePath = path.join(os.homedir(), ".local", "share", "opencode", "opencode.db");
 const title = `Card #550 canonical runtime smoke ${runID}`;
+const runtimeEnvironment = {
+  ...process.env,
+  DESIGN_RUNTIME_SMOKE_LAUNCH_ROOT: launchRoot,
+};
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -107,7 +122,7 @@ function freePort(): Promise<number> {
 
 function run(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(executable, args, { cwd: projectRoot, env: process.env, shell: false, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(executable, args, { cwd: projectRoot, env: runtimeEnvironment, shell: false, stdio: ["ignore", "pipe", "pipe"] });
     const stderr: Buffer[] = [];
     let bytes = 0;
     for (const stream of [child.stdout, child.stderr]) stream.on("data", (chunk: Buffer) => {
@@ -134,49 +149,13 @@ function waitForServer(server: ChildProcess, port: number): Promise<void> {
   });
 }
 
-function waitForChildOutput(): Promise<void> {
-  const runDirectory = path.join(evidenceRoot, runID);
-  const inspect = (): boolean => {
-    const leasePath = path.join(runDirectory, "lease.json");
-    if (!fs.existsSync(leasePath)) return false;
-    const lease = JSON.parse(fs.readFileSync(leasePath, "utf8"));
-    if (lease.state === "ABORTED") throw new Error(`runtime child aborted: ${lease.failure}`);
-    if (!lease.child_session_id || !lease.input_message_id) return false;
-    const database = new DatabaseSync(runtimeDatabasePath, { readOnly: true });
-    try {
-      const rows = database.prepare("SELECT data FROM message WHERE session_id = ?").all(lease.child_session_id) as Array<{ data: string }>;
-      return rows.some((row) => {
-        const message = JSON.parse(row.data);
-        return message.role === "assistant" && message.parentID === lease.input_message_id && Boolean(message.time?.completed || message.finish);
-      });
-    } finally {
-      database.close();
-    }
-  };
-  if (inspect()) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const watcher = fs.watch(path.dirname(runtimeDatabasePath), () => {
-      try {
-        if (!inspect()) return;
-        clearTimeout(timer);
-        watcher.close();
-        resolve();
-      } catch (error) {
-        clearTimeout(timer);
-        watcher.close();
-        reject(error);
-      }
-    });
-    const timer = setTimeout(() => {
-      watcher.close();
-      reject(new Error("runtime child output timed out"));
-    }, 3 * 60_000);
-  });
-}
-
 function assertStartSucceeded(parentID: string): void {
   const leasePath = path.join(evidenceRoot, runID, "lease.json");
-  if (fs.existsSync(leasePath)) return;
+  if (fs.existsSync(leasePath)) {
+    const lease = JSON.parse(fs.readFileSync(leasePath, "utf8"));
+    if (lease.state === "ABORTED") throw new Error(`runtime child aborted: ${lease.failure}`);
+    return;
+  }
   const database = new DatabaseSync(runtimeDatabasePath, { readOnly: true });
   try {
     const parts = database.prepare("SELECT data FROM part WHERE session_id = ? ORDER BY time_created, id").all(parentID) as Array<{ data: string }>;
@@ -190,9 +169,13 @@ function assertStartSucceeded(parentID: string): void {
 const port = await freePort();
 const server = spawn(executable, ["serve", "--hostname", "127.0.0.1", "--port", String(port)], {
   cwd: projectRoot,
-  env: process.env,
+  env: runtimeEnvironment,
   shell: false,
   stdio: ["ignore", "pipe", "pipe"],
+});
+let serverOutputBytes = 0;
+for (const stream of [server.stdout, server.stderr]) stream.on("data", (chunk: Buffer) => {
+  serverOutputBytes = Math.min(Number.MAX_SAFE_INTEGER, serverOutputBytes + chunk.length);
 });
 try {
   await waitForServer(server, port);
@@ -203,11 +186,20 @@ try {
   database.close();
   if (!parent) throw new Error("runtime smoke parent session was not found");
   assertStartSucceeded(parent.id);
-  await waitForChildOutput();
-  await run(["run", "--attach", url, "--dir", projectRoot, "--session", parent.id, "--format", "json", `Invoke design_spawn_stage with action=collect and run_id=${runID}. Use no other tool and return only the final result.`]);
   const verified = verifyRunEvidence({ evidenceRoot, runID, deploymentManifestPath, runtimeDatabasePath });
   if (verified.verdict !== "PASS") throw new Error("runtime smoke verifier did not pass");
+  const lease = JSON.parse(fs.readFileSync(path.join(evidenceRoot, runID, "lease.json"), "utf8"));
+  const expectedFirst = sha256(Buffer.concat([proposal, firstSuffix]));
+  const expectedFinal = Buffer.concat([proposal, firstSuffix, secondSuffix]);
+  if (lease.writes.length !== 2 || lease.writes[0].operation_nonce !== firstOperationNonce || lease.writes[1].operation_nonce !== secondOperationNonce ||
+      new Set(lease.writes.map((write: any) => write.assistant_message_id)).size !== 2 || lease.writes[0].before_sha256 !== sha256(proposal) ||
+      lease.writes[0].after_sha256 !== expectedFirst || lease.writes[1].before_sha256 !== expectedFirst ||
+      lease.writes[1].after_sha256 !== sha256(expectedFinal) || !fs.readFileSync(proposalPath).equals(expectedFinal)) {
+    throw new Error("runtime smoke did not preserve the exact two-write chain");
+  }
   console.log(canonicalJson({ schema: "design-gate-runtime-smoke-result.v1", run_id: runID, build_id: BUILD_ID, ...verified }));
+} catch (error) {
+  throw new Error(`${error instanceof Error ? error.message : String(error)} (server_output_bytes=${serverOutputBytes})`);
 } finally {
   server.kill("SIGTERM");
 }

@@ -80,6 +80,7 @@ function closeAuthorStage(store: EvidenceStore, manifest: RunManifest, content: 
       after_sha256: sha256(artifactContent),
       operation_nonce: `${manifest.run_id}-operation-${index}`,
       callID: `${manifest.run_id}-call-${index}`,
+      assistant_message_id: `${manifest.run_id}-assistant`,
     });
   }
   store.setOutput(manifest.run_id, `${manifest.run_id}-assistant`, "seeded", sha256(canonicalJson([{ type: "text", text: "seeded" }])));
@@ -132,12 +133,12 @@ test("spawn tool binds an author write and closes only after an attributable art
   const store = new EvidenceStore(evidence, "module-tools");
   const runtime = new RuntimeAdapter(store);
   let guarded: ReturnType<typeof createDesignGateTools>;
-  let recordedWriteArgs: any;
+  const recordedWriteArgs: any[] = [];
   const client = {
     session: {
       create: async () => ({ data: { id: "child", parentID: "parent", version: "1.18.18" } }),
-      message: async () => ({ data: { info: {
-        id: "assistant",
+      message: async (request: any) => ({ data: { info: {
+        id: request.path.messageID,
         role: "assistant", sessionID: "child", parentID: store.get(manifest.run_id).input_message_id,
         agent: manifest.expected_agent, providerID: "openai", modelID: "gpt-5.6-sol", variant: "high",
       } } }),
@@ -148,24 +149,26 @@ test("spawn tool binds an author write and closes only after an attributable art
           { sessionID: "child", agent: manifest.expected_agent, model: manifest.expected_model, messageID: request.body.messageID, variant: "high" },
           request.body.parts,
         );
-        const writeArgs = {
-          run_id: manifest.run_id,
-          manifest_nonce: manifest.nonce,
-          manifest_sha256: store.get(manifest.run_id).manifest.manifest_sha256!,
-          operation_nonce: "write-one",
-          exact_path: manifest.exact_write_paths[0],
-          base_sha256: "-",
-          full_content_base64: Buffer.from("authored\n").toString("base64"),
-        };
-        recordedWriteArgs = writeArgs;
-        guarded.beforeTool("design_artifact_write", "child", "call-one", writeArgs);
-        await guarded.tool.design_artifact_write.execute(writeArgs, context(worktree, {
-          sessionID: "child",
-          messageID: "assistant",
-          agent: manifest.expected_agent,
-        }));
-        guarded.afterTool("design_artifact_write", "child", "call-one", { ok: true });
-        return { data: { info: { id: "assistant", parentID: request.body.messageID, finish: "stop" }, parts: [{ type: "text", text: "authored" }] } };
+        for (const [index, content] of ["authored once\n", "authored twice\n"].entries()) {
+          const writeArgs = {
+            run_id: manifest.run_id,
+            manifest_nonce: manifest.nonce,
+            manifest_sha256: store.get(manifest.run_id).manifest.manifest_sha256!,
+            operation_nonce: `write-${index}`,
+            exact_path: manifest.exact_write_paths[0],
+            base_sha256: index === 0 ? "-" : sha256("authored once\n"),
+            full_content_base64: Buffer.from(content).toString("base64"),
+          };
+          recordedWriteArgs.push(writeArgs);
+          guarded.beforeTool("design_artifact_write", "child", `call-${index}`, writeArgs);
+          await guarded.tool.design_artifact_write.execute(writeArgs, context(worktree, {
+            sessionID: "child",
+            messageID: `assistant-${index}`,
+            agent: manifest.expected_agent,
+          }));
+          guarded.afterTool("design_artifact_write", "child", `call-${index}`, { ok: true });
+        }
+        return { data: { info: { id: "assistant-output", parentID: request.body.messageID, finish: "stop" }, parts: [{ type: "text", text: "authored" }] } };
       },
     },
   };
@@ -175,7 +178,7 @@ test("spawn tool binds an author write and closes only after an attributable art
     packet_base64: packet.toString("base64"),
   }, context(worktree));
   assert.match((result as any).output, /"verdict":"PASS"/);
-  assert.equal(fs.readFileSync(manifest.exact_write_paths[0], "utf8"), "authored\n");
+  assert.equal(fs.readFileSync(manifest.exact_write_paths[0], "utf8"), "authored twice\n");
   assert.equal(store.get(manifest.run_id).state, "CLOSED");
   const lease = store.get(manifest.run_id);
   const databasePath = path.join(worktree, "runtime.db");
@@ -191,19 +194,21 @@ test("spawn tool binds an author write and closes only after an attributable art
     agent: manifest.expected_agent,
     model: { ...manifest.expected_model, variant: manifest.expected_variant },
   }));
-  database.prepare("INSERT INTO message VALUES (?, ?, ?)").run("assistant", "child", canonicalJson({
-    agent: manifest.expected_agent,
-    modelID: "gpt-5.6-sol",
-    parentID: lease.input_message_id,
-    providerID: "openai",
-    role: "assistant",
-    variant: "high",
-  }));
+  for (const messageID of ["assistant-0", "assistant-1", "assistant-output"]) {
+    database.prepare("INSERT INTO message VALUES (?, ?, ?)").run(messageID, "child", canonicalJson({
+      agent: manifest.expected_agent,
+      modelID: "gpt-5.6-sol",
+      parentID: lease.input_message_id,
+      providerID: "openai",
+      role: "assistant",
+      variant: "high",
+    }));
+  }
   database.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)").run("part-input", lease.input_message_id!, "child", Date.now() - 2, canonicalJson({ type: "text", text: buildPacket(lease.manifest, packet) }));
-  database.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)").run("part-tool", "assistant", "child", Date.now() - 1, canonicalJson({
-    type: "tool", tool: "design_artifact_write", callID: "call-one", state: { status: "completed", input: recordedWriteArgs },
+  for (const index of [0, 1]) database.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)").run(`part-tool-${index}`, `assistant-${index}`, "child", Date.now() - 1 + index, canonicalJson({
+    type: "tool", tool: "design_artifact_write", callID: `call-${index}`, state: { status: "completed", input: recordedWriteArgs[index] },
   }));
-  database.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)").run("part-1", "assistant", "child", Date.now(), canonicalJson({ type: "text", text: "authored" }));
+  database.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)").run("part-output", "assistant-output", "child", Date.now() + 1, canonicalJson({ type: "text", text: "authored" }));
   database.close();
   assert.equal(verifyRunEvidence({
     evidenceRoot: evidence,
@@ -211,10 +216,30 @@ test("spawn tool binds an author write and closes only after an attributable art
     deploymentManifestPath,
     runtimeDatabasePath: databasePath,
   }).verdict, "PASS");
+  const leasePath = path.join(evidence, manifest.run_id, "lease.json");
+  const originalLeaseBytes = fs.readFileSync(leasePath);
+  const swappedLease = JSON.parse(originalLeaseBytes.toString("utf8"));
+  [swappedLease.writes[0].assistant_message_id, swappedLease.writes[1].assistant_message_id] =
+    [swappedLease.writes[1].assistant_message_id, swappedLease.writes[0].assistant_message_id];
+  const swappedLeaseBytes = Buffer.from(`${canonicalJson(swappedLease)}\n`);
+  fs.writeFileSync(leasePath, swappedLeaseBytes);
+  fs.writeFileSync(`${leasePath}.sha256`, `${sha256(swappedLeaseBytes)}\n`);
+  assert.throws(() => verifyRunEvidence({ evidenceRoot: evidence, runID: manifest.run_id, deploymentManifestPath, runtimeDatabasePath: databasePath }), /tool-call correlation/);
+  fs.writeFileSync(leasePath, originalLeaseBytes);
+  fs.writeFileSync(`${leasePath}.sha256`, `${sha256(originalLeaseBytes)}\n`);
+  const extraToolDatabase = new DatabaseSync(databasePath);
+  extraToolDatabase.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)").run("part-tool-extra", "assistant-0", "child", Date.now(), canonicalJson({
+    type: "tool", tool: "read", callID: "call-extra", state: { status: "completed", input: {} },
+  }));
+  extraToolDatabase.close();
+  assert.throws(() => verifyRunEvidence({ evidenceRoot: evidence, runID: manifest.run_id, deploymentManifestPath, runtimeDatabasePath: databasePath }), /tool-call count/);
+  const cleanDatabase = new DatabaseSync(databasePath);
+  cleanDatabase.prepare("DELETE FROM part WHERE id = ?").run("part-tool-extra");
+  cleanDatabase.close();
   const tamperedDatabase = new DatabaseSync(databasePath);
   tamperedDatabase.prepare("UPDATE part SET data = ? WHERE id = ?").run(canonicalJson({
-    type: "tool", tool: "design_artifact_write", callID: "call-one", state: { status: "completed", input: { ...recordedWriteArgs, operation_nonce: "forged" } },
-  }), "part-tool");
+    type: "tool", tool: "design_artifact_write", callID: "call-0", state: { status: "completed", input: { ...recordedWriteArgs[0], operation_nonce: "forged" } },
+  }), "part-tool-0");
   tamperedDatabase.close();
   assert.throws(() => verifyRunEvidence({ evidenceRoot: evidence, runID: manifest.run_id, deploymentManifestPath, runtimeDatabasePath: databasePath }), /tool-call correlation/);
   assert.throws(() => guarded.beforeTool("design_artifact_write", "child", "late", {
@@ -251,6 +276,60 @@ test("spawn tool aborts an author that only points at a pre-existing artifact", 
     /phase|writer chain/,
   );
   assert.equal(store.get(manifest.run_id).state, "ABORTED");
+});
+
+test("author writes multiple artifacts across sequential AssistantMessages", async () => {
+  const worktree = fs.mkdtempSync(path.join(os.tmpdir(), "design-tools-multi-artifact-"));
+  const store = new EvidenceStore(fs.mkdtempSync(path.join(os.tmpdir(), "design-tools-evidence-")), "module-multi-artifact");
+  const proposal = manifestFor(worktree, "proposal", "multi-dependency-proposal").manifest;
+  closeAuthorStage(store, proposal, "proposal\n");
+  const design = manifestFor(worktree, "design-specs", "multi-design-specs").manifest;
+  dependOn(design, [proposal]);
+  const specPath = path.join(worktree, "openspec", "changes", design.change_id, "specs", "gate", "spec.md");
+  design.exact_write_paths.push(specPath);
+  design.expected_artifacts.push({ path: specPath, required: true });
+  design.manifest_sha256 = manifestDigest(design);
+  const checked = validateManifest(design);
+  store.create(checked);
+  store.setChild(checked.run_id, "multi-child", "multi-input");
+  store.provisionalBind(checked.run_id);
+  const client = { session: { message: async (request: any) => ({ data: { info: {
+    id: request.path.messageID,
+    role: "assistant",
+    sessionID: "multi-child",
+    parentID: "multi-input",
+    agent: checked.expected_agent,
+    providerID: "openai",
+    modelID: "gpt-5.6-sol",
+    variant: "high",
+  } } }) } };
+  const guarded = createDesignGateTools({ client, store, runtime: new RuntimeAdapter(store) });
+  for (const [index, artifact] of checked.exact_write_paths.entries()) {
+    fs.mkdirSync(path.dirname(artifact), { recursive: true });
+    const args = {
+      run_id: checked.run_id,
+      manifest_nonce: checked.nonce,
+      manifest_sha256: checked.manifest_sha256!,
+      operation_nonce: `multi-operation-${index}`,
+      exact_path: artifact,
+      base_sha256: "-",
+      full_content_base64: Buffer.from(`artifact-${index}\n`).toString("base64"),
+    };
+    const messageID = `multi-assistant-${index}`;
+    guarded.beforeTool("design_artifact_write", "multi-child", `multi-call-${index}`, args);
+    await guarded.tool.design_artifact_write.execute(args, context(worktree, {
+      sessionID: "multi-child",
+      messageID,
+      agent: checked.expected_agent,
+    }));
+    guarded.afterTool("design_artifact_write", "multi-child", `multi-call-${index}`, { ok: true });
+  }
+  store.setOutput(checked.run_id, "multi-output", "complete", sha256(canonicalJson([{ type: "text", text: "complete" }])));
+  store.finalize(checked.run_id, "PASS", { multi_artifact: true });
+  const lease = store.get(checked.run_id);
+  assert.equal(lease.state, "CLOSED");
+  assert.deepEqual(lease.writes.map((write) => write.assistant_message_id), ["multi-assistant-0", "multi-assistant-1"]);
+  assert.deepEqual(checked.exact_write_paths.map((artifact) => fs.readFileSync(artifact, "utf8")), ["artifact-0\n", "artifact-1\n"]);
 });
 
 test("spawn tool fails closed for empty output and SDK child mismatch", async () => {

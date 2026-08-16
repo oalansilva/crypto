@@ -2,14 +2,19 @@ import type { Plugin } from "@opencode-ai/plugin";
 import { EvidenceStore } from "./design-gate/lease-evidence.js";
 import { RuntimeAdapter } from "./design-gate/runtime-adapter.js";
 import { createDesignGateTools } from "./design-gate/spawn-readonly-tools.js";
+import { createRuntimeSmokeLaunchTool } from "./design-gate/runtime-smoke-plugin.js";
 
 export default (async ({ client }) => {
   const store = new EvidenceStore();
   const runtime = new RuntimeAdapter(store);
   const guarded = createDesignGateTools({ client, store, runtime });
+  const tools: Record<string, any> = { ...guarded.tool };
+  if (process.env.DESIGN_RUNTIME_SMOKE_LAUNCH_ROOT) {
+    tools.design_runtime_launch_file = createRuntimeSmokeLaunchTool(guarded.tool.design_spawn_stage);
+  }
 
   return {
-    tool: guarded.tool,
+    tool: tools,
     event: async ({ event }: any) => {
       try {
         runtime.onEvent(event);

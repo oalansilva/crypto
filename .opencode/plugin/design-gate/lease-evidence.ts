@@ -31,7 +31,7 @@ export type Lease = {
   tombstoned_nonces: string[];
   pending_calls: Record<string, { callID: string; argsHash: string }>;
   baseline: Record<string, string | null>;
-  writes: Array<{ path: string; before_sha256: string | null; after_sha256: string; operation_nonce: string; callID: string }>;
+  writes: Array<{ path: string; before_sha256: string | null; after_sha256: string; operation_nonce: string; callID: string; assistant_message_id: string }>;
   failure?: string;
 };
 
@@ -270,6 +270,7 @@ export class EvidenceStore {
   recordWrite(runID: string, write: Lease["writes"][number]): void {
     const lease = this.get(runID);
     this.assertOperable(lease, ["BOUND"]);
+    if (!write.assistant_message_id) throw new Error("writer AssistantMessage is required");
     const expectedBefore = lease.writes.filter((item) => item.path === write.path).at(-1)?.after_sha256 ?? lease.baseline[write.path];
     if (expectedBefore !== write.before_sha256) throw new Error("writer digest chain mismatch");
     lease.writes.push(write);
@@ -495,7 +496,8 @@ export class EvidenceStore {
           const records = fs.readFileSync(this.journalPath(lease.run_id), "utf8").trim().split("\n").map((line) => JSON.parse(line) as JournalEvent);
           const terminalEvent = lease.state === "CLOSED" ? "lease.closed" : "lease.aborted";
           const terminalIndex = records.findIndex((record) => record.event === terminalEvent);
-          if (terminalIndex < 0 || records.slice(terminalIndex + 1).some((record) => record.event !== "runtime.tool.after")) {
+          const observationalAfterTerminal = new Set(["runtime.tool.after", "runtime.assistant.verified"]);
+          if (terminalIndex < 0 || records.slice(terminalIndex + 1).some((record) => !observationalAfterTerminal.has(record.event))) {
             throw new Error("terminal journal event missing or followed by a state-changing event");
           }
           continue;
