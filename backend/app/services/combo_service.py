@@ -10,7 +10,10 @@ from sqlalchemy.orm import sessionmaker
 from app.database import SessionLocal
 from app.models import ComboTemplate
 from app.strategies.combos import ComboStrategy
-from app.services.strategy_descriptions import public_strategy_description
+from app.services.strategy_descriptions import (
+    public_strategy_catalog_name,
+    public_strategy_description,
+)
 
 
 class ComboService:
@@ -81,6 +84,7 @@ class ComboService:
         for row in rows:
             item = {
                 "name": row.name,
+                "display_name": public_strategy_catalog_name(row.name),
                 "description": public_strategy_description(row.name, row.description),
                 "is_readonly": bool(row.is_readonly),
             }
@@ -117,6 +121,7 @@ class ComboService:
 
             return {
                 "name": row.name,
+                "display_name": public_strategy_catalog_name(row.name),
                 "description": public_strategy_description(row.name, row.description),
                 "is_example": bool(row.is_example),
                 "is_prebuilt": bool(row.is_prebuilt),

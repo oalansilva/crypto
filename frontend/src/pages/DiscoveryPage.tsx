@@ -152,11 +152,11 @@ const TEMPLATE_CATEGORIES: Record<string, string> = {
 
 const TOP_CODES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'AVAX', 'TRX', 'DOT'])
 
-function catalogFromTemplates(list: { name: string; description: string }[]): CatalogItem[] {
+function catalogFromTemplates(list: { name: string; display_name?: string; description: string }[]): CatalogItem[] {
   return list.map((t) => {
-    const prefix = t.name.split('_')[0] ?? 'outros'
+    const prefix = (t.name.split('_')[0] ?? 'outros').toLowerCase()
     const cat = TEMPLATE_CATEGORIES[prefix] ?? 'Outros'
-    return { id: t.name, label: t.description || t.name, category: cat, meta: t.name }
+    return { id: t.name, label: t.display_name || t.name, category: cat, meta: t.description || '' }
   })
 }
 
@@ -293,8 +293,9 @@ export function DiscoveryPage() {
           ...(data.prebuilt || []),
           ...(data.examples || []),
           ...(data.custom || []),
-        ].map((t: { name?: string; description?: string }) => ({
+        ].map((t: { name?: string; display_name?: string; description?: string }) => ({
           name: String(t.name ?? ''),
+          display_name: String(t.display_name ?? ''),
           description: String(t.description ?? ''),
         }))
         setSelectedTemplates(flat.slice(0, 3).map((t) => t.name))
