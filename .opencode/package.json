@@ -1,0 +1,27 @@
+{
+  "name": "criptofarol-opencode-tools",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node plugin/design-gate/build.mjs",
+    "check:unbuilt": "node plugin/design-gate/check-unbuilt.mjs",
+    "check:cutover": "node plugin/design-gate/check-cutover.mjs",
+    "check:profiles": "node plugin/design-gate/check-profiles.mjs",
+    "check:scope": "node plugin/design-gate/check-scope.mjs",
+    "smoke:runtime": "node --import tsx plugin/design-gate/runtime-smoke.ts",
+    "test": "node --import tsx --test plugin/design-gate/test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "1.18.18",
+    "@opencode-ai/sdk": "1.18.18"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.6",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
