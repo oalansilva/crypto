@@ -6,7 +6,8 @@ import path from "node:path";
 const projectRoot = path.resolve(import.meta.dirname, "..", "..", "..");
 const dist = path.join(import.meta.dirname, "dist");
 if (fs.existsSync(dist)) throw new Error("check:unbuilt requires a clean checkout without design-gate/dist");
-const executable = [process.env.OPENCODE_BIN, path.join(os.homedir(), ".opencode", "bin", "opencode")]
+const pathCandidates = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean).map((directory) => path.join(directory, "opencode"));
+const executable = [process.env.OPENCODE_BIN, path.join(os.homedir(), ".opencode", "bin", "opencode"), ...pathCandidates]
   .find((candidate) => candidate && fs.existsSync(candidate));
 if (!executable) throw new Error("OpenCode executable not found");
 const result = spawnSync(executable, ["debug", "agent", "build"], {
