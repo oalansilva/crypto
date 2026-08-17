@@ -62,6 +62,9 @@ Verify that an implementation matches the change artifacts (specs, tasks, design
    - If incomplete tasks exist:
      - Add CRITICAL issue for each incomplete task
      - Recommendation: "Complete task: <description>" or "Mark as done if already implemented"
+   - **UI task evidence:** a UI/`frontend` task marked `[x]` MUST have verifiable evidence in the implementation (file, control/`data-testid`, commit, or spec). Search the diff and product UI for the control/state named in the task. `[x]` without matching UI is CRITICAL and the task does not count as complete.
+   - **Test/Playwright tasks:** any frontend/Playwright/QA test task still `[ ]` is CRITICAL and **blocks Done**. No silent exception. Applies regardless of `UI impact`.
+   - Vague UI tasks that cannot be audited are WARNING; `[x]` plus an identifiable missing control is CRITICAL.
 
    **Spec Coverage**:
    - If delta specs exist in `contextFiles.specs`:
@@ -110,6 +113,8 @@ Verify that an implementation matches the change artifacts (specs, tasks, design
      - If the gate evidence is missing from the PR/commit description:
        - Add CRITICAL: "Design approval gate evidence missing from integration PR/commit"
        - Recommendation: "Add design.md/verdict, UI impact and approval evidence to the PR description before integration"
+   - **UI × prototype (when `UI impact: affected`):** compare the delivered surface to the approved prototype at `frontend/public/prototypes/<change-or-card-slug>/`. Record the comparison (layout, components, states, a11y, responsiveness) in the handoff. Missing comparison is CRITICAL and blocks Done. Unjustified drift vs prototype is CRITICAL.
+   - **Code Review checklist item (blocking):** "UI tasks: implemented and verified against prototype". A `[x]` UI task without implementation blocks commit.
 
    **Todos Completion Check (openCode sessions)**:
    - For card Done/close validation, check todos of the associated opencode sessions (query `~/.local/share/opencode/opencode.db` READ-ONLY, e.g. `python3 -c "import sqlite3; ..."` with `file:...opencode.db?mode=ro` URI): every `todo` row for the session(s) linked to the card must be `completed`.

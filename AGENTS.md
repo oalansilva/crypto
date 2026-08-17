@@ -217,6 +217,8 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 7. Rodar testes proporcionais/focados e validação OpenSpec da change.
 8. Mover card para `Status=Code Review` e sincronizar `Fluxo=Code Review` quando existir.
 9. Rodar review do diff exato antes do commit. Se houver rework grande, voltar para `Em desenvolvimento`; se forem ajustes pequenos, manter `Code Review` e repetir o review.
+   - **`UI impact: affected`:** o review inclui o item bloqueante "UI tasks: implementadas e verificadas contra o protótipo". Task `[x]` sem o controle/estado no código é blocker de commit. `/opsx:verify` confronta tasks × implementação × protótipo; comparação ausente bloqueia `Done`.
+   - Task de Playwright/frontend `[ ]` bloqueia `Done` em qualquer card. `/opsx:verify` trata UI/`frontend` `[x]` sem implementação como CRITICAL.
 10. Fazer commit/push do SHA revisado, mover para `Status=QA` e sincronizar `Fluxo=QA` quando existir.
 11. Abrir PR para `develop`, aguardar `qa-gate` terminal verde e corrigir qualquer falha antes da integração.
 12. Integrar em `develop` quando pronto, preferencialmente com squash/commit único por card referenciando o card.
