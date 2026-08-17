@@ -36,3 +36,17 @@ O PR/commit de integração SHALL listar `design.md`/verdict e a evidência de a
 #### Scenario: PR com checklist completo
 - **WHEN** um PR/commit de integração lista `design.md`, verdict e evidência de aprovação
 - **THEN** `/opsx:verify` valida o gate e a integração pode prosseguir
+
+### Requirement: Apply handoff records prototype consultation
+When `UI impact: affected`, design-approval evidence for implementation SHALL include the recorded consultation of the approved prototype, not only the Design column visit.
+
+#### Scenario: Approval exists but prototype was not consulted at apply
+- **WHEN** the card is in `Pronto para Dev` but apply starts without loading the prototype
+- **THEN** implementation of UI remains blocked until the consultation is recorded
+
+### Requirement: Verify records prototype comparison for UI cards
+For `UI impact: affected`, design-approval evidence at verify/Done SHALL include the result of comparing the delivered UI to the approved prototype.
+
+#### Scenario: Missing comparison at verify
+- **WHEN** verify runs without that comparison record
+- **THEN** the gate fails and Done is not allowed
