@@ -57,7 +57,10 @@ def _discovery_tables(monkeypatch):
     _assert_safe_integration_database()
 
     def _fake_list_templates(*_a, **_k):
-        return {"prebuilt": [], "examples": [{"name": "multi_ma_crossover", "direction": "long"}]}
+        return {
+            "prebuilt": [],
+            "examples": [{"name": "multi_ma_crossover", "direction": "long"}],
+        }
 
     def _fake_get_template_metadata(_self, template_name):
         return {
@@ -196,6 +199,69 @@ class TestCreateSweepIdempotency:
             idempotency_key=key,
             snapshot_token=preflight["snapshot_token"],
             payload=payload,
+            db=db,
+        )
+        assert status2 == 200
+        assert second["sweep_id"] == first["sweep_id"]
+        assert second["idempotent_retry"] is True
+        db.close()
+
+    def test_create_retry_with_reordered_axes_is_idempotent(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        from app.services.discovery_service import _payload_hash
+
+        left = {
+            "templates": ["b", "a"],
+            "symbols": ["ethusdt", "BTCUSDT"],
+            "timeframes": ["1d", "4h"],
+            "directions": ["short", "long"],
+        }
+        right = {
+            "templates": ["a", "b"],
+            "symbols": ["BTCUSDT", "ETHUSDT"],
+            "timeframes": ["4h", "1d"],
+            "directions": ["long", "short"],
+        }
+        assert _payload_hash(left) == _payload_hash(right)
+
+        preflight = service.preflight(
+            templates=["multi_ma_crossover"],
+            symbols=["BTCUSDT"],
+            timeframes=["4h", "1d"],
+            directions=["long"],
+            start_date="2024-01-01",
+            end_date="2024-12-31",
+            period_type="all",
+        )
+        assert preflight["valid_total"] >= 1, preflight.get("errors")
+        payload = {
+            "templates": ["multi_ma_crossover"],
+            "symbols": ["BTCUSDT"],
+            "timeframes": ["1d", "4h"],
+            "directions": ["long"],
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "period_type": "all",
+            "snapshot_hash": preflight["snapshot_hash"],
+        }
+        key = f"k-{uuid.uuid4().hex[:12]}"
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+        reordered = dict(payload)
+        reordered["timeframes"] = ["4h", "1d"]
+        second, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=reordered,
             db=db,
         )
         assert status2 == 200
@@ -409,7 +475,9 @@ class TestClaimsAndOutbox:
 
         calls = []
         monkeypatch.setattr(
-            discovery_tasks, "enqueue_sweep_orchestrator", lambda s, g: calls.append((s, g))
+            discovery_tasks,
+            "enqueue_sweep_orchestrator",
+            lambda s, g: calls.append((s, g)),
         )
         engine = engine_factory()
         db = _session_factory(engine)()
@@ -590,7 +658,16 @@ class TestIdentityAndLeaderboard:
             ("RS-C", "ETHUSDT", "1d", "short", 1.8, 33, "eligible", "unique"),
             ("RS-D", "SOLUSDT", "4h", "long", 1.2, 18, "low_sample", "unique"),
         ]
-        for i, (rid, symbol, timeframe, direction, calmar, trades, elig, dedup) in enumerate(specs):
+        for i, (
+            rid,
+            symbol,
+            timeframe,
+            direction,
+            calmar,
+            trades,
+            elig,
+            dedup,
+        ) in enumerate(specs):
             db.add(
                 DiscoveryResult(
                     id=rid,
@@ -700,7 +777,11 @@ class TestPromotion:
         payload = {"tier": 3, "result_id": "RS-PRO-1"}
         key = f"p-{uuid.uuid4().hex[:12]}"
         body, status = service.promote_result(
-            result_id="RS-PRO-1", actor="admin-1", idempotency_key=key, payload=payload, db=db
+            result_id="RS-PRO-1",
+            actor="admin-1",
+            idempotency_key=key,
+            payload=payload,
+            db=db,
         )
         assert status == 201
         favorite_id = body["favorite_id"]
@@ -711,7 +792,11 @@ class TestPromotion:
         assert favorite.tier == 3
 
         retry, status2 = service.promote_result(
-            result_id="RS-PRO-1", actor="admin-1", idempotency_key=key, payload=payload, db=db
+            result_id="RS-PRO-1",
+            actor="admin-1",
+            idempotency_key=key,
+            payload=payload,
+            db=db,
         )
         assert status2 == 200
         assert retry["favorite_id"] == favorite_id
