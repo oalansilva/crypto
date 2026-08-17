@@ -299,6 +299,7 @@ Os comentários de evidência nas transições `Done`, `Homologado` e `Pronto` d
 
 ```bash
 scripts/post-card-evidence-comment.sh --transition done --card <n> --commit <sha> --pr <n> --branch <branch> --summary "..." --tests "..." --qa "..." --review "..."
+scripts/post-card-evidence-comment.sh --transition homologado --card <n> --commit <sha>
 scripts/post-card-evidence-comment.sh --transition pronto --card <n> --commit <sha> --package <release> --cards "<lista>" --deploy "<evidência>" --branches "<lista>"
 ```
 
@@ -326,7 +327,7 @@ Code Review:
 Próximo passo: Alan testar/homologar na develop.
 ```
 
-Ao mover para `Homologado`, postar obrigatoriamente via `scripts/post-card-evidence-comment.sh --transition homologado`; homologação registrada por chat/arraste exige o mesmo comentário no card, inclusive retroativamente quando necessário:
+Ao observar `Status=Homologado` (arraste de Alan **ou** confirmação em chat), no **mesmo turno** — **mesmo se não houver lote/release** — postar obrigatoriamente via `scripts/post-card-evidence-comment.sh --transition homologado`. `--commit` é o SHA de integração em `develop` (ou `origin/develop` HEAD se o squash não estiver à mão). Falha do helper bloqueia tratar Homologado como evidenciado. Retroativo só se o turno anterior falhou. Texto canônico:
 ```text
 Homologado por Alan na develop.
 Apto para próximo pacote de release.
@@ -432,6 +433,8 @@ Publicar lote direto de `develop` quando seguro:
 git switch develop
 git pull origin develop
 # in-flight: PRESERVED_BRANCHES=card-569-code-review-bugbot,card-581-release-guard-preserve
+RELEASE_DATE=YYYY-MM-DD \
+RELEASE_CARDS=<n1,n2,...> \
 PRESERVED_BRANCHES="${PRESERVED_BRANCHES:-}" \
 scripts/release-guard pre
 openspec validate --all
@@ -449,6 +452,8 @@ git switch -c release-YYYY-MM-DD
 # incluir apenas commits/branches homologados
 git cherry-pick <commit-homologado>
 git push origin release-YYYY-MM-DD
+RELEASE_DATE=YYYY-MM-DD \
+RELEASE_CARDS=<n1,n2,...> \
 PRESERVED_BRANCHES="${PRESERVED_BRANCHES:-}" \
 scripts/release-guard pre
 gh pr create --base main --head release-YYYY-MM-DD --title "<titulo>" --body "<resumo>"
