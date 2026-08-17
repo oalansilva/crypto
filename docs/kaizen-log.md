@@ -269,6 +269,33 @@
 - **Motivo**: escopo de backup de ambiente (openclaw, skills, apps, banco) coberto por operação do ambiente Oracle (snapshots/backups de infra DEV/PROD); card sem dono operacional ativo e preso há 3 auditorias kaizen.
 - **Implementado (card #481)**: `release-guard audit` ganhou bloco `card_age_inventory` — inventário de cards por coluna com idade em dias (GraphQL `updatedAt` do item), warn informativo para >30 dias (default, configurável via `CARD_AGE_THRESHOLD_DAYS`), limite por coluna (`CARD_AGE_MAX_PER_COLUMN`, default 5), paginação até 20 páginas, falha de obtenção como warn sem interromper. Somente em `audit`; pre/post inalterados.
 
+## 2026-08-17 — Kaizen release (release 2026-08-17, cards 469/502/503/504/516/517/518/562)
+
+- **Release/card**: 2026-08-17 — cards 469, 502, 503, 504, 516, 517, 518, 562 (Homologado → Pronto após deploy PROD).
+- **Fontes consultadas**: board Project 1, git/worktrees/stash + `release-guard pre` PASS, `openspec validate --all` 148/148, PR #564, transcripts Cursor desta sessão, CI push/PR no SHA `f4b89208`.
+- **Sessões analisadas**: sessão Cursor do lote (cutover #562, cancelamento #550/#559, isolamento #549, deploy PROD). Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: pacote já Homologado na abertura do lote; closeout nesta sessão até PROD `91f5620e`.
+
+### Métricas
+- **Board**: pacote 8 Homologado; 2 Cancelados no mesmo dia (#550/#559) por conflito com #562; #549 em Em Refinamento isolado.
+- **Git**: worktrees extras e WIP do #469/OpenSpec do #549 bloqueariam o `pre`; isolados em `card-549-unify-strategy-title-description` e `card-469-idempotency-normalization-wip`.
+- **CI**: e2e da *push* em `develop` falhou (timeout em `walkforward-prototype-check` contra URL viva DEV); e2e do PR #564 verde; rerun da push passou depois do protótipo 200 em DEV. `qa-gate` skip no PR para `main` é regra do workflow (`base_ref == develop`).
+- **OpenSpec**: archive do pacote + leftovers Pronto/Cancelado; skip-specs em deltas incompatíveis; spec `cursor-harness` promovida no closeout.
+
+### Achados
+- F-1 [major] E2E funcional `walkforward-prototype-check.spec.mjs` navega `https://dev.criptofarol.com.br/prototypes/...` (não o preview do CI). Push harness-only (#562) falhou 30s no seletor enquanto DEV reconstruía. Correção: apontar o spec ao servidor Playwright local/`preview` do job, não à URL DEV. Esforço S | P0.
+- F-2 [major] 8 cards Homologados sem comentário canônico até o closeout (helper postou retroativo). Correção: o arraste para Homologado deve disparar o helper no mesmo turno. Esforço S | P1.
+- F-3 [minor] `gh project item-list` ainda estoura GraphQL no meio do lote (remaining 89). Correção: listagens de closeout sem `content.body`. Esforço S | P1.
+
+### Padrões recorrentes
+- E2E acoplado a DEV vivo | 1 ocorrência nesta release (candidato a regra se repetir) | promoção: spec Playwright local
+- Homologado sem comentário canônico | recorrência vs #480/#518 | helper existe, falta o turno do arraste
+
+### Cards kaizen propostos (máx. 3; não criados neste closeout — Alan aprova)
+- P0: desacoplar e2e de protótipo da URL DEV (F-1)
+- P1: comentário de homologação no mesmo turno do arraste (F-2)
+- P1: item-list do board sem body no closeout (F-3)
+
 ## 2026-08-14 — Kaizen release (release 2026-08-14, cards 470/480/481/482/489/491/509)
 
 - **Ação**: auditoria kaizen pós-release concluída (read-only). F-1 a F-8 registrados abaixo.
