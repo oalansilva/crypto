@@ -25,21 +25,11 @@ data/*.parquet
 !.cursor/commands/**
 !.cursor/skills/
 !.cursor/skills/**
-.opencode/*
-!.opencode/package.json
-!.opencode/package-lock.json
-!.opencode/tsconfig.json
-!.opencode/agent/
-!.opencode/agent/**
-!.opencode/commands/
-!.opencode/commands/**
-!.opencode/skills/
-!.opencode/skills/**
-!.opencode/plugin/
-!.opencode/plugin/**
-.opencode/node_modules/
-.opencode/plugin/design-gate/dist/
-.opencode/plugin/design-gate/test-artifacts/
+!.cursor/rules/
+!.cursor/rules/**
+!.cursor/hooks.json
+!.cursor/hooks/
+!.cursor/hooks/**
 *.swp
 *.swo
 

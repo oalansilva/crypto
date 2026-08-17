@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-08-17 - Cursor Agent como harness único (cutover OpenCode)
+
+**Decisão:** o Cursor Agent passa a ser o único harness operacional do Cripto Farol. OpenCode sai do contrato ativo. O modelo é o selecionado no chat (hoje Grok 4.6) para Design, código, review e visão. O gate Design fica em regras + skill + Task de crítica isolada + hook Impeccable; sem lease/packet/`design_artifact_write`/attestation OpenCode 1.18.18.
+
+**Motivo:** Alan invertou o destino do #561 (OpenCode único / Sol/Pro/Qwen). O guard multi-artifact já tinha travado o #555/#559. Dual-harness gera docs mentirosas.
+
+**Revogação:** a regra de 2026-08-14 que exigia `design-planner` + GPT 5.6 Sol como autor do Design deixa de ser obrigatória. Mitigação: crítica em Task + aprovação humana em `Pronto para Dev`. Se a qualidade de spec cair, o ajuste futuro é “Sol só no Design”, não reconstruir o guard.
+
+**Onde:** `AGENTS.md`, `rules.md`, `.agents/skills/design-critic/SKILL.md`, `.cursor/`, `docs/backlog-operating-model.md`. Card #562 substitui #561 (Cancelado).
+
 ## 2026-08-14 - design-planner obrigatório como autor dos artefatos do gate Design
 
 **Decisão:** o `design-planner` (`openai/gpt-5.6-sol`, effort `high`) deixa de ser opcional/experimental e passa a ser **obrigatório como autor** dos artefatos do gate Design em todo card: `proposal.md`, `design.md` (com Design Critique e veredito), `specs/**` e `tasks.md`, com `UI impact: affected` ou `none`. A sessão principal (Go/flash) consolida, valida OpenSpec, publica e move `Design -> Aprovação de Design`; a crítica independente pode ser feita por segundo spawn do `design-planner` (read-only). Crítica sem artefatos redigidos pelo `design-planner` não completa o gate.

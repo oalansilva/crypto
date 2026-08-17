@@ -7,7 +7,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 - `rules.md`: politica normativa, curta e obrigatoria. Use para decidir o que nunca pode ser pulado.
 - `AGENTS.md`: manual operacional detalhado. Use para comandos, ordem de execucao, mapeamento OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
 - Em caso de duvida ou conflito, siga a regra mais restritiva. Se ainda houver ambiguidade, pare e registre o conflito antes de alterar codigo, card ou Git.
-- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O opencode aplica os mesmos overrides versionados neste arquivo e em `AGENTS.md`; o fluxo do projeto não depende de um caminho absoluto local.
+- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O Cursor Agent aplica os mesmos overrides versionados neste arquivo e em `AGENTS.md`; o fluxo do projeto não depende de um caminho absoluto local.
 
 ## Regras obrigatorias
 
@@ -29,7 +29,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `Design`: Designer/Critic Agent prepara prototipo, critica e evidencias.
    - `Aprovação de Design`: entrega de design completa aguardando Alan.
    - `Pronto para Dev`: Alan aprovou o design por arraste; desenvolvimento liberado.
-   - `Em desenvolvimento`: opencode/Clara esta trabalhando ou validando tecnicamente.
+   - `Em desenvolvimento`: o Cursor Agent/Clara esta trabalhando ou validando tecnicamente.
    - `Code Review`: diff pronto para revisao antes do commit; achados bloqueantes corrigidos ou classificados.
    - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
    - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
@@ -46,10 +46,10 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Nao descreva `Status=Done` como card fechado/finalizado; use `Done tecnico` ou `aguardando homologacao`.
 
 4. Todo card em `Status=Design` usa o contrato canônico `.agents/skills/design-critic/SKILL.md` antes da implementação.
-   - No opencode, invoca-se a skill `design-critic` (tool skill carregada automaticamente de `.agents/skills/`).
+   - No Cursor, invoca-se a skill `design-critic` (carregada de `.agents/skills/`).
    - Com `UI impact: affected`, o agente produz/refatora o prototipo, critica produto/UX/acessibilidade/responsividade/estados e registra o veredito no `design.md`.
-   - Com `UI impact: affected`, também exige o pipeline do Impeccable na ordem `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, com `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` versionados. O `DESIGN.md` não pode ser sobrescrito. O plugin `.opencode/plugin/impeccable-hook.ts` roda o detector automaticamente em edições de UI e no fim de turno.
-   - Assessment A e Assessment B usam sessões separadas do perfil zero-tool `design-critic-readonly`, com o mesmo `openai/gpt-5.6-sol`, `variant: high`, packet/digest e lineage. Qualquer tool, output não canônico, ausência de correlação runtime ou divergência mantém `BLOCKED`; não usar fallback.
+   - Com `UI impact: affected`, também exige o pipeline do Impeccable na ordem `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, com `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` versionados. O `DESIGN.md` não pode ser sobrescrito. O hook `.cursor/hooks.json` roda o detector automaticamente em edições de UI e no fim de turno.
+   - Assessment A e Assessment B usam `Task` isolada no mesmo modelo do chat, instruída a não editar. Sem crítica isolada o veredito permanece `BLOCKED`; não usar fallback.
    - Com `UI impact: none`, ainda passa por `Design` e `Aprovação de Design`; a entrega de design é enxuta (decisão, escopo, riscos, `Design Critique`) e registra explicitamente a ausência de superfície visual nova.
    - Com `UI impact: none`, registrar Impeccable como `N/A` com justificativa; isso não reduz nenhum gate.
    - Protótipo HTML, quando houver, deve ser navegável em `frontend/public/prototypes/<slug>/` via URL DEV; o Gist OpenSpec lista só Markdown e nunca HTML.
@@ -78,12 +78,11 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 9. Sempre utilizar subagentes quando houver tarefa de desenvolvimento, investigacao, validacao ou revisao tecnica com ganho claro de paralelismo.
    - O agente principal continua responsavel por escopo, consolidacao, evidencias e fechamento.
-   - A sessao principal do opencode define o LLM/modelo e a versao da tarefa; todo subagent deve herdar exatamente esse mesmo LLM/modelo e versao. Excecoes documentadas: `vision` (pixels) e `design-planner` (planejamento de design).
-   - Papéis, prompts, sandbox e ownership podem variar, mas nenhum subagent pode trocar de LLM/modelo, usar fallback ou aplicar roteamento fixo Sol/Luna/Terra.
-   - Se a igualdade do LLM/modelo nao puder ser imposta e observada, nao criar o subagent; continuar na sessao principal ou registrar o bloqueio.
-   - Para critica ou revisao independente, usar contextos separados e manter o subagent read-only; a sessao principal consolida e corrige.
-   - **Excecao explicita - roteamento visual:** o modelo da sessao (deepseek-v4-flash) nao tem visao. Toda analise de imagem (anexos no chat, screenshots de tools, imagens de cards/issues do GitHub, diff.png/baselines do QA visual, artifacts do CI, qa_artifacts, graficos/sinais exportados) e feita pelo subagent `vision` com model fixo `opencode-go/qwen3.7-plus`, chaveado automaticamente pelo plugin `vision-router`; o agente principal nunca interpreta pixels.
-   - **Excecao explicita - planejamento de design:** o gate `Design` (specs, critica e prototipo) **DEVE ser executado pelo subagent `design-planner` como autor** com `openai/gpt-5.6-sol` e `variant: high` (segunda excecao, junto do `vision`), em todo card com `UI impact: affected` ou `none`. A sessão principal cria somente o scaffold e orquestra os estágios `proposal -> design/specs/prototype -> tasks` pelo guard project-local: OpenSpec read-only usa `design_openspec_readonly`, cada child nasce exclusivamente por `design_spawn_stage` com packet selado e toda escrita usa `design_artifact_write` em path exato. Task direto, `opencode run --agent design-planner`, autoria pela main ou fallback silencioso invalidam o gate. Assessment A/B usam `design-critic-readonly` zero-tool em sessões separadas. Qualquer incompatibilidade com OpenCode `1.18.18`, route/model/variant, lease, bytes ou evidence produz `BLOCKED`. Fallback para `opencode-go/grok-4.5` (effort high) só com autorização de Alan.
+   - O modelo selecionado no chat do Cursor define o LLM da tarefa; todo subagent/`Task` deve herdar esse modelo (`inherit`) salvo pedido explícito de Alan.
+   - Papéis e prompts podem variar; nenhum subagent troca de modelo por conta própria nem aplica roteamento Sol/Pro/Qwen.
+   - Para critica ou revisao independente, usar Task isolada instruída a não editar; a sessão principal consolida e corrige.
+   - **Análise de imagem:** a sessão lê pixels com `Read` depois do path-check. Sem `vision-router` e sem Qwen obrigatório.
+   - **Gate Design:** a sessão Cursor escreve artifacts e o protótipo; crítica em Task isolada no mesmo modelo. Sem lease, packet, `design_artifact_write` ou attestation OpenCode.
 
 10. PostgreSQL e obrigatorio em runtime, QA, homologacao e scripts operacionais.
    - Nao usar SQLite como banco de operacao.
@@ -103,7 +102,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 14. Kaizen e a melhoria continua de processo: quanto mais o processo e usado, melhor ele fica.
    - Toda release/lote roda `/kaizen release` apos o deploy PROD validado e antes de mover cards para `Pronto`; evidencia em `docs/kaizen-log.md`.
-   - O Kaizen audita board, Git hygiene, OpenSpec, CI, tech debt e sessoes do opencode (SQL `mode=ro` em `~/.local/share/opencode/opencode.db`), detectando onde o modelo se perde ou alucina.
+   - O Kaizen audita board, Git hygiene, OpenSpec, CI, tech debt e sessões Cursor (transcripts do projeto), detectando onde o modelo se perde ou alucina.
    - Melhorias sao registradas como cards: 1 card por melhoria, formato PO, label `kaizen`, **sempre em `Status=Em Refinamento`** (entrada obrigatoria de todo card novo; nunca em coluna de execucao), seguindo o fluxo normal do board (`Em Refinamento -> Todo -> ...`).
    - **Maximo 3 cards kaizen por release**; a priorizacao (campo `Prioridade` P0/P1/P2, regra severidade x frequencia / esforco) define os 3 que entram; o restante fica no backlog kaizen.
    - Kaizen propoe, Alan aprova: o agente nunca implementa mudancas de regra/skill/script sem aprovacao explicita; pode propor melhorias de skills e pesquisar alternativas (busca read-only).
