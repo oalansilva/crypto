@@ -1520,7 +1520,10 @@ def test_pre_preserves_dirty_extra_worktree_and_local_branch(tmp_path: Path):
     )
 
     assert "extra worktree requires classification" not in result.stdout
-    assert "local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot" not in result.stdout
+    assert (
+        "local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot"
+        not in result.stdout
+    )
     assert "classified via PRESERVED_BRANCHES" in result.stdout
     assert "BLOCKER: extra worktree" not in result.stdout
     assert result.returncode == 0
@@ -1535,7 +1538,10 @@ def test_pre_blocks_unclassified_extra_worktree_and_local_branch(tmp_path: Path)
     result = _run_guard(repo, "pre")
 
     assert "BLOCKER: extra worktree requires classification before release cleanup" in result.stdout
-    assert "BLOCKER: local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot" in result.stdout
+    assert (
+        "BLOCKER: local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot"
+        in result.stdout
+    )
     assert "BLOCKER: dirty worktree:" in result.stdout
     assert result.returncode == 1
 
@@ -1557,7 +1563,9 @@ def test_pre_warns_merged_extra_worktree_with_canonical_release_doc_only(tmp_pat
 
     result = _run_guard(repo, "pre", release_date="2026-08-17")
 
-    assert "Dirty worktree allowed (merged branch; only docs/release-2026-08-17.md)" in result.stdout
+    assert (
+        "Dirty worktree allowed (merged branch; only docs/release-2026-08-17.md)" in result.stdout
+    )
     assert "WARN: extra worktree on merged branch; remove at closeout" in result.stdout
     assert "BLOCKER: dirty worktree:" not in result.stdout
     assert "BLOCKER: extra worktree requires classification" not in result.stdout
@@ -1621,6 +1629,12 @@ def test_pre_preserves_unmerged_local_branch_without_worktree(tmp_path: Path):
         preserved_branches="card-569-code-review-bugbot, card-581-release-guard-preserve",
     )
 
-    assert "local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot" not in result.stdout
-    assert "WARN: local branch not merged; classified via PRESERVED_BRANCHES: card-569-code-review-bugbot" in result.stdout
+    assert (
+        "local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot"
+        not in result.stdout
+    )
+    assert (
+        "WARN: local branch not merged; classified via PRESERVED_BRANCHES: card-569-code-review-bugbot"
+        in result.stdout
+    )
     assert result.returncode == 0
