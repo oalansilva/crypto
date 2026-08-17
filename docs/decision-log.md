@@ -8,6 +8,24 @@
 
 **Onde:** `.cursor/skills/`, `.cursor/rules/harness.mdc`, `AGENTS.md`, `rules.md`, `openspec/specs/cursor-harness/spec.md`. Card #585.
 
+## 2026-08-17 - Code Review com reviewers locais inherit/readonly (Bugbot opcional)
+
+**Decisão:** o gate `Status=Code Review` passa a usar dois `Task` `generalPurpose` read-only com `model: inherit`: `.cursor/agents/diff-reviewer.md` (bugs no diff) e `.cursor/agents/code-reviewer.md` (processo/OpenSpec/Design). Pré-commit: uncommitted vs HEAD. Fechamento: `origin/develop...HEAD` ainda na branch do card, antes de QA. `/review-bugbot` e `/review-security` só se Alan pedir. Bugbot no dashboard permanece Off de propósito (custo). Autofix não commita na branch existente. Agent Review automático pós-commit permanece desligado. Regras versionadas: `.cursor/BUGBOT.md`.
+
+**Motivo:** Alan recusou ligar o produto Bugbot por custo. O `Task` genérico anterior não versionava o prompt nem comparava com `develop`. Reviewers locais usam o modelo já pago da sessão, aceitam base `develop` explícita, e não geram fatura usage-based.
+
+**Revogação:** a decisão do mesmo dia que tornava `/review-bugbot` obrigatório deixa de valer. O arquivo `.cursor/BUGBOT.md` permanece como contrato lido pelo reviewer local.
+
+**Onde:** `AGENTS.md`, `rules.md`, `docs/backlog-operating-model.md`, `.cursor/BUGBOT.md`, `.cursor/agents/diff-reviewer.md`, `.cursor/agents/code-reviewer.md`. Card #569.
+
+## 2026-08-17 - Code Review nativo com /review-bugbot vs develop
+
+**Decisão:** o gate `Status=Code Review` passa a usar `/review-bugbot` como revisor padrão. Pré-commit: `Diff: uncommitted changes` (sem `Base Branch`). Fechamento: `Diff: branch changes` + `Base Branch: develop`. `/review-security` só nos globs de auth/credencial/trading/wallet/API. Revisor de processo é Task `generalPurpose` read-only com `.cursor/agents/code-reviewer.md`. Autofix não commita na branch existente. Agent Review automático pós-commit permanece desligado. Rules `.mdc` não valem para Bugbot; o contrato visível é `.cursor/BUGBOT.md`.
+
+**Motivo:** o review genérico (`Task` `generalPurpose`) e a regra “bugbot só se Alan pedir” deixavam o revisor nativo do Cursor fora do caminho feliz. A skill oficial não aceita `uncommitted` + `Base Branch`.
+
+**Onde:** `AGENTS.md`, `rules.md`, `docs/backlog-operating-model.md`, `.cursor/BUGBOT.md`, `.cursor/agents/code-reviewer.md`. Card #569.
+
 ## 2026-08-17 - Cursor Agent como harness único (cutover OpenCode)
 
 **Decisão:** o Cursor Agent passa a ser o único harness operacional do Cripto Farol. OpenCode sai do contrato ativo. O modelo é o selecionado no chat (hoje Grok 4.6) para Design, código, review e visão. O gate Design fica em regras + skill + Task de crítica isolada + hook Impeccable; sem lease/packet/`design_artifact_write`/attestation OpenCode 1.18.18.

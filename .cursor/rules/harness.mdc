@@ -13,4 +13,4 @@ alwaysApply: true
 - Design: OpenSpec **superset** do issue; Gist secreto `crypto openspec <change>` + comentário no card **antes** de Aprovação de Design. Crítica em Task isolada instruída a não editar. Sem Gist, ou Gist mais pobre que o card, permanecer em Design.
 - Código / `/opsx:apply` só com `Status=Pronto para Dev`. Alan é o único que arrasta `Aprovação de Design -> Pronto para Dev`.
 - Lei humana (não injetada sozinha): `rules.md`. Runbook: carregue `alan-workflow` em card/release. Overlay cripto (board, ports, Drive, PostgreSQL, release-guard): `AGENTS.md`.
-- Review do diff exato antes de cada commit. OpenSpec via `/opsx-*` e CLI `openspec`.
+- Review: em `Status=Code Review`, `diff-reviewer` + `code-reviewer` (`inherit`, readonly) no diff não commitado vs HEAD; no fechamento, `diff-reviewer` em `origin/develop...HEAD` na branch do card antes de QA. `/review-bugbot` só se Alan pedir. Autofix não commita na branch existente. OpenSpec via `/opsx-*` e CLI `openspec`.

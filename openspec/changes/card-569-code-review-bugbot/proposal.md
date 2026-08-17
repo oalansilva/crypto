@@ -1,35 +1,34 @@
 ## Why
 
-O gate `Status=Code Review` já existe e corre antes do commit, mas o agente ainda usa um `Task` genérico e o `AGENTS.md` restringe Bugbot a pedido explícito. A documentação oficial do Cursor (2026) recomenda `/review-bugbot` e `/review-security` no diff local **antes do push**, com regras em `.cursor/BUGBOT.md` — arquivos `.mdc` não valem para o Bugbot. Sem essa troca, o revisor nativo quase nunca roda e o contrato do Cripto não entra no review.
+O gate `Status=Code Review` já existe e corre antes do commit, mas o agente ainda usa um `Task` genérico, sem prompt versionado nem comparação explícita com `develop`. O plano anterior tornava `/review-bugbot` obrigatório; Alan recusou ligar o produto Bugbot por custo (usage-based por PR/push). Sem pivot, o card ou cobra review pago, ou volta ao `Task` vago.
 
 ## What Changes
 
-- Em `Status=Code Review`, o agente **sempre** dispara `/review-bugbot` no diff não commitado (`uncommitted changes`, sem `Base Branch`).
-- Depois do commit de implementação, um `/review-bugbot` `branch changes` + `Base Branch: develop` é obrigatório no SHA de fechamento.
-- `/review-security` obrigatório quando o diff casa com os globs de auth/credencial/trading/wallet/API.
-- `Task` genérico só após spawn falho + 1 retry (erro explícito; sem fallback silencioso).
-- Criar `.cursor/BUGBOT.md` na raiz e aninhados `backend/` e `frontend/` com o contrato que o Bugbot lê.
-- Criar `.cursor/agents/code-reviewer.md` (`readonly: true`, `model: inherit`) só para contrato de processo (OpenSpec, Design gate, não regressão de status).
-- Bugbot no PR para `develop` é complemento de **QA**, não substituto do Code Review: Incremental Review ligado; Autofix Off (proibido Commit to Existing Branch).
-- Agent Review automático pós-commit permanece desligado (inverte o gate pré-commit).
-- Comentário de Done cita o resultado do `/review-bugbot`.
+- Em `Status=Code Review`, o agente **sempre** dispara dois `Task` `generalPurpose` read-only com `model: inherit`:
+  1. `.cursor/agents/diff-reviewer.md` — bugs/segurança/regressão no diff.
+  2. `.cursor/agents/code-reviewer.md` — processo/OpenSpec/Design/não regressão de status.
+- Pré-commit: diff não commitado vs HEAD. Fechamento: `origin/develop...HEAD` **ainda na branch do card** (nunca depois do squash em `develop`).
+- `/review-bugbot` e `/review-security` ficam **opcionais**, só se Alan pedir no card. Bugbot de dashboard permanece Off de propósito (custo).
+- Manter `.cursor/BUGBOT.md` (raiz + aninhados) como regras versionadas que o reviewer local lê (e o Bugbot leria se um dia ligasse).
+- Autofix / Agent Review automático pós-commit permanecem desligados.
+- Comentário de Done cita os dois reviewers locais, não Bugbot obrigatório.
 - **Não é BREAKING** para produto/API/UI. É mudança de contrato operacional do harness.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `cursor-code-review`: gate de Code Review no Cursor usando `/review-bugbot` (pré-commit `uncommitted changes`; fechamento `branch changes` vs `develop`) e `/review-security` no caminho quente, com `BUGBOT.md` e Task de processo read-only.
+- `cursor-code-review`: gate de Code Review no Cursor com dois reviewers versionados `inherit`/`readonly` (diff vs HEAD no pré-commit; `origin/develop...HEAD` no fechamento) e Bugbot/Security Review opcionais.
 
 ### Modified Capabilities
 
-- `cursor-harness`: o Code Review deixa de ser `Task` genérico por padrão; Bugbot/Security Review são produtos gerenciados do Cursor (modelo próprio); o subagent de processo continua `inherit`.
-- `delivery-qa-stage`: evidência de Code Review inclui o resultado do Bugbot; Bugbot no PR é QA; Autofix na mesma branch é proibido.
-- `developer-tooling`: versionar `.cursor/BUGBOT.md`, aninhados e `.cursor/agents/code-reviewer.md`.
+- `cursor-harness`: o Code Review deixa de ser `Task` genérico; o caminho feliz usa prompts versionados no mesmo modelo do chat. Produtos gerenciados do Cursor não são o default.
+- `delivery-qa-stage`: evidência de Code Review inclui os dois reviewers locais; Bugbot no PR não é gate.
+- `developer-tooling`: versionar `.cursor/agents/diff-reviewer.md`, `.cursor/agents/code-reviewer.md` e `.cursor/BUGBOT.md` (regras compartilhadas).
 
 ## Impact
 
-- Docs/contrato: `AGENTS.md`, `rules.md`, `docs/backlog-operating-model.md`, comentário canônico de Done, `docs/kaizen-log.md` (entrada do card).
-- Tooling: `.cursor/BUGBOT.md`, `backend/.cursor/BUGBOT.md`, `frontend/.cursor/BUGBOT.md`, `.cursor/agents/code-reviewer.md`.
+- Docs/contrato: `AGENTS.md`, `rules.md`, `docs/backlog-operating-model.md`, comentário canônico de Done, `docs/kaizen-log.md`, `docs/decision-log.md`.
+- Tooling: `.cursor/agents/diff-reviewer.md`, `.cursor/agents/code-reviewer.md`, `.cursor/BUGBOT.md` + aninhados.
 - Runtime de produto (API, UI, banco): nenhum.
-- Configuração de Automations/Bugbot no dashboard Cursor (Autofix Off) é evidência operacional, não código.
+- Automations/Bugbot no dashboard Cursor permanece Off; não é blocker.

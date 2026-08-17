@@ -2,9 +2,9 @@
 
 ## Problema
 
-O Code Review do Cripto já é uma coluna pré-commit, mas o agente executa um `Task` `generalPurpose` e o `AGENTS.md` só autoriza Bugbot se Alan pedir. O revisor nativo do Cursor quase nunca roda. As rules `.mdc` não chegam ao Bugbot. Autofix na mesma branch furaria o SHA revisado.
+O Code Review do Cripto já é uma coluna pré-commit, mas o agente executa um `Task` `generalPurpose` sem prompt versionado e sem comparar com `develop`. O design aprovado em 2026-08-17 tornava `/review-bugbot` obrigatório. Alan recusou ligar o produto Bugbot por custo (usage-based por PR/push). Autofix na mesma branch furaria o SHA revisado.
 
-O usuário afetado é o agente que fecha o card e Alan, que depende de um review auditável. Não há superfície visual de produto.
+O usuário afetado é o agente que fecha o card e Alan, que depende de um review auditável sem fatura extra. Não há superfície visual de produto.
 
 ## UI impact
 
@@ -12,128 +12,103 @@ O usuário afetado é o agente que fecha o card e Alan, que depende de um review
 
 ## Hipótese
 
-Se o Code Review disparar `/review-bugbot` no diff não commitado (vs HEAD) e um run `branch changes` vs `develop` no SHA de fechamento, com `BUGBOT.md` e um Task de processo read-only, o gate usa o revisor que o Cursor documenta, sem inverter o fluxo nem pular Design.
+Se o Code Review disparar dois `Task` `inherit`/`readonly` (diff-reviewer no patch + code-reviewer de processo), com regras em `BUGBOT.md` e comparação `origin/develop...HEAD` no SHA de fechamento, o gate fica melhor que o `Task` genérico atual **e** evita o custo do Bugbot-produto. `/review-bugbot` permanece atalho opcional se Alan pedir num card caro.
 
 ## Resultado esperado
 
-- Todo card em `Status=Code Review` tem evidência de `/review-bugbot` (achados, no findings, ou spawn falhou).
-- Pré-commit usa `uncommitted changes` (sem `Base Branch`).
-- Pelo menos um run `branch changes` + `Base Branch: develop` existe para o SHA de fechamento.
-- Autofix na branch existente permanece desligado (ou residual aceito por Alan).
-- Agent Review automático pós-commit permanece desligado.
+- Todo card em `Status=Code Review` tem evidência dos dois reviewers locais (achados, no findings, ou spawn falhou).
+- Pré-commit revisa o diff não commitado vs HEAD.
+- Fechamento revisa `origin/develop...HEAD` **ainda na branch do card**.
+- Bugbot de dashboard permanece Off de propósito (custo). `/review-bugbot` / `/review-security` só se Alan pedir.
+- Autofix na branch existente e Agent Review automático pós-commit permanecem desligados.
 
 ## Context
 
-Estado atual: Cursor Agent é o harness (#562). Code Review = review do diff exato antes do commit, depois QA (`qa-gate` + Playwright). A skill `/review-bugbot` já existe no cliente; o contrato do repo a trata como opcional.
+Estado atual: Cursor Agent é o harness (#562). Code Review = review do diff exato antes do commit, depois QA (`qa-gate` + Playwright). A skill `/review-bugbot` existe no cliente, mas o produto cobrado não será ligado.
 
-Constraints: mesmo modelo `inherit` no subagent de processo; Bugbot/Security Review são produtos gerenciados (Composer no Bugbot); worktree/branch por card; Design gate intacto.
+Constraints: mesmo modelo `inherit` nos dois reviewers; worktree/branch por card; Design gate intacto; aprovação anterior (Bugbot obrigatório) está **obsoleta**.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Tornar `/review-bugbot` o revisor padrão do gate Code Review, com prompts fiéis à skill.
-- Garantir um review `branch changes` vs `develop` por card.
-- Ensinar o Bugbot o contrato do Cripto via `BUGBOT.md`.
-- Separar busca de bug (Bugbot) de contrato de processo (Task read-only com `.cursor/agents/code-reviewer.md`).
-- Manter Bugbot de PR como complemento de QA, com Autofix off.
+- Substituir o `Task` genérico por dois prompts versionados (`diff-reviewer` + `code-reviewer`).
+- Garantir um review vs `develop` por card, na branch do card.
+- Ensinar o contrato do Cripto via `BUGBOT.md` (lido pelos reviewers locais).
+- Separar busca de bug (diff-reviewer) de contrato de processo (code-reviewer).
+- Deixar `/review-bugbot` e `/review-security` opcionais.
 
 **Non-Goals:**
 
+- Ligar Automations/Bugbot no dashboard (custo).
 - Ligar Agent Review automático pós-commit.
 - Autofix / Cloud Agent commitando na branch do PR.
 - `/babysit` na coluna Code Review.
-- Security Scanner em cron.
 - Qualquer mudança de produto, API, banco ou UI.
 
 ## Decisions
 
-### D1 — Dois prompts canônicos, fiéis à skill `/review-bugbot`
+### D1 — Caminho feliz: dois tipos de reviewer, dois momentos
 
-A skill oficial só aceita `Diff: uncommitted changes` **ou** `Diff: branch changes`. `Base Branch` só entra na segunda forma. `uncommitted changes` compara working tree vs HEAD, não vs `develop`. Misturar `uncommitted` + `Base Branch: develop` é prompt inválido.
+Dois `Task` `generalPurpose` read-only, `model: inherit` (tipos, não um único par na coluna):
 
-**Pré-commit (todo commit de implementação):** worktree absoluta + só o patch que vai no commit:
+1. Prompt = corpo de `.cursor/agents/diff-reviewer.md` + intervalo do diff.
+2. Prompt = corpo de `.cursor/agents/code-reviewer.md` + o diff/SHA sob revisão.
 
-```text
-Full Repository Path: <worktree absoluta>
-Diff: uncommitted changes
-```
+A sessão principal corrige ou classifica achados. Os reviewers **não** editam. Alternativa rejeitada: `/review-bugbot` obrigatório (custo do produto). Alternativa rejeitada: continuar com `Task` genérico (prompt não versionado, sem `develop`).
 
-Sem linha `Base Branch`. Sem o agente calcular o `git diff`.
+### D2 — Dois momentos, base `develop` explícita; fechamento antes de QA
 
-**Contra `develop` (obrigatório uma vez por card, depois do commit de implementação e antes de Done):** a skill manda informar a base quando não é a default (`main`):
+O revisor local **pode** receber o intervalo git (diferente da skill Bugbot, que não aceita `uncommitted` + `Base Branch`).
 
-```text
-Full Repository Path: <worktree absoluta>
-Diff: branch changes
-Base Branch: develop
-```
+**Pré-commit (todo commit de implementação, ainda em `Status=Code Review`):** working tree vs HEAD. Rodar **os dois** reviewers nesse patch. O agente informa o diff vs HEAD no prompt.
 
-Isso cobre commits já na branch + uncommitted vs merge-base com `develop`. `/review-security` usa o **mesmo** par de prompts quando o caminho quente dispara.
+**Fechamento (obrigatório imediatamente após o commit de implementação, ainda na branch do card, antes de `Status=QA`):** `diff-reviewer` em `origin/develop...HEAD`. Nunca depois do squash em `develop` (diff vazio). O `code-reviewer` MAY reusar o run pré-commit se o processo não mudou; o vs-`develop` do `diff-reviewer` NÃO reusa o uncommitted. Reuso do vs-`develop` só se este run já existir para o mesmo SHA.
 
-Alternativa rejeitada: só o PR no GitHub (gate depois do commit). Alternativa rejeitada: `uncommitted` + `Base Branch` (não é o contrato da skill).
+### D3 — Bugbot/Security Review opcionais
 
-### D2 — Reuso só do run `branch changes` do SHA de fechamento
+`/review-bugbot` e `/review-security` **não** são o happy path. Só disparam se Alan pedir no card (comentário ou chat). Globs de caminho quente (auth/credencial/trading/wallet/API) **não** ligam o produto automaticamente; o diff-reviewer local já cobre segurança nesses paths via `BUGBOT.md`.
 
-O run `uncommitted` **não** substitui a comparação com `develop`. Depois do commit de implementação o card MUST ter pelo menos um `/review-bugbot` `branch changes` + `Base Branch: develop` daquele SHA. Reutilizar evidência só se esse run já existir para o SHA de fechamento. “Mesmo patch” de um `uncommitted` anterior não autoriza skip.
+Se Alan pedir, usar os prompts canônicos da skill (`uncommitted changes` sem Base Branch; `branch changes` + `Base Branch: develop`).
 
-### D3 — Caminho quente de `/review-security` por globs
+### D4 — Spawn vazio: 1 retry, depois erro explícito
 
-Dispara se o diff tocado casar com qualquer glob:
+Se qualquer um dos dois Tasks falhar (0 messages / 0 parts / sessão ausente): 1 retry. Se persistir: `ERROR: subagent spawn failed/empty` no handoff. A sessão principal MAY completar o review ela mesma e registrar residual no Done. Fallback silencioso é proibido. Não fingir que o reviewer rodou.
 
-- `backend/app/api/**`
-- `backend/app/**/auth*`
-- `backend/app/**/credential*`
-- `backend/app/**/wallet*`
-- `backend/app/**/trading*`
-- `frontend/src/**/wallet*`
-- `frontend/src/**/auth*`
-- `**/*credentials*`
-- `**/.env*`
+### D5 — `BUGBOT.md` continua sendo a rule versionada do review
 
-Cards só de `AGENTS.md` / `.cursor/` / `docs/` / OpenSpec **não** disparam. Alternativa rejeitada: a palavra solta “API”.
+Mesmo com Bugbot Off, o arquivo ensina PostgreSQL, Design/`Pronto para Dev`, secrets, testes e Playwright. O diff-reviewer MUST ler raiz + aninhados quando o diff toca `backend/` ou `frontend/`. Files `.cursor/rules/*.mdc` não substituem esse contrato. Mantém o arquivo pronto se Alan ligar Bugbot no futuro.
 
-### D4 — Spawn vazio: 1 retry, depois fallback explícito
+### D6 — Autofix e Agent Review automático permanecem Off
 
-A skill já manda retry uma vez. Se persistir: `ERROR: subagent spawn failed/empty` no handoff. Só então um `Task` `generalPurpose` read-only cobre o gate. Fallback nunca é happy path; no Done vira residual. Duas falhas de spawn no mesmo card → residual no card, sem fingir que o Bugbot rodou.
+Não commitar Autofix na branch existente. Agent Review auto-after-commit permanece off (inverteria o gate pré-commit). Item 3.1 deixa de ser “Autofix Off no dashboard”: Alan recusou ligar Bugbot; o residual é **Bugbot Off de propósito**.
 
-### D5 — `BUGBOT.md` é a única rule visível ao Bugbot
+### D7 — Sem exceção de modelo no caminho feliz
 
-Doc oficial: `.cursor/rules/*.mdc` não aplicam. Raiz sempre incluída; `backend/.cursor/BUGBOT.md` e `frontend/.cursor/BUGBOT.md` só quando o diff toca aqueles trees. Conteúdo curto: PostgreSQL; sem SQLite; Design/`Pronto para Dev` não puláveis; secrets fora; teste se `backend/**` muda; UI exige Playwright visual.
+Os dois reviewers e qualquer fallback usam `inherit`. Não há produto gerenciado no default. Se Alan pedir `/review-bugbot`, esse run MAY usar o modelo do produto Cursor; isso não troca o LLM da sessão.
 
-### D6 — Revisor de processo: arquivo versionado + Task `generalPurpose` read-only
+### D8 — Evidência de Done cita os reviewers locais
 
-`.cursor/agents/code-reviewer.md` (`readonly: true`, `model: inherit`) é a fonte do prompt. Neste cliente o `Task` não tem `subagent_type` custom: a sessão lança **um** `generalPurpose` read-only cujo prompt é o corpo desse arquivo + o diff/SHA. O arquivo também alimenta auto-delegation no Cursor desktop. Não duplica busca de bug. Spawn falho desse Task segue a mesma regra D4 (erro explícito; o Bugbot nativo continua obrigatório no happy path). Task 1.x MUST mandar invocar, não só criar o arquivo.
-
-### D7 — Bugbot no PR é QA; Autofix Off; Incremental Review on
-
-Patch ID local sincroniza com o PR. Autofix **Commit to Existing Branch** viola o SHA revisado — MUST Off. Create New Branch fica fora deste card. Agent Review auto-after-commit permanece off.
-
-Se o dashboard Cursor não estiver acessível no apply, o critério Autofix Off **não** fecha: registra residual e espera comentário de Alan (`Autofix Off aceito como residual: <motivo>`). Sem esse comentário o item 3.1 permanece aberto. Incremental Review ligado é SHOULD (não bloqueia Done se o check local pré-commit + `branch changes` vs `develop` existirem).
-
-### D8 — Exceção de modelo só para produtos gerenciados
-
-Bugbot/Security Review usam o modelo do produto Cursor. O subagent de processo e qualquer `Task` de fallback usam `inherit`. Documentar a exceção em `AGENTS.md` para não parecer troca silenciosa de LLM.
+O helper `--review` continua obrigatório em `--transition done`. O texto cita `diff-reviewer` (uncommitted e vs develop) e `code-reviewer`. Não exige linhas `/review-bugbot`.
 
 ## Risks / Trade-offs
 
-- [Bugbot indisponível / plano sem Automations] → 1 retry; depois `ERROR` + fallback explícito; Done cita residual.
-- [Default branch `main` no `branch changes`] → `Base Branch: develop` **somente** nesse prompt; omitido no `uncommitted`.
-- [Autofix ligado / dashboard inacessível] → item 3.1 não fecha sem evidência ou aceite explícito de Alan.
-- [Custo de review em todo commit] → Incremental no PR; pré-commit só no diff não commitado.
+- [Reviewer local é o mesmo modelo do chat] → menos “olho treinado” que Bugbot-produto; mitigação: prompt versionado + `develop` explícito + segundo reviewer de processo.
+- [Custo Bugbot] → produto Off; atalho opcional se Alan pedir.
+- [Spawn vazio dos dois Tasks] → 1 retry + ERROR + residual; Done não mente.
+- [Review vs develop depois do squash] → proibido; sempre na branch do card.
 - [Regressão de produto] → nenhuma tela/API muda.
 
 ## Migration Plan
 
-1. Aprovar Design (`Aprovação de Design` → `Pronto para Dev` só Alan).
-2. Aplicar docs + `BUGBOT.md` + subagent na branch do card.
-3. Registrar Autofix Off (settings/screenshot). Se inacessível, residual no card até Alan aceitar por comentário.
+1. Aprovar o **novo** Design (`Aprovação de Design` → `Pronto para Dev` só Alan). A aprovação do plano Bugbot-obrigatório está obsoleta.
+2. Aplicar docs + `diff-reviewer.md` + `code-reviewer.md` + `BUGBOT.md` na branch do card.
+3. Registrar Bugbot Off de propósito (chat Alan 2026-08-17).
 4. Rollback: reverter o commit da branch; o processo volta ao `Task` genérico.
 
 ## Open Questions
 
-- Confirmar no dashboard se Bugbot já está enabled no `oalansilva/crypto` (apply; não bloqueia o Design).
-- Fail-on-unresolved no check `Cursor Bugbot` **não** entra neste card.
+- Nenhuma bloqueante. `/review-bugbot` no futuro é decisão de Alan, fora deste card.
 
 ## Prototype
 
@@ -161,11 +136,15 @@ Bugbot/Security Review usam o modelo do produto Cursor. O subagent de processo e
 
 ## Design Critique
 
-Crítica isolada 1 (Task `inherit`, `3e56d7c4-a510-416c-98ba-f9e1dcbb2fc6`): **BLOCKED** — P1 prompt inválido (`uncommitted` + `Base Branch: develop`).
+Crítica isolada 1 (Task `inherit`, `3e56d7c4-a510-416c-98ba-f9e1dcbb2fc6`): **BLOCKED** — P1 prompt inválido (`uncommitted` + `Base Branch: develop`) no plano Bugbot.
 
-Resolução: D1/D2/specs/tasks alinhados à skill oficial.
+Resolução (plano antigo): D1/D2 alinhados à skill oficial. Superado pelo pivot.
 
-Crítica isolada 2 (Task `inherit`, `3e4ca798-7d24-4bfe-92bf-300c6ebc79b5`): **PASS**. P1 resolvido. P2 residuais: copy “vs develop” (corrigido na Hipótese/proposal nesta rodada), Autofix Off é gate de apply (3.1). Zero P0/P1 aberto.
+Crítica isolada 2 (Task `inherit`, `3e4ca798-7d24-4bfe-92bf-300c6ebc79b5`): **PASS** do plano Bugbot-obrigatório. **Obsoleta** após Alan recusar ligar Bugbot por custo (2026-08-17).
+
+Crítica isolada 3 (Task `inherit`, `35f2d0ba-098d-4eea-aaae-7f5ac421e47c`): **PASS**. Zero P0/P1. Pacote coerente com Bugbot Off por custo; happy path = dois reviewers locais `inherit`/`readonly`, pré-commit vs HEAD, fechamento `origin/develop...HEAD` na branch, skills pagas só se Alan pedir.
+
+P2 de redação resolvidos nesta rodada: D1 distingue tipos vs momentos; D2 manda o vs-`develop` imediatamente após o commit e **antes** de `Status=QA`. P2 residual (fallback da sessão principal após spawn vazio) aceito: Done MUST citar o ERROR. P3 nome da change/`BUGBOT.md` aceitos (risco de leitura).
 
 Referências avaliadas: `proposal.md`, `design.md`, `tasks.md`, `specs/cursor-code-review/spec.md`, `specs/cursor-harness/spec.md`, `specs/delivery-qa-stage/spec.md`, `specs/developer-tooling/spec.md`. Prototype: N/A. Impeccable: N/A.
 

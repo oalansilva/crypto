@@ -23,6 +23,11 @@ Transitions:
   homologado  "Homologado por Alan na develop."
   pronto      "Publicado em main." (AGENTS.md Kanban Pronto template)
 
+For --review on done, cite the local Code Review result, e.g.:
+  diff-reviewer (uncommitted vs HEAD): no findings
+  diff-reviewer (origin/develop...HEAD): no findings
+  code-reviewer: no findings
+
 Dedup normalization:
   - URL commits: github.com/.../commit/<sha>
   - "PR N (sha)" and "Commit/merge: <ref>" forms
@@ -89,6 +94,9 @@ case "$transition" in
 esac
 [[ -n "$card" ]] || error "--card <number> is required"
 [[ -n "$commit" ]] || error "--commit <sha> is required"
+if [[ "$transition" == "done" && -z "$review" ]]; then
+  error "--review is required for done (cite diff-reviewer uncommitted, vs develop, and code-reviewer)"
+fi
 
 commit_norm="$(printf '%s' "$commit" | tr '[:upper:]' '[:lower:]')"
 
