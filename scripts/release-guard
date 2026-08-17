@@ -303,6 +303,83 @@ worktree_dirty_only_canonical_release_doc() {
   return 0
 }
 
+closeout_allowlist_path() {
+  local path="$1"
+  case "$path" in
+    docs/*|openspec/changes/archive/*|openspec/specs/*|AGENTS.md|rules.md) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+unpublished_is_code_pr() {
+  # 0 = code PR, 1 = documental or unknown (fail-closed documental)
+  local from="origin/main" to unpublished line
+  if [[ "$current_branch" == release-* ]]; then
+    to="HEAD"
+  else
+    to="origin/develop"
+  fi
+  if ! unpublished="$(git diff --name-only "$from...$to" 2>/dev/null)"; then
+    return 1
+  fi
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    if ! closeout_allowlist_path "$line"; then
+      return 0
+    fi
+  done <<< "$unpublished"
+  return 1
+}
+
+prod_evidence_commit() {
+  local token="${1%% *}"
+  git rev-parse --verify "${token}^{commit}" 2>/dev/null
+}
+
+evidence_abbreviation_in_doc() {
+  local full="$1" doc="$2" token resolved
+  [[ -f "$doc" ]] || return 1
+  while IFS= read -r token; do
+    [[ -z "$token" || ${#token} -lt 7 ]] && continue
+    resolved="$(git rev-parse --verify "${token}^{commit}" 2>/dev/null || true)"
+    if [[ "$resolved" == "$full" ]]; then
+      return 0
+    fi
+  done < <(grep -oE '\b[0-9a-fA-F]{7,40}\b' "$doc" 2>/dev/null | tr 'A-F' 'a-f')
+  return 1
+}
+
+validate_prod_evidence_this_lote() {
+  local token full path unpublished
+  token="${prod_evidence%% *}"
+  if [[ -z "$token" ]]; then
+    return 0
+  fi
+  full="$(prod_evidence_commit "$token" || true)"
+  if [[ -z "$full" ]]; then
+    issue "PROD_DEPLOY_EVIDENCE first token is not a git commit: $token"
+    return 0
+  fi
+  if ! git merge-base --is-ancestor "$full" origin/main 2>/dev/null; then
+    issue "PROD_DEPLOY_EVIDENCE commit is not an ancestor of origin/main: ${full:0:8}"
+    return 0
+  fi
+  if ! unpublished="$(git diff --name-only "$full"..origin/main 2>/dev/null)"; then
+    issue "cannot diff PROD_DEPLOY_EVIDENCE ${full:0:8}..origin/main"
+    return 0
+  fi
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    if ! closeout_allowlist_path "$path"; then
+      issue "PROD_DEPLOY_EVIDENCE ${full:0:8} is not this package's code/PROD tip; ${full:0:8}..origin/main still has non-closeout path: $path"
+      return 0
+    fi
+  done <<< "$unpublished"
+  if [[ -f "$canonical_doc" ]] && ! evidence_abbreviation_in_doc "$full" "$canonical_doc"; then
+    issue "canonical release doc $canonical_doc has no git abbreviation (>=7 hex) of PROD_DEPLOY_EVIDENCE commit ${full:0:8}"
+  fi
+}
+
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [[ -z "$repo_root" ]]; then
   printf 'ERROR: not inside a Git repository\n' >&2
@@ -1109,12 +1186,14 @@ validate_release_doc() {
 }
 if [[ "$mode" == "pre" ]]; then
   if [[ -f "$canonical_doc" ]]; then
-    # D2: when the canonical doc exists (documental PR after deploy), pre
-    # requires evidence and clean content; a code-only PR has no doc yet.
-    if [[ -z "$prod_evidence" ]]; then
-      issue "release doc exists without PROD_DEPLOY_EVIDENCE: $canonical_doc (documental PR requires final deploy evidence)"
+    if unpublished_is_code_pr; then
+      warn "canonical release doc already exists for $RELEASE_DATE while unpublished diff still has code; update the same $canonical_doc after this package's deploy (do not reuse previous-lote PROD_DEPLOY_EVIDENCE)"
+    else
+      if [[ -z "$prod_evidence" ]]; then
+        issue "release doc exists without PROD_DEPLOY_EVIDENCE: $canonical_doc (documental PR requires final deploy evidence)"
+      fi
+      validate_release_doc "$canonical_doc"
     fi
-    validate_release_doc "$canonical_doc"
   else
     printf 'No canonical release doc yet for %s (code PR; documental PR comes after deploy).\n' "$RELEASE_DATE"
   fi
@@ -1128,6 +1207,9 @@ elif [[ "$mode" == "post" || "$mode" == "audit" ]]; then
     validate_release_doc "$canonical_doc"
   else
     issue "canonical release doc missing: $canonical_doc (commit the release doc for $RELEASE_DATE before moving cards to Pronto)"
+  fi
+  if [[ "$mode" == "post" && -n "$prod_evidence" ]]; then
+    validate_prod_evidence_this_lote
   fi
   # Duplicate release docs for the same date with divergent content
   declare -A seen_docs
