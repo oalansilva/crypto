@@ -19,6 +19,8 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
 
   DEV_BACKEND_UNIT="criptofarol-dev-backend.service"
   DEV_FRONTEND_UNIT="criptofarol-dev-frontend.service"
+  DEV_RUNTIME_WORKER_UNIT="criptofarol-dev-runtime-worker.service"
+  DEV_DISCOVERY_WORKER_UNIT="criptofarol-dev-discovery-worker.service"
   DEV_BACKEND_PORT="8004"
   DEV_FRONTEND_PORT="5175"
 
@@ -53,14 +55,29 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
     echo "Missing install-candle-writer-systemd.sh; candle writer timer not updated." >&2
   fi
 
+  echo "Ensuring DEV discovery workers..."
+  if [[ -x "$ROOT_DIR/install-discovery-workers-systemd.sh" ]]; then
+    "$ROOT_DIR/install-discovery-workers-systemd.sh"
+  else
+    echo "Missing install-discovery-workers-systemd.sh." >&2
+    exit 1
+  fi
+
   echo "Restarting canonical DEV services..."
-  systemctl restart "$DEV_BACKEND_UNIT" "$DEV_FRONTEND_UNIT"
+  systemctl restart \
+    "$DEV_BACKEND_UNIT" \
+    "$DEV_FRONTEND_UNIT" \
+    "$DEV_RUNTIME_WORKER_UNIT" \
+    "$DEV_DISCOVERY_WORKER_UNIT"
 
   for _ in $(seq 1 30); do
     if curl -fsS --max-time 2 "http://127.0.0.1:${DEV_BACKEND_PORT}/api/health" >/dev/null \
-      && curl -fsS --max-time 2 "http://127.0.0.1:${DEV_FRONTEND_PORT}/" >/dev/null; then
+      && curl -fsS --max-time 2 "http://127.0.0.1:${DEV_FRONTEND_PORT}/" >/dev/null \
+      && systemctl is-active --quiet "$DEV_RUNTIME_WORKER_UNIT" \
+      && systemctl is-active --quiet "$DEV_DISCOVERY_WORKER_UNIT"; then
       echo "crypto DEV backend:  http://127.0.0.1:${DEV_BACKEND_PORT}"
       echo "crypto DEV frontend: http://127.0.0.1:${DEV_FRONTEND_PORT}"
+      echo "crypto DEV discovery workers: active"
       systemctl is-active criptofarol-dev-candle-writer.timer >/dev/null 2>&1 \
         && echo "crypto DEV candle writer timer: active" \
         || echo "crypto DEV candle writer timer: inactive" >&2
@@ -70,7 +87,11 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
   done
 
   echo "DEV services did not become healthy after restart." >&2
-  systemctl --no-pager --lines=20 status "$DEV_BACKEND_UNIT" "$DEV_FRONTEND_UNIT" >&2 || true
+  systemctl --no-pager --lines=20 status \
+    "$DEV_BACKEND_UNIT" \
+    "$DEV_FRONTEND_UNIT" \
+    "$DEV_RUNTIME_WORKER_UNIT" \
+    "$DEV_DISCOVERY_WORKER_UNIT" >&2 || true
   exit 1
 fi
 # END CANONICAL DEV RESTART

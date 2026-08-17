@@ -1,0 +1,15 @@
+[Unit]
+Description=Cripto Farol DEV Celery discovery worker
+After=network-online.target postgresql.service docker.service criptofarol-dev-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__ROOT_DIR__/backend
+Environment=PYTHONPATH=__ROOT_DIR__:__ROOT_DIR__/backend
+ExecStart=/bin/bash -lc 'set -euo pipefail; set -a; source "__ROOT_DIR__/backend/.env"; set +a; export CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED=1; exec "__ROOT_DIR__/backend/.venv/bin/celery" -A app.celery_app:celery_app worker --loglevel=INFO --pool=solo --concurrency=1 --prefetch-multiplier=1 --hostname=discovery-dev@%%h -Q discovery'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

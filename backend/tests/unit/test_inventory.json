@@ -1,519 +1,555 @@
 {
- "schema_version": 1,
- "generated_from": "backend/tests/unit/test_*.py",
- "entries": [
-  {
-   "file": "backend/tests/unit/test_admin_backfill_routes_removed.py",
-   "protected_behavior": "removed admin route absence",
-   "production_reachability": "negative contract for removed surface",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "route registration and import absence assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_admin_user_management_routes.py",
-   "protected_behavior": "admin user CRUD and audit routes",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL fixture and route assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_api_coverage.py",
-   "protected_behavior": "API health, candles and metadata",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "FastAPI app with mocked provider/repository"
-  },
-  {
-   "file": "backend/tests/unit/test_background_services.py",
-   "protected_behavior": "job manager and signal monitor",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "job-manager persistence case uses postgres_isolation/unit_database_url; signal/news cases use fake sessions"
-  },
-  {
-   "file": "backend/tests/unit/test_batch_backtest_async_support.py",
-   "protected_behavior": "batch queue/store/task lifecycle",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "in-memory store and fake Redis/Celery"
-  },
-  {
-   "file": "backend/tests/unit/test_binance_market_orders.py",
-   "protected_behavior": "market order plan, submit, eligibility and durable reconcile workflow",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "exchange API fakes, fake session state transitions and sanitized payload assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_binance_realtime_connector.py",
-   "protected_behavior": "realtime connector retries and snapshots",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "HTTP/WebSocket fakes and deterministic payloads"
-  },
-  {
-   "file": "backend/tests/unit/test_binance_realtime_snapshot_store.py",
-   "protected_behavior": "realtime snapshot file state",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "tmp_path file round-trip assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_binance_realtime_worker.py",
-   "protected_behavior": "realtime worker orchestration",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "async connector and snapshot fakes"
-  },
-  {
-   "file": "backend/tests/unit/test_binance_spot_orders.py",
-   "protected_behavior": "spot order validation/signing",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "exchange API fakes and numeric assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_binance_symbol_universe.py",
-   "protected_behavior": "symbol universe selection",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "fake exchange responses"
-  },
-  {
-   "file": "backend/tests/unit/test_canonical_candle_writer_script.py",
-   "protected_behavior": "canonical candle writer lock/state",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "tmp_path lock and state assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_chart_pattern_service.py",
-   "protected_behavior": "chart pattern detection",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "deterministic DataFrame inputs"
-  },
-  {
-   "file": "backend/tests/unit/test_cleanup_beta_test_users.py",
-   "protected_behavior": "cleanup safety and summaries",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "pure parser and policy assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_combo_optimizer_final_execution_mode.py",
-   "protected_behavior": "optimizer execution mode",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "monkeypatched backtest assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_combo_service_templates.py",
-   "protected_behavior": "combo template listing/seeding",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "template-list persistence case uses postgres_isolation/unit_database_url; seeding branch is a pure mock"
-  },
-  {
-   "file": "backend/tests/unit/test_combo_short_execution.py",
-   "protected_behavior": "short trade execution",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "signal DataFrame assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_combo_strategy_logic_parser.py",
-   "protected_behavior": "combo strategy parser and signals",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "parser acceptance/rejection assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_database_and_auth.py",
-   "protected_behavior": "database/auth/beta access",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL session fixture and auth route assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_deep_backtest_open_position.py",
-   "protected_behavior": "open-position backtest behavior",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "deterministic candle/trade fixtures"
-  },
-  {
-   "file": "backend/tests/unit/test_dev_restart_contract.py",
-   "protected_behavior": "development restart safety",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "filesystem/script contract assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_gateway_and_agent_chat.py",
-   "protected_behavior": "gateway and agent chat routes",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL session plus gateway/WebSocket fakes"
-  },
-  {
-   "file": "backend/tests/unit/test_glassnode_service.py",
-   "protected_behavior": "Glassnode fetch/cache/error mapping",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "HTTP client fakes and cache assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_incremental_loader_tail_priority.py",
-   "protected_behavior": "incremental market-data loading",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "provider and frame fixtures"
-  },
-  {
-   "file": "backend/tests/unit/test_indicator_score_service.py",
-   "protected_behavior": "indicator score rules and endpoint",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "deterministic score rows and mocked service"
-  },
-  {
-   "file": "backend/tests/unit/test_main_and_market_routes.py",
-   "protected_behavior": "market routes and app lifespan",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "monkeypatched services and lifecycle assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_market_data_providers_coverage.py",
-   "protected_behavior": "market provider registry/fallbacks",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "HTTP/download/provider fakes"
-  },
-  {
-   "file": "backend/tests/unit/test_market_indicator_advanced_consumption.py",
-   "protected_behavior": "advanced indicator hydration",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "stored indicator fixtures"
-  },
-  {
-   "file": "backend/tests/unit/test_market_indicator_pivot_levels.py",
-   "protected_behavior": "pivot level calculations",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "timeframe DataFrame assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_market_indicator_tradingview_fixtures.py",
-   "protected_behavior": "TradingView indicator parity",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "versioned TradingView CSV fixtures; four optional skips retained"
-  },
-  {
-   "file": "backend/tests/unit/test_metrics_suite.py",
-   "protected_behavior": "metrics and go/no-go calculations",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "numeric edge-case assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_monitor_telegram_alerts.py",
-   "protected_behavior": "monitor Telegram alert persistence/routes",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL session fixture and route assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_ohlcv_backfill_service.py",
-   "protected_behavior": "OHLCV backfill provider flow",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "provider/store fakes"
-  },
-  {
-   "file": "backend/tests/unit/test_ohlcv_backfill_store.py",
-   "protected_behavior": "OHLCV backfill file state",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "tmp_path JSON state assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_ohlcv_storage.py",
-   "protected_behavior": "OHLCV repository SQL contract",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "fake PostgreSQL engine/connection; no live persistence"
-  },
-  {
-   "file": "backend/tests/unit/test_onchain_exchange_flow_service.py",
-   "protected_behavior": "on-chain exchange flow enrichment",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "Glassnode service fakes"
-  },
-  {
-   "file": "backend/tests/unit/test_onchain_metrics_route.py",
-   "protected_behavior": "on-chain metrics routes/errors",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "route service fakes and status assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_onchain_mining_metric_service.py",
-   "protected_behavior": "mining metric enrichment",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "metric series fixtures"
-  },
-  {
-   "file": "backend/tests/unit/test_opportunity_position_state.py",
-   "protected_behavior": "opportunity position state",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "signal/trade state fixtures"
-  },
-  {
-   "file": "backend/tests/unit/test_opportunity_service_coverage.py",
-   "protected_behavior": "opportunity favorites/catalog and persistence",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "DB-backed favorites/catalog cases use explicit opportunity_postgres; dataframe/in-memory service cases are pure"
-  },
-  {
-   "file": "backend/tests/unit/test_portfolio_route.py",
-   "protected_behavior": "portfolio snapshot/KPI routes",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL snapshot session fixture"
-  },
-  {
-   "file": "backend/tests/unit/test_retrospectives_flow.py",
-   "protected_behavior": "workflow retrospective service/routes",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL workflow session fixture"
-  },
-  {
-   "file": "backend/tests/unit/test_routes_and_file_services.py",
-   "protected_behavior": "file/log/market/openspec routes",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "tmp_path and network fakes"
-  },
-  {
-   "file": "backend/tests/unit/test_runtime_status.py",
-   "protected_behavior": "runtime status sanitization",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "environment/state fixtures"
-  },
-  {
-   "file": "backend/tests/unit/test_runtime_worker_and_workflow_db.py",
-   "protected_behavior": "workflow DB/runtime worker",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "workflow schema case uses postgres_isolation/unit_workflow_database_url; URL/worker cases use mocks"
-  },
-  {
-   "file": "backend/tests/unit/test_sentiment_binance_validation.py",
-   "protected_behavior": "sentiment, Binance, workflow validation",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL workflow session plus provider fakes"
-  },
-  {
-   "file": "backend/tests/unit/test_sequential_optimizer_coverage.py",
-   "protected_behavior": "sequential optimizer stages/checkpoints",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "tmp_path checkpoints and deterministic stages"
-  },
-  {
-   "file": "backend/tests/unit/test_signal_history_writer.py",
-   "protected_behavior": "signal history quality gates",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "all persistence calls replaced by fake sessions"
-  },
-  {
-   "file": "backend/tests/unit/test_small_services_and_utils.py",
-   "protected_behavior": "small services/preferences/refresh",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL application session fixture"
-  },
-  {
-   "file": "backend/tests/unit/test_strategy_descriptions.py",
-   "protected_behavior": "public strategy descriptions",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "catalog and safe-copy assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_strategy_transparency.py",
-   "protected_behavior": "strategy transparency/redaction",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "serialized strategy fixtures"
-  },
-  {
-   "file": "backend/tests/unit/test_trade_explanations.py",
-   "protected_behavior": "trade explanation output",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "trade/candle fixtures and secret redaction assertions"
-  },
-  {
-   "file": "backend/tests/unit/test_user_exchange_credentials_and_indicators.py",
-   "protected_behavior": "user exchange credential persistence",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL credential session fixture"
-  },
-  {
-   "file": "backend/tests/unit/test_wallet_stable_balances.py",
-   "protected_behavior": "stable balance normalization",
-   "production_reachability": "reachable",
-   "persistence_need": "pure",
-   "regression_risk": "medium",
-   "decision": "keep",
-   "evidence": "exchange balance payload fixtures"
-  },
-  {
-   "file": "backend/tests/unit/test_workflow_services.py",
-   "protected_behavior": "workflow transitions/reconciliation",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL workflow session and private migration schema"
-  },
-  {
-   "file": "backend/tests/unit/test_workflow_validation_and_helpers.py",
-   "protected_behavior": "workflow validation/handoff helpers",
-   "production_reachability": "reachable",
-   "persistence_need": "postgres",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "PostgreSQL workflow session fixture"
-  },
-  {
-   "file": "backend/tests/unit/test_walk_forward_gate.py",
-   "protected_behavior": "walk-forward split treino/holdout (disjunção/contiguidade) e gate GO/NO-GO na criação de favorito (override admin)",
-   "production_reachability": "ComboOptimizer.run_optimization (split_train_ratio), oos_gate_decision no POST /api/favorites/, revalidação",
-   "persistence_need": "pure",
-   "regression_risk": "high",
-   "decision": "keep",
-   "evidence": "split_train_holdout, oos_gate_decision, evaluate_go_nogo com métricas OOS completas"
-  }
- ]
+  "schema_version": 1,
+  "generated_from": "backend/tests/unit/test_*.py",
+  "entries": [
+    {
+      "file": "backend/tests/unit/test_admin_backfill_routes_removed.py",
+      "protected_behavior": "removed admin route absence",
+      "production_reachability": "negative contract for removed surface",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "route registration and import absence assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_admin_user_management_routes.py",
+      "protected_behavior": "admin user CRUD and audit routes",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL fixture and route assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_api_coverage.py",
+      "protected_behavior": "API health, candles and metadata",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "FastAPI app with mocked provider/repository"
+    },
+    {
+      "file": "backend/tests/unit/test_background_services.py",
+      "protected_behavior": "job manager and signal monitor",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "job-manager persistence case uses postgres_isolation/unit_database_url; signal/news cases use fake sessions"
+    },
+    {
+      "file": "backend/tests/unit/test_batch_backtest_async_support.py",
+      "protected_behavior": "batch queue/store/task lifecycle",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "in-memory store and fake Redis/Celery"
+    },
+    {
+      "file": "backend/tests/unit/test_binance_market_orders.py",
+      "protected_behavior": "market order plan, submit, eligibility and durable reconcile workflow",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "exchange API fakes, fake session state transitions and sanitized payload assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_binance_realtime_connector.py",
+      "protected_behavior": "realtime connector retries and snapshots",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "HTTP/WebSocket fakes and deterministic payloads"
+    },
+    {
+      "file": "backend/tests/unit/test_binance_realtime_snapshot_store.py",
+      "protected_behavior": "realtime snapshot file state",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "tmp_path file round-trip assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_binance_realtime_worker.py",
+      "protected_behavior": "realtime worker orchestration",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "async connector and snapshot fakes"
+    },
+    {
+      "file": "backend/tests/unit/test_binance_spot_orders.py",
+      "protected_behavior": "spot order validation/signing",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "exchange API fakes and numeric assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_binance_symbol_universe.py",
+      "protected_behavior": "symbol universe selection",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "fake exchange responses"
+    },
+    {
+      "file": "backend/tests/unit/test_canonical_candle_writer_script.py",
+      "protected_behavior": "canonical candle writer lock/state",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "tmp_path lock and state assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_chart_pattern_service.py",
+      "protected_behavior": "chart pattern detection",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "deterministic DataFrame inputs"
+    },
+    {
+      "file": "backend/tests/unit/test_cleanup_beta_test_users.py",
+      "protected_behavior": "cleanup safety and summaries",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "pure parser and policy assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_combo_optimizer_final_execution_mode.py",
+      "protected_behavior": "optimizer execution mode and correlated stage generation",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "monkeypatched backtest assertions plus production-shaped legacy schema coarse-step coverage"
+    },
+    {
+      "file": "backend/tests/unit/test_combo_service_templates.py",
+      "protected_behavior": "combo template listing/seeding",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "template-list persistence case uses postgres_isolation/unit_database_url; seeding branch is a pure mock"
+    },
+    {
+      "file": "backend/tests/unit/test_combo_short_execution.py",
+      "protected_behavior": "short trade execution",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "signal DataFrame assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_combo_strategy_logic_parser.py",
+      "protected_behavior": "combo strategy parser and signals",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "parser acceptance/rejection assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_database_and_auth.py",
+      "protected_behavior": "database/auth/beta access",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL session fixture and auth route assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_deep_backtest_open_position.py",
+      "protected_behavior": "open-position backtest behavior",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "deterministic candle/trade fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_dev_restart_contract.py",
+      "protected_behavior": "development restart safety",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "filesystem/script contract assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_celery_tasks.py",
+      "protected_behavior": "discovery orchestrator progress and outbox acknowledgement",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "deterministic worker/service fakes assert per-combination reconciliation and ACK ordering"
+    },
+    {
+      "file": "backend/tests/unit/test_gateway_and_agent_chat.py",
+      "protected_behavior": "gateway and agent chat routes",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL session plus gateway/WebSocket fakes"
+    },
+    {
+      "file": "backend/tests/unit/test_glassnode_service.py",
+      "protected_behavior": "Glassnode fetch/cache/error mapping",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "HTTP client fakes and cache assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_incremental_loader_tail_priority.py",
+      "protected_behavior": "incremental market-data loading",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "provider and frame fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_indicator_score_service.py",
+      "protected_behavior": "indicator score rules and endpoint",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "deterministic score rows and mocked service"
+    },
+    {
+      "file": "backend/tests/unit/test_logs_tail_cursor.py",
+      "protected_behavior": "cursor incremental de GET /api/logs/tail (after_offset/file_id/cursor_reset), retenção UTF-8 e compatibilidade do tail legado",
+      "production_reachability": "GET /api/logs/tail usado por BackendLogViewer na configuração de combos",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "round-trip incremental sem duplicação, burst acima de MAX_INCREMENTAL_BYTES, UTF-8 dividido, truncamento e rotação por identidade"
+    },
+    {
+      "file": "backend/tests/unit/test_main_and_market_routes.py",
+      "protected_behavior": "market routes and app lifespan",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "monkeypatched services and lifecycle assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_market_data_providers_coverage.py",
+      "protected_behavior": "market provider registry/fallbacks",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "HTTP/download/provider fakes"
+    },
+    {
+      "file": "backend/tests/unit/test_market_indicator_advanced_consumption.py",
+      "protected_behavior": "advanced indicator hydration",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "stored indicator fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_market_indicator_pivot_levels.py",
+      "protected_behavior": "pivot level calculations",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "timeframe DataFrame assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_market_indicator_tradingview_fixtures.py",
+      "protected_behavior": "TradingView indicator parity",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "versioned TradingView CSV fixtures; four optional skips retained"
+    },
+    {
+      "file": "backend/tests/unit/test_metrics_suite.py",
+      "protected_behavior": "metrics and go/no-go calculations",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "numeric edge-case assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_monitor_telegram_alerts.py",
+      "protected_behavior": "monitor Telegram alert persistence/routes",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL session fixture and route assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_ohlcv_backfill_service.py",
+      "protected_behavior": "OHLCV backfill provider flow",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "provider/store fakes"
+    },
+    {
+      "file": "backend/tests/unit/test_ohlcv_backfill_store.py",
+      "protected_behavior": "OHLCV backfill file state",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "tmp_path JSON state assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_ohlcv_storage.py",
+      "protected_behavior": "OHLCV repository SQL contract",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "fake PostgreSQL engine/connection; no live persistence"
+    },
+    {
+      "file": "backend/tests/unit/test_onchain_exchange_flow_service.py",
+      "protected_behavior": "on-chain exchange flow enrichment",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "Glassnode service fakes"
+    },
+    {
+      "file": "backend/tests/unit/test_onchain_metrics_route.py",
+      "protected_behavior": "on-chain metrics routes/errors",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "route service fakes and status assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_onchain_mining_metric_service.py",
+      "protected_behavior": "mining metric enrichment",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "metric series fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_oos_promotion_proof_digest.py",
+      "protected_behavior": "digest canônico da prova OOS estável no round-trip JSON (float integral 8953.0 ↔ 8953) e verificação fail-closed (assinatura, expiração, conteúdo diferente)",
+      "production_reachability": "issue_oos_promotion_proof no POST /api/combos/optimize e verify_oos_promotion_proof no POST /api/favorites/",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "round-trip aninhado, -0.0→0, None/str/bool preservados, ordem de listas, prova expirada/tampered/ausente rejeitada"
+    },
+    {
+      "file": "backend/tests/unit/test_opportunity_position_state.py",
+      "protected_behavior": "opportunity position state",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "signal/trade state fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_opportunity_service_coverage.py",
+      "protected_behavior": "opportunity favorites/catalog and persistence",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "DB-backed favorites/catalog cases use explicit opportunity_postgres; dataframe/in-memory service cases are pure"
+    },
+    {
+      "file": "backend/tests/unit/test_portfolio_route.py",
+      "protected_behavior": "portfolio snapshot/KPI routes",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL snapshot session fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_retrospectives_flow.py",
+      "protected_behavior": "workflow retrospective service/routes",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL workflow session fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_routes_and_file_services.py",
+      "protected_behavior": "file/log/market/openspec routes",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "tmp_path and network fakes"
+    },
+    {
+      "file": "backend/tests/unit/test_runtime_status.py",
+      "protected_behavior": "runtime status sanitization",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "environment/state fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_runtime_worker_and_workflow_db.py",
+      "protected_behavior": "workflow DB/runtime worker",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "workflow schema case uses postgres_isolation/unit_workflow_database_url; URL/worker cases use mocks"
+    },
+    {
+      "file": "backend/tests/unit/test_sentiment_binance_validation.py",
+      "protected_behavior": "sentiment, Binance, workflow validation",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL workflow session plus provider fakes"
+    },
+    {
+      "file": "backend/tests/unit/test_sequential_optimizer_coverage.py",
+      "protected_behavior": "sequential optimizer stages/checkpoints",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "tmp_path checkpoints and deterministic stages"
+    },
+    {
+      "file": "backend/tests/unit/test_signal_history_writer.py",
+      "protected_behavior": "signal history quality gates",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "all persistence calls replaced by fake sessions"
+    },
+    {
+      "file": "backend/tests/unit/test_small_services_and_utils.py",
+      "protected_behavior": "small services/preferences/refresh",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL application session fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_strategy_descriptions.py",
+      "protected_behavior": "public strategy descriptions",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "catalog and safe-copy assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_strategy_transparency.py",
+      "protected_behavior": "strategy transparency/redaction",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "serialized strategy fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_trade_explanations.py",
+      "protected_behavior": "trade explanation output",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "trade/candle fixtures and secret redaction assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_user_exchange_credentials_and_indicators.py",
+      "protected_behavior": "user exchange credential persistence",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL credential session fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_walk_forward_combined_gate.py",
+      "protected_behavior": "gate walk-forward combinado Treino (IS) / Holdout (OOS): perfis independentes, retenção de Sharpe 50%, fail-closed e mensagens segmentadas",
+      "production_reachability": "evaluate_walk_forward no combo_optimizer (split_train_ratio) e oos_gate_decision no POST /api/favorites/",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "IS ok + OOS poucos trades/Sharpe baixo, degradação IS→OOS, caso 23/0.32, limites inclusivos, ausentes/não finitos, ordem de razões, override"
+    },
+    {
+      "file": "backend/tests/unit/test_walk_forward_gate.py",
+      "protected_behavior": "walk-forward split treino/holdout (disjunção/contiguidade) e gate GO/NO-GO na criação de favorito (override admin)",
+      "production_reachability": "ComboOptimizer.run_optimization (split_train_ratio), oos_gate_decision no POST /api/favorites/, revalidação",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "split_train_holdout, oos_gate_decision, evaluate_go_nogo com métricas OOS completas"
+    },
+    {
+      "file": "backend/tests/unit/test_wallet_stable_balances.py",
+      "protected_behavior": "stable balance normalization",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "exchange balance payload fixtures"
+    },
+    {
+      "file": "backend/tests/unit/test_workflow_services.py",
+      "protected_behavior": "workflow transitions/reconciliation",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL workflow session and private migration schema"
+    },
+    {
+      "file": "backend/tests/unit/test_workflow_validation_and_helpers.py",
+      "protected_behavior": "workflow validation/handoff helpers",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL workflow session fixture"
+    }
+  ]
 }

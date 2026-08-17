@@ -43,7 +43,7 @@ Exemplos de evidencia:
   - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan.
   - `Pronto para Dev`: design aprovado por Alan via arraste; único status que libera desenvolvimento.
   - `Em desenvolvimento`: trabalho técnico ativo.
-  - `Code Review`: diff pronto para revisao Codex antes do commit.
+  - `Code Review`: diff pronto para revisão Cursor antes do commit.
   - `QA`: SHA revisado em validacao automatizada, incluindo `qa-gate` e Playwright visual.
   - `Done`: Done tecnico; QA verde, integrado em `develop`, restart/runtime validados e aguardando Alan.
   - `Homologado`: Alan aprovou funcionalmente em `develop`.
@@ -56,7 +56,7 @@ Exemplos de evidencia:
 ### Gate de design
 
 - **Todo card** passa por `Design -> Aprovação de Design -> Pronto para Dev` antes de implementação. Não existe bypass.
-- Todo card em `Design` usa a skill canônica `.agents/skills/design-critic/SKILL.md` (`$design-critic` no Codex; `/design-critic` no Cursor).
+- Todo card em `Design` usa a skill canônica `.agents/skills/design-critic/SKILL.md` no Cursor.
 - Com `UI impact: affected`, a entrega precisa conter `design.md`, protótipo versionado ou verificável, `Design Critique` e veredito explícito do agente.
 - Quando a tela já existir, o protótipo parte do UI atual e redesenha só o delta; tela nova segue `DESIGN.md` + shell do app.
 - Antes de `PASS`, a URL final precisa ser validada em navegador real nos viewports desktop/mobile, cobrindo estado padrão, interações e asserts dos critérios críticos. HTTP 200/build não bastam; a evidência fica registrada em `## Prototype Validation`.

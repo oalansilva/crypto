@@ -1015,6 +1015,13 @@ export function ComboConfigurePage() {
                                     <ExternalLink className="w-4 h-4" />
                                     Abrir Strategy Favorites
                                 </button>
+                                <button
+                                    onClick={() => navigate('/combo/discovery')}
+                                    className="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-700"
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Descoberta sistemática (varredura)
+                                </button>
                             </div>
                         )}
                     </div>

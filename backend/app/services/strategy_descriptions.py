@@ -164,6 +164,16 @@ def public_strategy_display_name(name: Any) -> str:
     return "Estratégia Cripto Farol"
 
 
+def public_strategy_catalog_name(name: Any) -> str:
+    """Catalog label: friendly display name when mapped, otherwise the raw name."""
+
+    key = normalize_strategy_key(name)
+    mapped = PUBLIC_STRATEGY_DISPLAY_NAMES.get(key)
+    if mapped:
+        return mapped
+    return str(name or "").strip() or "Estratégia"
+
+
 def public_strategy_description(name: Any, raw_description: Any = None) -> str:
     """Return safe, high-level copy for users without exposing parameters."""
 

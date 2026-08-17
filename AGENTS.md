@@ -10,7 +10,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 ## Processo global do Alan
 
-- Regras gerais de processo ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O opencode aplica os mesmos overrides versionados neste `AGENTS.md` e em `rules.md`; o fluxo do projeto não depende de um caminho absoluto local. **Em qualquer pedido de release, publicacao, lote, deploy, producao ou operacao que possa afetar DEV/PROD, carregue tambem a skill global `alan-workflow-ambientes` antes de agir**; ela define o mapa DEV/PROD (caminhos, services systemd, bancos, URLs) e o passo obrigatorio de deploy em PROD antes de mover cards para `Pronto`.
+- Regras gerais de processo ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O Cursor Agent aplica os mesmos overrides versionados neste `AGENTS.md` e em `rules.md`; o fluxo do projeto não depende de um caminho absoluto local. **Em qualquer pedido de release, publicacao, lote, deploy, producao ou operacao que possa afetar DEV/PROD, carregue tambem a skill global `alan-workflow-ambientes` antes de agir**; ela define o mapa DEV/PROD (caminhos, services systemd, bancos, URLs) e o passo obrigatorio de deploy em PROD antes de mover cards para `Pronto`.
 - Use essa skill para comunicacao curta, evidencias antes de concluir, OpenSpec no card antes de implementar, higiene Git/worktree/release, classificacao de pendencias, seguranca de output e fechamento sem pendencia. No cripto, o fluxo local `Todo`/`Design`/`Aprovação de Design`/`Pronto para Dev`/`Em desenvolvimento`/`Code Review`/`QA`/`Done`/`Homologado`/`Pronto`/`Cancelado` prevalece sobre qualquer vocabulário global antigo.
 - Este `AGENTS.md` deve manter apenas regras especificas do cripto: branches `develop/main`, Project 1, release guard, PostgreSQL, Drive/docs, comandos de backend/frontend, workflow DB e papeis dos agentes.
 - Se uma regra geral precisar mudar para todos os projetos, atualize `alan-workflow`; nao duplique a regra aqui.
@@ -28,7 +28,9 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de homologação direta por card (solicitação do cliente):** seguir `alan-workflow`; no cripto, homologacao significa aprovacao funcional em `develop`.
 - **Guardrail anti-release acidental:** seguir `alan-workflow`; no cripto, homologacao nao autoriza `main`, PR, merge, archive ou release.
 - **Regra de release/lote:** seguir `alan-workflow` e `alan-workflow-ambientes`; no cripto, selecione todos os cards `Homologado` incluídos no pacote, confirme commits/branches, rode validação final completa, arquive OpenSpec, push, PR para `main`, merge manual, atualize `develop` e **então execute o deploy em PROD** (`/srv/apps/prod/criptofarol/source`: `git fetch origin && git reset --hard origin/main`, `alembic upgrade head`, build do frontend com `VITE_APP_ENV=production`, restart dos services PROD afetados e validação do endpoint público `https://criptofarol.com.br`) e só então mova os cards incluídos para `Pronto`. Deploy em PROD é parte obrigatória do fechamento; merge em `main` sem deploy e validação em PROD não autoriza `Pronto`.
-- **Regra documental de release da Clara/Alan:** quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente para cards no nome da Clara ou do Alan, antes de publicar/encerrar o pacote, pegue todos os cards `Homologado` por Alan e com `Responsavel=Clara` ou `Responsavel=Alan` incluídos na release e revise se as decisões, status e entregáveis desses cards estão refletidos na documentação do projeto/produto. A documentação precisa ficar atualizada tanto nos Markdown locais quanto nos Google Docs/Drive correspondentes. Depois da release publicada/encerrada com evidência, mova esses cards de `Homologado` para `Pronto`. Cards de `opencode` seguem o fluxo técnico próprio do opencode no mesmo pacote.
+- **Ordem canônica de fechamento de release (card #518):** 1) merge manual do PR da release; 2) deploy em PROD e captura da evidência final; 3) execução de `/kaizen release` ainda com os cards em `Homologado`; 4) atualização conjunta de `docs/release-<data>.md` e `docs/kaizen-log.md` em um único commit/PR documental; 5) merge do PR documental e `git switch main && git pull --ff-only origin main`; 6) deleção local e remota das branches declaradas do pacote; 7) `RELEASE_DATE=... RELEASE_CARDS=... RELEASE_BRANCHES=... PROD_DEPLOY_EVIDENCE=... scripts/release-guard post`; 8) somente após PASS, promoção dos cards para `Pronto`. O `post` exige `RELEASE_BRANCHES` não vazio com branches ausentes local+remota, entrada canônica de `/kaizen release` em `docs/kaizen-log.md` na data, doc canônica sem placeholder e `main` local sincronizada (`--ff-only`); o guard permanece read-only.
+- **Regra de spawn vazio de subagent (card #518):** após qualquer delegação via Task tool, verifique que o resultado contém ao menos uma mensagem e uma part utilizável. `0 messages`, `0 parts`, sessão ausente ou erro de criação são **falha explícita**: a etapa permanece incompleta, o handoff registra `ERROR: subagent spawn failed/empty` com identificador e impacto, e não há fallback silencioso nem alegação de que a etapa delegada ocorreu.
+- **Regra documental de release da Clara/Alan:** quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente para cards no nome da Clara ou do Alan, antes de publicar/encerrar o pacote, pegue todos os cards `Homologado` por Alan e com `Responsavel=Clara` ou `Responsavel=Alan` incluídos na release e revise se as decisões, status e entregáveis desses cards estão refletidos na documentação do projeto/produto. A documentação precisa ficar atualizada tanto nos Markdown locais quanto nos Google Docs/Drive correspondentes. Depois da release publicada/encerrada com evidência, mova esses cards de `Homologado` para `Pronto`. Cards de harness/tooling seguem o mesmo fluxo técnico no mesmo pacote.
 - **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `Em desenvolvimento` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste, corrija e reteste mantendo o status atual. O card só avança: `Done` -> `Homologado` -> `Pronto`.
 - **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
 - **Regra de validação OpenSpec global:** `openspec validate --all` verde é critério padrão de fechamento. Se falhar por changes antigas fora do card, valide os specs afetados pelo card como evidência parcial, mas resolva a sujeira global antes do encerramento: corrija ou arquive as changes antigas, inclusive por archive manual quando a CLI/skill não conseguir concluir.
@@ -53,9 +55,9 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Protótipo HTML:** seção separada no comentário com link HTTP `https://dev.criptofarol.com.br/prototypes/<slug>/` (arquivos em `frontend/public/prototypes/<slug>/`). Helper: `publish-openspec-card-artifacts.sh --prototype-url ...`.
 - **Observação de fluxo OpenSpec:** use os comandos nesta ordem para mudanças novas; ajuste a cadência apenas com justificativa explícita.
 - **Subagents:** use subagents sempre que houver ganho claro de paralelismo, investigação independente, validação especializada ou aceleração sem duplicar trabalho.
-- **Roteamento de LLM:** a sessão principal do opencode é a fonte única do LLM/modelo e da versão da tarefa. Todo subagent usado deve herdar exatamente o mesmo LLM/modelo e versão da sessão principal; papéis, prompts, sandbox e ownership podem variar, mas não o LLM. Se a igualdade não puder ser imposta e observada, não criar o subagent. Não usar Sol/Luna/Terra fixos nem fallback de modelo.
-- **Exceção explícita — análise de imagem (roteamento visual):** o modelo da sessão (`deepseek-v4-flash`) não tem visão. Toda análise de imagem é feita pelo subagent `vision` (`.opencode/agent/vision.md`) com `model: opencode-go/qwen3.7-plus` fixo — junto com o `design-planner` (planejamento de design), é exceção explícita à herança de modelo. O plugin `vision-router` (`.opencode/plugin/vision-router.ts`) chaveia automaticamente: detecta imagem no contexto (anexo no chat, screenshot de tool, imagem de card/issue do GitHub, `diff.png`/baseline do QA visual, artifact do CI, `qa_artifacts/`, `artifacts-signals-*.png`), substitui pixels por placeholder com o caminho do arquivo e instrui a delegação ao `vision`. Evidência em `.impeccable/vision-router.jsonl`. Para análise explícita use `/vision <arquivo|url>` (aceita múltiplas imagens para antes/depois). O agente principal nunca interpreta pixels.
-- **Exceção explícita — planejamento de design (gate Design):** a preparação de design (especificações, crítica e protótipo) **DEVE ser executada pelo subagent `design-planner`** (`.opencode/agent/design-planner.md`) com `model: openai/gpt-5.6-sol` fixo (provider OpenAI via OAuth) e `reasoningEffort: high` — segunda exceção à herança de modelo, ao lado do `vision` — em **todo card**, com `UI impact: affected` ou `none` (obrigatoriedade aprovada por Alan em 2026-08-14, ver `docs/decision-log.md`). O `design-planner` é o **autor** dos artefatos do gate (`proposal.md`, `design.md` com Design Critique/veredito, `specs/**`, `tasks.md`); a crítica independente pode usar um segundo spawn read-only do `design-planner`. A sessão principal permanece no Go/flash e apenas consolida a entrega, valida OpenSpec, publica e move `Design -> Aprovação de Design`; os critics do Impeccable (Assessment A/B) herdam o modelo da sessão de design designada (`design-planner`), com igualdade observável obrigatória — sem ela, `BLOCKED`. Pixels continuam sempre delegados ao `vision`. **Roteamento:** igual ao `vision`, uma sessão principal nova na worktree que contém o agent delega via ferramenta `Task` com tipo `design-planner`; como o agent é `mode: subagent`, é proibido iniciar com `opencode run --agent design-planner` (o CLI rejeita e faz fallback para o agente/modelo default, invalidando o gate). O frontier nunca roda como sessão principal (evidência: sessão de exploração com grok 4.6 queimou ~8,5M cache_read ≈ $3+); o `design-planner` recebe packet compacto e roda como spawn isolado, **sem teto de custo por card** (decisão de Alan). Fallback operacional `opencode-go/grok-4.5` (effort high) só com autorização de Alan.
+- **Roteamento de LLM:** o modelo selecionado no chat do Cursor é a fonte única do LLM/modelo da tarefa (hoje Grok 4.6). Todo subagent/`Task` deve herdar esse modelo (`inherit`) salvo pedido explícito de Alan no chat. Papéis e prompts podem variar; não há Sol/Pro/Qwen obrigatórios nem fallback de modelo.
+- **Análise de imagem:** a sessão Cursor lê pixels com a ferramenta `Read` depois de confirmar que o path existe. Se o modelo do chat não aceitar imagem, declare o bloqueio ou peça a Alan um modelo com visão. Não exigir `vision-router`, Qwen nem subagent `vision` do OpenCode.
+- **Gate Design:** a sessão Cursor escreve os artefatos OpenSpec e o protótipo (quando UI). Em seguida dispara `Task` isolada no mesmo modelo, instruída a não editar, para a crítica. Sem lease, packet selado, `design_artifact_write` ou attestation OpenCode. A main publica e pode mover somente `Design -> Aprovação de Design`.
 - OpenSpec é a camada de especificação técnica (artifacts).
 - Workflow DB e OpenSpec são fontes de operação e evidência.
 - **Regra de documentação produto/Drive:** documentos de produto/projeto que existem no Google Drive e em `docs/*.md` devem ser mantidos sincronizados. Drive é a fonte de consulta/revisão para Alan; Markdown local/GitHub é espelho versionado e backup técnico. Não editar manualmente nos dois lugares de forma divergente. Ao atualizar definição aprovada, atualize o `.md` local e sincronize o Google Doc correspondente, ou atualize o Drive e depois espelhe localmente. Para código e documentação técnica de implementação, GitHub continua mandando.
@@ -65,16 +67,16 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **DoD de documentação sincronizada:** uma atualização documental só está concluída quando os dois lados estão atualizados e conferidos: Markdown local/versionado em `crypto/docs/` e Google Doc/Sheet correspondente no Drive. Se apenas o Drive foi atualizado, espelhe imediatamente no Markdown local; se apenas o Markdown local foi atualizado, sincronize imediatamente no Drive. Não mova card para `Pronto`, não feche release e não reporte documentação como concluída sem evidência dos dois lados.
 - **Passo obrigatório de Drive em release:** ao criar/subir release, depois de atualizar os Markdown locais, sincronize os documentos aplicáveis no Google Drive da Clara. Para usar `gog` sem TTY, carregue `GOG_KEYRING_PASSWORD` do Bitwarden Secrets Manager (`Crypto` / `GOG_KEYRING_PASSWORD`). Primeiro liste a subpasta `Docs` com `gog drive ls --account claravalente840@gmail.com --parent 1X01niQNrPh2wLy5WqJb2iBN8QnzTKGBx --json --no-input`; se já existir Google Doc equivalente, atualize o mesmo ID com `gog docs write <docId> --file <arquivo.md> --markdown --replace --pageless --no-input`; se não existir, crie diretamente nessa subpasta com `gog docs create "<titulo-sem-prefixo>" --account claravalente840@gmail.com --parent 1X01niQNrPh2wLy5WqJb2iBN8QnzTKGBx --file <arquivo.md> --pageless --no-input`. Nunca crie documentos soltos na raiz da pasta do projeto. Ao final, valide com `gog drive ls --account claravalente840@gmail.com --parent 1X01niQNrPh2wLy5WqJb2iBN8QnzTKGBx --json --no-input` e registre os links/evidência da sincronização.
 
-## De-para OpenSpec/OPSX no opencode
+## De-para OpenSpec/OPSX no Cursor
 
-O projeto usa o opencode como ferramenta única de desenvolvimento. As skills OpenSpec são geradas pela mesma CLI e carregadas automaticamente pelo opencode. Trate `/opsx:*` como a intenção canônica escrita na documentação e `/opsx-*` como o alias de slash command disponibilizado pelo adaptador do opencode. Se o cliente não interpretar uma das formas como slash command, trate o texto como intenção operacional e acione a skill local equivalente. Não substitua a skill por criação manual de arquivos.
+O projeto usa o Cursor Agent como ferramenta única de desenvolvimento. As skills OpenSpec são geradas pela CLI e versionadas em `.cursor/skills/` e `.cursor/commands/`. Trate `/opsx:*` como a intenção canônica e `/opsx-*` como o slash command do Cursor. Se o cliente não interpretar uma das formas, trate o texto como intenção operacional e acione a skill local equivalente. Não substitua a skill por criação manual de arquivos.
 
-No **opencode**, as skills do projeto são carregadas automaticamente de `.opencode/skills/` (skills OpenSpec, regeneradas com a mesma CLI) e `.agents/skills/` (design-critic, impeccable, playwright-cli). Os commands `/opsx:*` vivem em `.opencode/commands/opsx-*.md`, os subagents em `.opencode/agent/*.md` e o plugin de hooks em `.opencode/plugin/impeccable-hook.ts` (auto-descoberto). Invocar `/opsx:<...>` no opencode ou usar a tool skill `openspec-<...>` tem o mesmo efeito. Os nomes de skills precisam ser únicos entre todas as localizações que o opencode escaneia.
+No **Cursor**, as skills do projeto carregam de `.cursor/skills/` (OpenSpec, kaizen) e `.agents/skills/` (design-critic, impeccable, playwright-cli). Os commands `/opsx-*` e `/kaizen` vivem em `.cursor/commands/`. O hook Impeccable está em `.cursor/hooks.json` e chama `.agents/skills/impeccable/scripts/hook.mjs`. Invocar `/opsx-new` ou a skill `openspec-new-change` tem o mesmo efeito.
 
-Os arquivos em `.opencode/skills/openspec-*` e `.opencode/commands/opsx-*.md` são adaptadores oficiais gerados. Não edite uma cópia isoladamente. Atualize todos com a mesma CLI:
+Os arquivos em `.cursor/skills/openspec-*` e `.cursor/commands/opsx-*.md` são adaptadores oficiais. Atualize-os com a mesma CLI:
 
 ```bash
-openspec init --tools opencode --force
+openspec init --tools cursor --force
 ```
 
 Regra obrigatória:
@@ -86,9 +88,9 @@ Regra obrigatória:
 
 De-para principal:
 
-| Intenção canônica | Comando opencode | Skill obrigatória | CLI base | Resultado esperado |
+| Intenção canônica | Comando Cursor | Skill obrigatória | CLI base | Resultado esperado |
 | --- | --- | --- | --- | --- |
-| `/opsx:new <change>` | `/opsx:new <change>` (`.opencode/commands/opsx-new.md`) | `$openspec-new-change` | `openspec new change "<change>"`; `openspec status --change "<change>"`; `openspec instructions <artifact-id> --change "<change>"` | Cria apenas o scaffold da change, mostra status e instrução do primeiro artifact. Não cria artifacts ainda. |
+| `/opsx:new <change>` | `/opsx-new <change>` (`.cursor/commands/opsx-new.md`) | `$openspec-new-change` | `openspec new change "<change>"`; `openspec status --change "<change>"`; `openspec instructions <artifact-id> --change "<change>"` | Cria apenas o scaffold da change, mostra status e instrução do primeiro artifact. Não cria artifacts ainda. |
 | `/opsx:ff <change>` | `/opsx:ff <change>` | `$openspec-ff-change` | `openspec status --change "<change>" --json`; `openspec instructions <artifact-id> --change "<change>" --json` | Gera todos os artifacts necessários para ficar pronto para implementação, respeitando dependências e templates retornados pela CLI. |
 | `/opsx:apply <change>` | `/opsx:apply <change>` | `$openspec-apply-change` | `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Lê `contextFiles` e implementa as tasks pendentes. Em **todo** card, só começa código depois de `Pronto para Dev`. |
 | `/opsx:verify <change>` | `/opsx:verify <change>` | `$openspec-verify-change` | `openspec list --json` quando a change estiver ambígua; `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Verifica completude, corretude e coerência entre artifacts, specs, tasks, design, testes e implementação real. |
@@ -108,7 +110,7 @@ Commit vazio como retrigger é proibido. Agrupe ajustes pós-review de um card e
 
 De-para complementar:
 
-| Intenção canônica | Comando opencode | Skill obrigatória | Uso correto |
+| Intenção canônica | Comando Cursor | Skill obrigatória | Uso correto |
 | --- | --- | --- | --- |
 | `/opsx:explore [change]` | `/opsx:explore [change]` | `$openspec-explore` | Explorar decisões e riscos sem implementar código; pode preparar artifacts quando solicitado. |
 | `/opsx:continue <change>` | `/opsx:continue <change>` | `$openspec-continue-change` | Continuar a criação do próximo artifact pronto, usando `openspec status` e `openspec instructions`, sem pular dependências. |
@@ -165,10 +167,10 @@ Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover ar
 ### Designer/Critic Agent compartilhado
 
 - O contrato canônico fica em `.agents/skills/design-critic/SKILL.md` (fonte única; não duplique regras em outros diretórios).
-- No opencode, invoque a skill `design-critic` (tool skill, carregada automaticamente de `.agents/skills/`). Pedido equivalente em linguagem natural também deve acionar a skill durante `Status=Design` de **qualquer** card.
+- No Cursor, invoque a skill `design-critic` (carregada de `.agents/skills/` e referenciada pelo harness). Pedido equivalente em linguagem natural também deve acionar a skill durante `Status=Design` de **qualquer** card.
 - O Designer/Critic Agent prepara a entrega de design: com UI, produz/refatora o protótipo e critica produto/UX/a11y/responsividade/estados; sem UI nova, registra decisão enxuta e ausência de superfície visual. Resolve achados bloqueantes no escopo e registra `Design Agent verdict` no `design.md`.
-- **Impeccable (pipeline formal via skill):** para `UI impact: affected`, executar a skill local em `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, registrar `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace`, e manter `DESIGN.md` sem sobrescrita. Assessment A e B devem ser critics read-only separados herdando exatamente o modelo/versão da sessão de design designada (`design-planner` com GPT 5.6 Sol quando o gate roda por subagent; senão o da sessão principal); sem evidência observável de igualdade, o veredito é `BLOCKED`. Para `UI impact: none`, registrar Impeccable como `N/A` com justificativa e manter todos os gates.
-- **Impeccable (plugin adapter):** o plugin `.opencode/plugin/impeccable-hook.ts` roda o detector do hook (`.agents/skills/impeccable/scripts/hook.mjs`) automaticamente em edições de UI (`tool.execute.after`) e no fim de cada turno (`session.idle`), auditando achados em `.impeccable/`. O plugin não substitui a crítica, o audit nem o browser gate do pipeline formal; findings do detector durante edição servem de alerta, e o pipeline completo continua sendo executado via skill quando aplicável.
+- **Impeccable (pipeline formal via skill):** para `UI impact: affected`, executar a skill local em `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`, registrar `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace`, e manter `DESIGN.md` sem sobrescrita. Assessment A e B usam `Task` isolada no **mesmo modelo do chat**, instruída a não editar. Sem crítica isolada, o veredito é `BLOCKED`. Para `UI impact: none`, registrar Impeccable como `N/A` com justificativa e manter todos os gates.
+- **Impeccable (hook Cursor):** `.cursor/hooks.json` dispara o detector (`.agents/skills/impeccable/scripts/hook.mjs`) em `afterFileEdit` e `stop`. O hook não substitui a crítica, o audit nem o browser gate; findings durante edição servem de alerta.
 - O agente só pode mover `Design -> Aprovação de Design` quando `design.md` e `Design Critique` estiverem completos e, se `UI impact: affected`, o `Prototype` também. Nunca pode mover `Aprovação de Design -> Pronto para Dev`, autoaprovar ou alegar identidade de Alan.
 - **Protótipos HTML navegáveis (Cripto):** publicar em `frontend/public/prototypes/<change-or-card-slug>/` (preferir `index.html`). URL canônica de revisão: `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/`. Não use Gist como superfície de visualização de HTML (Gist mostra código-fonte). No comentário do card, o bloco **OpenSpec** lista só Markdown do Gist; o bloco **Protótipo navegável** traz o link HTTP da tela. Após gravar o arquivo em `public/`, rebuild/restart do frontend DEV se necessário para o `preview` servir o `dist/` atualizado. Helper: `publish-openspec-card-artifacts.sh` com `--prototype-url` (nunca faz upload de HTML no Gist).
 - **Fidelidade do protótipo ao sistema atual:** se a tela/rota/shell já existir, o protótipo deve clonar a UI atual (sidebar/header, tokens de `DESIGN.md`/`index.css`, tipografia, densidade, estados) e redesenhar apenas o delta do card por cima. Alan valida diferença, não uma tela inventada. Se a tela ainda não existir, desenhar a nova superfície alinhada a `DESIGN.md` e ao shell autenticado do app; não usar layouts genéricos/marketing.
@@ -228,7 +230,7 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 - `Design`: Designer/Critic Agent prepara evidências da solução (protótipo quando houver UI; decisão enxuta quando não houver).
 - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan. Coluna obrigatória para todo card.
 - `Pronto para Dev`: design aprovado por Alan via arraste; único status que libera desenvolvimento.
-- `Em desenvolvimento`: opencode/Clara esta implementando, investigando, validando ou corrigindo achados de review.
+- `Em desenvolvimento`: o Cursor Agent/Clara está implementando, investigando, validando ou corrigindo achados de review.
 - `Code Review`: diff pronto para review antes do commit; achados bloqueantes precisam ser corrigidos ou classificados.
 - `QA`: SHA revisado em validacao automatizada; `qa-gate`, Playwright visual e demais checks obrigatorios precisam terminar verdes.
 - `Done`: Done tecnico; QA verde, implementação técnica revisada, integrada em `develop`, restart/runtime validados, aguardando teste/aprovacao do Alan.
@@ -308,7 +310,7 @@ Status final: pronto.
 ### Release em lote
 
 - Vários cards podem ficar em `Homologado` aguardando publicação conjunta.
-- Quando Alan pedir `subir lote`, `fechar lote`, `fechar release`, `criar release`, `gerar release` ou equivalente, liste todos os cards `Homologado` incluídos no pacote, independente do responsavel. Para cards de `opencode`, liste os commits/branches que entram no pacote.
+- Quando Alan pedir `subir lote`, `fechar lote`, `fechar release`, `criar release`, `gerar release` ou equivalente, liste todos os cards `Homologado` incluídos no pacote, independente do responsavel. Para cards de harness/tooling, liste os commits/branches que entram no pacote.
 - Para cards da Clara ou Alan: reviso a documentação do projeto antes de fechar, atualizando Markdown local e Drive quando aplicável.
 - Se `develop` contiver só conteúdo homologado do pacote, use PR `develop -> main`.
 - Se `develop` contiver mudança não homologada, não faça merge direto `develop -> main`; crie `release-*` a partir de `main` e inclua somente commits/branches aprovados, ou peça decisão de Alan.
@@ -323,7 +325,7 @@ Status final: pronto.
 - Antes de `Code Review`: checks focados e validação OpenSpec da change precisam ter sinal suficiente para revisar o diff.
 - Antes de `QA`: review precisa estar limpo/classificado e o SHA revisado deve estar commitado/pushado.
 - Antes de `Done`: `qa-gate` precisa estar verde, checks iniciados precisam terminar, Playwright visual e artifacts precisam estar registrados, e `./restart`/runtime precisam validar o resultado. Status "rodando", `cancelled` ou skip sem dispensa autorizada nao vale como evidência final.
-- **Regra de todos completos no fechamento:** `Done`/`/opsx:verify` exige 0 todos `in_progress`/`pending` nas sessões do opencode associadas ao card (consulta read-only do `opencode.db`; sessão com todo não concluído não fecha como Done sem classificação explícita). Sessões com custo > $0.10 devem ter título descritivo (card/contexto); título genérico em sessão cara é achado de auditoria kaizen.
+- **Regra de todos completos no fechamento:** `Done`/`/opsx:verify` exige 0 todos `in_progress`/`pending` na sessão Cursor do card (`TodoWrite`). Sessão com todo não concluído não fecha como Done sem classificação explícita. Sessões de card devem ter título descritivo (card/contexto); título genérico em sessão cara é achado de auditoria kaizen.
 - No fechamento de lote/release: `openspec validate --all`, testes completos proporcionais ao pacote, build e CI até resultado final.
 - Se teste local ou CI falhar, corrija, revalide e só então siga para próximo status.
 
@@ -351,7 +353,7 @@ Seguir `alan-workflow` Visual QA. Quem compara pixels e o Playwright; o agente n
    ```bash
    npm --prefix frontend run test:e2e:visual -- --update-snapshots
    ```
-2. Revisar **somente** o `diff.png` (ou o diff git dos snapshots) dos cenarios que mudaram, uma vez, para confirmar que a mudanca e esperada. **Todo julgamento visual de `diff.png`/`actual.png`/baseline é feito pelo subagent `vision` (qwen3.7-plus)** — o agente principal nunca interpreta pixels; use `/vision <diff.png>` ou delegação automática do `vision-router`.
+2. Revisar **somente** o `diff.png` (ou o diff git dos snapshots) dos cenarios que mudaram, uma vez, para confirmar que a mudanca e esperada. Julgamento visual usa `Read` na sessão Cursor depois do path-check.
 3. Commitar os novos arquivos em `frontend/tests/e2e/**/*-snapshots/` junto com a mudanca de UI.
 4. Push → CI revalida contra a baseline nova.
 
@@ -362,9 +364,9 @@ CI falha → baixar artifacts → Read/vision em todos os PNG
 → patch baseline → push → Waiting/polling → repetir
 ```
 
-Olhar screenshot so para aprovar mudanca intencional (`diff.png` preferivel) ou quando Alan pedir julgamento visual/exploratorio — nesses casos o julgamento é sempre do subagent `vision` (qwen3.7-plus), nunca do agente principal.
+Olhar screenshot so para aprovar mudanca intencional (`diff.png` preferivel) ou quando Alan pedir julgamento visual/exploratorio — nesses casos use `Read` na sessão depois de confirmar o path.
 
-**Regra de path-check antes de delegar ao vision (zero respawn):** antes de passar arquivos ao subagent `vision`, confirme a existência de cada path (`ls`/glob) e a validade da URL; path inexistente ou URL inválida bloqueia a delegação. Se o subagent reportar `File not found`/`URL inválida`, gere o artefato no caminho canônico antes de re-delegar — proibido respawnar o mesmo prompt com o mesmo path inexistente ou webfetch em URL não confirmada.
+**Regra de path-check antes de análise visual (zero respawn):** confirme a existência de cada path (`ls`/glob) e a validade da URL; path inexistente ou URL inválida bloqueia a leitura. Gere o artefato no caminho canônico antes de tentar de novo — proibido repetir o mesmo path inexistente.
 ### Comandos esperados
 
 Criar branch em worktree limpa:
@@ -441,7 +443,7 @@ Padrão de commit recomendado:
   - status atual
   - decisões de escopo
   - evidências de teste/PR
-- Para promover produção, junte todos os cards `Homologado` incluídos no lote/release pedido por Alan. Para cards de `opencode`, confirme commits/branches incluídos, abra PR para `main`, resolva checks/políticas bloqueantes quando forem corrigíveis por código/configuração do repo e realize o merge manual do PR. Para cards de `Clara` ou `Alan`, revise e atualize a documentação do projeto em Markdown local e Drive quando aplicável. Depois mova os cards incluídos para `Pronto`.
+- Para promover produção, junte todos os cards `Homologado` incluídos no lote/release pedido por Alan. Para cards de harness/tooling, confirme commits/branches incluídos, abra PR para `main`, resolva checks/políticas bloqueantes quando forem corrigíveis por código/configuração do repo e realize o merge manual do PR. Para cards de `Clara` ou `Alan`, revise e atualize a documentação do projeto em Markdown local e Drive quando aplicável. Depois mova os cards incluídos para `Pronto`.
 - Política adicional: quando houver falha recorrente de unit tests de DB, aplique isolamento por teste (reset de tabelas/fixtures) antes de alterar regras de negócio.
 - Ao registrar bloqueios de CI, incluir evidência e impacto de `Unit tests` e `Backend format` no comentário do PR, e manter esta orientação em `AGENTS.md` para repetição.
 - Em workflows com `push` e `pull_request`, a `concurrency.group` deve diferenciar `github.event_name`; caso contrário, o run de `pull_request` pode cancelar o run de `push` do mesmo SHA em `develop`, deixando checks obrigatórios como `cancelled` e bloqueando o merge em `main`.
@@ -488,7 +490,7 @@ npm --prefix frontend run build
 - Visão geral: `README.md`
 - Backend: `backend/README.md`
 - Frontend: `frontend/README.md`
-- Workflow OpenSpec/opencode: `openspec/changes/` e `openspec/specs/`
+- Workflow OpenSpec/Cursor: `openspec/changes/` e `openspec/specs/`
 
 ## Convenções de UI/UX (Lab)
 
@@ -556,8 +558,8 @@ Valida + análise profunda de bugs.
 ### Kaizen — Process Improvement (melhoria contínua)
 Audita como o processo está sendo executado e transforma fricções em melhorias. Princípio: **quanto mais o processo é usado, melhor ele fica** — cada auditoria gera evidência, as correções aprovadas viram regras/skills/scripts, e o próximo ciclo valida se a fricção sumiu.
 - Execução: `/kaizen` (completa), `/kaizen card <id>` (pós-card), `/kaizen release` (pós-release, obrigatória no fechamento de lote).
-- **Read-only na auditoria**: subagent `.opencode/agent/kaizen.md` coleta evidências (board, Git, OpenSpec, CI, sessões opencode via SQL `mode=ro`, tech debt); o principal consolida e cadastra.
-- **Análise de sessões opencode** (escopo = release): correlaciona cards do pacote (`#<id>`/`card-<id>`) com sessões em `~/.local/share/opencode/opencode.db` e detecta onde o modelo se perde/alucina (caminho/URL inventado, loop sem progresso, `step-finish unknown`, custo alto sem `Done`, deriva de roteamento, subagent falhando, TODO eterno).
+- **Read-only na auditoria**: a skill `.cursor/skills/kaizen/SKILL.md` coleta evidências (board, Git, OpenSpec, CI, transcripts Cursor, tech debt); o principal consolida e cadastra.
+- **Análise de sessões Cursor** (escopo = release): correlaciona cards do pacote (`#<id>`/`card-<id>`) com transcripts Cursor do projeto e detecta onde o modelo se perde/alucina (caminho/URL inventado, loop sem progresso, custo alto sem `Done`, subagent falhando, TODO eterno).
 - **Atua como PO ao registrar melhorias**: 1 card por melhoria (formato `## Proposta (PO)`, critérios de aceite, classificação change/story/bug), labels `kaizen`, campos do board preenchidos, dependências linkadas. **Todo card kaizen é criado em `Status=Em Refinamento`** (entrada obrigatória de todo card novo) e segue o fluxo normal do board a partir daí (`Em Refinamento -> Todo -> ...`) — nunca é criado direto em coluna de execução. **Máximo 3 cards kaizen por release** — a priorização define os 3 que entram; o resto fica no backlog para releases seguintes.
 - **Priorização visível**: campo `Prioridade` P0/P1/P2 preenchido na criação (regra severidade × frequência / esforço; P0 = risco/segurança/falha recorrente/alucinação cara → semana atual; P1 = quick win/higiene → próxima; P2 = desejável → backlog); View "Kaizen" no board agrupada por prioridade (criada manualmente no Project 1 — não automatizável via CLI; ver card #420); override humano sempre possível.
 - **Propõe, Alan aprova**: Kaizen nunca implementa. Pode propor melhorias de skills e pesquisar alternativas (busca read-only) quando a atual não atender; troca/criação só após aprovação de Alan.
@@ -587,11 +589,11 @@ Para tarefas médias ou grandes, o agente principal deve orquestrar subagents qu
 
 Contrato de modelo:
 - A sessão principal define o LLM/modelo e sua versão para todo o turno.
-- Cada subagent deve executar no mesmo LLM/modelo e versão exatos da sessão principal; a função do agente não autoriza trocar de modelo. Exceções documentadas: `vision` (pixels) e `design-planner` (planejamento de design).
+- Cada subagent deve executar no mesmo LLM/modelo da sessão (chat). A função do agente não autoriza trocar de modelo sem pedido explícito de Alan.
 - O effort deve acompanhar a sessão principal por padrão. Se divergir por exigência do cliente, registrar a exceção sem alterar o LLM/modelo.
 - Antes de aceitar o retorno, verificar a igualdade do modelo na evidência runtime disponível. Sem evidência observável, manter a tarefa na sessão principal.
 - Para críticas independentes, usar contextos separados; reviewers permanecem read-only e o agente principal consolida e corrige.
-- Não usar fallback, Terra, Sol/Luna fixos ou perfil built-in sem comprovar a herança do LLM/modelo principal.
+- Não usar fallback nem perfil built-in com outro modelo sem pedido explícito de Alan.
 
 Use subagents por padrão nestes casos:
 - revisão de PR ou comparação `develop -> main`;
@@ -607,14 +609,11 @@ Não use subagents por padrão nestes casos:
 - comandos diretos;
 - ajustes textuais ou documentação pequena.
 
-Arquitetura preferida (agentes definidos em `.opencode/agent/`):
-- `code-mapper` para mapear fluxos, arquivos e pontos de edição;
-- `pr-explorer` para revisar diffs, PRs e escopo de comparação;
-- `browser-debugger` para reproduzir e investigar UI com evidências;
-- `reviewer` para revisar riscos, regressões, segurança e testes;
-- `vision` (qwen3.7-plus) para TODA análise de imagem/julgamento visual;
-- `design-planner` (GPT 5.6 Sol, OpenAI, effort high) para planejamento de design/specs/protótipos no gate `Design`;
-- `explore` (built-in) para descoberta rápida de código.
+Arquitetura preferida no Cursor (`Task` com `inherit`, salvo pedido explícito):
+- `generalPurpose` para mapear fluxos, diffs, bugs e OpenSpec em paralelo;
+- `bugbot` / `security-review` somente quando Alan pedir review especializado;
+- análise de imagem na própria sessão via `Read` após path-check;
+- Design: a sessão principal escreve artifacts; crítica em `Task` isolada sem editar.
 
 O agente principal continua responsável por consolidar decisões, evitar trabalho duplicado, respeitar o escopo do OpenSpec/workflow DB e entregar o resultado final.
 

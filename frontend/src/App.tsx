@@ -11,6 +11,7 @@ import { ComboConfigurePage } from './pages/ComboConfigurePage'
 import { ComboResultsPage } from './pages/ComboResultsPage'
 import { ComboOptimizePage } from './pages/ComboOptimizePage'
 import { ComboEditPage } from './pages/ComboEditPage'
+import { DiscoveryPage } from './pages/DiscoveryPage'
 import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
@@ -69,6 +70,7 @@ function App() {
           <Route path="/combo/selectCrypto" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />
           <Route path="/combo/edit/:templateName" element={<ProtectedRoute requireAdmin><ComboEditPage /></ProtectedRoute>} />
           <Route path="/combo/configure" element={<ProtectedRoute requireAdmin><ComboConfigurePage /></ProtectedRoute>} />
+          <Route path="/combo/discovery" element={<ProtectedRoute requireAdmin><DiscoveryPage /></ProtectedRoute>} />
           <Route path="/combo/optimize" element={<ProtectedRoute requireAdmin><ComboOptimizePage /></ProtectedRoute>} />
           <Route path="/combo/results" element={<ComboResultsPage />} />
           <Route path="/openspec" element={<OpenSpecListPage />} />

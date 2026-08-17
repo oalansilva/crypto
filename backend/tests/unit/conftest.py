@@ -14,39 +14,12 @@ from collections.abc import Iterator
 
 import pytest
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
 from app.services import binance_realtime_snapshot_store
-
-_FORBIDDEN_DATABASE_NAMES = {
-    "crypto_app",
-    "crypto_workflow",
-    "workflow",
-    "workflow_registry",
-    "kanban_app",
-    "kanban_registry",
-    "kanban_workflow",
-}
+from database_guard import assert_safe_test_database_url
 
 
 def _assert_safe_unit_database(database_url: str) -> None:
-    url = make_url(database_url)
-    backend = url.get_backend_name()
-    if backend != "postgresql":
-        raise RuntimeError(
-            "Unit-test persistence requires PostgreSQL; refusing "
-            f"{backend or '<unknown>'}. SQLite and other backends are not supported."
-        )
-
-    database_name = (url.database or "").lower()
-    explicitly_test_db = database_name.startswith("test_") or database_name.endswith(
-        ("_test", "_tests", "_testing")
-    )
-
-    if database_name in _FORBIDDEN_DATABASE_NAMES or not explicitly_test_db:
-        raise RuntimeError(
-            "Refusing to isolate unit tests against a non-test database "
-            f"({database_name or '<empty>'}). Set DATABASE_URL to a dedicated test database."
-        )
+    assert_safe_test_database_url(database_url, variable_name="DATABASE_URL")
 
 
 def _qualified_table_name(table) -> str:

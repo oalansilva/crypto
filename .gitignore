@@ -25,15 +25,11 @@ data/*.parquet
 !.cursor/commands/**
 !.cursor/skills/
 !.cursor/skills/**
-.opencode/*
-!.opencode/agent/
-!.opencode/agent/**
-!.opencode/commands/
-!.opencode/commands/**
-!.opencode/skills/
-!.opencode/skills/**
-!.opencode/plugin/
-!.opencode/plugin/**
+!.cursor/rules/
+!.cursor/rules/**
+!.cursor/hooks.json
+!.cursor/hooks/
+!.cursor/hooks/**
 *.swp
 *.swo
 

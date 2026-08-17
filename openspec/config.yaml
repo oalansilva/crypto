@@ -20,11 +20,11 @@ context: |
 
 rules:
   tasks:
-    - Include a short note reminding to use project skills available to Codex and Cursor when applicable (.agents/skills, .codex/skills, .cursor/skills).
+    - Include a short note reminding to use project skills available to Cursor when applicable (.agents/skills, .cursor/skills).
     - For UI-impact work, include the design gate before implementation: Design -> Aprovação de Design -> Pronto para Dev, using the design-critic skill and waiting for Alan's human approval.
   design:
     - For UI-impact work, include Prototype and Design Critique sections with versioned evidence and an explicit Design Agent verdict.
-    - In Codex, UI-impact work also includes the project-local Impeccable context, shape, dual-agent critique, audit, targeted-fix, polish, and browser-gate trace; the critics must inherit the primary session's exact LLM/model and version, otherwise the verdict is BLOCKED. Cursor remains on the base design-critic contract.
+    - In Cursor, UI-impact work also includes the project-local Impeccable context, shape, dual-agent critique, audit, targeted-fix, polish, and browser-gate trace; the critics inherit the chat-selected model via isolated Tasks instructed not to edit. OpenCode is not an active harness.
     - For UI impact none, record Impeccable as N/A with a non-empty justification without reducing the Design or human-approval gates.
     - The Designer/Critic Agent may hand off Design -> Aprovação de Design only; it must never approve Aprovação de Design -> Pronto para Dev.
 

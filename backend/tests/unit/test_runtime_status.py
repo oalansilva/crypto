@@ -17,6 +17,8 @@ def test_runtime_status_defaults_are_safe(monkeypatch, tmp_path):
     monkeypatch.delenv("BINANCE_REALTIME_ENABLED", raising=False)
     monkeypatch.delenv("CRYPTO_RUNTIME_WORKER_ENABLED", raising=False)
     monkeypatch.delenv("CRYPTO_CELERY_WORKER_ENABLED", raising=False)
+    monkeypatch.delenv("CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED", raising=False)
+    monkeypatch.delenv("RUN_DISCOVERY_OUTBOX_DISPATCHER", raising=False)
     monkeypatch.delenv("BINANCE_REALTIME_WORKER_ENABLED", raising=False)
 
     payload = runtime_status.build_runtime_status_payload(
@@ -31,6 +33,7 @@ def test_runtime_status_defaults_are_safe(monkeypatch, tmp_path):
     assert payload["runtime"]["binance_realtime_connector_enabled"] is False
     assert payload["workers"]["runtime_worker"]["enabled"] is False
     assert payload["workers"]["celery_batch"]["enabled"] is False
+    assert payload["workers"]["celery_discovery"]["enabled"] is False
     assert payload["workers"]["binance_realtime_worker"]["enabled"] is False
     assert payload["candle_writer"]["lock"]["lock_held"] is False
     assert payload["candle_writer"]["lock"]["exists"] is False
@@ -60,6 +63,24 @@ def test_runtime_status_reports_runtime_worker_only_with_routine(monkeypatch, tm
 
     assert payload["workers"]["runtime_worker"]["enabled"] is True
     assert payload["workers"]["runtime_worker"]["routines"]["signal_feed_snapshot"] is True
+
+
+def test_runtime_status_reports_discovery_workers(monkeypatch, tmp_path):
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_LOCK_FILE", str(tmp_path / "writer.lock"))
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(tmp_path / "writer.json"))
+    monkeypatch.setenv("FAVORITE_BACKTEST_REFRESH_STATE_FILE", str(tmp_path / "favorite.json"))
+    monkeypatch.setenv("CRYPTO_RUNTIME_WORKER_ENABLED", "1")
+    monkeypatch.setenv("RUN_DISCOVERY_OUTBOX_DISPATCHER", "1")
+    monkeypatch.setenv("CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED", "1")
+
+    payload = runtime_status.build_runtime_status_payload(
+        market_ohlcv_enabled=False,
+        market_ohlcv_metrics={},
+    )
+
+    assert payload["workers"]["runtime_worker"]["enabled"] is True
+    assert payload["workers"]["runtime_worker"]["routines"]["discovery_outbox_dispatcher"] is True
+    assert payload["workers"]["celery_discovery"]["enabled"] is True
 
 
 def test_runtime_status_sanitizes_favorite_refresh_state(monkeypatch, tmp_path):

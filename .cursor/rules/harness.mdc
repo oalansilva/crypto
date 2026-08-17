@@ -1,0 +1,13 @@
+---
+description: Cursor is the only active harness; chat model runs every role
+alwaysApply: true
+---
+
+# Harness
+
+- Cliente ativo: Cursor Agent. OpenCode, Codex e dual-harness não são contrato ativo.
+- Modelo: o selecionado no chat (hoje Grok 4.6). Task/subagent usa `inherit` salvo pedido explícito no chat.
+- Visão: `Read` de imagem na sessão depois de confirmar que o path existe. Sem `vision-router` e sem Qwen obrigatório.
+- Design: a própria sessão escreve OpenSpec; crítica em Task isolada instruída a não editar. Sem lease/guard OpenCode.
+- Código de produto só com `Status=Pronto para Dev`. Alan é o único que arrasta `Aprovação de Design -> Pronto para Dev`.
+- Review do diff exato antes de cada commit. OpenSpec via `/opsx-*` e CLI `openspec`.

@@ -644,32 +644,6 @@ class ComboOptimizer:
             # Generate value lists for each parameter in the group
             value_lists = []
             param_names = []
-
-            for param_name in group:
-                if param_name not in parameters:
-                    continue  # Skip if parameter not found (validation should have caught this)
-
-                config = parameters[param_name]
-
-                # Check for custom range override
-                if custom_ranges and param_name in custom_ranges:
-                    custom = custom_ranges[param_name]
-                    values = self._generate_range_values(
-                        custom.get("min", config.get("min")),
-                        custom.get("max", config.get("max")),
-                        custom.get("step", config.get("step")),
-                    )
-                else:
-                    values = self._generate_range_values(
-                        config.get("min"), config.get("max"), config.get("step")
-                    )
-
-                value_lists.append(values)
-        # PHASE 1: Create Grid Search stages for correlated groups
-        for group in correlated_groups:
-            # Generate value lists for each parameter in the group
-            value_lists = []
-            param_names = []
             adaptive_meta = {}
 
             for param_name in group:
@@ -2192,9 +2166,51 @@ class ComboOptimizer:
                         oos_metrics["benchmark"] = bh
                 except Exception as exc:
                     logging.warning("Holdout CAGR/benchmark metrics failed: %s", exc)
-                from app.metrics.criteria import evaluate_go_nogo
+                from app.metrics.criteria import evaluate_walk_forward
 
-                criteria_result = evaluate_go_nogo(oos_metrics)
+                # O segmento IS (Treino) precisa das mesmas métricas que o
+                # evaluate_go_nogo exige (CAGR, Calmar, benchmark); o bloco do
+                # holdout acima enriquece apenas o OOS, e `best_metrics` vem de
+                # _metrics_from_trades sem essas chaves.
+                try:
+                    from app.metrics.performance import calculate_cagr
+                    from app.metrics.benchmark import calculate_buy_and_hold
+                    from app.metrics.risk_adjusted import calculate_calmar_ratio
+
+                    if best_metrics is not None and "cagr" not in best_metrics:
+                        is_equity = pd.Series([100.0])
+                        is_cap = 100.0
+                        for trade in sorted(
+                            trades,
+                            key=lambda t: pd.Timestamp(t.get("entry_time") or 0),
+                        ):
+                            is_cap *= 1.0 + float(trade.get("profit") or 0.0)
+                            is_equity = pd.concat([is_equity, pd.Series([is_cap])])
+                        if len(is_equity) >= 2 and len(trades) > 0:
+                            is_cagr = calculate_cagr(is_equity)
+                        else:
+                            is_cagr = 0.0
+                        is_close = df["close"] if df is not None and not df.empty else None
+                        is_bh = (
+                            calculate_buy_and_hold(is_close, 100.0)
+                            if is_close is not None
+                            else {"cagr": 0.0}
+                        )
+                        is_calmar = calculate_calmar_ratio(
+                            is_cagr, float(best_metrics.get("max_drawdown") or 0.0)
+                        )
+                        best_metrics["cagr"] = is_cagr
+                        best_metrics["calmar_ratio"] = is_calmar
+                        best_metrics["benchmark"] = is_bh
+                except Exception as exc:
+                    logging.warning("Treino (IS) CAGR/benchmark metrics failed: %s", exc)
+
+                # Gate combinado walk-forward (card #503): IS (Treino) usa os
+                # critérios globais, OOS (Holdout) usa perfil próprio e exige
+                # retenção de ao menos 50% do Sharpe IS. `oos_verdict` legado
+                # passa a carregar o veredito final combinado; as razões
+                # identificam o segmento.
+                criteria_result = evaluate_walk_forward(best_metrics or {}, oos_metrics or {})
                 oos_verdict = {
                     "status": criteria_result.status,
                     "reasons": criteria_result.reasons,

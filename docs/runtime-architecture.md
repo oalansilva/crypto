@@ -17,6 +17,8 @@ Este documento define o runtime operacional do Cripto Farol na VPS atual. A regr
 | Binance realtime prices | Snapshot/precos/top pairs, nao candles | Desligado | `BINANCE_REALTIME_WORKER_ENABLED=1` ou `BINANCE_REALTIME_ENABLED=1`, mas nao ambos |
 | Runtime worker generico | Signal monitor, snapshot worker e refresh de favoritos | Desligado | `CRYPTO_RUNTIME_WORKER_ENABLED=1` + rotina `RUN_*` |
 | Celery batch | Batch backtests assincronos | Desligado | `CRYPTO_CELERY_WORKER_ENABLED=1` |
+| Discovery dispatcher | Republicar intents duráveis da outbox | Ligado no DEV | `RUN_DISCOVERY_OUTBOX_DISPATCHER=1` em worker dedicado |
+| Celery discovery | Consumir sweeps da fila `discovery` | Ligado no DEV | `CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED=1` em worker dedicado |
 
 ## Ordem de startup
 
@@ -45,6 +47,8 @@ Este documento define o runtime operacional do Cripto Farol na VPS atual. A regr
 | `BINANCE_REALTIME_ENABLED` | `0` | Liga connector realtime dentro do backend. Nao usar junto com o worker externo. |
 | `CRYPTO_RUNTIME_WORKER_ENABLED` | `0` | Habilita familia runtime worker, mas ainda exige rotina `RUN_*`. |
 | `CRYPTO_CELERY_WORKER_ENABLED` | `0` | Liga Celery para fila `batch_backtest`. |
+| `RUN_DISCOVERY_OUTBOX_DISPATCHER` | `0` | Liga a republicação periódica da outbox de discovery. |
+| `CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED` | `0` | Identifica o worker Celery da fila `discovery`. |
 
 ## Candle writer canonico
 
@@ -80,6 +84,14 @@ Comportamento esperado:
 systemctl status criptofarol-dev-candle-writer.timer --no-pager
 systemctl list-timers criptofarol-dev-candle-writer.timer --no-pager
 journalctl -u criptofarol-dev-candle-writer.service -n 100 --no-pager
+```
+
+O mesmo `./restart` instala e valida os workers dedicados da descoberta:
+
+```bash
+systemctl status criptofarol-dev-runtime-worker.service --no-pager
+systemctl status criptofarol-dev-discovery-worker.service --no-pager
+journalctl -u criptofarol-dev-discovery-worker.service -n 100 --no-pager
 ```
 
 ### PROD (somente no release)

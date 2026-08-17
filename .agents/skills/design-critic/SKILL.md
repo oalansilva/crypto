@@ -1,6 +1,6 @@
 ---
 name: design-critic
-description: Preparar ou refatorar entregas de design de qualquer card, executar crítica independente (produto/UX/a11y/responsividade/estados quando houver UI), registrar evidência e veredito no design.md e entregar o card para aprovação humana. Use durante Status=Design, antes de solicitar Aprovação de Design, tanto no Codex quanto no Cursor. Todo card passa por Design; não existe bypass.
+description: Preparar ou refatorar entregas de design de qualquer card no Cursor Agent, executar crítica independente em Task isolada, registrar evidência e veredito no design.md e entregar o card para aprovação humana. Use durante Status=Design, antes de solicitar Aprovação de Design. Todo card passa por Design; não existe bypass.
 ---
 
 # Designer/Critic Agent
@@ -17,28 +17,29 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 
 ## Preflight
 
-1. Confirmar o card/change e ler `AGENTS.md`, `rules.md`, `DESIGN.md` (quando UI) e todos os `contextFiles` retornados por `openspec instructions apply --change <change> --json`.
+1. Confirmar o card/change e, na sessão orquestradora, ler `AGENTS.md`, `rules.md`, `DESIGN.md` (quando UI) e os `contextFiles` retornados pelo OpenSpec.
 2. Confirmar `Status=Design`. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia.
-3. Se a superfície já existir: inspecionar a tela atual (código React/`index.css`/`DESIGN.md` e, quando útil, URL DEV) antes de prototipar. Registrar no `design.md` a base usada (rota/tela/shell).
-4. Não editar código de produção. Limitar a execução a artefatos OpenSpec, documentação de design e protótipos/wireframes explicitamente vinculados à entrega.
+3. A sessão Cursor cria o scaffold OpenSpec e escreve os artifacts do estágio. Não editar código de produção enquanto `Status=Design`.
+4. O author é a própria sessão (modelo do chat). A crítica usa `Task` isolada com `inherit`, instruída a não editar arquivos.
+5. Se a superfície já existir, a sessão inclui a tela/código/tokens atuais necessários para preservar a base real.
 
-## Integração Impeccable no Codex
+## Integração Impeccable no Cursor
 
-Esta integração é obrigatória no Codex para `UI impact: affected` e não altera o provider Cursor. O Cursor continua usando este contrato base, seus adapters e o gate de navegador já definido.
+Esta integração é obrigatória para `UI impact: affected`. Navegador e visão são etapas da orquestração; a crítica isolada não edita arquivos.
 
-Antes do `PASS`, a sessão Codex deve executar o pipeline local do Impeccable na ordem abaixo, sempre contra a superfície versionada da change:
+Antes do `PASS`, a sessão Cursor deve executar o pipeline local do Impeccable na ordem abaixo, sempre contra a superfície versionada da change:
 
 `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`
 
 - Executar `node .agents/skills/impeccable/scripts/context.mjs --target <surface>` uma vez por sessão e conservar `PRODUCT.md` como contexto de produto. `DESIGN.md` permanece a autoridade visual canônica e não pode ser reescrito pelo setup.
-- Usar `$impeccable shape` para registrar brief, direção, escopo, estados, interação e restrições antes de editar a direção visual.
-- Executar `$impeccable critique` com Assessment A (produto/UX/a11y/responsividade/estados) e Assessment B (detector e navegador), em contextos independentes, ambos read-only.
-- Executar `$impeccable audit` e aplicar somente `harden`, `adapt` ou `clarify` quando houver achado correspondente. Agrupar a correção em uma rodada e executar `$impeccable polish` por último.
-- Repetir o gate de navegador real desktop/mobile e os asserts depois do polish. O hook pode alertar durante a edição, mas não substitui a crítica, o audit ou a validação final.
+- Usar a skill Impeccable `shape` para registrar brief, direção, escopo, estados, interação e restrições antes de editar a direção visual.
+- Executar Assessment A e B em Tasks distintas, ambas instruídas a não editar, sobre o mesmo `design.md`/protótipo. Detector, navegador e visão ficam na sessão principal.
+- Executar audit e aplicar somente `harden`, `adapt` ou `clarify` quando houver achado correspondente. Agrupar a correção em uma rodada e executar polish por último.
+- Repetir o gate de navegador real desktop/mobile e os asserts depois do polish. O hook Cursor pode alertar durante a edição, mas não substitui a crítica, o audit nem a validação final.
 
 ### Modelo e isolamento dos critics
 
-Assessment A e Assessment B devem usar exatamente o mesmo identificador e versão de LLM/modelo da sessão de design designada: o `design-planner` (`openai/gpt-5.6-sol`) quando o gate roda por esse subagent; senão, da sessão principal do opencode/Codex. Esse runtime é a única fonte de verdade; perfis gerados pelo Impeccable não podem escolher outro modelo, fallback ou roteamento fixo. Os critics não compartilham o transcript nem os resultados antes da síntese e não podem editar arquivos. Se a disponibilidade do subagent ou a igualdade exata do LLM/modelo/versão não puder ser observada, o veredito é `BLOCKED` e nenhum `PASS` pode ser emitido.
+Assessment A e Assessment B usam o **mesmo modelo do chat** (`Task` `inherit`) em sessões distintas. Eles não compartilham transcript/resultados antes da síntese. Isolamento é de processo (instrução de não editar), não de plugin. Sem Task de crítica, o veredito é `BLOCKED` sem fallback.
 
 ## Produzir a solução
 
@@ -130,7 +131,7 @@ Para `UI impact: affected`, o mesmo `design.md` também deve conter:
 - `## Impeccable Audit`: acessibilidade, performance, responsividade, theming e integridade de implementação.
 - `## Impeccable Trace`: versão do CLI/payload/commit, comandos, target, digest, metadata da sessão de design designada e dos dois critics, prova de igualdade do modelo/versão, findings do detector e vínculo com `Prototype Validation`.
 
-`PASS` exige zero P0/P1 aberto, nenhum finding determinístico sem classificação, browser gate e asserts críticos verdes, nenhum erro de console/página com impacto no fluxo e evidência observável de que Assessment A e B usaram o mesmo LLM/modelo/versão da sessão de design designada (`design-planner` com GPT 5.6 Sol quando aplicável; senão a sessão principal). Ausência de qualquer evidência mantém `BLOCKED`.
+`PASS` exige zero P0/P1 aberto, nenhum finding determinístico sem classificação, browser gate e asserts críticos verdes, nenhum erro de console/página com impacto no fluxo e evidência de crítica isolada no mesmo modelo do chat. Ausência de qualquer evidência mantém `BLOCKED`.
 
 Usar `PASS` somente quando `design.md` e crítica estiverem completos/coerentes e sem achado bloqueante; com UI, o protótipo versionado/verificável e validado em navegador real também é obrigatório; com tela já existente, fidelidade ao sistema atual é obrigatória. HTTP 200 isolado nunca é evidência de PASS. Publicar novamente os artefatos OpenSpec no card quando a entrega mudar; com HTML, o comentário de handoff MUST incluir o link da tela prototipada.
 
@@ -140,7 +141,7 @@ Usar `PASS` somente quando `design.md` e crítica estiverem completos/coerentes 
 - Com `PASS` e evidência completa, mover somente `Design -> Aprovação de Design` e registrar handoff com change, design digest, protótipo/versão ou N/A justificado, resumo da crítica e pendências aceitas.
 - Nunca mover `Aprovação de Design -> Pronto para Dev`, nunca autoaprovar, nunca enviar `actor=Alan` nem alegar identidade humana. Essa transição pertence exclusivamente a Alan autenticado.
 - Se o design ou protótipo mudar depois da aprovação, considerar a aprovação obsoleta e bloquear desenvolvimento até nova aprovação humana.
-- Não mover nenhum outro status. Desenvolvimento / `/opsx:apply` começa somente depois que o card estiver em `Pronto para Dev`.
+- Não mover nenhum outro status. Desenvolvimento / `/opsx-apply` começa somente depois que o card estiver em `Pronto para Dev`.
 
 ## Saída
 
