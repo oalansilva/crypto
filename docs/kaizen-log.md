@@ -360,6 +360,39 @@
 | #580 — segundo pacote no mesmo dia vs doc canônica no pre | P1 | F-2 | Em Refinamento |
 | #581 — worktree extra / branch in-flight no pre | P2 | F-3 | Em Refinamento |
 
+## 2026-08-17 — Kaizen release (lote 3, cards 585/569/581/579/580)
+
+- **Release/card**: 2026-08-17 lote 3 — cards 585, 569, 581, 579, 580 (Homologado → Pronto após deploy PROD `20820d05`).
+- **Fontes consultadas**: board Project 1 (GraphQL pontual; `gh project item-list` falhou com `unknown owner type`), git/worktrees/stash + `release-guard pre` PASS, `openspec validate --all` 143/143, PRs #590/#591/#592, transcripts Cursor desta sessão, CI REST `check-runs` (watcher `gh pr checks --watch` 503).
+- **Sessões analisadas**: sessão de implementação 585→569→581→579→580 e sessão de closeout. Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: os 5 foram Done técnico no turno anterior; Alan homologou em lote no chat e pediu a release.
+
+### Métricas
+- **Board**: 5 Homologado no lote; `#584` WIP preservado fora do pacote.
+- **Git**: worktrees extras dos 5 cards removidas no `pre`; `#584` dirty classificado via `PRESERVED_BRANCHES`. Stash 0.
+- **CI**: PR #592 verde; `qa-gate` skip no PR para `main`. Watcher GraphQL 503; evidência via REST check-runs.
+- **OpenSpec**: 5 changes arquivadas (`--skip-specs`); 143/143.
+- **PROD**: source `20820d05`; health 200; bundle inalterado (`index-DbfcRxXg.js`).
+
+### Achados
+- F-1 [major] `gh project item-list` e `gh pr checks --watch` falharam com HTTP 503 / `unknown owner type` no closeout; o fluxo só avançou com REST (`gh api` pulls/check-runs). Recidiva de fricção GraphQL (lote 1 F-3 / #509). Esforço S | P1.
+- F-2 [minor] helper `post-card-evidence-comment.sh --transition homologado` deu DEDUPE falso em #579 porque o comentário de Done citava o marcador na prosa do card. O `pre` passou (o marcador estava no issue). Esforço S | P2.
+- F-3 [minor] worktrees locais das branches squashadas #569/#581 não foram detectadas como mergeadas no `pre` (`git cherry`); 579/580/585 sim. Remoção das worktrees desbloqueou. Esforço S | P2.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico | corrigido neste lote (#579); helper no turno do arraste/chat
+- Segundo pacote no mesmo dia herda evidência | corrigido neste lote (#580); `pre` PASS sem reuso de `2261ad56`
+- GraphQL 503 / item-list no closeout | 2+ ocorrências no dia | promoção: closeout REST-first
+
+### Trechos de sessão (evidência local)
+- Closeout: `unknown owner type` em `gh project item-list 1 --owner oalansilva`.
+- Helper #579: `DEDUPE: card #579 already has a homologado evidence comment with commit ref 35be2c00` no comentário de Done.
+
+### Cards kaizen propostos (máx. 3; não criados neste closeout — Alan aprova)
+- P1: closeout do board/CI via REST quando GraphQL 503 (F-1)
+- P2: DEDUPE do helper Homologado só no início do body (F-2)
+- P2: `pre` tratar squash-equivalent de worktree extra como mergeada (F-3)
+
 ## 2026-08-14 — Kaizen release (release 2026-08-14, cards 470/480/481/482/489/491/509)
 
 - **Ação**: auditoria kaizen pós-release concluída (read-only). F-1 a F-8 registrados abaixo.
