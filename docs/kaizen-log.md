@@ -273,7 +273,7 @@
 
 - **Ação**: regras de apply/verify após o #469 ter marcado tasks de UI `[x]` sem código e ter implementado a Discovery pelo contrato de API em vez do protótipo aprovado.
 - **#530**: `/opsx:apply` com `UI impact: affected` carrega o protótipo aprovado como spec de layout; API não é spec de UI.
-- **#531**: `/opsx:verify` e Code Review exigem evidência por task de UI contra o protótipo; Playwright `[ ]` bloqueia Done.
+- **#531**: `/opsx:verify` e Code Review exigem evidência por task de UI contra o protótipo; Playwright `[ ]` bloqueia Done. Skill `openspec-verify-change` e `opsx-verify.md` passam a tratar `[x]` sem implementação como CRITICAL.
 - **Evidência base**: PR #528 / card #469 — tasks 6.2–6.10 `[x]` sem implementação; 7.8/7.9 `[ ]` em Done.
 
 ## 2026-08-17 — Kaizen release (release 2026-08-17, cards 469/502/503/504/516/517/518/562)
