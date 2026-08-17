@@ -17,8 +17,8 @@ Este documento define o runtime operacional do Cripto Farol na VPS atual. A regr
 | Binance realtime prices | Snapshot/precos/top pairs, nao candles | Desligado | `BINANCE_REALTIME_WORKER_ENABLED=1` ou `BINANCE_REALTIME_ENABLED=1`, mas nao ambos |
 | Runtime worker generico | Signal monitor, snapshot worker e refresh de favoritos | Desligado | `CRYPTO_RUNTIME_WORKER_ENABLED=1` + rotina `RUN_*` |
 | Celery batch | Batch backtests assincronos | Desligado | `CRYPTO_CELERY_WORKER_ENABLED=1` |
-| Discovery dispatcher | Republicar intents duráveis da outbox | Ligado no DEV | `RUN_DISCOVERY_OUTBOX_DISPATCHER=1` em worker dedicado |
-| Celery discovery | Consumir sweeps da fila `discovery` | Ligado no DEV | `CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED=1` em worker dedicado |
+| Discovery dispatcher | Republicar intents duráveis da outbox | Ligado no DEV; PROD via unit dedicado | `RUN_DISCOVERY_OUTBOX_DISPATCHER=1` em worker dedicado |
+| Celery discovery | Consumir sweeps da fila `discovery` | Ligado no DEV; PROD via unit dedicado | `CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED=1` em worker dedicado |
 
 ## Ordem de startup
 
@@ -93,6 +93,27 @@ systemctl status criptofarol-dev-runtime-worker.service --no-pager
 systemctl status criptofarol-dev-discovery-worker.service --no-pager
 journalctl -u criptofarol-dev-discovery-worker.service -n 100 --no-pager
 ```
+
+### PROD discovery workers
+
+Templates: `ops/systemd/criptofarol-prod-runtime-worker.service` (favorite refresh **e** `RUN_DISCOVERY_OUTBOX_DISPATCHER=1`) e `ops/systemd/criptofarol-prod-discovery-worker.service` (Celery fila `discovery`).
+
+O installer `./install-discovery-workers-systemd.sh` aceita só os roots canônicos:
+
+- `/srv/apps/dev/criptofarol/source`
+- `/srv/apps/prod/criptofarol/source`
+
+Qualquer outro path é recusado (exit 2). Em PROD **não** copia o drop-in do backend DEV.
+
+```bash
+cd /srv/apps/prod/criptofarol/source
+./install-discovery-workers-systemd.sh
+systemctl status criptofarol-prod-runtime-worker.service --no-pager
+systemctl status criptofarol-prod-discovery-worker.service --no-pager
+journalctl -u criptofarol-prod-discovery-worker.service -n 100 --no-pager
+```
+
+Logs: `journalctl -u criptofarol-prod-runtime-worker.service` (dispatcher + refresh) e `journalctl -u criptofarol-prod-discovery-worker.service` (Celery). Smoke: um sweep em `https://criptofarol.com.br/discovery` sai de pending/queued e `/api/health` 200. Não reiniciar backend/frontend/leads por este installer.
 
 ### PROD (somente no release)
 
