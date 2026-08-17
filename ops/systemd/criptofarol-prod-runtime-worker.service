@@ -1,0 +1,15 @@
+[Unit]
+Description=Cripto Farol PROD discovery outbox dispatcher and favorite refresh
+After=network-online.target postgresql.service docker.service criptofarol-prod-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__ROOT_DIR__/backend
+Environment=PYTHONPATH=__ROOT_DIR__:__ROOT_DIR__/backend
+ExecStart=/bin/bash -lc 'set -euo pipefail; set -a; source "__ROOT_DIR__/backend/.env"; set +a; export CRYPTO_RUNTIME_WORKER_ENABLED=1 RUN_SIGNAL_MONITOR=0 RUN_SIGNAL_FEED_SNAPSHOT_WORKER=0 RUN_FAVORITE_BACKTEST_REFRESH=1 FAVORITE_BACKTEST_REFRESH_STATE_FILE=__ROOT_DIR__/../runtime/favorite-refresh-state.json RUN_DISCOVERY_OUTBOX_DISPATCHER=1; exec "__ROOT_DIR__/backend/.venv/bin/python" -m app.workers.runtime_worker'
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
