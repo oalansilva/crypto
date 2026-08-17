@@ -398,8 +398,8 @@ else
   printf 'RELEASE_DATE: %s\n' "$RELEASE_DATE"
 fi
 
-section "Release cards canonicalization (post/audit)"
-if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+section "Release cards canonicalization (pre/post/audit)"
+if [[ "$mode" == "pre" || "$mode" == "post" || "$mode" == "audit" ]]; then
   normalize_release_cards
   if [[ -n "$RELEASE_CARDS_INVALID" ]]; then
     issue "RELEASE_CARDS contains invalid card identifiers: $RELEASE_CARDS_INVALID (expected comma-separated integers 1..2147483647)"
@@ -411,7 +411,7 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
     printf 'RELEASE_CARDS not set or empty.\n'
   fi
 else
-  printf 'Skipped (release cards canonicalization runs in post/audit).\n'
+  printf 'Skipped (release cards canonicalization runs in pre/post/audit).\n'
 fi
 
 section "Remote snapshots (post/audit)"
@@ -1222,6 +1222,37 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   fi
 else
   printf 'Skipped (board fields check runs in post/audit).\n'
+fi
+
+section "Homologation evidence comments (pre)"
+if [[ "$mode" == "pre" ]]; then
+  if [[ -n "$RELEASE_CARDS_INVALID" || -n "$RELEASE_CARDS_OUT_OF_RANGE" ]]; then
+    printf 'Homologation-comment REST skipped (RELEASE_CARDS invalid; blocker already emitted).\n'
+  elif [[ -z "$CANONICAL_CARDS" ]]; then
+    warn "RELEASE_CARDS not set; package homologation-comment check skipped"
+  elif ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+    issue "homologation-comment check could not run (gh unavailable or not authenticated) with RELEASE_CARDS set"
+  else
+    declare -A seen_pre_evidence_cards=()
+    for card_num in $CANONICAL_CARDS; do
+      if [[ -n "${seen_pre_evidence_cards[$card_num]:-}" ]]; then
+        continue
+      fi
+      seen_pre_evidence_cards["$card_num"]=1
+      comments=""
+      if ! comments="$(gh api "repos/oalansilva/crypto/issues/$card_num/comments" --paginate --jq '.[].body' 2>/dev/null)"; then
+        issue "homologation-comment check could not list all comments for card #$card_num"
+        continue
+      fi
+      if printf '%s\n' "$comments" | grep -qiF 'Homologado por Alan na develop.'; then
+        printf 'Card #%s has canonical homologation evidence.\n' "$card_num"
+      else
+        issue "card #$card_num without canonical homologation comment; run scripts/post-card-evidence-comment.sh --transition homologado --card $card_num --commit <sha>"
+      fi
+    done
+  fi
+else
+  printf 'Skipped (homologation-comment pre check runs in pre).\n'
 fi
 
 section "Homologation evidence comments (post/audit)"

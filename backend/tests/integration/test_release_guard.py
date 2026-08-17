@@ -733,6 +733,10 @@ def test_pre_mode_performs_no_board_or_pr_queries(tmp_path: Path, monkeypatch):
     assert _call_count(call_log, "CALL project item-list") == 0
     assert _call_count(call_log, "CALL pr list") == 0
     assert _call_count(call_log, "CALL api graphql") == 0
+    assert _call_count(call_log, "CALL api repos/") == 0
+    assert (
+        "WARN: RELEASE_CARDS not set; package homologation-comment check skipped" in result.stdout
+    )
 
 
 def test_audit_invalid_release_cards_warns_and_runs_independent_checks(tmp_path: Path, monkeypatch):
@@ -1353,6 +1357,7 @@ def test_pre_keeps_zero_board_and_pr_calls(tmp_path: Path, monkeypatch):
 
     assert _call_count(call_log, "CALL project item-list") == 0
     assert _call_count(call_log, "CALL pr list") == 0
+    assert _call_count(call_log, "CALL api repos/") == 0
 
 
 def test_agents_md_contracts_spawn_empty_handoff_error():
@@ -1637,4 +1642,81 @@ def test_pre_preserves_unmerged_local_branch_without_worktree(tmp_path: Path):
         "WARN: local branch not merged; classified via PRESERVED_BRANCHES: card-569-code-review-bugbot"
         in result.stdout
     )
+    assert result.returncode == 0
+
+
+def test_pre_blocks_missing_homologation_comment(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv("FAKE_COMMENTS", "Outro comentário")
+
+    result = _run_guard(repo, "pre", release_cards="480", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "BLOCKER: card #480 without canonical homologation comment" in result.stdout
+    assert _call_count(call_log, "CALL project item-list") == 0
+    assert _call_count(call_log, "CALL api repos/oalansilva/crypto/issues/480/comments") == 1
+
+
+def test_pre_passes_with_canonical_homologation_comment(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+
+    result = _run_guard(repo, "pre", release_cards="480", fake_gh=fake_gh)
+
+    assert "Card #480 has canonical homologation evidence." in result.stdout
+    assert "without canonical homologation comment" not in result.stdout
+    assert _call_count(call_log, "CALL project item-list") == 0
+    assert result.returncode == 0
+
+
+def test_pre_warns_without_release_cards_and_skips_comments(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+
+    result = _run_guard(repo, "pre", fake_gh=fake_gh)
+
+    assert (
+        "WARN: RELEASE_CARDS not set; package homologation-comment check skipped" in result.stdout
+    )
+    assert _call_count(call_log, "CALL api repos/") == 0
+    assert result.returncode == 0
+
+
+def test_pre_invalid_release_cards_blocks_before_comment_rest(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+
+    result = _run_guard(repo, "pre", release_cards="480,nope", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "RELEASE_CARDS contains invalid card identifiers" in result.stdout
+    assert "Homologation-comment REST skipped" in result.stdout
+    assert _call_count(call_log, "CALL api repos/") == 0
+    assert _call_count(call_log, "CALL project item-list") == 0
+
+
+def test_pre_homologation_does_not_use_board_status(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Todo")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+
+    result = _run_guard(repo, "pre", release_cards="480", fake_gh=fake_gh)
+
+    assert "homologation-comment check not applicable" not in result.stdout
+    assert "Card #480 has canonical homologation evidence." in result.stdout
+    assert _call_count(call_log, "CALL project item-list") == 0
     assert result.returncode == 0
