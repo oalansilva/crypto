@@ -6,8 +6,11 @@ alwaysApply: true
 # Harness
 
 - Cliente ativo: Cursor Agent. OpenCode, Codex e dual-harness não são contrato ativo.
-- Modelo: o selecionado no chat (hoje Grok 4.6). Task/subagent usa `inherit` salvo pedido explícito no chat.
-- Visão: `Read` de imagem na sessão depois de confirmar que o path existe. Sem `vision-router` e sem Qwen obrigatório.
-- Design: a própria sessão escreve OpenSpec; crítica em Task isolada instruída a não editar. Sem lease/guard OpenCode.
-- Código de produto só com `Status=Pronto para Dev`. Alan é o único que arrasta `Aprovação de Design -> Pronto para Dev`.
+- Modelo: o selecionado no chat. Task/subagent usa `inherit` salvo pedido explícito no chat.
+- Visão: `Read` de imagem na sessão depois de confirmar que o path existe.
+- Skills de processo: preferir `.cursor/skills/` **deste repo** (`alan-workflow`, `alan-workflow-ambientes`, `github-project-board`). Não tratar `~/.codex/skills/` nem disco hermes como canônico.
+- Preflight de coluna: leia `Status` no Project 1. `Em Refinamento` é a entrada. `Todo` **não** é código — próxima etapa é Design. Pedido `implemente` não autoriza `/opsx:apply` nem código de produto.
+- Design: OpenSpec **superset** do issue; Gist secreto `crypto openspec <change>` + comentário no card **antes** de Aprovação de Design. Crítica em Task isolada instruída a não editar. Sem Gist, ou Gist mais pobre que o card, permanecer em Design.
+- Código / `/opsx:apply` só com `Status=Pronto para Dev`. Alan é o único que arrasta `Aprovação de Design -> Pronto para Dev`.
+- Lei humana (não injetada sozinha): `rules.md`. Runbook: carregue `alan-workflow` em card/release. Overlay cripto (board, ports, Drive, PostgreSQL, release-guard): `AGENTS.md`.
 - Review do diff exato antes de cada commit. OpenSpec via `/opsx-*` e CLI `openspec`.

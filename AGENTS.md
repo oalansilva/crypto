@@ -10,14 +10,20 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 ## Processo global do Alan
 
-- Regras gerais de processo ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O Cursor Agent aplica os mesmos overrides versionados neste `AGENTS.md` e em `rules.md`; o fluxo do projeto não depende de um caminho absoluto local. **Em qualquer pedido de release, publicacao, lote, deploy, producao ou operacao que possa afetar DEV/PROD, carregue tambem a skill global `alan-workflow-ambientes` antes de agir**; ela define o mapa DEV/PROD (caminhos, services systemd, bancos, URLs) e o passo obrigatorio de deploy em PROD antes de mover cards para `Pronto`.
-- Use essa skill para comunicacao curta, evidencias antes de concluir, OpenSpec no card antes de implementar, higiene Git/worktree/release, classificacao de pendencias, seguranca de output e fechamento sem pendencia. No cripto, o fluxo local `Todo`/`Design`/`Aprovação de Design`/`Pronto para Dev`/`Em desenvolvimento`/`Code Review`/`QA`/`Done`/`Homologado`/`Pronto`/`Cancelado` prevalece sobre qualquer vocabulário global antigo.
-- Este `AGENTS.md` deve manter apenas regras especificas do cripto: branches `develop/main`, Project 1, release guard, PostgreSQL, Drive/docs, comandos de backend/frontend, workflow DB e papeis dos agentes.
-- Se uma regra geral precisar mudar para todos os projetos, atualize `alan-workflow`; nao duplique a regra aqui.
+- Runbook de processo: skill `.cursor/skills/alan-workflow/` **neste repo** (GitHub). Overlay cripto (board, ports, Drive, PostgreSQL, release-guard, `./restart`) fica neste `AGENTS.md`. Lei humana: `rules.md`. Always-on curto: `.cursor/rules/harness.mdc`.
+- **Em qualquer pedido de release, publicação, lote, deploy, produção ou operação que possa afetar DEV/PROD, carregue também `.cursor/skills/alan-workflow-ambientes/`** (mapa DEV/PROD e deploy PROD antes de `Pronto`).
+- Board: skill `.cursor/skills/github-project-board/`. Não tratar `~/.codex/skills/` nem `/srv/knowledge/hermes-second-brain/skills/` como canônico destas três skills.
+- No cripto, o fluxo é `Em Refinamento -> Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto` (detalhe na skill). `Todo` não é código. Pedido `implemente` não pula Design.
+- Se uma regra geral de processo precisar mudar, edite `.cursor/skills/alan-workflow/` neste repo (não dual-write hermes/Codex).
 
 ## TL;DR
 
+- **Skills:** `.cursor/skills/alan-workflow`, `alan-workflow-ambientes`, `github-project-board` (arquivos reais no GitHub). OpenSpec: `.cursor/skills/openspec-*`. Design: `.agents/skills/design-critic`.
 - **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
+- **Board:** `github.com/users/oalansilva/projects/1`. Campo `Status` manda. Alan é o único que arrasta `Aprovação de Design -> Pronto para Dev`. Código só com `Pronto para Dev`.
+- **OpenSpec no card:** Gist `crypto openspec <change>` **superset** do issue; republicar o mesmo Gist. Helper: `.cursor/skills/alan-workflow/scripts/publish-openspec-card-artifacts.sh`.
+- **Banco:** PostgreSQL (`DATABASE_URL`, `WORKFLOW_DATABASE_URL`). Não usar SQLite em runtime/QA.
+- **Release:** `alan-workflow` + `alan-workflow-ambientes`; `scripts/release-guard pre|post`; deploy PROD obrigatório antes de `Pronto`. Detalhe das 12 colunas, gates e higiene: skill `alan-workflow` + `rules.md` §3.
 - **Colunas/Status:** no cripto, o campo `Status` e a fonte principal das colunas visuais. `Em Refinamento` é a **primeira coluna** (antes de `Todo`) e a **entrada obrigatória de todo card novo**: em `Em Refinamento`, Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ir para `Todo`. O fluxo obrigatório de **todo** card é `Em Refinamento -> Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`; `Cancelado` é terminal (acionável inclusive a partir de `Em Refinamento`). Cards kaizen também nascem em `Em Refinamento`. **Proibido** pular `Design`, `Aprovação de Design` ou `Pronto para Dev` (inclusive com `UI impact: none`, remoção, bug ou pedido `implemente`). O arraste `Aprovação de Design -> Pronto para Dev` é a aprovação humana de Alan. `Done` continua sendo Done tecnico e `Pronto` continua exigindo deploy em PROD (source PROD no commit publicado + services reiniciados + URL pública validada) com evidencia; merge em `main` sozinho não é evidência de `Pronto`.
 - **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
@@ -71,7 +77,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 O projeto usa o Cursor Agent como ferramenta única de desenvolvimento. As skills OpenSpec são geradas pela CLI e versionadas em `.cursor/skills/` e `.cursor/commands/`. Trate `/opsx:*` como a intenção canônica e `/opsx-*` como o slash command do Cursor. Se o cliente não interpretar uma das formas, trate o texto como intenção operacional e acione a skill local equivalente. Não substitua a skill por criação manual de arquivos.
 
-No **Cursor**, as skills do projeto carregam de `.cursor/skills/` (OpenSpec, kaizen) e `.agents/skills/` (design-critic, impeccable, playwright-cli). Os commands `/opsx-*` e `/kaizen` vivem em `.cursor/commands/`. O hook Impeccable está em `.cursor/hooks.json` e chama `.agents/skills/impeccable/scripts/hook.mjs`. Invocar `/opsx-new` ou a skill `openspec-new-change` tem o mesmo efeito.
+No **Cursor**, as skills do projeto carregam de `.cursor/skills/` (`alan-workflow`, `alan-workflow-ambientes`, `github-project-board`, OpenSpec, kaizen) e `.agents/skills/` (design-critic, impeccable, playwright-cli). Os commands `/opsx-*` e `/kaizen` vivem em `.cursor/commands/`. O hook Impeccable está em `.cursor/hooks.json` e chama `.agents/skills/impeccable/scripts/hook.mjs`. Invocar `/opsx-new` ou a skill `openspec-new-change` tem o mesmo efeito.
 
 Os arquivos em `.cursor/skills/openspec-*` e `.cursor/commands/opsx-*.md` são adaptadores oficiais. Atualize-os com a mesma CLI:
 

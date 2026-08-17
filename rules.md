@@ -7,7 +7,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 - `rules.md`: politica normativa, curta e obrigatoria. Use para decidir o que nunca pode ser pulado.
 - `AGENTS.md`: manual operacional detalhado. Use para comandos, ordem de execucao, mapeamento OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
 - Em caso de duvida ou conflito, siga a regra mais restritiva. Se ainda houver ambiguidade, pare e registre o conflito antes de alterar codigo, card ou Git.
-- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O Cursor Agent aplica os mesmos overrides versionados neste arquivo e em `AGENTS.md`; o fluxo do projeto não depende de um caminho absoluto local.
+- Regras gerais do modo de trabalho do Alan ficam em `.cursor/skills/alan-workflow/` neste repo. O Cursor Agent aplica os overlays deste arquivo e de `AGENTS.md`. Não depender de `~/.codex/skills/` nem de disco hermes para essas skills.
 
 ## Regras obrigatorias
 
