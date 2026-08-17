@@ -273,6 +273,36 @@ branch_merged() {
   return 1
 }
 
+branch_is_preserved() {
+  local name="$1"
+  local preserved_branches="${PRESERVED_BRANCHES:-}"
+  [[ -z "$preserved_branches" || -z "$name" ]] && return 1
+  local raw_token item
+  local -a raw_arr
+  IFS=',' read -ra raw_arr <<< "$preserved_branches"
+  for raw_token in "${raw_arr[@]}"; do
+    item="$(printf '%s' "$raw_token" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    [[ "$item" == "$name" ]] && return 0
+  done
+  return 1
+}
+
+worktree_dirty_only_canonical_release_doc() {
+  local wt_status="$1"
+  local canonical="docs/release-${RELEASE_DATE}.md"
+  local line path
+  [[ -z "$wt_status" ]] && return 0
+  [[ -z "$RELEASE_DATE" ]] && return 1
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    path="${line:3}"
+    if [[ "$path" == *" -> "* || "$path" != "$canonical" ]]; then
+      return 1
+    fi
+  done <<< "$wt_status"
+  return 0
+}
+
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [[ -z "$repo_root" ]]; then
   printf 'ERROR: not inside a Git repository\n' >&2
@@ -432,13 +462,26 @@ for wt in "${worktrees[@]}"; do
   printf '%s [%s]\n' "$wt" "${wt_branch:-detached}"
 
   wt_status="$(git -C "$wt" status --porcelain=v1 --untracked-files=all)"
-  if [[ -n "$wt_status" ]]; then
+  if [[ -z "$wt_status" ]]; then
+    :
+  elif branch_is_preserved "$wt_branch"; then
+    warn "dirty worktree classified via PRESERVED_BRANCHES: $wt [$wt_branch]"
+    printf '%s\n' "$wt_status" | indent
+  elif [[ -n "$wt_branch" ]] && branch_merged "$wt_branch" && worktree_dirty_only_canonical_release_doc "$wt_status"; then
+    printf 'Dirty worktree allowed (merged branch; only docs/release-%s.md): %s\n' "$RELEASE_DATE" "$wt"
+  else
     issue "dirty worktree: $wt"
     printf '%s\n' "$wt_status" | indent
   fi
 
   if [[ "$wt" != "$repo_root" ]]; then
-    issue "extra worktree requires classification before release cleanup: $wt"
+    if branch_is_preserved "$wt_branch"; then
+      printf 'Extra worktree classified via PRESERVED_BRANCHES: %s [%s]\n' "$wt" "$wt_branch"
+    elif [[ -n "$wt_branch" ]] && branch_merged "$wt_branch"; then
+      warn "extra worktree on merged branch; remove at closeout (no empty commit): $wt [$wt_branch]"
+    else
+      issue "extra worktree requires classification before release cleanup: $wt"
+    fi
   fi
 done
 
@@ -805,20 +848,6 @@ fi
 
 section "Change/card/release branch inventory (post/audit)"
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
-  preserved_branches="${PRESERVED_BRANCHES:-}"
-
-  branch_is_preserved() {
-    local name="$1"
-    [[ -z "$preserved_branches" ]] && return 1
-    local p
-    IFS=',' read -ra p <<< "$preserved_branches"
-    local item
-    for item in "${p[@]}"; do
-      [[ "$item" == "$name" ]] && return 0
-    done
-    return 1
-  }
-
   branch_has_worktree() {
     local name="$1"
     git worktree list --porcelain | awk -v b="refs/heads/$name" '$1 == "branch" && $2 == b { found=1 } END { exit !found }'
@@ -1024,7 +1053,11 @@ if git rev-parse --verify -q origin/develop >/dev/null &&
     fi
 
     if ! branch_merged "$branch"; then
-      issue "local branch not merged into origin/develop or origin/main: $branch"
+      if branch_is_preserved "$branch"; then
+        warn "local branch not merged; classified via PRESERVED_BRANCHES: $branch"
+      else
+        issue "local branch not merged into origin/develop or origin/main: $branch"
+      fi
     fi
   done
 else

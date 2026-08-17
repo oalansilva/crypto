@@ -45,7 +45,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de commits e testes:** commits locais na branch da change são permitidos e não exigem suíte completa a cada commit, mas exigem os reviewers locais (`diff-reviewer` + `code-reviewer`) no diff não commitado vs HEAD antes de cada commit de implementação. Durante o card, rode testes proporcionais/focados; testes completos ficam para fechamento de lote/release.
 - **Regra de worktree limpo no fechamento:** seguir `alan-workflow`; no cripto, trabalho de outra change deve ir para branch/worktree própria e a integração padrão acontece em `develop` antes de produção.
 - **Regra de varredura da release:** seguir o inventario/classificacao de `alan-workflow`; no cripto, integre o que deve entrar em `develop`, publique em `main` via PR/merge manual quando permitido e só então limpe branches/worktrees.
-- **Regra de guard automatizado de release:** antes de abrir/mesclar PR de release, rode `scripts/release-guard pre`; depois do merge/publicação e antes de reportar limpeza final, rode `scripts/release-guard post`. Se qualquer modo estrito falhar, pare e classifique/corrija todos os bloqueios antes de seguir. Use `scripts/release-guard audit` para diagnostico sem bloqueio durante desenvolvimento.
+- **Regra de guard automatizado de release:** antes de abrir/mesclar PR de release, rode `scripts/release-guard pre`; depois do merge/publicação e antes de reportar limpeza final, rode `scripts/release-guard post`. Se qualquer modo estrito falhar, pare e classifique/corrija todos os bloqueios antes de seguir. Use `scripts/release-guard audit` para diagnostico sem bloqueio durante desenvolvimento. Worktree extra ou branch local in-flight no `pre` exige `PRESERVED_BRANCHES=<branch1,branch2>` (trim, match exato); o `pre` não consulta o board. Extra já mergeada em `origin/develop` vira warn (remover no closeout, sem commit vazio). Dirty classificada na lista vira warn; dirty em branch mergeada só é permitida se o único path for `docs/release-${RELEASE_DATE}.md` (rename porcelain é blocker).
 - **Regra de evidência de deploy PROD no guard:** `release-guard post` (e `pre` após a publicação) exige `PROD_DEPLOY_EVIDENCE` com `<commit-publicado> services=<svcs> url=<url-publica>` antes de mover cards para `Pronto`; sem evidência, o guard falha em modo estrito. No `pre` antes do merge a evidência ainda não é exigida (deploy ocorre após o merge).
 - **Regra de inventário de refs órfãs no guard post:** `release-guard post` lista refs `runtime-*`/`rollback-*`/`release-post-*`/`sync-*`/`preserve/*` e worktrees em branch órfã, exigindo classificação (integrar/preservar/limpar com autorização) e sinalizando WIP não commitado; itens não classificados são blockers no fechamento.
 - **Regra de evidência documental e campos do board no guard post:** antes de mover cards para `Pronto`, o `release-guard post` valida: doc de release commitada e sem placeholders (TBD/TODO/lorem/`<!--`/FIXME), uma doc canônica por data (2+ docs da mesma data com conteúdo divergente = blocker) e campos do board (Responsável/Prioridade/Tipo) preenchidos; no fechamento, exporte `RELEASE_CARDS=<n1,n2,...>` com os cards do pacote para o guard validar exatamente o pacote (cards fora do pacote com campos faltando são warn/dívida legada, não bloqueiam). Falha do próprio check (gh/jq) também é blocker (fail-closed).
@@ -431,6 +431,8 @@ Publicar lote direto de `develop` quando seguro:
 ```bash
 git switch develop
 git pull origin develop
+# in-flight: PRESERVED_BRANCHES=card-569-code-review-bugbot,card-581-release-guard-preserve
+PRESERVED_BRANCHES="${PRESERVED_BRANCHES:-}" \
 scripts/release-guard pre
 openspec validate --all
 gh pr create --base main --head develop --title "<titulo>" --body "<resumo>"
@@ -447,6 +449,7 @@ git switch -c release-YYYY-MM-DD
 # incluir apenas commits/branches homologados
 git cherry-pick <commit-homologado>
 git push origin release-YYYY-MM-DD
+PRESERVED_BRANCHES="${PRESERVED_BRANCHES:-}" \
 scripts/release-guard pre
 gh pr create --base main --head release-YYYY-MM-DD --title "<titulo>" --body "<resumo>"
 gh pr merge --merge --delete-branch=false
