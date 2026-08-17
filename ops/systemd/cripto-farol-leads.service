@@ -7,8 +7,8 @@ Type=simple
 WorkingDirectory=/srv/apps/prod/criptofarol/source/ops/landing-leads
 Environment=HOST=0.0.0.0
 Environment=PORT=5174
-Environment=HOME=/root/.openclaw/agents/main/agent/codex-home/home
-Environment=CODEX_HOME=/root/.openclaw/agents/main/agent/codex-home
+Environment=HOME=/root
+Environment=CODEX_HOME=/root/.codex
 Environment=DRIVE_FILE_ID=1cWFpAEfbTHcPJ8akzTf-oHRLRS-QmVNf
 Environment=GOG_ACCOUNT=claravalente840@gmail.com
 Environment=TELEGRAM_TARGET=-1003891182144

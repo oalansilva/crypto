@@ -10,20 +10,20 @@ updated_at: 2026-02-04
 
 # 0) One-liner
 
-Add an "agent chat" option on the Favorites screen so users can chat about a saved FavoriteStrategy, using OpenClaw Gateway auth (no new provider tokens).
+Add an "agent chat" option on the Favorites screen so users can chat about a saved FavoriteStrategy, using Hermes `POST /v1/responses` (no new provider tokens in the product UI).
 
 # 1) Context
 
 - We have saved Favorite strategies with params + metrics.
 - We want to ask natural-language questions about a specific favorite.
-- Initial implementation using `openclaw agent` CLI subprocess was unreliable (timeouts, empty replies). The stable solution is calling the OpenClaw Gateway WS API.
+- Initial implementation using a CLI subprocess was unreliable (timeouts, empty replies). The stable solution is calling Hermes `POST /v1/responses`.
 
 # 2) Goal
 
 ## In scope
 - UI button on each favorite row to open a chat modal.
 - Backend endpoint that builds a compact prompt with favorite JSON context.
-- Run agent turns through OpenClaw Gateway WS API and return reply text.
+- Run agent turns through Hermes HTTP (`POST /v1/responses`) and return reply text.
 - Keep stable conversation per favorite via `conversation_id`.
 
 ## Out of scope
@@ -69,7 +69,7 @@ Add an "agent chat" option on the Favorites screen so users can chat about a sav
 
 - [x] Favorites UI has an Agent chat option.
 - [x] Backend returns non-empty replies reliably.
-- [x] Uses OpenClaw Gateway WS API (no CLI subprocess).
+- [x] Uses Hermes HTTP `/v1/responses` (no CLI subprocess, no OpenClaw Gateway).
 
 # 7) Test plan
 
@@ -83,5 +83,5 @@ Add an "agent chat" option on the Favorites screen so users can chat about a sav
 
 # 8) Implementation notes
 
-- Backend uses `OPENCLAW_GATEWAY_URL` and `OPENCLAW_GATEWAY_TOKEN`.
-- Gateway session key format: `agent:main:agentchat:<conversation_id>`
+- Backend uses `HERMES_API_BASE_URL` (default `http://127.0.0.1:8642`) and optional `HERMES_API_TOKEN` / `HERMES_API_KEY`.
+- Hermes session key format: `agent:main:agentchat:<conversation_id>`

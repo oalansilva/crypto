@@ -7,7 +7,7 @@ TBD - created by archiving change card-469-varredura-backtest. Update Purpose af
 
 The system SHALL expose an admin-only dry-run endpoint `POST /combos/discovery/sweeps/preflight`. It SHALL accept one or more existing templates, one or more supported symbols, one or both swing timeframes (`4h`, `1d`), one or both directions (`long`, `short`) and a valid historical period. It SHALL return the normalized axes, raw cartesian total, valid combinations, excluded combinations with a reason keyed by `template × symbol × timeframe`, configured axis/total limits, actual valid total, expiry and a cryptographically bound `snapshot_token` plus `snapshot_hash`. Empty axes, inverted dates and unsupported values SHALL be reported against the responsible axis without discarding the draft.
 
-Creation SHALL accept the preflight token, `idempotency_key`, normalized `payload_hash`, and no client-calculated total. `actor` SHALL be derived exclusively from the authenticated principal (never trusted from client input); if a compatibility layer still transmits an actor field, the server SHALL compare it to the authenticated principal and reject any mismatch. The persistence layer SHALL enforce one unique idempotency record per `(actor, idempotency_key)` and SHALL store its `payload_hash`, `sweep_id` and response identity. In one transaction it SHALL lock/revalidate token freshness, derived actor, normalized payload hash, catalog compatibility and limits, persist the immutable snapshot/combinations/outbox records, and reject a stale or mismatched token without enqueueing work.
+Creation SHALL accept the preflight token, `idempotency_key`, normalized `payload_hash`, and no client-calculated total. `actor` SHALL be derived exclusively from the authenticated principal (never trusted from client input); if a compatibility layer still transmits an actor field, the server SHALL compare it to the authenticated principal and reject any mismatch. The persistence layer SHALL enforce one unique idempotency record per `(actor, idempotency_key)` and SHALL store its `payload_hash`, `sweep_id` and response identity. In one transaction it SHALL lock/revalidate token freshness, derived actor, normalized payload hash, catalog compatibility and limits, persist the immutable snapshot/combinations/outbox records, and reject a stale or mismatched token without enqueueing work. The server SHALL compute `payload_hash` from a canonical serialization of templates, symbols, timeframes and directions (stable sorted order, not client array order). The client SHALL send a draft-scoped UUID as `idempotency_key`; `snapshot_hash` SHALL NOT be used as that key. "Novo rascunho" SHALL generate a new key.
 
 #### Scenario: Compatible and incompatible combinations
 
@@ -26,6 +26,8 @@ Creation SHALL accept the preflight token, `idempotency_key`, normalized `payloa
 
 - **WHEN** the same actor retries creation with the same `idempotency_key` and `payload_hash`
 - **THEN** the response returns the original `sweep_id` and immutable snapshot
+- **WHEN** the same actor retries with the same key and equivalent axes in a different list order
+- **THEN** the canonical payload hash matches and the response is an idempotent retry, not HTTP `409`
 - **WHEN** the same actor reuses that key with a different payload hash
 - **THEN** the stored hash is compared under the unique `(actor, idempotency_key)` lock, the system returns HTTP `409` idempotency conflict, and creates nothing
 
@@ -34,6 +36,28 @@ Creation SHALL accept the preflight token, `idempotency_key`, normalized `payloa
 - **WHEN** two requests for the same actor concurrently use one `idempotency_key` with different normalized payload hashes
 - **THEN** exactly one request may persist the unique idempotency record and sweep
 - **AND** the other observes the stored divergent hash, returns HTTP `409`, and creates no sweep, combinations or outbox intents
+
+#### Scenario: Retry with reordered axes is idempotent
+
+- **WHEN** the same actor retries creation with the same `idempotency_key` and an equivalent payload whose templates/symbols/timeframes/directions are in a different order
+- **THEN** the response returns the original `sweep_id` and HTTP success (idempotent retry)
+- **AND** it SHALL NOT return HTTP `409`
+
+### Requirement: Idempotency key is per draft, not snapshot_hash
+
+The client SHALL send a draft-scoped `idempotency_key` (UUID generated for that draft). The server SHALL NOT treat `snapshot_hash` as the idempotency key. `payload_hash` SHALL canonicalize templates, symbols, timeframes and directions (stable sorted order). Starting a new draft SHALL generate a new key so a second start does not reuse the previous sweep's key.
+
+#### Scenario: New draft gets a new key
+
+- **WHEN** the user activates "Novo rascunho" after a sweep
+- **THEN** the next start uses a new `idempotency_key`
+- **AND** that start creates a distinct sweep instead of returning the previous `sweep_id`
+
+#### Scenario: Same draft retry keeps the key
+
+- **WHEN** the user retries start on the same draft without creating a new draft
+- **THEN** the same `idempotency_key` is reused
+- **AND** an equivalent payload returns the original sweep
 
 ### Requirement: Persist an explicit sweep lifecycle and reconciled counters
 

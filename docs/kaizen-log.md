@@ -269,6 +269,13 @@
 - **Motivo**: escopo de backup de ambiente (openclaw, skills, apps, banco) coberto por operação do ambiente Oracle (snapshots/backups de infra DEV/PROD); card sem dono operacional ativo e preso há 3 auditorias kaizen.
 - **Implementado (card #481)**: `release-guard audit` ganhou bloco `card_age_inventory` — inventário de cards por coluna com idade em dias (GraphQL `updatedAt` do item), warn informativo para >30 dias (default, configurável via `CARD_AGE_THRESHOLD_DAYS`), limite por coluna (`CARD_AGE_MAX_PER_COLUMN`, default 5), paginação até 20 páginas, falha de obtenção como warn sem interromper. Somente em `audit`; pre/post inalterados.
 
+## 2026-08-17 — Cards #530/#531 (kaizen UI do #469)
+
+- **Ação**: regras de apply/verify após o #469 ter marcado tasks de UI `[x]` sem código e ter implementado a Discovery pelo contrato de API em vez do protótipo aprovado.
+- **#530**: `/opsx:apply` com `UI impact: affected` carrega o protótipo aprovado como spec de layout; API não é spec de UI.
+- **#531**: `/opsx:verify` e Code Review exigem evidência por task de UI contra o protótipo; Playwright `[ ]` bloqueia Done. Skill `openspec-verify-change` e `opsx-verify.md` passam a tratar `[x]` sem implementação como CRITICAL.
+- **Evidência base**: PR #528 / card #469 — tasks 6.2–6.10 `[x]` sem implementação; 7.8/7.9 `[ ]` em Done.
+
 ## 2026-08-17 — Kaizen release (release 2026-08-17, cards 469/502/503/504/516/517/518/562)
 
 - **Release/card**: 2026-08-17 — cards 469, 502, 503, 504, 516, 517, 518, 562 (Homologado → Pronto após deploy PROD).

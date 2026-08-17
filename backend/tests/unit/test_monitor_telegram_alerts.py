@@ -75,7 +75,11 @@ class _FakeOpportunityService:
 
     def get_catalog_opportunities(self, *, tier_filter, alerts_only=False):
         self.calls.append(
-            {"source": "catalog", "tier_filter": tier_filter, "alerts_only": alerts_only}
+            {
+                "source": "catalog",
+                "tier_filter": tier_filter,
+                "alerts_only": alerts_only,
+            }
         )
         return list(self.opportunities)
 
@@ -125,7 +129,9 @@ def test_build_monitor_alert_candidate_formats_short_buy_summary():
     assert "Stop: 101.900,25" in candidate.message
 
 
-def test_scan_dry_run_records_audit_when_delivery_config_incomplete(monitor_alert_db_session):
+def test_scan_dry_run_records_audit_when_delivery_config_incomplete(
+    monitor_alert_db_session,
+):
     service = _FakeOpportunityService([_opportunity("HOLD")])
 
     summary = run_monitor_telegram_alert_scan(
@@ -228,7 +234,9 @@ def test_scan_reports_not_sendable_reason(monitor_alert_db_session):
     assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
 
 
-def test_scan_alerts_when_silent_observed_status_becomes_sendable(monitor_alert_db_session):
+def test_scan_alerts_when_silent_observed_status_becomes_sendable(
+    monitor_alert_db_session,
+):
     monitor_alert_db_session.add(
         MonitorObservedStatus(
             symbol="BTC/USDT",
@@ -416,9 +424,10 @@ def test_cron_wrapper_loads_monitor_token_from_runtime_secret(tmp_path, monkeypa
         json.dumps({"env": {"MONITOR_TELEGRAM_BOT_TOKEN": "monitor-token"}}),
         encoding="utf-8",
     )
-    monkeypatch.setattr(module, "SECRETS_PATH", secret_path)
+    module.SECRETS_CANDIDATES = (secret_path,)
     monkeypatch.delenv("MONITOR_TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("MONITOR_TELEGRAM_SECRETS_FILE", raising=False)
 
     assert module._load_telegram_token() == "monitor-token"
 

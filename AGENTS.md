@@ -213,9 +213,12 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 4. Cards novos entram em `Status=Em Refinamento` (primeira coluna): Alan escolhe/prioriza/cancela; após refinamento, mover para `Status=Todo`. Executar OpenSpec (`/opsx:new`, `/opsx:ff`) e publicar os artifacts no card.
 5. Mover para `Status=Design`, invocar `design-critic`, concluir `design.md` + `Design Critique` (e `Prototype` quando UI impact = affected), mover para `Status=Aprovação de Design` e **aguardar Alan** arrastar para `Pronto para Dev`. Pedidos como `implemente` / `pode codar` **não** autorizam pular este gate.
 6. Somente em `Pronto para Dev`, mover para `Status=Em desenvolvimento`, executar `/opsx:apply` e `/opsx:verify` e implementar.
+   - **`UI impact: affected`:** `/opsx:apply` carrega `design.md` + o protótipo aprovado (`frontend/public/prototypes/<change-or-card-slug>/`) como **spec de UI** antes de editar `frontend/src`. Contrato de API é fonte de dados/integração, não de layout. O handoff/PR registra o path do protótipo, os elementos seguidos e qualquer desvio justificado; ausência desse registro bloqueia o apply. Antes de `Code Review`, comparar a rota entregue com o protótipo (layout, componentes, estados, a11y, responsividade) e registrar o resultado.
 7. Rodar testes proporcionais/focados e validação OpenSpec da change.
 8. Mover card para `Status=Code Review` e sincronizar `Fluxo=Code Review` quando existir.
 9. Rodar review do diff exato antes do commit. Se houver rework grande, voltar para `Em desenvolvimento`; se forem ajustes pequenos, manter `Code Review` e repetir o review.
+   - **`UI impact: affected`:** o review inclui o item bloqueante "UI tasks: implementadas e verificadas contra o protótipo". Task `[x]` sem o controle/estado no código é blocker de commit. `/opsx:verify` confronta tasks × implementação × protótipo; comparação ausente bloqueia `Done`.
+   - Task de Playwright/frontend `[ ]` bloqueia `Done` em qualquer card. `/opsx:verify` trata UI/`frontend` `[x]` sem implementação como CRITICAL.
 10. Fazer commit/push do SHA revisado, mover para `Status=QA` e sincronizar `Fluxo=QA` quando existir.
 11. Abrir PR para `develop`, aguardar `qa-gate` terminal verde e corrigir qualquer falha antes da integração.
 12. Integrar em `develop` quando pronto, preferencialmente com squash/commit único por card referenciando o card.
@@ -333,6 +336,7 @@ Status final: pronto.
 
 - Todo card executa Playwright visual por padrão, inclusive cards sem alteração em `frontend/**`.
 - Mudança de UI inclui cobertura desktop/mobile da tela afetada e baseline versionado revisado no diff.
+- **Rota nova em `frontend/src/App.tsx`:** o check `scripts/check_new_route_playwright_coverage.py` (job `new-route-playwright-coverage`, dependência do `qa-gate`) falha se o path de produto não estiver no inventário `frontend/tests/e2e/route-coverage-inventory.json` com spec funcional+visual. Aliases `Navigate`, `PrototypeRedirect` e `/prototypes/*` ficam de fora. Rotas já existentes entram no inventário como `covered` ou `grandfathered`; rota nova exige spec **e** atualização do inventário no mesmo diff. Skip silencioso não existe.
 - Dispensa só é válida com label `qa-visual-skip` e comentário explícito de Alan: `QA visual dispensado por Alan.` seguido de `Motivo:` não vazio.
 - Falha de QA que exige fonte retorna para `Em desenvolvimento -> Code Review -> QA`; falha de infraestrutura/flaky permanece em `QA` para rerun com evidência.
 
