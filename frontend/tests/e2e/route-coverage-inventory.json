@@ -1,0 +1,122 @@
+{
+  "comment": "Committed inventory of App.tsx product routes. A brand-new page route must be added here together with functional+visual Playwright specs. Aliases and grandfathered legacy gaps are explicit, not silent skips.",
+  "routes": [
+    {
+      "path": "/login",
+      "status": "covered",
+      "functional": "frontend/tests/e2e/login-closed-beta.spec.ts",
+      "visual": "frontend/tests/e2e/visual-critical.spec.ts"
+    },
+    {
+      "path": "/forgot-password",
+      "status": "grandfathered",
+      "reason": "legacy auth route without dedicated visual spec"
+    },
+    {
+      "path": "/home",
+      "status": "covered",
+      "functional": "frontend/tests/e2e/homepage-real-data.spec.ts",
+      "visual": "frontend/tests/e2e/visual-critical.spec.ts"
+    },
+    {
+      "path": "/favorites",
+      "status": "covered",
+      "functional": "frontend/tests/e2e/favorites-view-results.spec.ts",
+      "visual": "frontend/tests/e2e/visual-critical.spec.ts"
+    },
+    {
+      "path": "/monitor",
+      "status": "covered",
+      "functional": "frontend/tests/e2e/monitor-card-mode-and-portfolio.spec.ts",
+      "visual": "frontend/tests/e2e/visual-critical.spec.ts"
+    },
+    {
+      "path": "/kanban",
+      "status": "alias",
+      "covered_by": "/monitor"
+    },
+    {
+      "path": "/combo/select",
+      "status": "grandfathered",
+      "reason": "functional coverage in admin-menu-visibility; no versioned visual spec yet"
+    },
+    {
+      "path": "/combo/selectCrypto",
+      "status": "alias",
+      "covered_by": "/combo/select"
+    },
+    {
+      "path": "/combo/edit/:templateName",
+      "status": "grandfathered",
+      "reason": "legacy combo editor without dedicated visual spec"
+    },
+    {
+      "path": "/combo/configure",
+      "status": "grandfathered",
+      "reason": "legacy combo configure without dedicated visual spec"
+    },
+    {
+      "path": "/combo/discovery",
+      "status": "covered",
+      "functional": "frontend/tests/e2e/discovery-visual-critical.spec.ts",
+      "visual": "frontend/tests/e2e/discovery-visual-critical.spec.ts"
+    },
+    {
+      "path": "/combo/optimize",
+      "status": "grandfathered",
+      "reason": "legacy optimize route without dedicated visual spec"
+    },
+    {
+      "path": "/combo/results",
+      "status": "grandfathered",
+      "reason": "functional coverage in card-470; no versioned visual spec yet"
+    },
+    {
+      "path": "/openspec",
+      "status": "grandfathered",
+      "reason": "functional coverage in openspec-regression; no versioned visual spec yet"
+    },
+    {
+      "path": "/openspec/*",
+      "status": "grandfathered",
+      "reason": "nested OpenSpec detail is covered by the list regression; not a new product screen"
+    },
+    {
+      "path": "/external/balances",
+      "status": "covered",
+      "functional": "frontend/tests/e2e/external-balances.spec.ts",
+      "visual": "frontend/tests/e2e/visual-critical.spec.ts"
+    },
+    {
+      "path": "/help",
+      "status": "grandfathered",
+      "reason": "functional coverage in card-222-onboarding; no versioned visual spec yet"
+    },
+    {
+      "path": "/profile",
+      "status": "covered",
+      "functional": "frontend/tests/e2e/profile-update-feedback.spec.ts",
+      "visual": "frontend/tests/e2e/visual-critical.spec.ts"
+    },
+    {
+      "path": "/preferences",
+      "status": "alias",
+      "covered_by": "/profile"
+    },
+    {
+      "path": "/change-password",
+      "status": "grandfathered",
+      "reason": "functional coverage in change-password-field-icons; no versioned visual spec yet"
+    },
+    {
+      "path": "/system/preferences",
+      "status": "grandfathered",
+      "reason": "admin system preferences without dedicated visual spec"
+    },
+    {
+      "path": "/admin/users",
+      "status": "grandfathered",
+      "reason": "admin users without dedicated visual spec"
+    }
+  ]
+}

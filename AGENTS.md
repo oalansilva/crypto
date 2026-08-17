@@ -333,6 +333,7 @@ Status final: pronto.
 
 - Todo card executa Playwright visual por padrão, inclusive cards sem alteração em `frontend/**`.
 - Mudança de UI inclui cobertura desktop/mobile da tela afetada e baseline versionado revisado no diff.
+- **Rota nova em `frontend/src/App.tsx`:** o check `scripts/check_new_route_playwright_coverage.py` (job `new-route-playwright-coverage`, dependência do `qa-gate`) falha se o path de produto não estiver no inventário `frontend/tests/e2e/route-coverage-inventory.json` com spec funcional+visual. Aliases `Navigate`, `PrototypeRedirect` e `/prototypes/*` ficam de fora. Rotas já existentes entram no inventário como `covered` ou `grandfathered`; rota nova exige spec **e** atualização do inventário no mesmo diff. Skip silencioso não existe.
 - Dispensa só é válida com label `qa-visual-skip` e comentário explícito de Alan: `QA visual dispensado por Alan.` seguido de `Motivo:` não vazio.
 - Falha de QA que exige fonte retorna para `Em desenvolvimento -> Code Review -> QA`; falha de infraestrutura/flaky permanece em `QA` para rerun com evidência.
 
