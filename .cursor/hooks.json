@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/impeccable.sh afterFileEdit"
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/impeccable.sh stop"
+      }
+    ]
+  }
+}

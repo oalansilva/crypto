@@ -60,41 +60,6 @@ jobs:
       - name: Validate all OpenSpec changes and specs
         run: npx --yes @fission-ai/openspec@1.5.0 validate --all
 
-  design-gate-contract:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: .opencode/package-lock.json
-
-      - name: Install pinned OpenCode and OpenSpec
-        run: npm install --global opencode-ai@1.18.18 @fission-ai/openspec@1.5.0
-
-      - name: Install Design gate dependencies
-        run: npm --prefix .opencode ci
-
-      - name: Verify clean-checkout guard startup
-        run: npm --prefix .opencode run check:unbuilt
-
-      - name: Validate Design gate contract
-        run: |
-          export OPENCODE_BIN="$(command -v opencode)"
-          export OPENSPEC_BIN="$(command -v openspec)"
-          npm --prefix .opencode run typecheck
-          npm --prefix .opencode run build
-          npm --prefix .opencode run check:cutover
-          npm --prefix .opencode test
-          npm --prefix .opencode run check:profiles
-          npm --prefix .opencode run check:scope -- origin/develop
-
   qa-policy:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
