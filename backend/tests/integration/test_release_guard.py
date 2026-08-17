@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
+
+_AUTO_EVIDENCE = object()
 
 RELEASE_GUARD = Path(__file__).resolve().parents[3] / "scripts" / "release-guard"
 
@@ -34,18 +37,49 @@ def _init_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def _post_ready(repo: Path) -> None:
+def _rev_parse(repo: Path, ref: str = "HEAD") -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "--verify", ref],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _evidence_sha_from_docs(repo: Path) -> str | None:
+    docs = repo / "docs"
+    if not docs.is_dir():
+        return None
+    for path in sorted(docs.glob("release-*.md")):
+        text = path.read_text(encoding="utf-8")
+        for token in re.findall(r"\b[0-9a-fA-F]{7,40}\b", text):
+            resolved = subprocess.run(
+                ["git", "rev-parse", "--verify", f"{token}^{{commit}}"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+            )
+            if resolved.returncode == 0:
+                return resolved.stdout.strip()
+    return None
+
+
+def _post_ready(repo: Path) -> str:
     """Setup mínimo para o post do card #518: doc canônica da data + kaizen-log
     canônico + branches do pacote já ausentes (lista dummy inexistente).
 
     Simula o fluxo canônico: commits no develop, push, merge --no-ff em main,
     push; local main fica alinhado a origin/main com árvores idênticas.
+    A doc cita o SHA de código (ponta PROD), não o merge commit.
     """
     _git(repo, "switch", "develop")
+    _commit_file(repo, "release.txt", "release\n", "release content")
+    code_sha = _rev_parse(repo)
     _commit_file(
         repo,
         "docs/release-2026-07-01.md",
-        "# Release 2026-07-01\n\nDeploy final: ok.\n",
+        f"# Release 2026-07-01\n\nDeploy: {code_sha}\n",
         "release doc",
     )
     _commit_file(
@@ -54,11 +88,11 @@ def _post_ready(repo: Path) -> None:
         "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
         "kaizen log",
     )
-    _commit_file(repo, "release.txt", "release\n", "release content")
     _git(repo, "push", "origin", "develop")
     _git(repo, "switch", "main")
     _git(repo, "merge", "--no-ff", "develop", "-m", "merge release docs")
     _git(repo, "push", "origin", "main")
+    return code_sha
 
 
 def _run_guard(
@@ -70,11 +104,14 @@ def _run_guard(
     release_date: str | None = None,
     release_branches: str | None = None,
     preserved_branches: str | None = None,
-    prod_evidence: str | None = "test-commit services=app url=https://example.com",
+    prod_evidence: str | None | object = _AUTO_EVIDENCE,
 ) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ)
-    if prod_evidence is not None:
-        env["PROD_DEPLOY_EVIDENCE"] = prod_evidence
+    if prod_evidence is _AUTO_EVIDENCE:
+        sha = _evidence_sha_from_docs(repo) or _rev_parse(repo, "HEAD")
+        env["PROD_DEPLOY_EVIDENCE"] = f"{sha} services=app url=https://example.com"
+    elif prod_evidence is not None:
+        env["PROD_DEPLOY_EVIDENCE"] = str(prod_evidence)
     else:
         env.pop("PROD_DEPLOY_EVIDENCE", None)
     if release_cards is not None:
@@ -240,13 +277,24 @@ def test_post_release_allows_main_merge_commit_with_identical_tree(tmp_path: Pat
     monkeypatch.setenv("FAKE_PR_JSON", "[]")
     _git(repo, "switch", "develop")
     _commit_file(repo, "release.txt", "included\n", "release content")
+    new_sha = _rev_parse(repo)
+    _commit_file(
+        repo,
+        "docs/release-2026-07-01.md",
+        f"# Release 2026-07-01\n\nDeploy: {new_sha}\n",
+        "refresh release doc sha",
+    )
     _git(repo, "push", "origin", "develop")
     _git(repo, "switch", "main")
     _git(repo, "merge", "--no-ff", "develop", "-m", "merge develop")
     _git(repo, "push", "origin", "main")
 
     result = _run_guard(
-        repo, release_date="2026-07-01", release_branches="card-999-deleted", fake_gh=fake_gh
+        repo,
+        release_date="2026-07-01",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+        prod_evidence=f"{new_sha} services=app url=https://example.com",
     )
 
     assert result.returncode == 0
@@ -1719,4 +1767,141 @@ def test_pre_homologation_does_not_use_board_status(tmp_path: Path, monkeypatch)
     assert "homologation-comment check not applicable" not in result.stdout
     assert "Card #480 has canonical homologation evidence." in result.stdout
     assert _call_count(call_log, "CALL project item-list") == 0
+    assert result.returncode == 0
+
+
+# --- Card #580: segundo pacote no mesmo dia (diff do PR, evidência deste lote) ---
+
+
+def test_pre_code_pr_with_existing_doc_does_not_require_evidence(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy lote 1: ok.\n")
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "publish lote 1 doc")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "code.txt", "lote2\n", "code on develop")
+    _git(repo, "push", "origin", "develop")
+    fake_gh = _fake_gh(tmp_path)
+
+    result = _run_guard(repo, "pre", release_date="2026-07-01", prod_evidence=None, fake_gh=fake_gh)
+
+    assert result.returncode == 0
+    assert "release doc exists without PROD_DEPLOY_EVIDENCE" not in result.stdout
+    assert "contains placeholders" not in result.stdout
+    assert "canonical release doc already exists for 2026-07-01" in result.stdout
+    assert "update the same docs/release-2026-07-01.md after this package's deploy" in result.stdout
+
+
+def test_pre_documental_pr_blocks_without_evidence_when_develop_differs(
+    tmp_path: Path, monkeypatch
+):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _commit_file(
+        repo,
+        "docs/release-2026-07-01.md",
+        "# Release\n\nDeploy final: ok.\n",
+        "documental on develop",
+    )
+    _git(repo, "push", "origin", "develop")
+    fake_gh = _fake_gh(tmp_path)
+
+    result = _run_guard(repo, "pre", release_date="2026-07-01", prod_evidence=None, fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "release doc exists without PROD_DEPLOY_EVIDENCE" in result.stdout
+
+
+def test_post_blocks_previous_lote_evidence_even_if_sha_in_doc(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "lote1.txt", "lote1\n", "lote 1 code")
+    lote1 = _rev_parse(repo)
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "merge lote 1")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "lote2.txt", "lote2\n", "lote 2 code")
+    lote2 = _rev_parse(repo)
+    _commit_file(
+        repo,
+        "docs/release-2026-07-01.md",
+        f"# Release\n\nLote1: {lote1}\nLote2: {lote2}\n",
+        "release doc cites both shas",
+    )
+    _commit_file(
+        repo,
+        "docs/kaizen-log.md",
+        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        "kaizen log",
+    )
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "merge lote 2")
+    _git(repo, "push", "origin", "main")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "Teste")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(
+        repo,
+        release_date="2026-07-01",
+        release_cards="480",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+        prod_evidence=f"{lote1} services=app url=https://example.com",
+    )
+
+    assert result.returncode == 1
+    assert "is not this package's code/PROD tip" in result.stdout
+    assert "non-closeout path: lote2.txt" in result.stdout
+
+
+def test_post_accepts_code_tip_when_main_is_ahead_only_with_closeout(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "lote2.txt", "lote2\n", "lote 2 code")
+    code_sha = _rev_parse(repo)
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "merge lote 2 code")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _commit_file(
+        repo,
+        "docs/release-2026-07-01.md",
+        f"# Release\n\nDeploy: {code_sha[:8]}\n",
+        "documental closeout",
+    )
+    _commit_file(
+        repo,
+        "docs/kaizen-log.md",
+        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        "kaizen log",
+    )
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "merge documental")
+    _git(repo, "push", "origin", "main")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "Teste")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(
+        repo,
+        release_date="2026-07-01",
+        release_cards="480",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+        prod_evidence=f"{code_sha} services=app url=https://example.com",
+    )
+
+    assert "is not this package's code/PROD tip" not in result.stdout
+    assert "has no git abbreviation" not in result.stdout
     assert result.returncode == 0

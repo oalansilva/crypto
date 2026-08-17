@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-17 - Segundo pacote no mesmo dia não herda evidência do lote anterior (card #580)
+
+**Decisão:** `release-guard pre` classifica PR de código vs documental pelo diff de arquivos (`origin/main...HEAD` em `release-*`, senão `origin/main...origin/develop`) contra allowlist de closeout. Existência de `docs/release-YYYY-MM-DD.md` não exige mais `PROD_DEPLOY_EVIDENCE` por si só. Um segundo pacote no mesmo dia atualiza a mesma doc após o deploy; o `post` exige que o SHA da evidência seja ancestral de `origin/main` cujo delta restante ⊆ allowlist, com abreviação ≥7 na doc.
+
+**Motivo:** no lote 2 de 2026-08-17 o `pre` do PR de código #578 só passou reusando `91f5620e` do lote 1.
+
+**Onde:** `scripts/release-guard`, `AGENTS.md`, `openspec/specs/release-worktree-hygiene/spec.md`. Card #580.
+
 ## 2026-08-17 - Skills de processo versionadas no GitHub (card #585)
 
 **Decisão:** `alan-workflow`, `alan-workflow-ambientes` e `github-project-board` passam a ser arquivos reais em `.cursor/skills/` no GitHub `oalansilva/crypto`. Hermes e `~/.codex/skills/` ficam em freeze (sem dual-write). Opção B (symlink absoluto, card #584 Cancelado) está revogada.
