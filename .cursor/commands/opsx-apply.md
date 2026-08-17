@@ -61,6 +61,10 @@ Implement tasks from an OpenSpec change.
    - Remaining tasks overview
    - Dynamic instruction from CLI
 
+5b. **UI spec gate (`UI impact: affected`)**
+
+   Before editing product UI under `frontend/src`, load `design.md` + the approved prototype at `frontend/public/prototypes/<change-or-card-slug>/` as the layout spec. API contracts are not the layout spec. Record prototype path, elements followed, and explicit deviations in the handoff/PR. Missing record blocks apply. Compare delivered route vs prototype before Code Review.
+
 6. **Implement tasks (loop until done or blocked)**
 
    For each pending task:
