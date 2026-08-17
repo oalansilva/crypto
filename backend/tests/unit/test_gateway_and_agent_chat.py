@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
-from types import SimpleNamespace
 
+import httpx
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import create_engine
@@ -13,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.models import FavoriteStrategy
 import app.routes.agent_chat as agent_chat_route
-import app.services.openclaw_gateway_client as gateway_client
+import app.services.hermes_responses_client as hermes_client
 
 
 @pytest.fixture
@@ -29,11 +27,9 @@ def app_db_session(postgres_isolation, unit_database_url):
         engine.dispose()
 
 
-class _FakeWebSocketConnection:
-    def __init__(self, mode: str = "success"):
-        self.mode = mode
-        self.sent: list[dict] = []
-        self.recv_index = 0
+class _FakeAsyncClient:
+    def __init__(self, handler):
+        self.handler = handler
 
     async def __aenter__(self):
         return self
@@ -41,160 +37,141 @@ class _FakeWebSocketConnection:
     async def __aexit__(self, exc_type, exc, tb):
         return False
 
-    async def send(self, raw: str):
-        self.sent.append(json.loads(raw))
-
-    async def recv(self) -> str:
-        self.recv_index += 1
-        if self.recv_index == 1:
-            return json.dumps({"type": "event", "event": "connect.challenge"})
-
-        if self.recv_index == 2:
-            connect_id = self.sent[0]["id"]
-            if self.mode == "connect-error":
-                return json.dumps({"type": "res", "id": connect_id, "ok": False, "error": "denied"})
-            return json.dumps(
-                {"type": "res", "id": connect_id, "ok": True, "payload": {"status": "ok"}}
-            )
-
-        agent_id = self.sent[1]["id"]
-        if self.recv_index == 3:
-            if self.mode == "agent-call-error":
-                return json.dumps(
-                    {"type": "res", "id": agent_id, "ok": False, "error": "agent failed"}
-                )
-            if self.mode == "not-accepted":
-                return json.dumps(
-                    {"type": "res", "id": agent_id, "ok": True, "payload": {"status": "queued"}}
-                )
-            return json.dumps(
-                {"type": "res", "id": agent_id, "ok": True, "payload": {"status": "accepted"}}
-            )
-
-        if self.mode == "agent-status-error":
-            return json.dumps(
-                {
-                    "type": "res",
-                    "id": agent_id,
-                    "ok": True,
-                    "payload": {"status": "error", "summary": "upstream failure"},
-                }
-            )
-
-        if self.mode == "no-final":
-            raise TimeoutError("socket stalled")
-
-        return json.dumps(
-            {
-                "type": "res",
-                "id": agent_id,
-                "ok": True,
-                "payload": {
-                    "status": "ok",
-                    "result": {
-                        "payloads": [{"text": "Resposta final"}],
-                        "meta": {
-                            "agentMeta": {
-                                "model": "gpt",
-                                "provider": "openai",
-                                "usage": {"tokens": 1},
-                            }
-                        },
-                    },
-                },
-            }
-        )
+    async def post(self, url, headers=None, json=None):
+        return self.handler(url, headers or {}, json or {})
 
 
-def test_gateway_token_helpers_and_now_ms(monkeypatch, tmp_path):
-    monkeypatch.setenv("OPENCLAW_GATEWAY_URL", "ws://gateway.example")
-    assert gateway_client._get_gateway_url() == "ws://gateway.example"
+def _json_response(status: int, payload: dict):
+    request = httpx.Request("POST", "http://127.0.0.1:8642/v1/responses")
+    return httpx.Response(status, json=payload, request=request)
 
-    monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN", "secret-token")
-    assert gateway_client._get_gateway_token() == "secret-token"
 
-    monkeypatch.delenv("OPENCLAW_GATEWAY_TOKEN", raising=False)
-    token_file = tmp_path / "gateway.token"
+def test_hermes_url_and_optional_token(monkeypatch, tmp_path):
+    monkeypatch.delenv("HERMES_API_BASE_URL", raising=False)
+    assert hermes_client._responses_url() == "http://127.0.0.1:8642/v1/responses"
+    monkeypatch.setenv("HERMES_API_BASE_URL", "http://127.0.0.1:8642/v1")
+    assert hermes_client._responses_url() == "http://127.0.0.1:8642/v1/responses"
+
+    monkeypatch.delenv("HERMES_API_TOKEN", raising=False)
+    monkeypatch.delenv("HERMES_API_KEY", raising=False)
+    monkeypatch.delenv("HERMES_API_TOKEN_FILE", raising=False)
+    assert hermes_client._optional_token() is None
+
+    monkeypatch.setenv("HERMES_API_TOKEN", "secret-token")
+    assert hermes_client._optional_token() == "secret-token"
+
+    monkeypatch.delenv("HERMES_API_TOKEN", raising=False)
+    token_file = tmp_path / "hermes.token"
     token_file.write_text("file-token\n", encoding="utf-8")
-    monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN_FILE", str(token_file))
-    assert gateway_client._get_gateway_token() == "file-token"
+    monkeypatch.setenv("HERMES_API_TOKEN_FILE", str(token_file))
+    assert hermes_client._optional_token() == "file-token"
 
-    monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN_FILE", str(tmp_path / "missing.token"))
-    assert gateway_client._get_gateway_token() is None
 
-    monkeypatch.setattr(gateway_client.time, "time", lambda: 123.456)
-    assert gateway_client._now_ms() == 123456
+def test_extract_response_text_sanitizes_secrets():
+    payload = {
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": "Use Bearer abcdefghijklmnop and continue",
+                    }
+                ],
+            }
+        ]
+    }
+    text = hermes_client.extract_response_text(payload)
+    assert "abcdefghijklmnop" not in text
+    assert "[redacted]" in text
 
 
 @pytest.mark.asyncio
-async def test_run_agent_via_gateway_covers_success_and_error_paths(monkeypatch):
-    monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN", "token")
+async def test_run_agent_via_hermes_success_maps_thinking(monkeypatch):
+    captured = {}
 
-    connection = _FakeWebSocketConnection(mode="success")
-    monkeypatch.setattr(gateway_client.websockets, "connect", lambda *args, **kwargs: connection)
-    payload = await gateway_client.run_agent_via_gateway(
+    def handler(url, headers, body):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["body"] = body
+        return _json_response(
+            200,
+            {
+                "id": "resp_1",
+                "model": "hermes-agent",
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [{"type": "output_text", "text": "Resposta final"}],
+                    }
+                ],
+                "usage": {"input_tokens": 3, "output_tokens": 2},
+            },
+        )
+
+    monkeypatch.setattr(
+        hermes_client.httpx,
+        "AsyncClient",
+        lambda timeout=None: _FakeAsyncClient(handler),
+    )
+    payload = await hermes_client.run_agent_via_hermes(
         message="hello",
         session_key="session-1",
+        thinking="high",
         extra_system_prompt="extra",
         timeout_s=5,
     )
-    assert payload["status"] == "ok"
-    assert payload["result"]["payloads"][0]["text"] == "Resposta final"
-    assert connection.sent[0]["method"] == "connect"
-    assert connection.sent[1]["method"] == "agent"
-    assert connection.sent[1]["params"]["extraSystemPrompt"] == "extra"
+    assert payload["reply"] == "Resposta final"
+    assert captured["url"] == "http://127.0.0.1:8642/v1/responses"
+    assert captured["body"]["model_options"]["reasoning_effort"] == "high"
+    assert captured["body"]["conversation"] == "session-1"
+    assert captured["headers"]["X-Hermes-Session-Key"] == "session-1"
+    assert captured["headers"]["Idempotency-Key"]
+    assert captured["body"]["instructions"] == "extra"
+    assert "18789" not in captured["url"]
+    assert "OPENCLAW" not in json.dumps(captured)
 
-    monkeypatch.delenv("OPENCLAW_GATEWAY_TOKEN", raising=False)
-    monkeypatch.delenv("OPENCLAW_GATEWAY_TOKEN_FILE", raising=False)
-    with pytest.raises(RuntimeError, match="OPENCLAW_GATEWAY_TOKEN is not set"):
-        await gateway_client.run_agent_via_gateway(message="hello", session_key="session-2")
-
-    monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN", "token")
-    monkeypatch.setattr(
-        gateway_client.websockets,
-        "connect",
-        lambda *args, **kwargs: _FakeWebSocketConnection(mode="connect-error"),
+    payload_off = await hermes_client.run_agent_via_hermes(
+        message="hello",
+        session_key="session-1",
+        thinking="off",
+        timeout_s=5,
     )
-    with pytest.raises(RuntimeError, match="gateway connect failed"):
-        await gateway_client.run_agent_via_gateway(
-            message="hello", session_key="session-3", timeout_s=5
+    assert payload_off["reply"] == "Resposta final"
+    assert captured["body"]["model_options"]["reasoning_effort"] == "none"
+
+
+@pytest.mark.asyncio
+async def test_run_agent_via_hermes_timeout_and_empty(monkeypatch):
+    def timeout_handler(url, headers, body):
+        raise httpx.TimeoutException("slow")
+
+    monkeypatch.setattr(
+        hermes_client.httpx,
+        "AsyncClient",
+        lambda timeout=None: _FakeAsyncClient(timeout_handler),
+    )
+    with pytest.raises(TimeoutError, match="timed out"):
+        await hermes_client.run_agent_via_hermes(
+            message="hello", session_key="session-2", timeout_s=1
         )
 
-    monkeypatch.setattr(
-        gateway_client.websockets,
-        "connect",
-        lambda *args, **kwargs: _FakeWebSocketConnection(mode="agent-call-error"),
-    )
-    with pytest.raises(RuntimeError, match="gateway agent call failed"):
-        await gateway_client.run_agent_via_gateway(
-            message="hello", session_key="session-4", timeout_s=5
-        )
+    def empty_handler(url, headers, body):
+        return _json_response(200, {"output": []})
 
     monkeypatch.setattr(
-        gateway_client.websockets,
-        "connect",
-        lambda *args, **kwargs: _FakeWebSocketConnection(mode="agent-status-error"),
+        hermes_client.httpx,
+        "AsyncClient",
+        lambda timeout=None: _FakeAsyncClient(empty_handler),
     )
-    with pytest.raises(RuntimeError, match="upstream failure"):
-        await gateway_client.run_agent_via_gateway(
-            message="hello", session_key="session-5", timeout_s=5
-        )
-
-    monkeypatch.setattr(
-        gateway_client.websockets,
-        "connect",
-        lambda *args, **kwargs: _FakeWebSocketConnection(mode="not-accepted"),
-    )
-    with pytest.raises(TimeoutError, match="accepted"):
-        await gateway_client.run_agent_via_gateway(
-            message="hello", session_key="session-6", timeout_s=5
+    with pytest.raises(hermes_client.HermesEmptyReplyError):
+        await hermes_client.run_agent_via_hermes(
+            message="hello", session_key="session-3", timeout_s=1
         )
 
 
 @pytest.mark.asyncio
-async def test_agent_chat_route_and_helpers_cover_success_debug_and_fallbacks(
-    monkeypatch, app_db_session
-):
+async def test_agent_chat_route_success_timeout_empty_and_no_openclaw(monkeypatch, app_db_session):
     fav = FavoriteStrategy(
         id=1,
         user_id="user-1",
@@ -214,86 +191,55 @@ async def test_agent_chat_route_and_helpers_cover_success_debug_and_fallbacks(
     app_db_session.commit()
 
     monkeypatch.setenv("AGENT_CHAT_ENABLED", "1")
-    monkeypatch.setenv("AGENT_CHAT_DEBUG", "0")
     agent_chat_route._LOCKS.clear()
 
-    assert agent_chat_route._enabled() is True
-    assert agent_chat_route._debug_enabled() is False
-    assert agent_chat_route._get_lock("same-key") is agent_chat_route._get_lock("same-key")
-
-    prompt = agent_chat_route._build_prompt(fav, "What should I test next?")
-    assert "Momentum" in prompt
-    assert "What should I test next?" in prompt
-    assert '"strategy_name": "ema_rsi"' in prompt
-
-    async def fake_gateway_run(**kwargs):
+    async def fake_hermes(**kwargs):
+        assert kwargs["thinking"] == "low"
         return {
-            "status": "ok",
-            "result": {
-                "payloads": [
-                    {"text": "Primeira resposta"},
-                    {"nested": [{"text": "Primeira resposta"}, {"content": "Detalhe extra"}]},
-                ],
-                "meta": {
-                    "agentMeta": {"model": "gpt", "provider": "openai", "usage": {"tokens": 9}}
-                },
-            },
+            "reply": "Primeira resposta",
+            "model": "hermes-agent",
+            "usage": {"tokens": 9},
         }
 
-    monkeypatch.setattr(agent_chat_route, "run_agent_via_gateway", fake_gateway_run)
-    normalized = await agent_chat_route._run_openclaw_agent(
-        session_key="session-1",
-        message="prompt",
-        thinking="low",
-        timeout_s=5,
-    )
-    assert normalized["meta"]["agentMeta"]["model"] == "gpt"
-    assert len(normalized["payloads"]) == 2
-
-    request = agent_chat_route.AgentChatRequest(favorite_id=1, message="Analyze this setup")
-    response = await agent_chat_route.agent_chat(request, "user-1", app_db_session)
-    assert response.conversation_id == "fav-1"
-    assert response.reply == "Primeira resposta\n\nDetalhe extra"
-    assert response.model == "gpt"
-    assert response.provider == "openai"
-    assert response.usage == {"tokens": 9}
-    assert response.debug is None
-
-    monkeypatch.setenv("AGENT_CHAT_DEBUG", "1")
-    assert agent_chat_route._debug_enabled() is True
-
-    async def fake_route_run(**kwargs):
-        return {
-            "payloads": [],
-            "reply": "Fallback reply",
-            "meta": {"durationMs": 12, "agentMeta": {"model": "mini", "provider": "openai"}},
-        }
-
-    monkeypatch.setattr(agent_chat_route, "_run_openclaw_agent", fake_route_run)
-    fallback = await agent_chat_route.agent_chat(
-        agent_chat_route.AgentChatRequest(
-            favorite_id=1,
-            message="Use fallback",
-            conversation_id="custom-conv",
-        ),
+    monkeypatch.setattr(agent_chat_route, "run_agent_via_hermes", fake_hermes)
+    response = await agent_chat_route.agent_chat(
+        agent_chat_route.AgentChatRequest(favorite_id=1, message="Analyze this setup"),
         "user-1",
         app_db_session,
     )
-    assert fallback.conversation_id == "custom-conv"
-    assert fallback.reply == "Fallback reply"
-    assert fallback.debug is not None
-    assert fallback.debug["payloadsCount"] == 0
+    assert response.conversation_id == "fav-1"
+    assert response.reply == "Primeira resposta"
+    assert response.provider == "hermes"
+    assert response.model == "hermes-agent"
 
-    monkeypatch.setenv("AGENT_CHAT_ENABLED", "0")
-    with pytest.raises(HTTPException) as disabled_exc:
-        await agent_chat_route.agent_chat(request, "user-1", app_db_session)
-    assert disabled_exc.value.status_code == 403
+    async def fake_timeout(**kwargs):
+        raise TimeoutError("Hermes API Server timed out")
 
-    monkeypatch.setenv("AGENT_CHAT_ENABLED", "1")
-    with pytest.raises(HTTPException) as missing_exc:
+    monkeypatch.setattr(agent_chat_route, "run_agent_via_hermes", fake_timeout)
+    with pytest.raises(HTTPException) as timeout_exc:
         await agent_chat_route.agent_chat(
-            agent_chat_route.AgentChatRequest(favorite_id=999, message="missing"),
+            agent_chat_route.AgentChatRequest(favorite_id=1, message="timeout"),
             "user-1",
             app_db_session,
         )
-    assert missing_exc.value.status_code == 404
+    assert timeout_exc.value.status_code == 504
+    assert timeout_exc.value.detail == "Hermes timed out"
+
+    async def fake_empty(**kwargs):
+        raise agent_chat_route.HermesEmptyReplyError("empty")
+
+    monkeypatch.setattr(agent_chat_route, "run_agent_via_hermes", fake_empty)
+    with pytest.raises(HTTPException) as empty_exc:
+        await agent_chat_route.agent_chat(
+            agent_chat_route.AgentChatRequest(favorite_id=1, message="empty"),
+            "user-1",
+            app_db_session,
+        )
+    assert empty_exc.value.status_code == 502
+    assert "empty" in str(empty_exc.value.detail).lower()
+
+    for path in (agent_chat_route.__file__, hermes_client.__file__):
+        text = open(path, encoding="utf-8").read()
+        assert "OPENCLAW_GATEWAY" not in text
+        assert "18789" not in text
+        assert "openclaw" not in text.lower()
