@@ -22,4 +22,4 @@
 - [x] 4.1 `openspec validate card-569-code-review-bugbot`
 - [x] 4.2 Nenhum arquivo de produto (`backend/app/**`, `frontend/src/**`) mudou
 - [x] 4.3 OpenSpec no card #569 (Gist `aed5b632eeaf406221d83787a83cbec4`)
-- [ ] 4.4 Code Review deste card: `diff-reviewer` uncommitted + vs `origin/develop...HEAD`; `code-reviewer` de processo
+- [x] 4.4 Code Review deste card: `diff-reviewer` uncommitted + vs `origin/develop...HEAD`; `code-reviewer` de processo

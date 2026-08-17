@@ -10,4 +10,4 @@
 - [x] 2. Reescrever SKILL.md: 12 colunas, Cursor/`inherit`, anti-bypass, helper relativo, Drive via AGENTS.md do repo
 - [x] 3. Enxugar harness.mdc: Status, Em Refinamento, Todo≠código, Gist, OpenSpec≥card; AGENTS.md = ponteiros; rules.md = lei
 - [x] 4. Spec `openspec/specs/cursor-harness`, decision-log, palestra #582
-- [ ] 5. `git ls-files` das 3 SKILL.md; modo ≠ symlink; `openspec validate`; PR develop
+- [x] 5. `git ls-files` das 3 SKILL.md; modo ≠ symlink; `openspec validate`; PR develop
