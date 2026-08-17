@@ -9,7 +9,8 @@ Usage: scripts/post-card-evidence-comment.sh \
   --commit <sha> \
   [--pr <number>] \
   [--branch <name>] \
-  [--summary <text>] [--tests <text>] [--qa <text>] [--review <text>] \
+  [--summary <text>] [--tests <text>] [--qa <text>] \
+  --review <text> (required for --transition done) \
   [--package <name>] [--cards <list>] [--deploy <evidence>] [--branches <list>] \
   [--dry-run]
 

@@ -1,4 +1,9 @@
-## ADDED Requirements
+# cursor-code-review Specification
+
+## Purpose
+Contrato do gate `Status=Code Review` no Cripto Farol: reviewers locais versionados (`diff-reviewer` + `code-reviewer`), comparação com `develop` na branch do card, Bugbot pago opcional.
+
+## Requirements
 
 ### Requirement: Code Review MUST run the versioned diff reviewer on the uncommitted diff versus HEAD
 While `Status=Code Review` and before any implementation commit, the Cursor Agent SHALL launch one `generalPurpose` Task with `model: inherit`, instructed not to edit, whose prompt is the body of `.cursor/agents/diff-reviewer.md` plus the uncommitted diff versus HEAD. A generic Task without that file MUST NOT be the happy-path reviewer. `/review-bugbot` MUST NOT be required.

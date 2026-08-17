@@ -1,25 +1,25 @@
 ## 1. Contrato de Code Review
 
-- [ ] 1.1 Atualizar `AGENTS.md` para exigir dois Tasks `generalPurpose` read-only `inherit` em todo `Status=Code Review` (`.cursor/agents/diff-reviewer.md` no diff; `.cursor/agents/code-reviewer.md` no processo), com pré-commit vs HEAD e fechamento `origin/develop...HEAD` na branch do card; `/review-bugbot` e `/review-security` só se Alan pedir; spawn vazio com 1 retry + residual explícito.
-- [ ] 1.2 Atualizar `rules.md` com o mesmo gate pré-commit, Bugbot Off de propósito, e a proibição de Autofix na branch existente / Agent Review automático pós-commit.
-- [ ] 1.3 Atualizar `docs/backlog-operating-model.md` para descrever Code Review como reviewers locais vs `develop`, não Bugbot obrigatório nem “revisão Cursor” genérica.
-- [ ] 1.4 Atualizar o bloco canônico de Done (`AGENTS.md` / helper) para citar `diff-reviewer` e `code-reviewer`; `--review` continua obrigatório em `--transition done`.
+- [x] 1.1 Atualizar `AGENTS.md` para exigir dois Tasks `generalPurpose` read-only `inherit` em todo `Status=Code Review`
+- [x] 1.2 Atualizar `rules.md` com o mesmo gate pré-commit, Bugbot Off de propósito, Autofix/Agent Review
+- [x] 1.3 Atualizar `docs/backlog-operating-model.md`
+- [x] 1.4 Atualizar o bloco canônico de Done / helper `--review`
 
 ## 2. Regras e subagent versionados
 
-- [ ] 2.1 Manter `.cursor/BUGBOT.md` (raiz) como regras lidas pelo reviewer local (PostgreSQL, sem SQLite, Design/`Pronto para Dev`, secrets, testes, Playwright).
-- [ ] 2.2 Manter `backend/.cursor/BUGBOT.md` e `frontend/.cursor/BUGBOT.md` com regras do tree.
-- [ ] 2.3 Criar `.cursor/agents/diff-reviewer.md` e atualizar `.cursor/agents/code-reviewer.md`, ambos `readonly: true`, `model: inherit`.
+- [x] 2.1 `.cursor/BUGBOT.md` na raiz
+- [x] 2.2 `backend/.cursor/BUGBOT.md` e `frontend/.cursor/BUGBOT.md`
+- [x] 2.3 `.cursor/agents/diff-reviewer.md` e `.cursor/agents/code-reviewer.md` (`readonly`, `inherit`)
 
 ## 3. Evidência operacional e log
 
-- [ ] 3.1 Registrar Bugbot Off de propósito (chat Alan 2026-08-17: não ligar por custo). Não exigir Autofix Off no dashboard.
-- [ ] 3.2 Append em `docs/kaizen-log.md` do pivot #569 (Bugbot obrigatório → reviewers locais).
-- [ ] 3.3 Append em `docs/decision-log.md` da decisão que substitui `/review-bugbot` obrigatório.
+- [x] 3.1 Bugbot Off de propósito (chat Alan 2026-08-17)
+- [x] 3.2 Append `docs/kaizen-log.md`
+- [x] 3.3 Append `docs/decision-log.md`
 
 ## 4. Validação
 
-- [ ] 4.1 `openspec validate --change card-569-code-review-bugbot` (ou specs afetados) verde.
-- [ ] 4.2 Conferir que nenhum arquivo de produto (`backend/app/**`, `frontend/src/**`) mudou.
-- [ ] 4.3 Publicar/republicar OpenSpec no card #569 (mesmo Gist); UI impact none; Prototype N/A.
-- [ ] 4.4 Code Review deste card: `diff-reviewer` no uncommitted vs HEAD; depois do commit, `diff-reviewer` em `origin/develop...HEAD` na branch do card; `code-reviewer` de processo. Sem `/review-bugbot` obrigatório.
+- [x] 4.1 `openspec validate card-569-code-review-bugbot`
+- [x] 4.2 Nenhum arquivo de produto (`backend/app/**`, `frontend/src/**`) mudou
+- [x] 4.3 OpenSpec no card #569 (Gist `aed5b632eeaf406221d83787a83cbec4`)
+- [ ] 4.4 Code Review deste card: `diff-reviewer` uncommitted + vs `origin/develop...HEAD`; `code-reviewer` de processo
