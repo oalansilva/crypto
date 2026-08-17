@@ -273,6 +273,113 @@ branch_merged() {
   return 1
 }
 
+branch_is_preserved() {
+  local name="$1"
+  local preserved_branches="${PRESERVED_BRANCHES:-}"
+  [[ -z "$preserved_branches" || -z "$name" ]] && return 1
+  local raw_token item
+  local -a raw_arr
+  IFS=',' read -ra raw_arr <<< "$preserved_branches"
+  for raw_token in "${raw_arr[@]}"; do
+    item="$(printf '%s' "$raw_token" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    [[ "$item" == "$name" ]] && return 0
+  done
+  return 1
+}
+
+worktree_dirty_only_canonical_release_doc() {
+  local wt_status="$1"
+  local canonical="docs/release-${RELEASE_DATE}.md"
+  local line path
+  [[ -z "$wt_status" ]] && return 0
+  [[ -z "$RELEASE_DATE" ]] && return 1
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    path="${line:3}"
+    if [[ "$path" == *" -> "* || "$path" != "$canonical" ]]; then
+      return 1
+    fi
+  done <<< "$wt_status"
+  return 0
+}
+
+closeout_allowlist_path() {
+  local path="$1"
+  case "$path" in
+    docs/*|openspec/changes/archive/*|openspec/specs/*|AGENTS.md|rules.md) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+unpublished_is_code_pr() {
+  # 0 = code PR, 1 = documental or unknown (fail-closed documental)
+  local from="origin/main" to unpublished line
+  if [[ "$current_branch" == release-* ]]; then
+    to="HEAD"
+  else
+    to="origin/develop"
+  fi
+  if ! unpublished="$(git diff --name-only "$from...$to" 2>/dev/null)"; then
+    return 1
+  fi
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    if ! closeout_allowlist_path "$line"; then
+      return 0
+    fi
+  done <<< "$unpublished"
+  return 1
+}
+
+prod_evidence_commit() {
+  local token="${1%% *}"
+  git rev-parse --verify "${token}^{commit}" 2>/dev/null
+}
+
+evidence_abbreviation_in_doc() {
+  local full="$1" doc="$2" token resolved
+  [[ -f "$doc" ]] || return 1
+  while IFS= read -r token; do
+    [[ -z "$token" || ${#token} -lt 7 ]] && continue
+    resolved="$(git rev-parse --verify "${token}^{commit}" 2>/dev/null || true)"
+    if [[ "$resolved" == "$full" ]]; then
+      return 0
+    fi
+  done < <(grep -oE '\b[0-9a-fA-F]{7,40}\b' "$doc" 2>/dev/null | tr 'A-F' 'a-f')
+  return 1
+}
+
+validate_prod_evidence_this_lote() {
+  local token full path unpublished
+  token="${prod_evidence%% *}"
+  if [[ -z "$token" ]]; then
+    return 0
+  fi
+  full="$(prod_evidence_commit "$token" || true)"
+  if [[ -z "$full" ]]; then
+    issue "PROD_DEPLOY_EVIDENCE first token is not a git commit: $token"
+    return 0
+  fi
+  if ! git merge-base --is-ancestor "$full" origin/main 2>/dev/null; then
+    issue "PROD_DEPLOY_EVIDENCE commit is not an ancestor of origin/main: ${full:0:8}"
+    return 0
+  fi
+  if ! unpublished="$(git diff --name-only "$full"..origin/main 2>/dev/null)"; then
+    issue "cannot diff PROD_DEPLOY_EVIDENCE ${full:0:8}..origin/main"
+    return 0
+  fi
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    if ! closeout_allowlist_path "$path"; then
+      issue "PROD_DEPLOY_EVIDENCE ${full:0:8} is not this package's code/PROD tip; ${full:0:8}..origin/main still has non-closeout path: $path"
+      return 0
+    fi
+  done <<< "$unpublished"
+  if [[ -f "$canonical_doc" ]] && ! evidence_abbreviation_in_doc "$full" "$canonical_doc"; then
+    issue "canonical release doc $canonical_doc has no git abbreviation (>=7 hex) of PROD_DEPLOY_EVIDENCE commit ${full:0:8}"
+  fi
+}
+
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [[ -z "$repo_root" ]]; then
   printf 'ERROR: not inside a Git repository\n' >&2
@@ -368,8 +475,8 @@ else
   printf 'RELEASE_DATE: %s\n' "$RELEASE_DATE"
 fi
 
-section "Release cards canonicalization (post/audit)"
-if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
+section "Release cards canonicalization (pre/post/audit)"
+if [[ "$mode" == "pre" || "$mode" == "post" || "$mode" == "audit" ]]; then
   normalize_release_cards
   if [[ -n "$RELEASE_CARDS_INVALID" ]]; then
     issue "RELEASE_CARDS contains invalid card identifiers: $RELEASE_CARDS_INVALID (expected comma-separated integers 1..2147483647)"
@@ -381,7 +488,7 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
     printf 'RELEASE_CARDS not set or empty.\n'
   fi
 else
-  printf 'Skipped (release cards canonicalization runs in post/audit).\n'
+  printf 'Skipped (release cards canonicalization runs in pre/post/audit).\n'
 fi
 
 section "Remote snapshots (post/audit)"
@@ -432,13 +539,26 @@ for wt in "${worktrees[@]}"; do
   printf '%s [%s]\n' "$wt" "${wt_branch:-detached}"
 
   wt_status="$(git -C "$wt" status --porcelain=v1 --untracked-files=all)"
-  if [[ -n "$wt_status" ]]; then
+  if [[ -z "$wt_status" ]]; then
+    :
+  elif branch_is_preserved "$wt_branch"; then
+    warn "dirty worktree classified via PRESERVED_BRANCHES: $wt [$wt_branch]"
+    printf '%s\n' "$wt_status" | indent
+  elif [[ -n "$wt_branch" ]] && branch_merged "$wt_branch" && worktree_dirty_only_canonical_release_doc "$wt_status"; then
+    printf 'Dirty worktree allowed (merged branch; only docs/release-%s.md): %s\n' "$RELEASE_DATE" "$wt"
+  else
     issue "dirty worktree: $wt"
     printf '%s\n' "$wt_status" | indent
   fi
 
   if [[ "$wt" != "$repo_root" ]]; then
-    issue "extra worktree requires classification before release cleanup: $wt"
+    if branch_is_preserved "$wt_branch"; then
+      printf 'Extra worktree classified via PRESERVED_BRANCHES: %s [%s]\n' "$wt" "$wt_branch"
+    elif [[ -n "$wt_branch" ]] && branch_merged "$wt_branch"; then
+      warn "extra worktree on merged branch; remove at closeout (no empty commit): $wt [$wt_branch]"
+    else
+      issue "extra worktree requires classification before release cleanup: $wt"
+    fi
   fi
 done
 
@@ -805,20 +925,6 @@ fi
 
 section "Change/card/release branch inventory (post/audit)"
 if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
-  preserved_branches="${PRESERVED_BRANCHES:-}"
-
-  branch_is_preserved() {
-    local name="$1"
-    [[ -z "$preserved_branches" ]] && return 1
-    local p
-    IFS=',' read -ra p <<< "$preserved_branches"
-    local item
-    for item in "${p[@]}"; do
-      [[ "$item" == "$name" ]] && return 0
-    done
-    return 1
-  }
-
   branch_has_worktree() {
     local name="$1"
     git worktree list --porcelain | awk -v b="refs/heads/$name" '$1 == "branch" && $2 == b { found=1 } END { exit !found }'
@@ -1024,7 +1130,11 @@ if git rev-parse --verify -q origin/develop >/dev/null &&
     fi
 
     if ! branch_merged "$branch"; then
-      issue "local branch not merged into origin/develop or origin/main: $branch"
+      if branch_is_preserved "$branch"; then
+        warn "local branch not merged; classified via PRESERVED_BRANCHES: $branch"
+      else
+        issue "local branch not merged into origin/develop or origin/main: $branch"
+      fi
     fi
   done
 else
@@ -1076,12 +1186,14 @@ validate_release_doc() {
 }
 if [[ "$mode" == "pre" ]]; then
   if [[ -f "$canonical_doc" ]]; then
-    # D2: when the canonical doc exists (documental PR after deploy), pre
-    # requires evidence and clean content; a code-only PR has no doc yet.
-    if [[ -z "$prod_evidence" ]]; then
-      issue "release doc exists without PROD_DEPLOY_EVIDENCE: $canonical_doc (documental PR requires final deploy evidence)"
+    if unpublished_is_code_pr; then
+      warn "canonical release doc already exists for $RELEASE_DATE while unpublished diff still has code; update the same $canonical_doc after this package's deploy (do not reuse previous-lote PROD_DEPLOY_EVIDENCE)"
+    else
+      if [[ -z "$prod_evidence" ]]; then
+        issue "release doc exists without PROD_DEPLOY_EVIDENCE: $canonical_doc (documental PR requires final deploy evidence)"
+      fi
+      validate_release_doc "$canonical_doc"
     fi
-    validate_release_doc "$canonical_doc"
   else
     printf 'No canonical release doc yet for %s (code PR; documental PR comes after deploy).\n' "$RELEASE_DATE"
   fi
@@ -1095,6 +1207,9 @@ elif [[ "$mode" == "post" || "$mode" == "audit" ]]; then
     validate_release_doc "$canonical_doc"
   else
     issue "canonical release doc missing: $canonical_doc (commit the release doc for $RELEASE_DATE before moving cards to Pronto)"
+  fi
+  if [[ "$mode" == "post" && -n "$prod_evidence" ]]; then
+    validate_prod_evidence_this_lote
   fi
   # Duplicate release docs for the same date with divergent content
   declare -A seen_docs
@@ -1189,6 +1304,37 @@ if [[ "$mode" == "post" || "$mode" == "audit" ]]; then
   fi
 else
   printf 'Skipped (board fields check runs in post/audit).\n'
+fi
+
+section "Homologation evidence comments (pre)"
+if [[ "$mode" == "pre" ]]; then
+  if [[ -n "$RELEASE_CARDS_INVALID" || -n "$RELEASE_CARDS_OUT_OF_RANGE" ]]; then
+    printf 'Homologation-comment REST skipped (RELEASE_CARDS invalid; blocker already emitted).\n'
+  elif [[ -z "$CANONICAL_CARDS" ]]; then
+    warn "RELEASE_CARDS not set; package homologation-comment check skipped"
+  elif ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+    issue "homologation-comment check could not run (gh unavailable or not authenticated) with RELEASE_CARDS set"
+  else
+    declare -A seen_pre_evidence_cards=()
+    for card_num in $CANONICAL_CARDS; do
+      if [[ -n "${seen_pre_evidence_cards[$card_num]:-}" ]]; then
+        continue
+      fi
+      seen_pre_evidence_cards["$card_num"]=1
+      comments=""
+      if ! comments="$(gh api "repos/oalansilva/crypto/issues/$card_num/comments" --paginate --jq '.[].body' 2>/dev/null)"; then
+        issue "homologation-comment check could not list all comments for card #$card_num"
+        continue
+      fi
+      if printf '%s\n' "$comments" | grep -qiF 'Homologado por Alan na develop.'; then
+        printf 'Card #%s has canonical homologation evidence.\n' "$card_num"
+      else
+        issue "card #$card_num without canonical homologation comment; run scripts/post-card-evidence-comment.sh --transition homologado --card $card_num --commit <sha>"
+      fi
+    done
+  fi
+else
+  printf 'Skipped (homologation-comment pre check runs in pre).\n'
 fi
 
 section "Homologation evidence comments (post/audit)"

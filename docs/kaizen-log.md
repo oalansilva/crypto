@@ -14,6 +14,28 @@
 
 ---
 
+## 2026-08-17 — Card #569 (pivot: reviewers locais inherit/readonly)
+
+- **Release/card**: #569 kaizen (não é closeout de lote).
+- **Fontes consultadas**: chat Alan (recusa Bugbot por custo), docs Cursor, `AGENTS.md`, crítica isolada 3 (`35f2d0ba`).
+- **Resultado**: design Bugbot-obrigatório obsoleto → pivot para `diff-reviewer` + `code-reviewer` (`inherit`/readonly) vs `develop`; card devolvido a Aprovação de Design.
+- **Card**: [#569](https://github.com/oalansilva/crypto/issues/569). Change `card-569-code-review-bugbot`.
+- **Status**: Design PASS (pivot); aguardando arraste de Alan para `Pronto para Dev`.
+
+### Achados
+- F-2 [major] Produto Bugbot recusado por custo após apply do plano obrigatório. Correção: reviewers locais versionados; Bugbot Off de propósito. Esforço S | P1 | Card: #569.
+
+## 2026-08-17 — Card #569 (Code Review nativo /review-bugbot)
+
+- **Release/card**: #569 kaizen (não é closeout de lote).
+- **Fontes consultadas**: docs oficiais Cursor (Bugbot, Agent Review, Security Agents, Subagents), `AGENTS.md`, skill `/review-bugbot`.
+- **Resultado**: proposta em Em Refinamento → Design PASS → `Pronto para Dev` (arraste Alan) → apply do contrato `/review-bugbot` vs `develop`, `BUGBOT.md` e revisor de processo.
+- **Card**: [#569](https://github.com/oalansilva/crypto/issues/569). Change `card-569-code-review-bugbot`.
+- **Status**: implementação na branch `card-569-code-review-bugbot`.
+
+### Achados
+- F-1 [major] Code Review usava `Task` genérico; Bugbot só sob pedido. Correção: `/review-bugbot` obrigatório; prompts fiéis à skill. Esforço S | P1 | Card: #569.
+
 ## 2026-08-09 — Auditoria inicial (card #420)
 
 - **Escopo**: implementação da v1 do Agente Kaizen (card #420, `Status=Todo`).
@@ -56,6 +78,7 @@
 | --- | --- | --- | --- |
 | 2026-08-09 | Criação do Agente Kaizen (agent, command, log, label, regras) | card #420 | issues #420, kaizen-log |
 | 2026-08-14 | Fechamento de release como gate: `RELEASE_DATE` canônica, doc única sem placeholder exigida no `pre`/`post`, entrada de `/kaizen release` em `kaizen-log.md` pré-condição do `post`, `RELEASE_BRANCHES` obrigatório com ausência local+remota, `main` local sincronizada como blocker, ordem canônica no AGENTS.md e spawn vazio de subagent como erro explícito de handoff | card #518 (relacionado a F-3/F-6/F-7 da auditoria 2026-08-14) | issues #518, change `card-518-kaizen-release-gate`, `scripts/release-guard` |
+| 2026-08-17 | Code Review local: `diff-reviewer` + `code-reviewer` (`inherit`/readonly) vs `develop`; Bugbot Off de propósito (custo); Autofix não commita na branch existente | card #569 | issues #569, change `card-569-code-review-bugbot` |
 
 ## 2026-08-09 — Auditoria de teste: release 2026-08-08 (`/kaizen release`)
 

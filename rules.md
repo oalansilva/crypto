@@ -7,7 +7,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 - `rules.md`: politica normativa, curta e obrigatoria. Use para decidir o que nunca pode ser pulado.
 - `AGENTS.md`: manual operacional detalhado. Use para comandos, ordem de execucao, mapeamento OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
 - Em caso de duvida ou conflito, siga a regra mais restritiva. Se ainda houver ambiguidade, pare e registre o conflito antes de alterar codigo, card ou Git.
-- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O Cursor Agent aplica os mesmos overrides versionados neste arquivo e em `AGENTS.md`; o fluxo do projeto não depende de um caminho absoluto local.
+- Regras gerais do modo de trabalho do Alan ficam em `.cursor/skills/alan-workflow/` neste repo. O Cursor Agent aplica os overlays deste arquivo e de `AGENTS.md`. Não depender de `~/.codex/skills/` nem de disco hermes para essas skills.
 
 ## Regras obrigatorias
 
@@ -30,7 +30,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `Aprovação de Design`: entrega de design completa aguardando Alan.
    - `Pronto para Dev`: Alan aprovou o design por arraste; desenvolvimento liberado.
    - `Em desenvolvimento`: o Cursor Agent/Clara esta trabalhando ou validando tecnicamente.
-   - `Code Review`: diff pronto para revisao antes do commit; achados bloqueantes corrigidos ou classificados.
+   - `Code Review`: diff pronto para os reviewers locais (`diff-reviewer` + `code-reviewer`, `inherit`/readonly) antes do commit; achados bloqueantes corrigidos ou classificados. Pré-commit: uncommitted vs HEAD. Fechamento: `origin/develop...HEAD` na branch do card, antes de QA. `/review-bugbot` só se Alan pedir. Autofix não commita na branch existente. Agent Review automático pós-commit permanece desligado.
    - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
    - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
