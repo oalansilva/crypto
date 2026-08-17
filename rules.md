@@ -30,7 +30,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `Aprovação de Design`: entrega de design completa aguardando Alan.
    - `Pronto para Dev`: Alan aprovou o design por arraste; desenvolvimento liberado.
    - `Em desenvolvimento`: o Cursor Agent/Clara esta trabalhando ou validando tecnicamente.
-   - `Code Review`: diff pronto para revisao antes do commit; achados bloqueantes corrigidos ou classificados.
+   - `Code Review`: diff pronto para os reviewers locais (`diff-reviewer` + `code-reviewer`, `inherit`/readonly) antes do commit; achados bloqueantes corrigidos ou classificados. Pré-commit: uncommitted vs HEAD. Fechamento: `origin/develop...HEAD` na branch do card, antes de QA. `/review-bugbot` só se Alan pedir. Autofix não commita na branch existente. Agent Review automático pós-commit permanece desligado.
    - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
    - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.

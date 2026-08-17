@@ -29,7 +29,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
 - **Regra de merge de release/lote:** após abrir um PR para `main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
 - **Regra de autonomia operacional:** dentro de fechamento de lote/release solicitado por Alan, após validação e evidência, o agente tem autonomia para repetir tentativas manuais de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
-- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, **sempre** concluir o gate `Design -> Aprovação de Design` e só então aguardar `Status=Pronto para Dev`, mover para `Status=Em desenvolvimento` antes de aplicar tarefas de código, mover para `Status=Code Review` antes do commit, rodar review do diff exato, commit/push do SHA revisado, mover para `Status=QA`/`Fluxo=QA`, aguardar `qa-gate` e Playwright visual verdes, integrar por PR em `develop`, executar `./restart`, validar a URL e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
+- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, **sempre** concluir o gate `Design -> Aprovação de Design` e só então aguardar `Status=Pronto para Dev`, mover para `Status=Em desenvolvimento` antes de aplicar tarefas de código, mover para `Status=Code Review` antes do commit, rodar os reviewers locais (`diff-reviewer` + `code-reviewer`) no diff não commitado vs HEAD, commit do SHA, rodar `diff-reviewer` em `origin/develop...HEAD` **ainda na branch do card** antes de `QA`, push, mover para `Status=QA`/`Fluxo=QA`, aguardar `qa-gate` e Playwright visual verdes, integrar por PR em `develop`, executar `./restart`, validar a URL e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
 - **Regra de conclusão de correção:** para qualquer correção de bug ou ajuste solicitado por Alan, só diga `concluído` depois de validar, fazer merge/integração da branch de trabalho em `develop`, executar `./restart` e confirmar que a URL do sistema está servindo o bundle/resultado novo. Antes disso, reporte como `corrigido na branch`, `validado localmente` ou `aguardando integração`, conforme o estado real.
 - **Regra de homologação direta por card (solicitação do cliente):** seguir `alan-workflow`; no cripto, homologacao significa aprovacao funcional em `develop`.
 - **Guardrail anti-release acidental:** seguir `alan-workflow`; no cripto, homologacao nao autoriza `main`, PR, merge, archive ou release.
@@ -42,7 +42,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de validação OpenSpec global:** `openspec validate --all` verde é critério padrão de fechamento. Se falhar por changes antigas fora do card, valide os specs afetados pelo card como evidência parcial, mas resolva a sujeira global antes do encerramento: corrija ou arquive as changes antigas, inclusive por archive manual quando a CLI/skill não conseguir concluir.
 - **Regra de checks em execução:** seguir `alan-workflow`; no cripto, isso vale para testes locais, `openspec validate`, build e CI antes de `Code Review`, `QA`, `Done`, release/lote, commit, PR ou merge. Check `running`, `cancelled` ou skip sem dispensa autorizada nao e evidencia final.
 - **Regra de espera de CI:** use um unico watcher nativo por PR com timeout explicito: `timeout 35m gh pr checks <PR> --watch --fail-fast --interval 20`. Nao filtre apenas checks marcados como required, porque todos os checks iniciados precisam terminar e OpenSpec pode nao estar na protecao de `main`. Esperas acima de 60 segundos rodam em background quando o cliente suportar. Sao proibidos loops `for`/`while` com `sleep`, consultas repetidas pelo modelo e subagent criado apenas para polling. Timeout, falha, check ausente ou bloqueio encerram a tentativa sem merge; depois do verde, consulte mergeabilidade uma vez e faca no maximo uma tentativa manual para o estado observado. Qualquer falha exige diagnostico e uma nova verificacao completa de prontidao antes de outra tentativa.
-- **Regra de commits e testes:** commits locais na branch da change são permitidos e não exigem suíte completa a cada commit, mas exigem review do diff antes de cada commit. Durante o card, rode testes proporcionais/focados; testes completos ficam para fechamento de lote/release.
+- **Regra de commits e testes:** commits locais na branch da change são permitidos e não exigem suíte completa a cada commit, mas exigem os reviewers locais (`diff-reviewer` + `code-reviewer`) no diff não commitado vs HEAD antes de cada commit de implementação. Durante o card, rode testes proporcionais/focados; testes completos ficam para fechamento de lote/release.
 - **Regra de worktree limpo no fechamento:** seguir `alan-workflow`; no cripto, trabalho de outra change deve ir para branch/worktree própria e a integração padrão acontece em `develop` antes de produção.
 - **Regra de varredura da release:** seguir o inventario/classificacao de `alan-workflow`; no cripto, integre o que deve entrar em `develop`, publique em `main` via PR/merge manual quando permitido e só então limpe branches/worktrees.
 - **Regra de guard automatizado de release:** antes de abrir/mesclar PR de release, rode `scripts/release-guard pre`; depois do merge/publicação e antes de reportar limpeza final, rode `scripts/release-guard post`. Se qualquer modo estrito falhar, pare e classifique/corrija todos os bloqueios antes de seguir. Use `scripts/release-guard audit` para diagnostico sem bloqueio durante desenvolvimento.
@@ -222,14 +222,38 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
    - **`UI impact: affected`:** `/opsx:apply` carrega `design.md` + o protótipo aprovado (`frontend/public/prototypes/<change-or-card-slug>/`) como **spec de UI** antes de editar `frontend/src`. Contrato de API é fonte de dados/integração, não de layout. O handoff/PR registra o path do protótipo, os elementos seguidos e qualquer desvio justificado; ausência desse registro bloqueia o apply. Antes de `Code Review`, comparar a rota entregue com o protótipo (layout, componentes, estados, a11y, responsividade) e registrar o resultado.
 7. Rodar testes proporcionais/focados e validação OpenSpec da change.
 8. Mover card para `Status=Code Review` e sincronizar `Fluxo=Code Review` quando existir.
-9. Rodar review do diff exato antes do commit. Se houver rework grande, voltar para `Em desenvolvimento`; se forem ajustes pequenos, manter `Code Review` e repetir o review.
+9. Rodar os reviewers locais no diff não commitado vs HEAD (prompts abaixo) antes do commit. Se houver rework grande, voltar para `Em desenvolvimento`; se forem ajustes pequenos, manter `Code Review` e repetir o review.
    - **`UI impact: affected`:** o review inclui o item bloqueante "UI tasks: implementadas e verificadas contra o protótipo". Task `[x]` sem o controle/estado no código é blocker de commit. `/opsx:verify` confronta tasks × implementação × protótipo; comparação ausente bloqueia `Done`.
    - Task de Playwright/frontend `[ ]` bloqueia `Done` em qualquer card. `/opsx:verify` trata UI/`frontend` `[x]` sem implementação como CRITICAL.
-10. Fazer commit/push do SHA revisado, mover para `Status=QA` e sincronizar `Fluxo=QA` quando existir.
+10. Fazer commit do SHA revisado. Ainda na branch do card e **antes** de `Status=QA`, rodar `diff-reviewer` em `origin/develop...HEAD` nesse SHA (reuso se este run já existir). Depois push, mover para `Status=QA` e sincronizar `Fluxo=QA` quando existir.
 11. Abrir PR para `develop`, aguardar `qa-gate` terminal verde e corrigir qualquer falha antes da integração.
 12. Integrar em `develop` quando pronto, preferencialmente com squash/commit único por card referenciando o card.
 13. Executar `./restart` e validar a URL/runtime.
-14. Mover para `Status=Done` com comentário de evidência tecnica.
+14. Mover para `Status=Done` com comentário de evidência tecnica, citando o `diff-reviewer` uncommitted, o `diff-reviewer` vs `develop` e o `code-reviewer`. Se o SHA mudou depois do passo 10 (rework de QA), repetir `origin/develop...HEAD` **na branch do card** antes de integrar em `develop` — nunca depois do squash em `develop` (diff vazio).
+
+### Code Review local (reviewers inherit/readonly)
+
+Em `Status=Code Review`, o revisor padrão é o par versionado `diff-reviewer` + `code-reviewer` (`Task` `generalPurpose`, `model: inherit`, read-only), não um `Task` genérico e não `/review-bugbot`. A sessão principal corrige ou classifica achados; os reviewers não editam. Autofix **não** commita na branch existente. Agent Review automático pós-commit permanece desligado. O produto Bugbot no dashboard permanece Off de propósito (custo).
+
+**Pré-commit** (todo commit de implementação). Lançar os dois Tasks; o prompt de cada um é o corpo do arquivo + o diff vs HEAD:
+
+```text
+Worktree: <worktree absoluta>
+Diff: uncommitted changes versus HEAD
+```
+
+**Fechamento** (obrigatório uma vez no SHA, **ainda na branch do card**, imediatamente após o commit de implementação e **antes** de `Status=QA`). Nunca depois do squash em `develop` (diff vazio). Reuso só se este run já existir para o mesmo SHA. Só o `diff-reviewer` é obrigatório neste momento (`code-reviewer` MAY reusar o run pré-commit):
+
+```text
+Worktree: <worktree absoluta>
+Diff: origin/develop...HEAD
+```
+
+**`/review-bugbot` e `/review-security`** são opcionais. Só disparam se Alan pedir no card. Não ligar por glob de path. O `diff-reviewer` local já cobre auth/credencial/trading/wallet/API via `.cursor/BUGBOT.md`.
+
+**Spawn vazio:** 1 retry. Se persistir, registrar `ERROR: subagent spawn failed/empty`. A sessão principal MAY completar o review e citar residual no Done. Fallback nunca é o caminho feliz.
+
+Regras que os reviewers locais lêem: `.cursor/BUGBOT.md` (raiz + aninhados). Files `.cursor/rules/*.mdc` **não** substituem esse contrato.
 
 ### Colunas Kanban
 
@@ -240,7 +264,7 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan. Coluna obrigatória para todo card.
 - `Pronto para Dev`: design aprovado por Alan via arraste; único status que libera desenvolvimento.
 - `Em desenvolvimento`: o Cursor Agent/Clara está implementando, investigando, validando ou corrigindo achados de review.
-- `Code Review`: diff pronto para review antes do commit; achados bloqueantes precisam ser corrigidos ou classificados.
+- `Code Review`: diff pronto para os reviewers locais (`diff-reviewer` + `code-reviewer`) antes do commit; achados bloqueantes precisam ser corrigidos ou classificados. Generic `Task` sem esses prompts não é o revisor do caminho feliz. `/review-bugbot` só se Alan pedir.
 - `QA`: SHA revisado em validacao automatizada; `qa-gate`, Playwright visual e demais checks obrigatorios precisam terminar verdes.
 - `Done`: Done tecnico; QA verde, implementação técnica revisada, integrada em `develop`, restart/runtime validados, aguardando teste/aprovacao do Alan.
 - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
@@ -295,6 +319,9 @@ QA:
 - qa-gate: ...
 - Playwright visual: ... (ou dispensa autorizada: ...)
 Code Review:
+- diff-reviewer (uncommitted vs HEAD): <no findings | achados | spawn failed>
+- diff-reviewer (origin/develop...HEAD): <no findings | achados | reuse SHA | spawn failed>
+- code-reviewer: <no findings | achados classificados>
 - no blocking findings / achados corrigidos ou classificados
 Próximo passo: Alan testar/homologar na develop.
 ```
@@ -331,7 +358,7 @@ Status final: pronto.
 ### Testes
 
 - Durante implementação: testes focados/proporcionais ao card, validação OpenSpec da change e evidência no handoff.
-- Antes de `Code Review`: checks focados e validação OpenSpec da change precisam ter sinal suficiente para revisar o diff.
+- Antes de `Code Review`: checks focados e validação OpenSpec da change precisam ter sinal suficiente para revisar o diff. O review nativo é o par `diff-reviewer` + `code-reviewer` (ver seção Code Review local).
 - Antes de `QA`: review precisa estar limpo/classificado e o SHA revisado deve estar commitado/pushado.
 - Antes de `Done`: `qa-gate` precisa estar verde, checks iniciados precisam terminar, Playwright visual e artifacts precisam estar registrados, e `./restart`/runtime precisam validar o resultado. Status "rodando", `cancelled` ou skip sem dispensa autorizada nao vale como evidência final.
 - **Regra de todos completos no fechamento:** `Done`/`/opsx:verify` exige 0 todos `in_progress`/`pending` na sessão Cursor do card (`TodoWrite`). Sessão com todo não concluído não fecha como Done sem classificação explícita. Sessões de card devem ter título descritivo (card/contexto); título genérico em sessão cara é achado de auditoria kaizen.
@@ -620,8 +647,8 @@ Não use subagents por padrão nestes casos:
 - ajustes textuais ou documentação pequena.
 
 Arquitetura preferida no Cursor (`Task` com `inherit`, salvo pedido explícito):
-- `generalPurpose` para mapear fluxos, diffs, bugs e OpenSpec em paralelo;
-- `bugbot` / `security-review` somente quando Alan pedir review especializado;
+- `generalPurpose` para mapear fluxos, diffs, bugs, OpenSpec e os dois reviewers de Code Review (prompts = `.cursor/agents/diff-reviewer.md` e `.cursor/agents/code-reviewer.md`, read-only);
+- `bugbot` / `security-review` **somente** quando Alan pedir `/review-bugbot` ou `/review-security` no card (produto gerenciado; não é o caminho feliz);
 - análise de imagem na própria sessão via `Read` após path-check;
 - Design: a sessão principal escreve artifacts; crítica em `Task` isolada sem editar.
 

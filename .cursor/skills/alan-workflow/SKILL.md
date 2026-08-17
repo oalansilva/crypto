@@ -82,7 +82,7 @@ Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto
 
 Só com `Status=Pronto para Dev`. Mover para `Em desenvolvimento` antes de editar código de produto/`scripts/` de produto. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`.
 
-Antes do commit: `Status=Code Review`, review do diff exato. Depois: commit/push, `Status=QA`.
+Antes do commit: `Status=Code Review`, `diff-reviewer` + `code-reviewer` no diff não commitado vs HEAD. Depois do commit, ainda na branch e antes de `Status=QA`: `diff-reviewer` em `origin/develop...HEAD`. Então push e `Status=QA`. `/review-bugbot` só se Alan pedir.
 
 Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evidence-comment.sh --transition homologado` (mesmo sem lote).
 
