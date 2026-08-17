@@ -1,0 +1,95 @@
+---
+name: alan-workflow
+description: "Use this skill for Alan's default operating process in any repo or workspace: cards/issues, GitHub Projects or Kanban, OpenSpec, implementation, validation, releases/publication, repo hygiene, AGENTS.md/rules cleanup, evidence reporting, and separating general workflow rules from project-specific rules."
+---
+
+# Alan Workflow
+
+Contrato operacional **deste repo** (`oalansilva/crypto`). Canônico: `.cursor/skills/alan-workflow/` no GitHub. Não tratar `~/.codex/skills/` nem `/srv/knowledge/hermes-second-brain/skills/` como fonte.
+
+Prioridade:
+
+1. Instrução direta de Alan no chat.
+2. Overlay do repo: `AGENTS.md` / `rules.md` (board, ports, Drive, PostgreSQL, release-guard).
+3. Esta skill (runbook de processo).
+
+Cliente: **Cursor Agent**. Task/subagent usa `inherit` salvo pedido explícito no chat. Review = diff **exato** (não “Codex review”).
+
+Drive/Docs: siga o `AGENTS.md` **deste repo**. No cripto, Drive da Clara sincroniza com `docs/*.md`; não aplicar a regra global antiga “não sincronizar Drive”.
+
+## Comunicação
+
+PT-BR curto. Não diga `concluído` / `Pronto` / `publicado` até a evidência do estado ser verdadeira. `Done` = Done técnico.
+
+## Colunas (Project 1)
+
+Caminho obrigatório:
+
+`Em Refinamento → Todo → Design → Aprovação de Design → Pronto para Dev → Em desenvolvimento → Code Review → QA → Done → Homologado → Pronto`
+
+`Cancelado` é terminal a qualquer momento, inclusive Em Refinamento.
+
+Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de Design→Pronto para Dev (só Alan); (2) Done→Homologado; (3) Homologado→Pronto.
+
+| Status | Significado |
+| --- | --- |
+| `Em Refinamento` | Entrada de todo card novo; Alan escolhe, prioriza ou cancela |
+| `Todo` | Backlog. **Não é código.** Próxima etapa: Design |
+| `Design` | OpenSpec + crítica; Gist no card; protótipo se UI |
+| `Aprovação de Design` | Aguardando Alan |
+| `Pronto para Dev` | Design aprovado; único status que libera `/opsx:apply` |
+| `Em desenvolvimento` | Implementando |
+| `Code Review` | Diff pronto; review antes do commit |
+| `QA` | SHA revisado em checks |
+| `Done` | Done técnico em `develop` |
+| `Homologado` | Alan aprovou em `develop` |
+| `Pronto` | Publicado em `main` **e** deploy PROD validado |
+| `Cancelado` | Não será feito |
+
+**Anti-bypass:** pedido `implemente` / `implemente todos` **não** autoriza código nem `/opsx:apply` enquanto `Status=Todo`. `UI impact: none` não pula colunas.
+
+## Preflight
+
+Antes de editar:
+
+- `git status -sb`; não misturar outra change.
+- Ler `AGENTS.md` / `rules.md`.
+- Consultar `Status` no board (`github-project-board`).
+- Release/deploy/PROD: carregar também `alan-workflow-ambientes`.
+
+## Card primeiro, OpenSpec mais completo
+
+1. O card nasce primeiro (pode estar incompleto).
+2. Design refina em OpenSpec + Gist secreto `crypto openspec <change>`.
+3. O Gist SHALL ser **superset** do issue. `/opsx:apply` lê Gist + `openspec/changes/`, não o body do GitHub como spec paralela.
+4. Sem Gist/comentário no card, Design está incompleto. Republicar: `--gist-id` + `--comment-id`.
+5. HTML de protótipo **não** vai no Gist. URL HTTP em bloco separado.
+
+Helper (path relativo a esta skill no repo):
+
+```bash
+.cursor/skills/alan-workflow/scripts/publish-openspec-card-artifacts.sh \
+  --repo oalansilva/crypto --issue <n> --change <change>
+```
+
+## OpenSpec
+
+Usar skills `.cursor/skills/openspec-*` e CLI `openspec`. Não inventar artefatos fora de `openspec instructions`.
+
+Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto para Dev → `/opsx:apply` → `/opsx:verify`. Archive só no fechamento de lote/release.
+
+## Implementação
+
+Só com `Status=Pronto para Dev`. Mover para `Em desenvolvimento` antes de editar código de produto/`scripts/` de produto. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`.
+
+Antes do commit: `Status=Code Review`, review do diff exato. Depois: commit/push, `Status=QA`.
+
+Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evidence-comment.sh --transition homologado` (mesmo sem lote).
+
+## Release
+
+Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `alan-workflow-ambientes`. No cripto: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`.
+
+## Higiene
+
+Worktree por change. Stash só temporário, classificado. Não dual-write esta skill para hermes/`~/.codex`.

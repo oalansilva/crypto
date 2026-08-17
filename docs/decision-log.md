@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-17 - Skills de processo versionadas no GitHub (card #585)
+
+**Decisão:** `alan-workflow`, `alan-workflow-ambientes` e `github-project-board` passam a ser arquivos reais em `.cursor/skills/` no GitHub `oalansilva/crypto`. Hermes e `~/.codex/skills/` ficam em freeze (sem dual-write). Opção B (symlink absoluto, card #584 Cancelado) está revogada.
+
+**Mapa Cursor:** harness alwaysApply curto (preflight de coluna, Gist, OpenSpec ≥ card); runbook na skill; `AGENTS.md` overlay cripto; `rules.md` lei humana. Cópia crypto-scoped (12 colunas). Sem `agents/openai.yaml`.
+
+**Onde:** `.cursor/skills/`, `.cursor/rules/harness.mdc`, `AGENTS.md`, `rules.md`, `openspec/specs/cursor-harness/spec.md`. Card #585.
+
 ## 2026-08-17 - Cursor Agent como harness único (cutover OpenCode)
 
 **Decisão:** o Cursor Agent passa a ser o único harness operacional do Cripto Farol. OpenCode sai do contrato ativo. O modelo é o selecionado no chat (hoje Grok 4.6) para Design, código, review e visão. O gate Design fica em regras + skill + Task de crítica isolada + hook Impeccable; sem lease/packet/`design_artifact_write`/attestation OpenCode 1.18.18.
