@@ -203,3 +203,11 @@ After a successful sweep creation, the UI SHALL immediately expose the active sw
 - **AND** its heading receives focus and identifies the newly created sweep lifecycle
 - **AND** the historical leaderboard remains a separate selected run
 
+
+### Requirement: Sweep payload hash is canonical across axis order
+The server SHALL compute `payload_hash` from a canonical serialization of templates, symbols, timeframes, and directions (stable sorted order, not client array order). Equivalent payloads with different list order SHALL produce the same hash.
+
+#### Scenario: Retry with reordered axes is idempotent
+- **WHEN** the same actor retries creation with the same `idempotency_key` and an equivalent payload whose templates/symbols/timeframes/directions are in a different order
+- **THEN** the response returns the original `sweep_id` and HTTP success (idempotent retry)
+- **AND** it SHALL NOT return HTTP `409`

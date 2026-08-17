@@ -303,6 +303,40 @@
 - P1: comentário de homologação no mesmo turno do arraste (F-2)
 - P1: item-list do board sem body no closeout (F-3)
 
+## 2026-08-17 — Kaizen release (lote 2, cards 529/530/531/553/554/566/567/568)
+
+- **Release/card**: 2026-08-17 lote 2 — cards 529, 530, 531, 553, 554, 566, 567, 568 (Homologado → Pronto após deploy PROD).
+- **Fontes consultadas**: board Project 1, git/worktrees/stash + `release-guard pre` PASS / `audit` PASS, `openspec validate --all` 143/143 (código) e 142/142 (archive), PR #578, transcripts Cursor (`0c0d840f` implementação; `0b02d24f` closeout), CI do PR #578.
+- **Sessões analisadas**: sessão de implementação dos 8 cards (worktrees) e sessão de closeout desta release. Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: pacote já Homologado na abertura do lote; closeout até PROD `2261ad56`. F-1 do lote 1 (e2e DEV vivo) entrou neste pacote como #568 e foi publicado.
+
+### Métricas
+- **Board**: 8 Homologado no lote; fora: #569 Aprovação de Design, 2 Em Refinamento (#549 e gerador de templates).
+- **Git**: 9 worktrees extras bloqueavam `pre`; 8 mergeadas removidas; WIP do #569 commitado em `059f6f38` e ref local apagada. Stash 0.
+- **CI**: PR #578 verde (e2e 4m49s); `qa-gate` skip no PR para `main`.
+- **OpenSpec**: 8 changes arquivadas; 7 specs novas; skip `02-agent-chat-favorites.md` (já Hermes).
+- **PROD**: installer Discovery + dispatcher/Celery active; health 200; bundle `index-DbfcRxXg.js`.
+
+### Achados
+- F-1 [major] Homologado sem comentário canônico nos 8 cards até o closeout (helper retroativo). Recidiva do F-2 do lote 1 no mesmo dia. Esforço S | P1.
+- F-2 [major] `pre` trata doc canônica do dia como PR documental e exige `PROD_DEPLOY_EVIDENCE`; o segundo pacote reusou a evidência `91f5620e` do lote 1 para abrir o PR de código #578. Esforço M | P1.
+- F-3 [minor] Extra worktree e branch local in-flight (#569) falham o `pre` sem `PRESERVED_BRANCHES` (só vale em post/audit). Esforço S | P2.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico | 2 ocorrências no mesmo dia (lotes 1 e 2) | promoção: helper no turno do arraste
+- E2E acoplado a DEV vivo | corrigido neste lote (#568)
+
+### Trechos de sessão (evidência local)
+- `0c0d840f` — implementação sequencial 568→554→553→566→529→530→531→567 em worktrees.
+- `0b02d24f` — closeout: `git branch -D card-569-code-review-bugbot` após push `059f6f38` para o `pre` passar.
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #579 — comentário Homologado no mesmo turno do arraste | P1 | F-1 (recidiva lote 1 F-2) | Em Refinamento |
+| #580 — segundo pacote no mesmo dia vs doc canônica no pre | P1 | F-2 | Em Refinamento |
+| #581 — worktree extra / branch in-flight no pre | P2 | F-3 | Em Refinamento |
+
 ## 2026-08-14 — Kaizen release (release 2026-08-14, cards 470/480/481/482/489/491/509)
 
 - **Ação**: auditoria kaizen pós-release concluída (read-only). F-1 a F-8 registrados abaixo.

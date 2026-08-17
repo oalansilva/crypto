@@ -10,9 +10,9 @@
 
 ## 3. Rollout PROD (após Pronto para Dev)
 
-- [ ] 3.1 Instalar, enable e confirmar `active` dos workers afetados
-- [ ] 3.2 Smoke em PROD: sweep sai de pending/queued e processa na tela `/discovery` + `/api/health` 200 (consume da fila sozinho não fecha o card)
-- [ ] 3.3 Não redesenhar/reiniciar backend, frontend ou leads salvo necessidade operacional registrada
+- [x] 3.1 Instalar, enable e confirmar `active` dos workers afetados
+- [x] 3.2 Smoke em PROD: sweep sai de pending/queued e processa na tela `/discovery` + `/api/health` 200 (consume da fila sozinho não fecha o card)
+- [x] 3.3 Não redesenhar/reiniciar backend, frontend ou leads salvo necessidade operacional registrada
 
 ## 4. QA
 

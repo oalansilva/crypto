@@ -43,3 +43,18 @@ O Cursor SHALL expor o command `/kaizen` e um fluxo de auditoria read-only equiv
 #### Scenario: Auditoria sem mutação
 - **WHEN** a auditoria kaizen é usada
 - **THEN** ela não edita arquivos de produto, não altera board/Git/PRs e não reinicia serviços
+
+### Requirement: Global environments skill is part of developer tooling
+Developer tooling SHALL keep `alan-workflow-ambientes` aligned with the live Oracle map. A stale OpenClaw gateway map is a tooling defect, not an acceptable default.
+
+#### Scenario: Skill content is audited
+- **WHEN** the environments skill is reviewed
+- **THEN** it does not list `openclaw-gateway.service` as an active service
+- **AND** it lists Hermes and the real Cripto/Clara DEV/PROD units
+
+### Requirement: OpenSpec apply skill loads the approved prototype for UI cards
+The `/opsx:apply` skill SHALL include a mandatory step for `UI impact: affected`: read `design.md` and the approved HTML prototype before editing product UI files. API specs remain integration contracts only.
+
+#### Scenario: Apply skill lists the prototype step
+- **WHEN** an agent runs `/opsx:apply` on a UI-affected change
+- **THEN** the skill instructs loading `frontend/public/prototypes/<slug>/` before coding UI

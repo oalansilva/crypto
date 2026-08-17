@@ -40,3 +40,10 @@ The QA handoff MUST record the tested commit or run, executed checks, visual art
 #### Scenario: QA handoff is published
 - **WHEN** QA completes successfully or fails
 - **THEN** the card or linked pull request MUST expose a concise evidence summary and links to relevant CI artifacts
+
+### Requirement: QA cannot close Done on a new route without Playwright evidence
+A card that adds a product route MUST NOT move to Done while the route lacks functional+visual Playwright coverage, unless Alan recorded the auditable visual-QA dispensation.
+
+#### Scenario: Done blocked without spec
+- **WHEN** the delivery added a new `App.tsx` route and no spec or dispensation exists
+- **THEN** the card MUST remain outside Done
