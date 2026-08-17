@@ -69,6 +69,7 @@ def _run_guard(
     fake_gh: Path | None = None,
     release_date: str | None = None,
     release_branches: str | None = None,
+    preserved_branches: str | None = None,
     prod_evidence: str | None = "test-commit services=app url=https://example.com",
 ) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ)
@@ -88,6 +89,8 @@ def _run_guard(
         env["RELEASE_BRANCHES"] = release_branches
     else:
         env.pop("RELEASE_BRANCHES", None)
+    if preserved_branches is not None:
+        env["PRESERVED_BRANCHES"] = preserved_branches
     if fake_gh is not None:
         env["PATH"] = f"{fake_gh.parent}:{env['PATH']}"
     return subprocess.run(
@@ -1488,3 +1491,136 @@ def test_snapshot_failure_preserves_explicitly_preserved_branch(tmp_path: Path, 
     assert "unknown status (not preserved" not in post.stdout
     assert "preserved (classified; not deleted)" in audit.stdout
     assert "could not determine terminal status for branch change-100-a" not in audit.stdout
+
+
+def _add_unmerged_worktree(tmp_path: Path, repo: Path, branch: str) -> Path:
+    extra = tmp_path / f"wt-{branch}"
+    _git(repo, "switch", "-c", branch)
+    _commit_file(repo, f"{branch}.txt", f"{branch}\n", f"wip {branch}")
+    _git(repo, "switch", "main")
+    subprocess.run(
+        ["git", "worktree", "add", str(extra), branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return extra
+
+
+def test_pre_preserves_dirty_extra_worktree_and_local_branch(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    extra = _add_unmerged_worktree(tmp_path, repo, "card-569-code-review-bugbot")
+    (extra / "dirty.txt").write_text("dirty\n", encoding="utf-8")
+
+    result = _run_guard(
+        repo,
+        "pre",
+        preserved_branches=" card-569-code-review-bugbot ",
+    )
+
+    assert "extra worktree requires classification" not in result.stdout
+    assert "local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot" not in result.stdout
+    assert "classified via PRESERVED_BRANCHES" in result.stdout
+    assert "BLOCKER: extra worktree" not in result.stdout
+    assert result.returncode == 0
+    assert "Result: PASS" in result.stdout
+
+
+def test_pre_blocks_unclassified_extra_worktree_and_local_branch(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    extra = _add_unmerged_worktree(tmp_path, repo, "card-569-code-review-bugbot")
+    (extra / "dirty.txt").write_text("dirty\n", encoding="utf-8")
+
+    result = _run_guard(repo, "pre")
+
+    assert "BLOCKER: extra worktree requires classification before release cleanup" in result.stdout
+    assert "BLOCKER: local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot" in result.stdout
+    assert "BLOCKER: dirty worktree:" in result.stdout
+    assert result.returncode == 1
+
+
+def test_pre_warns_merged_extra_worktree_with_canonical_release_doc_only(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "card-100-done")
+    extra = tmp_path / "wt-card-100-done"
+    subprocess.run(
+        ["git", "worktree", "add", str(extra), "card-100-done"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    docs = extra / "docs"
+    docs.mkdir(exist_ok=True)
+    (docs / "release-2026-08-17.md").write_text("# checklist\n", encoding="utf-8")
+
+    result = _run_guard(repo, "pre", release_date="2026-08-17")
+
+    assert "Dirty worktree allowed (merged branch; only docs/release-2026-08-17.md)" in result.stdout
+    assert "WARN: extra worktree on merged branch; remove at closeout" in result.stdout
+    assert "BLOCKER: dirty worktree:" not in result.stdout
+    assert "BLOCKER: extra worktree requires classification" not in result.stdout
+    assert result.returncode == 0
+
+
+def test_pre_blocks_merged_extra_worktree_dirty_with_code(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "card-100-done")
+    extra = tmp_path / "wt-card-100-done"
+    subprocess.run(
+        ["git", "worktree", "add", str(extra), "card-100-done"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    (extra / "code.py").write_text("print(1)\n", encoding="utf-8")
+
+    result = _run_guard(repo, "pre", release_date="2026-08-17")
+
+    assert "BLOCKER: dirty worktree:" in result.stdout
+    assert "WARN: extra worktree on merged branch; remove at closeout" in result.stdout
+    assert result.returncode == 1
+
+
+def test_pre_blocks_merged_extra_worktree_porcelain_rename(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "card-100-done")
+    extra = tmp_path / "wt-card-100-done"
+    subprocess.run(
+        ["git", "worktree", "add", str(extra), "card-100-done"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "mv", "README.md", "README.renamed.md"],
+        cwd=extra,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    result = _run_guard(repo, "pre", release_date="2026-08-17")
+
+    assert "BLOCKER: dirty worktree:" in result.stdout
+    assert result.returncode == 1
+
+
+def test_pre_preserves_unmerged_local_branch_without_worktree(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "-c", "card-569-code-review-bugbot")
+    _commit_file(repo, "wip.txt", "wip\n", "wip")
+    _git(repo, "switch", "main")
+
+    result = _run_guard(
+        repo,
+        "pre",
+        preserved_branches="card-569-code-review-bugbot, card-581-release-guard-preserve",
+    )
+
+    assert "local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot" not in result.stdout
+    assert "WARN: local branch not merged; classified via PRESERVED_BRANCHES: card-569-code-review-bugbot" in result.stdout
+    assert result.returncode == 0
