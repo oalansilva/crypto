@@ -98,6 +98,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 13. Playwright visual e obrigatorio no QA de todo card por padrao, inclusive sem mudanca em `frontend/**`.
    - Dispensa so vale com label `qa-visual-skip` e comentario explicito de Alan no card no formato `QA visual dispensado por Alan.` seguido de motivo.
    - Label isolada, comentario isolado, filtro de path ou variavel de repositorio nao autorizam skip.
+   - Rota nova em `App.tsx` sem spec Playwright funcional+visual falha o job `new-route-playwright-coverage` e portanto o `qa-gate`. O inventário `frontend/tests/e2e/route-coverage-inventory.json` grandfather as rotas atuais; skip silencioso de rota nova e proibido.
    - `Done` exige `qa-gate` verde, artifacts/evidencias quando aplicaveis, integracao em `develop`, `./restart` e URL servindo o resultado novo.
 
 14. Kaizen e a melhoria continua de processo: quanto mais o processo e usado, melhor ele fica.

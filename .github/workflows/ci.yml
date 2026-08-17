@@ -125,6 +125,30 @@ jobs:
             core.setOutput('visual_skip_reason', `Authorized by @${context.repo.owner} on issue #${issueNumber}.`);
             core.notice(`Visual QA skipped for issue #${issueNumber} with auditable Alan authorization.`);
 
+  new-route-playwright-coverage:
+    name: new-route-playwright-coverage
+    runs-on: ubuntu-latest
+    needs:
+      - qa-policy
+    if: >-
+      always() &&
+      (github.event_name != 'pull_request' || needs.qa-policy.result == 'success')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check new App.tsx routes have Playwright specs
+        shell: bash
+        run: |
+          set -euo pipefail
+          extra=()
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ needs.qa-policy.outputs.visual_skip }}" == "true" ]]; then
+            extra+=(--allow-visual-skip)
+            echo "${{ needs.qa-policy.outputs.visual_skip_reason }}"
+          fi
+          python3 scripts/check_new_route_playwright_coverage.py "${extra[@]}"
+          python3 scripts/check_new_route_playwright_coverage.py --self-test
+
   backend-format:
     runs-on: ubuntu-latest
     steps:
@@ -480,6 +504,7 @@ jobs:
       - backend-coverage-gate
       - qa-policy
       - e2e-playwright
+      - new-route-playwright-coverage
     steps:
       - name: Require all QA checks to finish green
         shell: bash
@@ -496,6 +521,7 @@ jobs:
             "backend-coverage-gate=${{ needs.backend-coverage-gate.result }}"
             "qa-policy=${{ needs.qa-policy.result }}"
             "e2e-playwright=${{ needs.e2e-playwright.result }}"
+            "new-route-playwright-coverage=${{ needs.new-route-playwright-coverage.result }}"
           )
 
           for result in "${results[@]}"; do
