@@ -131,7 +131,7 @@ test.afterEach(async ({ page }) => {
 async function installMocks(page: Page) {
   let activeState = 'running'
   const captured = {
-    sweepIdempotencyKey: '',
+    sweepIdempotencyKeys: [] as string[],
     promotionIdempotencyKey: '',
   }
 
@@ -206,7 +206,8 @@ async function installMocks(page: Page) {
   )
   await page.route('**/api/combos/discovery/sweeps', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
-    captured.sweepIdempotencyKey = route.request().postDataJSON().idempotency_key
+    activeState = 'running'
+    captured.sweepIdempotencyKeys.push(route.request().postDataJSON().idempotency_key)
     return route.fulfill({
       status: 201,
       contentType: 'application/json',
@@ -434,8 +435,9 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   await expect(page.getByTestId('progress-count')).toHaveText('13 de 46')
   await expect(page.getByTestId('active-state-chip')).toHaveText('RUNNING')
   await expect(page.getByTestId('leaderboard-meta')).toContainText(HISTORY_SWEEP.sweep_id)
-  expect(captured.sweepIdempotencyKey).toHaveLength(64)
-  expect(captured.sweepIdempotencyKey).toBe(`sweep-${PREFLIGHT.snapshot_hash}`.slice(0, 64))
+  const firstSweepKey = captured.sweepIdempotencyKeys[0]
+  expect(firstSweepKey).toMatch(/^sweep-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+  expect(firstSweepKey.length).toBeLessThanOrEqual(64)
 
   await page.getByTestId('pause-sweep').click()
   await expect(page.getByTestId('active-state-chip')).toHaveText('PAUSED')
@@ -450,6 +452,10 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   await page.getByTestId('new-draft').click()
   await expect(page.locator('#draft-status')).toContainText('Editável')
   await expect(page.getByTestId('sweep-progress')).toBeVisible()
+  await expect(page.getByTestId('start-sweep')).toBeEnabled()
+  await page.getByTestId('start-sweep').click()
+  await expect.poll(() => captured.sweepIdempotencyKeys.length).toBe(2)
+  expect(captured.sweepIdempotencyKeys[1]).not.toBe(firstSweepKey)
 
   await page.getByTestId('symbol-filter').selectOption('ETH/USDT')
   await expect(page.getByTestId('result-count')).toContainText('3 de 12 candidatos')

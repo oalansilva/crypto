@@ -84,6 +84,7 @@
 - [x] 7.20 Bloquear globalmente a inicialização do pytest quando qualquer URL de banco app/workflow (incluindo aliases `CRYPTO_*`) apontar para DEV/PROD; usar bancos `*_test` como defaults locais, preservar somente a exceção descartável do GitHub Actions e provar o fail-closed antes de importar a aplicação.
 - [x] 7.21 Após criação bem-sucedida, rolar e focar o bloco de progresso do sweep ativo sem substituir o leaderboard histórico; cobrir no Playwright o caso de uma combinação com progresso dentro do viewport e foco no heading.
 - [x] 7.22 Remover a geração duplicada de grupos correlacionados no `ComboOptimizer` e provar que schemas legados sem `step` usam fallback determinístico sem falhar a varredura.
+- [ ] 7.23 Normalizar eixos antes do `payload_hash` de criação e usar chave opaca estável por tentativa/renovada por novo rascunho, cobrindo permutação `4h,1d` e repetição legítima do mesmo snapshot.
 
 ## Gate
 

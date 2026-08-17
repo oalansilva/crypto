@@ -8,6 +8,8 @@ The system SHALL expose an admin-only dry-run endpoint `POST /combos/discovery/s
 
 Creation SHALL accept the preflight token, `idempotency_key`, normalized `payload_hash`, and no client-calculated total. `actor` SHALL be derived exclusively from the authenticated principal (never trusted from client input); if a compatibility layer still transmits an actor field, the server SHALL compare it to the authenticated principal and reject any mismatch. The persistence layer SHALL enforce one unique idempotency record per `(actor, idempotency_key)` and SHALL store its `payload_hash`, `sweep_id` and response identity. In one transaction it SHALL lock/revalidate token freshness, derived actor, normalized payload hash, catalog compatibility and limits, persist the immutable snapshot/combinations/outbox records, and reject a stale or mismatched token without enqueueing work.
 
+The normalized payload hash SHALL use the same canonical ordering and deduplication as preflight for templates, symbols, timeframes and directions, so semantically identical axis permutations cannot conflict. The client SHALL generate one opaque idempotency key per new draft attempt, keep it stable while retrying that attempt, and generate a new key when the administrator starts a new draft; the snapshot hash SHALL NOT be reused as the idempotency key because identical scope may be executed again intentionally.
+
 #### Scenario: Compatible and incompatible combinations
 
 - **WHEN** preflight receives 3 templates, 4 symbols, 2 timeframes and 2 directions and one `template × symbol × timeframe` tuple is incompatible
@@ -27,6 +29,19 @@ Creation SHALL accept the preflight token, `idempotency_key`, normalized `payloa
 - **THEN** the response returns the original `sweep_id` and immutable snapshot
 - **WHEN** the same actor reuses that key with a different payload hash
 - **THEN** the stored hash is compared under the unique `(actor, idempotency_key)` lock, the system returns HTTP `409` idempotency conflict, and creates nothing
+
+#### Scenario: Axis order is semantically idempotent
+
+- **WHEN** the same actor retries one key with identical axes in a different list order, such as `4h,1d` versus `1d,4h`
+- **THEN** canonical normalization produces the same payload hash
+- **AND** the retry returns the original sweep instead of an idempotency conflict
+
+#### Scenario: New draft may repeat an identical snapshot
+
+- **GIVEN** a previous sweep already exists for one snapshot hash
+- **WHEN** the administrator creates a new draft with the same scope and a new opaque idempotency key
+- **THEN** creation persists a new sweep and keeps the previous sweep in history
+- **AND** retries of the new attempt keep using that new key
 
 #### Scenario: Concurrent create requests reuse one key with divergent hashes
 

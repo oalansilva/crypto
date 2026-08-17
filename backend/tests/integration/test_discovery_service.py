@@ -203,6 +203,52 @@ class TestCreateSweepIdempotency:
         assert second["idempotent_retry"] is True
         db.close()
 
+    def test_create_retry_normalizes_axis_order(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        preflight = service.preflight(
+            templates=["multi_ma_crossover"],
+            symbols=["BTCUSDT"],
+            timeframes=["4h", "1d"],
+            directions=["long"],
+            start_date="2024-01-01",
+            end_date="2024-12-31",
+            period_type="all",
+        )
+        payload = {
+            "templates": ["multi_ma_crossover"],
+            "symbols": ["BTCUSDT"],
+            "timeframes": ["4h", "1d"],
+            "directions": ["long"],
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "period_type": "all",
+            "snapshot_hash": preflight["snapshot_hash"],
+        }
+        key = f"k-{uuid.uuid4().hex[:12]}"
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        reordered = {**payload, "timeframes": ["1d", "4h"]}
+        second, retry_status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=reordered,
+            db=db,
+        )
+
+        assert status == 201
+        assert retry_status == 200
+        assert second["sweep_id"] == first["sweep_id"]
+        assert second["idempotent_retry"] is True
+        db.close()
+
     def test_create_divergent_hash_returns_409(self, engine_factory):
         engine = engine_factory()
         db = _session_factory(engine)()

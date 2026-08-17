@@ -203,6 +203,7 @@ export function DiscoveryPage() {
   const [preflightError, setPreflightError] = useState<string | null>(null)
   const [snapshotStale, setSnapshotStale] = useState(false)
   const [draftFrozen, setDraftFrozen] = useState(false)
+  const [sweepIdempotencyKey, setSweepIdempotencyKey] = useState(() => idempotencyKey('sweep', crypto.randomUUID()))
   // Sweep ativo e run histórico exibido permanecem separados, como no protótipo.
   const [activeSweep, setActiveSweep] = useState<Sweep | null>(null)
   const [viewSweep, setViewSweep] = useState<Sweep | null>(null)
@@ -427,7 +428,7 @@ export function DiscoveryPage() {
           period_type: period,
           snapshot_token: preflight.snapshot_token,
           snapshot_hash: preflight.snapshot_hash,
-          idempotency_key: idempotencyKey('sweep', preflight.snapshot_hash),
+          idempotency_key: sweepIdempotencyKey,
         }),
       })
       const data = await res.json()
@@ -474,7 +475,7 @@ export function DiscoveryPage() {
     } finally {
       setBusy(false)
     }
-  }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, loadHistory, showToast, viewSweep])
+  }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, loadHistory, showToast, viewSweep, sweepIdempotencyKey])
 
   useEffect(() => {
     if (!activeSweep || !focusStartedSweepRef.current) return
@@ -627,6 +628,7 @@ export function DiscoveryPage() {
   const newDraft = useCallback(() => {
     setDraftFrozen(false)
     setCancelConfirmOpen(false)
+    setSweepIdempotencyKey(idempotencyKey('sweep', crypto.randomUUID()))
     showToast('Novo rascunho', 'Sweep ativo preservado no histórico; configurador liberado.')
   }, [showToast])
 

@@ -366,6 +366,14 @@ class DiscoveryService:
         # snapshot_hash é validado separadamente contra o snapshot recalculado;
         # o payload hash (idempotência) não inclui o campo de validação.
         idem_payload = {k: v for k, v in payload.items() if k != "snapshot_hash"}
+        idem_payload.update(
+            {
+                "templates": _canonical_templates(payload.get("templates") or []),
+                "symbols": _normalize_symbols(payload.get("symbols") or []),
+                "timeframes": sorted(set(payload.get("timeframes") or [])),
+                "directions": sorted(set(payload.get("directions") or [])),
+            }
+        )
         payload_hash = _payload_hash(idem_payload)
 
         existing = (
