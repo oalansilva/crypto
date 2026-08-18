@@ -27,7 +27,11 @@ from app.services.strategy_secret_visibility import (
     can_view_strategy_secrets,
     redact_favorite_strategy_payload,
 )
-from app.services.strategy_descriptions import public_strategy_description
+from app.services.strategy_descriptions import (
+    public_strategy_description,
+    resolve_strategy_description,
+    resolve_strategy_display_name,
+)
 from app.schemas.strategy_transparency import StrategyTransparency
 from app.services.strategy_transparency import (
     build_strategy_transparency,
@@ -100,15 +104,21 @@ def _favorite_response(
     include_details: bool = False,
     tier_override: int | None | object = _TIER_UNSET,
     description_by_strategy: dict[str, str] | None = None,
+    display_name_by_strategy: dict[str, str] | None = None,
     template_by_strategy: dict[str, dict[str, Any]] | None = None,
 ) -> FavoriteStrategyResponse:
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
     if isinstance(payload.get("metrics"), dict):
         payload["metrics"] = _safe_cached_metrics(payload["metrics"], str(row.timeframe))
+    strategy_key = str(row.strategy_name)
     payload["strategy_description"] = (description_by_strategy or {}).get(
-        str(row.strategy_name),
+        strategy_key,
         public_strategy_description(row.strategy_name),
+    )
+    payload["strategy_display_name"] = (display_name_by_strategy or {}).get(
+        strategy_key,
+        payload.get("strategy_display_name"),
     )
     template_data = (template_by_strategy or {}).get(str(row.strategy_name))
     payload["strategy_transparency"] = build_strategy_transparency(
@@ -130,17 +140,38 @@ def _favorite_response(
     )
 
 
+def _strategy_identities_for_rows(
+    db: Session,
+    rows: list[FavoriteStrategy],
+) -> tuple[dict[str, str], dict[str, str]]:
+    names = sorted({str(row.strategy_name) for row in rows if row.strategy_name})
+    if not names:
+        return {}, {}
+
+    templates = db.query(ComboTemplate).filter(ComboTemplate.name.in_(names)).all()
+    descriptions: dict[str, str] = {}
+    display_names: dict[str, str] = {}
+    for name in names:
+        template = next((row for row in templates if str(row.name) == name), None)
+        db_description = template.description if template else None
+        db_display_name = template.display_name if template else None
+        descriptions[name] = resolve_strategy_description(
+            name,
+            db_description=db_description,
+            db_display_name=db_display_name,
+        )
+        display_names[name] = resolve_strategy_display_name(
+            name, db_display_name=db_display_name
+        )
+    return descriptions, display_names
+
+
 def _strategy_descriptions_for_rows(
     db: Session,
     rows: list[FavoriteStrategy],
 ) -> dict[str, str]:
-    names = sorted({str(row.strategy_name) for row in rows if row.strategy_name})
-    if not names:
-        return {}
-
-    templates = db.query(ComboTemplate).filter(ComboTemplate.name.in_(names)).all()
-    raw_by_name = {str(row.name): row.description for row in templates}
-    return {name: public_strategy_description(name, raw_by_name.get(name)) for name in names}
+    descriptions, _ = _strategy_identities_for_rows(db, rows)
+    return descriptions
 
 
 def _strategy_templates_for_rows(
@@ -586,7 +617,7 @@ def list_favorites(
 
     if include_secrets or (current_user and is_admin_email(current_user.email)):
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
-        descriptions = _strategy_descriptions_for_rows(db, rows)
+        descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
         return [
             _favorite_response(
@@ -594,6 +625,7 @@ def list_favorites(
                 include_secrets=include_secrets,
                 include_details=include_details,
                 description_by_strategy=descriptions,
+                display_name_by_strategy=display_names,
                 template_by_strategy=templates,
             )
             for row in rows
@@ -601,7 +633,7 @@ def list_favorites(
 
     if not current_user:
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
-        descriptions = _strategy_descriptions_for_rows(db, rows)
+        descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
         return [
             _favorite_response(
@@ -609,6 +641,7 @@ def list_favorites(
                 include_secrets=include_secrets,
                 include_details=include_details,
                 description_by_strategy=descriptions,
+                display_name_by_strategy=display_names,
                 template_by_strategy=templates,
             )
             for row in rows
@@ -626,7 +659,7 @@ def list_favorites(
     )
     has_user_rows = any(row.symbol and "/" in str(row.symbol) for row in user_rows)
     if has_user_rows:
-        descriptions = _strategy_descriptions_for_rows(db, user_rows)
+        descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
         return [
             _favorite_response(
@@ -634,6 +667,7 @@ def list_favorites(
                 include_secrets=include_secrets,
                 include_details=include_details,
                 description_by_strategy=descriptions,
+                display_name_by_strategy=display_names,
                 template_by_strategy=templates,
             )
             for row in user_rows
@@ -641,7 +675,7 @@ def list_favorites(
 
     admin_user_ids = _admin_catalog_user_ids(db, exclude_user_id=current_user_id)
     if not admin_user_ids:
-        descriptions = _strategy_descriptions_for_rows(db, user_rows)
+        descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
         return [
             _favorite_response(
@@ -649,6 +683,7 @@ def list_favorites(
                 include_secrets=include_secrets,
                 include_details=include_details,
                 description_by_strategy=descriptions,
+                display_name_by_strategy=display_names,
                 template_by_strategy=templates,
             )
             for row in user_rows
@@ -665,7 +700,7 @@ def list_favorites(
         )
         .all()
     )
-    descriptions = _strategy_descriptions_for_rows(db, rows)
+    descriptions, display_names = _strategy_identities_for_rows(db, rows)
     templates = _strategy_templates_for_rows(db, rows)
     return [
         _favorite_response(
@@ -674,6 +709,7 @@ def list_favorites(
             include_details=include_details,
             tier_override=tier_by_favorite_id.get(int(row.id)),
             description_by_strategy=descriptions,
+            display_name_by_strategy=display_names,
             template_by_strategy=templates,
         )
         for row in rows
@@ -921,10 +957,13 @@ def create_favorite(
         db.commit()
         db.refresh(db_favorite)
         include_details = can_view_strategy_details(db, current_user_id)
+        descriptions, display_names = _strategy_identities_for_rows(db, [db_favorite])
         return _favorite_response(
             db_favorite,
             include_secrets=include_secrets,
             include_details=include_details,
+            description_by_strategy=descriptions,
+            display_name_by_strategy=display_names,
             template_by_strategy=_strategy_templates_for_rows(db, [db_favorite]),
         )
     except HTTPException:
@@ -996,11 +1035,14 @@ def update_favorite(
 
     db.commit()
     db.refresh(favorite)
+    descriptions, display_names = _strategy_identities_for_rows(db, [favorite])
     return _favorite_response(
         favorite,
         include_secrets=include_secrets,
         include_details=include_details,
         tier_override=tier_override,
+        description_by_strategy=descriptions,
+        display_name_by_strategy=display_names,
         template_by_strategy=_strategy_templates_for_rows(db, [favorite]),
     )
 

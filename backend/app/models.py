@@ -198,6 +198,7 @@ class ComboTemplate(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
+    display_name = Column(String, nullable=True)
 
     # Flags
     is_prebuilt = Column(Boolean, default=False)

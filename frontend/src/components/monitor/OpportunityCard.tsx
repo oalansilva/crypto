@@ -296,13 +296,13 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             {latestTradeExplanation}
                         </div>
                     ) : null}
-                    <div className="candle-meta">
-                        <span>
-                            estratégia <b>{strategyDisplayName || name || symbol}</b>
-                        </span>
+                    <div className="candle-meta" data-testid={`monitor-detail-strategy-identity-${symbolTestKey}`}>
+                        <strong className="block text-sm font-semibold text-[#eaecef]" data-testid="monitor-detail-strategy-title">
+                            {strategyDisplayName || name || symbol}
+                        </strong>
                         {opportunity.strategy_description ? (
-                            <span className="strategy-description">
-                                descrição <b>{opportunity.strategy_description}</b>
+                            <span className="strategy-description block text-sm leading-6 text-[#b7bdc6]" data-testid="monitor-detail-strategy-description">
+                                {opportunity.strategy_description}
                             </span>
                         ) : null}
                         <span>

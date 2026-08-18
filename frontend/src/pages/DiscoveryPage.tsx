@@ -56,6 +56,8 @@ type LeaderboardRow = {
   rank: number | null
   result_id: string
   template_id: string
+  display_name?: string | null
+  description?: string | null
   symbol: string
   timeframe: string
   direction: string
@@ -1542,8 +1544,15 @@ export function DiscoveryPage() {
                           <span className="rank-cell-value">{row.rank ?? '—'}</span>
                         </td>
                         <td className="candidate-cell" data-label="Candidato">
-                          <div className="candidate-cell-min">
-                            <strong className="candidate-name">{row.template_id}</strong>
+                          <div className="candidate-cell-min" data-testid="discovery-strategy-identity">
+                            <strong className="candidate-name" data-testid="discovery-strategy-title">
+                              {row.display_name || row.template_id}
+                            </strong>
+                            {row.description ? (
+                              <span className="candidate-description" data-testid="discovery-strategy-description">
+                                {row.description}
+                              </span>
+                            ) : null}
                             <span className="candidate-meta">
                               {row.result_id} · cobertura {fmtPct(row.coverage)}
                               {fmtParams(row.parameters) ? ` · ${fmtParams(row.parameters)}` : ''}
@@ -1694,8 +1703,18 @@ export function DiscoveryPage() {
               </button>
             </div>
             <div className="p-5">
-              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3.5">
-                <strong className="block" data-testid="modal-candidate">{promoteTarget.template_id}</strong>
+              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3.5" data-testid="modal-strategy-identity">
+                <strong className="block" data-testid="modal-strategy-title">
+                  {promoteTarget.display_name || promoteTarget.template_id}
+                </strong>
+                {promoteTarget.description ? (
+                  <span className="mt-1 block text-sm text-[var(--text-secondary)]" data-testid="modal-strategy-description">
+                    {promoteTarget.description}
+                  </span>
+                ) : null}
+                <span className="mt-2 block text-xs text-[var(--text-tertiary)]" data-testid="modal-candidate">
+                  {promoteTarget.result_id} · {promoteTarget.template_id}
+                </span>
                 <span className="text-xs text-[var(--text-tertiary)]" data-testid="modal-market">
                   {promoteTarget.symbol} · {promoteTarget.timeframe} · {promoteTarget.direction === 'long' ? 'Long' : 'Short'}
                 </span>

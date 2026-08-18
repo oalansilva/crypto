@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
-import { BarChart3, ArrowLeft, Star } from 'lucide-react'
+import { BarChart3, ArrowLeft, Star, Pencil } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
@@ -13,9 +13,11 @@ import { buildSignalHistoryMarkers, type MonitorSyncStatus } from '@/lib/signalH
 import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
 import type { OpportunitySignalHistoryItem } from '@/components/monitor/types'
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison'
+import { useAuth } from '@/stores/authStore'
 
 interface BacktestResult {
     template_name: string
+    display_name?: string | null
     symbol: string
     timeframe: string
     start_date?: string | null
@@ -73,10 +75,18 @@ interface BacktestResult {
 export function ComboResultsPage() {
     const location = useLocation()
     const navigate = useNavigate()
+    const { user } = useAuth()
+    const isAdmin = user?.isAdmin === true
     const result = location.state?.result as BacktestResult
     const returnTo = location.state?.returnTo as string | undefined
     const isOptimization = location.state?.isOptimization === true
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [identityTitle, setIdentityTitle] = useState('')
+    const [identityDescription, setIdentityDescription] = useState('')
+    const [isEditingIdentity, setIsEditingIdentity] = useState(false)
+    const [isSavingIdentity, setIsSavingIdentity] = useState(false)
+    const [identityError, setIdentityError] = useState<string | null>(null)
+    const [savedIdentity, setSavedIdentity] = useState<{ title: string; description: string } | null>(null)
 
     const handleSaveFavorite = async (data: any) => {
         console.log('📤 handleSaveFavorite chamado com:', data)
@@ -270,9 +280,60 @@ export function ComboResultsPage() {
         ? buildSignalHistoryMarkers(signalHistory, direction, undefined)
         : buildTradeMarkers(result.trades, { direction, timeframe: result.timeframe })
 
-    const strategyName = strategyTransparency?.display_name || result.template_name
-    const strategyDescription = String(result.strategy_description || strategyTransparency?.description || '').trim()
+    const strategyName = savedIdentity?.title
+        || result?.display_name
+        || strategyTransparency?.display_name
+        || result?.template_name
+        || ''
+    const strategyDescription = savedIdentity?.description
+        || String(result?.strategy_description || strategyTransparency?.description || '').trim()
     const directionLabel = isShort ? 'Short / venda' : 'Long / compra'
+
+    const beginIdentityEdit = () => {
+        setIdentityTitle(strategyName)
+        setIdentityDescription(strategyDescription)
+        setIdentityError(null)
+        setIsEditingIdentity(true)
+    }
+
+    const cancelIdentityEdit = () => {
+        setIsEditingIdentity(false)
+        setIdentityError(null)
+    }
+
+    const saveIdentity = async () => {
+        const title = identityTitle.trim()
+        const description = identityDescription.trim()
+        if (!title || !description) {
+            setIdentityError('Informe título e descrição.')
+            return
+        }
+        setIsSavingIdentity(true)
+        setIdentityError(null)
+        try {
+            const response = await authFetch(
+                `${API_BASE_URL}/combos/meta/${encodeURIComponent(result.template_name)}/identity`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ display_name: title, description }),
+                },
+            )
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}))
+                throw new Error(payload.detail || 'Não foi possível salvar a identidade da estratégia.')
+            }
+            const payload = await response.json()
+            const nextTitle = String(payload.display_name || title).trim()
+            const nextDescription = String(payload.description || description).trim()
+            setSavedIdentity({ title: nextTitle, description: nextDescription })
+            setIsEditingIdentity(false)
+        } catch (error) {
+            setIdentityError(error instanceof Error ? error.message : 'Erro ao salvar identidade.')
+        } finally {
+            setIsSavingIdentity(false)
+        }
+    }
     const formatMetricPercentage = (value: number | undefined, decimals = 1) => {
         if (value === undefined || value === null || Number.isNaN(value)) return 'Indisponível'
         const percentage = Math.abs(value) > 1 ? value : value * 100
@@ -327,14 +388,95 @@ export function ComboResultsPage() {
                                     <span className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5 uppercase">{result.timeframe}</span>
                                     <span className="rounded-md border border-[#fcd535]/50 bg-[#fcd535]/10 px-2.5 py-1.5 text-[#fcd535]">{directionLabel}</span>
                                 </div>
-                                <h1 className="mt-4 break-words text-2xl font-bold leading-tight sm:text-3xl [overflow-wrap:anywhere]">
-                                    {strategyName}
-                                </h1>
-                                {strategyDescription ? (
-                                    <p className="mt-3 max-w-3xl whitespace-normal break-words text-sm leading-6 text-[#b7bdc6] [overflow-wrap:anywhere]" data-testid="combo-result-description">
-                                        {strategyDescription}
-                                    </p>
-                                ) : null}
+                                {isEditingIdentity ? (
+                                    <form
+                                        className="mt-4 space-y-3"
+                                        onSubmit={(event) => {
+                                            event.preventDefault()
+                                            void saveIdentity()
+                                        }}
+                                        data-testid="combo-edit-mode"
+                                    >
+                                        <p className="text-xs text-[#929aa5]">
+                                            Altera o catálogo global deste template — todas as instâncias em Descoberta, Favoritos e Monitor.
+                                        </p>
+                                        <label className="block text-xs font-semibold text-[#929aa5]" htmlFor="combo-identity-title-input">
+                                            Título público
+                                        </label>
+                                        <input
+                                            id="combo-identity-title-input"
+                                            data-testid="combo-identity-title-input"
+                                            className="w-full rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 py-2 text-sm text-[#eaecef]"
+                                            value={identityTitle}
+                                            onChange={(event) => setIdentityTitle(event.target.value)}
+                                            maxLength={120}
+                                            required
+                                        />
+                                        <label className="block text-xs font-semibold text-[#929aa5]" htmlFor="combo-identity-description-input">
+                                            Descrição pública
+                                        </label>
+                                        <textarea
+                                            id="combo-identity-description-input"
+                                            data-testid="combo-identity-description-input"
+                                            className="min-h-[96px] w-full rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 py-2 text-sm leading-6 text-[#eaecef]"
+                                            value={identityDescription}
+                                            onChange={(event) => setIdentityDescription(event.target.value)}
+                                            maxLength={500}
+                                            required
+                                        />
+                                        {identityError ? (
+                                            <p className="text-sm text-[#f6465d]" data-testid="combo-identity-error">{identityError}</p>
+                                        ) : null}
+                                        <div className="flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={cancelIdentityEdit}
+                                                data-testid="combo-identity-cancel"
+                                                className="inline-flex min-h-11 items-center rounded-md border border-[#2b3139] bg-[#1e2329] px-4 py-2 text-sm font-semibold text-[#eaecef]"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={isSavingIdentity}
+                                                data-testid="combo-identity-save"
+                                                className="inline-flex min-h-11 items-center rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#0b0e11] disabled:opacity-60"
+                                            >
+                                                {isSavingIdentity ? 'Salvando…' : 'Salvar no catálogo'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <div data-testid="combo-read-mode">
+                                        <div className="mt-4 flex items-start gap-2">
+                                            <h1
+                                                className="break-words text-2xl font-bold leading-tight sm:text-3xl [overflow-wrap:anywhere]"
+                                                data-testid="combo-result-title"
+                                            >
+                                                {strategyName}
+                                            </h1>
+                                            {isAdmin ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={beginIdentityEdit}
+                                                    data-testid="combo-edit-identity"
+                                                    aria-label="Editar nome e descrição da estratégia"
+                                                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[#2b3139] bg-[#1e2329] text-[#eaecef] hover:bg-[#2b3139]"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                        {strategyDescription ? (
+                                            <p
+                                                className="mt-3 max-w-3xl whitespace-normal break-words text-sm leading-6 text-[#b7bdc6] [overflow-wrap:anywhere]"
+                                                data-testid="combo-result-description"
+                                            >
+                                                {strategyDescription}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                )}
                             </div>
                             <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-5 border-t border-[#2b3139] pt-5 sm:grid-cols-4 lg:grid-cols-2 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" aria-label="Resumo de desempenho e risco">
                                 {summaryMetrics.map((metric) => (
