@@ -13,6 +13,7 @@ from app.strategies.combos import ComboStrategy
 from app.services.strategy_descriptions import (
     resolve_strategy_display_name,
     resolve_strategy_description,
+    resolve_strategy_identity,
 )
 
 
@@ -743,4 +744,12 @@ class ComboService:
             return {}
 
         rows = db.query(ComboTemplate).filter(ComboTemplate.name.in_(names)).all()
-        return {str(row.name): cls._resolve_row_identity(row) for row in rows}
+        by_name = {str(row.name): row for row in rows}
+        identity_map: dict[str, dict[str, str]] = {}
+        for name in names:
+            row = by_name.get(name)
+            if row is not None:
+                identity_map[name] = cls._resolve_row_identity(row)
+            else:
+                identity_map[name] = resolve_strategy_identity(name)
+        return identity_map

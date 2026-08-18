@@ -656,6 +656,68 @@ class TestIdentityAndLeaderboard:
         assert [r["rank"] for r in rows] == [2, 3]
         db.close()
 
+    def test_result_row_exposes_strategy_identity_fields(self):
+        from app.services.strategy_descriptions import resolve_strategy_identity
+
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        identity_map = {
+            "multi_ma_crossover": resolve_strategy_identity("multi_ma_crossover"),
+            "card549_unknown_template": resolve_strategy_identity("card549_unknown_template"),
+        }
+        mapped_row = DiscoveryResult(
+            id="RS-MAP",
+            sweep_id="sw-identity",
+            combination_id=960001,
+            template_id="multi_ma_crossover",
+            symbol="BTCUSDT",
+            timeframe="1d",
+            direction="long",
+            parameters={},
+            start_at=now,
+            end_at=now + timedelta(days=1),
+            metrics={},
+            trades_count=45,
+            calmar_ratio=3.0,
+            strategy_identity_key="id-map",
+            evidence_fingerprint="fp-map",
+            eligibility="eligible",
+            dedup_state="unique",
+        )
+        raw_row = DiscoveryResult(
+            id="RS-RAW",
+            sweep_id="sw-identity",
+            combination_id=960002,
+            template_id="card549_unknown_template",
+            symbol="BTCUSDT",
+            timeframe="1d",
+            direction="long",
+            parameters={},
+            start_at=now,
+            end_at=now + timedelta(days=1),
+            metrics={},
+            trades_count=40,
+            calmar_ratio=2.0,
+            strategy_identity_key="id-raw",
+            evidence_fingerprint="fp-raw",
+            eligibility="eligible",
+            dedup_state="unique",
+        )
+
+        mapped = service._result_row(mapped_row, 1, identity_map=identity_map)
+        raw = service._result_row(raw_row, 2, identity_map=identity_map)
+
+        assert mapped["display_name"] == "Médias Móveis: Tendência em Virada"
+        assert mapped["description"]
+        assert "média curta" in mapped["description"].lower()
+        assert mapped["template_id"] == "multi_ma_crossover"
+        assert mapped["rank"] == 1
+
+        assert raw["display_name"] == "card549_unknown_template"
+        assert raw["description"]
+        assert raw["display_name"] != "Estratégia Cripto Farol"
+        assert raw["rank"] == 2
+
 
 @pytest.fixture
 def engine_factory():

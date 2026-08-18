@@ -17,7 +17,7 @@
 
 - [x] 2.1 Adicionar `display_name` e `description` em `_result_row` via resolvedor unificado
 - [x] 2.2 Fallback nome cru + descrição segura para templates sem mapa (sem genérico `Estratégia Cripto Farol`)
-- [ ] 2.3 Testes de integração: campos aditivos, fallback, compatibilidade rank/filtro/promoção
+- [x] 2.3 Testes de integração: campos aditivos, fallback, compatibilidade rank/filtro/promoção
 
 ## 3. Frontend — Descoberta
 
@@ -39,6 +39,6 @@
 
 ## 6. QA
 
-- [ ] 6.1 Playwright visual: Combo (lápis/edição), Descoberta, Favoritos, Monitor (baselines intencionais)
+- [x] 6.1 Playwright visual: Combo (lápis/edição), Descoberta, Favoritos, Monitor (baselines intencionais)
 - [ ] 6.2 Validar paridade `multi_ma_crossover` (e override pós-save) entre as quatro superfícies
 - [ ] 6.3 `qa-gate` verde

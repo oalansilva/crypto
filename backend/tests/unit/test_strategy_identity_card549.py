@@ -167,4 +167,5 @@ def test_identity_map_for_template_names(postgres_isolation, unit_database_url):
         )
     assert identity_map["card549_batch_lookup"]["display_name"] == "Batch Title"
     assert identity_map["card549_batch_lookup"]["description"] == "Batch description"
-    assert "missing" not in identity_map
+    assert identity_map["missing"]["display_name"] == "missing"
+    assert identity_map["missing"]["description"]

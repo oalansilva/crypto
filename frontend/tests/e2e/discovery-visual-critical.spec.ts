@@ -85,6 +85,8 @@ const RESULTS = NAMES.map((name, index) => {
     result_id: `RS-${1048 + index}`,
     sweep_id: HISTORY_SWEEP.sweep_id,
     template_id: name,
+    display_name: name,
+    description: 'Copy pública canônica imediatamente abaixo do título, no padrão Combo.',
     symbol,
     timeframe: index % 2 === 0 ? '1d' : '4h',
     direction,
