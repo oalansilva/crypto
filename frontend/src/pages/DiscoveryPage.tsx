@@ -89,7 +89,24 @@ type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
 
 const TERMINAL = new Set<SweepState>(['cancelled', 'failed', 'partial_failure', 'completed'])
 const PAGE_SIZE = 3
+const DRAFT_KEY_STORAGE = 'discovery-draft-idempotency-key'
 const idempotencyKey = (prefix: string, value: string) => `${prefix}-${value}`.slice(0, 64)
+const newDraftKey = () =>
+  globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}-${Math.random()}`.slice(0, 36)
+const readStoredDraftKey = () => {
+  try {
+    return window.sessionStorage.getItem(DRAFT_KEY_STORAGE)
+  } catch {
+    return null
+  }
+}
+const persistDraftKey = (key: string) => {
+  try {
+    window.sessionStorage.setItem(DRAFT_KEY_STORAGE, key)
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 const STATE_LABEL: Record<SweepState, string> = {
   pending: 'pendente', running: 'em execução', paused: 'pausada', cancelling: 'cancelando',
   cancelled: 'cancelada', failed: 'falhou', partial_failure: 'falha parcial', completed: 'concluída',
@@ -205,6 +222,7 @@ export function DiscoveryPage() {
   const [preflightError, setPreflightError] = useState<string | null>(null)
   const [snapshotStale, setSnapshotStale] = useState(false)
   const [draftFrozen, setDraftFrozen] = useState(false)
+  const [draftKey, setDraftKey] = useState(() => readStoredDraftKey() || newDraftKey())
   // Sweep ativo e run histórico exibido permanecem separados, como no protótipo.
   const [activeSweep, setActiveSweep] = useState<Sweep | null>(null)
   const [viewSweep, setViewSweep] = useState<Sweep | null>(null)
@@ -239,6 +257,10 @@ export function DiscoveryPage() {
   const promotionTriggerRef = useRef<HTMLButtonElement | null>(null)
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
   const previousActiveStateRef = useRef<SweepState | null>(null)
+
+  useEffect(() => {
+    persistDraftKey(draftKey)
+  }, [draftKey])
 
   // ---- catalog helpers ----
 
@@ -406,7 +428,6 @@ export function DiscoveryPage() {
   const canStart =
     preflight !== null &&
     Object.keys(preflight.errors || {}).length === 0 &&
-    !draftFrozen &&
     !snapshotStale
 
   const toggleList = (list: string[], setList: (v: string[]) => void, value: string) =>
@@ -429,7 +450,7 @@ export function DiscoveryPage() {
           period_type: period,
           snapshot_token: preflight.snapshot_token,
           snapshot_hash: preflight.snapshot_hash,
-          idempotency_key: idempotencyKey('sweep', preflight.snapshot_hash),
+          idempotency_key: draftKey,
         }),
       })
       const data = await res.json()
@@ -476,7 +497,7 @@ export function DiscoveryPage() {
     } finally {
       setBusy(false)
     }
-  }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, loadHistory, showToast, viewSweep])
+  }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, draftKey, loadHistory, showToast, viewSweep])
 
   useEffect(() => {
     if (!activeSweep || !focusStartedSweepRef.current) return
@@ -627,6 +648,9 @@ export function DiscoveryPage() {
   )
 
   const newDraft = useCallback(() => {
+    const nextKey = newDraftKey()
+    setDraftKey(nextKey)
+    persistDraftKey(nextKey)
     setDraftFrozen(false)
     setCancelConfirmOpen(false)
     showToast('Novo rascunho', 'Sweep ativo preservado no histórico; configurador liberado.')
@@ -1155,6 +1179,16 @@ export function DiscoveryPage() {
 
               <div className="my-3.5">
                 <div className="flex justify-between gap-3 py-1.5 text-sm text-[var(--text-tertiary)]">
+                  <span>Chave do rascunho</span>
+                  <b
+                    className="max-w-[22ch] break-all text-right font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
+                    data-testid="draft-key"
+                    aria-live="polite"
+                  >
+                    {draftKey}
+                  </b>
+                </div>
+                <div className="flex justify-between gap-3 py-1.5 text-sm text-[var(--text-tertiary)]">
                   <span>Período</span>
                   <b className="font-semibold text-[var(--text-secondary)]">{periodLabel}</b>
                 </div>
@@ -1187,8 +1221,8 @@ export function DiscoveryPage() {
               >
                 {draftFrozen && activeSweep ? (
                   <>
-                    <Check className="h-4 w-4" />
-                    Token revalidado · sweep criado
+                    <RefreshCw className="h-4 w-4" />
+                    Retry do mesmo rascunho
                   </>
                 ) : (
                   <>

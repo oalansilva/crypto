@@ -78,8 +78,31 @@ def _utc_iso(dt: datetime | None) -> str | None:
     return dt.astimezone(timezone.utc).isoformat() if dt else None
 
 
+def _canonical_axis_value(value: Any) -> str:
+    return str(value).strip()
+
+
+def _canonicalize_idempotency_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    canonical = dict(payload)
+    for key in ("templates", "symbols", "timeframes", "directions"):
+        if key not in canonical or not isinstance(canonical[key], list):
+            continue
+        values = [
+            _canonical_axis_value(item) for item in canonical[key] if _canonical_axis_value(item)
+        ]
+        if key == "symbols":
+            values = [item.upper() for item in values]
+        canonical[key] = sorted(set(values))
+    return canonical
+
+
 def _payload_hash(payload: dict[str, Any]) -> str:
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    canonical = json.dumps(
+        _canonicalize_idempotency_payload(payload),
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
@@ -385,7 +408,11 @@ class DiscoveryService:
                     },
                     409,
                 )
-            return {"sweep_id": existing.id, "state": existing.state, "idempotent_retry": True}, 200
+            return {
+                "sweep_id": existing.id,
+                "state": existing.state,
+                "idempotent_retry": True,
+            }, 200
 
         # Revalida o token do snapshot atomicamente (spec discovery-sweep).
         preflight_result = self.preflight(
@@ -398,7 +425,10 @@ class DiscoveryService:
             period_type=payload.get("period_type"),
         )
         if preflight_result["errors"]:
-            return ({"error": "invalid snapshot", "detail": preflight_result["errors"]}, 400)
+            return (
+                {"error": "invalid snapshot", "detail": preflight_result["errors"]},
+                400,
+            )
         if preflight_result["snapshot_hash"] != payload.get("snapshot_hash"):
             return (
                 {
@@ -578,7 +608,11 @@ class DiscoveryService:
     # --- Claims / leases (spec discovery-sweep) ----------------------------
 
     def claim_combinations(
-        self, sweep_id: str, owner: str, limit: int = CLAIM_BATCH, db: Session | None = None
+        self,
+        sweep_id: str,
+        owner: str,
+        limit: int = CLAIM_BATCH,
+        db: Session | None = None,
     ) -> list[DiscoveryCombination]:
         from app.database import SessionLocal
 
@@ -835,7 +869,13 @@ class DiscoveryService:
                     na.append(row)
                 else:
                     finite.append(row)
-            finite.sort(key=lambda r: (-float(getattr(r, metric)), -int(r.trades_count or 0), r.id))
+            finite.sort(
+                key=lambda r: (
+                    -float(getattr(r, metric)),
+                    -int(r.trades_count or 0),
+                    r.id,
+                )
+            )
             na.sort(key=lambda r: (-int(r.trades_count or 0), r.id))
             ranked = finite + na
             ineligible.sort(key=lambda r: r.id)
@@ -916,14 +956,20 @@ class DiscoveryService:
         if existing_idem:
             if existing_idem.payload_hash != payload_hash:
                 return ({"error": "idempotency conflict"}, 409)
-            return {"favorite_id": existing_idem.resource_id, "result_id": result_id}, 200
+            return {
+                "favorite_id": existing_idem.resource_id,
+                "result_id": result_id,
+            }, 200
 
         result = db.query(DiscoveryResult).filter(DiscoveryResult.id == result_id).first()
         if not result:
             return {"error": "result not found"}, 404
         if result.eligibility != "eligible":
             return (
-                {"error": "ineligible", "detail": result.eligibility_reason or "baixa amostra"},
+                {
+                    "error": "ineligible",
+                    "detail": result.eligibility_reason or "baixa amostra",
+                },
                 422,
             )
         if result.dedup_state == "duplicate_favorite":
@@ -940,7 +986,10 @@ class DiscoveryService:
 
         tier = payload.get("tier")
         if tier != 3:
-            return {"error": "tier must be 3", "detail": "promoção exclusivamente tier 3"}, 422
+            return {
+                "error": "tier must be 3",
+                "detail": "promoção exclusivamente tier 3",
+            }, 422
 
         # Lock transacional por identidade de estratégia (spec discovery-deduplication).
         lock_key = int(hashlib.sha256(result.strategy_identity_key.encode()).hexdigest()[:16], 16)
@@ -1060,6 +1109,9 @@ class DiscoveryService:
             if existing_idem:
                 if existing_idem.payload_hash != payload_hash:
                     return ({"error": "idempotency conflict"}, 409)
-                return {"favorite_id": existing_idem.resource_id, "result_id": result_id}, 200
+                return {
+                    "favorite_id": existing_idem.resource_id,
+                    "result_id": result_id,
+                }, 200
             raise
         return {"favorite_id": str(favorite.id), "result_id": result.id}, 201

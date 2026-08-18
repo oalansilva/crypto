@@ -7,7 +7,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 - `rules.md`: politica normativa, curta e obrigatoria. Use para decidir o que nunca pode ser pulado.
 - `AGENTS.md`: manual operacional detalhado. Use para comandos, ordem de execucao, mapeamento OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
 - Em caso de duvida ou conflito, siga a regra mais restritiva. Se ainda houver ambiguidade, pare e registre o conflito antes de alterar codigo, card ou Git.
-- Regras gerais do modo de trabalho do Alan ficam na skill global `alan-workflow` quando ela estiver disponível no cliente. O Cursor Agent aplica os mesmos overrides versionados neste arquivo e em `AGENTS.md`; o fluxo do projeto não depende de um caminho absoluto local.
+- Regras gerais do modo de trabalho do Alan ficam em `.cursor/skills/alan-workflow/` neste repo. O Cursor Agent aplica os overlays deste arquivo e de `AGENTS.md`. Não depender de `~/.codex/skills/` nem de disco hermes para essas skills.
 
 ## Regras obrigatorias
 
@@ -30,7 +30,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - `Aprovação de Design`: entrega de design completa aguardando Alan.
    - `Pronto para Dev`: Alan aprovou o design por arraste; desenvolvimento liberado.
    - `Em desenvolvimento`: o Cursor Agent/Clara esta trabalhando ou validando tecnicamente.
-   - `Code Review`: diff pronto para revisao antes do commit; achados bloqueantes corrigidos ou classificados.
+   - `Code Review`: diff pronto para os reviewers locais (`diff-reviewer` + `code-reviewer`, `inherit`/readonly) antes do commit; achados bloqueantes corrigidos ou classificados. Pré-commit: uncommitted vs HEAD. Fechamento: `origin/develop...HEAD` na branch do card, antes de QA. `/review-bugbot` só se Alan pedir. Autofix não commita na branch existente. Agent Review automático pós-commit permanece desligado.
    - `QA`: SHA revisado em validacao automatizada; `qa-gate` e Playwright visual precisam atingir resultado terminal verde.
    - `Done`: Done tecnico; QA verde, codigo integrado em `develop`, `./restart` e runtime validados, aguardando teste/aprovacao do Alan.
    - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
@@ -41,6 +41,8 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Somente Alan autenticado aprova `Aprovação de Design -> Pronto para Dev`; agentes nunca autoaprovam. Mudança no design/protótipo aprovado invalida o gate.
    - **Evidência obrigatória:** nenhum codigo e aplicado sem evidencia registrada de aprovacao de Design (comentario de Alan no card ou arraste `Aprovação de Design -> Pronto para Dev`). Vale para todo card, inclusive `UI impact: none`, remocoes, bugs e tooling. Veredito `BLOCKED` exige secao de resolucao no `design.md` (o que bloqueou, como foi resolvido, quem aprovou) antes de avancar; `BLOCKED` sem resolucao bloqueia o card.
    - **Checklist de gates no PR/commit de integracao:** o PR e o commit de squash devem listar change OpenSpec, `design.md`/verdict, `UI impact` e evidencia de aprovacao de Design (link do comentario ou arraste), inclusive para tooling/docs; `/opsx:verify` valida a checklist e PR sem gates nao e integrado.
+   - **`UI impact: affected` no apply:** o protótipo aprovado (`frontend/public/prototypes/<slug>/`) é a spec de layout. Contrato de API não substitui o protótipo. Handoff sem consulta ao protótipo bloqueia o apply.
+   - Task de UI só fecha `[x]` com evidência no código/spec. `/opsx:verify` e Code Review tratam `[x]` sem implementação como CRITICAL. Task de Playwright/frontend `[ ]` bloqueia `Done`.
    - Código de produção / `/opsx:apply` só depois de `Status=Pronto para Dev`. Pedido de implementação antecipa OpenSpec/Design, não autoriza pular colunas.
    - Falha de QA que exige codigo: `QA -> Em desenvolvimento -> Code Review -> QA`; falha de infraestrutura permanece em `QA` para rerun documentado.
    - Nao descreva `Status=Done` como card fechado/finalizado; use `Done tecnico` ou `aguardando homologacao`.
@@ -98,6 +100,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 13. Playwright visual e obrigatorio no QA de todo card por padrao, inclusive sem mudanca em `frontend/**`.
    - Dispensa so vale com label `qa-visual-skip` e comentario explicito de Alan no card no formato `QA visual dispensado por Alan.` seguido de motivo.
    - Label isolada, comentario isolado, filtro de path ou variavel de repositorio nao autorizam skip.
+   - Rota nova em `App.tsx` sem spec Playwright funcional+visual falha o job `new-route-playwright-coverage` e portanto o `qa-gate`. O inventário `frontend/tests/e2e/route-coverage-inventory.json` grandfather as rotas atuais; skip silencioso de rota nova e proibido.
    - `Done` exige `qa-gate` verde, artifacts/evidencias quando aplicaveis, integracao em `develop`, `./restart` e URL servindo o resultado novo.
 
 14. Kaizen e a melhoria continua de processo: quanto mais o processo e usado, melhor ele fica.

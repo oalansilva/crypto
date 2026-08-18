@@ -74,18 +74,32 @@ The release workflow MUST provide a repository command that audits worktrees, br
 - **THEN** the command exits non-zero and lists the blocking items.
 
 ### Requirement: Remote-first release comparison
-The release workflow MUST compare publication state using `origin/develop` and `origin/main` after fetching remote refs.
 
-#### Scenario: Local main is stale
-- **WHEN** local `main` differs from `origin/main`
-- **THEN** the release guard uses `origin/main` for merge-state decisions and reports local `main` drift as informational or warning context.
+The release workflow MUST compare publication state using `origin/develop` and `origin/main` after fetching remote refs. In `post`, local `main` MUST exist and equal `origin/main`; drift is a blocker until the operator performs an explicit fast-forward synchronization. The guard MUST NOT mutate local refs automatically.
+
+#### Scenario: Local main is stale during audit or pre
+- **WHEN** local `main` differs from `origin/main` outside the final `post`
+- **THEN** the release guard uses `origin/main` for merge-state decisions and reports local drift as context according to the mode
+
+#### Scenario: Local main is stale during post
+- **WHEN** local `main` is absent or differs from `origin/main` in `post`
+- **THEN** the guard blocks the closeout and instructs an explicit fast-forward sync
+
+#### Scenario: Local main was fast-forwarded
+- **WHEN** local `main` equals the freshly fetched `origin/main`
+- **THEN** the local-main closeout gate passes
 
 ### Requirement: Post-release cleanup gate
-The release workflow MUST run a post-release guard before reporting final cleanup complete.
 
-#### Scenario: Release merged but orphaned work remains
-- **WHEN** `origin/develop` and `origin/main` are aligned but a stash, temporary worktree, unmerged branch, or tracked generated file remains
-- **THEN** the post-release guard fails and requires classification or cleanup before the release is reported as clean.
+The release workflow MUST run a strict post-release guard after deploy, versioned kaizen/release evidence, local-main synchronization and package branch deletion, and before moving package cards to `Pronto`. The gate MUST require `RELEASE_DATE`, or its UTC default, `RELEASE_CARDS`, `RELEASE_BRANCHES` and `PROD_DEPLOY_EVIDENCE` as applicable to their existing contracts.
+
+#### Scenario: Release has incomplete closeout evidence
+- **WHEN** remote refs are aligned but the kaizen entry is absent, local main is stale, package branches remain, or `RELEASE_BRANCHES` is absent
+- **THEN** the post-release guard fails and cards remain before `Pronto`
+
+#### Scenario: Release closeout is complete
+- **WHEN** deploy evidence and canonical docs are present, kaizen is recorded, local main is aligned, package branches are absent and all other strict checks pass
+- **THEN** `post` succeeds and the package may be handed off for promotion to `Pronto`
 
 ### Requirement: Snapshots remotos únicos e frescos por execução
 O release guard MUST invocar os loaders de snapshots no shell principal por statements simples, nunca invocá-los dentro de command substitution, e SHALL permitir que cada loader use command substitution internamente para capturar `gh` desde que atribua seus próprios globals e trate o exit status. Em `post` e `audit`, o guard SHALL carregar no máximo uma vez o Project em `BOARD_JSON`/`BOARD_STATE` e no máximo uma vez os PRs abertos em `PRS_JSON`/`PRS_STATE`, reutilizando esses globals em todos os consumidores. O guard MUST NOT persistir ou compartilhar cache entre execuções e MUST NOT introduzir `flock` ou lock global.
@@ -238,7 +252,7 @@ Após uma ou mais falhas de snapshot, o release guard SHALL consultar o endpoint
 - **THEN** o guard consulta rate limit no máximo uma vez e preserva as falhas originais
 
 ### Requirement: Orçamento GraphQL é limitado por modo
-O release guard MUST respeitar estes máximos por execução: `pre` com zero `item-list`, zero `pr list`, zero páginas de idade e zero diagnóstico de rate limit; `post` com até um `item-list`, até um `pr list` e zero páginas de idade; `audit` com até um `item-list`, até um `pr list` e até 19 páginas GraphQL de idade. Requisições REST de comments por card para homologação ou divergência de título SHALL permanecer permitidas em `post|audit` e excluídas desse orçamento GraphQL.
+O release guard MUST respeitar estes máximos por execução: `pre` com zero `item-list`, zero `pr list`, zero páginas de idade e zero diagnóstico de rate limit; `post` com até um `item-list`, até um `pr list` e zero páginas de idade; `audit` com até um `item-list`, até um `pr list` e até 19 páginas GraphQL de idade. Requisições REST de comments por card para homologação ou divergência de título SHALL permanecer permitidas em `pre|post|audit` e excluídas desse orçamento GraphQL.
 
 #### Scenario: Post avalia várias branches
 - **WHEN** `post` avalia qualquer quantidade de branches
@@ -258,4 +272,209 @@ Para card de `RELEASE_CARDS` com Status conhecido diferente de `Homologado` ou `
 #### Scenario: Card do pacote possui Status conhecido não elegível
 - **WHEN** um item inequívoco de `RELEASE_CARDS` possui Status conhecido diferente de `Homologado` e `Pronto`
 - **THEN** o check de evidência de homologação permanece “not applicable” em vez de criar nova política de bloqueio
+
+### Requirement: Estado remoto desconhecido nunca constitui preservação válida
+
+Quando o snapshot do Project estiver ausente, inválido, incompleto ou em estado `failed`, o release guard MUST preservar o resultado de lookup como `unknown` e MUST NOT classificar qualquer branch dependente desse lookup como `preserved`, `card in flight` ou outro estado de negócio conhecido. O modo `post` MUST registrar blocker e terminar sem sucesso; o modo `audit` SHALL registrar warning explícito e continuar apenas como diagnóstico.
+
+#### Scenario: Snapshot falha durante post com branch inventariada
+
+- **WHEN** o fake `gh` faz o snapshot do Project falhar e existe uma branch cujo status dependeria do board
+- **THEN** `post` retorna não zero com blocker da falha do snapshot e a saída não classifica essa branch como `preserved` nem `card in flight`
+
+#### Scenario: Snapshot falha durante audit com branch inventariada
+
+- **WHEN** a mesma falha ocorre em `audit`
+- **THEN** o guard emite warning explícito de estado remoto desconhecido e a saída não classifica a branch como `preserved` nem `card in flight`
+
+#### Scenario: Card conhecido está realmente em fluxo
+
+- **WHEN** o snapshot é autoritativo e o card da branch possui Status conhecido não terminal
+- **THEN** a classificação `preserved (card in flight; not deleted)` continua permitida
+
+### Requirement: Limpeza de branches do pacote usa manifest e prova por ref
+
+O closeout SHALL registrar o manifest nominal completo de branches do pacote antes da limpeza. Para cada branch, o executor MUST registrar o tip local/remoto disponível e MUST provar integração por ancestralidade, equivalência de árvore, equivalência de patch ou ausência de diff material nos arquivos tocados. Branch não integrada MUST NOT ser removida sem autorização humana explícita vinculada ao nome e à evidência comparada. Branch com worktree ativa MUST permanecer bloqueada para deleção.
+
+#### Scenario: Branch integrada pode ser removida
+
+- **WHEN** uma branch do manifest não possui worktree ativa e sua integração é provada contra `origin/develop`
+- **THEN** as refs local e remota podem ser removidas e sua ausência é verificada depois de atualizar/prunar as refs
+
+#### Scenario: Branch marcada como not merged possui autorização
+
+- **WHEN** a árvore e os patches exclusivos foram revisados e Alan autorizou explicitamente descartar a branch identificada por nome e tip
+- **THEN** a deleção forçada pode ocorrer com a autorização e a prova pós-deleção registradas no handoff
+
+#### Scenario: Contagem sem nomes não prova limpeza
+
+- **WHEN** a auditoria histórica informa apenas que existem 17 branches pendentes, mas o manifest nominal não foi recuperado
+- **THEN** o closeout permanece incompleto mesmo que as branches conhecidas não apareçam em `git branch -a`
+
+### Requirement: Medição GraphQL é vinculada a uma execução identificada
+
+A evidência de orçamento SHALL registrar commit do guard, modo, horário, saldo GraphQL antes e depois e resultado terminal de uma única execução. O delta observado MUST ser de no máximo aproximadamente 500 pontos para satisfazer este card. Consumo concorrente conhecido ou não separável SHALL tornar a medição inconclusiva, e o executor MUST NOT repetir silenciosamente o run para selecionar um delta menor.
+
+#### Scenario: Execução isolada permanece no orçamento
+
+- **WHEN** uma execução identificada ocorre sem consumidor concorrente conhecido e o saldo GraphQL cai em até aproximadamente 500 pontos
+- **THEN** o handoff registra o delta, a referência histórica de aproximadamente 4.900 pontos e o resultado do guard
+
+#### Scenario: Cota sofre consumo concorrente
+
+- **WHEN** outra automação usa a mesma credencial durante a janela e o delta não pode ser atribuído ao guard
+- **THEN** a medição é registrada como inconclusiva e não conta como aceite do orçamento
+
+### Requirement: Documentação canônica é validada antes do PR documental
+
+O release guard SHALL resolver uma única data canônica por execução a partir de `RELEASE_DATE`, usando a data UTC corrente quando a variável estiver ausente. O valor MUST ser uma data válida no formato `YYYY-MM-DD`. Em `pre`, a existência de `docs/release-<data>.md` MUST NOT por si só exigir `PROD_DEPLOY_EVIDENCE`. O guard SHALL classificar o `pre` pelo diff de arquivos: `origin/main...HEAD` when the current branch matches `release-*`, otherwise `origin/main...origin/develop`. If that diff cannot be computed, the `pre` SHALL treat the PR as documental (fail-closed). A path is closeout/documental if it matches `docs/**`, `openspec/changes/archive/**`, `openspec/specs/**`, `AGENTS.md`, or `rules.md`. The PR is a **code PR** when the unpublished diff contains any path outside that allowlist. The PR is a **documental PR** when the canonical doc for the date exists and the unpublished diff is empty or a subset of the allowlist. `pre` SHALL require `PROD_DEPLOY_EVIDENCE`, a versioned file, and absence of placeholders `TBD`, `TODO`, `lorem`, `<!--`, `FIXME` and `<[A-Z_]+>` only for a documental PR. For a code PR on a day whose canonical doc already exists, `pre` MUST NOT require previous-lote evidence and SHALL warn that the doc will be updated after this package's deploy. MUST NOT exist a second doc for the same date. In `post`, when `PROD_DEPLOY_EVIDENCE` is set, the first token MUST resolve to a git object that is an **ancestor** of `origin/main` (equality allowed), `git diff --name-only <evidence>..origin/main` MUST be a subset of the closeout allowlist, and an abbreviation of that commit (≥7 hex, word-boundary) MUST appear at least once in the canonical doc. This MUST reject previous-lote evidence even if that SHA still appears in the doc. Equality of `origin/develop` and `origin/main` MUST NOT be the classifier for this section. The evidence SHA is the published **code/PROD** tip, not the post-documental-PR `origin/main` when that tip is docs-only ahead of the evidence. Dívida histórica fora da data canônica MUST NOT bloquear outra release em `pre`.
+
+#### Scenario: PR de código ainda não possui doc final
+- **WHEN** `pre` roda antes da publicação e `docs/release-<data>.md` ainda não existe
+- **THEN** o check documental não exige uma evidência de deploy que ainda não pode existir
+
+#### Scenario: PR de código no mesmo dia de uma doc já publicada
+- **WHEN** `pre` roda e o unpublished diff contém path fora do allowlist de closeout
+- **AND** `docs/release-<data>.md` já existe
+- **AND** `PROD_DEPLOY_EVIDENCE` está vazia ou contém evidência de outro lote
+- **THEN** o `pre` não emite blocker por ausência/reuso de evidência documental
+- **AND** emite warning de que a doc canônica do dia será atualizada após o deploy deste pacote
+
+#### Scenario: PR documental com develop diferente de main
+- **WHEN** `pre` roda, a doc canônica da data existe
+- **AND** o unpublished diff está vazio ou ⊆ allowlist (docs/kaizen/archive)
+- **AND** `PROD_DEPLOY_EVIDENCE` está vazia
+- **THEN** o guard bloqueia (PR documental do #518; `origin/develop` pode divergir de `origin/main`)
+
+#### Scenario: Doc canônica contém placeholder no PR documental
+- **WHEN** o PR é documental e `pre` encontra um dos padrões proibidos em `docs/release-<data>.md`
+- **THEN** o guard falha com blocker que identifica arquivo e linha
+
+#### Scenario: Doc pós-deploy está pronta
+- **WHEN** o PR é documental, a doc da data está versionada, não contém placeholders e `PROD_DEPLOY_EVIDENCE` está preenchida
+- **THEN** a validação documental do `pre` passa
+
+#### Scenario: Post exige o SHA de código deste lote na doc
+- **WHEN** `post` roda com `PROD_DEPLOY_EVIDENCE` cujo primeiro token é ancestral de `origin/main` mas `git diff --name-only <evidence>..origin/main` contém path fora do allowlist
+- **THEN** o guard bloqueia (evidência de lote anterior; o SHA antigo pode ainda aparecer na doc)
+- **WHEN** o token é ancestral de `origin/main`, o diff `evidence..origin/main` ⊆ allowlist, e uma abreviação (≥7 hex, word-boundary) aparece pelo menos uma vez na doc canônica
+- **THEN** esse check passa mesmo se `origin/main` estiver à frente só com o PR documental
+
+#### Scenario: Uma doc por data
+- **WHEN** um segundo pacote é fechado no mesmo `RELEASE_DATE`
+- **THEN** o fluxo atualiza o mesmo `docs/release-YYYY-MM-DD.md`
+- **AND** MUST NOT adicionar uma segunda doc da mesma data
+
+#### Scenario: Data explícita é inválida
+- **WHEN** `RELEASE_DATE` não representa uma data válida em `YYYY-MM-DD`
+- **THEN** `pre` e `post` bloqueiam e `audit` reporta warning
+
+### Requirement: Evidência kaizen da release bloqueia o post
+
+Antes de concluir o `post`, o release guard MUST exigir que `docs/kaizen-log.md` esteja versionado e contenha um heading de nível 2 iniciado pela data canônica da release e identificado como auditoria de release por `Kaizen release` ou `/kaizen release`. Ausência dessa evidência MUST ser blocker em `post`. O `post` bem-sucedido SHALL ocorrer antes de mover os cards do pacote para `Pronto`.
+
+#### Scenario: Não existe entrada kaizen da data
+- **WHEN** `post` não encontra heading canônico de auditoria para a data da release
+- **THEN** o guard bloqueia o fechamento antes de `Pronto`
+
+#### Scenario: Existe somente triagem do mesmo dia
+- **WHEN** o log contém um heading da data, mas ele não identifica `Kaizen release` nem `/kaizen release`
+- **THEN** essa entrada não satisfaz o gate
+
+#### Scenario: Auditoria da release está versionada
+- **WHEN** o log versionado contém o heading canônico da data e a worktree está limpa
+- **THEN** o gate de evidência kaizen passa
+
+### Requirement: RELEASE_BRANCHES é entrada obrigatória e inequívoca do post
+
+O `post` MUST exigir `RELEASE_BRANCHES` com pelo menos um nome. O guard SHALL normalizar por trim e deduplicação e MUST rejeitar token vazio, ref inválida ou nome fora dos prefixos `change-`, `card-` e `release-`. Após `git fetch --prune origin`, cada branch declarada MUST estar ausente em `refs/heads` e `refs/remotes/origin`; presença em qualquer lado MUST bloquear. O cleanup SHALL ocorrer antes de `Pronto`.
+
+#### Scenario: Lista está ausente ou é vazia
+- **WHEN** `post` recebe `RELEASE_BRANCHES` unset, vazia ou composta apenas por separadores/espaços
+- **THEN** o guard bloqueia e não trata a prova de deleção como executada
+
+#### Scenario: Token de branch é inválido
+- **WHEN** a lista contém token vazio, ref inválida ou nome fora dos prefixos permitidos
+- **THEN** o guard bloqueia com o token responsável
+
+#### Scenario: Branch permanece localmente
+- **WHEN** uma branch declarada ainda existe em `refs/heads`, mesmo ausente em `origin`
+- **THEN** o guard bloqueia e informa `local=1 remote=0`
+
+#### Scenario: Branch permanece remotamente
+- **WHEN** uma branch declarada ainda existe em `refs/remotes/origin`, mesmo ausente localmente
+- **THEN** o guard bloqueia e informa `local=0 remote=1`
+
+#### Scenario: Todas as branches do pacote foram removidas
+- **WHEN** todos os nomes canônicos estão ausentes local e remotamente após prune
+- **THEN** o gate de package branch cleanup passa
+
+### Requirement: Pre classifies preserved and merged worktrees and local branches without GraphQL
+`scripts/release-guard pre` SHALL NOT treat an extra worktree as a blocker when its branch name is listed in `PRESERVED_BRANCHES` (trim, exact match), and SHALL NOT treat a dirty worktree as a blocker when that branch is listed (warn instead). `pre` SHALL NOT emit the unmerged local-branch blocker when the branch name is listed in `PRESERVED_BRANCHES`. `pre` SHALL NOT treat a dirty worktree as a blocker when the branch is merged into `origin/develop` (`branch_merged`) and every dirty/untracked path is exactly `docs/release-${RELEASE_DATE}.md`; porcelain rename lines MUST be blockers. An extra worktree whose branch is merged into `origin/develop` SHALL be a warning to remove at closeout, not a blocker, and MUST NOT require an empty commit. `pre` MUST NOT load a Project snapshot (`item-list`) or classify preserve via board Status. Unclassified extra worktrees, unclassified unmerged local branches, and other dirty paths remain blockers. The guard remains read-only.
+
+#### Scenario: In-flight worktree listed in PRESERVED_BRANCHES
+- **WHEN** `pre` runs with an extra worktree on `card-569-code-review-bugbot`
+- **AND** `PRESERVED_BRANCHES` contains `card-569-code-review-bugbot`
+- **THEN** the extra worktree is not a blocker
+- **AND** if that worktree is dirty, the guard emits a warning rather than a blocker
+- **AND** `pre` performs zero Project `item-list` calls
+
+#### Scenario: In-flight local branch listed in PRESERVED_BRANCHES
+- **WHEN** `pre` runs and a local branch `card-569-code-review-bugbot` is not merged into `origin/develop` or `origin/main`
+- **AND** `PRESERVED_BRANCHES` contains `card-569-code-review-bugbot`
+- **THEN** the guard MUST NOT emit `local branch not merged...` for that branch
+- **AND** `pre` performs zero Project `item-list` calls
+
+#### Scenario: Extra worktree or local branch without classification
+- **WHEN** `pre` runs with an extra worktree or unmerged local branch whose name is not in `PRESERVED_BRANCHES` and is not merged into `origin/develop`
+- **THEN** the guard emits the current blocker requiring classification or merge
+
+#### Scenario: Merged card worktree with rollout checklist only
+- **WHEN** `pre` runs with a worktree whose branch is merged into `origin/develop`
+- **AND** the only dirty/untracked path is `docs/release-${RELEASE_DATE}.md`
+- **THEN** the worktree is not a dirty blocker
+- **AND** an extra worktree in that state is a warning to remove at closeout, not a blocker
+
+#### Scenario: Merged card worktree dirty with other files
+- **WHEN** a merged-branch worktree is dirty with any path other than `docs/release-${RELEASE_DATE}.md`
+- **THEN** the guard emits a dirty-worktree blocker
+
+#### Scenario: Pre does not query the board
+- **WHEN** `pre` classifies worktrees or local branches
+- **THEN** it uses `PRESERVED_BRANCHES` and local git merge state only
+- **AND** it MUST NOT call `ensure_board_snapshot` or Project `item-list`
+
+### Requirement: Homologation comment is verified in pre without GraphQL
+`scripts/release-guard pre` SHALL call `normalize_release_cards` locally. Invalid `RELEASE_CARDS` tokens in strict `pre` MUST be blockers before any REST comment call. When `RELEASE_CARDS` is unset, the homologation-comment check SHALL warn and skip and MUST NOT invent a package list. When `CANONICAL_CARDS` is non-empty, `pre` SHALL fetch issue comments over REST for each canonical card ID and SHALL fail in strict mode if the marker `Homologado por Alan na develop.` is absent. This check MUST be a separate branch from the `post|audit` homologation section and MUST NOT call Project `item-list`, PR list, `ensure_snapshots`, or `card_status`. When `gh` is unavailable or unauthenticated while `RELEASE_CARDS` is set, the check SHALL be a blocker. REST comment reads in `pre|post|audit` are permitted and remain outside the GraphQL budget. In `pre`, every canonical ID SHALL require the marker (no Status-based not-applicable). Status-based not-applicable for cards not in `Homologado` or `Pronto` remains only in `post|audit`.
+
+#### Scenario: Pre without comment
+- **WHEN** `pre` runs with valid `RELEASE_CARDS` including card N
+- **AND** issue N has no comment containing `Homologado por Alan na develop.`
+- **THEN** the guard emits a blocker and exits non-zero in strict mode
+- **AND** `pre` performs zero Project `item-list` calls
+
+#### Scenario: Pre with canonical comment
+- **WHEN** `pre` runs with valid `RELEASE_CARDS` including card N
+- **AND** issue N has the canonical homologation marker
+- **THEN** that card does not produce a homologation-comment blocker
+
+#### Scenario: Pre without RELEASE_CARDS
+- **WHEN** `pre` runs and `RELEASE_CARDS` is unset
+- **THEN** the homologation-comment check warns and skips
+- **AND** the guard does not invent a package list
+- **AND** `pre` still performs zero Project `item-list` calls
+
+#### Scenario: Pre cannot list comments
+- **WHEN** `pre` runs with valid `RELEASE_CARDS` and `gh` cannot list comments for a card
+- **THEN** the guard emits a blocker (fail-closed) and MUST NOT treat the card as evidenced
+
+#### Scenario: Pre with invalid RELEASE_CARDS
+- **WHEN** `pre` runs in strict mode with an invalid `RELEASE_CARDS` token
+- **THEN** the guard emits a blocker
+- **AND** it MUST NOT call `issues/.../comments`
+
+#### Scenario: Pre does not use board Status
+- **WHEN** `pre` has valid `CANONICAL_CARDS` and no `BOARD_JSON`
+- **THEN** every canonical ID still requires the homologation marker
+- **AND** Status-based not-applicable MUST NOT apply in `pre`
 

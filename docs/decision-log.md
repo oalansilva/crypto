@@ -1,5 +1,39 @@
 # Decision Log
 
+## 2026-08-17 - Segundo pacote no mesmo dia não herda evidência do lote anterior (card #580)
+
+**Decisão:** `release-guard pre` classifica PR de código vs documental pelo diff de arquivos (`origin/main...HEAD` em `release-*`, senão `origin/main...origin/develop`) contra allowlist de closeout. Existência de `docs/release-YYYY-MM-DD.md` não exige mais `PROD_DEPLOY_EVIDENCE` por si só. Um segundo pacote no mesmo dia atualiza a mesma doc após o deploy; o `post` exige que o SHA da evidência seja ancestral de `origin/main` cujo delta restante ⊆ allowlist, com abreviação ≥7 na doc.
+
+**Motivo:** no lote 2 de 2026-08-17 o `pre` do PR de código #578 só passou reusando `91f5620e` do lote 1.
+
+**Onde:** `scripts/release-guard`, `AGENTS.md`, `openspec/specs/release-worktree-hygiene/spec.md`. Card #580.
+
+## 2026-08-17 - Skills de processo versionadas no GitHub (card #585)
+
+**Decisão:** `alan-workflow`, `alan-workflow-ambientes` e `github-project-board` passam a ser arquivos reais em `.cursor/skills/` no GitHub `oalansilva/crypto`. Hermes e `~/.codex/skills/` ficam em freeze (sem dual-write). Opção B (symlink absoluto, card #584 Cancelado) está revogada.
+
+**Mapa Cursor:** harness alwaysApply curto (preflight de coluna, Gist, OpenSpec ≥ card); runbook na skill; `AGENTS.md` overlay cripto; `rules.md` lei humana. Cópia crypto-scoped (12 colunas). Sem `agents/openai.yaml`.
+
+**Onde:** `.cursor/skills/`, `.cursor/rules/harness.mdc`, `AGENTS.md`, `rules.md`, `openspec/specs/cursor-harness/spec.md`. Card #585.
+
+## 2026-08-17 - Code Review com reviewers locais inherit/readonly (Bugbot opcional)
+
+**Decisão:** o gate `Status=Code Review` passa a usar dois `Task` `generalPurpose` read-only com `model: inherit`: `.cursor/agents/diff-reviewer.md` (bugs no diff) e `.cursor/agents/code-reviewer.md` (processo/OpenSpec/Design). Pré-commit: uncommitted vs HEAD. Fechamento: `origin/develop...HEAD` ainda na branch do card, antes de QA. `/review-bugbot` e `/review-security` só se Alan pedir. Bugbot no dashboard permanece Off de propósito (custo). Autofix não commita na branch existente. Agent Review automático pós-commit permanece desligado. Regras versionadas: `.cursor/BUGBOT.md`.
+
+**Motivo:** Alan recusou ligar o produto Bugbot por custo. O `Task` genérico anterior não versionava o prompt nem comparava com `develop`. Reviewers locais usam o modelo já pago da sessão, aceitam base `develop` explícita, e não geram fatura usage-based.
+
+**Revogação:** a decisão do mesmo dia que tornava `/review-bugbot` obrigatório deixa de valer. O arquivo `.cursor/BUGBOT.md` permanece como contrato lido pelo reviewer local.
+
+**Onde:** `AGENTS.md`, `rules.md`, `docs/backlog-operating-model.md`, `.cursor/BUGBOT.md`, `.cursor/agents/diff-reviewer.md`, `.cursor/agents/code-reviewer.md`. Card #569.
+
+## 2026-08-17 - Code Review nativo com /review-bugbot vs develop
+
+**Decisão:** o gate `Status=Code Review` passa a usar `/review-bugbot` como revisor padrão. Pré-commit: `Diff: uncommitted changes` (sem `Base Branch`). Fechamento: `Diff: branch changes` + `Base Branch: develop`. `/review-security` só nos globs de auth/credencial/trading/wallet/API. Revisor de processo é Task `generalPurpose` read-only com `.cursor/agents/code-reviewer.md`. Autofix não commita na branch existente. Agent Review automático pós-commit permanece desligado. Rules `.mdc` não valem para Bugbot; o contrato visível é `.cursor/BUGBOT.md`.
+
+**Motivo:** o review genérico (`Task` `generalPurpose`) e a regra “bugbot só se Alan pedir” deixavam o revisor nativo do Cursor fora do caminho feliz. A skill oficial não aceita `uncommitted` + `Base Branch`.
+
+**Onde:** `AGENTS.md`, `rules.md`, `docs/backlog-operating-model.md`, `.cursor/BUGBOT.md`, `.cursor/agents/code-reviewer.md`. Card #569.
+
 ## 2026-08-17 - Cursor Agent como harness único (cutover OpenCode)
 
 **Decisão:** o Cursor Agent passa a ser o único harness operacional do Cripto Farol. OpenCode sai do contrato ativo. O modelo é o selecionado no chat (hoje Grok 4.6) para Design, código, review e visão. O gate Design fica em regras + skill + Task de crítica isolada + hook Impeccable; sem lease/packet/`design_artifact_write`/attestation OpenCode 1.18.18.

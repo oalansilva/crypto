@@ -43,7 +43,7 @@ Exemplos de evidencia:
   - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan.
   - `Pronto para Dev`: design aprovado por Alan via arraste; único status que libera desenvolvimento.
   - `Em desenvolvimento`: trabalho técnico ativo.
-  - `Code Review`: diff pronto para revisão Cursor antes do commit.
+  - `Code Review`: diff pronto para `diff-reviewer` + `code-reviewer`. Pré-commit: uncommitted vs HEAD. Fechamento: `origin/develop...HEAD` na branch do card, antes de `QA`.
   - `QA`: SHA revisado em validacao automatizada, incluindo `qa-gate` e Playwright visual.
   - `Done`: Done tecnico; QA verde, integrado em `develop`, restart/runtime validados e aguardando Alan.
   - `Homologado`: Alan aprovou funcionalmente em `develop`.

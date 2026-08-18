@@ -165,3 +165,17 @@ The implementation MUST compare at least three comparable optimized runs with th
 #### Scenario: Performance target is not met
 - **WHEN** the optimized median improves by less than 30%
 - **THEN** the card remains incomplete unless evidence isolates the external bottleneck and a specific tracked follow-up is created
+
+### Requirement: qa-gate depends on new-route Playwright coverage
+For pull requests to `develop`, `qa-gate` MUST require the new-route Playwright coverage check to succeed (or an authorized visual-QA dispensation). A green functional/visual job MUST NOT hide a brand-new app route with zero specs.
+
+#### Scenario: Coverage check is a qa-gate dependency
+- **WHEN** the new-route coverage job fails
+- **THEN** `qa-gate` MUST fail
+
+### Requirement: Automated tests of static prototypes are hermetic
+The CI Playwright job MUST be able to pass on a docs/harness-only commit without depending on the live DEV frontend being rebuilt or reachable.
+
+#### Scenario: Harness-only push does not need live DEV
+- **WHEN** a commit changes only harness/docs and the prototype files exist in the checkout
+- **THEN** `e2e-playwright` MUST NOT fail because `https://dev.criptofarol.com.br` timed out

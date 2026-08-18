@@ -56,3 +56,10 @@ The project documentation SHALL describe the runtime architecture, service owner
 - **WHEN** the operator follows the runtime runbook for scheduled candle writing
 - **THEN** the documentation SHALL point to the dedicated candle writer service/timer installer and the commands to inspect, disable, and view logs.
 
+
+### Requirement: Discovery workers are documented for PROD
+The runtime architecture runbook SHALL document PROD discovery dispatcher and Celery worker units, flags, logs, and verification commands, not only the DEV path.
+
+#### Scenario: Operator follows the runbook for PROD discovery
+- **WHEN** the operator reads `docs/runtime-architecture.md` for discovery in production
+- **THEN** the document names the PROD units, `RUN_DISCOVERY_OUTBOX_DISPATCHER`, the `discovery` queue, and how to confirm they are active

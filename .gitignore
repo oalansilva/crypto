@@ -27,6 +27,9 @@ data/*.parquet
 !.cursor/skills/**
 !.cursor/rules/
 !.cursor/rules/**
+!.cursor/BUGBOT.md
+!.cursor/agents/
+!.cursor/agents/**
 !.cursor/hooks.json
 !.cursor/hooks/
 !.cursor/hooks/**

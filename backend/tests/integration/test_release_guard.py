@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
+
+_AUTO_EVIDENCE = object()
 
 RELEASE_GUARD = Path(__file__).resolve().parents[3] / "scripts" / "release-guard"
 
@@ -34,18 +37,49 @@ def _init_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def _post_ready(repo: Path) -> None:
+def _rev_parse(repo: Path, ref: str = "HEAD") -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "--verify", ref],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _evidence_sha_from_docs(repo: Path) -> str | None:
+    docs = repo / "docs"
+    if not docs.is_dir():
+        return None
+    for path in sorted(docs.glob("release-*.md")):
+        text = path.read_text(encoding="utf-8")
+        for token in re.findall(r"\b[0-9a-fA-F]{7,40}\b", text):
+            resolved = subprocess.run(
+                ["git", "rev-parse", "--verify", f"{token}^{{commit}}"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+            )
+            if resolved.returncode == 0:
+                return resolved.stdout.strip()
+    return None
+
+
+def _post_ready(repo: Path) -> str:
     """Setup mínimo para o post do card #518: doc canônica da data + kaizen-log
     canônico + branches do pacote já ausentes (lista dummy inexistente).
 
     Simula o fluxo canônico: commits no develop, push, merge --no-ff em main,
     push; local main fica alinhado a origin/main com árvores idênticas.
+    A doc cita o SHA de código (ponta PROD), não o merge commit.
     """
     _git(repo, "switch", "develop")
+    _commit_file(repo, "release.txt", "release\n", "release content")
+    code_sha = _rev_parse(repo)
     _commit_file(
         repo,
         "docs/release-2026-07-01.md",
-        "# Release 2026-07-01\n\nDeploy final: ok.\n",
+        f"# Release 2026-07-01\n\nDeploy: {code_sha}\n",
         "release doc",
     )
     _commit_file(
@@ -54,11 +88,11 @@ def _post_ready(repo: Path) -> None:
         "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
         "kaizen log",
     )
-    _commit_file(repo, "release.txt", "release\n", "release content")
     _git(repo, "push", "origin", "develop")
     _git(repo, "switch", "main")
     _git(repo, "merge", "--no-ff", "develop", "-m", "merge release docs")
     _git(repo, "push", "origin", "main")
+    return code_sha
 
 
 def _run_guard(
@@ -69,11 +103,15 @@ def _run_guard(
     fake_gh: Path | None = None,
     release_date: str | None = None,
     release_branches: str | None = None,
-    prod_evidence: str | None = "test-commit services=app url=https://example.com",
+    preserved_branches: str | None = None,
+    prod_evidence: str | None | object = _AUTO_EVIDENCE,
 ) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ)
-    if prod_evidence is not None:
-        env["PROD_DEPLOY_EVIDENCE"] = prod_evidence
+    if prod_evidence is _AUTO_EVIDENCE:
+        sha = _evidence_sha_from_docs(repo) or _rev_parse(repo, "HEAD")
+        env["PROD_DEPLOY_EVIDENCE"] = f"{sha} services=app url=https://example.com"
+    elif prod_evidence is not None:
+        env["PROD_DEPLOY_EVIDENCE"] = str(prod_evidence)
     else:
         env.pop("PROD_DEPLOY_EVIDENCE", None)
     if release_cards is not None:
@@ -88,6 +126,8 @@ def _run_guard(
         env["RELEASE_BRANCHES"] = release_branches
     else:
         env.pop("RELEASE_BRANCHES", None)
+    if preserved_branches is not None:
+        env["PRESERVED_BRANCHES"] = preserved_branches
     if fake_gh is not None:
         env["PATH"] = f"{fake_gh.parent}:{env['PATH']}"
     return subprocess.run(
@@ -237,13 +277,24 @@ def test_post_release_allows_main_merge_commit_with_identical_tree(tmp_path: Pat
     monkeypatch.setenv("FAKE_PR_JSON", "[]")
     _git(repo, "switch", "develop")
     _commit_file(repo, "release.txt", "included\n", "release content")
+    new_sha = _rev_parse(repo)
+    _commit_file(
+        repo,
+        "docs/release-2026-07-01.md",
+        f"# Release 2026-07-01\n\nDeploy: {new_sha}\n",
+        "refresh release doc sha",
+    )
     _git(repo, "push", "origin", "develop")
     _git(repo, "switch", "main")
     _git(repo, "merge", "--no-ff", "develop", "-m", "merge develop")
     _git(repo, "push", "origin", "main")
 
     result = _run_guard(
-        repo, release_date="2026-07-01", release_branches="card-999-deleted", fake_gh=fake_gh
+        repo,
+        release_date="2026-07-01",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+        prod_evidence=f"{new_sha} services=app url=https://example.com",
     )
 
     assert result.returncode == 0
@@ -730,6 +781,10 @@ def test_pre_mode_performs_no_board_or_pr_queries(tmp_path: Path, monkeypatch):
     assert _call_count(call_log, "CALL project item-list") == 0
     assert _call_count(call_log, "CALL pr list") == 0
     assert _call_count(call_log, "CALL api graphql") == 0
+    assert _call_count(call_log, "CALL api repos/") == 0
+    assert (
+        "WARN: RELEASE_CARDS not set; package homologation-comment check skipped" in result.stdout
+    )
 
 
 def test_audit_invalid_release_cards_warns_and_runs_independent_checks(tmp_path: Path, monkeypatch):
@@ -1350,6 +1405,7 @@ def test_pre_keeps_zero_board_and_pr_calls(tmp_path: Path, monkeypatch):
 
     assert _call_count(call_log, "CALL project item-list") == 0
     assert _call_count(call_log, "CALL pr list") == 0
+    assert _call_count(call_log, "CALL api repos/") == 0
 
 
 def test_agents_md_contracts_spawn_empty_handoff_error():
@@ -1488,3 +1544,364 @@ def test_snapshot_failure_preserves_explicitly_preserved_branch(tmp_path: Path, 
     assert "unknown status (not preserved" not in post.stdout
     assert "preserved (classified; not deleted)" in audit.stdout
     assert "could not determine terminal status for branch change-100-a" not in audit.stdout
+
+
+def _add_unmerged_worktree(tmp_path: Path, repo: Path, branch: str) -> Path:
+    extra = tmp_path / f"wt-{branch}"
+    _git(repo, "switch", "-c", branch)
+    _commit_file(repo, f"{branch}.txt", f"{branch}\n", f"wip {branch}")
+    _git(repo, "switch", "main")
+    subprocess.run(
+        ["git", "worktree", "add", str(extra), branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return extra
+
+
+def test_pre_preserves_dirty_extra_worktree_and_local_branch(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    extra = _add_unmerged_worktree(tmp_path, repo, "card-569-code-review-bugbot")
+    (extra / "dirty.txt").write_text("dirty\n", encoding="utf-8")
+
+    result = _run_guard(
+        repo,
+        "pre",
+        preserved_branches=" card-569-code-review-bugbot ",
+    )
+
+    assert "extra worktree requires classification" not in result.stdout
+    assert (
+        "local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot"
+        not in result.stdout
+    )
+    assert "classified via PRESERVED_BRANCHES" in result.stdout
+    assert "BLOCKER: extra worktree" not in result.stdout
+    assert result.returncode == 0
+    assert "Result: PASS" in result.stdout
+
+
+def test_pre_blocks_unclassified_extra_worktree_and_local_branch(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    extra = _add_unmerged_worktree(tmp_path, repo, "card-569-code-review-bugbot")
+    (extra / "dirty.txt").write_text("dirty\n", encoding="utf-8")
+
+    result = _run_guard(repo, "pre")
+
+    assert "BLOCKER: extra worktree requires classification before release cleanup" in result.stdout
+    assert (
+        "BLOCKER: local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot"
+        in result.stdout
+    )
+    assert "BLOCKER: dirty worktree:" in result.stdout
+    assert result.returncode == 1
+
+
+def test_pre_warns_merged_extra_worktree_with_canonical_release_doc_only(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "card-100-done")
+    extra = tmp_path / "wt-card-100-done"
+    subprocess.run(
+        ["git", "worktree", "add", str(extra), "card-100-done"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    docs = extra / "docs"
+    docs.mkdir(exist_ok=True)
+    (docs / "release-2026-08-17.md").write_text("# checklist\n", encoding="utf-8")
+
+    result = _run_guard(repo, "pre", release_date="2026-08-17")
+
+    assert (
+        "Dirty worktree allowed (merged branch; only docs/release-2026-08-17.md)" in result.stdout
+    )
+    assert "WARN: extra worktree on merged branch; remove at closeout" in result.stdout
+    assert "BLOCKER: dirty worktree:" not in result.stdout
+    assert "BLOCKER: extra worktree requires classification" not in result.stdout
+    assert result.returncode == 0
+
+
+def test_pre_blocks_merged_extra_worktree_dirty_with_code(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "card-100-done")
+    extra = tmp_path / "wt-card-100-done"
+    subprocess.run(
+        ["git", "worktree", "add", str(extra), "card-100-done"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    (extra / "code.py").write_text("print(1)\n", encoding="utf-8")
+
+    result = _run_guard(repo, "pre", release_date="2026-08-17")
+
+    assert "BLOCKER: dirty worktree:" in result.stdout
+    assert "WARN: extra worktree on merged branch; remove at closeout" in result.stdout
+    assert result.returncode == 1
+
+
+def test_pre_blocks_merged_extra_worktree_porcelain_rename(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    _make_branches(repo, "card-100-done")
+    extra = tmp_path / "wt-card-100-done"
+    subprocess.run(
+        ["git", "worktree", "add", str(extra), "card-100-done"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "mv", "README.md", "README.renamed.md"],
+        cwd=extra,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    result = _run_guard(repo, "pre", release_date="2026-08-17")
+
+    assert "BLOCKER: dirty worktree:" in result.stdout
+    assert result.returncode == 1
+
+
+def test_pre_preserves_unmerged_local_branch_without_worktree(tmp_path: Path):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "-c", "card-569-code-review-bugbot")
+    _commit_file(repo, "wip.txt", "wip\n", "wip")
+    _git(repo, "switch", "main")
+
+    result = _run_guard(
+        repo,
+        "pre",
+        preserved_branches="card-569-code-review-bugbot, card-581-release-guard-preserve",
+    )
+
+    assert (
+        "local branch not merged into origin/develop or origin/main: card-569-code-review-bugbot"
+        not in result.stdout
+    )
+    assert (
+        "WARN: local branch not merged; classified via PRESERVED_BRANCHES: card-569-code-review-bugbot"
+        in result.stdout
+    )
+    assert result.returncode == 0
+
+
+def test_pre_blocks_missing_homologation_comment(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv("FAKE_COMMENTS", "Outro comentário")
+
+    result = _run_guard(repo, "pre", release_cards="480", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "BLOCKER: card #480 without canonical homologation comment" in result.stdout
+    assert _call_count(call_log, "CALL project item-list") == 0
+    assert _call_count(call_log, "CALL api repos/oalansilva/crypto/issues/480/comments") == 1
+
+
+def test_pre_passes_with_canonical_homologation_comment(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+
+    result = _run_guard(repo, "pre", release_cards="480", fake_gh=fake_gh)
+
+    assert "Card #480 has canonical homologation evidence." in result.stdout
+    assert "without canonical homologation comment" not in result.stdout
+    assert _call_count(call_log, "CALL project item-list") == 0
+    assert result.returncode == 0
+
+
+def test_pre_warns_without_release_cards_and_skips_comments(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+
+    result = _run_guard(repo, "pre", fake_gh=fake_gh)
+
+    assert (
+        "WARN: RELEASE_CARDS not set; package homologation-comment check skipped" in result.stdout
+    )
+    assert _call_count(call_log, "CALL api repos/") == 0
+    assert result.returncode == 0
+
+
+def test_pre_invalid_release_cards_blocks_before_comment_rest(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+
+    result = _run_guard(repo, "pre", release_cards="480,nope", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "RELEASE_CARDS contains invalid card identifiers" in result.stdout
+    assert "Homologation-comment REST skipped" in result.stdout
+    assert _call_count(call_log, "CALL api repos/") == 0
+    assert _call_count(call_log, "CALL project item-list") == 0
+
+
+def test_pre_homologation_does_not_use_board_status(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    fake_gh = _fake_gh(tmp_path)
+    call_log = tmp_path / "calls.log"
+    monkeypatch.setenv("GH_CALL_LOG", str(call_log))
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Todo")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+
+    result = _run_guard(repo, "pre", release_cards="480", fake_gh=fake_gh)
+
+    assert "homologation-comment check not applicable" not in result.stdout
+    assert "Card #480 has canonical homologation evidence." in result.stdout
+    assert _call_count(call_log, "CALL project item-list") == 0
+    assert result.returncode == 0
+
+
+# --- Card #580: segundo pacote no mesmo dia (diff do PR, evidência deste lote) ---
+
+
+def test_pre_code_pr_with_existing_doc_does_not_require_evidence(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy lote 1: ok.\n")
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "publish lote 1 doc")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "code.txt", "lote2\n", "code on develop")
+    _git(repo, "push", "origin", "develop")
+    fake_gh = _fake_gh(tmp_path)
+
+    result = _run_guard(repo, "pre", release_date="2026-07-01", prod_evidence=None, fake_gh=fake_gh)
+
+    assert result.returncode == 0
+    assert "release doc exists without PROD_DEPLOY_EVIDENCE" not in result.stdout
+    assert "contains placeholders" not in result.stdout
+    assert "canonical release doc already exists for 2026-07-01" in result.stdout
+    assert "update the same docs/release-2026-07-01.md after this package's deploy" in result.stdout
+
+
+def test_pre_documental_pr_blocks_without_evidence_when_develop_differs(
+    tmp_path: Path, monkeypatch
+):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _commit_file(
+        repo,
+        "docs/release-2026-07-01.md",
+        "# Release\n\nDeploy final: ok.\n",
+        "documental on develop",
+    )
+    _git(repo, "push", "origin", "develop")
+    fake_gh = _fake_gh(tmp_path)
+
+    result = _run_guard(repo, "pre", release_date="2026-07-01", prod_evidence=None, fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "release doc exists without PROD_DEPLOY_EVIDENCE" in result.stdout
+
+
+def test_post_blocks_previous_lote_evidence_even_if_sha_in_doc(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "lote1.txt", "lote1\n", "lote 1 code")
+    lote1 = _rev_parse(repo)
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "merge lote 1")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "lote2.txt", "lote2\n", "lote 2 code")
+    lote2 = _rev_parse(repo)
+    _commit_file(
+        repo,
+        "docs/release-2026-07-01.md",
+        f"# Release\n\nLote1: {lote1}\nLote2: {lote2}\n",
+        "release doc cites both shas",
+    )
+    _commit_file(
+        repo,
+        "docs/kaizen-log.md",
+        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        "kaizen log",
+    )
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "merge lote 2")
+    _git(repo, "push", "origin", "main")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "Teste")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(
+        repo,
+        release_date="2026-07-01",
+        release_cards="480",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+        prod_evidence=f"{lote1} services=app url=https://example.com",
+    )
+
+    assert result.returncode == 1
+    assert "is not this package's code/PROD tip" in result.stdout
+    assert "non-closeout path: lote2.txt" in result.stdout
+
+
+def test_post_accepts_code_tip_when_main_is_ahead_only_with_closeout(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "lote2.txt", "lote2\n", "lote 2 code")
+    code_sha = _rev_parse(repo)
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "merge lote 2 code")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _commit_file(
+        repo,
+        "docs/release-2026-07-01.md",
+        f"# Release\n\nDeploy: {code_sha[:8]}\n",
+        "documental closeout",
+    )
+    _commit_file(
+        repo,
+        "docs/kaizen-log.md",
+        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        "kaizen log",
+    )
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "merge", "--no-ff", "develop", "-m", "merge documental")
+    _git(repo, "push", "origin", "main")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "Teste")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(
+        repo,
+        release_date="2026-07-01",
+        release_cards="480",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+        prod_evidence=f"{code_sha} services=app url=https://example.com",
+    )
+
+    assert "is not this package's code/PROD tip" not in result.stdout
+    assert "has no git abbreviation" not in result.stdout
+    assert result.returncode == 0

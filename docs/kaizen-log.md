@@ -14,6 +14,28 @@
 
 ---
 
+## 2026-08-17 — Card #569 (pivot: reviewers locais inherit/readonly)
+
+- **Release/card**: #569 kaizen (não é closeout de lote).
+- **Fontes consultadas**: chat Alan (recusa Bugbot por custo), docs Cursor, `AGENTS.md`, crítica isolada 3 (`35f2d0ba`).
+- **Resultado**: design Bugbot-obrigatório obsoleto → pivot para `diff-reviewer` + `code-reviewer` (`inherit`/readonly) vs `develop`; card devolvido a Aprovação de Design.
+- **Card**: [#569](https://github.com/oalansilva/crypto/issues/569). Change `card-569-code-review-bugbot`.
+- **Status**: Design PASS (pivot); aguardando arraste de Alan para `Pronto para Dev`.
+
+### Achados
+- F-2 [major] Produto Bugbot recusado por custo após apply do plano obrigatório. Correção: reviewers locais versionados; Bugbot Off de propósito. Esforço S | P1 | Card: #569.
+
+## 2026-08-17 — Card #569 (Code Review nativo /review-bugbot)
+
+- **Release/card**: #569 kaizen (não é closeout de lote).
+- **Fontes consultadas**: docs oficiais Cursor (Bugbot, Agent Review, Security Agents, Subagents), `AGENTS.md`, skill `/review-bugbot`.
+- **Resultado**: proposta em Em Refinamento → Design PASS → `Pronto para Dev` (arraste Alan) → apply do contrato `/review-bugbot` vs `develop`, `BUGBOT.md` e revisor de processo.
+- **Card**: [#569](https://github.com/oalansilva/crypto/issues/569). Change `card-569-code-review-bugbot`.
+- **Status**: implementação na branch `card-569-code-review-bugbot`.
+
+### Achados
+- F-1 [major] Code Review usava `Task` genérico; Bugbot só sob pedido. Correção: `/review-bugbot` obrigatório; prompts fiéis à skill. Esforço S | P1 | Card: #569.
+
 ## 2026-08-09 — Auditoria inicial (card #420)
 
 - **Escopo**: implementação da v1 do Agente Kaizen (card #420, `Status=Todo`).
@@ -56,6 +78,7 @@
 | --- | --- | --- | --- |
 | 2026-08-09 | Criação do Agente Kaizen (agent, command, log, label, regras) | card #420 | issues #420, kaizen-log |
 | 2026-08-14 | Fechamento de release como gate: `RELEASE_DATE` canônica, doc única sem placeholder exigida no `pre`/`post`, entrada de `/kaizen release` em `kaizen-log.md` pré-condição do `post`, `RELEASE_BRANCHES` obrigatório com ausência local+remota, `main` local sincronizada como blocker, ordem canônica no AGENTS.md e spawn vazio de subagent como erro explícito de handoff | card #518 (relacionado a F-3/F-6/F-7 da auditoria 2026-08-14) | issues #518, change `card-518-kaizen-release-gate`, `scripts/release-guard` |
+| 2026-08-17 | Code Review local: `diff-reviewer` + `code-reviewer` (`inherit`/readonly) vs `develop`; Bugbot Off de propósito (custo); Autofix não commita na branch existente | card #569 | issues #569, change `card-569-code-review-bugbot` |
 
 ## 2026-08-09 — Auditoria de teste: release 2026-08-08 (`/kaizen release`)
 
@@ -268,6 +291,107 @@
 - **Ação**: triagem do #195 "Backup de ambiente" concluída — decisão **Cancelado** (estado já aplicado no board em 11/08; nota formal registrada no card em 12/08: https://github.com/oalansilva/crypto/issues/195#issuecomment-5272103735).
 - **Motivo**: escopo de backup de ambiente (openclaw, skills, apps, banco) coberto por operação do ambiente Oracle (snapshots/backups de infra DEV/PROD); card sem dono operacional ativo e preso há 3 auditorias kaizen.
 - **Implementado (card #481)**: `release-guard audit` ganhou bloco `card_age_inventory` — inventário de cards por coluna com idade em dias (GraphQL `updatedAt` do item), warn informativo para >30 dias (default, configurável via `CARD_AGE_THRESHOLD_DAYS`), limite por coluna (`CARD_AGE_MAX_PER_COLUMN`, default 5), paginação até 20 páginas, falha de obtenção como warn sem interromper. Somente em `audit`; pre/post inalterados.
+
+## 2026-08-17 — Cards #530/#531 (kaizen UI do #469)
+
+- **Ação**: regras de apply/verify após o #469 ter marcado tasks de UI `[x]` sem código e ter implementado a Discovery pelo contrato de API em vez do protótipo aprovado.
+- **#530**: `/opsx:apply` com `UI impact: affected` carrega o protótipo aprovado como spec de layout; API não é spec de UI.
+- **#531**: `/opsx:verify` e Code Review exigem evidência por task de UI contra o protótipo; Playwright `[ ]` bloqueia Done. Skill `openspec-verify-change` e `opsx-verify.md` passam a tratar `[x]` sem implementação como CRITICAL.
+- **Evidência base**: PR #528 / card #469 — tasks 6.2–6.10 `[x]` sem implementação; 7.8/7.9 `[ ]` em Done.
+
+## 2026-08-17 — Kaizen release (release 2026-08-17, cards 469/502/503/504/516/517/518/562)
+
+- **Release/card**: 2026-08-17 — cards 469, 502, 503, 504, 516, 517, 518, 562 (Homologado → Pronto após deploy PROD).
+- **Fontes consultadas**: board Project 1, git/worktrees/stash + `release-guard pre` PASS, `openspec validate --all` 148/148, PR #564, transcripts Cursor desta sessão, CI push/PR no SHA `f4b89208`.
+- **Sessões analisadas**: sessão Cursor do lote (cutover #562, cancelamento #550/#559, isolamento #549, deploy PROD). Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: pacote já Homologado na abertura do lote; closeout nesta sessão até PROD `91f5620e`.
+
+### Métricas
+- **Board**: pacote 8 Homologado; 2 Cancelados no mesmo dia (#550/#559) por conflito com #562; #549 em Em Refinamento isolado.
+- **Git**: worktrees extras e WIP do #469/OpenSpec do #549 bloqueariam o `pre`; isolados em `card-549-unify-strategy-title-description` e `card-469-idempotency-normalization-wip`.
+- **CI**: e2e da *push* em `develop` falhou (timeout em `walkforward-prototype-check` contra URL viva DEV); e2e do PR #564 verde; rerun da push passou depois do protótipo 200 em DEV. `qa-gate` skip no PR para `main` é regra do workflow (`base_ref == develop`).
+- **OpenSpec**: archive do pacote + leftovers Pronto/Cancelado; skip-specs em deltas incompatíveis; spec `cursor-harness` promovida no closeout.
+
+### Achados
+- F-1 [major] E2E funcional `walkforward-prototype-check.spec.mjs` navega `https://dev.criptofarol.com.br/prototypes/...` (não o preview do CI). Push harness-only (#562) falhou 30s no seletor enquanto DEV reconstruía. Correção: apontar o spec ao servidor Playwright local/`preview` do job, não à URL DEV. Esforço S | P0.
+- F-2 [major] 8 cards Homologados sem comentário canônico até o closeout (helper postou retroativo). Correção: o arraste para Homologado deve disparar o helper no mesmo turno. Esforço S | P1.
+- F-3 [minor] `gh project item-list` ainda estoura GraphQL no meio do lote (remaining 89). Correção: listagens de closeout sem `content.body`. Esforço S | P1.
+
+### Padrões recorrentes
+- E2E acoplado a DEV vivo | 1 ocorrência nesta release (candidato a regra se repetir) | promoção: spec Playwright local
+- Homologado sem comentário canônico | recorrência vs #480/#518 | helper existe, falta o turno do arraste
+
+### Cards kaizen propostos (máx. 3; não criados neste closeout — Alan aprova)
+- P0: desacoplar e2e de protótipo da URL DEV (F-1)
+- P1: comentário de homologação no mesmo turno do arraste (F-2)
+- P1: item-list do board sem body no closeout (F-3)
+
+## 2026-08-17 — Kaizen release (lote 2, cards 529/530/531/553/554/566/567/568)
+
+- **Release/card**: 2026-08-17 lote 2 — cards 529, 530, 531, 553, 554, 566, 567, 568 (Homologado → Pronto após deploy PROD).
+- **Fontes consultadas**: board Project 1, git/worktrees/stash + `release-guard pre` PASS / `audit` PASS, `openspec validate --all` 143/143 (código) e 142/142 (archive), PR #578, transcripts Cursor (`0c0d840f` implementação; `0b02d24f` closeout), CI do PR #578.
+- **Sessões analisadas**: sessão de implementação dos 8 cards (worktrees) e sessão de closeout desta release. Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: pacote já Homologado na abertura do lote; closeout até PROD `2261ad56`. F-1 do lote 1 (e2e DEV vivo) entrou neste pacote como #568 e foi publicado.
+
+### Métricas
+- **Board**: 8 Homologado no lote; fora: #569 Aprovação de Design, 2 Em Refinamento (#549 e gerador de templates).
+- **Git**: 9 worktrees extras bloqueavam `pre`; 8 mergeadas removidas; WIP do #569 commitado em `059f6f38` e ref local apagada. Stash 0.
+- **CI**: PR #578 verde (e2e 4m49s); `qa-gate` skip no PR para `main`.
+- **OpenSpec**: 8 changes arquivadas; 7 specs novas; skip `02-agent-chat-favorites.md` (já Hermes).
+- **PROD**: installer Discovery + dispatcher/Celery active; health 200; bundle `index-DbfcRxXg.js`.
+
+### Achados
+- F-1 [major] Homologado sem comentário canônico nos 8 cards até o closeout (helper retroativo). Recidiva do F-2 do lote 1 no mesmo dia. Esforço S | P1.
+- F-2 [major] `pre` trata doc canônica do dia como PR documental e exige `PROD_DEPLOY_EVIDENCE`; o segundo pacote reusou a evidência `91f5620e` do lote 1 para abrir o PR de código #578. Esforço M | P1.
+- F-3 [minor] Extra worktree e branch local in-flight (#569) falham o `pre` sem `PRESERVED_BRANCHES` (só vale em post/audit). Esforço S | P2.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico | 2 ocorrências no mesmo dia (lotes 1 e 2) | promoção: helper no turno do arraste
+- E2E acoplado a DEV vivo | corrigido neste lote (#568)
+
+### Trechos de sessão (evidência local)
+- `0c0d840f` — implementação sequencial 568→554→553→566→529→530→531→567 em worktrees.
+- `0b02d24f` — closeout: `git branch -D card-569-code-review-bugbot` após push `059f6f38` para o `pre` passar.
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #579 — comentário Homologado no mesmo turno do arraste | P1 | F-1 (recidiva lote 1 F-2) | Em Refinamento |
+| #580 — segundo pacote no mesmo dia vs doc canônica no pre | P1 | F-2 | Em Refinamento |
+| #581 — worktree extra / branch in-flight no pre | P2 | F-3 | Em Refinamento |
+
+## 2026-08-17 — Kaizen release (lote 3, cards 585/569/581/579/580)
+
+- **Release/card**: 2026-08-17 lote 3 — cards 585, 569, 581, 579, 580 (Homologado → Pronto após deploy PROD `20820d05`).
+- **Fontes consultadas**: board Project 1 (GraphQL pontual; `gh project item-list` falhou com `unknown owner type`), git/worktrees/stash + `release-guard pre` PASS, `openspec validate --all` 143/143, PRs #590/#591/#592, transcripts Cursor desta sessão, CI REST `check-runs` (watcher `gh pr checks --watch` 503).
+- **Sessões analisadas**: sessão de implementação 585→569→581→579→580 e sessão de closeout. Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: os 5 foram Done técnico no turno anterior; Alan homologou em lote no chat e pediu a release.
+
+### Métricas
+- **Board**: 5 Homologado no lote; `#584` WIP preservado fora do pacote.
+- **Git**: worktrees extras dos 5 cards removidas no `pre`; `#584` dirty classificado via `PRESERVED_BRANCHES`. Stash 0.
+- **CI**: PR #592 verde; `qa-gate` skip no PR para `main`. Watcher GraphQL 503; evidência via REST check-runs.
+- **OpenSpec**: 5 changes arquivadas (`--skip-specs`); 143/143.
+- **PROD**: source `20820d05`; health 200; bundle inalterado (`index-DbfcRxXg.js`).
+
+### Achados
+- F-1 [major] `gh project item-list` e `gh pr checks --watch` falharam com HTTP 503 / `unknown owner type` no closeout; o fluxo só avançou com REST (`gh api` pulls/check-runs). Recidiva de fricção GraphQL (lote 1 F-3 / #509). Esforço S | P1.
+- F-2 [minor] helper `post-card-evidence-comment.sh --transition homologado` deu DEDUPE falso em #579 porque o comentário de Done citava o marcador na prosa do card. O `pre` passou (o marcador estava no issue). Esforço S | P2.
+- F-3 [minor] worktrees locais das branches squashadas #569/#581 não foram detectadas como mergeadas no `pre` (`git cherry`); 579/580/585 sim. Remoção das worktrees desbloqueou. Esforço S | P2.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico | corrigido neste lote (#579); helper no turno do arraste/chat
+- Segundo pacote no mesmo dia herda evidência | corrigido neste lote (#580); `pre` PASS sem reuso de `2261ad56`
+- GraphQL 503 / item-list no closeout | 2+ ocorrências no dia | promoção: closeout REST-first
+
+### Trechos de sessão (evidência local)
+- Closeout: `unknown owner type` em `gh project item-list 1 --owner oalansilva`.
+- Helper #579: `DEDUPE: card #579 already has a homologado evidence comment with commit ref 35be2c00` no comentário de Done.
+
+### Cards kaizen propostos (máx. 3; não criados neste closeout — Alan aprova)
+- P1: closeout do board/CI via REST quando GraphQL 503 (F-1)
+- P2: DEDUPE do helper Homologado só no início do body (F-2)
+- P2: `pre` tratar squash-equivalent de worktree extra como mergeada (F-3)
 
 ## 2026-08-14 — Kaizen release (release 2026-08-14, cards 470/480/481/482/489/491/509)
 

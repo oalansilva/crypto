@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the daily Monitor Telegram alert scan from OpenClaw cron."""
+"""Run the daily Monitor Telegram alert scan from systemd/cron."""
 
 from __future__ import annotations
 
@@ -12,7 +12,11 @@ from io import StringIO
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR = ROOT_DIR / "backend"
-SECRETS_PATH = Path("/root/.openclaw/secrets/runtime-secrets.json")
+SECRETS_CANDIDATES = (
+    Path(os.getenv("MONITOR_TELEGRAM_SECRETS_FILE") or ""),
+    Path("/root/.hermes/secrets/runtime-secrets.json"),
+    ROOT_DIR / "backend" / ".monitor-telegram-secrets.json",
+)
 
 for path in (str(ROOT_DIR), str(BACKEND_DIR)):
     if path not in sys.path:
@@ -23,19 +27,25 @@ def _load_telegram_token() -> str | None:
     token = os.getenv("MONITOR_TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
     if token:
         return token.strip()
-    try:
-        payload = json.loads(SECRETS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    env_payload = payload.get("env", {})
-    return (
-        str(
-            env_payload.get("MONITOR_TELEGRAM_BOT_TOKEN")
-            or env_payload.get("TELEGRAM_BOT_TOKEN")
-            or ""
-        ).strip()
-        or None
-    )
+    for secrets_path in SECRETS_CANDIDATES:
+        if not secrets_path or not secrets_path.exists():
+            continue
+        try:
+            payload = json.loads(secrets_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        env_payload = payload.get("env", payload)
+        found = (
+            str(
+                env_payload.get("MONITOR_TELEGRAM_BOT_TOKEN")
+                or env_payload.get("TELEGRAM_BOT_TOKEN")
+                or ""
+            ).strip()
+            or None
+        )
+        if found:
+            return found
+    return None
 
 
 def main() -> int:
@@ -55,7 +65,7 @@ def main() -> int:
         with redirect_stdout(noisy_output), redirect_stderr(noisy_output):
             summary = run_monitor_telegram_alert_scan(
                 db,
-                user_id="openclaw-cron",
+                user_id="monitor-telegram-cron",
                 settings=settings,
                 force_dry_run=False,
             )
