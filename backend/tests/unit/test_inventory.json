@@ -480,6 +480,15 @@
       "evidence": "catalog and safe-copy assertions"
     },
     {
+      "file": "backend/tests/unit/test_strategy_identity_card549.py",
+      "protected_behavior": "strategy catalog identity override and template identity API",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "card #549 resolver priority and update_template_identity"
+    },
+    {
       "file": "backend/tests/unit/test_strategy_transparency.py",
       "protected_behavior": "strategy transparency/redaction",
       "production_reachability": "reachable",

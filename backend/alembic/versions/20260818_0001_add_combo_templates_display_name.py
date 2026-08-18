@@ -9,8 +9,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF to_regclass('public.combo_templates') IS NOT NULL THEN
@@ -18,13 +17,11 @@ def upgrade() -> None:
                     ADD COLUMN IF NOT EXISTS display_name VARCHAR NULL;
             END IF;
         END $$;
-        """
-    )
+        """)
 
 
 def downgrade() -> None:
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF to_regclass('public.combo_templates') IS NOT NULL THEN
@@ -32,5 +29,4 @@ def downgrade() -> None:
                     DROP COLUMN IF EXISTS display_name;
             END IF;
         END $$;
-        """
-    )
+        """)
