@@ -25,6 +25,7 @@ from app.schemas.combo_params import (
     TemplateListResponse,
     ComboTemplateMetadata,
     UpdateTemplateRequest,
+    UpdateTemplateIdentityRequest,
     CloneTemplateRequest,
 )
 from app.services.combo_service import ComboService
@@ -280,6 +281,37 @@ async def update_template(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.put("/meta/{template_name}/identity", response_model=ComboTemplateMetadata)
+async def update_template_identity(
+    template_name: str,
+    request: UpdateTemplateIdentityRequest,
+    _admin_user_id: str = Depends(get_current_admin),
+):
+    """Update public catalog title and description for a template (admin)."""
+    try:
+        service = ComboService()
+        service.update_template_identity(
+            template_name,
+            display_name=request.display_name,
+            description=request.description,
+        )
+        updated_metadata = service.get_template_metadata(template_name)
+        if not updated_metadata:
+            raise HTTPException(
+                status_code=404, detail=f"Template '{template_name}' not found after update"
+            )
+        logger.info("Template '%s' identity updated", template_name)
+        return updated_metadata
+    except ValueError as e:
+        error_msg = str(e)
+        if "not found" in error_msg.lower():
+            raise HTTPException(status_code=404, detail=error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
+    except Exception as e:
+        logger.error("Error updating template identity '%s': %s", template_name, e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/meta/{template_name}/clone", response_model=ComboTemplateMetadata)
 async def clone_template(
     template_name: str,
@@ -405,6 +437,7 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         strategy = service.create_strategy(
             template_name=request.template_name, parameters=strategy_parameters
         )
+        template_metadata = service.get_template_metadata(request.template_name)
         logger.info(f"Strategy instance created for {request.template_name}")
 
         # Load market data via provider selection (default: ccxt)
@@ -568,6 +601,10 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
             },
             execution_mode=execution_mode,
             direction=direction,
+            display_name=template_metadata.get("display_name") if template_metadata else None,
+            strategy_description=(
+                template_metadata.get("description") if template_metadata else None
+            ),
             strategy_transparency=build_strategy_transparency(
                 request.template_name,
                 {

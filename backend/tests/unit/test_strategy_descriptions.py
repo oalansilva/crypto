@@ -127,10 +127,17 @@ def test_unknown_sensitive_strategy_display_name_is_protected():
 
 
 def test_unknown_strategy_description_uses_safe_fallback():
-    description = public_strategy_description(
-        "custom_template",
-        "Uses EMA 9, SMA 50, RSI 30-70 and entry_logic to recreate the strategy.",
-    )
+    description = public_strategy_description("custom_template")
 
     assert "regras protegidas" in description
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
+def test_db_description_override_wins_without_catalog_map():
+    description = public_strategy_description(
+        "custom_template",
+        "Descrição pública aprovada no catálogo global.",
+        raw_display_name="Título customizado",
+    )
+
+    assert description == "Descrição pública aprovada no catálogo global."

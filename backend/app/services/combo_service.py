@@ -11,8 +11,9 @@ from app.database import SessionLocal
 from app.models import ComboTemplate
 from app.strategies.combos import ComboStrategy
 from app.services.strategy_descriptions import (
-    public_strategy_catalog_name,
-    public_strategy_description,
+    resolve_strategy_display_name,
+    resolve_strategy_description,
+    resolve_strategy_identity,
 )
 
 
@@ -82,10 +83,11 @@ class ComboService:
         examples: list[dict[str, Any]] = []
         custom: list[dict[str, Any]] = []
         for row in rows:
+            identity = self._resolve_row_identity(row)
             item = {
                 "name": row.name,
-                "display_name": public_strategy_catalog_name(row.name),
-                "description": public_strategy_description(row.name, row.description),
+                "display_name": identity["display_name"],
+                "description": identity["description"],
                 "is_readonly": bool(row.is_readonly),
             }
             if row.is_prebuilt:
@@ -119,10 +121,11 @@ class ComboService:
             if not isinstance(stop_loss, dict):
                 template_data["stop_loss"] = {"default": stop_loss}
 
+            identity = self._resolve_row_identity(row)
             return {
                 "name": row.name,
-                "display_name": public_strategy_catalog_name(row.name),
-                "description": public_strategy_description(row.name, row.description),
+                "display_name": identity["display_name"],
+                "description": identity["description"],
                 "is_example": bool(row.is_example),
                 "is_prebuilt": bool(row.is_prebuilt),
                 "is_readonly": bool(row.is_readonly),
@@ -610,6 +613,32 @@ class ComboService:
             db.commit()
             return True
 
+    def update_template_identity(
+        self,
+        template_name: str,
+        *,
+        display_name: str,
+        description: str,
+    ) -> bool:
+        """Update public catalog identity (title + description) for any template."""
+
+        display_name = str(display_name or "").strip()
+        description = str(description or "").strip()
+        if not display_name:
+            raise ValueError("display_name is required")
+        if not description:
+            raise ValueError("description is required")
+
+        with self._session_factory() as db:
+            row = db.query(ComboTemplate).filter(ComboTemplate.name == template_name).first()
+            if not row:
+                raise ValueError(f"Template '{template_name}' not found")
+
+            row.display_name = display_name
+            row.description = description
+            db.commit()
+            return True
+
     def clone_template(self, template_name: str, new_name: str) -> Optional[Dict[str, Any]]:
         """
         Clone an existing template with a new name.
@@ -636,6 +665,7 @@ class ComboService:
             clone = ComboTemplate(
                 name=new_name,
                 description=source.description,
+                display_name=source.display_name,
                 is_example=False,
                 is_prebuilt=False,
                 is_readonly=False,
@@ -691,3 +721,35 @@ class ComboService:
                         raise ValueError(
                             f"Parameter '{param_name}': step ({step_val}) must be <= (max - min) = {max_val - min_val}"
                         )
+
+    @staticmethod
+    def _resolve_row_identity(row: ComboTemplate) -> dict[str, str]:
+        return {
+            "display_name": resolve_strategy_display_name(
+                row.name, db_display_name=row.display_name
+            ),
+            "description": resolve_strategy_description(
+                row.name,
+                db_description=row.description,
+                db_display_name=row.display_name,
+            ),
+        }
+
+    @classmethod
+    def identity_map_for_template_names(
+        cls, db, template_names: list[str]
+    ) -> dict[str, dict[str, str]]:
+        names = sorted({str(name).strip() for name in template_names if str(name or "").strip()})
+        if not names:
+            return {}
+
+        rows = db.query(ComboTemplate).filter(ComboTemplate.name.in_(names)).all()
+        by_name = {str(row.name): row for row in rows}
+        identity_map: dict[str, dict[str, str]] = {}
+        for name in names:
+            row = by_name.get(name)
+            if row is not None:
+                identity_map[name] = cls._resolve_row_identity(row)
+            else:
+                identity_map[name] = resolve_strategy_identity(name)
+        return identity_map

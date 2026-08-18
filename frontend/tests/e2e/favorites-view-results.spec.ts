@@ -394,12 +394,46 @@ const MONITOR_OPPORTUNITIES_PAYLOAD = [
   },
 ];
 
-const FAVORITE_ROW_TEXT = {
-  btcEmaRsi: /BTC\/USDT.*ema rsi.*4h/i,
-  btcLegacyMultiMa: /BTC\/USDT.*multi ma crossover.*4h/i,
-  protectedEmaRsiVolume: /ETH\/USDT.*EMA RSI Volume.*1h/i,
-  protectedMultiMa: /BTC\/USDT.*Multi MA Crossover\b.*1d/i,
+const CANONICAL_STRATEGY_IDENTITY: Record<string, { display_name: string; description: string }> = {
+  ema_rsi: {
+    display_name: 'RSI: Retomada com Força',
+    description:
+      'Combina preço acima da média exponencial com recuperação do RSI para buscar retomadas compradoras; sai quando tendência ou força relativa cedem.',
+  },
+  multi_ma_crossover: {
+    display_name: 'Médias Móveis: Tendência em Virada',
+    description:
+      'Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.',
+  },
+  multi_ma_crossoverV2: {
+    display_name: 'Médias Móveis: Tendência Confirmada',
+    description:
+      'Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída.',
+  },
 };
+
+const FAVORITE_ROW_TEXT = {
+  btcEmaRsi: /BTC\/USDT.*RSI: Retomada com Força.*4h/i,
+  btcLegacyMultiMa: /BTC\/USDT.*Médias Móveis: Tendência em Virada.*4h/i,
+  protectedEmaRsiVolume: /ETH\/USDT.*EMA RSI Volume.*1h/i,
+  protectedMultiMa: /BTC\/USDT.*Multi MA Crossover.*1d/i,
+  btcTrendConfirmed: /BTC\/USDT.*Médias Móveis: Tendência Confirmada.*1d/i,
+};
+
+function enrichFavoriteIdentity(favorite: Record<string, unknown>) {
+  const enriched = { ...favorite };
+  if (enriched.strategy_display_name) {
+    return enriched;
+  }
+  const canonical = CANONICAL_STRATEGY_IDENTITY[String(enriched.strategy_name || '')];
+  if (canonical) {
+    enriched.strategy_display_name = canonical.display_name;
+    if (!enriched.strategy_description) {
+      enriched.strategy_description = canonical.description;
+    }
+  }
+  return enriched;
+}
 
 function buildStrategyTransparency(favorite: any, candles: any[]) {
   return {
@@ -434,7 +468,7 @@ function buildStrategyTransparency(favorite: any, candles: any[]) {
 }
 
 function cloneFavoritesPayload() {
-  return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
+  return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD)).map(enrichFavoriteIdentity);
 }
 
 async function setupDeterministicApiMocks(page: any, options?: {
@@ -603,12 +637,12 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toHaveCount(0);
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
-  await expect(page.getByRole('cell', { name: /ema rsi/i }).first()).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'EMA RSI Volume', exact: true })).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'Protected BTC Setup ETH/USDT 1h' }).first()).toHaveCount(0);
-  await expect(page.getByRole('cell', { name: /Estratégia protegida/i }).first()).toHaveCount(0);
+  await expect(page.getByTestId('favorites-strategy-title').filter({ hasText: 'RSI: Retomada com Força' }).first()).toBeVisible();
+  await expect(page.getByTestId('favorites-strategy-title').filter({ hasText: 'EMA RSI Volume' }).first()).toBeVisible();
+  await expect(page.locator('.symbol-col', { hasText: 'Protected BTC Setup ETH/USDT 1h' })).toHaveCount(0);
+  await expect(page.getByTestId('favorites-strategy-title').filter({ hasText: /Estratégia protegida/i })).toHaveCount(0);
 
-  const btcBatchRow = page.locator('.fav-table-shell tbody tr', { hasText: 'multi ma crossoverV2' });
+  const btcBatchRow = page.locator('.fav-table-shell tbody tr', { hasText: 'Médias Móveis: Tendência Confirmada' });
   await expect(btcBatchRow.locator('.metric-cell.strong')).toHaveText('+42.00%');
   await expect(btcBatchRow.locator('.metric-cell.strong')).not.toHaveText('+4200.00%');
 
@@ -700,7 +734,7 @@ test('favorites shows the complete strategy description on desktop and mobile', 
   await expectNoHorizontalOverflow(page);
 
   const analysis = page
-    .locator('.fav-mobile-card', { hasText: 'multi ma crossoverV2' })
+    .locator('.fav-mobile-card', { hasText: FAVORITE_ROW_TEXT.btcTrendConfirmed })
     .locator('button[title="Ver análise completa"]');
   await analysis.click();
   await expect(page).toHaveURL(/\/combo\/results$/);
@@ -722,21 +756,22 @@ test('favorites strategy column avoids duplicated raw strategy labels', async ({
   const hbarRow = page.locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' });
   const strategyCell = hbarRow.locator('.strategy-cell');
 
-  await expect(strategyCell.locator('strong')).toHaveText('multi ma crossover');
-  await expect(strategyCell).not.toContainText('multi_ma_crossover');
-  await expect(strategyCell.locator('.strategy-description')).toHaveCount(0);
+  await expect(strategyCell.getByTestId('favorites-strategy-title')).toHaveText('Médias Móveis: Tendência em Virada');
+  await expect(strategyCell.getByTestId('favorites-strategy-title')).not.toContainText('multi_ma_crossover');
+  await expect(strategyCell.getByTestId('favorites-strategy-description')).toHaveCount(1);
+  await expect(strategyCell.locator('.fav-strategy-meta')).toContainText('Apelido do favorito:');
 });
 
 test('favorites search matches combined symbol quote and strategy terms', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  await page.locator('.fav-search input').fill('BTC/USDT USDT multi ma crossoverV2');
+  await page.locator('.fav-search input').fill('BTC/USDT USDT multi_ma_crossoverV2');
 
-  const targetRow = page.locator('.fav-table-shell tbody tr', { hasText: 'multi ma crossoverV2' });
+  const targetRow = page.locator('.fav-table-shell tbody tr', { hasText: 'Médias Móveis: Tendência Confirmada' });
   await expect(targetRow).toHaveCount(1);
-  await expect(targetRow.getByRole('cell', { name: 'BTC/USDT' })).toBeVisible();
-  await expect(targetRow.locator('.strategy-cell')).toContainText('multi ma crossoverV2');
+  await expect(targetRow.locator('.symbol-col strong')).toHaveText('BTC/USDT');
+  await expect(targetRow.getByTestId('favorites-strategy-title')).toHaveText('Médias Móveis: Tendência Confirmada');
   await expect(page.locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' })).toHaveCount(0);
 });
 
@@ -749,19 +784,19 @@ test('favorites ordering follows selected sort option immediately', async ({ pag
 
   await sortSelect.selectOption('sharpe');
   await expect(firstSymbol).toHaveText('BTC/USDT');
-  await expect(page.locator('.fav-table-shell tbody tr').first().locator('.strategy-cell')).toContainText('multi ma crossoverV2');
+  await expect(page.locator('.fav-table-shell tbody tr').first().getByTestId('favorites-strategy-title')).toHaveText('Médias Móveis: Tendência Confirmada');
 
   await sortSelect.selectOption('return');
   await expect(firstSymbol).toHaveText('BTC/USDT');
-  await expect(page.locator('.fav-table-shell tbody tr').first().locator('.strategy-cell')).toContainText('Multi MA Crossover');
+  await expect(page.locator('.fav-table-shell tbody tr').first().getByTestId('favorites-strategy-title')).toHaveText('Multi MA Crossover');
 
   await sortSelect.selectOption('returnPerTrade');
   await expect(firstSymbol).toHaveText('BTC/USDT');
-  await expect(page.locator('.fav-table-shell tbody tr').first().locator('.strategy-cell')).toContainText('Multi MA Crossover');
+  await expect(page.locator('.fav-table-shell tbody tr').first().getByTestId('favorites-strategy-title')).toHaveText('Multi MA Crossover');
 
   await sortSelect.selectOption('trades');
   await expect(firstSymbol).toHaveText('BTC/USDT');
-  await expect(page.locator('.fav-table-shell tbody tr').first().locator('.strategy-cell')).toContainText('Multi MA Crossover');
+  await expect(page.locator('.fav-table-shell tbody tr').first().getByTestId('favorites-strategy-title')).toHaveText('Multi MA Crossover');
 });
 
 test('favorites mobile cards fit viewport without horizontal scrolling', async ({ page }) => {
@@ -781,7 +816,7 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
   const strategyFilter = page.locator('.fav-filters label', { hasText: 'Strategy' }).locator('select');
   const timeFilter = page.locator('.fav-filters label', { hasText: 'Time' }).locator('select');
 
-  await expect(strategyFilter.locator('option[value="ema rsi"]')).toHaveCount(1);
+  await expect(strategyFilter.locator('option[value="RSI: Retomada com Força"]')).toHaveCount(1);
   await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup ETH/USDT 1h' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: 'BTC Swing BTC/USDT 4h' })).toHaveCount(0);
@@ -794,7 +829,7 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
   await expect(timeFilter.locator('option', { hasText: '1h' })).toHaveCount(1);
   await expect(timeFilter.locator('option', { hasText: '4h' })).toHaveCount(1);
 
-  await strategyFilter.selectOption({ label: 'ema rsi' });
+  await strategyFilter.selectOption({ label: 'RSI: Retomada com Força' });
 
   await expect(page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi })).toHaveCount(1);
   await expect(page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.protectedEmaRsiVolume })).toHaveCount(0);
@@ -930,7 +965,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
   await expect(page.getByText('Chart data not available for this run.')).toHaveCount(0);
-  await expect(page.getByText(/multi_ma_crossover - Ação de preço/i)).toBeVisible();
+  await expect(page.getByText(/Médias Móveis: Tendência em Virada - Ação de preço/i)).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
   await expect(page.getByText('BTC/USDT • 4h • 160 velas')).toBeVisible();
@@ -945,7 +980,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
 
   expect(api.backtestTriggeredCount()).toBe(0);
   expect(api.favoriteTradesTriggeredCount()).toBe(1);
-  await expect(page.getByText(/multi_ma_crossover - Ação de preço/i)).toBeVisible();
+  await expect(page.getByText(/Médias Móveis: Tendência em Virada - Ação de preço/i)).toBeVisible();
 });
 
 test('favorites analysis opens cached multi MA chart when trade recovery hangs', async ({ page }) => {

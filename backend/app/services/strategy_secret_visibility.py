@@ -64,6 +64,10 @@ def _display_name(payload: dict[str, Any]) -> str:
 
 
 def _public_strategy_display_name(payload: dict[str, Any]) -> str:
+    existing = str(payload.get("strategy_display_name") or "").strip()
+    if existing and existing not in {PROTECTED_STRATEGY_LABEL, "Estratégia Cripto Farol"}:
+        return existing
+
     raw = _display_name(payload).strip()
     if not raw or raw == PROTECTED_STRATEGY_LABEL:
         return PROTECTED_STRATEGY_LABEL

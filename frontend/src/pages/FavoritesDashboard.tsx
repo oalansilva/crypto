@@ -533,11 +533,14 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const getGridStrategyDetail = (fav: FavoriteStrategy): string | null => {
-        const label = getFavoriteStrategyLabel(fav).trim();
-        if (!label || label.toLowerCase() === getFavoriteStrategyName(fav).trim().toLowerCase()) return null;
-        if (fav.is_strategy_protected && label.toLowerCase() === 'detalhes da estratégia indisponíveis') return null;
-        return label;
+        const title = getFavoriteStrategyLabel(fav).trim()
+        const alias = String(fav.name || '').trim()
+        if (!alias || normalizeStrategyComparison(alias) === normalizeStrategyComparison(title)) return null
+        if (fav.is_strategy_protected && alias.toLowerCase() === 'detalhes da estratégia indisponíveis') return null
+        return `Apelido do favorito: ${alias}`
     };
+
+    const getFavoriteCatalogTitle = (fav: FavoriteStrategy): string => getFavoriteStrategyLabel(fav).trim();
 
     const getFavoriteStrategyDescription = (fav: FavoriteStrategy): string | null => {
         const description = String(fav.strategy_description || '').trim();
@@ -1389,8 +1392,8 @@ const FavoritesDashboard: React.FC = () => {
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
-                                                <span className="fav-strategy-name">{getFavoriteStrategyName(fav)}</span>
-                                                {strategyDetail ? <span>{strategyDetail}</span> : null}
+                                                <span className="fav-strategy-name">{getFavoriteCatalogTitle(fav)}</span>
+                                                {strategyDetail ? <span className="fav-strategy-meta">{strategyDetail}</span> : null}
                                                 {strategyDescription ? <span className="fav-strategy-description">{strategyDescription}</span> : null}
                                                 <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
                                                     {refreshStatus.label}
@@ -1502,11 +1505,11 @@ const FavoritesDashboard: React.FC = () => {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="strategy-cell" aria-label={`${getFavoriteStrategyName(fav)} ${strategyDetail || ''} ${strategyDescription || ''}`}>
-                                                    <div className="strategy-stack">
-                                                        <strong>{getFavoriteStrategyName(fav)}</strong>
-                                                        {strategyDetail ? <span>{strategyDetail}</span> : null}
-                                                        {strategyDescription ? <span className="strategy-description">{strategyDescription}</span> : null}
+                                                <td className="strategy-cell" aria-label={`${getFavoriteCatalogTitle(fav)} ${strategyDetail || ''} ${strategyDescription || ''}`}>
+                                                    <div className="strategy-stack" data-testid="favorites-strategy-identity">
+                                                        <strong data-testid="favorites-strategy-title">{getFavoriteCatalogTitle(fav)}</strong>
+                                                        {strategyDescription ? <span className="strategy-description" data-testid="favorites-strategy-description">{strategyDescription}</span> : null}
+                                                        {strategyDetail ? <span className="fav-strategy-meta">{strategyDetail}</span> : null}
                                                         <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
                                                             {refreshStatus.label}
                                                         </span>
