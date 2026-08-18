@@ -843,9 +843,10 @@ class DiscoveryService:
 
             template_names = [str(row.template_id) for row in rows if row.template_id]
             identity_map = ComboService.identity_map_for_template_names(session, template_names)
-            return [self._result_row(row, idx + 1, identity_map=identity_map) for idx, row in enumerate(ranked)] + [
-                self._result_row(row, None, identity_map=identity_map) for row in ineligible
-            ]
+            return [
+                self._result_row(row, idx + 1, identity_map=identity_map)
+                for idx, row in enumerate(ranked)
+            ] + [self._result_row(row, None, identity_map=identity_map) for row in ineligible]
         finally:
             if db is None:
                 session.close()

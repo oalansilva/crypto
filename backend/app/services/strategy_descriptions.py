@@ -201,9 +201,7 @@ def resolve_strategy_identity(
     db_description: Any = None,
 ) -> dict[str, str]:
     return {
-        "display_name": resolve_strategy_display_name(
-            name, db_display_name=db_display_name
-        ),
+        "display_name": resolve_strategy_display_name(name, db_display_name=db_display_name),
         "description": resolve_strategy_description(
             name,
             db_description=db_description,

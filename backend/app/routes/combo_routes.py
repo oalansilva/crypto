@@ -602,7 +602,9 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
             execution_mode=execution_mode,
             direction=direction,
             display_name=template_metadata.get("display_name") if template_metadata else None,
-            strategy_description=template_metadata.get("description") if template_metadata else None,
+            strategy_description=(
+                template_metadata.get("description") if template_metadata else None
+            ),
             strategy_transparency=build_strategy_transparency(
                 request.template_name,
                 {

@@ -160,9 +160,7 @@ def _strategy_identities_for_rows(
             db_description=db_description,
             db_display_name=db_display_name,
         )
-        display_names[name] = resolve_strategy_display_name(
-            name, db_display_name=db_display_name
-        )
+        display_names[name] = resolve_strategy_display_name(name, db_display_name=db_display_name)
     return descriptions, display_names
 
 

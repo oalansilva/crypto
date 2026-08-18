@@ -2073,8 +2073,10 @@ class OpportunityService:
                         "timeframe": normalized_tf,
                         "direction": direction,
                         "template_name": template_name,
-                        "strategy_display_name": meta.get("display_name") or resolve_strategy_display_name(template_name),
-                        "strategy_description": meta.get("description") or resolve_strategy_description(template_name),
+                        "strategy_display_name": meta.get("display_name")
+                        or resolve_strategy_display_name(template_name),
+                        "strategy_description": meta.get("description")
+                        or resolve_strategy_description(template_name),
                         "strategy_transparency": strategy_transparency.model_dump(mode="json"),
                         "name": fav["name"],  # User custom name
                         "notes": fav.get("notes"),
