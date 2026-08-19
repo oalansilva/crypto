@@ -9,6 +9,7 @@ unique key e não reexecutado.
 from __future__ import annotations
 
 import logging
+import math
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -31,6 +32,8 @@ from app.services.discovery_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+DISCOVERY_SPLIT_TRAIN_RATIO = 0.7
 
 
 def resolve_optimizer_date_range(
@@ -180,6 +183,7 @@ def run_combination(
             end_date=end_date,
             direction=combination.direction,
             deep_backtest=True,
+            split_train_ratio=DISCOVERY_SPLIT_TRAIN_RATIO,
         )
     except Exception as exc:
         logger.warning(
@@ -191,10 +195,11 @@ def run_combination(
         db.commit()
         return
 
-    best_metrics = result.get("best_metrics") or {}
+    best_metrics = dict(result.get("best_metrics") or {})
     trades = result.get("trades") or []
     candles = result.get("candles") or []
     parameters = result.get("best_parameters") or {}
+    _ensure_in_sample_ranking(best_metrics, trades, candles)
     start_at = _first_candle_time(candles, snapshot)
     end_at = _last_candle_time(candles, snapshot)
     # Calendário 24x7 versionado por timeframe: denominador de coverage vem do
@@ -258,16 +263,8 @@ def run_combination(
         return
 
     result_id = f"RS-{uuid.uuid4().hex[:10].upper()}"
-    cagr = best_metrics.get("cagr")
-    benchmark = (best_metrics.get("benchmark") or {}).get("cagr")
-    benchmark_cagr = float(benchmark) if benchmark is not None else None
-    cagr_f = float(cagr) if cagr is not None else None
-    delta = (
-        (cagr_f - benchmark_cagr) * 100
-        if cagr_f is not None and benchmark_cagr is not None
-        else None
-    )
-    calmar = best_metrics.get("calmar_ratio")
+    cagr_f, calmar_f, benchmark_cagr, delta = _ranking_columns(best_metrics, len(trades))
+    persisted_metrics = _persist_metrics_snapshot(best_metrics, result, len(trades))
 
     db.add(
         DiscoveryResult(
@@ -288,13 +285,13 @@ def run_combination(
             observed_valid_candles=observed_valid_candles,
             coverage=coverage,
             fees_slippage={"fees": 0.001, "slippage": 0.001},
-            metrics=best_metrics,
+            metrics=persisted_metrics,
             trades_count=trades_count,
             win_rate=best_metrics.get("win_rate"),
             sharpe_ratio=best_metrics.get("sharpe_ratio"),
             profit_factor=best_metrics.get("profit_factor"),
             max_drawdown=best_metrics.get("max_drawdown"),
-            calmar_ratio=float(calmar) if calmar is not None else None,
+            calmar_ratio=calmar_f,
             cagr=cagr_f,
             benchmark_cagr=benchmark_cagr,
             delta_cagr_vs_bh=delta,
@@ -317,6 +314,110 @@ def run_combination(
         result_id,
         "eligible" if eligible else "low_sample",
     )
+
+
+def _finite_or_none(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
+
+
+def _close_series_from_candles(candles: list[Any]):
+    import pandas as pd
+
+    if not candles:
+        return None
+    times: list[Any] = []
+    closes: list[float] = []
+    for candle in candles:
+        if not isinstance(candle, dict):
+            continue
+        ts = candle.get("timestamp_utc") or candle.get("timestamp")
+        close = candle.get("close")
+        if ts is None or close is None:
+            continue
+        try:
+            times.append(pd.Timestamp(ts))
+            closes.append(float(close))
+        except (TypeError, ValueError):
+            continue
+    if not closes:
+        return None
+    return pd.Series(closes, index=times)
+
+
+def _ensure_in_sample_ranking(
+    best_metrics: dict[str, Any],
+    trades: list[Any],
+    candles: list[Any],
+) -> None:
+    """Fill IS CAGR/Calmar/B&H when the optimizer omitted them (holdout ERROR)."""
+    if not trades:
+        return
+    cagr = _finite_or_none(best_metrics.get("cagr"))
+    if cagr is not None:
+        return
+    from app.services.combo_optimizer import _enrich_ranking_metrics
+
+    _enrich_ranking_metrics(
+        trades,
+        _close_series_from_candles(candles),
+        best_metrics,
+        legacy_zero_trade_ranking=False,
+    )
+
+
+def _ranking_columns(
+    best_metrics: dict[str, Any], trades_count: int
+) -> tuple[float | None, float | None, float | None, float | None]:
+    if trades_count == 0:
+        return None, None, None, None
+    cagr_f = _finite_or_none(best_metrics.get("cagr"))
+    calmar_f = _finite_or_none(best_metrics.get("calmar_ratio"))
+    benchmark_cagr = _finite_or_none((best_metrics.get("benchmark") or {}).get("cagr"))
+    delta = (
+        (cagr_f - benchmark_cagr) * 100
+        if cagr_f is not None and benchmark_cagr is not None
+        else None
+    )
+    return cagr_f, calmar_f, benchmark_cagr, delta
+
+
+def _persist_metrics_snapshot(
+    best_metrics: dict[str, Any], result: dict[str, Any], trades_count: int
+) -> dict[str, Any]:
+    metrics = dict(best_metrics)
+    if trades_count == 0:
+        metrics.pop("cagr", None)
+        metrics.pop("calmar_ratio", None)
+        metrics.pop("benchmark", None)
+    _drop_nonfinite_ranking_keys(metrics)
+    oos_metrics = result.get("oos_metrics")
+    oos_verdict = result.get("oos_verdict")
+    split_applied = isinstance(oos_verdict, dict) or isinstance(oos_metrics, dict)
+    metrics["split_train_ratio"] = DISCOVERY_SPLIT_TRAIN_RATIO
+    metrics["split_applied"] = split_applied
+    if isinstance(oos_metrics, dict):
+        metrics["oos_metrics"] = oos_metrics
+    if isinstance(oos_verdict, dict):
+        metrics["oos_verdict"] = oos_verdict
+    return metrics
+
+
+def _drop_nonfinite_ranking_keys(metrics: dict[str, Any]) -> None:
+    """JSONB rejects Infinity/NaN; ranking non-finite values become omitted keys."""
+    for key in ("cagr", "calmar_ratio"):
+        if key in metrics and _finite_or_none(metrics.get(key)) is None:
+            metrics.pop(key, None)
+    benchmark = metrics.get("benchmark")
+    if isinstance(benchmark, dict) and _finite_or_none(benchmark.get("cagr")) is None:
+        metrics.pop("benchmark", None)
 
 
 def _expected_candles_for_window(timeframe: str, start_at: datetime, end_at: datetime) -> int:

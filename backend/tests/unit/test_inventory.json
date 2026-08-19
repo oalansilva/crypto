@@ -202,12 +202,12 @@
     },
     {
       "file": "backend/tests/unit/test_discovery_ranking_metrics.py",
-      "protected_behavior": "discovery leaderboard ranking metrics enrichment and persistence",
+      "protected_behavior": "discovery leaderboard ranking metrics and walk-forward 70/30 persistence",
       "production_reachability": "reachable",
       "persistence_need": "postgres",
       "regression_risk": "high",
       "decision": "keep",
-      "evidence": "helper unit cases plus run_combination persistence with mocked optimizer and PostgreSQL fixture"
+      "evidence": "helper unit cases plus run_combination persistence with mocked optimizer, split_train_ratio=0.7, N/A sanitization, holdout ERROR enrich, IS coverage window"
     },
     {
       "file": "backend/tests/unit/test_gateway_and_agent_chat.py",
