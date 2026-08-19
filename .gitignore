@@ -33,6 +33,7 @@ data/*.parquet
 !.cursor/hooks.json
 !.cursor/hooks/
 !.cursor/hooks/**
+!.cursor/process-fsm.yaml
 *.swp
 *.swo
 
