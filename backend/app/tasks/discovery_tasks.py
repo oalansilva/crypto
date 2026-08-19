@@ -404,7 +404,9 @@ def _persist_metrics_snapshot(
     metrics["split_train_ratio"] = DISCOVERY_SPLIT_TRAIN_RATIO
     metrics["split_applied"] = split_applied
     if isinstance(oos_metrics, dict):
-        metrics["oos_metrics"] = oos_metrics
+        oos_copy = dict(oos_metrics)
+        _drop_nonfinite_ranking_keys(oos_copy)
+        metrics["oos_metrics"] = oos_copy
     if isinstance(oos_verdict, dict):
         metrics["oos_verdict"] = oos_verdict
     return metrics

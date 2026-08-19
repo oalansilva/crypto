@@ -548,6 +548,11 @@ class TestDiscoveryWalkForwardPersistence:
                     ],
                     "best_parameters": {"direction": "long"},
                     "data_source": "ccxt",
+                    "oos_metrics": {
+                        "cagr": 0.05,
+                        "calmar_ratio": float("inf"),
+                        "max_drawdown": 0.0,
+                    },
                     "oos_verdict": {"status": "GO", "reasons": ["ok"]},
                 }
 
@@ -560,4 +565,5 @@ class TestDiscoveryWalkForwardPersistence:
         assert result.cagr == pytest.approx(0.2)
         assert result.calmar_ratio is None
         assert "calmar_ratio" not in result.metrics
+        assert "calmar_ratio" not in result.metrics["oos_metrics"]
         db.close()
