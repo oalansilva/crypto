@@ -16,6 +16,7 @@ import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosCompar
 
 interface BacktestResult {
     template_name: string
+    display_name?: string | null
     symbol: string
     timeframe: string
     start_date?: string | null
@@ -270,9 +271,13 @@ export function ComboResultsPage() {
         ? buildSignalHistoryMarkers(signalHistory, direction, undefined)
         : buildTradeMarkers(result.trades, { direction, timeframe: result.timeframe })
 
-    const strategyName = strategyTransparency?.display_name || result.template_name
-    const strategyDescription = String(result.strategy_description || strategyTransparency?.description || '').trim()
+    const strategyName = result?.display_name
+        || strategyTransparency?.display_name
+        || result?.template_name
+        || ''
+    const strategyDescription = String(result?.strategy_description || strategyTransparency?.description || '').trim()
     const directionLabel = isShort ? 'Short / venda' : 'Long / compra'
+
     const formatMetricPercentage = (value: number | undefined, decimals = 1) => {
         if (value === undefined || value === null || Number.isNaN(value)) return 'Indisponível'
         const percentage = Math.abs(value) > 1 ? value : value * 100
@@ -327,14 +332,22 @@ export function ComboResultsPage() {
                                     <span className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5 uppercase">{result.timeframe}</span>
                                     <span className="rounded-md border border-[#fcd535]/50 bg-[#fcd535]/10 px-2.5 py-1.5 text-[#fcd535]">{directionLabel}</span>
                                 </div>
-                                <h1 className="mt-4 break-words text-2xl font-bold leading-tight sm:text-3xl [overflow-wrap:anywhere]">
-                                    {strategyName}
-                                </h1>
-                                {strategyDescription ? (
-                                    <p className="mt-3 max-w-3xl whitespace-normal break-words text-sm leading-6 text-[#b7bdc6] [overflow-wrap:anywhere]" data-testid="combo-result-description">
-                                        {strategyDescription}
-                                    </p>
-                                ) : null}
+                                <div data-testid="combo-read-mode">
+                                    <h1
+                                        className="mt-4 break-words text-2xl font-bold leading-tight sm:text-3xl [overflow-wrap:anywhere]"
+                                        data-testid="combo-result-title"
+                                    >
+                                        {strategyName}
+                                    </h1>
+                                    {strategyDescription ? (
+                                        <p
+                                            className="mt-3 max-w-3xl whitespace-normal break-words text-sm leading-6 text-[#b7bdc6] [overflow-wrap:anywhere]"
+                                            data-testid="combo-result-description"
+                                        >
+                                            {strategyDescription}
+                                        </p>
+                                    ) : null}
+                                </div>
                             </div>
                             <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-5 border-t border-[#2b3139] pt-5 sm:grid-cols-4 lg:grid-cols-2 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" aria-label="Resumo de desempenho e risco">
                                 {summaryMetrics.map((metric) => (

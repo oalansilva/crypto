@@ -2020,6 +2020,14 @@ class ComboOptimizer:
 
                 traceback.print_exc()
 
+            if split_train_ratio is None and best_metrics is not None:
+                _enrich_ranking_metrics(
+                    trades,
+                    df_final["close"] if df_final is not None and not df_final.empty else None,
+                    best_metrics,
+                    legacy_zero_trade_ranking=False,
+                )
+
             # Prepare candles data
             candles = []
 
@@ -2173,35 +2181,14 @@ class ComboOptimizer:
                 # holdout acima enriquece apenas o OOS, e `best_metrics` vem de
                 # _metrics_from_trades sem essas chaves.
                 try:
-                    from app.metrics.performance import calculate_cagr
-                    from app.metrics.benchmark import calculate_buy_and_hold
-                    from app.metrics.risk_adjusted import calculate_calmar_ratio
-
                     if best_metrics is not None and "cagr" not in best_metrics:
-                        is_equity = pd.Series([100.0])
-                        is_cap = 100.0
-                        for trade in sorted(
-                            trades,
-                            key=lambda t: pd.Timestamp(t.get("entry_time") or 0),
-                        ):
-                            is_cap *= 1.0 + float(trade.get("profit") or 0.0)
-                            is_equity = pd.concat([is_equity, pd.Series([is_cap])])
-                        if len(is_equity) >= 2 and len(trades) > 0:
-                            is_cagr = calculate_cagr(is_equity)
-                        else:
-                            is_cagr = 0.0
                         is_close = df["close"] if df is not None and not df.empty else None
-                        is_bh = (
-                            calculate_buy_and_hold(is_close, 100.0)
-                            if is_close is not None
-                            else {"cagr": 0.0}
+                        _enrich_ranking_metrics(
+                            trades,
+                            is_close,
+                            best_metrics,
+                            legacy_zero_trade_ranking=True,
                         )
-                        is_calmar = calculate_calmar_ratio(
-                            is_cagr, float(best_metrics.get("max_drawdown") or 0.0)
-                        )
-                        best_metrics["cagr"] = is_cagr
-                        best_metrics["calmar_ratio"] = is_calmar
-                        best_metrics["benchmark"] = is_bh
                 except Exception as exc:
                     logging.warning("Treino (IS) CAGR/benchmark metrics failed: %s", exc)
 
@@ -2305,6 +2292,71 @@ class ComboOptimizer:
             dataframe=dataframe,
         )
         return manifest.model_dump(mode="json")
+
+
+def _enrich_ranking_metrics(
+    trades: list,
+    close_series: Optional[pd.Series],
+    metrics_dict: Optional[Dict[str, Any]],
+    *,
+    legacy_zero_trade_ranking: bool = False,
+) -> None:
+    """Populate cagr, calmar_ratio and benchmark on metrics_dict for leaderboard ranking."""
+    if metrics_dict is None:
+        return
+
+    import math
+
+    from app.metrics.benchmark import calculate_buy_and_hold
+    from app.metrics.performance import calculate_cagr
+    from app.metrics.risk_adjusted import calculate_calmar_ratio
+
+    if not trades and not legacy_zero_trade_ranking:
+        return
+
+    try:
+        if trades:
+            equity = pd.Series([100.0])
+            cap = 100.0
+            for trade in sorted(trades, key=lambda t: pd.Timestamp(t.get("entry_time") or 0)):
+                cap *= 1.0 + float(trade.get("profit") or 0.0)
+                equity = pd.concat([equity, pd.Series([cap])])
+            if len(equity) >= 2:
+                cagr = calculate_cagr(equity)
+            elif legacy_zero_trade_ranking:
+                cagr = 0.0
+            else:
+                return
+        elif legacy_zero_trade_ranking:
+            cagr = 0.0
+        else:
+            return
+
+        if close_series is not None and not close_series.empty:
+            bh = calculate_buy_and_hold(close_series, 100.0)
+        elif legacy_zero_trade_ranking:
+            bh = {"cagr": 0.0}
+        else:
+            return
+
+        calmar = calculate_calmar_ratio(cagr, float(metrics_dict.get("max_drawdown") or 0.0))
+
+        if legacy_zero_trade_ranking:
+            metrics_dict["cagr"] = cagr
+            metrics_dict["calmar_ratio"] = calmar
+            metrics_dict["benchmark"] = bh
+            return
+
+        if math.isfinite(cagr):
+            metrics_dict["cagr"] = cagr
+        if isinstance(bh, dict):
+            bh_cagr = bh.get("cagr")
+            if bh_cagr is not None and math.isfinite(float(bh_cagr)):
+                metrics_dict["benchmark"] = bh
+        if math.isfinite(calmar):
+            metrics_dict["calmar_ratio"] = calmar
+    except Exception as exc:
+        logging.warning("Ranking metrics enrichment failed: %s", exc)
 
 
 def _metrics_from_trades(

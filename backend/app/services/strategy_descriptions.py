@@ -154,6 +154,62 @@ def normalize_strategy_key(name: Any) -> str:
     return normalized.strip("_")
 
 
+def _non_empty_text(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def resolve_strategy_display_name(name: Any, *, db_display_name: Any = None) -> str:
+    """Public title: DB override, then catalog map/raw name (never generic fallback)."""
+
+    db_value = _non_empty_text(db_display_name)
+    if db_value:
+        return db_value
+    return public_strategy_catalog_name(name)
+
+
+def resolve_strategy_description(
+    name: Any,
+    *,
+    db_description: Any = None,
+    db_display_name: Any = None,
+) -> str:
+    """Public description: paired DB identity override, then catalog map, then DB/raw, then generic."""
+
+    db_value = _non_empty_text(db_description)
+    db_title = _non_empty_text(db_display_name)
+    if db_title and db_value:
+        return db_value
+
+    key = normalize_strategy_key(name)
+    if key in PUBLIC_STRATEGY_DESCRIPTIONS:
+        return PUBLIC_STRATEGY_DESCRIPTIONS[key]
+
+    if db_value:
+        return db_value
+
+    return (
+        "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas "
+        "no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco."
+    )
+
+
+def resolve_strategy_identity(
+    name: Any,
+    *,
+    db_display_name: Any = None,
+    db_description: Any = None,
+) -> dict[str, str]:
+    return {
+        "display_name": resolve_strategy_display_name(name, db_display_name=db_display_name),
+        "description": resolve_strategy_description(
+            name,
+            db_description=db_description,
+            db_display_name=db_display_name,
+        ),
+    }
+
+
 def public_strategy_display_name(name: Any) -> str:
     """Return a safe product name for visible strategy identity."""
 
@@ -174,14 +230,16 @@ def public_strategy_catalog_name(name: Any) -> str:
     return str(name or "").strip() or "Estratégia"
 
 
-def public_strategy_description(name: Any, raw_description: Any = None) -> str:
+def public_strategy_description(
+    name: Any,
+    raw_description: Any = None,
+    *,
+    raw_display_name: Any = None,
+) -> str:
     """Return safe, high-level copy for users without exposing parameters."""
 
-    key = normalize_strategy_key(name)
-    if key in PUBLIC_STRATEGY_DESCRIPTIONS:
-        return PUBLIC_STRATEGY_DESCRIPTIONS[key]
-
-    return (
-        "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas "
-        "no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco."
+    return resolve_strategy_description(
+        name,
+        db_description=raw_description,
+        db_display_name=raw_display_name,
     )

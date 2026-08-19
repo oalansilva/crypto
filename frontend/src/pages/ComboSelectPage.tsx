@@ -6,8 +6,13 @@ import { authFetch } from '../lib/authFetch'
 
 interface Template {
     name: string
+    display_name?: string | null
     description: string
     is_readonly: boolean
+}
+
+function publicTemplateTitle(template: Template): string {
+    return String(template.display_name || '').trim() || template.name
 }
 
 interface TemplateList {
@@ -74,15 +79,7 @@ export function ComboSelectPage() {
 
     const handleEdit = (e: React.MouseEvent, template: Template) => {
         e.stopPropagation()
-        if (template.is_readonly) {
-            // If read-only, open clone modal
-            setTemplateToClone(template.name)
-            setNewTemplateName(`${template.name}_copy`)
-            setCloneModalOpen(true)
-        } else {
-            // If editable, go to edit page
-            navigate(`/combo/edit/${encodeURIComponent(template.name)}`)
-        }
+        navigate(`/combo/edit/${encodeURIComponent(template.name)}`)
     }
 
     const handleClone = (e: React.MouseEvent, templateName: string) => {
@@ -215,9 +212,9 @@ export function ComboSelectPage() {
                                                 <button
                                                     onClick={(e) => handleEdit(e, template)}
                                                     className="p-1.5 hover:bg-zinc-100 rounded-md transition-colors"
-                                                    title={template.is_readonly ? "Clone & Edit" : "Edit Template"}
+                                                    title="Editar identidade e template"
                                                 >
-                                                    {template.is_readonly ? <Copy className="w-4 h-4 text-purple-400" /> : <Edit className="w-4 h-4 text-blue-400" />}
+                                                    <Edit className="w-4 h-4 text-blue-400" />
                                                 </button>
 
                                                 {!template.is_readonly && (
@@ -240,10 +237,13 @@ export function ComboSelectPage() {
                                             </div>
                                         </div>
 
-                                        <h3 className="text-lg font-bold text-zinc-900 mb-2 group-hover:text-blue-400 transition-colors">
-                                            {template.name.replace(/^Example: /, '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                        <h3
+                                            className="text-lg font-bold text-zinc-900 mb-2 group-hover:text-blue-400 transition-colors"
+                                            data-testid="combo-select-strategy-title"
+                                        >
+                                            {publicTemplateTitle(template)}
                                         </h3>
-                                        <p className="text-sm text-zinc-400 line-clamp-2">{template.description}</p>
+                                        <p className="text-sm text-zinc-400 leading-6 break-words">{template.description}</p>
 
                                         {selectedTemplate === template.name && (
                                             <div className="absolute top-4 right-4 bg-blue-500 rounded-full p-1 animate-in fade-in zoom-in">

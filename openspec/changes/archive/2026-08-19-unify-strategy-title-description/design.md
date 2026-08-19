@@ -1,0 +1,148 @@
+# Design: Identidade pública editável no Combo
+
+## Status do gate
+
+- Card: `#549`
+- Change: `unify-strategy-title-description`
+- Status observado: `Done` (homologação em curso; incremento identidade no editor de template, sem regressão de coluna)
+- **UI impact: affected** — título + descrição públicos em `/combo/edit`; leitura nas demais telas
+- Aprovação humana: concedida (arraste `Aprovação de Design → Pronto para Dev`, 2026-08-18). Incrementos Combo select e Combo edit aprovados por Alan em chat (2026-08-19), mesmo card.
+- Decisões Alan 2026-08-19: catálogo **global**; edição **somente** em `/combo/edit/{template}`
+- **Desvio vs protótipo:** protótipo v2 tem lápis no resultado Combo. Alan pediu identidade só no editor de template. `ComboResultsPage` volta a leitura. `ComboEditPage` abre inclusive `is_readonly` (identidade; lógica continua bloqueada). `/combo/select` Edit navega para o editor.
+
+## Problema
+
+Duas fricções no mesmo reconhecimento da estratégia:
+
+1. **Leitura fragmentada.** Combo já mostra nome público + descrição. Descoberta usa `template_id` cru; Favoritos empilha linha intermediária; OpportunityCard rotula `estratégia` / `descrição`.
+2. **Copy travada no código.** Mapas em `strategy_descriptions.py`; `combo_templates.description` ignorado quando há mapa; sem `display_name` persistido; `ComboEditPage` bloqueia prebuilts `is_readonly`. Alan não consegue ajustar o texto público e ver o mesmo texto em Descoberta, Favoritos e Monitor.
+
+## Usuário e contexto
+
+- **Editor:** admin em `/combo/edit/{template}`. Quer corrigir título e tese em linguagem de trader sem clonar o template.
+- **Leitor:** admin e usuário comum nas outras telas. Só leem.
+- Desktop-first; mobile Combo com input + textarea + Salvar/Cancelar sem clip.
+
+## Hipótese
+
+Se o Combo resultado for a superfície de edição **e** as outras telas consumirem o mesmo resolvedor (banco > mapa > fallback), uma alteração de Alan no Combo passa a ser a identidade da estratégia em todo o produto.
+
+## Resultado esperado
+
+- Admin edita título e descrição em `/combo/edit/{template}` (inclusive `is_readonly`).
+- Salvar persiste no catálogo global; próximo fetch em Descoberta/Favoritos/Monitor mostra o texto novo.
+- Descoberta: `display_name` + `description`; modal promover igual; `template_id` só em meta.
+- Combo select: cada card usa `display_name` como título (não Title-Case do `name` técnico); descrição pública abaixo.
+- Favoritos: um título + descrição; apelido só como meta se diferente.
+- Monitor: lista e detalhe sem prefixos `estratégia` / `descrição`.
+- Fallback sem mapa: nome cru + descrição segura; título nunca `Estratégia Cripto Farol`.
+- Redaction preservada; chave técnica só em meta para admin.
+
+## Não objetivos
+
+- Reescrever mapas Python um a um.
+- Apelido por usuário.
+- Editar indicadores/schema/JSON pelo lápis.
+- Redesenhar Home ou ChartModal.
+- Ranking, promoção, dedup, walk-forward (#472).
+
+## Base visual e fidelidade
+
+Protótipo clona shell autenticado (sidebar 224 px, header 80 px, tokens canvas `#0b0e11`, card `#181a20`/`#1e2329`, CTA `#fcd535`).
+
+**Combo resultado:** clonar bloco `data-testid="combo-result-summary"` — leitura de título + descrição, sem lápis.
+
+**Combo edit:** campos título público + descrição pública; `is_readonly` só identidade.
+
+**Combo select:** clonar a grade atual de `ComboSelectPage.tsx`; delta = `h3` com `display_name` resolvido e descrição pública (sem Title-Case do `name`). Shell, ações (run/clone/edit/delete) e chave técnica como identificador permanecem.
+
+**Descoberta / Favoritos / Monitor:** delta de hierarquia do protótipo existente; texto sincronizado após save no Combo.
+
+## Decisões de produto e contrato
+
+### 1. Hierarquia única (leitura)
+
+Título público + descrição pública. Metadados abaixo, nunca no título.
+
+### 2. Fonte canônica com override
+
+Prioridade: (1) `combo_templates.display_name` / `description` não vazios; (2) mapas Python; (3) fallback seguro. Chave técnica não muda.
+
+### 3. Superfície de edição
+
+Só `/combo/edit/{template}`. Campos título + descrição → Salvar (`PUT .../identity`). Admin only; API 403 para não-admin. Combo resultado é leitura.
+
+### 4. Readonly vs identidade
+
+`is_readonly` bloqueia PUT técnico; endpoint `PUT .../identity` aceita prebuilt.
+
+### 5. Validação
+
+Título obrigatório (teto ~120); descrição obrigatória (teto 500); sem promessa de retorno.
+
+### 6. Copy longa
+
+`overflow-wrap: anywhere`; título dominante.
+
+## Interação Combo (delta)
+
+**Leitura (admin):** `h1` + botão lápis (`aria-label="Editar nome e descrição da estratégia"`, 44×44) + descrição.
+
+**Edição:** input substitui `h1`; textarea substitui parágrafo; Salvar (`#fcd535`) / Cancelar; Escape cancela.
+
+**Estados:** leitura, edição, saving, validação vazia, erro API, sucesso, não-admin sem lápis, mobile 390.
+
+**data-testid:** `combo-edit-identity`, `combo-identity-title-input`, `combo-identity-description-input`, `combo-identity-save`, `combo-identity-cancel`.
+
+## Impeccable Brief
+
+- **Problema:** identidade ilegível entre telas + copy não editável.
+- **Usuário:** admin corrige tese no Combo; traders leem nas outras telas.
+- **Resultado:** um texto, quatro superfícies; edição onde a identidade já é padrão visual.
+- **Direção:** Operate / refinamento mínimo — shell intacto; lápis + inline; outras telas só hierarquia.
+- **Escopo:** Combo resultado; Combo select (`/combo/select`); Descoberta leaderboard + modal; Favoritos desktop/mobile; Monitor lista + detalhe.
+- **Estados:** leitura, edição, save ok, 403/oculto, copy longa, fallback, apelido favorito, Monitor expandido.
+- **Interação:** lápis → campos → Salvar; tabs do protótipo mostram paridade pós-save.
+- **Restrições:** DESIGN.md read-only; redaction preservada.
+
+## Prototype
+
+- **URL navegável:** `https://dev.criptofarol.com.br/prototypes/unify-strategy-title-description/`
+- **Path versionado:** `frontend/public/prototypes/unify-strategy-title-description/index.html`
+- **Base:** shell Combo/Descoberta/Favoritos/Monitor atuais.
+- **Delta v2:** aba **Combo** default; lápis; save atualiza texto nas outras abas.
+- **Cenários:** mapeado; fallback; apelido; edição Combo; validação vazia.
+
+## Prototype Validation
+
+- **URL:** https://dev.criptofarol.com.br/prototypes/unify-strategy-title-description/
+- **Viewports:** desktop 1280×900, mobile 390×844
+- **Comando:** Playwright headless (Chromium) contra URL DEV servida
+- **Ações/asserts:**
+  - Combo: `combo-edit-identity` → editar → `combo-identity-save` → `combo-result-title` atualizado
+  - Paridade: após save, `discovery-strategy-title`, `favorites-strategy-title`, `monitor-row-strategy-title` iguais ao Combo
+  - Não-admin: toggle admin desmarcado → lápis oculto
+  - Estados extras no protótipo: saving (700ms), erro API (descrição contém `erro-api`), validação vazia, cenários mapped/fallback/alias
+  - Monitor: detalhe expandido sem prefixos `estratégia`/`descrição`
+- **Resultado:** verde, zero erros de página (2026-08-18)
+
+## Impeccable Critique
+
+**Assessment A/B (Task isolada, inherit, read-only):** direção de produto sólida; fidelidade ao bloco `combo-result-summary` boa; paridade pós-save demonstrada. Achados P1 corrigidos no protótipo v2: microcopy escopo global, toggle não-admin, ARIA básica no formulário, apelido em Favoritos no cenário alias, Escape no modal, estados saving/erro simulados. P2 aceito: detalhe Monitor simplificado vs OpportunityCard completo (implementação segue spec).
+
+## Impeccable Audit
+
+A11y: lápis 44px, `aria-label`, `aria-invalid`/`aria-describedby`, `role="status"` no save-note, Escape fecha modal, tabs com teclado. Responsivo: 1080/720, combo grid 1 col mobile, ações empilhadas. **Aceito** com P2 documentado (labels visíveis opcionais na implementação).
+
+## Impeccable Trace
+
+- Target: `frontend/public/prototypes/unify-strategy-title-description/index.html`
+- Change: `unify-strategy-title-description` · card #549
+- Browser gate: Playwright Chromium @ DEV URL, desktop + mobile, paridade + não-admin verdes
+- Crítica isolada: Task inherit, read-only (2026-08-18)
+
+## Design Critique
+
+Design anterior (só leitura) **obsoleto**. Escopo v2: edição Combo + catálogo global + hierarquia nas três telas de leitura. Achados P0/P1 do critic endereçados no protótipo; browser gate verde.
+
+**Design Agent verdict: PASS**

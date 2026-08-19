@@ -71,6 +71,8 @@ const OPPORTUNITIES = [
     symbol: 'BTC/USDT',
     timeframe: '1d',
     template_name: 'ema_rsi',
+    strategy_display_name: 'RSI: Retomada com Força',
+    strategy_description: 'Combina preço acima da média exponencial com recuperação do RSI para buscar retomadas compradoras; sai quando tendência ou força relativa cedem.',
     name: 'BTC Core',
     notes: 'fixture visual estável',
     tier: 1,

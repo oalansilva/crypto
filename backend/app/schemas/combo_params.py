@@ -24,6 +24,7 @@ class ComboTemplateMetadata(BaseModel):
 
     id: Optional[int] = None
     name: str
+    display_name: Optional[str] = None
     description: Optional[str] = None
     is_example: bool = False
     is_prebuilt: bool = False
@@ -88,6 +89,10 @@ class ComboBacktestResponse(BaseModel):
         default="fast_1d", description="Execution mode: 'fast_1d' or 'deep_15m'"
     )
     direction: str = Field(default="long", description="Backtest direction: 'long' or 'short'")
+    display_name: Optional[str] = Field(None, description="Resolved public strategy title")
+    strategy_description: Optional[str] = Field(
+        None, description="Resolved public strategy description"
+    )
     strategy_transparency: Optional[StrategyTransparency] = None
 
 
@@ -160,6 +165,10 @@ class ComboOptimizationResponse(BaseModel):
         default="fast_1d",
         description="Execution mode used by final trades: 'fast_1d' or 'deep_15m'",
     )
+    display_name: Optional[str] = Field(None, description="Resolved public strategy title")
+    strategy_description: Optional[str] = Field(
+        None, description="Resolved public strategy description"
+    )
     strategy_transparency: Optional[StrategyTransparency] = None
 
 
@@ -173,6 +182,13 @@ class UpdateTemplateRequest(BaseModel):
     template_data: Optional[Dict[str, Any]] = Field(
         None, description="Full template data (for advanced editing)"
     )
+
+
+class UpdateTemplateIdentityRequest(BaseModel):
+    """Request to update public catalog identity (title + description)."""
+
+    display_name: str = Field(..., min_length=1, max_length=120)
+    description: str = Field(..., min_length=1, max_length=500)
 
 
 class CloneTemplateRequest(BaseModel):

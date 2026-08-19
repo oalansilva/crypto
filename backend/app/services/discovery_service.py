@@ -800,12 +800,21 @@ class DiscoveryService:
 
     # --- Leaderboard (spec discovery-leaderboard) ---------------------------
 
-    def _result_row(self, row: DiscoveryResult, rank: int | None) -> dict[str, Any]:
-        return {
+    def _result_row(
+        self,
+        row: DiscoveryResult,
+        rank: int | None,
+        *,
+        identity_map: dict[str, dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        identity = (identity_map or {}).get(str(row.template_id or ""), {})
+        payload = {
             "rank": rank,
             "result_id": row.id,
             "sweep_id": row.sweep_id,
             "template_id": row.template_id,
+            "display_name": identity.get("display_name"),
+            "description": identity.get("description"),
             "symbol": row.symbol,
             "timeframe": row.timeframe,
             "direction": row.direction,
@@ -835,6 +844,7 @@ class DiscoveryService:
             "observed_valid_candles": row.observed_valid_candles,
             "fees_slippage": row.fees_slippage,
         }
+        return payload
 
     def rank_eligible(
         self, sweep_id: str, metric: str = "calmar_ratio", db: Session | None = None
@@ -869,9 +879,14 @@ class DiscoveryService:
             na.sort(key=lambda r: (-int(r.trades_count or 0), r.id))
             ranked = finite + na
             ineligible.sort(key=lambda r: r.id)
-            return [self._result_row(row, idx + 1) for idx, row in enumerate(ranked)] + [
-                self._result_row(row, None) for row in ineligible
-            ]
+            from app.services.combo_service import ComboService
+
+            template_names = [str(row.template_id) for row in rows if row.template_id]
+            identity_map = ComboService.identity_map_for_template_names(session, template_names)
+            return [
+                self._result_row(row, idx + 1, identity_map=identity_map)
+                for idx, row in enumerate(ranked)
+            ] + [self._result_row(row, None, identity_map=identity_map) for row in ineligible]
         finally:
             if db is None:
                 session.close()
