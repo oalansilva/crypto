@@ -14,6 +14,40 @@
 
 ---
 
+## 2026-08-19 — Kaizen release (lote cards 549/582/599/609)
+
+- **Release/card**: 2026-08-19 — cards 549, 582, 599, 609 (Homologado → Pronto após deploy PROD `c6762a27`).
+- **Fontes consultadas**: board Project 1 (`item-list` 230/230), git/worktrees/stash + `release-guard pre` PASS, `openspec validate --all` 145/145, PR #616, transcript Cursor desta sessão (`610c1ba2`), CI `gh pr checks --watch` WATCH_EXIT=0.
+- **Sessões analisadas**: closeout da release; implementação prévia do #609 na sessão anterior. Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: os 4 já estavam Homologado no board na abertura; Alan pediu `suba a release`. `#609` tinha comentário Homologado; `#549`/`#582`/`#599` só receberam o helper neste turno.
+
+### Métricas
+- **Board**: 4 Homologado no lote; fora: `#605` QA, `#610`/`#614` Aprovação de Design, `#611` Todo, `#608`/`#612`/`#613` Em Refinamento.
+- **Git**: `origin/develop` só com o pacote Homologado (`ff85eb71`); archive local não pôde ir para `develop` (proteção qa-gate). `release-2026-08-19` = develop + archive `0ec5dd77`. Stash 0. Worktrees in-flight classificadas via `PRESERVED_BRANCHES` (#605/#610/#614/#472/#606 e leftovers #549/#582).
+- **CI**: PR #616 verde; `qa-gate` e `deploy-staging` skip (`base_ref != develop`).
+- **OpenSpec**: 4 changes arquivadas (`--skip-specs` após sync agent-driven); specs novas `process-fsm` e `palestra-upstream-deploy`.
+- **PROD**: source `c6762a27`; alembic `20260818_0001`; bundle `index-A5R04R0w.js` / `index-Cyx126Ee.css`; health 200.
+
+### Achados
+- F-1 [major] Push em `develop` recusado (`Required status check qa-gate is expected`) para o commit de archive; o lote saiu por `release-*` → `main` mesmo com `develop` só Homologado. Esforço S | P1 | Card: #617.
+- F-2 [major] Comentário canônico Homologado ausente em 3/4 cards até o closeout (`#549`/`#582`/`#599`). Recidiva do F-1 lote 2 / contrato #579. Esforço S | P1 | Card existente: #579 (não duplicar).
+- F-3 [minor] `pre` em `release-*` bloqueou a ref local `develop` com o archive ainda não publicado. Workaround: `git branch -f develop origin/develop`. Esforço S | P2 | Card: #618.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | 3+ auditorias (#579 publicado; recidiva neste lote)
+- `develop` protegido vs archive no SHA da release | 1ª ocorrência como BLOCKER de push | promoção: runbook `release-*`
+
+### Trechos de sessão (evidência local)
+- `remote: error: GH006: Protected branch update failed for refs/heads/develop. Required status check "qa-gate" is expected.`
+- `BLOCKER: local branch not merged into origin/develop or origin/main: develop`
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #617 — closeout quando develop exige qa-gate / archive via `release-*` | P1 | F-1 | Em Refinamento |
+| #618 — `pre` em `release-*` não bloquear local `develop` | P2 | F-3 | Em Refinamento |
+| (não criado) recidiva Homologado sem comentário | — | F-2 | coberto por #579 |
+
 ## 2026-08-17 — Card #569 (pivot: reviewers locais inherit/readonly)
 
 - **Release/card**: #569 kaizen (não é closeout de lote).
