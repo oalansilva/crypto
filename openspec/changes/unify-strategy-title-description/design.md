@@ -4,11 +4,11 @@
 
 - Card: `#549`
 - Change: `unify-strategy-title-description`
-- Status observado: `Done` (homologação em curso; incremento Combo select no mesmo card, sem regressão de coluna)
-- **UI impact: affected** — lápis/edição inline no resultado Combo (admin) + hierarquia título + descrição em Combo select, Descoberta, Favoritos e Monitor
-- Aprovação humana: concedida (arraste `Aprovação de Design → Pronto para Dev`, 2026-08-18). Incremento Combo select aprovado por Alan em chat (2026-08-19), mesmo card.
-- Decisões Alan 2026-08-18: catálogo **global**; edição no **resultado do Combo**
-- **Desvio vs protótipo:** protótipo v2 não inclui aba `/combo/select`; implementação clona a grade viva de `ComboSelectPage.tsx` e só troca a fonte do título/descrição para o resolvedor público (`display_name` + `description`). Shell, ações e chave técnica como identificador permanecem.
+- Status observado: `Done` (homologação em curso; incremento identidade no editor de template, sem regressão de coluna)
+- **UI impact: affected** — título + descrição públicos em `/combo/edit`; leitura nas demais telas
+- Aprovação humana: concedida (arraste `Aprovação de Design → Pronto para Dev`, 2026-08-18). Incrementos Combo select e Combo edit aprovados por Alan em chat (2026-08-19), mesmo card.
+- Decisões Alan 2026-08-19: catálogo **global**; edição **somente** em `/combo/edit/{template}`
+- **Desvio vs protótipo:** protótipo v2 tem lápis no resultado Combo. Alan pediu identidade só no editor de template. `ComboResultsPage` volta a leitura. `ComboEditPage` abre inclusive `is_readonly` (identidade; lógica continua bloqueada). `/combo/select` Edit navega para o editor.
 
 ## Problema
 
@@ -19,8 +19,8 @@ Duas fricções no mesmo reconhecimento da estratégia:
 
 ## Usuário e contexto
 
-- **Editor:** admin no resultado Combo, após validar backtest. Quer corrigir título e tese em linguagem de trader sem clonar template.
-- **Leitor:** admin e usuário comum nas outras telas. Só leem; não veem lápis.
+- **Editor:** admin em `/combo/edit/{template}`. Quer corrigir título e tese em linguagem de trader sem clonar o template.
+- **Leitor:** admin e usuário comum nas outras telas. Só leem.
 - Desktop-first; mobile Combo com input + textarea + Salvar/Cancelar sem clip.
 
 ## Hipótese
@@ -29,7 +29,7 @@ Se o Combo resultado for a superfície de edição **e** as outras telas consumi
 
 ## Resultado esperado
 
-- Admin vê lápis no bloco `combo-result-summary` (título + descrição).
+- Admin edita título e descrição em `/combo/edit/{template}` (inclusive `is_readonly`).
 - Salvar persiste no catálogo global; próximo fetch em Descoberta/Favoritos/Monitor mostra o texto novo.
 - Descoberta: `display_name` + `description`; modal promover igual; `template_id` só em meta.
 - Combo select: cada card usa `display_name` como título (não Title-Case do `name` técnico); descrição pública abaixo.
@@ -43,14 +43,16 @@ Se o Combo resultado for a superfície de edição **e** as outras telas consumi
 - Reescrever mapas Python um a um.
 - Apelido por usuário.
 - Editar indicadores/schema/JSON pelo lápis.
-- Redesenhar `ComboEditPage`, Home ou ChartModal.
+- Redesenhar Home ou ChartModal.
 - Ranking, promoção, dedup, walk-forward (#472).
 
 ## Base visual e fidelidade
 
 Protótipo clona shell autenticado (sidebar 224 px, header 80 px, tokens canvas `#0b0e11`, card `#181a20`/`#1e2329`, CTA `#fcd535`).
 
-**Combo:** clonar bloco `data-testid="combo-result-summary"` de `ComboResultsPage.tsx` — badges símbolo/TF/direção, `h1` 2xl/3xl, descrição `text-sm leading-6 max-w-3xl`, grid de métricas. Delta = lápis 44 px + edição inline.
+**Combo resultado:** clonar bloco `data-testid="combo-result-summary"` — leitura de título + descrição, sem lápis.
+
+**Combo edit:** campos título público + descrição pública; `is_readonly` só identidade.
 
 **Combo select:** clonar a grade atual de `ComboSelectPage.tsx`; delta = `h3` com `display_name` resolvido e descrição pública (sem Title-Case do `name`). Shell, ações (run/clone/edit/delete) e chave técnica como identificador permanecem.
 
@@ -68,7 +70,7 @@ Prioridade: (1) `combo_templates.display_name` / `description` não vazios; (2) 
 
 ### 3. Superfície de edição
 
-Só resultado Combo. Um lápis → modo edição com input + textarea → Salvar/Cancelar. Admin only (`isAdmin`); API 403 para não-admin.
+Só `/combo/edit/{template}`. Campos título + descrição → Salvar (`PUT .../identity`). Admin only; API 403 para não-admin. Combo resultado é leitura.
 
 ### 4. Readonly vs identidade
 
