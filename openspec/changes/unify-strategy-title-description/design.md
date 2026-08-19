@@ -4,10 +4,11 @@
 
 - Card: `#549`
 - Change: `unify-strategy-title-description`
-- Status observado: `Design` (retorno de `Pronto para Dev` — design anterior obsoleto)
-- **UI impact: affected** — lápis/edição inline no resultado Combo (admin) + hierarquia título + descrição em Descoberta, Favoritos e Monitor
-- Aprovação humana: pendente. Este artefato não autoriza implementação.
+- Status observado: `Done` (homologação em curso; incremento Combo select no mesmo card, sem regressão de coluna)
+- **UI impact: affected** — lápis/edição inline no resultado Combo (admin) + hierarquia título + descrição em Combo select, Descoberta, Favoritos e Monitor
+- Aprovação humana: concedida (arraste `Aprovação de Design → Pronto para Dev`, 2026-08-18). Incremento Combo select aprovado por Alan em chat (2026-08-19), mesmo card.
 - Decisões Alan 2026-08-18: catálogo **global**; edição no **resultado do Combo**
+- **Desvio vs protótipo:** protótipo v2 não inclui aba `/combo/select`; implementação clona a grade viva de `ComboSelectPage.tsx` e só troca a fonte do título/descrição para o resolvedor público (`display_name` + `description`). Shell, ações e chave técnica como identificador permanecem.
 
 ## Problema
 
@@ -31,6 +32,7 @@ Se o Combo resultado for a superfície de edição **e** as outras telas consumi
 - Admin vê lápis no bloco `combo-result-summary` (título + descrição).
 - Salvar persiste no catálogo global; próximo fetch em Descoberta/Favoritos/Monitor mostra o texto novo.
 - Descoberta: `display_name` + `description`; modal promover igual; `template_id` só em meta.
+- Combo select: cada card usa `display_name` como título (não Title-Case do `name` técnico); descrição pública abaixo.
 - Favoritos: um título + descrição; apelido só como meta se diferente.
 - Monitor: lista e detalhe sem prefixos `estratégia` / `descrição`.
 - Fallback sem mapa: nome cru + descrição segura; título nunca `Estratégia Cripto Farol`.
@@ -49,6 +51,8 @@ Se o Combo resultado for a superfície de edição **e** as outras telas consumi
 Protótipo clona shell autenticado (sidebar 224 px, header 80 px, tokens canvas `#0b0e11`, card `#181a20`/`#1e2329`, CTA `#fcd535`).
 
 **Combo:** clonar bloco `data-testid="combo-result-summary"` de `ComboResultsPage.tsx` — badges símbolo/TF/direção, `h1` 2xl/3xl, descrição `text-sm leading-6 max-w-3xl`, grid de métricas. Delta = lápis 44 px + edição inline.
+
+**Combo select:** clonar a grade atual de `ComboSelectPage.tsx`; delta = `h3` com `display_name` resolvido e descrição pública (sem Title-Case do `name`). Shell, ações (run/clone/edit/delete) e chave técnica como identificador permanecem.
 
 **Descoberta / Favoritos / Monitor:** delta de hierarquia do protótipo existente; texto sincronizado após save no Combo.
 
@@ -94,7 +98,7 @@ Título obrigatório (teto ~120); descrição obrigatória (teto 500); sem prome
 - **Usuário:** admin corrige tese no Combo; traders leem nas outras telas.
 - **Resultado:** um texto, quatro superfícies; edição onde a identidade já é padrão visual.
 - **Direção:** Operate / refinamento mínimo — shell intacto; lápis + inline; outras telas só hierarquia.
-- **Escopo:** Combo resultado; Descoberta leaderboard + modal; Favoritos desktop/mobile; Monitor lista + detalhe.
+- **Escopo:** Combo resultado; Combo select (`/combo/select`); Descoberta leaderboard + modal; Favoritos desktop/mobile; Monitor lista + detalhe.
 - **Estados:** leitura, edição, save ok, 403/oculto, copy longa, fallback, apelido favorito, Monitor expandido.
 - **Interação:** lápis → campos → Salvar; tabs do protótipo mostram paridade pós-save.
 - **Restrições:** DESIGN.md read-only; redaction preservada.

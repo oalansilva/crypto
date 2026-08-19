@@ -18,6 +18,13 @@ test('Combo selection uses authenticated fetch for protected combo template rout
   assert.doesNotMatch(source, /await fetch\(`\$\{API_BASE_URL\}\/combos\//)
 })
 
+test('Combo selection renders catalog display_name instead of Title-Case technical name', async () => {
+  const source = await readFile(comboSelectPath, 'utf8')
+  assert.match(source, /function publicTemplateTitle\(/)
+  assert.match(source, /data-testid="combo-select-strategy-title"/)
+  assert.doesNotMatch(source, /split\('_'\)\.map\(w => w\.charAt\(0\)\.toUpperCase/)
+})
+
 test('Combo configuration uses authenticated fetch for protected combo execution routes', async () => {
   const source = await readFile(comboConfigurePath, 'utf8')
   assert.match(source, /import \{ authFetch \} from ['"]@\/lib\/authFetch['"]/)
