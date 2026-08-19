@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-19 - Identidade pública da estratégia é um bloco título+descrição em Combo, Descoberta, Favoritos e Monitor (card #549)
+
+**Decisão:** o título e a descrição públicos da estratégia passam a ser a mesma hierarquia em Combo (select/resultado/edit), Descoberta, Favoritos e Monitor. Admin edita o par global em `/combo/edit/{template}` (inclusive template `is_readonly`); Combo resultado permanece leitura. Persistência: coluna `combo_templates.display_name` + descrição existente; resolvedor banco > mapa > fallback.
+
+**Motivo:** as superfícies mostravam Title-Case do `template_id` ou linhas redundantes, e o Combo select não deixava editar identidade de templates oficiais.
+
+**Onde:** `backend/app/services/strategy_descriptions.py`, Combo edit/select, Discovery/Favorites/Monitor. Spec `strategy-template-descriptions`. Card #549.
+
+## 2026-08-19 - Discovery persiste Calmar/CAGR/B&H no path sem walk-forward (card #599)
+
+**Decisão:** no path legado do optimizer sem `split_train_ratio`, o Discovery calcula e persiste as métricas de ranking (CAGR, Calmar, B&H, Δ B&H) a partir do backtest final. Zero trades ou valores não finitos permanecem `N/A` (null), nunca `0.0`. RSI scalping em 1d com zero sinais deixa de aparecer como ranking zerado.
+
+**Motivo:** o leaderboard mostrava N/A ou zeros artificiais em combinações com trades, e RSI scalping 1d saía com métricas 0.
+
+**Onde:** `backend/app/services/combo_optimizer.py`, spec `discovery-leaderboard`. Card #599.
+
+## 2026-08-19 - Tabela EFSM das 12 colunas versionada em process-fsm.yaml (card #609)
+
+**Decisão:** a EFSM do processo (T0–T17a/b, I1–I9) fica compilável em `.cursor/process-fsm.yaml` com validador e fixtures em `scripts/process-fsm/`. `write_produto` não entra em `illegal_events` (gated por I1). Este card não liga hook Cursor; filhos #610/#611 seguem.
+
+**Onde:** `.cursor/process-fsm.yaml`, `scripts/process-fsm/`, spec `process-fsm`. Card #609. Epic #608.
+
 ## 2026-08-17 - Segundo pacote no mesmo dia não herda evidência do lote anterior (card #580)
 
 **Decisão:** `release-guard pre` classifica PR de código vs documental pelo diff de arquivos (`origin/main...HEAD` em `release-*`, senão `origin/main...origin/develop`) contra allowlist de closeout. Existência de `docs/release-YYYY-MM-DD.md` não exige mais `PROD_DEPLOY_EVIDENCE` por si só. Um segundo pacote no mesmo dia atualiza a mesma doc após o deploy; o `post` exige que o SHA da evidência seja ancestral de `origin/main` cujo delta restante ⊆ allowlist, com abreviação ≥7 na doc.
