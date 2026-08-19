@@ -201,6 +201,15 @@
       "evidence": "deterministic worker/service fakes assert per-combination reconciliation and ACK ordering"
     },
     {
+      "file": "backend/tests/unit/test_discovery_ranking_metrics.py",
+      "protected_behavior": "discovery leaderboard ranking metrics enrichment and persistence",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "helper unit cases plus run_combination persistence with mocked optimizer and PostgreSQL fixture"
+    },
+    {
       "file": "backend/tests/unit/test_gateway_and_agent_chat.py",
       "protected_behavior": "gateway and agent chat routes",
       "production_reachability": "reachable",
