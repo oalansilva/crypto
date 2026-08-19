@@ -79,15 +79,7 @@ export function ComboSelectPage() {
 
     const handleEdit = (e: React.MouseEvent, template: Template) => {
         e.stopPropagation()
-        if (template.is_readonly) {
-            // If read-only, open clone modal
-            setTemplateToClone(template.name)
-            setNewTemplateName(`${template.name}_copy`)
-            setCloneModalOpen(true)
-        } else {
-            // If editable, go to edit page
-            navigate(`/combo/edit/${encodeURIComponent(template.name)}`)
-        }
+        navigate(`/combo/edit/${encodeURIComponent(template.name)}`)
     }
 
     const handleClone = (e: React.MouseEvent, templateName: string) => {
@@ -220,9 +212,9 @@ export function ComboSelectPage() {
                                                 <button
                                                     onClick={(e) => handleEdit(e, template)}
                                                     className="p-1.5 hover:bg-zinc-100 rounded-md transition-colors"
-                                                    title={template.is_readonly ? "Clone & Edit" : "Edit Template"}
+                                                    title="Editar identidade e template"
                                                 >
-                                                    {template.is_readonly ? <Copy className="w-4 h-4 text-purple-400" /> : <Edit className="w-4 h-4 text-blue-400" />}
+                                                    <Edit className="w-4 h-4 text-blue-400" />
                                                 </button>
 
                                                 {!template.is_readonly && (

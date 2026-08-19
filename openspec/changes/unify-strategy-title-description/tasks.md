@@ -7,12 +7,13 @@
 - [x] 0.3 Resolvedor banco > mapa > fallback; override pareado `display_name` + `description` no catálogo
 - [x] 0.4 Testes: save identity readonly, validação vazia, paridade serialização (unit)
 
-## 1. Frontend — Combo resultado (edição)
+## 1. Frontend — Combo edit (identidade)
 
-- [x] 1.1 Lápis admin no bloco `combo-result-summary`; modo inline título + descrição; Salvar/Cancelar
-- [x] 1.2 Chamar endpoint identity; atualizar UI local após sucesso; ocultar lápis para não-admin
-- [x] 1.3 `data-testid`: `combo-edit-identity`, `combo-identity-title-input`, `combo-identity-description-input`, `combo-identity-save`, `combo-identity-cancel`
-- [x] 1.4 Combo select (`/combo/select`): título = `display_name` resolvido; descrição pública abaixo; `name` técnico só como chave/meta
+- [x] 1.1 `/combo/edit/{template}`: campos título público + descrição; Salvar chama `PUT .../identity`
+- [x] 1.2 Templates `is_readonly` abrem o editor de identidade (sem wall de clone); JSON/ranges bloqueados
+- [x] 1.3 `data-testid`: `combo-edit-identity`, `combo-identity-title-input`, `combo-identity-description-input`, `combo-identity-save`
+- [x] 1.4 Combo select: título = `display_name`; botão Edit abre `/combo/edit` também para readonly
+- [x] 1.5 Combo resultado: leitura apenas (sem lápis)
 
 ## 2. Backend — leaderboard identity fields
 
@@ -40,6 +41,6 @@
 
 ## 6. QA
 
-- [x] 6.1 Playwright visual: Combo (lápis/edição), Combo select, Descoberta, Favoritos, Monitor (baselines intencionais)
-- [x] 6.2 Validar paridade `multi_ma_crossover` entre Combo select, Descoberta, Favoritos e Monitor (override pós-save já coberto pelo fluxo Combo resultado + resolvedor global)
+- [x] 6.1 Playwright visual: Combo edit (identidade), Combo select, Descoberta, Favoritos, Monitor
+- [x] 6.2 Validar paridade `multi_ma_crossover` entre Combo select, Combo resultado, Descoberta, Favoritos e Monitor
 - [ ] 6.3 `qa-gate` verde

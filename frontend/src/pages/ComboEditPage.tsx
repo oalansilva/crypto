@@ -14,6 +14,7 @@ interface ParamConfig {
 
 interface TemplateMetadata {
     name: string
+    display_name?: string | null
     description: string
     indicators: any[]
     entry_logic: string
@@ -52,6 +53,7 @@ export function ComboEditPage() {
     const [jsonContent, setJsonContent] = useState('')
     const [jsonError, setJsonError] = useState<string | null>(null)
     const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+    const [identityError, setIdentityError] = useState<string | null>(null)
 
     useEffect(() => {
         if (templateName) {
@@ -72,6 +74,9 @@ export function ComboEditPage() {
             if (!response.ok) throw new Error('Failed to fetch template')
 
             const data = await response.json()
+            if (!String(data.display_name || '').trim()) {
+                data.display_name = data.name
+            }
             setMetadata(data)
             setOriginalMetadata(data)
             setJsonContent(JSON.stringify(data, null, 2))
@@ -117,59 +122,97 @@ export function ComboEditPage() {
         return isValid
     }
 
+    const publicTitle = String(metadata?.display_name || '').trim() || metadata?.name || templateName || ''
+
+    const saveIdentity = async (): Promise<boolean> => {
+        if (!metadata || !templateName) return false
+        const title = String(metadata.display_name || '').trim()
+        const description = String(metadata.description || '').trim()
+        if (!title || !description) {
+            setIdentityError('Informe título e descrição públicos.')
+            return false
+        }
+        if (description.length > 500) {
+            setIdentityError('Descrição pública muito longa (máx. 500).')
+            return false
+        }
+        const response = await authFetch(`${API_BASE_URL}/combos/meta/${encodeURIComponent(templateName)}/identity`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ display_name: title, description }),
+        })
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}))
+            throw new Error(error.detail || 'Não foi possível salvar a identidade.')
+        }
+        const payload = await response.json()
+        setMetadata((current) => current ? {
+            ...current,
+            display_name: payload.display_name || title,
+            description: payload.description || description,
+        } : current)
+        return true
+    }
+
     const handleSave = async () => {
         setSaving(true)
         setFormErrors({})
         setJsonError(null)
+        setIdentityError(null)
 
         try {
-            let payload: any = {}
+            let payload: Record<string, unknown> | null = null
 
-            if (advancedMode) {
-                // Parse JSON from editor
-                try {
-                    const parsed = JSON.parse(jsonContent)
-                    // Basic structure validation could go here
-                    payload = {
-                        description: parsed.description,
-                        optimization_schema: parsed.optimization_schema,
-                        template_data: parsed // Send full object for structure updates
+            if (!metadata?.is_readonly) {
+                if (advancedMode) {
+                    try {
+                        const parsed = JSON.parse(jsonContent)
+                        payload = {
+                            description: parsed.description,
+                            optimization_schema: parsed.optimization_schema,
+                            template_data: parsed
+                        }
+                    } catch (e: any) {
+                        setJsonError(`Invalid JSON: ${e.message}`)
+                        setSaving(false)
+                        return
                     }
-                } catch (e: any) {
-                    setJsonError(`Invalid JSON: ${e.message}`)
-                    setSaving(false)
-                    return
-                }
-            } else {
-                // Use form state
-                if (!metadata || !validateForm(metadata)) {
-                    setSaving(false)
-                    return
-                }
-                payload = {
-                    description: metadata.description,
-                    optimization_schema: metadata.optimization_schema
+                } else {
+                    if (!metadata || !validateForm(metadata)) {
+                        setSaving(false)
+                        return
+                    }
+                    payload = {
+                        description: metadata.description,
+                        optimization_schema: metadata.optimization_schema
+                    }
                 }
             }
 
-            const response = await authFetch(`${API_BASE_URL}/combos/meta/${templateName}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-
-            if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.detail || 'Failed to update template')
+            const identityOk = await saveIdentity()
+            if (!identityOk) {
+                setSaving(false)
+                return
             }
 
-            // Success
-            alert('Template updated successfully!')
+            if (payload) {
+                const response = await authFetch(`${API_BASE_URL}/combos/meta/${templateName}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+
+                if (!response.ok) {
+                    const error = await response.json()
+                    throw new Error(error.detail || 'Failed to update template')
+                }
+            }
+
             navigate('/combo/select')
 
         } catch (error: any) {
             console.error('Save error:', error)
-            alert(`Error saving template: ${error.message}`)
+            setIdentityError(error.message || 'Erro ao salvar')
         } finally {
             setSaving(false)
         }
@@ -208,26 +251,6 @@ export function ComboEditPage() {
     if (loading) return <div className="p-10 text-center text-zinc-900">Loading editor...</div>
     if (!metadata) return null
 
-    if (metadata.is_readonly) {
-        return (
-            <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
-                <div className="text-center glass-strong p-8 rounded-[28px] max-w-md">
-                    <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-zinc-900 mb-2">Read-Only Template</h2>
-                    <p className="text-zinc-400 mb-6">
-                        This is a system template and cannot be edited directly. Please clone it to make changes.
-                    </p>
-                    <button
-                        onClick={() => navigate('/combo/select')}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-zinc-900 rounded-[16px] transition-colors"
-                    >
-                        Go Back
-                    </button>
-                </div>
-            </div>
-        )
-    }
-
     return (
         <div className="app-page combo-page relative pb-20">
             <div className="sticky top-0 z-20 border-b border-zinc-200 bg-white/90 backdrop-blur">
@@ -241,25 +264,39 @@ export function ComboEditPage() {
                             <ArrowLeft className="h-4 w-4" />
                             Templates
                         </button>
-                        <h1 className="truncate text-xl font-bold text-zinc-900">{metadata.name}</h1>
+                        <h1 className="truncate text-xl font-bold text-zinc-900" data-testid="combo-edit-heading">
+                            {publicTitle}
+                        </h1>
                         <p className="flex items-center gap-2 text-sm text-zinc-500">
-                            <Check className="h-4 w-4 text-emerald-500" />
-                            Template editável
+                            {metadata.is_readonly ? (
+                                <>
+                                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                    Identidade editável · lógica do sistema bloqueada
+                                </>
+                            ) : (
+                                <>
+                                    <Check className="h-4 w-4 text-emerald-500" />
+                                    Template editável
+                                </>
+                            )}
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setAdvancedMode((value) => !value)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
-                        >
-                            {advancedMode ? <Type className="h-4 w-4" /> : <Code className="h-4 w-4" />}
-                            {advancedMode ? 'Modo visual' : 'JSON'}
-                        </button>
+                        {!metadata.is_readonly ? (
+                            <button
+                                type="button"
+                                onClick={() => setAdvancedMode((value) => !value)}
+                                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+                            >
+                                {advancedMode ? <Type className="h-4 w-4" /> : <Code className="h-4 w-4" />}
+                                {advancedMode ? 'Modo visual' : 'JSON'}
+                            </button>
+                        ) : null}
                         <button
                             type="button"
                             onClick={handleSave}
                             disabled={saving}
+                            data-testid="combo-identity-save"
                             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             <Save className="h-4 w-4" />
@@ -269,51 +306,46 @@ export function ComboEditPage() {
                 </div>
             </div>
 
-            {/* Main Content */}
             <main className="container mx-auto px-6 py-8">
-                {advancedMode ? (
-                    // JSON Editor Mode
-                    <div className="h-[80vh] glass-strong rounded-[28px] border border-zinc-200 overflow-hidden">
-                        <Editor
-                            height="100%"
-                            defaultLanguage="json"
-                            theme="vs-dark"
-                            value={jsonContent}
-                            onChange={(value) => {
-                                setJsonContent(value || '')
-                                setJsonError(null)
-                            }}
-                            options={{
-                                minimap: { enabled: false },
-                                fontSize: 13,
-                                formatOnPaste: true,
-                                formatOnType: true
-                            }}
-                        />
-                        {jsonError && (
-                            <div className="absolute bottom-4 left-4 right-4 bg-red-500/90 text-zinc-900 p-3 rounded-[16px] text-sm font-mono backdrop-blur-md border border-red-400 shadow-xl animate-shake">
-                                {jsonError}
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    // Visual Form Mode
+                {!advancedMode || metadata.is_readonly ? (
                     <div className="max-w-3xl mx-auto space-y-6">
-                        {/* Description */}
-                        <div className="glass-strong p-6 rounded-[28px] border border-zinc-200">
-                            <label className="block text-sm font-medium text-zinc-400 mb-2">Description</label>
+                        <div className="glass-strong p-6 rounded-[28px] border border-zinc-200" data-testid="combo-edit-identity">
+                            <p className="mb-4 text-sm text-zinc-500">
+                                Título e descrição públicos valem em Combo, Descoberta, Favoritos e Monitor.
+                            </p>
+                            <label className="block text-sm font-medium text-zinc-400 mb-2" htmlFor="combo-identity-title-input">
+                                Título público
+                            </label>
+                            <input
+                                id="combo-identity-title-input"
+                                data-testid="combo-identity-title-input"
+                                value={String(metadata.display_name || '')}
+                                onChange={(e) => setMetadata({ ...metadata, display_name: e.target.value })}
+                                maxLength={120}
+                                className="w-full bg-white0 border border-zinc-200 rounded-[16px] p-3 text-zinc-900 focus:border-blue-500 focus:outline-none text-sm mb-4"
+                                placeholder="Nome público da estratégia"
+                            />
+                            <label className="block text-sm font-medium text-zinc-400 mb-2" htmlFor="combo-identity-description-input">
+                                Descrição pública
+                            </label>
                             <textarea
+                                id="combo-identity-description-input"
+                                data-testid="combo-identity-description-input"
                                 value={metadata.description}
                                 onChange={(e) => setMetadata({ ...metadata, description: e.target.value })}
+                                maxLength={500}
                                 className="w-full bg-white0 border border-zinc-200 rounded-[16px] p-3 text-zinc-900 focus:border-blue-500 focus:outline-none h-24 text-sm"
-                                placeholder="Strategy description..."
+                                placeholder="Descrição pública da estratégia"
                             />
-                            {formErrors.description && (
+                            {identityError ? (
+                                <p className="text-red-400 text-xs mt-2" data-testid="combo-identity-error">{identityError}</p>
+                            ) : null}
+                            {formErrors.description ? (
                                 <p className="text-red-400 text-xs mt-1">{formErrors.description}</p>
-                            )}
+                            ) : null}
                         </div>
 
-                        {/* Optimization Parameters */}
+                        {!metadata.is_readonly ? (
                         <div className="space-y-4">
                             <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
                                 <Settings className="w-5 h-5 text-purple-400" />
@@ -375,6 +407,31 @@ export function ComboEditPage() {
                             ))
                             })()}
                         </div>
+                        ) : null}
+                    </div>
+                ) : (
+                    <div className="h-[80vh] glass-strong rounded-[28px] border border-zinc-200 overflow-hidden">
+                        <Editor
+                            height="100%"
+                            defaultLanguage="json"
+                            theme="vs-dark"
+                            value={jsonContent}
+                            onChange={(value) => {
+                                setJsonContent(value || '')
+                                setJsonError(null)
+                            }}
+                            options={{
+                                minimap: { enabled: false },
+                                fontSize: 13,
+                                formatOnPaste: true,
+                                formatOnType: true
+                            }}
+                        />
+                        {jsonError && (
+                            <div className="absolute bottom-4 left-4 right-4 bg-red-500/90 text-zinc-900 p-3 rounded-[16px] text-sm font-mono backdrop-blur-md border border-red-400 shadow-xl animate-shake">
+                                {jsonError}
+                            </div>
+                        )}
                     </div>
                 )}
             </main>

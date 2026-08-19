@@ -56,30 +56,30 @@ Each Discovery leaderboard row SHALL include additive `display_name` and `descri
 - **AND** `description` SHALL use the public description resolver's safe non-empty fallback
 - **AND** the UI SHALL NOT substitute an empty heading or expose parameters as the public description.
 
-### Requirement: Admin can edit global public identity from Combo result
-An authenticated admin SHALL edit the public display name and description of a strategy template from the Combo result summary. The edit SHALL persist globally and SHALL be reflected on the next read in Combo, Descoberta, Favoritos and Monitor for the same template key.
+### Requirement: Admin can edit global public identity from Combo template editor
+An authenticated admin SHALL edit the public display name and description of a strategy template from `/combo/edit/{template_name}`. The edit SHALL persist globally and SHALL be reflected on the next read in Combo resultado, Combo select, Descoberta, Favoritos and Monitor for the same template key. Combo results SHALL present identity as read-only.
 
-#### Scenario: Admin saves identity from Combo result
-- **WHEN** an admin edits the title and description inline on `/combo/results` and saves
-- **THEN** the system SHALL persist `display_name` and `description` on `combo_templates` for that `template_name`
-- **AND** the Combo result summary SHALL show the saved values immediately after success.
+#### Scenario: Admin saves identity from Combo template editor
+- **WHEN** an admin edits the title and description on `/combo/edit/{template_name}` and saves
+- **THEN** the system SHALL persist `display_name` and `description` on `combo_templates` for that template
+- **AND** the editor SHALL show the saved public title as heading.
 
 #### Scenario: Read-only template accepts identity edit only
-- **WHEN** an admin saves identity for a template with `is_readonly=true`
-- **THEN** the identity endpoint SHALL succeed
+- **WHEN** an admin opens `/combo/edit/multi_ma_crossover` (`is_readonly=true`)
+- **THEN** the identity fields SHALL be editable
+- **AND** schema/JSON/optimization editors SHALL remain hidden or blocked
 - **AND** the technical template PUT endpoint SHALL continue to reject schema/logic edits for that template.
 
 #### Scenario: Non-admin cannot edit identity
-- **WHEN** a non-admin user opens `/combo/results`
-- **THEN** the edit affordance SHALL NOT be visible
-- **AND** a direct call to the identity endpoint SHALL return forbidden.
+- **WHEN** a non-admin user calls the identity endpoint
+- **THEN** the identity endpoint SHALL return forbidden.
 
 #### Scenario: Same template key stays consistent after save
-- **WHEN** an admin saves a new public title and description for `multi_ma_crossover`
-- **THEN** Combo select, Descoberta, Favoritos and Monitor SHALL resolve the same title and description for that key on the next fetch
+- **WHEN** an admin saves a new public title and description for `multi_ma_crossover` from the template editor
+- **THEN** Combo select, Combo resultado, Descoberta, Favoritos and Monitor SHALL resolve the same title and description for that key on the next fetch
 - **AND** the technical template key SHALL remain unchanged.
 
 #### Scenario: Seed mapping applies without override
 - **WHEN** no database override exists for `multi_ma_crossover`
 - **THEN** all surfaces SHALL resolve to the seeded public title `Médias Móveis: Tendência em Virada` and its mapped description
-- **UNTIL** an admin saves a different override through the Combo result editor.
+- **UNTIL** an admin saves a different override through the Combo template editor.
