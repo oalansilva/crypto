@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import os
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -13,22 +12,6 @@ from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
 from app.services.combo_optimizer import _enrich_ranking_metrics
-from database_guard import assert_safe_test_database_url
-
-
-@pytest.fixture
-def engine_factory():
-    def _factory():
-        assert_safe_test_database_url(
-            os.environ["DATABASE_URL"],
-            variable_name="DATABASE_URL",
-            allow_github_disposable=True,
-        )
-        engine = create_engine(os.environ["DATABASE_URL"])
-        Base.metadata.create_all(bind=engine)
-        return engine
-
-    return _factory
 
 
 def _sample_trades() -> list[dict]:
@@ -113,11 +96,14 @@ class TestEnrichRankingMetrics:
 
 
 class TestDiscoveryRankingPersistence:
-    def test_run_combination_persists_ranking_columns(self, engine_factory, monkeypatch):
+    def test_run_combination_persists_ranking_columns(
+        self, postgres_isolation, unit_database_url, monkeypatch
+    ):
         from app.models_discovery import DiscoveryCombination, DiscoveryResult, DiscoverySweep
         from app.tasks.discovery_tasks import run_combination
 
-        engine = engine_factory()
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
         with engine.begin() as connection:
             connection.exec_driver_sql("DELETE FROM discovery_results")
             connection.exec_driver_sql("DELETE FROM discovery_combinations")
