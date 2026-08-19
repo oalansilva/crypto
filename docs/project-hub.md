@@ -31,6 +31,7 @@ Aqui deve ficar:
 
 - Fase atual: fechamento do beta fechado.
 - Fonte operacional: GitHub Project `MVP Cripto - Beta Fechado`.
+- Release 2026-08-19 publicada em PROD (`c6762a27`): identidade pública de estratégia (#549), métricas Discovery (#599), palestra HITL (#582), `process-fsm.yaml` (#609). Doc: `docs/release-2026-08-19.md`.
 - Status consolidado em 2026-05-08: Alan homologou definicoes de marca, beta, metricas, captacao, copy, divulgacao e feedback.
 - Release documental 2026-05-09 concluida: cards `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` consolidados na documentacao, publicados em `main` pelo PR `#175` e movidos para `Pronto / Done` no GitHub Project.
 - Entregaveis da Clara em 2026-05-09 para revisao: `#143` com brand system, wordmark, mark e ativos minimos; `#140` com landing page estatica para captacao e documento de copy/estrutura.
