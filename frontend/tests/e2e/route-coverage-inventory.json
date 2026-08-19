@@ -37,8 +37,9 @@
     },
     {
       "path": "/combo/select",
-      "status": "grandfathered",
-      "reason": "functional coverage in admin-menu-visibility; no versioned visual spec yet"
+      "status": "covered",
+      "functional": "frontend/tests/e2e/combo-select-visual-critical.spec.ts",
+      "visual": "frontend/tests/e2e/combo-select-visual-critical.spec.ts"
     },
     {
       "path": "/combo/selectCrypto",

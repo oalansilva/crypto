@@ -1,12 +1,18 @@
 ## ADDED Requirements
 
 ### Requirement: Visible strategy identity uses one title-description hierarchy
-Combo (resultado), Descoberta, Favoritos e Monitor SHALL present a visible strategy identity as the canonical public display name followed immediately by the canonical public description. The identity block SHALL preserve the current product shell, actions, metrics and operational states, and SHALL wrap long PT-BR copy without clipping or horizontal page overflow.
+Combo (resultado e `/combo/select`), Descoberta, Favoritos e Monitor SHALL present a visible strategy identity as the canonical public display name followed immediately by the canonical public description. The identity block SHALL preserve the current product shell, actions, metrics and operational states, and SHALL wrap long PT-BR copy without clipping or horizontal page overflow.
 
 #### Scenario: Combo result renders strategy identity
 - **WHEN** an authorized user opens a Combo backtest result
 - **THEN** the summary block SHALL render the resolved public display name as title and the resolved public description directly below
 - **AND** symbol, timeframe, direction and performance metrics SHALL remain separate from the identity block.
+
+#### Scenario: Combo select renders catalog identity
+- **WHEN** an admin opens `/combo/select`
+- **THEN** each template card SHALL render the resolved public `display_name` as title and the resolved public description below
+- **AND** the visible title SHALL NOT be a Title-Case rewrite of the technical `name` (`multi_ma_crossover` SHALL NOT appear as `Multi Ma Crossover`)
+- **AND** the technical template key SHALL remain the selection/clone identifier, not the heading.
 
 #### Scenario: Discovery renders a leaderboard candidate
 - **WHEN** a leaderboard row contains `display_name` and `description`
@@ -70,7 +76,7 @@ An authenticated admin SHALL edit the public display name and description of a s
 
 #### Scenario: Same template key stays consistent after save
 - **WHEN** an admin saves a new public title and description for `multi_ma_crossover`
-- **THEN** Descoberta, Favoritos and Monitor SHALL resolve the same title and description for that key on the next fetch
+- **THEN** Combo select, Descoberta, Favoritos and Monitor SHALL resolve the same title and description for that key on the next fetch
 - **AND** the technical template key SHALL remain unchanged.
 
 #### Scenario: Seed mapping applies without override

@@ -6,8 +6,13 @@ import { authFetch } from '../lib/authFetch'
 
 interface Template {
     name: string
+    display_name?: string | null
     description: string
     is_readonly: boolean
+}
+
+function publicTemplateTitle(template: Template): string {
+    return String(template.display_name || '').trim() || template.name
 }
 
 interface TemplateList {
@@ -240,10 +245,13 @@ export function ComboSelectPage() {
                                             </div>
                                         </div>
 
-                                        <h3 className="text-lg font-bold text-zinc-900 mb-2 group-hover:text-blue-400 transition-colors">
-                                            {template.name.replace(/^Example: /, '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                        <h3
+                                            className="text-lg font-bold text-zinc-900 mb-2 group-hover:text-blue-400 transition-colors"
+                                            data-testid="combo-select-strategy-title"
+                                        >
+                                            {publicTemplateTitle(template)}
                                         </h3>
-                                        <p className="text-sm text-zinc-400 line-clamp-2">{template.description}</p>
+                                        <p className="text-sm text-zinc-400 leading-6 break-words">{template.description}</p>
 
                                         {selectedTemplate === template.name && (
                                             <div className="absolute top-4 right-4 bg-blue-500 rounded-full p-1 animate-in fade-in zoom-in">

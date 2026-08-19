@@ -6,7 +6,7 @@ Favoritos, Monitor e Descoberta apresentam a mesma estratégia com hierarquias e
 
 - Admin edita **nome público** e **descrição** no resultado do Combo (lápis inline no bloco de resumo).
 - Persistência global em `combo_templates` (`display_name` novo + `description` existente); resolvedor preferindo banco > mapas Python > fallback seguro.
-- Usar, nas quatro superfícies de leitura (Combo, Descoberta, Favoritos, Monitor), o mesmo título público + descrição pública imediatamente abaixo.
+- Usar, nas superfícies de leitura (Combo resultado, Combo select, Descoberta, Favoritos, Monitor), o mesmo título público + descrição pública imediatamente abaixo.
 - Expor `display_name` e `description` em cada linha do leaderboard de Descoberta a partir do resolvedor unificado.
 - Substituir o `template_id` cru no título de Descoberta; modal de promover com a mesma identidade.
 - Remover de Favoritos a linha intermediária de detalhe redundante; apelido do favorito só como meta secundária.
@@ -27,6 +27,6 @@ Nenhuma.
 ## Impact
 
 - Backend: coluna `display_name` em `combo_templates`; `PUT /api/combos/meta/{template_name}/identity` (admin); resolvedor unificado em combo, discovery leaderboard, favorites e opportunities.
-- Frontend: `ComboResultsPage.tsx` (lápis admin); `DiscoveryPage.tsx`, `FavoritesDashboard.tsx`, `OpportunityCard.tsx`.
+- Frontend: `ComboResultsPage.tsx` (lápis admin); `ComboSelectPage.tsx` (título = `display_name`); `DiscoveryPage.tsx`, `FavoritesDashboard.tsx`, `OpportunityCard.tsx`.
 - Contrato de API: campos aditivos no leaderboard; endpoint de identidade separado do PUT técnico.
-- Testes: integração identity + paridade; Playwright visual Combo + três superfícies.
+- Testes: integração identity + paridade; Playwright visual Combo resultado, Combo select, Descoberta, Favoritos e Monitor.

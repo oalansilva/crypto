@@ -12,6 +12,7 @@
 - [x] 1.1 Lápis admin no bloco `combo-result-summary`; modo inline título + descrição; Salvar/Cancelar
 - [x] 1.2 Chamar endpoint identity; atualizar UI local após sucesso; ocultar lápis para não-admin
 - [x] 1.3 `data-testid`: `combo-edit-identity`, `combo-identity-title-input`, `combo-identity-description-input`, `combo-identity-save`, `combo-identity-cancel`
+- [x] 1.4 Combo select (`/combo/select`): título = `display_name` resolvido; descrição pública abaixo; `name` técnico só como chave/meta
 
 ## 2. Backend — leaderboard identity fields
 
@@ -39,6 +40,6 @@
 
 ## 6. QA
 
-- [x] 6.1 Playwright visual: Combo (lápis/edição), Descoberta, Favoritos, Monitor (baselines intencionais)
-- [ ] 6.2 Validar paridade `multi_ma_crossover` (e override pós-save) entre as quatro superfícies
+- [x] 6.1 Playwright visual: Combo (lápis/edição), Combo select, Descoberta, Favoritos, Monitor (baselines intencionais)
+- [x] 6.2 Validar paridade `multi_ma_crossover` entre Combo select, Descoberta, Favoritos e Monitor (override pós-save já coberto pelo fluxo Combo resultado + resolvedor global)
 - [ ] 6.3 `qa-gate` verde
