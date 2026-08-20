@@ -1,0 +1,75 @@
+## ADDED Requirements
+
+### Requirement: Guard denies Agent Status item-edit
+The Guard `beforeShellExecution` **and** `preToolUse` paths SHALL classify `.design-digest` writes and Status board edits **before** the missing-path early-return and **before** `design_globs` glob-first allow. It SHALL deny a Cursor Shell command that edits Project 1 `Status` via `gh project item-edit` (Status field id `PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM`, or a `--single-select-option-id` that is a Status option) or via GraphQL `updateProjectV2ItemFieldValue` targeting that field, **even when** the same `command` string also contains `process_event.py`. A Shell command that is **only** a python invocation of `scripts/process-fsm/process_event.py` plus a named event and flags MUST be allowed by this Status-edit rule. The Guard MUST deny `Write`/`StrReplace`/`Delete` (and mutating shell) whose path ends with `.design-digest`. The bash fallback in `.cursor/hooks/process-fsm-guard.sh` MUST apply the same Status-edit and sidecar denies before allowing commands that have no file path and before any `design_globs` allow. The Guard MUST NOT honor `PROCESS_FSM_MOVE` or any environment allow. The Guard MUST still NOT itself move Project Status. `git commit`, `git push`, and `./restart` remain out of scope.
+
+#### Scenario: Direct item-edit of Status is denied
+- **WHEN** `beforeShellExecution` stdin `command` contains `gh project item-edit` and the Status field id, even if no file `path` is present
+- **THEN** the Guard returns `permission: deny`
+- **AND** it MUST NOT take the missing-path early-return allow
+- **AND** `agent_message` tells the Agent to use `process_event`
+
+#### Scenario: process_event CLI is allowed
+- **WHEN** `command` is solely a python invocation of `scripts/process-fsm/process_event.py` with a named event and optional flags (no `item-edit` / GraphQL Status in the same string)
+- **THEN** this Status-edit rule does not deny the command
+
+#### Scenario: Chained process_event and item-edit is denied
+- **WHEN** `command` contains both `process_event.py` and `gh project item-edit` with the Status field id
+- **THEN** the Guard returns `permission: deny`
+
+#### Scenario: Sidecar write is denied
+- **WHEN** stdin is `Write` or mutating shell of a path ending in `.design-digest`
+- **THEN** the Guard returns `permission: deny`
+
+#### Scenario: Read-only gh remains allowed
+- **WHEN** `command` is `gh issue view 612` or `gh project item-list` without `item-edit`
+- **THEN** the Guard does not deny because of the Status-edit rule
+
+## MODIFIED Requirements
+
+### Requirement: Guard compiles yaml and resolver before product writes
+`scripts/process-fsm/` SHALL expose a Guard that, given a Cursor hook stdin JSON, extracts the path from the Cursor envelope, classifies it against yaml `product_globs` / `design_globs` **before** calling `evaluate()`, and uses the resolver for `(q, bound_card, q_git)`. Event `write_produto` MUST be sent to `evaluate()` only when the path matches `product_globs`. Paths outside `product_globs` MUST return `permission: allow` when `status` is readable (including OpenSpec and prototype writes in Design), **except** (a) Shell commands classified as Project Status edits and (b) any `Write`/`StrReplace`/`Delete` or mutating shell whose path ends with `.design-digest` (any `q`; classified **before** `design_globs` glob-first). The Guard MUST NOT invent transitions, MUST NOT move Project Status, and MUST NOT replace the Impeccable adapter.
+
+Fixtures MUST use the live Cursor envelope, not an internal dict that skips the parser:
+- `preToolUse`: `tool_name`, `tool_input` (`path` / `file_path` / `file` / `target_notebook`), `cwd`; tests MAY inject `status`.
+- `beforeShellExecution`: `command`, `cwd`; tests MAY inject `status`.
+
+#### Scenario: Product write allowed under I1
+- **WHEN** stdin JSON is a `Write` (or `StrReplace`/`Delete`/`EditNotebook`) of a `product_globs` path, `status` is `Em desenvolvimento` or `Code Review`, `q_git` is `card-<id>-*`, and `bound_card` equals that id
+- **THEN** the Guard returns `permission: allow`
+
+#### Scenario: Illegal product write is denied
+- **WHEN** stdin JSON is a product `Write` and any of Todo, Design, Aprovação de Design, Pronto para Dev, QA, Done, Homologado, Pronto, Cancelado, `q_git=develop`, `q_git=main`, or `bound_card=⊥` holds
+- **THEN** the Guard returns `permission: deny`
+- **AND** `agent_message` names the reason (`I1`, `I3`, illegal_edge id, or unbound)
+
+#### Scenario: I3 two-phase apply
+- **WHEN** `status` is `Pronto para Dev` and the tool writes a `product_globs` path even with `q_git=card-<id>-*` and matching `bound_card`
+- **THEN** the Guard returns `permission: deny`
+- **AND** allow happens only after `status` is already `Em desenvolvimento`
+
+#### Scenario: Replay b6a71170
+- **WHEN** the fixture is `Write` of `backend/app/tasks/discovery_tasks.py` with `q_git=develop`
+- **THEN** the Guard returns `permission: deny`
+
+#### Scenario: Design OpenSpec write is not write_produto
+- **WHEN** stdin is `preToolUse` `Write` of a path under `openspec/changes/` (or `frontend/public/prototypes/`) and `status` is `Design` and `q_git` matches `card-<id>-*`
+- **THEN** the Guard returns `permission: allow`
+- **AND** `evaluate(write_produto)` is not invoked for that path
+- **AND** the path does not end with `.design-digest`
+
+#### Scenario: Sidecar write is denied even under design_globs
+- **WHEN** stdin is `preToolUse` `Write` (or `StrReplace`/`Delete`) of `openspec/changes/<change>/.design-digest` with a file path present and `status` is `Design` (or any other `q`)
+- **THEN** the Guard returns `permission: deny`
+- **AND** it MUST classify the sidecar **before** the `design_globs` allow
+
+### Requirement: Shell writes use the same deny as Write
+`.cursor/hooks.json` SHALL register `beforeShellExecution` on the same Guard adapter. That hook SHALL apply the same deny as `Write` for commands classified as mutating a `product_globs` path (shell redirection, `tee`, `sed -i`, copy/move onto a product path). Commands that only read or test product trees (`pytest`, `ruff`, `git status`) MUST be allowed. Commands classified as Project Status `item-edit` / Status GraphQL MUST be denied (card #612). `git commit`, `git push`, and `./restart` remain out of scope.
+
+#### Scenario: Redirect onto backend
+- **WHEN** `beforeShellExecution` stdin has `command` that redirects or `tee`s onto `backend/app/main.py` and I1 does not hold
+- **THEN** permission is `deny`
+
+#### Scenario: Pytest is not a write
+- **WHEN** `command` is `pytest backend/ -q` (or equivalent test runner) without a mutation token
+- **THEN** permission is `allow`
