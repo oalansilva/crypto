@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-08-20 - Discovery sempre Deep Backtest 15m + walk-forward 70/30 (card #605)
+
+**Decisão:** toda combinação do Discovery chama `run_optimization` com `deep_backtest=true` e `split_train_ratio=0.7`. Ranking, coverage e elegibilidade 30/90 usam a janela in-sample. Holdout (`oos_metrics` / `oos_verdict`) persiste no JSON `metrics` e não substitui a elegibilidade Discovery. Zero trades IS permanece N/A. Isto substitui, no Discovery, o path legado sem split descrito em 2026-08-19 (#599); Combo/outros callers sem split continuam no helper #599.
+
+**Motivo:** pedido de Alan para o Discovery usar as mesmas opções da tela Combo (Deep 15m + validação 70/30), sem reabrir o #599.
+
+**Onde:** `backend/app/tasks/discovery_tasks.py`, specs `discovery-sweep` e `discovery-leaderboard`. Card #605.
+
+## 2026-08-20 - Guard Write compila a EFSM + resolver (cards #610 e #611)
+
+**Decisão:** o resolver classifica `(q, bound_card, q_git)` pelo worktree do **path**. O Guard Cursor (`preToolUse` + `beforeShellExecution`) compila `.cursor/process-fsm.yaml` + resolver; Write de produto na `develop`/`main` ou fora de I1 é deny. Fail-closed assimétrico: produto deny se `q` ilegível; Design em `card-<id>-*` allow. Impeccable permanece. Residual P2: comando Shell cujo argv não mostra o path de produto (script wrapper).
+
+**Motivo:** a sessão `b6a71170` escreveu `backend/` com `q_git=develop`. Prompt não basta para o Auto.
+
+**Onde:** `scripts/process-fsm/resolve.py`, `scripts/process-fsm/guard.py`, `.cursor/hooks.json`. Specs `process-fsm-resolver`, `process-fsm-guard`, `cursor-harness`. Cards #610 e #611. Epic #608.
+
 ## 2026-08-19 - Identidade pública da estratégia é um bloco título+descrição em Combo, Descoberta, Favoritos e Monitor (card #549)
 
 **Decisão:** o título e a descrição públicos da estratégia passam a ser a mesma hierarquia em Combo (select/resultado/edit), Descoberta, Favoritos e Monitor. Admin edita o par global em `/combo/edit/{template}` (inclusive template `is_readonly`); Combo resultado permanece leitura. Persistência: coluna `combo_templates.display_name` + descrição existente; resolvedor banco > mapa > fallback.
