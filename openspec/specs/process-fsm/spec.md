@@ -1,7 +1,7 @@
 # process-fsm Specification
 
 ## Purpose
-Tabela EFSM compilável das 12 colunas do processo (`T0`–`T17` + fixtures), versionada em `.cursor/process-fsm.yaml`, sem ligar hooks de write no Cursor.
+Tabela EFSM compilável das 12 colunas do processo (`T0`–`T17` + fixtures), versionada em `.cursor/process-fsm.yaml`. Consumida pelo resolver (#610) e pelo Guard Write (#611).
 
 ## Requirements
 
