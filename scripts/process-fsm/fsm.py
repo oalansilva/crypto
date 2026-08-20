@@ -235,6 +235,14 @@ class EvalContext:
     q_git: str | None = None
     bound_card: str | int | None = None
     path: str | None = None
+    g_design: bool | None = None
+    digest_changed: bool | None = None
+    m_lote: bool | None = None
+    checks_green: bool | None = None
+    open_p0_p1: bool | None = None
+    reviewers_ok: bool | None = None
+    flaky_infra: bool | None = None
+    source_failure: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -243,6 +251,49 @@ class EvalResult:
     state: str | None
     to: str | None = None
     reason: str | None = None
+
+
+NAMED_GUARDS = {
+    "G_design": "g_design",
+    "digest_changed": "digest_changed",
+    "M_lote": "m_lote",
+    "checks_green": "checks_green",
+    "open_p0_p1": "open_p0_p1",
+    "reviewers_ok": "reviewers_ok",
+    "flaky_infra": "flaky_infra",
+    "source_failure": "source_failure",
+}
+
+I4_EVENTS = frozenset({"iniciar_apply", "pedir_review"})
+
+
+def q_git_card(q_git: str | None) -> bool:
+    return bool(q_git) and CARD_GIT_RE.match(str(q_git)) is not None
+
+
+def enabled_events(fsm: dict[str, Any], state: str | None) -> list[str]:
+    mapping = fsm.get("enabled_events") or {}
+    if state is None:
+        return []
+    values = mapping.get(state) or []
+    return list(values)
+
+
+def _guard_holds(row: dict[str, Any], ctx: EvalContext) -> EvalResult | None:
+    name = row.get("guard")
+    if not name:
+        return None
+    if name == "q_git_card":
+        if q_git_card(ctx.q_git):
+            return None
+        return EvalResult("reject", ctx.state, None, "guard:q_git_card")
+    field = NAMED_GUARDS.get(str(name))
+    if field is None:
+        return EvalResult("reject", ctx.state, None, f"guard:{name}")
+    value = getattr(ctx, field)
+    if value is True:
+        return None
+    return EvalResult("reject", ctx.state, None, f"guard:{name}")
 
 
 def evaluate(fsm: dict[str, Any], ctx: EvalContext) -> EvalResult:
@@ -262,5 +313,10 @@ def evaluate(fsm: dict[str, Any], ctx: EvalContext) -> EvalResult:
         if actors:
             if ctx.actor is None or ctx.actor not in actors:
                 return EvalResult("reject", ctx.state, None, "actor")
+        if ctx.event in I4_EVENTS and ctx.digest_changed is not False:
+            return EvalResult("reject", ctx.state, None, "I4")
+        blocked = _guard_holds(row, ctx)
+        if blocked is not None:
+            return blocked
         return EvalResult("transition", ctx.state, row.get("to"), row.get("id"))
     return EvalResult("reject", ctx.state, None, "no_edge")

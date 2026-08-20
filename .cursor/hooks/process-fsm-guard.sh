@@ -32,6 +32,25 @@ for key in ("path", "file_path", "file", "target_notebook"):
         path = value.strip()
         break
 command = payload.get("command") if isinstance(payload.get("command"), str) else ""
+if "item-edit" in command and (
+    "PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM" in command
+    or "updateProjectV2ItemFieldValue" in command
+    or any(x in command for x in (
+        "fed46e78", "4c26ac72", "bd47fbe8", "b45bf4aa", "0257f58c", "fe1ad960",
+        "b1858de0", "9220bf8c", "e02597eb", "dfcb47b5", "8ca47888", "ce5cd459",
+    ))
+):
+    msg = "process-fsm-guard deny reason=status_item_edit. Use process_event."
+    print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
+    sys.exit(0)
+if "updateProjectV2ItemFieldValue" in command and "PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM" in command:
+    msg = "process-fsm-guard deny reason=status_item_edit. Use process_event."
+    print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
+    sys.exit(0)
+if ".design-digest" in command:
+    msg = "process-fsm-guard deny reason=sidecar"
+    print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
+    sys.exit(0)
 if path is None and command:
     if re.search(r"(?:>>|>|\btee\s+|sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)", command):
         match = re.search(
@@ -50,6 +69,10 @@ if not path:
 posix = path.replace("\\", "/")
 if posix.startswith("./"):
     posix = posix[2:]
+if posix.endswith(".design-digest"):
+    msg = "process-fsm-guard deny reason=sidecar"
+    print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
+    sys.exit(0)
 for marker in ("/backend/", "/frontend/src/", "/openspec/changes/", "/frontend/public/prototypes/"):
     idx = posix.find(marker)
     if idx != -1:

@@ -17,6 +17,11 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from board_status import (  # noqa: E402
+    is_sidecar_path,
+    is_status_edit_command,
+    sidecar_in_command,
+)
 from fsm import CARD_GIT_RE, EvalContext, EvalResult, evaluate, load_fsm  # noqa: E402
 from resolve import UNBOUND, resolve  # noqa: E402
 
@@ -115,6 +120,30 @@ def _path_from_command(command: str) -> str | None:
     if found.startswith("./"):
         found = found[2:]
     return found
+
+
+def _command(payload: Mapping[str, Any]) -> str:
+    raw = payload.get("command")
+    if isinstance(raw, str) and raw.strip():
+        return raw
+    data = _tool_input(payload)
+    cmd = data.get("command")
+    return cmd.strip() if isinstance(cmd, str) and cmd.strip() else ""
+
+
+def _sidecar_deny() -> dict[str, str]:
+    message = (
+        "process-fsm-guard deny reason=sidecar. .design-digest is written only by process_event T5."
+    )
+    return {"permission": "deny", "agent_message": message, "user_message": message}
+
+
+def _status_edit_deny() -> dict[str, str]:
+    message = (
+        "process-fsm-guard deny reason=status_item_edit. Use scripts/process-fsm/process_event.py; "
+        "do not gh project item-edit Status."
+    )
+    return {"permission": "deny", "agent_message": message, "user_message": message}
 
 
 def git_anchor(cwd: Path, path: str) -> str:
@@ -230,6 +259,11 @@ def decide(
     cwd_raw = payload.get("cwd") or os.getcwd()
     cwd = Path(str(cwd_raw))
     path = extract_path(payload)
+    command = _command(payload)
+    if is_sidecar_path(path) or sidecar_in_command(command):
+        return _sidecar_deny()
+    if is_status_edit_command(command):
+        return _status_edit_deny()
     if not path:
         return _allow()
 
