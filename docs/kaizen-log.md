@@ -14,6 +14,47 @@
 
 ---
 
+## 2026-08-20 — Kaizen release (lote card 612)
+
+- **Release/card**: 2026-08-20 (2º lote do dia) — card 612 (Homologado → Pronto após deploy PROD `5110b9b0`).
+- **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees/stash + `release-guard pre` PASS, CI PRs #629/#630, transcript Cursor da sessão #612, `openspec validate` 148 no CI. Sem consulta a `opencode.db`.
+- **Sessões analisadas**: closeout do #612 (Design → apply → QA → homologação em chat → release). Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: `#612` já Homologado no board quando Alan pediu `esta homologado suba a release`. Comentário Homologado canônico já existia neste turno.
+
+### Métricas
+- **Board**: 1 Homologado no lote (`#612`, Clara / P1 / Operacao). Fora: `#614` Aprovação de Design; `#608`/`#613`/`#617`/`#625` Em Refinamento; in-flight `#472`/`#606`.
+- **Git**: `origin/develop` só com o pacote (`f6388539`); archive via `release-2026-08-20-612` `7c99a894`. Stash 0. Worktrees in-flight classificadas via `PRESERVED_BRANCHES`. Extra `develop-lote3` em `main` (warn).
+- **CI**: PR #629 `qa-gate` pass; PR #630 verde com `qa-gate` skip (`base_ref != develop`).
+- **OpenSpec**: 1 change arquivada (`--skip-specs` após sync); spec nova `process-fsm-event`.
+- **PROD**: source `5110b9b0`; alembic já head; bundle `index-A5R04R0w.js` / `index-Cyx126Ee.css`; health 200 após restart backend/frontend.
+
+### Achados
+- F-1 [major] Guard deny por substring do sidecar de digest em qualquer Shell (git add do archive, commit com o token na mensagem). Esforço S | P1 | Card: #631.
+- F-2 [major] T14 live nunca preenche `checks_green`; Agent não fecha Done (yaml diz Agent; CLI reject). Esforço M | P1 | Card: #632.
+- F-3 [minor] Archive foi a `main` via `release-*`; `develop` ficou com a change ativa. 3ª ocorrência. Esforço S | P1 | Card existente: #617.
+- F-4 [minor] HEREDOC/`fail_closed` em branch `release-*`. Recidiva. Card existente: #625.
+- F-5 [info] `Responsável` do #612 estava vazio até o closeout (preenchido Clara). Sem card novo.
+- F-6 [info] Comentário Homologado canônico existia neste lote (não é recidiva do #579).
+
+### Padrões recorrentes
+- `develop` protegido vs archive no SHA da release | 3ª ocorrência | #617
+- Guard Shell falso positivo (`>` / fail_closed) | 2ª ocorrência no dia | #625
+- Deny por substring do sidecar | 1ª ocorrência como BLOCKER de archive | #631
+- T14 live inútil | 1ª ocorrência | #632
+
+### Trechos de sessão (evidência local)
+- `process-fsm-guard deny reason=sidecar`
+- `process-fsm-guard deny reason=fail_closed q=None q_git=release-2026-08-20-612 bound_card=⊥`
+- `A coluna do board continua Done. O próprio card impede o Agent de fazer T15`
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #631 — Guard: substring do sidecar não pode deny git add/commit | P1 | F-1 | Em Refinamento |
+| #632 — T14 live: integrar_develop deve poder Done após CI verde | P1 | F-2 | Em Refinamento |
+| (não criado) archive via `release-*` | — | F-3 | coberto por #617 |
+| (não criado) HEREDOC `>` / fail_closed | — | F-4 | coberto por #625 |
+
 ## 2026-08-20 — Kaizen release (lote cards 605/610/611)
 
 - **Release/card**: 2026-08-20 — cards 605, 610, 611 (Homologado → Pronto após deploy PROD `ad8158fd`).
