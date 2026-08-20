@@ -365,5 +365,50 @@ def test_sidecar_write_denied_in_design(tmp_path: Path):
         assert "sidecar" in result["agent_message"]
 
 
+def test_python_c_sidecar_command_denied():
+    payload = {
+        "command": "python -c \"open('openspec/changes/card-612-process-event/.design-digest','w').write('x')\"",
+        "cwd": "/",
+        "status": "Design",
+    }
+    result = decide(payload, status_provider=SILENT)
+    assert result["permission"] == "deny"
+    assert "sidecar" in result["agent_message"]
+
+
+def test_card_hash_prefix_matches_branch():
+    mover = FakeMover()
+    out = process_event(
+        "iniciar_apply",
+        card="#612",
+        status="Pronto para Dev",
+        q_git="card-612-process-event",
+        bound_card="612",
+        mover=mover,
+        digest_changed=False,
+        g_design=True,
+    )
+    assert out["result"] == "transition"
+    assert out["to"] == "Em desenvolvimento"
+
+
+def test_mover_failure_returns_json_reject():
+    class Boom(FakeMover):
+        def set_status(self, issue_number: int, to: str) -> None:
+            raise RuntimeError("item-edit failed")
+
+    out = process_event(
+        "iniciar_apply",
+        status="Pronto para Dev",
+        q_git="card-612-process-event",
+        bound_card="612",
+        mover=Boom(),
+        digest_changed=False,
+        g_design=True,
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "move_failed"
+
+
 def test_load_fsm_still_valid():
     assert load_fsm()["fail_closed_asymmetric"] is True

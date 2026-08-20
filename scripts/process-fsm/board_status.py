@@ -23,7 +23,6 @@ STATUS_OPTIONS: dict[str, str] = {
 
 STATUS_OPTION_IDS = frozenset(STATUS_OPTIONS.values())
 PROCESS_EVENT_RE = re.compile(r"process-fsm/process_event\.py|\bprocess_event\.py\b")
-MUTATION_RE = re.compile(r"(?:>>|>|\btee\s+|sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)")
 
 
 def is_sidecar_path(path: str | None) -> bool:
@@ -34,9 +33,7 @@ def is_sidecar_path(path: str | None) -> bool:
 
 
 def sidecar_in_command(command: str | None) -> bool:
-    if not command or ".design-digest" not in command:
-        return False
-    return bool(MUTATION_RE.search(command)) or "Write" in command
+    return bool(command) and ".design-digest" in command
 
 
 def is_status_edit_command(command: str | None) -> bool:

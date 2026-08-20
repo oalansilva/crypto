@@ -59,25 +59,28 @@ class GhBoardMover:
         if option is None:
             raise ValueError(f"unknown Status {to!r}")
         item_id = _item_id_for_issue(issue_number)
-        proc = subprocess.run(
-            [
-                "gh",
-                "project",
-                "item-edit",
-                "--id",
-                item_id,
-                "--project-id",
-                "PVT_kwHOAAHtBM4BV8b2",
-                "--field-id",
-                STATUS_FIELD_ID,
-                "--single-select-option-id",
-                option,
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=20,
-        )
+        try:
+            proc = subprocess.run(
+                [
+                    "gh",
+                    "project",
+                    "item-edit",
+                    "--id",
+                    item_id,
+                    "--project-id",
+                    "PVT_kwHOAAHtBM4BV8b2",
+                    "--field-id",
+                    STATUS_FIELD_ID,
+                    "--single-select-option-id",
+                    option,
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=20,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise RuntimeError(str(exc)) from exc
         if proc.returncode != 0:
             raise RuntimeError((proc.stderr or proc.stdout or "item-edit failed").strip())
 
@@ -90,16 +93,22 @@ def _item_id_for_issue(issue_number: int) -> str:
         "query($n:Int!){repository(owner:\"oalansilva\",name:\"crypto\")"
         "{issue(number:$n){projectItems(first:20){nodes{id project{number owner{...on User{login}}}}}}}}"
     )
-    proc = subprocess.run(
-        ["gh", "api", "graphql", "-f", f"query={query}", "-F", f"n={issue_number}"],
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=10,
-    )
+    try:
+        proc = subprocess.run(
+            ["gh", "api", "graphql", "-f", f"query={query}", "-F", f"n={issue_number}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError(str(exc)) from exc
     if proc.returncode != 0:
         raise RuntimeError((proc.stderr or "graphql failed").strip())
-    data = json_mod.loads(proc.stdout or "{}")
+    try:
+        data = json_mod.loads(proc.stdout or "{}")
+    except json_mod.JSONDecodeError as exc:
+        raise RuntimeError("graphql json") from exc
     nodes = (
         (((data.get("data") or {}).get("repository") or {}).get("issue") or {}).get("projectItems") or {}
     ).get("nodes") or []
@@ -115,6 +124,14 @@ def _item_id_for_issue(issue_number: int) -> str:
 
 def _unbound(bound: Any) -> bool:
     return bound in (None, "", UNBOUND)
+
+
+def _safe_move(mover: BoardMover, issue_number: int, to: str) -> dict[str, Any] | None:
+    try:
+        mover.set_status(issue_number, to)
+    except (RuntimeError, ValueError, OSError) as exc:
+        return _payload(result="reject", state=None, to=None, reason="move_failed", message=str(exc))
+    return None
 
 
 def files_g_design(change_dir: Path) -> bool:
@@ -215,6 +232,8 @@ def process_event(
         )
     table = fsm if fsm is not None else load_fsm()
     workdir = Path(cwd) if cwd is not None else Path.cwd()
+    if card is not None:
+        card = str(card).lstrip("#")
     resolved = resolve_fn(workdir, workdir, issue_id=card, status=status)
     q = status if status is not None else resolved.get("q")
     git = q_git if q_git is not None else resolved.get("q_git")
@@ -285,7 +304,10 @@ def process_event(
         )
         if compiled.result == "transition":
             if not dry_run and mover is not None and issue_number is not None:
-                mover.set_status(issue_number, compiled.to or "Design")
+                failed = _safe_move(mover, issue_number, compiled.to or "Design")
+                if failed is not None:
+                    failed["state"] = q
+                    return failed
             return _payload(
                 result="transition",
                 state=q,
@@ -316,7 +338,10 @@ def process_event(
         )
     if dry_run or mover is None or issue_number is None:
         return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
-    mover.set_status(issue_number, result.to or "")
+    failed = _safe_move(mover, issue_number, result.to or "")
+    if failed is not None:
+        failed["state"] = q
+        return failed
     if event == "submeter_design" and resolved_change_dir is not None:
         write_sidecar(resolved_change_dir, resolved_proto)
     return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
