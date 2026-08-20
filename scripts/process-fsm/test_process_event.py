@@ -169,6 +169,53 @@ def test_invalidar_aprovacao_without_digest_change_rejects():
     assert mover.calls == []
 
 
+def test_invalidar_aprovacao_with_digest_change_still_rejects_agent():
+    mover = FakeMover()
+    out = process_event(
+        "invalidar_aprovacao",
+        status="Pronto para Dev",
+        q_git="card-612-process-event",
+        bound_card="612",
+        mover=mover,
+        digest_changed=True,
+    )
+    assert out["result"] == "reject"
+    assert mover.calls == []
+
+
+def test_pedir_review_wrong_state_does_not_compile_t17():
+    mover = FakeMover()
+    out = process_event(
+        "pedir_review",
+        status="Pronto para Dev",
+        q_git="card-612-process-event",
+        bound_card="612",
+        mover=mover,
+        digest_changed=True,
+        g_design=True,
+    )
+    assert out["result"] == "reject"
+    assert out["to"] is None
+    assert mover.calls == []
+
+
+def test_change_dotdot_rejected():
+    mover = FakeMover()
+    out = process_event(
+        "iniciar_apply",
+        change="../other",
+        status="Pronto para Dev",
+        q_git="card-612-process-event",
+        bound_card="612",
+        mover=mover,
+        digest_changed=False,
+        g_design=True,
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "invalid_change"
+    assert mover.calls == []
+
+
 def test_unbound_rejects():
     mover = FakeMover()
     out = process_event(

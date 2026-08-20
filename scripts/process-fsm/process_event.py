@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -28,7 +29,8 @@ REPO_ROOT = ROOT.parents[1]
 AMBIENTES = "alan-workflow-ambientes"
 RELEASE_GUARD = "release-guard"
 HUMAN_EVENTS = frozenset({"priorizar", "aprovar_design", "homologar", "fechar_release", "devolver_design", "cancelar"})
-I4_EVENTS = frozenset({"iniciar_apply", "pedir_review", "invalidar_aprovacao"})
+I4_EVENTS = frozenset({"iniciar_apply", "pedir_review"})
+CHANGE_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 EVENT_GUARDS = {
     "achar_bloqueante": {"open_p0_p1": True, "reviewers_ok": False},
     "aceitar_sha": {"reviewers_ok": True, "open_p0_p1": False},
@@ -234,6 +236,8 @@ def process_event(
     workdir = Path(cwd) if cwd is not None else Path.cwd()
     if card is not None:
         card = str(card).lstrip("#")
+    if change is not None and CHANGE_SLUG_RE.match(str(change)) is None:
+        return _payload(result="reject", state=status, to=None, reason="invalid_change")
     resolved = resolve_fn(workdir, workdir, issue_id=card, status=status)
     q = status if status is not None else resolved.get("q")
     git = q_git if q_git is not None else resolved.get("q_git")
@@ -243,6 +247,8 @@ def process_event(
     match = CARD_GIT_RE.match(str(git or ""))
     if card is not None and match is not None and str(card) != match.group(1):
         return _payload(result="reject", state=q, to=None, reason="card_mismatch")
+    if change is not None and match is not None and str(change) != str(git):
+        return _payload(result="reject", state=q, to=None, reason="change_mismatch")
     if event != "criar_card" and _unbound(bound):
         return _payload(result="reject", state=q, to=None, reason="unbound")
 
@@ -290,7 +296,8 @@ def process_event(
     }
     ctx_kwargs.update(exclusive)
 
-    if event in I4_EVENTS and digest_changed is True:
+    result = evaluate(table, EvalContext(**ctx_kwargs))
+    if event in I4_EVENTS and result.reason == "I4":
         compiled = evaluate(
             table,
             EvalContext(
@@ -312,11 +319,10 @@ def process_event(
                 result="transition",
                 state=q,
                 to=compiled.to,
-                reason="I4" if event != "invalidar_aprovacao" else compiled.reason,
+                reason="I4",
             )
         return _payload(result="reject", state=q, to=None, reason=compiled.reason)
 
-    result = evaluate(table, EvalContext(**ctx_kwargs))
     enabled = enabled_events(table, q)
     message = None
     if event == "fechar_release":
