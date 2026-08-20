@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-20 - process_event e a unica via Agent para Status (card #612)
+
+**Decisão:** a CLI `scripts/process-fsm/process_event.py` valida δ e só então move o Status do Project 1. Actor da função/CLI é sempre Agent. T1/T7/T15/T16 rejeitam; Alan arrasta no UI. T8 não libera Write (I3). Digest mudado em aplicar/pedir_review vira I4/T17 para Design. T14 live rejeita (`checks_green` unset). T16 é stub: `fechar_release` rejeita e aponta `alan-workflow-ambientes` / `release-guard`. O Guard deny `item-edit` de Status e write do sidecar de digest; sem `PROCESS_FSM_MOVE`.
+
+**Motivo:** o Agent ainda movia coluna com `item-edit` solto e o chat virava T7. O lote 1 do dia (#610/#611) cobriu resolver e Guard Write, não o SMAG de evento.
+
+**Onde:** `scripts/process-fsm/process_event.py`, `guard.py`, `fsm.py`, `.cursor/hooks/process-fsm-guard.sh`. Specs `process-fsm-event`, `process-fsm-guard`, `process-fsm`, `cursor-harness`. Card #612. Epic #608.
+
 ## 2026-08-20 - Discovery sempre Deep Backtest 15m + walk-forward 70/30 (card #605)
 
 **Decisão:** toda combinação do Discovery chama `run_optimization` com `deep_backtest=true` e `split_train_ratio=0.7`. Ranking, coverage e elegibilidade 30/90 usam a janela in-sample. Holdout (`oos_metrics` / `oos_verdict`) persiste no JSON `metrics` e não substitui a elegibilidade Discovery. Zero trades IS permanece N/A. Isto substitui, no Discovery, o path legado sem split descrito em 2026-08-19 (#599); Combo/outros callers sem split continuam no helper #599.
