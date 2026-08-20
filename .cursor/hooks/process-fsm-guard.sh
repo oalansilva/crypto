@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# Cursor adapter: process-fsm Guard Write. Always emit JSON (failClosed on Write).
+set -u
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+GUARD="$ROOT/scripts/process-fsm/guard.py"
+RAW="$(cat)"
+
+emit() {
+  printf '%s\n' "$1"
+}
+
+fallback() {
+  # Decision 12: prefix-match without PyYAML (stdlib json + git only).
+  PROCESS_FSM_RAW="$RAW" python3 - <<'PY' 2>/dev/null || true
+import json, os, re, subprocess, sys
+
+raw = os.environ.get("PROCESS_FSM_RAW") or ""
+try:
+    payload = json.loads(raw) if raw.strip() else {}
+except json.JSONDecodeError:
+    payload = {}
+if not isinstance(payload, dict):
+    payload = {}
+
+cwd = str(payload.get("cwd") or os.getcwd())
+tool = str(payload.get("tool_name") or "")
+data = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+path = None
+for key in ("path", "file_path", "file", "target_notebook"):
+    value = data.get(key)
+    if isinstance(value, str) and value.strip():
+        path = value.strip()
+        break
+command = payload.get("command") if isinstance(payload.get("command"), str) else ""
+if path is None and command:
+    if re.search(r"(?:>>|>|\btee\s+|sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)", command):
+        match = re.search(
+            r"((?:/(?:[\w.-]+))*/(?:backend|frontend/src|openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+|"
+            r"(?:backend|frontend/src|openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+)",
+            command,
+        )
+        if match:
+            path = match.group(1)
+            if path.startswith("./"):
+                path = path[2:]
+if not path:
+    print(json.dumps({"permission": "allow"}))
+    sys.exit(0)
+
+posix = path.replace("\\", "/")
+if posix.startswith("./"):
+    posix = posix[2:]
+for marker in ("/backend/", "/frontend/src/", "/openspec/changes/", "/frontend/public/prototypes/"):
+    idx = posix.find(marker)
+    if idx != -1:
+        posix = posix[idx + 1 :]
+        break
+is_product = posix.startswith("backend/") or posix.startswith("frontend/src/")
+is_design = posix.startswith("openspec/changes/") or posix.startswith("frontend/public/prototypes/")
+target = path if os.path.isabs(path) else os.path.join(cwd, path)
+git_dir = target if os.path.isdir(target) else os.path.dirname(target) or cwd
+while git_dir and not os.path.isdir(git_dir):
+    parent = os.path.dirname(git_dir)
+    if parent == git_dir:
+        git_dir = cwd
+        break
+    git_dir = parent
+env = os.environ.copy()
+for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"):
+    env.pop(key, None)
+try:
+    proc = subprocess.run(
+        ["git", "-C", git_dir, "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True, text=True, timeout=5, env=env, check=False,
+    )
+    branch = (proc.stdout or "").strip()
+except (OSError, subprocess.TimeoutExpired):
+    branch = ""
+card = bool(re.match(r"^card-\d+(?:-.*)?$", branch or ""))
+msg = "process-fsm-guard deny reason=fail_closed (python fallback)"
+if is_product:
+    print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
+elif is_design and card:
+    print(json.dumps({"permission": "allow"}))
+elif is_design:
+    print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
+else:
+    print(json.dumps({"permission": "allow"}))
+PY
+}
+
+PY=""
+if [[ -x "$ROOT/backend/.venv/bin/python" ]]; then
+  PY="$ROOT/backend/.venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  PY="$(command -v python3)"
+fi
+
+if [[ -n "$PY" && -f "$GUARD" ]]; then
+  OUT="$(printf '%s' "$RAW" | "$PY" "$GUARD" 2>/dev/null || true)"
+  if printf '%s' "$OUT" | grep -q '"permission"'; then
+    emit "$OUT"
+    exit 0
+  fi
+fi
+
+FB="$(fallback || true)"
+if printf '%s' "$FB" | grep -q '"permission"'; then
+  emit "$FB"
+  exit 0
+fi
+
+emit '{"permission":"deny","agent_message":"process-fsm-guard deny reason=fail_closed","user_message":"process-fsm-guard deny reason=fail_closed"}'
+exit 0
