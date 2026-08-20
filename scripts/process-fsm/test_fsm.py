@@ -35,6 +35,31 @@ def test_canonical_yaml_validates(fsm):
     assert "request_implement" in fsm["illegal_events"]
 
 
+def _legal_ctx(state, event, actor) -> EvalContext:
+    kwargs: dict = {"state": state, "event": event, "actor": actor}
+    if event == "iniciar_apply":
+        kwargs.update(q_git="card-612-process-event", digest_changed=False)
+    elif event == "pedir_review":
+        kwargs.update(digest_changed=False)
+    elif event == "submeter_design":
+        kwargs.update(g_design=True)
+    elif event == "achar_bloqueante":
+        kwargs.update(open_p0_p1=True)
+    elif event == "aceitar_sha":
+        kwargs.update(reviewers_ok=True)
+    elif event == "rerun_infra":
+        kwargs.update(flaky_infra=True)
+    elif event == "falha_codigo":
+        kwargs.update(source_failure=True)
+    elif event == "integrar_develop":
+        kwargs.update(checks_green=True)
+    elif event == "fechar_release":
+        kwargs.update(m_lote=True)
+    elif event == "invalidar_aprovacao":
+        kwargs.update(digest_changed=True)
+    return EvalContext(**kwargs)
+
+
 @pytest.mark.parametrize(
     "tid,state,event,actor,dest",
     [
@@ -60,7 +85,7 @@ def test_canonical_yaml_validates(fsm):
     ],
 )
 def test_legal_transitions(fsm, tid, state, event, actor, dest):
-    result = evaluate(fsm, EvalContext(state=state, event=event, actor=actor))
+    result = evaluate(fsm, _legal_ctx(state, event, actor))
     assert result.result == "transition"
     assert result.to == dest
     assert result.reason == tid
@@ -195,3 +220,94 @@ def test_sigma_drift_fails(tmp_path, fsm):
 def test_yaml_path_is_repo_cursor_file():
     assert YAML_PATH.name == "process-fsm.yaml"
     assert YAML_PATH.is_file()
+
+
+def test_t8_develop_git_rejected(fsm):
+    result = evaluate(
+        fsm,
+        EvalContext(
+            state="Pronto para Dev",
+            event="iniciar_apply",
+            actor="Agent",
+            q_git="develop",
+            digest_changed=False,
+        ),
+    )
+    assert result.result == "reject"
+    assert result.to is None
+    assert result.reason == "guard:q_git_card"
+
+
+def test_t8_digest_changed_is_i4_not_t8(fsm):
+    result = evaluate(
+        fsm,
+        EvalContext(
+            state="Pronto para Dev",
+            event="iniciar_apply",
+            actor="Agent",
+            q_git="card-612-x",
+            digest_changed=True,
+        ),
+    )
+    assert result.result == "reject"
+    assert result.reason == "I4"
+    assert result.to is None
+
+
+def test_t9_digest_missing_is_i4(fsm):
+    result = evaluate(
+        fsm,
+        EvalContext(state="Em desenvolvimento", event="pedir_review", actor="Agent", digest_changed=None),
+    )
+    assert result.result == "reject"
+    assert result.reason == "I4"
+
+
+def test_t16_without_m_lote_rejected(fsm):
+    result = evaluate(
+        fsm,
+        EvalContext(state="Homologado", event="fechar_release", actor="Alan", m_lote=False),
+    )
+    assert result.result == "reject"
+    assert result.reason == "guard:M_lote"
+
+
+def test_t17_agent_rejected_guard_transitions(fsm):
+    agent = evaluate(
+        fsm,
+        EvalContext(
+            state="Pronto para Dev",
+            event="invalidar_aprovacao",
+            actor="Agent",
+            digest_changed=True,
+        ),
+    )
+    assert agent.result == "reject"
+    assert agent.reason == "actor"
+    guard = evaluate(
+        fsm,
+        EvalContext(
+            state="Pronto para Dev",
+            event="invalidar_aprovacao",
+            actor="Guard",
+            digest_changed=True,
+        ),
+    )
+    assert guard.result == "transition"
+    assert guard.to == "Design"
+    assert guard.reason == "T17a"
+
+
+def test_t17b_from_em_desenvolvimento(fsm):
+    result = evaluate(
+        fsm,
+        EvalContext(
+            state="Em desenvolvimento",
+            event="invalidar_aprovacao",
+            actor="Guard",
+            digest_changed=True,
+        ),
+    )
+    assert result.result == "transition"
+    assert result.to == "Design"
+    assert result.reason == "T17b"

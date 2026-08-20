@@ -1,9 +1,31 @@
-# process-fsm-guard Specification
+## ADDED Requirements
 
-## Purpose
-Guard Write do Cursor: compila `.cursor/process-fsm.yaml` + resolver e deny/allow `Write`/`StrReplace`/`Delete`/`EditNotebook` (e shell mutante) de produto antes do side-effect.
+### Requirement: Guard denies Agent Status item-edit
+The Guard `beforeShellExecution` **and** `preToolUse` paths SHALL classify `.design-digest` writes and Status board edits **before** the missing-path early-return and **before** `design_globs` glob-first allow. It SHALL deny a Cursor Shell command that edits Project 1 `Status` via `gh project item-edit` (Status field id `PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM`, or a `--single-select-option-id` that is a Status option) or via GraphQL `updateProjectV2ItemFieldValue` targeting that field, **even when** the same `command` string also contains `process_event.py`. A Shell command that is **only** a python invocation of `scripts/process-fsm/process_event.py` plus a named event and flags MUST be allowed by this Status-edit rule. The Guard MUST deny `Write`/`StrReplace`/`Delete` (and mutating shell) whose path ends with `.design-digest`. The bash fallback in `.cursor/hooks/process-fsm-guard.sh` MUST apply the same Status-edit and sidecar denies before allowing commands that have no file path and before any `design_globs` allow. The Guard MUST NOT honor `PROCESS_FSM_MOVE` or any environment allow. The Guard MUST still NOT itself move Project Status. `git commit`, `git push`, and `./restart` remain out of scope.
 
-## Requirements
+#### Scenario: Direct item-edit of Status is denied
+- **WHEN** `beforeShellExecution` stdin `command` contains `gh project item-edit` and the Status field id, even if no file `path` is present
+- **THEN** the Guard returns `permission: deny`
+- **AND** it MUST NOT take the missing-path early-return allow
+- **AND** `agent_message` tells the Agent to use `process_event`
+
+#### Scenario: process_event CLI is allowed
+- **WHEN** `command` is solely a python invocation of `scripts/process-fsm/process_event.py` with a named event and optional flags (no `item-edit` / GraphQL Status in the same string)
+- **THEN** this Status-edit rule does not deny the command
+
+#### Scenario: Chained process_event and item-edit is denied
+- **WHEN** `command` contains both `process_event.py` and `gh project item-edit` with the Status field id
+- **THEN** the Guard returns `permission: deny`
+
+#### Scenario: Sidecar write is denied
+- **WHEN** stdin is `Write` or mutating shell of a path ending in `.design-digest`
+- **THEN** the Guard returns `permission: deny`
+
+#### Scenario: Read-only gh remains allowed
+- **WHEN** `command` is `gh issue view 612` or `gh project item-list` without `item-edit`
+- **THEN** the Guard does not deny because of the Status-edit rule
+
+## MODIFIED Requirements
 
 ### Requirement: Guard compiles yaml and resolver before product writes
 `scripts/process-fsm/` SHALL expose a Guard that, given a Cursor hook stdin JSON, extracts the path from the Cursor envelope, classifies it against yaml `product_globs` / `design_globs` **before** calling `evaluate()`, and uses the resolver for `(q, bound_card, q_git)`. Event `write_produto` MUST be sent to `evaluate()` only when the path matches `product_globs`. Paths outside `product_globs` MUST return `permission: allow` when `status` is readable (including OpenSpec and prototype writes in Design), **except** (a) Shell commands classified as Project Status edits and (b) any `Write`/`StrReplace`/`Delete` or mutating shell whose path ends with `.design-digest` (any `q`; classified **before** `design_globs` glob-first). The Guard MUST NOT invent transitions, MUST NOT move Project Status, and MUST NOT replace the Impeccable adapter.
@@ -40,47 +62,6 @@ Fixtures MUST use the live Cursor envelope, not an internal dict that skips the 
 - **WHEN** stdin is `preToolUse` `Write` (or `StrReplace`/`Delete`) of `openspec/changes/<change>/.design-digest` with a file path present and `status` is `Design` (or any other `q`)
 - **THEN** the Guard returns `permission: deny`
 - **AND** it MUST classify the sidecar **before** the `design_globs` allow
-
-### Requirement: Guard denies Agent Status item-edit
-The Guard `beforeShellExecution` **and** `preToolUse` paths SHALL classify `.design-digest` writes and Status board edits **before** the missing-path early-return and **before** `design_globs` glob-first allow. It SHALL deny a Cursor Shell command that edits Project 1 `Status` via `gh project item-edit` (Status field id `PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM`, or a `--single-select-option-id` that is a Status option) or via GraphQL `updateProjectV2ItemFieldValue` targeting that field, **even when** the same `command` string also contains `process_event.py`. A Shell command that is **only** a python invocation of `scripts/process-fsm/process_event.py` plus a named event and flags MUST be allowed by this Status-edit rule. The Guard MUST deny `Write`/`StrReplace`/`Delete` (and mutating shell) whose path ends with `.design-digest`. The bash fallback in `.cursor/hooks/process-fsm-guard.sh` MUST apply the same Status-edit and sidecar denies before allowing commands that have no file path and before any `design_globs` allow. The Guard MUST NOT honor `PROCESS_FSM_MOVE` or any environment allow. The Guard MUST still NOT itself move Project Status. `git commit`, `git push`, and `./restart` remain out of scope.
-
-#### Scenario: Direct item-edit of Status is denied
-- **WHEN** `beforeShellExecution` stdin `command` contains `gh project item-edit` and the Status field id, even if no file `path` is present
-- **THEN** the Guard returns `permission: deny`
-- **AND** it MUST NOT take the missing-path early-return allow
-- **AND** `agent_message` tells the Agent to use `process_event`
-
-#### Scenario: process_event CLI is allowed
-- **WHEN** `command` is solely a python invocation of `scripts/process-fsm/process_event.py` with a named event and optional flags (no `item-edit` / GraphQL Status in the same string)
-- **THEN** this Status-edit rule does not deny the command
-
-#### Scenario: Chained process_event and item-edit is denied
-- **WHEN** `command` contains both `process_event.py` and `gh project item-edit` with the Status field id
-- **THEN** the Guard returns `permission: deny`
-
-#### Scenario: Sidecar write is denied
-- **WHEN** stdin is `Write` or mutating shell of a path ending in `.design-digest`
-- **THEN** the Guard returns `permission: deny`
-
-#### Scenario: Read-only gh remains allowed
-- **WHEN** `command` is `gh issue view 612` or `gh project item-list` without `item-edit`
-- **THEN** the Guard does not deny because of the Status-edit rule
-
-### Requirement: Fail-closed is asymmetric
-If `status`/`q` is missing, unreadable, or a Status provider times out, the Guard MUST deny `product_globs` writes and MUST allow writes whose path matches `design_globs` when the path worktree branch already matches `card-<id>-*`. Unit tests MUST inject `status` in the stdin JSON and MUST NOT call GitHub.
-
-#### Scenario: Status unreadable, product path
-- **WHEN** stdin omits `status` and the Status provider returns nothing, and the path matches `product_globs`
-- **THEN** permission is `deny`
-
-#### Scenario: Status unreadable, design path on card branch
-- **WHEN** stdin omits `status` and the path is under `openspec/changes/` or `frontend/public/prototypes/` and `q_git` matches `card-<id>-*`
-- **THEN** permission is `allow`
-
-#### Scenario: Fixtures without GitHub
-- **WHEN** `pytest scripts/process-fsm -q` runs
-- **THEN** Guard fixtures execute from stdin-like JSON using injected `status` and fake worktrees or stubs
-- **AND** no network call to GitHub is made
 
 ### Requirement: Shell writes use the same deny as Write
 `.cursor/hooks.json` SHALL register `beforeShellExecution` on the same Guard adapter. That hook SHALL apply the same deny as `Write` for commands classified as mutating a `product_globs` path (shell redirection, `tee`, `sed -i`, copy/move onto a product path). Commands that only read or test product trees (`pytest`, `ruff`, `git status`) MUST be allowed. Commands classified as Project Status `item-edit` / Status GraphQL MUST be denied (card #612). `git commit`, `git push`, and `./restart` remain out of scope.
