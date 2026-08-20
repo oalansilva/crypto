@@ -98,6 +98,24 @@ The versioned `diff-reviewer` and `code-reviewer` Tasks MUST use `inherit` unles
 - **THEN** that optional run MAY use the Cursor-managed reviewer model
 - **AND** that MUST NOT be treated as a silent swap of the session LLM for implementation or the local reviewers
 
+### Requirement: Agent moves Status only via process_event
+While this change is active, the Cursor Agent MUST NOT invoke `gh project item-edit` (or GraphQL `updateProjectV2ItemFieldValue`) to change Project 1 `Status`. Named transitions SHALL go through `scripts/process-fsm/process_event.py`. Chat utterances such as `implemente`, `autorizo`, or `arrastei` MUST NOT be treated as `aprovar_design` / T7.
+
+#### Scenario: Chat implemente is not T7
+- **WHEN** the user says `implemente` and `Status` is not `Pronto para Dev`
+- **THEN** the Agent MUST NOT call `process_event aprovar_design` as a successful transition
+- **AND** MUST NOT `item-edit` Status
+
+#### Scenario: implemente in Pronto para Dev is iniciar_apply
+- **WHEN** the user says `implemente` and `Status` is `Pronto para Dev`
+- **THEN** the Agent SHALL call `process_event iniciar_apply` (not `aprovar_design`)
+- **AND** SHALL NOT `item-edit` Status
+
+#### Scenario: Legal apply uses process_event
+- **WHEN** `Status=Pronto para Dev` and the Agent starts implementation
+- **THEN** the Agent SHALL call `process_event iniciar_apply` before product Write
+- **AND** SHALL NOT treat the function return as a Write allow token
+
 ### Requirement: Cursor hooks.json registers the compiled Write Guard
 `.cursor/hooks.json` SHALL register a `preToolUse` command hook whose matcher covers `Write`, `StrReplace`, `Delete`, and `EditNotebook`, invoking the process-fsm Guard adapter. The same adapter SHALL be registered on `beforeShellExecution` for mutating shell writes. `failClosed` MUST be `true` on the `preToolUse` Write-family hook and MUST NOT be `true` on `beforeShellExecution`. Existing Impeccable hooks (`afterFileEdit` and `stop` calling `.cursor/hooks/impeccable.sh`) MUST remain. The adapter MUST emit valid JSON even if Python/PyYAML fails (bash fallback: deny `product_globs`, allow `design_globs` on `card-<id>-*`).
 
