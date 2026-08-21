@@ -1,16 +1,15 @@
 ---
-description: Cursor is the only active harness; chat model runs every role
+description: Cursor harness; resolve FSM page first
 alwaysApply: true
 ---
 
 # Harness
 
-- Cliente ativo: Cursor Agent. OpenCode, Codex e dual-harness não são contrato ativo.
-- Modelo: o selecionado no chat. Task/subagent usa `inherit` salvo pedido explícito no chat.
-- Visão: `Read` de imagem na sessão depois de confirmar que o path existe.
-- Skills de processo: preferir `.cursor/skills/` **deste repo** (`alan-workflow`, `alan-workflow-ambientes`, `github-project-board`). Não tratar `~/.codex/skills/` nem disco hermes como canônico.
-- Preflight de coluna: leia `Status` no Project 1. `Em Refinamento` é a entrada. `Todo` **não** é código — próxima etapa é Design. Pedido `implemente` não autoriza `/opsx:apply` nem código de produto.
-- Design: OpenSpec **superset** do issue; Gist secreto `crypto openspec <change>` + comentário no card **antes** de Aprovação de Design. Crítica em Task isolada instruída a não editar. Sem Gist, ou Gist mais pobre que o card, permanecer em Design.
-- Código / `/opsx:apply` só com `Status=Pronto para Dev`. Alan é o único que arrasta `Aprovação de Design -> Pronto para Dev`.
-- Lei humana (não injetada sozinha): `rules.md`. Runbook: carregue `alan-workflow` em card/release. Overlay cripto (board, ports, Drive, PostgreSQL, release-guard): `AGENTS.md`.
-- Review: em `Status=Code Review`, `diff-reviewer` + `code-reviewer` (`inherit`, readonly) no diff não commitado vs HEAD; no fechamento, `diff-reviewer` em `origin/develop...HEAD` na branch do card antes de QA. `/review-bugbot` só se Alan pedir. Autofix não commita na branch existente. OpenSpec via `/opsx-*` e CLI `openspec`.
+- Resolva `(q, bound_card, q_git)`; não invente aresta.
+- Chat é wording, não autorização. NLU ≠ δ. `implemente` ∉ δ.
+- `Em Refinamento` é a entrada. Não pular Design / Aprovação de Design.
+- `Todo` não é código; próxima = `iniciar_design` via `process_event`.
+- Código / `/opsx:apply` só após `Status=Pronto para Dev` (T8).
+- Alan único em T1/T7/T15/T16. Agent não arrasta essas colunas.
+- Overlay on-demand; runbook = skill `alan-workflow`; lei = `rules.md`.
+- Skills deste repo `.cursor/skills/`. Task `inherit`. Cliente: Cursor Agent. Auto permitido.
