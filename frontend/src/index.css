@@ -243,6 +243,49 @@
   color: var(--text-on-light);
 }
 
+.spot-trade-pay-with {
+  margin-bottom: 16px;
+}
+
+.spot-trade-pay-with-label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-on-light);
+}
+
+.spot-trade-origin-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.spot-trade-origin {
+  min-height: 44px;
+  border: 1px solid var(--border-strong, #cdd1d6);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--text-on-light);
+  font-weight: 650;
+}
+
+.spot-trade-origin[aria-checked="true"] {
+  border-color: var(--accent-primary, #f0b90b);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary, #fcd535) 35%, transparent);
+  background: color-mix(in srgb, var(--accent-primary, #fcd535) 12%, #fff);
+}
+
+.spot-trade-origin:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spot-trade-origin-hint {
+  color: var(--text-muted-on-light, #5e6673);
+  font-size: 12px;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+
 .spot-trade-balances {
   display: flex;
   justify-content: space-between;

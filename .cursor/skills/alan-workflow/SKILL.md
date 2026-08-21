@@ -64,7 +64,7 @@ Antes de editar:
 2. Design refina em OpenSpec + Gist secreto `crypto openspec <change>`.
 3. O Gist SHALL ser **superset** do issue. `/opsx:apply` lê Gist + `openspec/changes/`, não o body do GitHub como spec paralela.
 4. Sem Gist/comentário no card, Design está incompleto. Republicar: `--gist-id` + `--comment-id`.
-5. HTML de protótipo **não** vai no Gist. URL HTTP em bloco separado.
+5. HTML de protótipo **não** vai no Gist. URL HTTP em bloco separado. No DEV Cripto, `/prototypes*` é servido por `criptofarol-dev-prototypes` (worktree + public/dist), sem fallback SPA.
 
 Helper (path relativo a esta skill no repo):
 

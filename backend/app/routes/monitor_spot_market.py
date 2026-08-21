@@ -28,6 +28,7 @@ class SpotMarketPreviewPayload(BaseModel):
     quote_amount_usdt: Optional[Decimal] = Field(
         default=None, gt=0, max_digits=24, decimal_places=8
     )
+    quote_asset: Literal["USDT", "USDC"] = "USDT"
 
 
 class SpotMarketSubmitPayload(BaseModel):
@@ -54,6 +55,7 @@ class SpotMarketPreviewResponse(BaseModel):
     idempotency_key: str
     expires_at: str
     symbol: str
+    strategy_symbol: str
     side: Literal["BUY", "SELL"]
     base_asset: str
     quote_asset: str
@@ -76,8 +78,10 @@ class SpotMarketFeeResponse(BaseModel):
 class SpotMarketOrderResponse(BaseModel):
     idempotency_key: str
     symbol: str
+    strategy_symbol: Optional[str] = None
     side: Literal["BUY", "SELL"]
     state: Literal["submitting", "reconciling", "filled", "partial", "rejected"]
+    quote_asset: Optional[str] = None
     requested_quote_amount: Optional[str]
     calculated_base_quantity: Optional[str]
     executed_base_quantity: Optional[str]
@@ -151,7 +155,10 @@ def post_spot_market_preview(
     if payload.side == "BUY" and payload.quote_amount_usdt is None:
         raise HTTPException(
             status_code=422,
-            detail={"code": "QUOTE_AMOUNT_REQUIRED", "message": "Informe o valor em USDT."},
+            detail={
+                "code": "QUOTE_AMOUNT_REQUIRED",
+                "message": f"Informe o valor em {payload.quote_asset}.",
+            },
         )
     if payload.side == "SELL" and payload.quote_amount_usdt is not None:
         raise HTTPException(
@@ -159,6 +166,14 @@ def post_spot_market_preview(
             detail={
                 "code": "SELL_USES_FULL_BALANCE",
                 "message": "A venda usa sempre 100% do saldo livre do ativo.",
+            },
+        )
+    if payload.side == "SELL" and payload.quote_asset != "USDT":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "SELL_QUOTE_FIXED",
+                "message": "A venda 100% permanece no par da estratégia (USDT).",
             },
         )
     credential = _require_user_binance_creds(db, current_user_id)
@@ -170,6 +185,7 @@ def post_spot_market_preview(
             symbol=payload.symbol,
             side=payload.side,
             quote_amount=payload.quote_amount_usdt,
+            quote_asset=payload.quote_asset if payload.side == "BUY" else "USDT",
         )
     except (SpotMarketOrderError, BinanceOrderError) as exc:
         _raise_service_error(exc)

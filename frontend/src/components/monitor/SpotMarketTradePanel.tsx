@@ -7,6 +7,7 @@ import { authFetch } from '@/lib/authFetch';
 import type { Opportunity } from './types';
 
 type TradeSide = 'BUY' | 'SELL';
+type QuoteOrigin = 'USDT' | 'USDC';
 type PanelStep = 'entry' | 'previewing' | 'review' | 'submitting' | 'resuming' | 'result';
 type OrderState = 'submitting' | 'reconciling' | 'filled' | 'partial' | 'rejected';
 type RefreshState = 'idle' | 'pending' | 'success' | 'failed';
@@ -17,6 +18,7 @@ type Preview = {
     idempotency_key: string;
     expires_at: string;
     symbol: string;
+    strategy_symbol?: string;
     side: TradeSide;
     base_asset: string;
     quote_asset: string;
@@ -34,8 +36,10 @@ type Preview = {
 type OrderResult = {
     idempotency_key: string;
     symbol: string;
+    strategy_symbol?: string | null;
     side: TradeSide;
     state: OrderState;
+    quote_asset?: string | null;
     requested_quote_amount: string | null;
     calculated_base_quantity: string | null;
     executed_base_quantity: string | null;
@@ -64,16 +68,28 @@ const splitSymbol = (symbol: string): { base: string; pair: string } => {
 };
 
 const pendingStorageKey = (symbol: string): string => `monitor-spot-order:${normalizeSymbol(symbol)}`;
+const ORIGIN_PREF_KEY = 'monitor-spot-pay-origin';
+
+const readOriginPreference = (): QuoteOrigin => {
+    try {
+        const stored = sessionStorage.getItem(ORIGIN_PREF_KEY);
+        return stored === 'USDC' ? 'USDC' : 'USDT';
+    } catch {
+        return 'USDT';
+    }
+};
 
 const numericValue = (value: string | number | null | undefined): number => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const formatUsdt = (value: string | number | null | undefined): string => (
+const formatQuote = (value: string | number | null | undefined): string => (
     new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 8 })
         .format(numericValue(value))
 );
+
+const formatUsdt = formatQuote;
 
 const formatBase = (value: string | number | null | undefined): string => (
     new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 12 })
@@ -117,6 +133,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
 }) => {
     const { base, pair } = splitSymbol(opportunity.symbol);
     const [side, setSide] = useState<TradeSide>('BUY');
+    const [quoteOrigin, setQuoteOrigin] = useState<QuoteOrigin>(() => readOriginPreference());
     const [step, setStep] = useState<PanelStep>('entry');
     const [amount, setAmount] = useState('');
     const [preview, setPreview] = useState<Preview | null>(null);
@@ -139,8 +156,22 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
     const onTerminalRef = useRef(onTerminal);
     const busy = step === 'previewing' || step === 'submitting';
     const refreshingAfterTerminal = refreshState === 'pending';
+    const orderQuote = preview?.quote_asset ?? (side === 'BUY' ? quoteOrigin : 'USDT');
+    const resultQuote = result?.quote_asset
+        ?? preview?.quote_asset
+        ?? (result?.side === 'BUY' && result.symbol?.endsWith('USDC') ? 'USDC' : 'USDT');
+    const orderPairLabel = preview
+        ? `${preview.base_asset}/${preview.quote_asset}`
+        : `${base}/${quoteOrigin}`;
+    const indicativePriceLabel = preview
+        ? `${formatQuote(preview.indicative_price)} ${preview.quote_asset}${
+            preview.quote_asset !== 'USDT' ? ` · ordem ${preview.symbol}` : ''
+        }`
+        : quoteOrigin === 'USDC' && side === 'BUY'
+            ? `Ordem ${base}USDC · preço confirmado ao Continuar`
+            : `${formatQuote(opportunity.last_price)} USDT`;
 
-    const refreshQuoteBalance = useCallback(async () => {
+    const refreshQuoteBalance = useCallback(async (origin: QuoteOrigin = quoteOrigin) => {
         const generation = ++quoteBalanceGenerationRef.current;
         setQuoteBalanceState('loading');
         try {
@@ -161,7 +192,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                 setQuoteBalanceState('value');
                 return;
             }
-            const quote = balances.find((row) => String(row?.asset ?? '').trim().toUpperCase() === 'USDT');
+            const quote = balances.find((row) => String(row?.asset ?? '').trim().toUpperCase() === origin);
             const free = Number(quote?.free ?? NaN);
             if (!Number.isFinite(free)) {
                 setQuoteBalanceState('unavailable');
@@ -173,7 +204,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
             if (generation !== quoteBalanceGenerationRef.current) return;
             setQuoteBalanceState('unavailable');
         }
-    }, []);
+    }, [quoteOrigin]);
 
     const refreshAfterTerminal = useCallback(async () => {
         setRefreshState('pending');
@@ -372,6 +403,33 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         setStep('entry');
     };
 
+    const selectOrigin = (origin: QuoteOrigin) => {
+        if (busy || side !== 'BUY') return;
+        setQuoteOrigin(origin);
+        try {
+            sessionStorage.setItem(ORIGIN_PREF_KEY, origin);
+        } catch {
+            /* ignore */
+        }
+        setPreview(null);
+        setError(null);
+        void refreshQuoteBalance(origin);
+    };
+
+    const handleOriginKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, current: QuoteOrigin) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next: QuoteOrigin = event.key === 'End'
+            ? 'USDC'
+            : event.key === 'Home'
+                ? 'USDT'
+                : current === 'USDT' ? 'USDC' : 'USDT';
+        selectOrigin(next);
+        window.requestAnimationFrame(() => {
+            panelRef.current?.querySelector<HTMLButtonElement>(`[data-testid="spot-origin-${next.toLowerCase()}"]`)?.focus();
+        });
+    };
+
     const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
@@ -390,7 +448,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         if (!binanceConfigured) return;
         const quoteAmount = parseAmount(amount);
         if (side === 'BUY' && quoteAmount <= 0) {
-            setError('Informe quanto deseja usar em USDT.');
+            setError(`Informe quanto deseja usar em ${quoteOrigin}.`);
             amountRef.current?.focus();
             return;
         }
@@ -405,6 +463,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                     symbol: opportunity.symbol,
                     side,
                     quote_amount_usdt: side === 'BUY' ? quoteAmount : null,
+                    quote_asset: side === 'BUY' ? quoteOrigin : 'USDT',
                 }),
             });
             const payload = await response.json().catch(() => null);
@@ -548,7 +607,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                 <header className="spot-trade-head">
                     <div>
                         <h2 id="spot-trade-title">Operar {pair}</h2>
-                        <p id="spot-trade-price">Preço indicativo: {formatUsdt(preview?.indicative_price ?? opportunity.last_price)} USDT</p>
+                        <p id="spot-trade-price">Preço indicativo: {indicativePriceLabel}</p>
                     </div>
                     <button
                         ref={closeRef}
@@ -599,12 +658,38 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                             aria-labelledby="spot-buy-tab"
                             hidden={side !== 'BUY'}
                         >
+                            <div className="spot-trade-pay-with" data-testid="spot-pay-with">
+                                <div className="spot-trade-pay-with-label" id="spot-pay-with-label">Pagar com</div>
+                                <div className="spot-trade-origin-group" role="radiogroup" aria-labelledby="spot-pay-with-label">
+                                    {(['USDT', 'USDC'] as QuoteOrigin[]).map((origin) => (
+                                        <button
+                                            key={origin}
+                                            type="button"
+                                            role="radio"
+                                            className="spot-trade-origin"
+                                            aria-checked={quoteOrigin === origin}
+                                            tabIndex={quoteOrigin === origin ? 0 : -1}
+                                            data-testid={`spot-origin-${origin.toLowerCase()}`}
+                                            onClick={() => selectOrigin(origin)}
+                                            onKeyDown={(event) => handleOriginKeyDown(event, origin)}
+                                            disabled={busy}
+                                        >
+                                            {origin}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="spot-trade-origin-hint">
+                                    {quoteOrigin === 'USDT'
+                                        ? `A estratégia continua ${pair}. Ordem Spot em ${base}USDT.`
+                                        : `A estratégia continua ${pair}. Ordem Spot em ${base}USDC (origem USDC).`}
+                                </p>
+                            </div>
                             <div className="spot-trade-balances">
-                                <span>Saldo livre em USDT{' '}
+                                <span>Saldo livre em {quoteOrigin}{' '}
                                     {quoteBalanceState === 'loading' ? (
                                         <b className="spot-trade-balance-loading" role="status" aria-live="polite">carregando…</b>
                                     ) : quoteBalanceState === 'value' ? (
-                                        <b role="status" aria-live="polite">{formatUsdt(quoteBalanceValue)} USDT</b>
+                                        <b role="status" aria-live="polite">{formatQuote(quoteBalanceValue)} {quoteOrigin}</b>
                                     ) : (
                                         <b role="status" aria-live="polite">indisponível</b>
                                     )}
@@ -612,7 +697,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                                 <span>Consultado agora na Binance</span>
                             </div>
                             <label className="spot-trade-label" htmlFor="spot-buy-amount">
-                                <span>Quanto deseja usar?</span><span>USDT</span>
+                                <span>Quanto deseja usar?</span><span>{quoteOrigin}</span>
                             </label>
                             <div className="spot-trade-amount">
                                 <input
@@ -627,9 +712,10 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                                         setError(null);
                                     }}
                                     placeholder="0,00"
+                                    disabled={busy}
                                     aria-describedby="spot-trade-error"
                                 />
-                                <span>USDT</span>
+                                <span>{quoteOrigin}</span>
                             </div>
                             <div className="spot-trade-quick" aria-label="Valores rápidos">
                                 {[100, 250, 500].map((quickAmount) => (
@@ -688,14 +774,20 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                         <h3 ref={headingRef} tabIndex={-1}>Confirme sua ordem</h3>
                         <p>Confira a operação. O envio à Binance acontece somente após sua confirmação.</p>
                         <dl className="spot-trade-summary">
-                            <div><dt>Par</dt><dd>{pair}</dd></div>
+                            <div><dt>Estratégia / sinal</dt><dd>{pair}</dd></div>
+                            <div><dt>Par da ordem</dt><dd>{preview?.symbol ?? orderPairLabel}</dd></div>
                             <div><dt>Lado e tipo</dt><dd>{side === 'BUY' ? 'Comprar' : 'Vender'} · MARKET</dd></div>
                             <div>
-                                <dt>{side === 'BUY' ? 'Valor a usar' : 'Quantidade solicitada'}</dt>
-                                <dd>{side === 'BUY' ? `${formatUsdt(preview?.requested_quote_amount)} USDT` : `100% · ${formatBase(preview?.base_balance)} ${base}`}</dd>
+                                <dt>{side === 'BUY' ? 'Gastar' : 'Quantidade solicitada'}</dt>
+                                <dd>{side === 'BUY'
+                                    ? `${formatQuote(preview?.requested_quote_amount)} ${orderQuote}`
+                                    : `100% · ${formatBase(preview?.base_balance)} ${base}`}</dd>
                             </div>
                             {side === 'BUY' ? (
-                                <div><dt>Saldo USDT disponível</dt><dd>{formatUsdt(preview?.quote_balance)} USDT</dd></div>
+                                <div>
+                                    <dt>Saldo livre (origem)</dt>
+                                    <dd>{formatQuote(preview?.quote_balance)} {orderQuote}</dd>
+                                </div>
                             ) : null}
                             {side === 'SELL' ? (
                                 <div>
@@ -707,7 +799,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                                 <dt>Resultado estimado</dt>
                                 <dd>{side === 'BUY'
                                     ? `≈ ${formatBase(preview?.estimated_base_quantity)} ${base}`
-                                    : `≈ ${formatUsdt(preview?.estimated_quote_amount)} USDT`}</dd>
+                                    : `≈ ${formatQuote(preview?.estimated_quote_amount)} USDT`}</dd>
                             </div>
                             <div><dt>Taxas</dt><dd>Definidas na execução</dd></div>
                         </dl>
@@ -719,7 +811,10 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                                 onChange={(event) => setAcknowledged(event.target.checked)}
                                 disabled={step === 'submitting'}
                             />
-                            <span>Entendo que a ordem será executada a mercado e que o preço final pode variar.</span>
+                            <span>
+                                Entendo que a ordem será enviada em <strong>{preview?.symbol ?? orderPairLabel}</strong>
+                                {side === 'BUY' ? ` pagando com ${orderQuote}` : ''} a mercado e que o preço final pode variar.
+                            </span>
                         </label>
                         <p className="spot-trade-error" role="alert">{error}</p>
                         <div className="spot-trade-actions">
@@ -753,16 +848,16 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                             ) : (
                                 <>
                                     <div><dt>Quantidade executada</dt><dd>{formatBase(result.executed_base_quantity)} {base}</dd></div>
-                                    <div><dt>Valor executado</dt><dd>{formatUsdt(result.executed_quote_amount)} USDT</dd></div>
+                                    <div><dt>Valor executado</dt><dd>{formatQuote(result.executed_quote_amount)} {result.side === 'BUY' ? resultQuote : 'USDT'}</dd></div>
                                 </>
                             )}
                             {result.state === 'partial' ? (
                                 <div>
                                     <dt>Restante não executado</dt>
-                                    <dd>{result.side === 'BUY' ? `${formatUsdt(partialRemaining)} USDT` : `${formatBase(partialRemaining)} ${base}`}</dd>
+                                    <dd>{result.side === 'BUY' ? `${formatQuote(partialRemaining)} ${resultQuote}` : `${formatBase(partialRemaining)} ${base}`}</dd>
                                 </div>
                             ) : null}
-                            {numericValue(result.average_price) > 0 ? <div><dt>Preço médio</dt><dd>{formatUsdt(result.average_price)} USDT</dd></div> : null}
+                            {numericValue(result.average_price) > 0 ? <div><dt>Preço médio</dt><dd>{formatQuote(result.average_price)} {resultQuote}</dd></div> : null}
                             {result.fees.length > 0 ? (
                                 <div><dt>Taxas cobradas</dt><dd>{result.fees.map((fee) => `${formatBase(fee.amount)} ${fee.asset}`).join(' · ')}</dd></div>
                             ) : null}
