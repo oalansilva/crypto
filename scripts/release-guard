@@ -1125,6 +1125,12 @@ if git rev-parse --verify -q origin/develop >/dev/null &&
       continue
     fi
 
+    # Card #618: on release-* pre, local develop tip is noise — authority is origin/develop.
+    # Do not require PRESERVED_BRANCHES=develop; diverge warn (~438) still applies.
+    if [[ "$mode" == "pre" && "$current_branch" == release-* && "$branch" == "develop" ]]; then
+      continue
+    fi
+
     if [[ "$branch" == "$current_branch" ]]; then
       continue
     fi
