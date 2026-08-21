@@ -27,9 +27,11 @@ from resolve import UNBOUND, resolve  # noqa: E402
 
 REPO_ROOT = ROOT.parents[1]
 WRITE_TOOLS = frozenset({"Write", "StrReplace", "Delete", "EditNotebook"})
-MUTATION_RE = re.compile(
-    r"(?:>>|>|\btee\s+|sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)"
-)
+MUTATION_RE = re.compile(r"(?:>>|>|\btee\s+|sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)")
+NON_REDIRECT_MUTATION_RE = re.compile(r"(?:sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)")
+# File redirects / tee destinations. Targets starting with & are fd redirects (2>&1).
+FILE_REDIRECT_RE = re.compile(r"(?:\d*)?(>>|>)\s*([^\s|;<>&]+)")
+TEE_TARGET_RE = re.compile(r"\btee(?:\s+-a)?\s+([^\s|;<>&]+)")
 PRODUCT_IN_CMD_RE = re.compile(
     r"((?:/(?:[\w.-]+))*/(?:backend|frontend/src)/[^\s'\"|;<>&]+|"
     r"(?:backend|frontend/src)/[^\s'\"|;<>&]+)"
@@ -110,9 +112,80 @@ def _path_from_write(payload: Mapping[str, Any]) -> str | None:
     return None
 
 
-def _path_from_command(command: str) -> str | None:
+def _strip_quotes(token: str) -> str:
+    text = token.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        return text[1:-1]
+    return text
+
+
+def _is_allowlisted_sink(target: str, cwd: Path | None = None) -> bool:
+    """Card #625: /dev/null and /tmp sinks outside the worktree are not product writes.
+
+    Paths under the envelope cwd still count as product even when pytest uses /tmp
+    for the fixture repo (absolute tee into the worktree must remain deny).
+    """
+    text = _strip_quotes(target)
+    if text == "/dev/null":
+        return True
+    if text == "/tmp" or text.startswith("/tmp/"):
+        if cwd is None:
+            return True
+        try:
+            Path(text).resolve().relative_to(cwd.resolve())
+        except ValueError:
+            return True
+        return False
+    return False
+
+
+def _redirect_file_targets(command: str) -> list[str]:
+    targets: list[str] = []
+    for match in FILE_REDIRECT_RE.finditer(command):
+        found = _strip_quotes(match.group(2))
+        if found.startswith("&"):
+            # fd redirect such as 2>&1 — not a filesystem sink
+            continue
+        targets.append(found)
+    for match in TEE_TARGET_RE.finditer(command):
+        targets.append(_strip_quotes(match.group(1)))
+    return targets
+
+
+def _path_from_command(command: str, cwd: Path | None = None) -> str | None:
     if not MUTATION_RE.search(command):
         return None
+
+    targets = _redirect_file_targets(command)
+    has_non_redirect = bool(NON_REDIRECT_MUTATION_RE.search(command))
+
+    # Only fd redirects (e.g. 2>&1) and/or allowlisted sinks → do not promote a
+    # product path cited elsewhere in the command (card #625 false positive).
+    if targets and all(_is_allowlisted_sink(t, cwd) for t in targets) and not has_non_redirect:
+        return None
+    if not targets and not has_non_redirect:
+        return None
+
+    for target in targets:
+        if _is_allowlisted_sink(target, cwd):
+            continue
+        if target.startswith("backend/") or target.startswith("frontend/src/"):
+            return target
+        if target.startswith("openspec/changes/") or target.startswith(
+            "frontend/public/prototypes/"
+        ):
+            return target
+        product = PRODUCT_IN_CMD_RE.search(target)
+        design = DESIGN_IN_CMD_RE.search(target)
+        if product:
+            return product.group(1)
+        if design:
+            return design.group(1)
+        if "/backend/" in target or "/frontend/src/" in target:
+            return target
+        if "/openspec/changes/" in target or "/frontend/public/prototypes/" in target:
+            return target
+
     match = PRODUCT_IN_CMD_RE.search(command) or DESIGN_IN_CMD_RE.search(command)
     if match is None:
         return None
@@ -160,14 +233,16 @@ def extract_path(payload: Mapping[str, Any]) -> str | None:
     tool = str(payload.get("tool_name") or "")
     if tool in WRITE_TOOLS:
         return _path_from_write(payload)
+    cwd_raw = payload.get("cwd")
+    cwd = Path(str(cwd_raw)) if isinstance(cwd_raw, str) and cwd_raw.strip() else None
     command = payload.get("command")
     if isinstance(command, str) and command.strip():
-        return _path_from_command(command)
+        return _path_from_command(command, cwd)
     if tool == "Shell":
         data = _tool_input(payload)
         cmd = data.get("command")
         if isinstance(cmd, str):
-            return _path_from_command(cmd)
+            return _path_from_command(cmd, cwd)
     return None
 
 
@@ -182,10 +257,10 @@ def github_status_provider(bound_card: str | None) -> str | None:
     env = os.environ.copy()
     try:
         query = (
-            "query($n:Int!){repository(owner:\"oalansilva\",name:\"crypto\")"
+            'query($n:Int!){repository(owner:"oalansilva",name:"crypto")'
             "{issue(number:$n){projectItems(first:20){nodes{"
             "project{number owner{...on User{login}}}"
-            "fieldValueByName(name:\"Status\")"
+            'fieldValueByName(name:"Status")'
             "{...on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}"
         )
         proc = subprocess.run(
@@ -213,7 +288,8 @@ def github_status_provider(bound_card: str | None) -> str | None:
     except json.JSONDecodeError:
         return None
     nodes = (
-        (((data.get("data") or {}).get("repository") or {}).get("issue") or {}).get("projectItems") or {}
+        (((data.get("data") or {}).get("repository") or {}).get("issue") or {}).get("projectItems")
+        or {}
     ).get("nodes") or []
     for node in nodes:
         project = (node or {}).get("project") or {}
