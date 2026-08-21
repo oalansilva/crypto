@@ -606,3 +606,250 @@ def test_cli_has_no_checks_green_flag():
     with pytest.raises(SystemExit) as exc:
         main(["integrar_develop", "--checks-green"])
     assert exc.value.code != 0
+
+
+def _status_of(mapping: dict[str, str | None]):
+    def inner(bound: str | None) -> str | None:
+        return mapping.get(str(bound) if bound is not None else "")
+
+    return inner
+
+
+def _t16_kwargs(**extra):
+    payload = {
+        "status": "Homologado",
+        "q_git": "develop",
+        "bound_card": UNBOUND,
+        "package_cards": [617, 618],
+        "m_lote": True,
+        "status_provider": _status_of({"617": "Homologado", "618": "Homologado"}),
+    }
+    payload.update(extra)
+    return payload
+
+
+def test_fechar_release_rejects_without_m_lote():
+    from t16 import RecordingT16Closer
+
+    mover = FakeMover()
+    closer = RecordingT16Closer()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=closer,
+        m_lote=None,
+        m_lote_measurer=lambda: False,
+        **{k: v for k, v in _t16_kwargs().items() if k != "m_lote"},
+    )
+    assert out["result"] == "reject"
+    assert str(out["reason"] or "").startswith("guard:")
+    assert "alan-workflow-ambientes" in (out.get("message") or "")
+    assert "release-guard" in (out.get("message") or "")
+    assert mover.calls == []
+    assert closer.calls == []
+
+
+def test_fechar_release_measurer_absent_is_guard():
+    from t16 import RecordingT16Closer
+
+    mover = FakeMover()
+    closer = RecordingT16Closer()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=closer,
+        m_lote=None,
+        m_lote_measurer=None,
+        **{k: v for k, v in _t16_kwargs().items() if k != "m_lote"},
+    )
+    assert out["result"] == "reject"
+    assert str(out["reason"] or "").startswith("guard:")
+    assert mover.calls == []
+    assert closer.calls == []
+
+
+def test_fechar_release_post_pass_closes_package():
+    from t16 import RecordingT16Closer
+
+    mover = FakeMover()
+    closer = RecordingT16Closer()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=closer,
+        **_t16_kwargs(),
+    )
+    assert out["result"] == "transition"
+    assert out["to"] == "Pronto"
+    assert closer.calls == ["comment_pronto", "comment_pronto"]
+    assert closer.cards == ["617", "618"]
+    assert mover.calls == [(617, "Pronto"), (618, "Pronto")]
+
+
+def test_fechar_release_member_done_is_i9():
+    from t16 import RecordingT16Closer
+
+    mover = FakeMover()
+    closer = RecordingT16Closer()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=closer,
+        **_t16_kwargs(status_provider=_status_of({"617": "Homologado", "618": "Done"})),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I9"
+    assert mover.calls == []
+    assert closer.calls == []
+
+
+def test_fechar_release_skips_already_pronto():
+    from t16 import RecordingT16Closer
+
+    mover = FakeMover()
+    closer = RecordingT16Closer()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=closer,
+        **_t16_kwargs(status_provider=_status_of({"617": "Homologado", "618": "Pronto"})),
+    )
+    assert out["result"] == "transition"
+    assert out["to"] == "Pronto"
+    assert closer.cards == ["617"]
+    assert mover.calls == [(617, "Pronto")]
+
+
+def test_fechar_release_missing_closer_is_i9():
+    mover = FakeMover()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=None,
+        **_t16_kwargs(),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I9"
+    assert mover.calls == []
+
+
+def test_fechar_release_comment_failure_is_i9():
+    from t16 import RecordingT16Closer
+
+    mover = FakeMover()
+    closer = RecordingT16Closer(fail_at="comment_pronto")
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=closer,
+        **_t16_kwargs(),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I9"
+    assert mover.calls == []
+
+
+def test_fechar_release_unbound_develop_evaluates():
+    from t16 import RecordingT16Closer
+
+    mover = FakeMover()
+    closer = RecordingT16Closer()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=closer,
+        **_t16_kwargs(),
+    )
+    assert out["result"] == "transition"
+    assert mover.calls[0][0] == 617
+
+
+def test_fechar_release_unbound_non_lote_git_rejected():
+    mover = FakeMover()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=None,
+        **_t16_kwargs(q_git="main"),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "unbound"
+    assert mover.calls == []
+
+
+def test_iniciar_apply_unbound_still_rejected():
+    mover = FakeMover()
+    out = process_event(
+        "iniciar_apply",
+        status="Pronto para Dev",
+        q_git="develop",
+        bound_card=UNBOUND,
+        mover=mover,
+        digest_changed=False,
+        g_design=True,
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "unbound"
+    assert mover.calls == []
+
+
+def test_fechar_release_dry_run_skips_closer_and_mover():
+    from t16 import RecordingT16Closer
+
+    mover = FakeMover()
+    closer = RecordingT16Closer()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=closer,
+        dry_run=True,
+        **_t16_kwargs(),
+    )
+    assert out["result"] == "transition"
+    assert out["to"] == "Pronto"
+    assert closer.calls == []
+    assert mover.calls == []
+
+
+def test_homologar_still_rejected():
+    mover = FakeMover()
+    out = process_event(
+        "homologar",
+        status="Done",
+        q_git="card-612-process-event",
+        bound_card="612",
+        mover=mover,
+    )
+    assert out["result"] == "reject"
+    assert mover.calls == []
+
+
+def test_fechar_release_invalid_release_cards_is_i9(monkeypatch):
+    from t16 import RecordingT16Closer
+
+    monkeypatch.setenv("RELEASE_CARDS", "617,61O")
+    mover = FakeMover()
+    closer = RecordingT16Closer()
+    out = process_event(
+        "fechar_release",
+        status="Homologado",
+        q_git="card-652-t16-live-fechar-release",
+        bound_card="652",
+        package_cards=None,
+        m_lote=True,
+        mover=mover,
+        t16_closer=closer,
+        status_provider=_status_of({"652": "Homologado"}),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I9"
+    assert mover.calls == []
+    assert closer.calls == []
+
+
+def test_cli_has_no_m_lote_flag():
+    from process_event import main
+
+    with pytest.raises(SystemExit) as exc:
+        main(["fechar_release", "--m-lote"])
+    assert exc.value.code != 0

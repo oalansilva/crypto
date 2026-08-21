@@ -19,7 +19,7 @@ from resolve import UNBOUND  # noqa: E402
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 TODO_STUB = "Próximo evento = iniciar_design. Não apply. Não /opsx:new ainda."
-HOMOLOGADO_STUB = "Lote; não é main. T16 só com M_lote."
+HOMOLOGADO_STUB = "T16 = process_event fechar_release com M_lote live. Chat ≠ δ."
 PLAYBOOK = ("release-guard", "subir lote", "deploy PROD")
 
 

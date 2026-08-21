@@ -10,6 +10,6 @@ alwaysApply: true
 - `Em Refinamento` é a entrada. Não pular Design / Aprovação de Design.
 - `Todo` não é código; próxima = `iniciar_design` via `process_event`.
 - Código / `/opsx:apply` só após `Status=Pronto para Dev` (T8).
-- Alan único em T1/T7/T15/T16. Agent não arrasta essas colunas.
+- Alan único em T1/T7/T15. Agent não arrasta essas colunas. T16 = process_event fechar_release.
 - Overlay on-demand; runbook = skill `alan-workflow`; lei = `rules.md`.
 - Skills deste repo `.cursor/skills/`. Task `inherit`. Cliente: Cursor Agent. Auto permitido.
