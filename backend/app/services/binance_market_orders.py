@@ -20,6 +20,8 @@ from app.services.binance_spot_orders import (
 TERMINAL_BINANCE_STATUSES = frozenset(
     {"FILLED", "CANCELED", "REJECTED", "EXPIRED", "EXPIRED_IN_MATCH"}
 )
+ALLOWED_ORDER_QUOTE_ASSETS = frozenset({"USDT", "USDC"})
+ALLOWED_STRATEGY_QUOTE_ASSETS = frozenset({"USDT"})
 
 
 def _validation_error(message: str, *, status_code: int = 400) -> BinanceOrderError:
@@ -187,7 +189,12 @@ def _market_notional_reference_price(
     return _positive_decimal(payload.get("price"), "Preço médio para validação")
 
 
-def _validate_symbol_info(symbol_info: Dict[str, Any], *, side: str) -> tuple[str, str]:
+def _validate_symbol_info(
+    symbol_info: Dict[str, Any],
+    *,
+    side: str,
+    allowed_quotes: frozenset[str] = ALLOWED_ORDER_QUOTE_ASSETS,
+) -> tuple[str, str]:
     if str(symbol_info.get("status") or "").upper() != "TRADING":
         raise _validation_error("Ativo indisponível para negociação Spot")
     if symbol_info.get("isSpotTradingAllowed") is not True:
@@ -197,11 +204,48 @@ def _validate_symbol_info(symbol_info: Dict[str, Any], *, side: str) -> tuple[st
         raise _validation_error("Ativo não aceita ordem MARKET")
     base = str(symbol_info.get("baseAsset") or "").upper()
     quote = str(symbol_info.get("quoteAsset") or "").upper()
-    if not base or quote != "USDT":
-        raise _validation_error("Operação direta disponível apenas para pares cotados em USDT")
+    if not base or quote not in allowed_quotes:
+        allowed = " ou ".join(sorted(allowed_quotes, key=lambda item: (item != "USDT", item)))
+        raise _validation_error(
+            f"Operação direta disponível apenas para pares cotados em {allowed}"
+        )
     if side == "BUY" and symbol_info.get("quoteOrderQtyMarketAllowed") is not True:
-        raise _validation_error("Ativo não aceita compra MARKET por valor em USDT")
+        raise _validation_error(
+            f"Par Spot {str(symbol_info.get('symbol') or '').upper() or 'escolhido'} "
+            f"não aceita MARKET com quoteOrderQty"
+        )
     return base, quote
+
+
+def resolve_order_symbol_from_strategy(
+    *,
+    strategy_symbol: str,
+    side: str,
+    quote_asset: Optional[str] = None,
+) -> tuple[str, str, str]:
+    """Return (strategy_symbol, order_symbol, quote_asset) for a Monitor opportunity.
+
+    Strategy eligibility stays on *USDT pairs. BUY may pay with USDT or USDC by
+    submitting on BASE+origin without changing the strategy symbol.
+    """
+    strategy = normalize_symbol(strategy_symbol)
+    normalized_side = str(side or "").upper()
+    if normalized_side not in {"BUY", "SELL"}:
+        raise _validation_error("Lado da ordem inválido")
+    if not strategy.endswith("USDT"):
+        raise _validation_error(
+            "Operação direta disponível apenas para oportunidades cotadas em USDT"
+        )
+    base = strategy[: -len("USDT")]
+    if not base:
+        raise _validation_error("Símbolo da estratégia inválido")
+    if normalized_side == "SELL":
+        return strategy, strategy, "USDT"
+    origin = str(quote_asset or "USDT").strip().upper()
+    if origin not in ALLOWED_ORDER_QUOTE_ASSETS:
+        raise _validation_error("Origem de pagamento inválida. Use USDT ou USDC.")
+    order_symbol = f"{base}{origin}"
+    return strategy, order_symbol, origin
 
 
 def build_market_order_plan(
@@ -212,14 +256,24 @@ def build_market_order_plan(
     side: str,
     quote_amount: Optional[Decimal] = None,
     base_url: Optional[str] = None,
+    allowed_quotes: frozenset[str] = ALLOWED_ORDER_QUOTE_ASSETS,
 ) -> MarketOrderPlan:
     sym = normalize_symbol(symbol)
     normalized_side = str(side or "").upper()
     if normalized_side not in {"BUY", "SELL"}:
         raise _validation_error("Lado da ordem inválido")
 
-    symbol_info = get_symbol_info(sym, base_url=base_url)
-    base_asset, quote_asset = _validate_symbol_info(symbol_info, side=normalized_side)
+    try:
+        symbol_info = get_symbol_info(sym, base_url=base_url)
+    except BinanceOrderError as exc:
+        if getattr(exc, "code", None) == -1121:
+            raise _validation_error(
+                f"Par Spot {sym} indisponível ou não encontrado na Binance."
+            ) from exc
+        raise
+    base_asset, quote_asset = _validate_symbol_info(
+        symbol_info, side=normalized_side, allowed_quotes=allowed_quotes
+    )
     price_payload = public_get("/api/v3/ticker/price", {"symbol": sym}, base_url=base_url)
     price = _positive_decimal(price_payload.get("price"), "Preço indicativo")
     account = signed_request(
@@ -241,7 +295,7 @@ def build_market_order_plan(
     step, min_qty, max_qty = _market_quantity_limits(filters)
 
     if normalized_side == "BUY":
-        requested_quote = _positive_decimal(quote_amount, "Valor em USDT")
+        requested_quote = _positive_decimal(quote_amount, f"Valor em {quote_asset}")
         if requested_quote > quote_balance:
             earn_balance = _earn_balance(account, asset=quote_asset)
             available_text = f"{format_decimal(quote_balance)} {quote_asset} disponíveis"
@@ -251,7 +305,8 @@ def build_market_order_plan(
                     f"Seu saldo restante está em Simple Earn (rendimento) e não é elegível para compra direta."
                 )
             raise _validation_error(
-                f"Saldo livre em {quote_asset} insuficiente ({available_text})."
+                f"Saldo livre em {quote_asset} insuficiente ({available_text}). "
+                f"Sem conversão automática para outra stable."
             )
         _validate_notional(notional=requested_quote, filters=filters)
         estimated_base_quantity = requested_quote / price
@@ -347,10 +402,14 @@ def get_market_order_eligibility(symbols: Iterable[str]) -> list[Dict[str, Any]]
             )
             continue
         try:
-            _validate_symbol_info(symbol_info, side="BUY")
+            _validate_symbol_info(
+                symbol_info, side="BUY", allowed_quotes=ALLOWED_STRATEGY_QUOTE_ASSETS
+            )
         except BinanceOrderError:
             try:
-                _validate_symbol_info(symbol_info, side="SELL")
+                _validate_symbol_info(
+                    symbol_info, side="SELL", allowed_quotes=ALLOWED_STRATEGY_QUOTE_ASSETS
+                )
             except BinanceOrderError as exc:
                 results.append({"symbol": symbol, "eligible": False, "reason": str(exc)})
             else:
@@ -377,7 +436,7 @@ def submit_market_order(
     }
     if plan.side == "BUY":
         if plan.quote_amount is None:
-            raise _validation_error("Preview de compra sem valor em USDT")
+            raise _validation_error("Preview de compra sem valor na origem escolhida")
         params["quoteOrderQty"] = format_decimal(plan.quote_amount)
     else:
         if plan.base_quantity is None:

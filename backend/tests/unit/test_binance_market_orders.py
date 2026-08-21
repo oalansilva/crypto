@@ -307,7 +307,7 @@ def test_plan_rejects_read_only_binance_credential(_info, _price, signed_request
     ("symbol_info", "message"),
     [
         ({**SYMBOL_INFO, "status": "BREAK"}, "indisponível"),
-        ({**SYMBOL_INFO, "quoteAsset": "BTC"}, "USDT"),
+        ({**SYMBOL_INFO, "quoteAsset": "BTC"}, "USDT ou USDC"),
         ({**SYMBOL_INFO, "orderTypes": ["LIMIT"]}, "MARKET"),
     ],
 )
@@ -323,6 +323,95 @@ def test_plan_rejects_ineligible_symbols(symbol_info, message):
             side="BUY",
             quote_amount=Decimal("10"),
         )
+
+
+SYMBOL_INFO_USDC = {
+    **SYMBOL_INFO,
+    "symbol": "ETHUSDC",
+    "quoteAsset": "USDC",
+}
+
+
+@patch("app.services.binance_market_orders.signed_request")
+@patch("app.services.binance_market_orders.public_get")
+@patch("app.services.binance_market_orders.get_symbol_info", return_value=SYMBOL_INFO_USDC)
+def test_buy_plan_accepts_usdc_quote(_info, public_get, signed_request):
+    public_get.return_value = {"price": "2000"}
+    signed_request.return_value = {
+        "canTrade": True,
+        "balances": [{"asset": "USDC", "free": "400"}, {"asset": "ETH", "free": "1"}],
+    }
+    plan = market.build_market_order_plan(
+        api_key="key",
+        api_secret="secret",
+        symbol="ETHUSDC",
+        side="BUY",
+        quote_amount=Decimal("50"),
+    )
+    assert plan.symbol == "ETHUSDC"
+    assert plan.quote_asset == "USDC"
+    assert plan.quote_amount == Decimal("50")
+
+
+def test_resolve_order_symbol_buy_usdc_keeps_strategy_usdt():
+    strategy, order, quote = market.resolve_order_symbol_from_strategy(
+        strategy_symbol="BTC/USDT",
+        side="BUY",
+        quote_asset="USDC",
+    )
+    assert strategy == "BTCUSDT"
+    assert order == "BTCUSDC"
+    assert quote == "USDC"
+
+
+def test_resolve_order_symbol_sell_ignores_usdc_origin():
+    strategy, order, quote = market.resolve_order_symbol_from_strategy(
+        strategy_symbol="BTCUSDT",
+        side="SELL",
+        quote_asset="USDC",
+    )
+    assert strategy == order == "BTCUSDT"
+    assert quote == "USDT"
+
+
+def test_create_preview_buy_usdc_uses_order_symbol_not_strategy():
+    usdc_plan = replace(_plan(), symbol="ETHUSDC", quote_asset="USDC")
+    with patch(
+        "app.services.monitor_spot_market_orders.build_market_order_plan",
+        return_value=usdc_plan,
+    ) as build:
+        preview = workflow.create_preview(
+            api_key="key",
+            api_secret="secret",
+            user_id="user-a",
+            symbol="ETHUSDT",
+            side="BUY",
+            quote_amount=Decimal("100"),
+            quote_asset="USDC",
+        )
+    assert build.call_args.kwargs["symbol"] == "ETHUSDC"
+    assert preview["strategy_symbol"] == "ETHUSDT"
+    assert preview["symbol"] == "ETHUSDC"
+    assert preview["quote_asset"] == "USDC"
+
+
+def test_create_preview_sell_stays_on_strategy_symbol():
+    with patch(
+        "app.services.monitor_spot_market_orders.build_market_order_plan",
+        return_value=_plan(side="SELL"),
+    ) as build:
+        preview = workflow.create_preview(
+            api_key="key",
+            api_secret="secret",
+            user_id="user-a",
+            symbol="ETHUSDT",
+            side="SELL",
+            quote_amount=None,
+            quote_asset="USDC",
+        )
+    assert build.call_args.kwargs["symbol"] == "ETHUSDT"
+    assert preview["strategy_symbol"] == "ETHUSDT"
+    assert preview["symbol"] == "ETHUSDT"
 
 
 @patch("app.services.binance_market_orders.public_get")
@@ -354,6 +443,16 @@ def test_batch_eligibility_uses_live_exchange_info(public_get):
         },
     ]
     assert public_get.call_count > 1
+
+
+@patch("app.services.binance_market_orders.public_get")
+def test_eligibility_rejects_usdc_strategy_pairs(public_get):
+    public_get.return_value = {
+        "symbols": [{**SYMBOL_INFO, "symbol": "ETHUSDC", "quoteAsset": "USDC"}],
+    }
+    results = market.get_market_order_eligibility(["ETHUSDC"])
+    assert results[0]["eligible"] is False
+    assert "USDT" in (results[0]["reason"] or "")
 
 
 def test_public_exchange_info_error_preserves_invalid_symbol_code():
@@ -665,6 +764,7 @@ def test_existing_order_is_reconciled_before_an_expired_preview_is_decoded():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="filled",
         requested_quote_amount=Decimal("100"),
@@ -705,6 +805,7 @@ def test_fresh_key_is_blocked_while_same_symbol_order_remains_unresolved():
         idempotency_key="other-key",
         client_order_id="cftrade_pending",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="reconciling",
         result_summary={},
@@ -733,6 +834,70 @@ def test_fresh_key_is_blocked_while_same_symbol_order_remains_unresolved():
     assert error.value.code == "ORDER_PENDING"
 
 
+def test_usdc_buy_pending_blocks_usdt_sell_on_same_strategy():
+    usdc_plan = replace(_plan(), symbol="ETHUSDC", quote_asset="USDC")
+    with patch(
+        "app.services.monitor_spot_market_orders.build_market_order_plan",
+        return_value=usdc_plan,
+    ):
+        preview = workflow.create_preview(
+            api_key="key",
+            api_secret="secret",
+            user_id="user-a",
+            symbol="ETHUSDT",
+            side="BUY",
+            quote_amount=Decimal("100"),
+            quote_asset="USDC",
+        )
+    pending = MonitorSpotOrderRequest(
+        user_id="user-a",
+        idempotency_key="other-key",
+        client_order_id="cftrade_pending_usdc",
+        symbol="ETHUSDC",
+        strategy_symbol="ETHUSDT",
+        side="BUY",
+        state="reconciling",
+        result_summary={"quote_asset": "USDC"},
+    )
+    db = MagicMock()
+    exact_query = MagicMock()
+    exact_query.filter.return_value.first.return_value = None
+    unresolved_query = MagicMock()
+    unresolved_query.filter.return_value.first.return_value = pending
+    db.query.side_effect = [exact_query, unresolved_query]
+    sell_preview = None
+    with patch(
+        "app.services.monitor_spot_market_orders.build_market_order_plan",
+        return_value=_plan(side="SELL"),
+    ):
+        sell_preview = workflow.create_preview(
+            api_key="key",
+            api_secret="secret",
+            user_id="user-a",
+            symbol="ETHUSDT",
+            side="SELL",
+            quote_amount=None,
+        )
+    with (
+        patch(
+            "app.services.monitor_spot_market_orders._reconcile",
+            return_value={"state": "reconciling"},
+        ),
+        pytest.raises(workflow.SpotMarketOrderError) as error,
+    ):
+        workflow.submit_order(
+            db=db,
+            api_key="key",
+            api_secret="secret",
+            user_id="user-a",
+            preview_token=sell_preview["preview_token"],
+            idempotency_key=sell_preview["idempotency_key"],
+        )
+    assert error.value.code == "ORDER_PENDING"
+    assert preview["strategy_symbol"] == "ETHUSDT"
+    assert preview["symbol"] == "ETHUSDC"
+
+
 def test_fresh_key_requires_new_preview_after_prior_order_is_reconciled():
     with patch(
         "app.services.monitor_spot_market_orders.build_market_order_plan", return_value=_plan()
@@ -750,6 +915,7 @@ def test_fresh_key_requires_new_preview_after_prior_order_is_reconciled():
         idempotency_key="prior-key",
         client_order_id="cftrade_prior",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="reconciling",
         result_summary={},
@@ -831,6 +997,7 @@ def test_terminal_rejection_replaces_stale_reconciliation_message():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="reconciling",
         result_summary={"message": "A Binance ainda está confirmando a operação."},
@@ -861,6 +1028,7 @@ def test_repeated_order_not_found_after_grace_releases_never_submitted_record():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="submitting",
         submitting_account_identity_hash="a" * 64,
@@ -918,6 +1086,7 @@ def test_order_not_found_terminal_runs_final_verification_and_records_fill():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="submitting",
         submitting_account_identity_hash="a" * 64,
@@ -971,6 +1140,7 @@ def test_terminal_state_is_never_regressed_by_concurrent_reconcile():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="filled",
         requested_quote_amount=Decimal("100"),
@@ -1005,6 +1175,7 @@ def test_repeated_query_errors_after_grace_release_lock_with_safe_message():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="submitting",
         submitting_account_identity_hash="a" * 64,
@@ -1039,6 +1210,7 @@ def test_query_error_counter_resets_after_successful_reconcile():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="submitting",
         submitting_account_identity_hash="a" * 64,
@@ -1085,6 +1257,7 @@ def test_order_not_found_on_different_binance_account_keeps_request_locked():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="reconciling",
         submitting_account_identity_hash="a" * 64,
@@ -1125,6 +1298,7 @@ def test_terminal_order_status_remains_readable_without_binance_credentials():
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="filled",
         result_summary={"fees": [], "binance_status": "FILLED"},
@@ -1150,6 +1324,7 @@ def test_unresolved_order_status_requires_binance_credentials_for_live_reconcili
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="reconciling",
         result_summary={},
@@ -1173,6 +1348,7 @@ def test_reconciliation_surfaces_credential_errors_without_releasing_order_lock(
         idempotency_key="existing-idempotency-key",
         client_order_id="cftrade_existing",
         symbol="ETHUSDT",
+        strategy_symbol="ETHUSDT",
         side="BUY",
         state="reconciling",
         error_code="ORDER_STATUS_UNKNOWN",
@@ -1322,7 +1498,7 @@ def test_model_has_user_scoped_idempotency_constraint():
     assert "uq_monitor_spot_order_requests_user_key" in names
     assert "uq_monitor_spot_order_requests_client_order_id" in names
     index_names = {index.name for index in MonitorSpotOrderRequest.__table__.indexes}
-    assert "uq_monitor_spot_order_requests_unresolved_symbol" in index_names
+    assert "uq_monitor_spot_order_requests_unresolved_strategy" in index_names
     assert MonitorSpotOrderRequest.__table__.c.submitting_account_identity_hash.nullable is False
 
 
@@ -1351,3 +1527,179 @@ def test_route_contract_is_additive_and_typed():
     preview_schema = monitor_spot_market.SpotMarketPreviewPayload.model_json_schema()
     assert preview_schema["properties"]["side"]["enum"] == ["BUY", "SELL"]
     assert "quote_amount_usdt" in preview_schema["properties"]
+    assert preview_schema["properties"]["quote_asset"]["enum"] == ["USDT", "USDC"]
+    assert (
+        "strategy_symbol"
+        in monitor_spot_market.SpotMarketPreviewResponse.model_json_schema()["properties"]
+    )
+
+
+def test_route_rejects_sell_with_non_usdt_quote_asset():
+    db = MagicMock()
+    with pytest.raises(HTTPException) as error:
+        monitor_spot_market.post_spot_market_preview(
+            monitor_spot_market.SpotMarketPreviewPayload(
+                symbol="ETHUSDT", side="SELL", quote_asset="USDC"
+            ),
+            current_user_id="u1",
+            db=db,
+        )
+    assert error.value.status_code == 422
+    assert error.value.detail["code"] == "SELL_QUOTE_FIXED"
+
+
+def test_resolve_rejects_invalid_side_and_origin_and_non_usdt_strategy():
+    with pytest.raises(BinanceOrderError, match="Lado da ordem inválido"):
+        market.resolve_order_symbol_from_strategy(
+            strategy_symbol="ETHUSDT", side="HOLD", quote_asset="USDT"
+        )
+    with pytest.raises(BinanceOrderError, match="oportunidades cotadas em USDT"):
+        market.resolve_order_symbol_from_strategy(
+            strategy_symbol="ETHUSDC", side="BUY", quote_asset="USDC"
+        )
+    with pytest.raises(BinanceOrderError, match="Origem de pagamento inválida"):
+        market.resolve_order_symbol_from_strategy(
+            strategy_symbol="ETHUSDT", side="BUY", quote_asset="BUSD"
+        )
+    with pytest.raises(BinanceOrderError, match="Símbolo da estratégia inválido"):
+        market.resolve_order_symbol_from_strategy(
+            strategy_symbol="USDT", side="BUY", quote_asset="USDT"
+        )
+
+
+@patch("app.services.binance_market_orders.get_symbol_info")
+def test_build_plan_maps_invalid_symbol_code(get_info):
+    get_info.side_effect = BinanceOrderError("Invalid symbol", code=-1121)
+    with pytest.raises(BinanceOrderError, match="indisponível ou não encontrado"):
+        market.build_market_order_plan(
+            api_key="key",
+            api_secret="secret",
+            symbol="ZZZUSDC",
+            side="BUY",
+            quote_amount=Decimal("10"),
+        )
+
+
+def test_submit_market_order_requires_quote_amount_for_buy():
+    plan = replace(_plan(), quote_amount=None)
+    with pytest.raises(BinanceOrderError, match="origem escolhida"):
+        market.submit_market_order(
+            api_key="key",
+            api_secret="secret",
+            plan=plan,
+            client_order_id="cftrade_test",
+        )
+
+
+def test_create_preview_maps_missing_usdc_pair():
+    with patch(
+        "app.services.monitor_spot_market_orders.build_market_order_plan",
+        side_effect=BinanceOrderError("Símbolo ETHUSDC não encontrado na Binance Spot"),
+    ):
+        with pytest.raises(workflow.SpotMarketOrderError) as error:
+            workflow.create_preview(
+                api_key="key",
+                api_secret="secret",
+                user_id="user-a",
+                symbol="ETHUSDT",
+                side="BUY",
+                quote_amount=Decimal("10"),
+                quote_asset="USDC",
+            )
+    assert error.value.code == "ORDER_SYMBOL_UNAVAILABLE"
+
+
+def test_create_preview_maps_quote_order_qty_unavailable():
+    with patch(
+        "app.services.monitor_spot_market_orders.build_market_order_plan",
+        side_effect=BinanceOrderError(
+            "Par Spot ETHUSDC não aceita MARKET com quoteOrderQty",
+            safe_for_user=True,
+        ),
+    ):
+        with pytest.raises(workflow.SpotMarketOrderError) as error:
+            workflow.create_preview(
+                api_key="key",
+                api_secret="secret",
+                user_id="user-a",
+                symbol="ETHUSDT",
+                side="BUY",
+                quote_amount=Decimal("10"),
+                quote_asset="USDC",
+            )
+    assert error.value.code == "ORDER_SYMBOL_UNAVAILABLE"
+
+
+def test_create_preview_quote_asset_mismatch():
+    mismatched = replace(_plan(), symbol="ETHUSDC", quote_asset="USDT")
+    with patch(
+        "app.services.monitor_spot_market_orders.build_market_order_plan",
+        return_value=mismatched,
+    ):
+        with pytest.raises(workflow.SpotMarketOrderError) as error:
+            workflow.create_preview(
+                api_key="key",
+                api_secret="secret",
+                user_id="user-a",
+                symbol="ETHUSDT",
+                side="BUY",
+                quote_amount=Decimal("10"),
+                quote_asset="USDC",
+            )
+    assert error.value.code == "QUOTE_ASSET_MISMATCH"
+
+
+def test_record_response_infers_quote_asset_from_symbol():
+    usdc = MonitorSpotOrderRequest(
+        user_id="user-a",
+        idempotency_key="k1",
+        client_order_id="cftrade_usdc",
+        symbol="ETHUSDC",
+        strategy_symbol="ETHUSDT",
+        side="BUY",
+        state="filled",
+        submitting_account_identity_hash="a" * 64,
+        result_summary={},
+    )
+    payload = workflow._record_response(usdc)
+    assert payload["quote_asset"] == "USDC"
+    assert payload["strategy_symbol"] == "ETHUSDT"
+
+    odd = MonitorSpotOrderRequest(
+        user_id="user-a",
+        idempotency_key="k2",
+        client_order_id="cftrade_odd",
+        symbol="ETHBTC",
+        strategy_symbol="ETHUSDT",
+        side="BUY",
+        state="filled",
+        submitting_account_identity_hash="a" * 64,
+        result_summary={},
+    )
+    assert workflow._record_response(odd)["quote_asset"] is None
+
+
+def test_build_plan_rejects_invalid_side():
+    with pytest.raises(BinanceOrderError, match="Lado da ordem inválido"):
+        market.build_market_order_plan(
+            api_key="key",
+            api_secret="secret",
+            symbol="ETHUSDT",
+            side="HOLD",
+            quote_amount=Decimal("10"),
+        )
+
+
+@patch(
+    "app.services.binance_market_orders.get_symbol_info",
+    return_value={**SYMBOL_INFO, "baseAsset": ""},
+)
+def test_build_plan_rejects_empty_base_asset(_info):
+    with pytest.raises(BinanceOrderError, match="pares cotados"):
+        market.build_market_order_plan(
+            api_key="key",
+            api_secret="secret",
+            symbol="ETHUSDT",
+            side="BUY",
+            quote_amount=Decimal("10"),
+        )

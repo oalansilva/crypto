@@ -367,6 +367,7 @@ class MonitorSpotOrderRequest(Base):
     idempotency_key = Column(String(64), nullable=False)
     client_order_id = Column(String(36), nullable=False)
     symbol = Column(String(32), nullable=False, index=True)
+    strategy_symbol = Column(String(32), nullable=False, index=True)
     side = Column(String(8), nullable=False)
     state = Column(String(24), nullable=False, default="submitting", index=True)
     submitting_account_identity_hash = Column(String(64), nullable=False)
@@ -399,9 +400,9 @@ class MonitorSpotOrderRequest(Base):
             "created_at",
         ),
         Index(
-            "uq_monitor_spot_order_requests_unresolved_symbol",
+            "uq_monitor_spot_order_requests_unresolved_strategy",
             "user_id",
-            "symbol",
+            "strategy_symbol",
             unique=True,
             postgresql_where=text("state IN ('submitting', 'reconciling')"),
         ),

@@ -53,7 +53,7 @@ Assessment A e Assessment B usam o **mesmo modelo do chat** (`Task` `inherit`) e
    - Remoção de UI existente: mostrar a tela/shell atual **sem** o elemento removido (delta negativo), não um mock abstrato.
 4. **HTML nunca fica no Gist OpenSpec.** Gist renderiza fonte, não a tela. Para protótipo HTML neste repo:
    - publicar em `frontend/public/prototypes/<change-or-card-slug>/` (entrada preferencial `index.html`);
-   - servir na URL DEV navegável `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/` (rebuild/restart do frontend DEV se o preview usar `dist/`);
+   - servir na URL DEV navegável `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/`. No host Cripto, `/prototypes*` não passa pelo preview SPA: o unit `criptofarol-dev-prototypes` serve o HTML do worktree/`public`/`dist`. Não copiar para `source` nem rebuild do frontend DEV só para o link público.
    - opcionalmente manter cópia espelho em `openspec/changes/<change>/prototype/` para o pacote da change (não publicar esse HTML no Gist);
    - no comentário do card: bloco OpenSpec = só Markdown do Gist; bloco separado **Protótipo navegável** = link HTTP da tela;
    - usar `publish-openspec-card-artifacts.sh --prototype-url <url>` (o script não envia `prototype/**` ao Gist).

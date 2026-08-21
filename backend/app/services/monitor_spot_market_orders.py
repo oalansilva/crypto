@@ -18,6 +18,7 @@ from app.services.binance_market_orders import (
     get_binance_account_identity_hash,
     normalize_market_order_result,
     query_market_order,
+    resolve_order_symbol_from_strategy,
     submit_market_order,
 )
 from app.services.binance_spot_orders import BinanceOrderError, format_decimal, normalize_symbol
@@ -116,14 +117,42 @@ def create_preview(
     symbol: str,
     side: str,
     quote_amount: Optional[Decimal],
+    quote_asset: Optional[str] = None,
 ) -> Dict[str, Any]:
-    plan = build_market_order_plan(
-        api_key=api_key,
-        api_secret=api_secret,
-        symbol=symbol,
+    strategy_symbol, order_symbol, resolved_quote = resolve_order_symbol_from_strategy(
+        strategy_symbol=symbol,
         side=side,
-        quote_amount=quote_amount,
+        quote_asset=quote_asset,
     )
+    try:
+        plan = build_market_order_plan(
+            api_key=api_key,
+            api_secret=api_secret,
+            symbol=order_symbol,
+            side=side,
+            quote_amount=quote_amount,
+        )
+    except BinanceOrderError as exc:
+        message = str(exc).lower()
+        missing_or_ineligible = (
+            getattr(exc, "code", None) == -1121
+            or "não encontrado" in message
+            or "não aceita market com quoteorderqty" in message
+            or f"par spot {order_symbol.lower()} indisponível" in message
+        )
+        if missing_or_ineligible:
+            raise SpotMarketOrderError(
+                f"Par Spot {order_symbol} indisponível ou não aceita MARKET com quoteOrderQty. "
+                f"Escolha USDT para pagar neste ativo.",
+                status_code=400,
+                code="ORDER_SYMBOL_UNAVAILABLE",
+            ) from exc
+        raise
+    if plan.quote_asset != resolved_quote and str(side or "").upper() == "BUY":
+        raise SpotMarketOrderError(
+            "A origem escolhida não corresponde ao par Spot resolvido.",
+            code="QUOTE_ASSET_MISMATCH",
+        )
     idempotency_key = secrets.token_urlsafe(24)
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(seconds=_preview_ttl_seconds())
@@ -132,7 +161,9 @@ def create_preview(
         "sub": user_id,
         "jti": idempotency_key,
         "symbol": plan.symbol,
+        "strategy_symbol": strategy_symbol,
         "side": plan.side,
+        "quote_asset": plan.quote_asset,
         "quote_amount": (
             format_decimal(plan.quote_amount) if plan.quote_amount is not None else None
         ),
@@ -151,6 +182,7 @@ def create_preview(
         "idempotency_key": idempotency_key,
         "expires_at": expires_at.isoformat(),
         "symbol": plan.symbol,
+        "strategy_symbol": strategy_symbol,
         "side": plan.side,
         **summary,
         "warning": (
@@ -198,11 +230,23 @@ def _decode_preview(
 
 def _record_response(record: MonitorSpotOrderRequest) -> Dict[str, Any]:
     summary = dict(record.result_summary or {})
+    quote_asset = summary.get("quote_asset")
+    if not quote_asset:
+        symbol = normalize_symbol(str(record.symbol or ""))
+        if symbol.endswith("USDC"):
+            quote_asset = "USDC"
+        elif symbol.endswith("USDT"):
+            quote_asset = "USDT"
+        else:
+            quote_asset = None
     return {
         "idempotency_key": record.idempotency_key,
         "symbol": record.symbol,
+        "strategy_symbol": getattr(record, "strategy_symbol", None)
+        or summary.get("strategy_symbol"),
         "side": record.side,
         "state": record.state,
+        "quote_asset": quote_asset,
         "requested_quote_amount": (
             format_decimal(record.requested_quote_amount)
             if record.requested_quote_amount is not None
@@ -517,11 +561,12 @@ def submit_order(
     )
 
     preview_symbol = normalize_symbol(str(claims.get("symbol") or ""))
+    strategy_symbol = normalize_symbol(str(claims.get("strategy_symbol") or preview_symbol))
     unresolved = (
         db.query(MonitorSpotOrderRequest)
         .filter(
             MonitorSpotOrderRequest.user_id == user_id,
-            MonitorSpotOrderRequest.symbol == preview_symbol,
+            MonitorSpotOrderRequest.strategy_symbol == strategy_symbol,
             MonitorSpotOrderRequest.state.in_(("submitting", "reconciling")),
         )
         .first()
@@ -577,6 +622,7 @@ def submit_order(
         idempotency_key=idempotency_key,
         client_order_id=_client_order_id(user_id, idempotency_key),
         symbol=plan.symbol,
+        strategy_symbol=strategy_symbol,
         side=plan.side,
         state="submitting",
         submitting_account_identity_hash=plan.account_identity_hash,
@@ -586,6 +632,7 @@ def submit_order(
             "residual_quantity": plan_summary["residual_quantity"],
             "base_asset": plan.base_asset,
             "quote_asset": plan.quote_asset,
+            "strategy_symbol": strategy_symbol,
         },
     )
     db.add(record)
@@ -607,7 +654,7 @@ def submit_order(
                 db.query(MonitorSpotOrderRequest)
                 .filter(
                     MonitorSpotOrderRequest.user_id == user_id,
-                    MonitorSpotOrderRequest.symbol == plan.symbol,
+                    MonitorSpotOrderRequest.strategy_symbol == strategy_symbol,
                     MonitorSpotOrderRequest.state.in_(("submitting", "reconciling")),
                 )
                 .first()
