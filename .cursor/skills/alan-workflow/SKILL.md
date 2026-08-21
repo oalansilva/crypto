@@ -89,7 +89,7 @@ Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evid
 
 ## Release
 
-Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `alan-workflow-ambientes`. Detalhe canônico: `docs/crypto-overlay.md` (Release em lote). No cripto: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`.
+Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `alan-workflow-ambientes`. Detalhe canônico: `docs/crypto-overlay.md` (Release em lote). No cripto: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
 
 Quando o push do archive em `develop` for recusado por proteção (`qa-gate`), mesmo com pacote só Homologado: use `release-*` = `origin/develop` + archive → PR `release-* → main`; `pre` em `release-*` **não** exige archive em `origin/develop`. Após merge + deploy PROD, sync `main → develop` é obrigatório antes do `post` final (reexecutar `post` se as árvores ainda divergirem). Não dual-write o playbook completo neste `SKILL.md` nem no stub `AGENTS.md`.
 

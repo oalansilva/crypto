@@ -30,3 +30,7 @@ Invented path/URL, loop without progress, high cost/work without `Done`, eternal
 ## Output
 
 Use the Kaizen Audit Findings template (metrics, F-n findings with evidence, recommendations mapped 1:1 to proposed cards). Public issues get IDs and aggregates only.
+
+## Closeout (orquestrador — fora desta skill)
+
+A auditoria `/kaizen release` permanece **read-only**. Antes do `release-guard post`, o **orquestrador do closeout** MUST materializar no board até 3 issues `kaizen` em `Status=Em Refinamento` **ou** registrar na tabela `### Cards kaizen criados…` dedupe válido (`(não criado) … coberto por #N` com `#N` ainda em fluxo, não `Pronto`/`Cancelado`) **ou** o marcador `Sem achados acionáveis` (sem linhas de dados). O `post` valida isso (#661); heading sozinho não basta.
