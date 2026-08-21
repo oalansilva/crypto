@@ -52,16 +52,57 @@ if ".design-digest" in command:
     print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
     sys.exit(0)
 if path is None and command:
-    if re.search(r"(?:>>|>|\btee\s+|sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)", command):
-        match = re.search(
-            r"((?:/(?:[\w.-]+))*/(?:backend|frontend/src|openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+|"
-            r"(?:backend|frontend/src|openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+)",
-            command,
-        )
-        if match:
-            path = match.group(1)
-            if path.startswith("./"):
-                path = path[2:]
+    import os as _os
+    non_redir = re.search(r"(?:sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)", command)
+    targets = []
+    for m in re.finditer(r"(?:\d*)?(>>|>)\s*([^\s|;<>&]+)", command):
+        t = m.group(2).strip().strip("'\"")
+        if t.startswith("&"):
+            continue
+        targets.append(t)
+    for m in re.finditer(r"\btee(?:\s+-a)?\s+([^\s|;<>&]+)", command):
+        targets.append(m.group(1).strip().strip("'\""))
+    def allowlisted(t):
+        if t == "/dev/null":
+            return True
+        if t == "/tmp" or t.startswith("/tmp/"):
+            real_t = _os.path.realpath(t)
+            real_c = _os.path.realpath(cwd)
+            if real_t == real_c or real_t.startswith(real_c + _os.sep):
+                return False
+            return True
+        return False
+    if (targets and all(allowlisted(t) for t in targets) and not non_redir) or (not targets and not non_redir):
+        path = None
+    else:
+        product_hit = None
+        for t in targets:
+            if allowlisted(t):
+                continue
+            if (
+                t.startswith("backend/")
+                or t.startswith("frontend/src/")
+                or t.startswith("openspec/changes/")
+                or t.startswith("frontend/public/prototypes/")
+                or "/backend/" in t
+                or "/frontend/src/" in t
+                or "/openspec/changes/" in t
+                or "/frontend/public/prototypes/" in t
+            ):
+                product_hit = t
+                break
+        if product_hit:
+            path = product_hit
+        elif non_redir or any(not allowlisted(t) for t in targets):
+            match = re.search(
+                r"((?:/(?:[\w.-]+))*/(?:backend|frontend/src|openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+|"
+                r"(?:backend|frontend/src|openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+)",
+                command,
+            )
+            if match:
+                path = match.group(1)
+                if path.startswith("./"):
+                    path = path[2:]
 if not path:
     print(json.dumps({"permission": "allow"}))
     sys.exit(0)
