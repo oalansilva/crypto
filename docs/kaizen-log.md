@@ -14,6 +14,30 @@
 
 ---
 
+## 2026-08-21 — Kaizen release (lote card 652)
+
+- **Release/card**: 2026-08-21 (3º pacote do dia) — Homologado → Pronto após deploy PROD `0cb8aaf4` via T16 live.
+- **Fontes consultadas**: board Project 1, `release-guard pre` PASS, CI PR #654/#655, PROD health, transcript desta sessão. Sem `opencode.db`.
+- **Sessões analisadas**: apply #652 + closeout `suba a release` no mesmo chat.
+- **Custo/eficácia**: `#652` Homologado quando Alan pediu release; comentário Homologado postado neste turno.
+
+### Métricas
+- **Board**: 1 Homologado (`#652`). In-flight `#472`/`#604`/`#606`/`#614`.
+- **Git**: develop `49590820`; archive via `release-2026-08-21` `a59cf185`; sync #655.
+- **CI**: PR #654 verde; `qa-gate` skip (`base_ref != develop`).
+- **OpenSpec**: 1 change arquivada com sync de specs.
+- **PROD**: source `0cb8aaf4`; alembic já head; bundle `index-CbEIETTN.js` / `index-q-WncaRa.css`; health 200.
+
+### Achados
+- F-1 [info] Primeiro closeout usando T16 live (`process_event fechar_release`) após post PASS — valida #652. Sem card novo.
+- F-2 [info] Terceiro pacote no mesmo dia; mesma doc canônica (#580). Sem card novo.
+- F-3 [minor] Comentário Homologado ainda ausente até o closeout. Recidiva #579.
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário | — | F-3 | coberto por #579 |
+
 ## 2026-08-21 — Kaizen release (lote 617/618/625/631/632/637)
 
 - **Release/card**: 2026-08-21 (2º pacote do dia) — Homologado → Pronto após deploy PROD `33df201a`.
