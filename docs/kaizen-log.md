@@ -11,6 +11,11 @@
 >
 > **Segurança:** trechos de sessões (máx. 2-3 linhas) são permitidos SOMENTE neste
 > arquivo local. Issues públicas levam métricas agregadas e IDs.
+>
+> **Materialização (#661):** cada entrada `## YYYY-MM-DD — Kaizen release` exige tabela
+> `### Cards kaizen criados…` com 1–3 `#N` novos, ou `(não criado) … coberto por #N`
+> (cobertura em fluxo), ou o marcador `Sem achados acionáveis` sem linhas de dados.
+> O `release-guard post` bloqueia sem essa evidência.
 
 ---
 
@@ -66,7 +71,7 @@
 | Card | Prioridade | Origem | Status |
 | --- | --- | --- | --- |
 | (não criado) Homologado sem comentário | — | F-1 | coberto por #579 |
-| (não criado) archive MODIFIED diverge | — | F-2 | observação; sem card novo |
+| (não criado) archive MODIFIED diverge | — | F-2 | coberto por #659 |
 
 ## 2026-08-21 — Kaizen release (lote card 613)
 

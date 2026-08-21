@@ -72,6 +72,7 @@ def _post_ready(repo: Path) -> str:
     Simula o fluxo canônico: commits no develop, push, merge --no-ff em main,
     push; local main fica alinhado a origin/main com árvores idênticas.
     A doc cita o SHA de código (ponta PROD), não o merge commit.
+    Card #661: kaizen-log inclui materialização (marcador Sem achados acionáveis).
     """
     _git(repo, "switch", "develop")
     _commit_file(repo, "release.txt", "release\n", "release content")
@@ -85,7 +86,7 @@ def _post_ready(repo: Path) -> str:
     _commit_file(
         repo,
         "docs/kaizen-log.md",
-        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        _kaizen_log_minimal(),
         "kaizen log",
     )
     _git(repo, "push", "origin", "develop")
@@ -93,6 +94,24 @@ def _post_ready(repo: Path) -> str:
     _git(repo, "merge", "--no-ff", "develop", "-m", "merge release docs")
     _git(repo, "push", "origin", "main")
     return code_sha
+
+
+def _kaizen_log_minimal(date: str = "2026-07-01") -> str:
+    """Heading canônico + materialização mínima (#661): Sem achados acionáveis."""
+    return (
+        f"# Kaizen Log\n\n## {date} — Kaizen release (teste, `/kaizen release`)\n\n"
+        "Sem achados acionáveis.\n"
+    )
+
+
+def _kaizen_log_with_table(date: str, table_body: str) -> str:
+    return (
+        f"# Kaizen Log\n\n## {date} — Kaizen release (teste, `/kaizen release`)\n\n"
+        "### Cards kaizen criados (máx. 3/release)\n"
+        "| Card | Prioridade | Origem | Status |\n"
+        "| --- | --- | --- | --- |\n"
+        f"{table_body}"
+    )
 
 
 def _run_guard(
@@ -1263,7 +1282,7 @@ def test_post_accepts_canonical_kaizen_release_heading(tmp_path: Path, monkeypat
     _add_doc(
         repo,
         "docs/kaizen-log.md",
-        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        _kaizen_log_minimal(),
     )
     _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
     fake_gh = _fake_gh(tmp_path)
@@ -1274,6 +1293,164 @@ def test_post_accepts_canonical_kaizen_release_heading(tmp_path: Path, monkeypat
     result = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
 
     assert "Kaizen release entry present for 2026-07-01." in result.stdout
+    assert "Kaizen materialization OK for 2026-07-01" in result.stdout
+
+
+def test_post_blocks_kaizen_heading_without_materialization(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _add_doc(
+        repo,
+        "docs/kaizen-log.md",
+        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+    )
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "Teste")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "kaizen materialization missing for 2026-07-01" in result.stdout
+
+
+def test_post_kaizen_materialization_passes_with_created_cards(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    table = (
+        "| #658 — Homologado comment | P1 | F-1 | Em Refinamento |\n"
+        "| #659 — archive MODIFIED | P1 | F-2 | Em Refinamento |\n"
+    )
+    _add_doc(repo, "docs/kaizen-log.md", _kaizen_log_with_table("2026-07-01", table))
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "Teste")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+
+    assert "Kaizen materialization OK for 2026-07-01: 2 created card(s)." in result.stdout
+
+
+def test_post_kaizen_materialization_passes_dedupe_multi_id(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    table = "| (não criado) Guard Shell | — | F-2 | coberto por #625 / #631 |\n"
+    _add_doc(repo, "docs/kaizen-log.md", _kaizen_log_with_table("2026-07-01", table))
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON",
+        _board((625, "Em Refinamento", "a"), (631, "Todo", "b"), (480, "Pronto", "pkg")),
+    )
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+
+    assert "Kaizen materialization OK for 2026-07-01: 0 created" in result.stdout
+    assert "#625" in result.stdout and "#631" in result.stdout
+
+
+def test_post_kaizen_materialization_fails_dedupe_pronto(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    table = "| (não criado) Homologado | — | F-1 | coberto por #579 |\n"
+    _add_doc(repo, "docs/kaizen-log.md", _kaizen_log_with_table("2026-07-01", table))
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON",
+        _board((579, "Pronto", "old"), (480, "Pronto", "pkg")),
+    )
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "coverage #579 has terminal Status=Pronto" in result.stdout
+
+
+def test_post_kaizen_materialization_fails_dedupe_cancelado_or_absent(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    table = "| (não criado) x | — | F-1 | coberto por #700 |\n"
+    _add_doc(repo, "docs/kaizen-log.md", _kaizen_log_with_table("2026-07-01", table))
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv(
+        "FAKE_BOARD_JSON",
+        _board((700, "Cancelado", "gone"), (480, "Pronto", "pkg")),
+    )
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+    assert result.returncode == 1
+    assert "coverage #700 has terminal Status=Cancelado" in result.stdout
+
+    table2 = "| (não criado) y | — | F-1 | coberto por #701 |\n"
+    _commit_file(
+        repo,
+        "docs/kaizen-log.md",
+        _kaizen_log_with_table("2026-07-01", table2),
+        "absent coverage",
+    )
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "pkg")))
+    result2 = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+    assert result2.returncode == 1
+    assert "coverage #701 absent on Project 1 board" in result2.stdout
+
+
+def test_post_kaizen_materialization_fails_board_down_with_dedupe(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    table = "| (não criado) Homologado | — | F-1 | coberto por #579 |\n"
+    _add_doc(repo, "docs/kaizen-log.md", _kaizen_log_with_table("2026-07-01", table))
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "pkg")))
+    monkeypatch.setenv("FAKE_FAIL_PROJECT", "1")
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "board snapshot unavailable (fail-closed)" in result.stdout
+
+
+def test_post_kaizen_materialization_fails_over_max_and_invalid_row(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    table = (
+        "| #1 — a | P1 | F-1 | Em Refinamento |\n"
+        "| #2 — b | P1 | F-2 | Em Refinamento |\n"
+        "| #3 — c | P1 | F-3 | Em Refinamento |\n"
+        "| #4 — d | P1 | F-4 | Em Refinamento |\n"
+    )
+    _add_doc(repo, "docs/kaizen-log.md", _kaizen_log_with_table("2026-07-01", table))
+    _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "pkg")))
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+
+    result = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+
+    assert result.returncode == 1
+    assert "max 3/release" in result.stdout
+
+    table2 = (
+        "| #658 — ok | P1 | F-1 | Em Refinamento |\n"
+        "| (não criado) observação; sem card novo | — | F-2 | observação; sem card novo |\n"
+    )
+    _commit_file(
+        repo,
+        "docs/kaizen-log.md",
+        _kaizen_log_with_table("2026-07-01", table2),
+        "bad row",
+    )
+    result2 = _run_guard(repo, release_date="2026-07-01", release_cards="480", fake_gh=fake_gh)
+    assert result2.returncode == 1
+    assert "invalid Cards kaizen criados row" in result2.stdout
 
 
 def test_post_blocks_missing_release_branches(tmp_path: Path, monkeypatch):
@@ -1281,7 +1458,7 @@ def test_post_blocks_missing_release_branches(tmp_path: Path, monkeypatch):
     _add_doc(
         repo,
         "docs/kaizen-log.md",
-        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        _kaizen_log_minimal(),
     )
     _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
     fake_gh = _fake_gh(tmp_path)
@@ -1302,7 +1479,7 @@ def test_post_blocks_invalid_release_branch_token(tmp_path: Path, monkeypatch):
     _add_doc(
         repo,
         "docs/kaizen-log.md",
-        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        _kaizen_log_minimal(),
     )
     _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
     fake_gh = _fake_gh(tmp_path)
@@ -1327,7 +1504,7 @@ def test_post_blocks_branch_present_locally(tmp_path: Path, monkeypatch):
     _add_doc(
         repo,
         "docs/kaizen-log.md",
-        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        _kaizen_log_minimal(),
     )
     _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
     _git(repo, "switch", "develop")
@@ -1354,7 +1531,7 @@ def test_post_blocks_main_local_stale(tmp_path: Path, monkeypatch):
     _add_doc(
         repo,
         "docs/kaizen-log.md",
-        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        _kaizen_log_minimal(),
     )
     _add_doc(repo, "docs/release-2026-07-01.md", "# Release\n\nDeploy final: ok.\n")
     fake_gh = _fake_gh(tmp_path)
@@ -1838,7 +2015,7 @@ def test_post_blocks_previous_lote_evidence_even_if_sha_in_doc(tmp_path: Path, m
     _commit_file(
         repo,
         "docs/kaizen-log.md",
-        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        _kaizen_log_minimal(),
         "kaizen log",
     )
     _git(repo, "push", "origin", "develop")
@@ -1883,7 +2060,7 @@ def test_post_accepts_code_tip_when_main_is_ahead_only_with_closeout(tmp_path: P
     _commit_file(
         repo,
         "docs/kaizen-log.md",
-        "# Kaizen Log\n\n## 2026-07-01 — Kaizen release (teste, `/kaizen release`)\n",
+        _kaizen_log_minimal(),
         "kaizen log",
     )
     _git(repo, "push", "origin", "develop")
