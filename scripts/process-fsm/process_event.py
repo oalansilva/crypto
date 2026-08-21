@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -25,11 +26,20 @@ from fsm import (  # noqa: E402
 from guard import github_status_provider  # noqa: E402
 from resolve import UNBOUND, resolve  # noqa: E402
 from t14 import LiveT14Runner, T14Error, T14Runner, measure_checks_green, run_t14  # noqa: E402
+from t16 import (  # noqa: E402
+    LiveT16Closer,
+    T16Closer,
+    T16Error,
+    classify_package,
+    lote_git,
+    measure_m_lote,
+    parse_package_cards,
+)
 
 REPO_ROOT = ROOT.parents[1]
 AMBIENTES = "alan-workflow-ambientes"
 RELEASE_GUARD = "release-guard"
-HUMAN_EVENTS = frozenset({"priorizar", "aprovar_design", "homologar", "fechar_release", "devolver_design", "cancelar"})
+HUMAN_EVENTS = frozenset({"priorizar", "aprovar_design", "homologar", "devolver_design", "cancelar"})
 I4_EVENTS = frozenset({"iniciar_apply", "pedir_review"})
 CHANGE_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 EVENT_GUARDS = {
@@ -219,9 +229,13 @@ def process_event(
     digest_changed: bool | None = None,
     g_design: bool | None = None,
     m_lote: bool | None = None,
+    m_lote_measurer: Callable[[], bool] | None = None,
     checks_green: bool | None = None,
     checks_green_measurer: Callable[..., bool] | None = None,
     t14_runner: T14Runner | None = None,
+    t16_closer: T16Closer | None = None,
+    status_provider: Callable[[str | None], str | None] | None = None,
+    package_cards: list[int] | None = None,
     fsm: dict[str, Any] | None = None,
     resolve_fn: Callable[..., dict[str, str | None]] = resolve,
     change_dir: Path | None = None,
@@ -248,12 +262,28 @@ def process_event(
     if q is None:
         q = github_status_provider(None if _unbound(bound) else str(bound))
     match = CARD_GIT_RE.match(str(git or ""))
-    if card is not None and match is not None and str(card) != match.group(1):
-        return _payload(result="reject", state=q, to=None, reason="card_mismatch")
-    if change is not None and match is not None and str(change) != str(git):
-        return _payload(result="reject", state=q, to=None, reason="change_mismatch")
-    if event != "criar_card" and _unbound(bound):
-        return _payload(result="reject", state=q, to=None, reason="unbound")
+    parsed_package: list[int] | None
+    if package_cards is not None:
+        parsed_package = list(package_cards)
+    else:
+        env_raw = os.environ.get("RELEASE_CARDS")
+        parsed_package = parse_package_cards(env_raw, card)
+        # None = invalid tokens (I9). [] = empty env; only then fall back to bound_card.
+        if parsed_package is not None and len(parsed_package) == 0 and not _unbound(bound):
+            if not (env_raw or "").strip():
+                parsed_package = parse_package_cards(None, bound)
+    if event != "fechar_release":
+        if card is not None and match is not None and str(card) != match.group(1):
+            return _payload(result="reject", state=q, to=None, reason="card_mismatch")
+        if change is not None and match is not None and str(change) != str(git):
+            return _payload(result="reject", state=q, to=None, reason="change_mismatch")
+        if _unbound(bound):
+            return _payload(result="reject", state=q, to=None, reason="unbound")
+    else:
+        if _unbound(bound) and not lote_git(git):
+            return _payload(result="reject", state=q, to=None, reason="unbound")
+        if parsed_package is None or len(parsed_package) == 0:
+            return _payload(result="reject", state=q, to=None, reason="I9")
 
     issue_number: int | None = None
     try:
@@ -278,7 +308,15 @@ def process_event(
         g_design = files_g_design(resolved_change_dir) if resolved_change_dir else False
     if digest_changed is None:
         digest_changed = measure_digest_changed(resolved_change_dir, resolved_proto, q)
-    if m_lote is None:
+    if event == "fechar_release" and m_lote is None:
+        if m_lote_measurer is None:
+            m_lote = False
+        else:
+            try:
+                m_lote = bool(m_lote_measurer())
+            except (OSError, RuntimeError, TypeError, ValueError):
+                m_lote = False
+    elif m_lote is None:
         m_lote = False
     if event == "integrar_develop" and checks_green is None:
         if checks_green_measurer is None:
@@ -289,9 +327,18 @@ def process_event(
             except (OSError, RuntimeError, TypeError, ValueError):
                 checks_green = False
 
+    homologado_ids: list[int] = []
+    if event == "fechar_release" and m_lote:
+        provider = status_provider if status_provider is not None else github_status_provider
+        try:
+            homologado_ids, _pronto_ids = classify_package(parsed_package or [], provider)
+        except T16Error:
+            return _payload(result="reject", state=q, to=None, reason="I9")
+
+    eval_state = "Homologado" if event == "fechar_release" else q
     exclusive = EVENT_GUARDS.get(event, {})
     ctx_kwargs: dict[str, Any] = {
-        "state": q,
+        "state": eval_state,
         "event": event,
         "actor": "Agent",
         "q_git": git,
@@ -334,7 +381,7 @@ def process_event(
             )
         return _payload(result="reject", state=q, to=None, reason=compiled.reason)
 
-    enabled = enabled_events(table, q)
+    enabled = enabled_events(table, eval_state if event == "fechar_release" else q)
     message = None
     if event == "fechar_release":
         message = _fechar_message(result.reason)
@@ -369,6 +416,31 @@ def process_event(
             failed["state"] = q
             return failed
         return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
+    if event == "fechar_release":
+        if dry_run:
+            return _payload(result="transition", state=q or "Homologado", to=result.to, reason=result.reason)
+        if homologado_ids:
+            if t16_closer is None:
+                return _payload(result="reject", state=q, to=None, reason="I9")
+            try:
+                for number in homologado_ids:
+                    t16_closer.comment_pronto(card=str(number), package=parsed_package or homologado_ids)
+                    if mover is None:
+                        return _payload(result="reject", state=q, to=None, reason="I9")
+                    failed = _safe_move(mover, number, result.to or "Pronto")
+                    if failed is not None:
+                        failed["state"] = q
+                        failed["reason"] = "I9"
+                        return failed
+            except (T16Error, OSError) as exc:
+                del exc
+                return _payload(result="reject", state=q, to=None, reason="I9")
+        return _payload(
+            result="transition",
+            state=q or "Homologado",
+            to=result.to,
+            reason=result.reason,
+        )
     if dry_run or mover is None or issue_number is None:
         return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
     failed = _safe_move(mover, issue_number, result.to or "")
@@ -395,6 +467,8 @@ def main(argv: list[str] | None = None) -> int:
         mover=None if args.dry_run else GhBoardMover(),
         checks_green_measurer=measure_checks_green,
         t14_runner=None if args.dry_run else LiveT14Runner(),
+        m_lote_measurer=measure_m_lote,
+        t16_closer=None if args.dry_run else LiveT16Closer(),
     )
     json.dump(payload, sys.stdout, ensure_ascii=True)
     sys.stdout.write("\n")
