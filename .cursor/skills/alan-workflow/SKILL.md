@@ -7,15 +7,16 @@ description: "Use this skill for Alan's default operating process in any repo or
 
 Contrato operacional **deste repo** (`oalansilva/crypto`). Canônico: `.cursor/skills/alan-workflow/` no GitHub. Não tratar `~/.codex/skills/` nem `/srv/knowledge/hermes-second-brain/skills/` como fonte.
 
-Prioridade:
+Prioridade (δ e Guard > overlay > skill > wording):
 
-1. Instrução direta de Alan no chat.
-2. Overlay do repo: `AGENTS.md` / `rules.md` (board, ports, Drive, PostgreSQL, release-guard).
-3. Esta skill (runbook de processo).
+1. **δ e Guard** (`.cursor/process-fsm.yaml`, `process_event`, hook Write).
+2. **Overlay** (`docs/crypto-overlay.md` / stub `AGENTS.md`) — só quando a tarefa precisar de portas, Drive, PostgreSQL ou release.
+3. **Esta skill** (runbook).
+4. **Wording** do chat (`implemente`, `autorizo`, `gostaria sempre`).
 
 Cliente: **Cursor Agent**. Task/subagent usa `inherit` salvo pedido explícito no chat. Review = diff **exato** (não “Codex review”).
 
-Drive/Docs: siga o `AGENTS.md` **deste repo**. No cripto, Drive da Clara sincroniza com `docs/*.md`; não aplicar a regra global antiga “não sincronizar Drive”.
+Drive/Docs: `Read docs/crypto-overlay.md` on-demand neste repo. No cripto, Drive da Clara sincroniza com `docs/*.md`; não aplicar a regra global antiga “não sincronizar Drive”.
 
 ## Comunicação
 
@@ -53,7 +54,7 @@ Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de
 Antes de editar:
 
 - `git status -sb`; não misturar outra change.
-- Ler `AGENTS.md` / `rules.md`.
+- Overlay on-demand: `docs/crypto-overlay.md` só se portas/Drive/PG/release; lei: `rules.md`.
 - Consultar `Status` no board (`github-project-board`).
 - Release/deploy/PROD: carregar também `alan-workflow-ambientes`.
 
