@@ -14,6 +14,36 @@
 
 ---
 
+## 2026-08-21 — Kaizen release (lote 617/618/625/631/632/637)
+
+- **Release/card**: 2026-08-21 (2º pacote do dia) — Homologado → Pronto após deploy PROD `33df201a`.
+- **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees + `release-guard pre` PASS, CI PR #648/#649, transcript Cursor desta sessão, PROD health pós-deploy. Sem consulta a `opencode.db`.
+- **Sessões analisadas**: apply dos cards Pronto para Dev e closeout `suba a release` no mesmo chat.
+- **Custo/eficácia por card**: seis Homologados no pacote; comentários Homologado canônicos ausentes até o closeout (postados antes do `pre`).
+
+### Métricas
+- **Board**: 6 Homologado no lote (`#617` `#618` `#625` `#631` `#632` `#637`). Fora: `#604` Aprovação de Design; `#608` Em Refinamento; in-flight `#472`/`#606`/`#614`.
+- **Git**: `origin/develop` só com o pacote (`05691619`); archive via `release-2026-08-21` `6a71b015`; sync `main→develop` #649. Stash 0. Worktrees classificadas via `PRESERVED_BRANCHES`.
+- **CI**: PR #648 verde; `qa-gate`/`deploy-staging` skip (`base_ref != develop`).
+- **OpenSpec**: 6 changes arquivadas; `--skip-specs` em #632/#637; specs sync nos demais.
+- **PROD**: source `33df201a`; migration `20260821_0001`; bundle `index-CbEIETTN.js` / `index-q-WncaRa.css`; health 200.
+
+### Achados
+- F-1 [major] Comentários Homologado canônicos ausentes nos 6 cards até o closeout. Recidiva #579. Esforço S | P1 | Card existente: #579.
+- F-2 [minor] `openspec archive` falhou em #632/#637 por headers `MODIFIED` divergentes; `--skip-specs` operacional. Esforço S | P2 | Sem card novo neste lote.
+- F-3 [info] Segundo pacote no mesmo dia reutilizou o nome `release-2026-08-21` e atualizou a mesma doc canônica (contrato #580). Sem card novo.
+- F-4 [info] Path archive-via-`release-*` + sync #649 usado conforme #617; `pre` com skip de develop local conforme #618.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | 6+ auditorias | #579
+- Archive via `release-*` quando `develop` exige `qa-gate` | pacote que fecha #617
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário | — | F-1 | coberto por #579 |
+| (não criado) archive MODIFIED diverge | — | F-2 | observação; sem card novo |
+
 ## 2026-08-21 — Kaizen release (lote card 613)
 
 - **Release/card**: 2026-08-21 — card 613 (Homologado → Pronto após deploy PROD `7df18d54`).
