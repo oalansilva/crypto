@@ -22,6 +22,6 @@
 
 ## 3. Evidência
 
-- [x] 3.1 Registrar evidência: `pre` PASS no cenário archive-via-`release-*` sem archive em `origin/develop`
+- [x] 3.1 Registrar evidência: `pre` PASS no cenário archive-via-`release-*` sem archive em `origin/develop` → `evidence-apply.md`
 - [x] 3.2 Registrar que o runbook cita sync `main → develop` e reexecução do `post` após sync
 - [x] 3.3 `openspec validate --change card-617-release-archive-via-release-branch` (ou escopo equivalente) verde
