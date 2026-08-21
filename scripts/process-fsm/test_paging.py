@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import stat
 import subprocess
 import sys
@@ -159,21 +158,25 @@ def test_hooks_json_session_start():
     assert adapter.stat().st_mode & stat.S_IXUSR
 
 
+def test_session_start_adapter_prefers_venv():
+    text = (REPO / ".cursor" / "hooks" / "process-fsm-session-start.sh").read_text(encoding="utf-8")
+    assert 'ROOT/backend/.venv/bin/python' in text
+    assert "command -v python3" in text
+
+
 def test_session_start_adapter_fallback(tmp_path: Path):
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    fake_py = fake_bin / "python3"
-    fake_py.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    fake_py.chmod(0o755)
-    env = os.environ.copy()
-    env["PATH"] = f"{fake_bin}{os.pathsep}{env.get('PATH', '')}"
+    hooks = tmp_path / ".cursor" / "hooks"
+    hooks.mkdir(parents=True)
+    src = (REPO / ".cursor" / "hooks" / "process-fsm-session-start.sh").read_text(encoding="utf-8")
+    script = hooks / "process-fsm-session-start.sh"
+    script.write_text(src, encoding="utf-8")
+    script.chmod(0o755)
     proc = subprocess.run(
-        [str(REPO / ".cursor" / "hooks" / "process-fsm-session-start.sh")],
+        [str(script)],
         input="{}",
         capture_output=True,
         text=True,
-        env=env,
-        cwd=str(REPO),
+        cwd=str(tmp_path),
         check=False,
     )
     assert proc.returncode == 0

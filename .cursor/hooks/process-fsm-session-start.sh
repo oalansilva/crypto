@@ -10,7 +10,9 @@ fallback() {
 }
 
 PY=""
-if command -v python3 >/dev/null 2>&1; then
+if [[ -x "$ROOT/backend/.venv/bin/python" ]]; then
+  PY="$ROOT/backend/.venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
   PY="$(command -v python3)"
 fi
 
