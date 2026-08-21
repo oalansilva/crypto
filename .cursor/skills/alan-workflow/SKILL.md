@@ -30,7 +30,7 @@ Caminho obrigatório:
 
 `Cancelado` é terminal a qualquer momento, inclusive Em Refinamento.
 
-Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de Design→Pronto para Dev (só Alan); (2) Done→Homologado; (3) Homologado→Pronto.
+Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de Design→Pronto para Dev (só Alan); (2) Done→Homologado. Homologado→Pronto é T16: `process_event fechar_release` após `release-guard post` PASS.
 
 | Status | Significado |
 | --- | --- |

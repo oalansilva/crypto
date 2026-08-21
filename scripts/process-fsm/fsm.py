@@ -58,7 +58,8 @@ EXPECTED_MATRIX = (
     ("T17b", "Em desenvolvimento", "invalidar_aprovacao", "Design"),
 )
 
-ALAN_GATES = {"T1": "priorizar", "T7": "aprovar_design", "T15": "homologar", "T16": "fechar_release"}
+ALAN_GATES = {"T1": "priorizar", "T7": "aprovar_design", "T15": "homologar"}
+AGENT_GATES = {"T16": "fechar_release"}
 
 CARD_GIT_RE = re.compile(r"^card-(\d+)(?:-.*)?$")
 
@@ -151,6 +152,13 @@ def validate_fsm(fsm: dict[str, Any]) -> None:
         row = by_id[tid]
         if "Alan" not in _actor_set(row.get("actor")) or row.get("event") != event:
             raise ValidationError(f"{tid} must include actor Alan")
+    for tid, event in AGENT_GATES.items():
+        row = by_id[tid]
+        actors = _actor_set(row.get("actor"))
+        if "Agent" not in actors or row.get("event") != event:
+            raise ValidationError(f"{tid} must include actor Agent")
+        if actors == {"Alan"}:
+            raise ValidationError(f"{tid} must not be Alan-only")
 
     expanded = expand_transitions(fsm)
     if not any(row.get("expanded_from") == "Vivo" for row in expanded):

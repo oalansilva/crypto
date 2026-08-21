@@ -2,9 +2,7 @@
 
 ## Purpose
 Tabela EFSM compilável das 12 colunas do processo (`T0`–`T17` + fixtures), versionada em `.cursor/process-fsm.yaml`. Consumida pelo resolver (#610), pelo Guard Write (#611) e pelo `process_event` (#612).
-
 ## Requirements
-
 ### Requirement: Process FSM table is versioned YAML
 The repository SHALL contain `.cursor/process-fsm.yaml` as the compilable source of the 12-column EFSM defined in issue #608. The file MUST declare `states`, `transitions` matching the T0–T17 matrix in `design.md` (including T17a and T17b), `illegal_events`, `illegal_edges`, `enabled_tools` per state, `enabled_events` per state, `context_file` stub per state, `product_globs`, `design_globs`, invariants I1 through I9, and `fail_closed_asymmetric: true`.
 
@@ -41,14 +39,18 @@ Legal event alphabet Σ SHALL be exactly: `criar_card`, `priorizar`, `cancelar`,
 - **THEN** the expected result is `reject`
 
 ### Requirement: Validator rejects an incomplete or nondeterministic table
-`scripts/process-fsm/` SHALL validate schema completeness, expansion of `from: Vivo` for T2, and that at most one transition is enabled for a given `(state, event, guard)` tuple. Determinism checks MUST cover Design (T4 vs T5), Code Review (T10 vs T11), and QA (T12/T13/T14).
+`scripts/process-fsm/` SHALL validate schema completeness, expansion of `from: Vivo` for T2, and that at most one transition is enabled for a given `(state, event, guard)` tuple. Determinism checks MUST cover Design (T4 vs T5), Code Review (T10 vs T11), and QA (T12/T13/T14). T1 (`priorizar`), T7 (`aprovar_design`), and T15 (`homologar`) MUST include actor Alan. T16 (`fechar_release`) MUST include actor Agent and MUST NOT be validated as an Alan-only gate.
 
 #### Scenario: Missing T7 actor Alan
 - **WHEN** a yaml omits Alan as actor on `aprovar_design`
 - **THEN** validation MUST fail
 
 #### Scenario: Missing Alan on other human gates
-- **WHEN** a yaml omits Alan as actor on `priorizar`, `homologar`, or `fechar_release`
+- **WHEN** a yaml omits Alan as actor on `priorizar` or `homologar`
+- **THEN** validation MUST fail
+
+#### Scenario: T16 requires Agent not Alan-only
+- **WHEN** a yaml sets T16 `fechar_release` actor to Alan only, or omits Agent
 - **THEN** validation MUST fail
 
 #### Scenario: Overlapping QA guards
@@ -102,3 +104,15 @@ This change MUST NOT register `preToolUse` or `beforeShellExecution` guards and 
 #### Scenario: T17b from Em desenvolvimento
 - **WHEN** `evaluate` runs `invalidar_aprovacao` from Em desenvolvimento with actor Guard and `digest_changed` true
 - **THEN** the result is `transition` to Design with reason `T17b`
+
+### Requirement: T16 actor is Agent with M_lote
+Transition T16 in `.cursor/process-fsm.yaml` SHALL be `Homologado --fechar_release, Agent, guard M_lote--> Pronto` with actions including `release_guard` and `set_status`. Invariant I2 SHALL list Alan-only as T1, T7, and T15 (not T16). Invariant I9 SHALL remain: T16 requires `M_lote`. `enabled_tools` for Homologado SHALL include `process_event`. `evaluate()` with actor Agent, state Homologado, event `fechar_release`, and `M_lote` true SHALL `transition` to Pronto with reason `T16`.
+
+#### Scenario: Agent fechar_release with M_lote transitions
+- **WHEN** `evaluate` runs `fechar_release` from Homologado with actor Agent and `M_lote` true
+- **THEN** the result is `transition` to Pronto with reason `T16`
+
+#### Scenario: T16 without M_lote is still rejected
+- **WHEN** `evaluate` runs `fechar_release` from Homologado with actor Agent and `M_lote` false
+- **THEN** the result is `reject`
+

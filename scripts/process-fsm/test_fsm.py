@@ -79,7 +79,7 @@ def _legal_ctx(state, event, actor) -> EvalContext:
         ("T13", "QA", "falha_codigo", "CI", "Em desenvolvimento"),
         ("T14", "QA", "integrar_develop", "Agent", "Done"),
         ("T15", "Done", "homologar", "Alan", "Homologado"),
-        ("T16", "Homologado", "fechar_release", "Alan", "Pronto"),
+        ("T16", "Homologado", "fechar_release", "Agent", "Pronto"),
         ("T17a", "Pronto para Dev", "invalidar_aprovacao", "Guard", "Design"),
         ("T17b", "Em desenvolvimento", "invalidar_aprovacao", "Guard", "Design"),
     ],
@@ -178,7 +178,7 @@ def test_missing_t7_alan_fails(tmp_path, fsm):
         validate_fsm(load_fsm(path))
 
 
-@pytest.mark.parametrize("tid", ["T1", "T15", "T16"])
+@pytest.mark.parametrize("tid", ["T1", "T15"])
 def test_missing_alan_on_human_gates_fails(tmp_path, fsm, tid):
     data = copy.deepcopy(fsm)
     for row in data["transitions"]:
@@ -186,6 +186,26 @@ def test_missing_alan_on_human_gates_fails(tmp_path, fsm, tid):
             row["actor"] = "Agent"
     path = _dump(tmp_path, data)
     with pytest.raises(ValidationError, match=tid):
+        validate_fsm(load_fsm(path))
+
+
+def test_t16_alan_only_fails(tmp_path, fsm):
+    data = copy.deepcopy(fsm)
+    for row in data["transitions"]:
+        if row["id"] == "T16":
+            row["actor"] = "Alan"
+    path = _dump(tmp_path, data)
+    with pytest.raises(ValidationError, match="T16"):
+        validate_fsm(load_fsm(path))
+
+
+def test_t16_missing_agent_fails(tmp_path, fsm):
+    data = copy.deepcopy(fsm)
+    for row in data["transitions"]:
+        if row["id"] == "T16":
+            row["actor"] = "Guard"
+    path = _dump(tmp_path, data)
+    with pytest.raises(ValidationError, match="T16"):
         validate_fsm(load_fsm(path))
 
 
@@ -266,7 +286,7 @@ def test_t9_digest_missing_is_i4(fsm):
 def test_t16_without_m_lote_rejected(fsm):
     result = evaluate(
         fsm,
-        EvalContext(state="Homologado", event="fechar_release", actor="Alan", m_lote=False),
+        EvalContext(state="Homologado", event="fechar_release", actor="Agent", m_lote=False),
     )
     assert result.result == "reject"
     assert result.reason == "guard:M_lote"
