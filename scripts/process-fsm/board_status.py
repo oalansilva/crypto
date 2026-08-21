@@ -32,8 +32,42 @@ def is_sidecar_path(path: str | None) -> bool:
     return posix.endswith(".design-digest")
 
 
+def sidecar_mutation_in_command(command: str | None) -> bool:
+    """True only when the shell command mutates a `.design-digest` path (card #631).
+
+    Mere citation (`git add`/`commit`/`status`/`reset`, `ls`, `cat`) MUST be False.
+    """
+    if not command or ".design-digest" not in command:
+        return False
+    if re.search(r"(?:\d*)?(?:>>|>)\s*[^\s|;<>&]*\.design-digest\b", command):
+        return True
+    if re.search(r"\btee(?:\s+-a)?\s+[^\s|;<>&]*\.design-digest\b", command):
+        return True
+    if re.search(r"\b(?:rm|unlink|shred)\b[^\n]*\.design-digest\b", command):
+        return True
+    if re.search(r"\b(?:cp|mv|install)\b[^\n]*\.design-digest\b", command):
+        return True
+    if re.search(r"(?:sed\s+-i|perl\s+-i)[^\n]*\.design-digest\b", command):
+        return True
+    if re.search(r"\bpython3?\s+-c\b", command):
+        if re.search(
+            r"open\s*\([^)]*\.design-digest[^)]*['\"][wax+]+",
+            command,
+        ):
+            return True
+        if re.search(
+            r"Path\s*\([^)]*\.design-digest[^)]*\)\s*\.\s*write_(?:text|bytes)\s*\(",
+            command,
+        ):
+            return True
+        if re.search(r"\.design-digest[^;]*\.write\s*\(", command):
+            return True
+    return False
+
+
 def sidecar_in_command(command: str | None) -> bool:
-    return bool(command) and ".design-digest" in command
+    """Compat alias: sidecar deny only on mutation (#631)."""
+    return sidecar_mutation_in_command(command)
 
 
 def is_status_edit_command(command: str | None) -> bool:

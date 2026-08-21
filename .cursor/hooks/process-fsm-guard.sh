@@ -11,7 +11,7 @@ emit() {
 
 fallback() {
   # Decision 12: prefix-match without PyYAML (stdlib json + git only).
-  PROCESS_FSM_RAW="$RAW" python3 - <<'PY' 2>/dev/null || true
+  PROCESS_FSM_RAW="$RAW" PROCESS_FSM_ROOT="$ROOT" python3 - <<'PY' 2>/dev/null || true
 import json, os, re, subprocess, sys
 
 raw = os.environ.get("PROCESS_FSM_RAW") or ""
@@ -47,7 +47,17 @@ if "updateProjectV2ItemFieldValue" in command and "PVTSSF_lAHOAAHtBM4BV8b2zhRUdM
     msg = "process-fsm-guard deny reason=status_item_edit. Use process_event."
     print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
     sys.exit(0)
-if ".design-digest" in command:
+# Card #631: deny sidecar only on mutation, not mere citation.
+sys.path.insert(0, os.path.join(os.environ.get("PROCESS_FSM_ROOT", ""), "scripts", "process-fsm"))
+try:
+    from board_status import is_sidecar_path as _is_sidecar_path
+    from board_status import sidecar_mutation_in_command as _sidecar_mut
+except Exception:
+    def _is_sidecar_path(p):
+        return bool(p) and str(p).replace("\\", "/").endswith(".design-digest")
+    def _sidecar_mut(c):
+        return False
+if _sidecar_mut(command) or _is_sidecar_path(path):
     msg = "process-fsm-guard deny reason=sidecar"
     print(json.dumps({"permission": "deny", "agent_message": msg, "user_message": msg}))
     sys.exit(0)

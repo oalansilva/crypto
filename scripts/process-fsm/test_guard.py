@@ -315,3 +315,29 @@ def test_hooks_json_composes_impeccable():
 def test_fsm_still_loads():
     validate = load_fsm()
     assert validate["fail_closed_asymmetric"] is True
+
+
+def test_git_cite_sidecar_allowed(tmp_path: Path):
+    """Card #631: git add/commit/status that only cite the sidecar must not sidecar-deny."""
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-631-guard-sidecar-git-cite", "backend/app/main.py")
+    digest = "openspec/changes/card-631-guard-sidecar-git-cite/" + ".design" + "-digest"
+    for command in (
+        f"git add {digest}",
+        f"git commit -m 'chore: archive {digest}'",
+        f"git status -- {digest}",
+        f"git reset HEAD -- {digest}",
+    ):
+        payload = _shell_payload(repo, command, status="Design")
+        result = decide(payload, status_provider=SILENT)
+        assert result["permission"] == "allow", command
+
+
+def test_shell_redirect_sidecar_denied(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-631-guard-sidecar-git-cite", "backend/app/main.py")
+    digest = "openspec/changes/card-631-x/" + ".design" + "-digest"
+    payload = _shell_payload(repo, f"echo x > {digest}", status="Design")
+    result = decide(payload, status_provider=SILENT)
+    assert result["permission"] == "deny"
+    assert "sidecar" in result["agent_message"]
