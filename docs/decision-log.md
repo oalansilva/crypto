@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-21 - sessionStart pagina só o frame Moore (card #613)
+
+**Decisão:** o hook `sessionStart` injeta no máximo ~20 linhas com `(q, bound_card, q_git)`, `enabled_events` e o stub `context_file[q]` (ou unbound: Write produto deny, sem playbook de release). `harness.mdc` fica em 8–15 linhas; `AGENTS.md` é stub e aponta `docs/crypto-overlay.md` on-demand. Prioridade da skill: δ e Guard > overlay > skill > wording. Pedido explícito de release continua carregando o overlay (T16 / `release-guard`), mesmo com sessão unbound.
+
+**Motivo:** o Auto afogava no overlay sempre-on. Paging sozinho não segura Write; o lote 1 (#609–#611) já compilou a tabela e o Guard.
+
+**Onde:** `scripts/process-fsm/paging.py`, `.cursor/hooks/process-fsm-session-start.sh`, `.cursor/hooks.json`, `.cursor/rules/harness.mdc`, `AGENTS.md`, skill `alan-workflow`. Specs `process-fsm-paging` e `cursor-harness`. Card #613. Epic #608.
+
 ## 2026-08-20 - process_event e a unica via Agent para Status (card #612)
 
 **Decisão:** a CLI `scripts/process-fsm/process_event.py` valida δ e só então move o Status do Project 1. Actor da função/CLI é sempre Agent. T1/T7/T15/T16 rejeitam; Alan arrasta no UI. T8 não libera Write (I3). Digest mudado em aplicar/pedir_review vira I4/T17 para Design. T14 live rejeita (`checks_green` unset). T16 é stub: `fechar_release` rejeita e aponta `alan-workflow-ambientes` / `release-guard`. O Guard deny `item-edit` de Status e write do sidecar de digest; sem `PROCESS_FSM_MOVE`.
