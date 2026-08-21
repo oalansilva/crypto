@@ -150,6 +150,8 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
     const returnFocusRef = useRef<HTMLElement | null>(null);
     const requestGenerationRef = useRef(0);
     const quoteBalanceGenerationRef = useRef(0);
+    const quoteOriginRef = useRef(quoteOrigin);
+    quoteOriginRef.current = quoteOrigin;
     const submitLockedRef = useRef(false);
     const missingStatusCountRef = useRef(0);
     const pollAttemptsRef = useRef(0);
@@ -171,7 +173,8 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
             ? `Ordem ${base}USDC · preço confirmado ao Continuar`
             : `${formatQuote(opportunity.last_price)} USDT`;
 
-    const refreshQuoteBalance = useCallback(async (origin: QuoteOrigin = quoteOrigin) => {
+    const refreshQuoteBalance = useCallback(async (origin?: QuoteOrigin) => {
+        const targetOrigin = origin ?? quoteOriginRef.current;
         const generation = ++quoteBalanceGenerationRef.current;
         setQuoteBalanceState('loading');
         try {
@@ -192,7 +195,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                 setQuoteBalanceState('value');
                 return;
             }
-            const quote = balances.find((row) => String(row?.asset ?? '').trim().toUpperCase() === origin);
+            const quote = balances.find((row) => String(row?.asset ?? '').trim().toUpperCase() === targetOrigin);
             const free = Number(quote?.free ?? NaN);
             if (!Number.isFinite(free)) {
                 setQuoteBalanceState('unavailable');
@@ -204,7 +207,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
             if (generation !== quoteBalanceGenerationRef.current) return;
             setQuoteBalanceState('unavailable');
         }
-    }, [quoteOrigin]);
+    }, []);
 
     const refreshAfterTerminal = useCallback(async () => {
         setRefreshState('pending');
@@ -267,6 +270,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
             if (applicationRoot) applicationRoot.inert = applicationWasInert;
             returnFocusRef.current?.focus();
         };
+        // refreshQuoteBalance is stable; do not re-run modal mount when pay-with origin changes.
     }, [binanceConfigured, refreshQuoteBalance]);
 
     useEffect(() => {
