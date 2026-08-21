@@ -21,13 +21,11 @@ def upgrade() -> None:
         "monitor_spot_order_requests",
         sa.Column("strategy_symbol", sa.String(length=32), nullable=True),
     )
-    op.execute(
-        """
+    op.execute("""
         UPDATE monitor_spot_order_requests
         SET strategy_symbol = symbol
         WHERE strategy_symbol IS NULL
-        """
-    )
+        """)
     op.alter_column(
         "monitor_spot_order_requests",
         "strategy_symbol",

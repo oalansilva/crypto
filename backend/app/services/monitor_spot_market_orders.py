@@ -242,7 +242,8 @@ def _record_response(record: MonitorSpotOrderRequest) -> Dict[str, Any]:
     return {
         "idempotency_key": record.idempotency_key,
         "symbol": record.symbol,
-        "strategy_symbol": getattr(record, "strategy_symbol", None) or summary.get("strategy_symbol"),
+        "strategy_symbol": getattr(record, "strategy_symbol", None)
+        or summary.get("strategy_symbol"),
         "side": record.side,
         "state": record.state,
         "quote_asset": quote_asset,
@@ -560,9 +561,7 @@ def submit_order(
     )
 
     preview_symbol = normalize_symbol(str(claims.get("symbol") or ""))
-    strategy_symbol = normalize_symbol(
-        str(claims.get("strategy_symbol") or preview_symbol)
-    )
+    strategy_symbol = normalize_symbol(str(claims.get("strategy_symbol") or preview_symbol))
     unresolved = (
         db.query(MonitorSpotOrderRequest)
         .filter(
