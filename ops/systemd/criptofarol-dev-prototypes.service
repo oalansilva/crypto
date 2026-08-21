@@ -1,0 +1,13 @@
+[Unit]
+Description=Cripto Farol DEV static prototypes (no SPA fallback)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/criptofarol/dev_prototype_server.py --host 127.0.0.1 --port 5176
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

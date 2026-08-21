@@ -64,7 +64,7 @@ Antes de editar:
 2. Design refina em OpenSpec + Gist secreto `crypto openspec <change>`.
 3. O Gist SHALL ser **superset** do issue. `/opsx:apply` lê Gist + `openspec/changes/`, não o body do GitHub como spec paralela.
 4. Sem Gist/comentário no card, Design está incompleto. Republicar: `--gist-id` + `--comment-id`.
-5. HTML de protótipo **não** vai no Gist. URL HTTP em bloco separado.
+5. HTML de protótipo **não** vai no Gist. URL HTTP em bloco separado. No DEV Cripto, `/prototypes*` é servido por `criptofarol-dev-prototypes` (worktree + public/dist), sem fallback SPA.
 
 Helper (path relativo a esta skill no repo):
 
@@ -89,7 +89,9 @@ Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evid
 
 ## Release
 
-Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `alan-workflow-ambientes`. No cripto: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`.
+Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `alan-workflow-ambientes`. Detalhe canônico: `docs/crypto-overlay.md` (Release em lote). No cripto: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`.
+
+Quando o push do archive em `develop` for recusado por proteção (`qa-gate`), mesmo com pacote só Homologado: use `release-*` = `origin/develop` + archive → PR `release-* → main`; `pre` em `release-*` **não** exige archive em `origin/develop`. Após merge + deploy PROD, sync `main → develop` é obrigatório antes do `post` final (reexecutar `post` se as árvores ainda divergirem). Não dual-write o playbook completo neste `SKILL.md` nem no stub `AGENTS.md`.
 
 ## Higiene
 

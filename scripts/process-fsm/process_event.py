@@ -24,6 +24,7 @@ from fsm import (  # noqa: E402
 )
 from guard import github_status_provider  # noqa: E402
 from resolve import UNBOUND, resolve  # noqa: E402
+from t14 import LiveT14Runner, T14Error, T14Runner, measure_checks_green, run_t14  # noqa: E402
 
 REPO_ROOT = ROOT.parents[1]
 AMBIENTES = "alan-workflow-ambientes"
@@ -219,6 +220,8 @@ def process_event(
     g_design: bool | None = None,
     m_lote: bool | None = None,
     checks_green: bool | None = None,
+    checks_green_measurer: Callable[..., bool] | None = None,
+    t14_runner: T14Runner | None = None,
     fsm: dict[str, Any] | None = None,
     resolve_fn: Callable[..., dict[str, str | None]] = resolve,
     change_dir: Path | None = None,
@@ -277,6 +280,14 @@ def process_event(
         digest_changed = measure_digest_changed(resolved_change_dir, resolved_proto, q)
     if m_lote is None:
         m_lote = False
+    if event == "integrar_develop" and checks_green is None:
+        if checks_green_measurer is None:
+            checks_green = False
+        else:
+            try:
+                checks_green = bool(checks_green_measurer(bound, git))
+            except (OSError, RuntimeError, TypeError, ValueError):
+                checks_green = False
 
     exclusive = EVENT_GUARDS.get(event, {})
     ctx_kwargs: dict[str, Any] = {
@@ -342,6 +353,22 @@ def process_event(
             enabled=extra,
             message=message,
         )
+    if event == "integrar_develop":
+        if dry_run:
+            return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
+        if t14_runner is None:
+            return _payload(result="reject", state=q, to=None, reason="I8")
+        try:
+            run_t14(t14_runner, q_git=str(git), bound_card=str(bound))
+        except T14Error:
+            return _payload(result="reject", state=q, to=None, reason="I8")
+        if mover is None or issue_number is None:
+            return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
+        failed = _safe_move(mover, issue_number, result.to or "")
+        if failed is not None:
+            failed["state"] = q
+            return failed
+        return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
     if dry_run or mover is None or issue_number is None:
         return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
     failed = _safe_move(mover, issue_number, result.to or "")
@@ -366,6 +393,8 @@ def main(argv: list[str] | None = None) -> int:
         change=args.change,
         dry_run=args.dry_run,
         mover=None if args.dry_run else GhBoardMover(),
+        checks_green_measurer=measure_checks_green,
+        t14_runner=None if args.dry_run else LiveT14Runner(),
     )
     json.dump(payload, sys.stdout, ensure_ascii=True)
     sys.stdout.write("\n")

@@ -18,6 +18,7 @@ from process_event import (  # noqa: E402
     process_event,
     sidecar_path,
 )
+from t14 import RecordingT14Runner  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -296,6 +297,7 @@ def test_aceitar_sha_moves_qa():
 
 def test_integrar_develop_rejects_without_checks_green():
     mover = FakeMover()
+    runner = RecordingT14Runner()
     out = process_event(
         "integrar_develop",
         status="QA",
@@ -304,9 +306,11 @@ def test_integrar_develop_rejects_without_checks_green():
         mover=mover,
         digest_changed=False,
         checks_green=None,
+        t14_runner=runner,
     )
     assert out["result"] == "reject"
     assert mover.calls == []
+    assert runner.calls == []
 
 
 def test_m_lote_false_message():
@@ -459,3 +463,146 @@ def test_mover_failure_returns_json_reject():
 
 def test_load_fsm_still_valid():
     assert load_fsm()["fail_closed_asymmetric"] is True
+
+
+def _t14_kwargs(**extra):
+    payload = {
+        "status": "QA",
+        "q_git": "card-612-process-event",
+        "bound_card": "612",
+        "digest_changed": False,
+        "checks_green": True,
+    }
+    payload.update(extra)
+    return payload
+
+
+def test_integrar_develop_measurer_false_skips_runner():
+    mover = FakeMover()
+    runner = RecordingT14Runner()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        checks_green=None,
+        checks_green_measurer=lambda *a, **k: False,
+        **{k: v for k, v in _t14_kwargs().items() if k != "checks_green"},
+    )
+    assert out["result"] == "reject"
+    assert mover.calls == []
+    assert runner.calls == []
+
+
+def test_integrar_develop_runner_ok_moves_done():
+    mover = FakeMover()
+    runner = RecordingT14Runner()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        **_t14_kwargs(),
+    )
+    assert out["result"] == "transition"
+    assert out["to"] == "Done"
+    assert runner.calls == ["squash", "sync_dev_source", "restart", "comment_done"]
+    assert mover.calls == [(612, "Done")]
+
+
+def test_integrar_develop_sync_failure_is_i8():
+    mover = FakeMover()
+    runner = RecordingT14Runner(fail_at="sync_dev_source")
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        **_t14_kwargs(),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I8"
+    assert mover.calls == []
+    assert runner.calls == ["squash", "sync_dev_source"]
+
+
+def test_integrar_develop_restart_failure_is_i8():
+    mover = FakeMover()
+    runner = RecordingT14Runner(fail_at="restart")
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        **_t14_kwargs(),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I8"
+    assert mover.calls == []
+    assert runner.calls == ["squash", "sync_dev_source", "restart"]
+
+
+def test_integrar_develop_comment_done_failure_is_i8():
+    mover = FakeMover()
+    runner = RecordingT14Runner(fail_at="comment_done")
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        **_t14_kwargs(),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I8"
+    assert mover.calls == []
+    assert "comment_done" in runner.calls
+    assert mover.calls == []
+
+
+def test_integrar_develop_missing_runner_never_moves():
+    mover = FakeMover()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=None,
+        **_t14_kwargs(),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I8"
+    assert mover.calls == []
+
+
+def test_integrar_develop_dry_run_skips_runner_and_mover():
+    mover = FakeMover()
+    runner = RecordingT14Runner()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        dry_run=True,
+        **_t14_kwargs(),
+    )
+    assert out["result"] == "transition"
+    assert out["to"] == "Done"
+    assert runner.calls == []
+    assert mover.calls == []
+
+
+def test_integrar_develop_oserror_is_i8():
+    class Boom(RecordingT14Runner):
+        def squash(self, *, q_git: str, bound_card: str) -> None:
+            raise OSError("gh missing")
+
+    mover = FakeMover()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=Boom(),
+        **_t14_kwargs(),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "I8"
+    assert mover.calls == []
+
+
+def test_cli_has_no_checks_green_flag():
+    from process_event import main
+
+    with pytest.raises(SystemExit) as exc:
+        main(["integrar_develop", "--checks-green"])
+    assert exc.value.code != 0

@@ -29,7 +29,9 @@ DENY_STATES = (
     "Cancelado",
 )
 ALLOW_STATES = ("Em desenvolvimento", "Code Review")
-SILENT = lambda bound: (_ for _ in ()).throw(AssertionError(f"github called bound={bound}"))  # noqa: E731
+SILENT = lambda bound: (_ for _ in ()).throw(
+    AssertionError(f"github called bound={bound}")
+)  # noqa: E731
 
 
 def _no_github(_bound: str | None) -> str | None:
@@ -42,7 +44,9 @@ def _run_git(repo: Path, *args: str) -> None:
 
 def _init_repo(path: Path, branch: str, filename: str) -> Path:
     path.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "init", "-b", branch, str(path)], check=True, capture_output=True, text=True)
+    subprocess.run(
+        ["git", "init", "-b", branch, str(path)], check=True, capture_output=True, text=True
+    )
     _run_git(path, "config", "user.email", "process-fsm@test.local")
     _run_git(path, "config", "user.name", "process-fsm")
     tracked = path / filename
@@ -69,14 +73,59 @@ def _shell_payload(cwd: Path, command: str, status: str | None = None) -> dict:
 
 
 def test_extract_path_from_cursor_envelope():
-    assert extract_path({"tool_name": "Write", "tool_input": {"path": "backend/a.py"}}) == "backend/a.py"
-    assert extract_path({"tool_name": "StrReplace", "tool_input": {"file_path": "backend/a.py"}}) == "backend/a.py"
-    assert extract_path({"tool_name": "EditNotebook", "tool_input": {"target_notebook": "backend/n.ipynb"}}) == (
-        "backend/n.ipynb"
+    assert (
+        extract_path({"tool_name": "Write", "tool_input": {"path": "backend/a.py"}})
+        == "backend/a.py"
     )
-    assert extract_path({"command": "cat >backend/app/main.py", "cwd": "/"}) == "backend/app/main.py"
-    assert extract_path({"command": "tee /tmp/repo/backend/app/main.py", "cwd": "/"}) == "/tmp/repo/backend/app/main.py"
+    assert (
+        extract_path({"tool_name": "StrReplace", "tool_input": {"file_path": "backend/a.py"}})
+        == "backend/a.py"
+    )
+    assert extract_path(
+        {"tool_name": "EditNotebook", "tool_input": {"target_notebook": "backend/n.ipynb"}}
+    ) == ("backend/n.ipynb")
+    assert (
+        extract_path({"command": "cat >backend/app/main.py", "cwd": "/"}) == "backend/app/main.py"
+    )
+    # Card #625: tee under /tmp outside the worktree is an allowlisted sink.
+    assert (
+        extract_path({"command": "tee /tmp/repo/backend/app/main.py", "cwd": "/home/user/card"})
+        is None
+    )
     assert extract_path({"command": "pytest backend/ -q", "cwd": "/"}) is None
+
+
+def test_shell_null_redirect_with_product_cite_allowed(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-625-guard-null-redirect", "backend/app/main.py")
+    payload = _shell_payload(
+        repo,
+        "ls backend/app/main.py >/dev/null 2>/dev/null",
+        status="Todo",
+    )
+    assert decide(payload, status_provider=SILENT)["permission"] == "allow"
+
+
+def test_shell_tmp_redirect_with_product_cite_allowed(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-625-guard-null-redirect", "backend/app/main.py")
+    payload = _shell_payload(
+        repo,
+        "cat backend/app/main.py > /tmp/cf-625-out.txt",
+        status="Todo",
+    )
+    assert decide(payload, status_provider=SILENT)["permission"] == "allow"
+
+
+def test_shell_fd_redirect_with_product_cite_allowed(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-625-guard-null-redirect", "backend/app/main.py")
+    payload = _shell_payload(
+        repo,
+        "/tmp/pyvenv-cf/bin/python -m pytest backend/tests -q 2>&1",
+        status="Todo",
+    )
+    assert decide(payload, status_provider=SILENT)["permission"] == "allow"
 
 
 @pytest.mark.parametrize("state", DENY_STATES)
@@ -266,3 +315,29 @@ def test_hooks_json_composes_impeccable():
 def test_fsm_still_loads():
     validate = load_fsm()
     assert validate["fail_closed_asymmetric"] is True
+
+
+def test_git_cite_sidecar_allowed(tmp_path: Path):
+    """Card #631: git add/commit/status that only cite the sidecar must not sidecar-deny."""
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-631-guard-sidecar-git-cite", "backend/app/main.py")
+    digest = "openspec/changes/card-631-guard-sidecar-git-cite/" + ".design" + "-digest"
+    for command in (
+        f"git add {digest}",
+        f"git commit -m 'chore: archive {digest}'",
+        f"git status -- {digest}",
+        f"git reset HEAD -- {digest}",
+    ):
+        payload = _shell_payload(repo, command, status="Design")
+        result = decide(payload, status_provider=SILENT)
+        assert result["permission"] == "allow", command
+
+
+def test_shell_redirect_sidecar_denied(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-631-guard-sidecar-git-cite", "backend/app/main.py")
+    digest = "openspec/changes/card-631-x/" + ".design" + "-digest"
+    payload = _shell_payload(repo, f"echo x > {digest}", status="Design")
+    result = decide(payload, status_provider=SILENT)
+    assert result["permission"] == "deny"
+    assert "sidecar" in result["agent_message"]

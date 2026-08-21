@@ -37,6 +37,7 @@ const BUY_PREVIEW = {
   idempotency_key: 'idempotency-key-buy-385',
   expires_at: '2026-08-06T20:05:00+00:00',
   symbol: 'BTCUSDT',
+  strategy_symbol: 'BTCUSDT',
   side: 'BUY',
   base_asset: 'BTC',
   quote_asset: 'USDT',
@@ -69,8 +70,10 @@ function orderResult(side: 'BUY' | 'SELL', state: 'filled' | 'partial' | 'reconc
   return {
     idempotency_key: side === 'BUY' ? BUY_PREVIEW.idempotency_key : SELL_PREVIEW.idempotency_key,
     symbol: 'BTCUSDT',
+    strategy_symbol: 'BTCUSDT',
     side,
     state,
+    quote_asset: side === 'BUY' ? 'USDT' : 'USDT',
     requested_quote_amount: side === 'BUY' ? '250' : null,
     calculated_base_quantity: side === 'SELL' ? '0.0184' : null,
     executed_base_quantity: terminal ? (state === 'partial' ? '0.00153846' : side === 'BUY' ? '0.00384' : '0.0184') : null,
@@ -158,8 +161,12 @@ async function setup(page: Page, options?: {
         await new Promise((resolve) => setTimeout(resolve, options.terminalRefreshDelayMs))
       }
       return fulfillJson(route, {
-        balances: [{ asset: 'BTC', total: 0.01842, free: 0.01842 }, { asset: 'USDT', total: 1250, free: 1250 }],
-        total_usd: 2447,
+        balances: [
+          { asset: 'BTC', total: 0.01842, free: 0.01842 },
+          { asset: 'USDT', total: 1250, free: 1250 },
+          { asset: 'USDC', total: 800, free: 800 },
+        ],
+        total_usd: 3247,
         as_of: '2026-08-06T20:00:00Z',
       })
     }
@@ -167,6 +174,17 @@ async function setup(page: Page, options?: {
       const body = request.postDataJSON() as Record<string, unknown>
       previewBodies.push(body)
       if (body.side === 'SELL') return fulfillJson(route, SELL_PREVIEW)
+      const origin = String(body.quote_asset ?? 'USDT').toUpperCase()
+      if (origin === 'USDC') {
+        return fulfillJson(route, {
+          ...BUY_PREVIEW,
+          symbol: 'BTCUSDC',
+          quote_asset: 'USDC',
+          quote_balance: '800',
+          requested_quote_amount: String(body.quote_amount_usdt ?? ''),
+          estimated_base_quantity: '0.003846153846',
+        })
+      }
       return fulfillJson(route, {
         ...BUY_PREVIEW,
         requested_quote_amount: String(body.quote_amount_usdt ?? ''),
@@ -244,19 +262,54 @@ test('compra usa valor em USDT, confirmação explícita e um único submit', as
   await expect(page.getByRole('heading', { name: 'Confirme sua ordem' })).toBeFocused()
   await expect(page.getByTestId('spot-confirm-order')).toBeDisabled()
   await expect(page.getByRole('dialog')).toContainText('250,00 USDT')
-  await expect(page.getByRole('dialog')).toContainText('Saldo USDT disponível')
+  await expect(page.getByRole('dialog')).toContainText('Saldo livre (origem)')
   await expect(page.getByRole('dialog')).toContainText('1.250,00 USDT')
   await expect(page.getByRole('dialog')).toContainText('TaxasDefinidas na execução')
   await page.getByRole('checkbox').check()
   await page.getByTestId('spot-confirm-order').dblclick()
 
   await expect(page.getByRole('heading', { name: 'Compra executada' })).toBeVisible()
-  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'BUY', quote_amount_usdt: 250 }])
+  expect(calls.previewBodies).toEqual([{
+    symbol: 'BTC/USDT',
+    side: 'BUY',
+    quote_amount_usdt: 250,
+    quote_asset: 'USDT',
+  }])
   expect(calls.submitBodies).toEqual([{
     preview_token: BUY_PREVIEW.preview_token,
     idempotency_key: BUY_PREVIEW.idempotency_key,
   }])
   expect(calls.balanceQueries).toBeGreaterThanOrEqual(2)
+})
+
+test('compra com USDC no par da ordem BTCUSDC sem mudar a estratégia', async ({ page }) => {
+  const calls = await setup(page)
+  await page.goto('/monitor')
+  await visibleTradeTrigger(page).click()
+  await page.getByTestId('spot-origin-usdc').click()
+  await expect(page.getByRole('dialog')).toContainText('Saldo livre em USDC')
+  await expect(page.getByRole('dialog')).toContainText('800,00 USDC')
+  await page.getByTestId('spot-buy-amount').fill('250')
+  await page.getByTestId('spot-continue-order').click()
+  await expect(page.getByRole('dialog')).toContainText('Estratégia / sinal')
+  await expect(page.getByRole('dialog')).toContainText('BTC/USDT')
+  await expect(page.getByRole('dialog')).toContainText('Par da ordem')
+  await expect(page.getByRole('dialog')).toContainText('BTCUSDC')
+  await expect(page.getByRole('dialog')).toContainText('250,00 USDC')
+  expect(calls.previewBodies).toEqual([{
+    symbol: 'BTC/USDT',
+    side: 'BUY',
+    quote_amount_usdt: 250,
+    quote_asset: 'USDC',
+  }])
+})
+
+test('venda 100% não mostra Pagar com', async ({ page }) => {
+  await setup(page)
+  await page.goto('/monitor')
+  await visibleTradeTrigger(page).click()
+  await page.getByRole('tab', { name: 'Vender 100%' }).click()
+  await expect(page.getByTestId('spot-pay-with')).toBeHidden()
 })
 
 test('valor em USDT com casas decimais não é multiplicado por mil', async ({ page }) => {
@@ -268,7 +321,7 @@ test('valor em USDT com casas decimais não é multiplicado por mil', async ({ p
   await page.getByTestId('spot-continue-order').click()
   await expect(page.getByRole('heading', { name: 'Confirme sua ordem' })).toBeVisible()
   await expect(page.getByRole('dialog')).toContainText('250,125 USDT')
-  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'BUY', quote_amount_usdt: 250.125 }])
+  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'BUY', quote_amount_usdt: 250.125, quote_asset: 'USDT' }])
 })
 
 test('valor em USDT pequeno com vírgula decimal é preservado', async ({ page }) => {
@@ -279,7 +332,7 @@ test('valor em USDT pequeno com vírgula decimal é preservado', async ({ page }
   await page.getByTestId('spot-buy-amount').fill('0,001')
   await page.getByTestId('spot-continue-order').click()
   await expect(page.getByRole('heading', { name: 'Confirme sua ordem' })).toBeVisible()
-  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'BUY', quote_amount_usdt: 0.001 }])
+  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'BUY', quote_amount_usdt: 0.001, quote_asset: 'USDT' }])
 })
 
 test('valor em USDT no formato pt-BR com milhar é normalizado', async ({ page }) => {
@@ -290,7 +343,7 @@ test('valor em USDT no formato pt-BR com milhar é normalizado', async ({ page }
   await page.getByTestId('spot-buy-amount').fill('1.250,50')
   await page.getByTestId('spot-continue-order').click()
   await expect(page.getByRole('heading', { name: 'Confirme sua ordem' })).toBeVisible()
-  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'BUY', quote_amount_usdt: 1250.5 }])
+  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'BUY', quote_amount_usdt: 1250.5, quote_asset: 'USDT' }])
 })
 
 test('venda envia sempre 100% calculado no servidor e exibe possível residual', async ({ page }) => {
@@ -308,7 +361,7 @@ test('venda envia sempre 100% calculado no servidor e exibe possível residual',
   await page.getByTestId('spot-confirm-order').click()
   await expect(page.getByRole('heading', { name: 'Venda executada' })).toBeVisible()
 
-  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'SELL', quote_amount_usdt: null }])
+  expect(calls.previewBodies).toEqual([{ symbol: 'BTC/USDT', side: 'SELL', quote_amount_usdt: null, quote_asset: 'USDT' }])
   expect(calls.submitBodies[0]).toEqual({
     preview_token: SELL_PREVIEW.preview_token,
     idempotency_key: SELL_PREVIEW.idempotency_key,
