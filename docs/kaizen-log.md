@@ -14,6 +14,44 @@
 
 ---
 
+## 2026-08-21 — Kaizen release (lote card 613)
+
+- **Release/card**: 2026-08-21 — card 613 (Homologado → Pronto após deploy PROD `7df18d54`).
+- **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees/stash + `release-guard pre` PASS, CI PR #638, ensaio e-to-e desta sessão Cursor (#608/#613), `openspec validate` 149 no CI. Transcripts em `agent-transcripts/` ausentes neste host (limitação declarada). Sem consulta a `opencode.db`.
+- **Sessões analisadas**: teste ponta a ponta do epic #608 pedido por Alan; closeout `suba a release` no mesmo chat. Sem consulta a `opencode.db`.
+- **Custo/eficácia por card**: `#613` já Homologado no board quando Alan pediu `suba a release`. Comentário Homologado canônico ausente até este turno.
+
+### Métricas
+- **Board**: 1 Homologado no lote (`#613`, Clara / P2 / Operacao). Fora: `#614` Aprovação de Design; `#608` Em Refinamento; in-flight `#472`/`#606`.
+- **Git**: `origin/develop` só com o pacote (`771784ab`); archive via `release-2026-08-21` `6e58e4e4`. Stash 0. Worktrees in-flight classificadas via `PRESERVED_BRANCHES`.
+- **CI**: PR #638 verde; `qa-gate` e `deploy-staging` skip (`base_ref != develop`).
+- **OpenSpec**: 1 change arquivada; spec nova `process-fsm-paging`.
+- **PROD**: source `7df18d54`; alembic já head; bundle `index-A5R04R0w.js` / `index-Cyx126Ee.css`; health 200 após warmup.
+
+### Achados
+- F-1 [major] Comentário canônico Homologado ausente no #613 até o closeout. Recidiva do contrato #579. Esforço S | P1 | Card existente: #579.
+- F-2 [major] Guard `beforeShellExecution` deny por substring (`item-edit` de Status, `>` / paths de produto) em comandos de ensaio e deploy. Recidiva. Esforço S | P1 | Cards existentes: #625, #631.
+- F-3 [minor] Archive foi a `main` via `release-*`; `develop` ficou com a change ativa até o sync. Recidiva. Esforço S | P1 | Card existente: #617.
+- F-4 [info] Health público 502 imediatamente após restart PROD; 200 em ~8s. Sem card novo.
+- F-5 [info] Página unbound pede para não carregar playbook de release; pedido explícito `suba a release` carrega o overlay. Comportamento alinhado a δ (T16) vs Moore. Sem card novo.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | 5+ auditorias | #579
+- Guard Shell falso positivo / substring | 3+ no dia 20–21 | #625 / #631
+- `develop` protegido vs archive no SHA da release | 4ª ocorrência | #617
+
+### Trechos de sessão (evidência local)
+- `bound_card=⊥. Write produto deny. Não carregue playbook de release.`
+- `process-fsm-guard deny reason=status_item_edit. Use process_event.`
+- `process-fsm-guard deny reason=fail_closed q=None q_git=develop bound_card=⊥`
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário | — | F-1 | coberto por #579 |
+| (não criado) Guard Shell / sidecar | — | F-2 | coberto por #625 / #631 |
+| (não criado) archive via `release-*` | — | F-3 | coberto por #617 |
+
 ## 2026-08-20 — Kaizen release (lote card 612)
 
 - **Release/card**: 2026-08-20 (2º lote do dia) — card 612 (Homologado → Pronto após deploy PROD `5110b9b0`).
