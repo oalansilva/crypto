@@ -1923,7 +1923,9 @@ def test_pre_release_branch_skips_local_develop_ahead_without_preserved(tmp_path
         "BLOCKER: local branch not merged into origin/develop or origin/main: develop"
         not in result.stdout
     )
-    assert "local branch not merged into origin/develop or origin/main: develop" not in result.stdout
+    assert (
+        "local branch not merged into origin/develop or origin/main: develop" not in result.stdout
+    )
     # Diverge warn may still appear; it must not be a BLOCKER for develop tip inventory.
     assert "BLOCKER: local develop differs from origin/develop" not in result.stdout
     assert result.returncode == 0
