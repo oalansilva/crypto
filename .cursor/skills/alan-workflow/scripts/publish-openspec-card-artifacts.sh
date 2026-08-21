@@ -22,7 +22,9 @@ Gist contents are ONLY text OpenSpec artifacts:
 
 Never upload HTML/CSS/JS prototypes to the Gist as the review surface.
 HTML prototypes must be published to the project's browsable static path
-(Cripto: frontend/public/prototypes/<slug>/ → https://dev.criptofarol.com.br/prototypes/<slug>/)
+(Cripto: frontend/public/prototypes/<slug>/ → https://dev.criptofarol.com.br/prototypes/<slug>/).
+On the Cripto DEV host, that URL is served by criptofarol-dev-prototypes.service from
+the card worktree (and source public/dist). Do not rely on SPA preview fallback.
 and passed via --prototype-url so the card comment links the rendered screen.
 USAGE
 }

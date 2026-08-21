@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fcd535'/%3E%3Ctext x='5' y='21' font-size='13' font-family='sans-serif' font-weight='700'%3ECF%3C/text%3E%3C/svg%3E" />
+  <title>Card #637 — Pagar compra Spot com USDC (estratégia BASE/USDT)</title>
+  <style>
+    :root {
+      --canvas: #0b0e11;
+      --surface: #1e2329;
+      --surface-2: #1e2329;
+      --text: #eaecef;
+      --muted: #707a8a;
+      --hairline: #2b3139;
+      --primary: #fcd535;
+      --primary-hover: #f0b90b;
+      --primary-active: #f0b90b;
+      --ink: #181a20;
+      --buy: #0ecb81;
+      --sell: #d64555;
+      --panel: #ffffff;
+      --panel-soft: #f5f5f5;
+      --panel-text: #181a20;
+      --panel-muted: #5e6673;
+      --panel-line: #eaecef;
+      --focus: #3b82f6;
+      --border-strong: #cdd1d6;
+      --overlay: color-mix(in srgb, var(--canvas) 68%, transparent);
+      --panel-shadow: color-mix(in srgb, var(--canvas) 35%, transparent);
+      --font: BinanceNova, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: BinancePlex, "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { color-scheme: dark; }
+    body { margin: 0; min-height: 100vh; background: var(--canvas); color: var(--text); font-family: var(--font); font-size: 14px; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .hidden { display: none !important; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 224px minmax(0, 1fr); }
+    .sidebar { position: sticky; top: 0; height: 100vh; padding: 20px 14px; border-right: 1px solid var(--hairline); background: var(--canvas); }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 26px; font-weight: 700; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; background: var(--primary); color: var(--ink); border-radius: 4px; font-weight: 900; }
+    .nav-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 14px 10px 8px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; color: var(--muted); border-radius: 4px; }
+    .nav-item.active { background: var(--surface-2); color: var(--text); border-left: 2px solid var(--primary); }
+    .workspace { min-width: 0; }
+    .topbar { min-height: 64px; display: flex; justify-content: space-between; align-items: center; padding: 10px 24px; border-bottom: 1px solid var(--hairline); }
+    .topbar h1 { font-size: 20px; margin: 0; font-weight: 600; }
+    .topbar small { display: block; color: var(--muted); margin-top: 3px; }
+    .icon-btn, .trade-trigger { min-height: 36px; border: 1px solid var(--hairline); border-radius: 4px; background: transparent; color: var(--text); padding: 7px 11px; }
+    .icon-btn { width: 36px; padding: 0; }
+    .trade-trigger { border-color: var(--primary-active); color: var(--primary); font-weight: 650; }
+    main { padding: 22px 24px 48px; max-width: 1500px; margin: 0 auto; }
+    .monitor-table { border: 1px solid var(--hairline); background: var(--surface); border-radius: 6px; overflow: hidden; }
+    .monitor-table table { width: 100%; border-collapse: collapse; }
+    .monitor-table th, .monitor-table td { padding: 13px 14px; text-align: left; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+    .monitor-table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; }
+    .pair { display: flex; align-items: center; gap: 9px; font-weight: 650; }
+    .coin { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #f7931a; color: #fff; font-weight: 800; font-size: 11px; }
+    .signal { display: inline-flex; align-items: center; gap: 6px; color: var(--buy); }
+    .signal::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .mobile-list { display: none; }
+    .backdrop { display: none; position: fixed; inset: 0; z-index: 50; background: var(--overlay); }
+    .backdrop.open { display: block; }
+    .trade-panel { position: absolute; right: 0; top: 0; width: min(460px, 100%); min-height: 100%; background: var(--panel); color: var(--panel-text); box-shadow: -12px 0 40px var(--panel-shadow); padding: 22px; overflow-y: auto; }
+    .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+    .eyebrow { color: var(--panel-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+    .panel-head h2 { margin: 0; font-size: 20px; }
+    .panel-head p { color: var(--panel-muted); margin: 5px 0 0; }
+    .close-btn { width: 36px; height: 36px; border: 1px solid var(--panel-line); background: var(--panel); color: var(--panel-text); border-radius: 4px; font-size: 20px; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--panel-line); margin-bottom: 20px; }
+    .tab { border: 0; background: transparent; color: var(--panel-muted); padding: 12px; border-bottom: 2px solid transparent; font-weight: 650; }
+    .tab[aria-selected="true"][data-side="buy"] { color: var(--ink); border-color: var(--buy); }
+    .tab[aria-selected="true"][data-side="sell"] { color: var(--ink); border-color: var(--sell); }
+    .pay-with { margin-bottom: 16px; }
+    .pay-with-label { font-weight: 600; margin-bottom: 8px; color: var(--panel-text); }
+    .origin-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .origin-option { min-height: 44px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--panel); color: var(--panel-text); font-weight: 650; }
+    .origin-option[aria-checked="true"] { border-color: var(--primary-active); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent); background: color-mix(in srgb, var(--primary) 12%, var(--panel)); }
+    .origin-option:disabled { opacity: .45; cursor: not-allowed; }
+    .balance-strip { display: flex; justify-content: space-between; gap: 12px; color: var(--panel-muted); font-size: 13px; margin-bottom: 18px; }
+    .balance-strip b { color: var(--panel-text); font-family: var(--mono); }
+    .balance-strip .loading { color: var(--panel-muted); font-family: var(--font); font-style: italic; }
+    .form-label { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 7px; }
+    .amount-field { min-height: 52px; display: flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 12px; background: var(--panel); }
+    .amount-field:focus-within { border-color: var(--primary-active); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent); }
+    .amount-field input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--panel-text); font: 650 20px var(--mono); }
+    .amount-field span { color: var(--panel-muted); font-weight: 650; }
+    .quick-amounts { display: flex; gap: 6px; margin: 8px 0 18px; }
+    .quick-amounts button { border: 1px solid var(--panel-line); background: var(--panel-soft); color: var(--panel-text); border-radius: 4px; padding: 6px 10px; }
+    .sell-total { border: 1px solid var(--sell); background: var(--panel-soft); padding: 14px; border-radius: 4px; margin-bottom: 18px; }
+    .sell-total strong { display: block; color: var(--ink); margin-bottom: 5px; }
+    .sell-total b { font: 650 20px var(--mono); }
+    .warning { display: flex; gap: 9px; background: var(--panel-soft); border: 1px solid var(--primary-active); padding: 11px 12px; color: var(--ink); line-height: 1.45; margin-bottom: 18px; font-size: 13px; }
+    .hint { color: var(--panel-muted); font-size: 12px; margin: -8px 0 14px; line-height: 1.4; }
+    .validation { min-height: 20px; color: var(--sell); font-size: 13px; margin: 4px 0 6px; font-weight: 600; line-height: 1.45; }
+    .panel-actions { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-top: 12px; }
+    .panel-btn { min-height: 44px; border-radius: 4px; padding: 10px 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+    .panel-btn.secondary { background: var(--panel); border: 1px solid var(--border-strong); color: var(--panel-text); }
+    .panel-btn.primary { border: 0; background: var(--primary); color: var(--ink); }
+    .panel-btn.primary:disabled { opacity: .5; cursor: not-allowed; }
+    .review dl { margin: 0 0 16px; display: grid; gap: 10px; }
+    .review dt { color: var(--panel-muted); font-size: 12px; margin: 0 0 2px; }
+    .review dd { margin: 0; font-weight: 650; font-family: var(--mono); }
+    .review dd.plain { font-family: var(--font); }
+    .ack { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 8px; color: var(--panel-text); font-size: 13px; line-height: 1.4; }
+    .prototype-note { color: var(--muted); font-size: 12px; margin: 12px 2px 0; }
+    .prototype-scenarios { margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .prototype-scenarios summary { cursor: pointer; color: var(--text); }
+    .scenario-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .scenario-actions button { border: 1px solid var(--hairline); background: var(--surface-2); color: var(--text); padding: 7px 9px; border-radius: 4px; }
+    .delta-badge { display: inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background: rgba(252,213,53,.14); color: var(--primary); font-size: 11px; font-weight: 650; }
+    @media (max-width: 900px) {
+      .app { display: block; }
+      .sidebar { display: none; }
+      .topbar { padding: 10px 14px; }
+      main { padding: 14px 12px 36px; }
+      .monitor-table { display: none; }
+      .mobile-list { display: block; }
+      .mobile-card { padding: 14px; border: 1px solid var(--hairline); background: var(--surface); border-radius: 6px; }
+      .mobile-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+      .trade-panel { top: auto; bottom: 0; width: 100%; min-height: 0; max-height: 94vh; border-radius: 8px 8px 0 0; padding: 18px 16px 24px; }
+    }
+    @media (max-width: 520px) {
+      .panel-actions { grid-template-columns: 1fr; }
+      .panel-actions .secondary { order: 2; }
+      .balance-strip { display: grid; }
+      .actions { display: grid; grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="brand"><span class="brand-mark">CF</span> Cripto Farol</div>
+      <div class="nav-label">Decisão</div>
+      <div class="nav-item active"><span>◆</span> Monitor</div>
+      <div class="nav-item"><span>▥</span> Carteira</div>
+      <div class="nav-label">Conta</div>
+      <div class="nav-item"><span>●</span> Meu perfil</div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div>
+          <h1>Monitor de ativos</h1>
+          <small>Estratégia BTC/USDT · pagar a compra com USDC <span class="delta-badge">#637</span></small>
+        </div>
+        <div><button class="icon-btn" type="button" aria-label="Atualizar">↻</button></div>
+      </header>
+      <main>
+        <section class="monitor-table" aria-label="Ativos monitorados">
+          <table>
+            <thead><tr><th>Ativo</th><th>Status</th><th>Preço</th><th>Estratégia</th><th style="text-align:right">Ações</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="pair"><span class="coin">₿</span> BTC/USDT</span></td>
+                <td><span class="signal">Oportunidade</span></td>
+                <td>$ 95.420,00</td>
+                <td>Farol Tendência</td>
+                <td><div class="actions"><button class="trade-trigger" data-testid="open-trade" type="button">Operar</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="prototype-note">Protótipo #637. Nenhuma ordem real. Delta: Pagar com USDT|USDC sem mudar o par da estratégia.</p>
+          <details class="prototype-scenarios" open>
+            <summary>Cenários</summary>
+            <div class="scenario-actions">
+              <button type="button" data-scenario="usdt" data-testid="scenario-usdt">Comprar com USDT (default)</button>
+              <button type="button" data-scenario="usdc" data-testid="scenario-usdc">Comprar com USDC</button>
+              <button type="button" data-scenario="no-pair" data-testid="scenario-no-pair">USDC sem par BASEUSDC</button>
+              <button type="button" data-scenario="insufficient" data-testid="scenario-insufficient">Saldo USDC insuficiente</button>
+              <button type="button" data-scenario="review" data-testid="scenario-review">Review: estratégia ≠ ordem</button>
+              <button type="button" data-scenario="sell" data-testid="scenario-sell">Venda 100% (sem Pagar com)</button>
+              <button type="button" data-scenario="loading" data-testid="scenario-loading">Saldo carregando</button>
+            </div>
+          </details>
+        </section>
+        <section class="mobile-list" aria-label="Monitor mobile">
+          <article class="mobile-card">
+            <div class="mobile-head"><span class="pair"><span class="coin">₿</span> BTC/USDT</span><span class="signal">Oportunidade</span></div>
+            <div class="actions" style="margin-top:12px"><button class="trade-trigger" data-testid="open-trade-mobile" type="button">Operar</button></div>
+          </article>
+          <p class="prototype-note">Mesmos cenários no viewport mobile.</p>
+          <details class="prototype-scenarios">
+            <summary>Cenários</summary>
+            <div class="scenario-actions">
+              <button type="button" data-scenario="usdt">USDT</button>
+              <button type="button" data-scenario="usdc">USDC</button>
+              <button type="button" data-scenario="no-pair">Sem par</button>
+              <button type="button" data-scenario="insufficient">Saldo baixo</button>
+              <button type="button" data-scenario="review">Review</button>
+              <button type="button" data-scenario="sell">Venda</button>
+            </div>
+          </details>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="backdrop" data-testid="trade-dialog" aria-hidden="true">
+    <section class="trade-panel" role="dialog" aria-modal="true" aria-labelledby="trade-title" aria-describedby="trade-price">
+      <div class="panel-head">
+        <div>
+          <div class="eyebrow">Ordem Spot · Binance</div>
+          <h2 id="trade-title">Operar BTC/USDT</h2>
+          <p id="trade-price">Preço indicativo: $ 95.420,00 USDT</p>
+        </div>
+        <button class="close-btn" data-testid="close-trade" type="button" aria-label="Fechar operação">×</button>
+      </div>
+
+      <div class="entry" data-testid="entry-step">
+        <div class="tabs" role="tablist" aria-label="Tipo de operação">
+          <button class="tab" role="tab" aria-selected="true" aria-controls="buy-panel" data-side="buy" id="buy-tab">Comprar</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="sell-panel" data-side="sell" id="sell-tab">Vender 100%</button>
+        </div>
+
+        <div class="buy-form" id="buy-panel" role="tabpanel" aria-labelledby="buy-tab" data-testid="buy-form">
+          <div class="pay-with" data-testid="pay-with" id="pay-with">
+            <div class="pay-with-label" id="pay-with-label">Pagar com</div>
+            <div class="origin-group" role="radiogroup" aria-labelledby="pay-with-label">
+              <button type="button" class="origin-option" role="radio" aria-checked="true" tabindex="0" data-origin="USDT" data-testid="origin-usdt">USDT</button>
+              <button type="button" class="origin-option" role="radio" aria-checked="false" tabindex="-1" data-origin="USDC" data-testid="origin-usdc">USDC</button>
+            </div>
+            <p class="hint" id="origin-hint">A estratégia continua BTC/USDT. A ordem Spot usará o par BTC + origem escolhida.</p>
+          </div>
+
+          <div class="balance-strip" role="status" aria-live="polite" data-testid="quote-balance-strip">
+            <span>Saldo livre em <span id="balance-asset">USDT</span> <b id="quote-balance" data-testid="quote-balance">1.250,00 USDT</b></span>
+            <span>Consultado agora na Binance</span>
+          </div>
+
+          <label class="form-label" for="buy-amount"><span>Quanto deseja usar?</span><span id="amount-suffix">USDT</span></label>
+          <div class="amount-field">
+            <input id="buy-amount" data-testid="buy-amount" inputmode="decimal" autocomplete="off" value="" placeholder="0,00" aria-describedby="buy-error" />
+            <span id="amount-unit">USDT</span>
+          </div>
+          <div class="quick-amounts" aria-label="Valores rápidos">
+            <button type="button" data-amount="100">100</button>
+            <button type="button" data-amount="250">250</button>
+            <button type="button" data-amount="500">500</button>
+          </div>
+          <div id="buy-error" class="validation" data-testid="buy-error" aria-live="polite"></div>
+        </div>
+
+        <div class="sell-form hidden" id="sell-panel" role="tabpanel" aria-labelledby="sell-tab" data-testid="sell-form">
+          <div class="sell-total">
+            <strong>Venda de 100% do saldo livre</strong>
+            <b>0,01542000 BTC</b>
+            <p style="color:var(--panel-muted); margin:6px 0 0">Liquidação no par da estratégia BTCUSDT. Sem escolha de quote neste card.</p>
+          </div>
+        </div>
+
+        <div class="warning"><span aria-hidden="true">!</span><span>Ordem MARKET pode executar em preço diferente da estimativa. Você revisará estratégia e par da ordem antes do envio.</span></div>
+        <div class="panel-actions">
+          <button class="panel-btn secondary" data-action="cancel" type="button">Cancelar</button>
+          <button class="panel-btn primary" data-testid="continue-order" type="button">Continuar</button>
+        </div>
+      </div>
+
+      <div class="review hidden" data-testid="review-step">
+        <h3 id="review-heading" tabindex="-1" style="margin:0 0 8px; font-size:16px">Confirme sua ordem</h3>
+        <p class="hint" style="margin-top:0">A estratégia não muda; só o par da ordem Spot.</p>
+        <dl>
+          <div><dt>Estratégia / sinal</dt><dd class="plain" data-testid="review-strategy">BTC/USDT</dd></div>
+          <div><dt>Par da ordem</dt><dd data-testid="review-order-symbol">BTCUSDC</dd></div>
+          <div><dt>Operação</dt><dd class="plain">Comprar</dd></div>
+          <div><dt>Gastar</dt><dd data-testid="review-spend">250,00 USDC</dd></div>
+          <div><dt>Saldo livre (origem)</dt><dd data-testid="review-balance">800,00 USDC</dd></div>
+          <div><dt>Receber (indicativo)</dt><dd data-testid="review-receive">≈ 0,002618 BTC</dd></div>
+        </dl>
+        <div class="warning"><span aria-hidden="true">!</span><span>Envio irreversível a preço de mercado no par da ordem.</span></div>
+        <label class="ack"><input type="checkbox" data-testid="ack" /> Entendo que a ordem será enviada em <strong id="ack-symbol">BTCUSDC</strong> pagando com a origem escolhida.</label>
+        <div class="panel-actions">
+          <button class="panel-btn secondary" data-testid="back-entry" type="button">Voltar</button>
+          <button class="panel-btn primary" data-testid="confirm-order" type="button" disabled>Confirmar compra</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const STATE = {
+        side: 'buy',
+        origin: 'USDT',
+        step: 'entry',
+        usdcPairOk: true,
+        balances: { USDT: 1250, USDC: 800 },
+        priceUsdt: 95420,
+        priceUsdc: 95415,
+      };
+      const PREF_KEY = 'cf-proto-637-origin';
+
+      const dialog = document.querySelector('[data-testid="trade-dialog"]');
+      const panel = dialog.querySelector('.trade-panel');
+      const entry = document.querySelector('[data-testid="entry-step"]');
+      const review = document.querySelector('[data-testid="review-step"]');
+      const buyTab = document.querySelector('[data-side="buy"]');
+      const sellTab = document.querySelector('[data-side="sell"]');
+      const buyForm = document.querySelector('[data-testid="buy-form"]');
+      const sellForm = document.querySelector('[data-testid="sell-form"]');
+      const amount = document.querySelector('[data-testid="buy-amount"]');
+      const error = document.querySelector('[data-testid="buy-error"]');
+      const quoteBalance = document.querySelector('[data-testid="quote-balance"]');
+      const balanceAsset = document.querySelector('#balance-asset');
+      const amountSuffix = document.querySelector('#amount-suffix');
+      const amountUnit = document.querySelector('#amount-unit');
+      const tradePrice = document.querySelector('#trade-price');
+      const originHint = document.querySelector('#origin-hint');
+      const continueBtn = document.querySelector('[data-testid="continue-order"]');
+      const confirmBtn = document.querySelector('[data-testid="confirm-order"]');
+      const ack = document.querySelector('[data-testid="ack"]');
+      const closeButton = document.querySelector('[data-testid="close-trade"]');
+      const reviewHeading = document.querySelector('#review-heading');
+      const originButtons = [...document.querySelectorAll('[data-origin]')];
+      let lastFocus = null;
+
+      const fmt = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const parseAmount = () => Number(String(amount.value).replace(/\./g, '').replace(',', '.')) || 0;
+      const focusables = () => [...panel.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true' && el.offsetParent !== null);
+
+      function orderSymbol() {
+        return STATE.origin === 'USDT' ? 'BTCUSDT' : 'BTCUSDC';
+      }
+
+      function setOrigin(origin, { persist = true } = {}) {
+        STATE.origin = origin;
+        originButtons.forEach((btn) => {
+          const on = btn.dataset.origin === origin;
+          btn.setAttribute('aria-checked', String(on));
+          btn.tabIndex = on ? 0 : -1;
+        });
+        balanceAsset.textContent = origin;
+        amountSuffix.textContent = origin;
+        amountUnit.textContent = origin;
+        const bal = STATE.balances[origin];
+        quoteBalance.className = '';
+        quoteBalance.textContent = `${fmt(bal)} ${origin}`;
+        const px = origin === 'USDT' ? STATE.priceUsdt : STATE.priceUsdc;
+        tradePrice.textContent = origin === 'USDT'
+          ? `Preço indicativo: $ ${fmt(px)} USDT`
+          : `Preço indicativo: $ ${fmt(px)} USDC · ordem ${orderSymbol()}`;
+        originHint.textContent = origin === 'USDT'
+          ? 'A estratégia continua BTC/USDT. Ordem Spot em BTCUSDT.'
+          : 'A estratégia continua BTC/USDT. Ordem Spot em BTCUSDC (origem USDC).';
+        if (!STATE.usdcPairOk && origin === 'USDC') {
+          error.textContent = 'Par Spot BTCUSDC indisponível ou não aceita MARKET com quoteOrderQty. Escolha USDT para pagar neste ativo.';
+          continueBtn.disabled = true;
+          originButtons.find((b) => b.dataset.origin === 'USDC')?.setAttribute('aria-disabled', 'true');
+        } else {
+          if (error.textContent.includes('BTCUSDC')) error.textContent = '';
+          continueBtn.disabled = false;
+          originButtons.forEach((b) => b.removeAttribute('aria-disabled'));
+        }
+        if (persist) sessionStorage.setItem(PREF_KEY, origin);
+      }
+
+      function selectSide(next) {
+        STATE.side = next;
+        const buying = next === 'buy';
+        buyTab.setAttribute('aria-selected', String(buying));
+        sellTab.setAttribute('aria-selected', String(!buying));
+        buyTab.tabIndex = buying ? 0 : -1;
+        sellTab.tabIndex = buying ? -1 : 0;
+        buyForm.classList.toggle('hidden', !buying);
+        sellForm.classList.toggle('hidden', buying);
+        error.textContent = '';
+        continueBtn.disabled = false;
+      }
+
+      function showStep(step) {
+        STATE.step = step;
+        entry.classList.toggle('hidden', step !== 'entry');
+        review.classList.toggle('hidden', step !== 'review');
+        if (step === 'review') requestAnimationFrame(() => reviewHeading?.focus());
+      }
+
+      function showDialog() {
+        dialog.classList.add('open');
+        dialog.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        document.querySelector('.app').inert = true;
+      }
+
+      function closeDialog() {
+        dialog.classList.remove('open');
+        dialog.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        document.querySelector('.app').inert = false;
+        showStep('entry');
+        ack.checked = false;
+        confirmBtn.disabled = true;
+        lastFocus?.focus();
+      }
+
+      function fillReview() {
+        const origin = STATE.origin;
+        const spend = parseAmount() || 250;
+        document.querySelector('[data-testid="review-strategy"]').textContent = 'BTC/USDT';
+        document.querySelector('[data-testid="review-order-symbol"]').textContent = orderSymbol();
+        document.querySelector('[data-testid="review-spend"]').textContent = `${fmt(spend)} ${origin}`;
+        document.querySelector('[data-testid="review-balance"]').textContent = `${fmt(STATE.balances[origin])} ${origin}`;
+        const px = origin === 'USDT' ? STATE.priceUsdt : STATE.priceUsdc;
+        const qty = spend / px;
+        document.querySelector('[data-testid="review-receive"]').textContent = `≈ ${qty.toLocaleString('pt-BR', { maximumFractionDigits: 8 })} BTC`;
+        document.querySelector('#ack-symbol').textContent = orderSymbol();
+      }
+
+      function applyScenario(name) {
+        STATE.usdcPairOk = true;
+        STATE.balances = { USDT: 1250, USDC: 800 };
+        amount.value = '';
+        error.textContent = '';
+        showStep('entry');
+        ack.checked = false;
+        confirmBtn.disabled = true;
+        if (name === 'sell') {
+          selectSide('sell');
+          setOrigin('USDT', { persist: false });
+          return;
+        }
+        selectSide('buy');
+        if (name === 'usdt') {
+          setOrigin('USDT');
+        } else if (name === 'usdc') {
+          setOrigin('USDC');
+          amount.value = '250';
+        } else if (name === 'no-pair') {
+          STATE.usdcPairOk = false;
+          setOrigin('USDC');
+        } else if (name === 'insufficient') {
+          STATE.balances.USDC = 40;
+          setOrigin('USDC');
+          amount.value = '100';
+          error.textContent = 'Saldo livre em USDC insuficiente (40,00 USDC disponíveis). Sem conversão automática para USDT.';
+        } else if (name === 'loading') {
+          setOrigin('USDT', { persist: false });
+          quoteBalance.className = 'loading';
+          quoteBalance.textContent = 'carregando…';
+        } else if (name === 'review') {
+          setOrigin('USDC');
+          amount.value = '250';
+          fillReview();
+          showStep('review');
+        } else {
+          const pref = sessionStorage.getItem(PREF_KEY);
+          setOrigin(pref === 'USDC' && STATE.usdcPairOk ? 'USDC' : 'USDT');
+        }
+      }
+
+      function openFrom(event) {
+        lastFocus = event.currentTarget;
+        showDialog();
+        applyScenario('default');
+        requestAnimationFrame(() => closeButton.focus());
+      }
+
+      document.querySelectorAll('[data-testid="open-trade"], [data-testid="open-trade-mobile"]').forEach((b) => b.addEventListener('click', openFrom));
+      document.querySelectorAll('[data-scenario]').forEach((b) => b.addEventListener('click', (e) => {
+        lastFocus = e.currentTarget;
+        showDialog();
+        applyScenario(b.dataset.scenario);
+        requestAnimationFrame(() => closeButton.focus());
+      }));
+      closeButton.addEventListener('click', closeDialog);
+      document.querySelectorAll('[data-action="cancel"]').forEach((b) => b.addEventListener('click', closeDialog));
+      buyTab.addEventListener('click', () => selectSide('buy'));
+      sellTab.addEventListener('click', () => selectSide('sell'));
+      [buyTab, sellTab].forEach((tab) => tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' || (event.key === 'ArrowLeft' && tab === sellTab) || (event.key === 'ArrowRight' && tab === sellTab)
+          ? buyTab
+          : sellTab;
+        if (event.key === 'End') {
+          sellTab.focus();
+          selectSide('sell');
+          return;
+        }
+        if (event.key === 'Home') {
+          buyTab.focus();
+          selectSide('buy');
+          return;
+        }
+        const target = tab === buyTab ? sellTab : buyTab;
+        target.focus();
+        selectSide(target.dataset.side);
+      }));
+      originButtons.forEach((b) => b.addEventListener('click', () => setOrigin(b.dataset.origin)));
+      originButtons.forEach((btn) => btn.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const idx = originButtons.indexOf(btn);
+        let next = idx;
+        if (event.key === 'Home') next = 0;
+        if (event.key === 'End') next = originButtons.length - 1;
+        if (event.key === 'ArrowRight') next = (idx + 1) % originButtons.length;
+        if (event.key === 'ArrowLeft') next = (idx - 1 + originButtons.length) % originButtons.length;
+        setOrigin(originButtons[next].dataset.origin);
+        originButtons[next].focus();
+      }));
+      document.querySelectorAll('[data-amount]').forEach((b) => b.addEventListener('click', () => { amount.value = b.dataset.amount; selectSide('buy'); }));
+      continueBtn.addEventListener('click', () => {
+        if (STATE.side === 'sell') {
+          alert('Protótipo: venda permanece em BTCUSDT (sem Pagar com). Review de venda = paridade com produto atual, fora do delta visual #637.');
+          return;
+        }
+        if (!STATE.usdcPairOk && STATE.origin === 'USDC') return;
+        const v = parseAmount();
+        if (v <= 0) { error.textContent = `Informe quanto deseja usar em ${STATE.origin}.`; return; }
+        if (v > STATE.balances[STATE.origin]) {
+          error.textContent = `Saldo livre em ${STATE.origin} insuficiente (${fmt(STATE.balances[STATE.origin])} ${STATE.origin} disponíveis).`;
+          return;
+        }
+        fillReview();
+        showStep('review');
+      });
+      document.querySelector('[data-testid="back-entry"]').addEventListener('click', () => showStep('entry'));
+      ack.addEventListener('change', () => { confirmBtn.disabled = !ack.checked; });
+      confirmBtn.addEventListener('click', () => { alert(`Protótipo: confirmaria MARKET ${orderSymbol()} gastar ${amount.value || '250'} ${STATE.origin}.`); closeDialog(); });
+      dialog.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); closeDialog(); return; }
+        if (e.key !== 'Tab') return;
+        const nodes = focusables();
+        if (!nodes.length) return;
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      });
+      selectSide('buy');
+      setOrigin('USDT', { persist: false });
+    })();
+  </script>
+</body>
+</html>
