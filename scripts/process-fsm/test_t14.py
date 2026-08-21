@@ -36,23 +36,37 @@ def _ok(stdout: str = "", returncode: int = 0) -> subprocess.CompletedProcess[st
     return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr="")
 
 
+def _checks_ndjson(*rows: dict) -> str:
+    return "\n".join(json.dumps(row) for row in rows) + "\n"
+
+
 def test_measure_checks_green_qa_gate_pass():
     scripted = Scripted(
         [
             _ok(json.dumps([{"number": 99, "headRefOid": "abc"}])),
-            _ok(json.dumps([{"name": "qa-gate", "state": "SUCCESS"}, {"name": "other", "state": "FAILURE"}])),
+            _ok(
+                _checks_ndjson(
+                    {"name": "qa-gate", "status": "completed", "conclusion": "success"},
+                    {"name": "other", "status": "completed", "conclusion": "failure"},
+                )
+            ),
         ]
     )
     assert measure_checks_green("632", "card-632-t14-live-done", runner=scripted) is True
+    assert scripted.calls[0][scripted.calls[0].index("--head") + 1] == "card-632-t14-live-done"
+    assert "api" in scripted.calls[1]
 
 
-def test_measure_checks_green_ignores_gh_checks_exit_code():
+def test_measure_checks_green_other_failure_does_not_block():
     scripted = Scripted(
         [
             _ok(json.dumps([{"number": 99, "headRefOid": "abc"}])),
             _ok(
-                json.dumps([{"name": "qa-gate", "state": "SUCCESS"}, {"name": "other", "state": "FAILURE"}]),
-                returncode=1,
+                _checks_ndjson(
+                    {"name": "qa-gate", "status": "completed", "conclusion": "success"},
+                    {"name": "other", "status": "completed", "conclusion": "failure"},
+                ),
+                returncode=0,
             ),
         ]
     )
@@ -65,14 +79,14 @@ def test_measure_checks_green_missing_or_fail():
     failed = Scripted(
         [
             _ok(json.dumps([{"number": 1, "headRefOid": "abc"}])),
-            _ok(json.dumps([{"name": "qa-gate", "state": "FAILURE"}])),
+            _ok(_checks_ndjson({"name": "qa-gate", "status": "completed", "conclusion": "failure"})),
         ]
     )
     assert measure_checks_green("632", "card-632-x", runner=failed) is False
     missing = Scripted(
         [
             _ok(json.dumps([{"number": 1, "headRefOid": "abc"}])),
-            _ok(json.dumps([{"name": "lint", "state": "SUCCESS"}])),
+            _ok(_checks_ndjson({"name": "lint", "status": "completed", "conclusion": "success"})),
         ]
     )
     assert measure_checks_green("632", "card-632-x", runner=missing) is False

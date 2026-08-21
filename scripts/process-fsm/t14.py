@@ -90,6 +90,40 @@ def _run(
     )
 
 
+def _pr_list_json(
+    q_git: str,
+    *,
+    fields: str,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> list[dict]:
+    """List PRs for branch head. gh 2.45 matches --head by branch name, not owner:branch."""
+    listed = _run(
+        [
+            "gh",
+            "pr",
+            "list",
+            "--repo",
+            GH_REPO,
+            "--head",
+            str(q_git),
+            "--base",
+            "develop",
+            "--state",
+            "all",
+            "--limit",
+            "1",
+            "--json",
+            fields,
+        ],
+        timeout=20,
+        runner=runner,
+    )
+    if listed.returncode != 0:
+        return []
+    rows = json.loads(listed.stdout or "[]")
+    return rows if isinstance(rows, list) else []
+
+
 def measure_checks_green(
     bound_card: str | int | None,
     q_git: str | None,
@@ -100,60 +134,43 @@ def measure_checks_green(
     if not q_git:
         return False
     try:
-        listed = _run(
-            [
-                "gh",
-                "pr",
-                "list",
-                "--repo",
-                GH_REPO,
-                "--head",
-                f"oalansilva:{q_git}",
-                "--base",
-                "develop",
-                "--state",
-                "all",
-                "--limit",
-                "1",
-                "--json",
-                "number,headRefOid",
-            ],
-            timeout=20,
-            runner=runner,
-        )
-        if listed.returncode != 0:
+        rows = _pr_list_json(str(q_git), fields="number,headRefOid", runner=runner)
+        if not rows:
             return False
-        rows = json.loads(listed.stdout or "[]")
-        if not isinstance(rows, list) or not rows:
+        head = rows[0].get("headRefOid")
+        if not head:
             return False
-        number = rows[0].get("number")
-        if number is None:
-            return False
+        # gh 2.45 has no `pr checks --json`; use Checks API on the head SHA.
         checks = _run(
             [
                 "gh",
-                "pr",
-                "checks",
-                str(number),
-                "--repo",
-                GH_REPO,
-                "--json",
-                "name,state",
+                "api",
+                f"repos/{GH_REPO}/commits/{head}/check-runs",
+                "--paginate",
+                "--jq",
+                ".check_runs[] | {name,status,conclusion}",
             ],
-            timeout=20,
+            timeout=30,
             runner=runner,
         )
-        try:
-            items = json.loads(checks.stdout or "[]")
-        except json.JSONDecodeError:
+        if checks.returncode != 0:
             return False
-        if not isinstance(items, list):
+        text = (checks.stdout or "").strip()
+        if not text:
             return False
-        for item in items:
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
             if str(item.get("name") or "") != QA_GATE:
                 continue
-            state = str(item.get("state") or "").lower()
-            return state in {"success", "pass"}
+            status = str(item.get("status") or "").lower()
+            conclusion = str(item.get("conclusion") or "").lower()
+            return status == "completed" and conclusion == "success"
         return False
     except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, TypeError, ValueError):
         return False
@@ -183,34 +200,11 @@ class LiveT14Runner:
 
     def squash(self, *, q_git: str, bound_card: str) -> None:
         del bound_card
-        listed = _run(
-            [
-                "gh",
-                "pr",
-                "list",
-                "--repo",
-                GH_REPO,
-                "--head",
-                f"oalansilva:{q_git}",
-                "--base",
-                "develop",
-                "--state",
-                "all",
-                "--limit",
-                "1",
-                "--json",
-                "number,state,mergedAt",
-            ],
-            timeout=20,
-            runner=self._run,
-        )
-        if listed.returncode != 0:
-            raise T14Error("squash: pr list failed")
         try:
-            rows = json.loads(listed.stdout or "[]")
+            rows = _pr_list_json(str(q_git), fields="number,state,mergedAt", runner=self._run)
         except json.JSONDecodeError as exc:
             raise T14Error("squash: pr list json") from exc
-        if not isinstance(rows, list) or not rows:
+        if not rows:
             if self._sha_on_develop(q_git):
                 return
             raise T14Error("squash: no PR")
