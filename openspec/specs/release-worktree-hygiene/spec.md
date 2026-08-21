@@ -478,3 +478,44 @@ O `post` MUST exigir `RELEASE_BRANCHES` com pelo menos um nome. O guard SHALL no
 - **THEN** every canonical ID still requires the homologation marker
 - **AND** Status-based not-applicable MUST NOT apply in `pre`
 
+### Requirement: Pre on release-* does not require archive on origin/develop
+Quando a branch corrente corresponde a `release-*`, `scripts/release-guard pre` SHALL permitir PASS sem exigir que o archive OpenSpec do pacote (nem a remoção da change ativa correspondente) já esteja presente em `origin/develop`. O `pre` MUST NOT emitir blocker cujo remédio prescrito seja publicar o archive em `origin/develop` antes de abrir o PR `release-* → main`. O guard permanece read-only. Comportamentos existentes que suportam este caminho (diff `origin/main...HEAD` para classificação code/documental em `release-*`; exclusão da branch corrente `release-*` do inventário de branches locais não mergeadas no `pre`) MUST ser preservados. Lacunas sobre a ref local `develop` com archive ainda não publicado em `origin/develop` pertencem ao card #618 e MUST NOT ser “consertadas” expandindo este requisito além do aceite do #617.
+
+#### Scenario: Pre passes with archive only on release-* HEAD
+- **WHEN** `scripts/release-guard pre` roda com `current_branch` matching `release-*`
+- **AND** o HEAD da `release-*` contém o archive OpenSpec do pacote
+- **AND** `origin/develop` ainda não contém esse archive
+- **THEN** o `pre` NÃO falha por ausência do archive em `origin/develop`
+- **AND** o comando pode atingir PASS quanto a essa condição (outros blockers legítimos de higiene permanecem)
+
+#### Scenario: Pre does not prescribe push archive to develop first
+- **WHEN** o archive existe apenas na tip da `release-*` usada pelo lote
+- **THEN** a saída do `pre` MUST NOT instruir o operador a fazer push do archive para `origin/develop` como pré-condição do PR de release
+
+#### Scenario: Existing release-* pre behaviors remain
+- **WHEN** `pre` classifica o unpublished diff com branch corrente `release-*`
+- **THEN** o diff usado é `origin/main...HEAD` (não `origin/main...origin/develop`)
+- **AND** a seção de branches locais do `pre` não trata a própria `release-*` corrente como branch local não mergeada bloqueante
+
+### Requirement: Pre on release branch ignores unmerged local develop without PRESERVED_BRANCHES
+When `scripts/release-guard` runs in `pre` mode and the current branch matches `release-*`, the Local branches inventory SHALL NOT emit the unmerged-local-branch blocker for the local ref `develop`, even when `refs/heads/develop` is not merged into `origin/develop` or `origin/main` (for example local develop ahead with unpublished commits). This exemption MUST NOT require `PRESERVED_BRANCHES` to include `develop`. The existing warning when local `develop` differs from `origin/develop` MAY remain. Other unmerged local branches MUST continue to block unless classified via `PRESERVED_BRANCHES` or otherwise already exempt. Modes `post` and `audit`, and `pre` when the current branch is not `release-*`, are unchanged by this requirement. The guard remains read-only.
+
+#### Scenario: Pre on release-* with local develop ahead of origin/develop
+- **WHEN** `pre` runs with current branch `release-*`
+- **AND** local `develop` exists and is ahead of `origin/develop` (not `branch_merged`)
+- **AND** `PRESERVED_BRANCHES` is unset or does not list `develop`
+- **THEN** the guard MUST NOT emit `local branch not merged...: develop` (nor any BLOCKER solely for that local develop ref)
+- **AND** the guard MUST NOT require `PRESERVED_BRANCHES=develop`
+
+#### Scenario: Pre on release-* still blocks other unmerged local branches
+- **WHEN** `pre` runs with current branch `release-*`
+- **AND** a local branch other than `develop` (for example `card-999-wip`) is not merged into `origin/develop` or `origin/main`
+- **AND** that branch is not listed in `PRESERVED_BRANCHES`
+- **THEN** the guard emits the current unmerged-local-branch blocker for that branch
+
+#### Scenario: Existing diverge warn for develop remains available
+- **WHEN** `pre` runs with current branch `release-*`
+- **AND** `refs/heads/develop` differs from `origin/develop`
+- **THEN** the guard MAY warn that release decisions use `origin/develop`
+- **AND** that diverge alone MUST NOT become a Local-branches BLOCKER for `develop` under this requirement
+
