@@ -1409,8 +1409,8 @@ def test_pre_keeps_zero_board_and_pr_calls(tmp_path: Path, monkeypatch):
 
 
 def test_agents_md_contracts_spawn_empty_handoff_error():
-    agents = Path(__file__).resolve().parents[3] / "AGENTS.md"
-    text = agents.read_text(encoding="utf-8")
+    overlay = Path(__file__).resolve().parents[3] / "docs" / "crypto-overlay.md"
+    text = overlay.read_text(encoding="utf-8")
     assert "spawn failed/empty" in text or "ERROR: subagent spawn failed" in text
     assert "0 messages" in text or "0 parts" in text
 

@@ -18,7 +18,7 @@
 
 ## 4. Verificação e fora de escopo
 
-- [x] 4.1 Diff NÃO altera `backend/` nem `frontend/src/`
+- [x] 4.1 Diff NÃO altera `backend/` nem `frontend/src/` de produto. Exceção: `backend/tests/integration/test_release_guard.py` aponta o contrato spawn-vazio para `docs/crypto-overlay.md` (o stub `AGENTS.md` não carrega o playbook).
 - [x] 4.2 Diff NÃO altera Guard Write / `process_event` salvo reuso de `resolve` e `github_status_provider`
 - [x] 4.3 Diff NÃO substitui `.cursor/hooks/impeccable.sh` nem adiciona `failClosed` em `sessionStart`
 - [x] 4.4 Sem autômato de release, sem gate de `git commit`/`./restart`, sem expandir allowlist do `release-guard`
