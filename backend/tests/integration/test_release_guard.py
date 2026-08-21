@@ -128,6 +128,8 @@ def _run_guard(
         env.pop("RELEASE_BRANCHES", None)
     if preserved_branches is not None:
         env["PRESERVED_BRANCHES"] = preserved_branches
+    else:
+        env.pop("PRESERVED_BRANCHES", None)
     if fake_gh is not None:
         env["PATH"] = f"{fake_gh.parent}:{env['PATH']}"
     return subprocess.run(
@@ -1535,8 +1537,8 @@ def test_snapshot_failure_preserves_explicitly_preserved_branch(tmp_path: Path, 
     monkeypatch.setenv("FAKE_PR_JSON", "[]")
     monkeypatch.setenv("PRESERVED_BRANCHES", "change-100-a")
 
-    post = _run_guard(repo, fake_gh=fake_gh)
-    audit = _run_guard(repo, "audit", fake_gh=fake_gh)
+    post = _run_guard(repo, fake_gh=fake_gh, preserved_branches="change-100-a")
+    audit = _run_guard(repo, "audit", fake_gh=fake_gh, preserved_branches="change-100-a")
 
     # Fato local (PRESERVED_BRANCHES) vence a indeterminação de status.
     assert "preserved (classified; not deleted)" in post.stdout
@@ -1905,3 +1907,47 @@ def test_post_accepts_code_tip_when_main_is_ahead_only_with_closeout(tmp_path: P
     assert "is not this package's code/PROD tip" not in result.stdout
     assert "has no git abbreviation" not in result.stdout
     assert result.returncode == 0
+
+
+def test_pre_release_branch_skips_local_develop_ahead_without_preserved(tmp_path: Path):
+    """Card #618: pre on release-* must not BLOCKER local develop ahead of origin/develop."""
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "local-develop-only.txt", "ahead\n", "local develop ahead of origin")
+    _git(repo, "switch", "main")
+    _git(repo, "switch", "-c", "release-2026-08-19")
+
+    result = _run_guard(repo, "pre", release_date="2026-08-19")
+
+    assert (
+        "BLOCKER: local branch not merged into origin/develop or origin/main: develop"
+        not in result.stdout
+    )
+    assert "local branch not merged into origin/develop or origin/main: develop" not in result.stdout
+    # Diverge warn may still appear; it must not be a BLOCKER for develop tip inventory.
+    assert "BLOCKER: local develop differs from origin/develop" not in result.stdout
+    assert result.returncode == 0
+    assert "Result: PASS" in result.stdout
+
+
+def test_pre_release_branch_still_blocks_other_unmerged_local(tmp_path: Path):
+    """Card #618 negative: skip is only for develop; other locals still block."""
+    repo = _init_repo(tmp_path)
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "local-develop-only.txt", "ahead\n", "local develop ahead of origin")
+    _git(repo, "switch", "-c", "card-999-wip")
+    _commit_file(repo, "card-999-wip.txt", "wip\n", "unmerged card branch")
+    _git(repo, "switch", "main")
+    _git(repo, "switch", "-c", "release-2026-08-19")
+
+    result = _run_guard(repo, "pre", release_date="2026-08-19")
+
+    assert (
+        "BLOCKER: local branch not merged into origin/develop or origin/main: develop"
+        not in result.stdout
+    )
+    assert (
+        "BLOCKER: local branch not merged into origin/develop or origin/main: card-999-wip"
+        in result.stdout
+    )
+    assert result.returncode == 1
