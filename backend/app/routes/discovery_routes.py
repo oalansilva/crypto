@@ -241,3 +241,18 @@ def promote_discovery_result(
     if status == 200:
         return JSONResponse(status_code=200, content=body)
     return body
+
+
+@router.post("/results/{result_id}/discard")
+def discard_discovery_result(
+    result_id: str,
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    del actor
+    service = _service()
+    body, status = service.discard_result(result_id=result_id, db=db)
+    if status >= 400:
+        raise HTTPException(status_code=status, detail=body)
+    return body
+

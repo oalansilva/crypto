@@ -854,6 +854,7 @@ class DiscoveryService:
         session = db or SessionLocal()
         try:
             rows = session.query(DiscoveryResult).filter(DiscoveryResult.sweep_id == sweep_id).all()
+            rows = [row for row in rows if row.dedup_state != "discarded"]
             eligible: list[DiscoveryResult] = []
             ineligible: list[DiscoveryResult] = []
             for row in rows:
@@ -964,6 +965,14 @@ class DiscoveryService:
         result = db.query(DiscoveryResult).filter(DiscoveryResult.id == result_id).first()
         if not result:
             return {"error": "result not found"}, 404
+        if result.dedup_state == "discarded":
+            return (
+                {
+                    "error": "discarded",
+                    "detail": "resultado descartado não pode ser promovido",
+                },
+                422,
+            )
         if result.eligibility != "eligible":
             return (
                 {
@@ -997,6 +1006,17 @@ class DiscoveryService:
         from sqlalchemy import text
 
         db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
+        db.refresh(result)
+        if result.dedup_state == "discarded":
+            return (
+                {
+                    "error": "discarded",
+                    "detail": "resultado descartado não pode ser promovido",
+                },
+                422,
+            )
+        if result.dedup_state == "already_promoted":
+            return {"favorite_id": result.dedup_reference, "result_id": result.id}, 200
 
         duplicate = None
         try:
@@ -1115,3 +1135,38 @@ class DiscoveryService:
                 }, 200
             raise
         return {"favorite_id": str(favorite.id), "result_id": result.id}, 201
+
+    def discard_result(self, *, result_id: str, db: Session) -> tuple[dict[str, Any], int]:
+        from sqlalchemy import text
+
+        result = db.query(DiscoveryResult).filter(DiscoveryResult.id == result_id).first()
+        if not result:
+            return {"error": "result not found"}, 404
+        if result.dedup_state == "already_promoted":
+            return (
+                {
+                    "error": "already_promoted",
+                    "detail": "resultado já promovido não pode ser descartado nesta tela",
+                },
+                409,
+            )
+        if result.dedup_state == "discarded":
+            return {"result_id": result.id, "dedup_state": "discarded"}, 200
+        lock_key = int(hashlib.sha256(result.strategy_identity_key.encode()).hexdigest()[:16], 16)
+        lock_key &= 0x7FFFFFFFFFFFFFFF
+        db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
+        db.refresh(result)
+        if result.dedup_state == "already_promoted":
+            return (
+                {
+                    "error": "already_promoted",
+                    "detail": "resultado já promovido não pode ser descartado nesta tela",
+                },
+                409,
+            )
+        if result.dedup_state == "discarded":
+            return {"result_id": result.id, "dedup_state": "discarded"}, 200
+        result.dedup_state = "discarded"
+        result.updated_at = _utcnow()
+        db.commit()
+        return {"result_id": result.id, "dedup_state": "discarded"}, 200

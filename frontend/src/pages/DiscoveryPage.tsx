@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Check, ChevronLeft, ChevronRight, Copy, Edit3, History, Pause, Play, RefreshCw,
-  Shield, Square, Star, X,
+  Shield, Square, Star, Trash2, X,
 } from 'lucide-react'
 import { authFetch } from '../lib/authFetch'
 import { API_BASE_URL } from '../lib/apiBase'
@@ -244,6 +244,8 @@ export function DiscoveryPage() {
   const [promoteConflict, setPromoteConflict] = useState<string | null>(null)
   const [promotedFocusId, setPromotedFocusId] = useState<string | null>(null)
   const [promoting, setPromoting] = useState(false)
+  const [discardTarget, setDiscardTarget] = useState<LeaderboardRow | null>(null)
+  const [discarding, setDiscarding] = useState(false)
   const [toast, setToast] = useState<{ title: string; copy: string } | null>(null)
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
@@ -254,7 +256,9 @@ export function DiscoveryPage() {
   const toastTimer = useRef<number | null>(null)
   const focusStartedSweepRef = useRef(false)
   const modalRef = useRef<HTMLDivElement | null>(null)
+  const discardModalRef = useRef<HTMLDivElement | null>(null)
   const promotionTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const discardTriggerRef = useRef<HTMLButtonElement | null>(null)
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
   const previousActiveStateRef = useRef<SweepState | null>(null)
 
@@ -795,6 +799,74 @@ export function DiscoveryPage() {
       window.clearTimeout(t)
     }
   }, [promoteTarget, closePromotion])
+
+  const closeDiscard = useCallback((returnFocus = true) => {
+    setDiscardTarget(null)
+    if (returnFocus) {
+      window.setTimeout(() => discardTriggerRef.current?.focus(), 0)
+    }
+  }, [])
+
+  const discard = useCallback(async () => {
+    if (!discardTarget) return
+    setDiscarding(true)
+    try {
+      const res = await authFetch(
+        `${API_BASE_URL}/combos/discovery/results/${discardTarget.result_id}/discard`,
+        { method: 'POST' },
+      )
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        if (res.status === 403) {
+          setPermissionDenied(true)
+          return
+        }
+        showToast('Falha na exclusão', errorDetail(data, 'Não foi possível excluir o resultado.'))
+        return
+      }
+      closeDiscard(false)
+      showToast(
+        'Resultado excluído.',
+        `O candidato saiu do ranking da varredura #${viewSweep?.sweep_id ?? '—'}.`,
+      )
+      setPage(1)
+      applyFilters(metric, fSymbol, fTimeframe, fDirection, 1)
+    } finally {
+      setDiscarding(false)
+    }
+  }, [discardTarget, showToast, closeDiscard, viewSweep, applyFilters, metric, fSymbol, fTimeframe, fDirection])
+
+  useEffect(() => {
+    if (!discardTarget) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closeDiscard(true)
+        return
+      }
+      if (e.key === 'Tab' && discardModalRef.current) {
+        const focusables = discardModalRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), [href]')
+        const first = focusables[0]
+        const last = focusables[focusables.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last?.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first?.focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey, true)
+    const t = window.setTimeout(
+      () => discardModalRef.current?.querySelector<HTMLElement>('[data-testid="confirm-discard"]')?.focus(),
+      30,
+    )
+    return () => {
+      document.removeEventListener('keydown', onKey, true)
+      window.clearTimeout(t)
+    }
+  }, [discardTarget, closeDiscard])
 
   useEffect(() => {
     const previous = previousActiveStateRef.current
@@ -1631,26 +1703,45 @@ export function DiscoveryPage() {
                               Favorito tier 3
                             </span>
                           ) : (
-                            <button
-                              type="button"
-                              disabled={promoteDisabled}
-                              onClick={(event) => {
-                                promotionTriggerRef.current = event.currentTarget
-                                setPromoteTarget(row)
-                              }}
-                              aria-haspopup="dialog"
-                              aria-controls="promotion-modal"
-                              aria-expanded={promoteTarget?.result_id === row.result_id}
-                              aria-describedby={lowSample || duplicate ? `reason-${row.result_id}` : undefined}
-                              data-testid={`promote-${row.result_id}`}
-                              className={`promote-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold ${
-                                promoteDisabled
-                                  ? 'cursor-not-allowed border-[var(--accent-primary-disabled)] bg-[var(--accent-primary-disabled)] text-[var(--text-muted)]'
-                                  : 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-[#181a20] hover:bg-[var(--accent-primary-hover)]'
-                              }`}
-                            >
-                              {lowSample ? 'Baixa amostra' : duplicate ? 'Já existe' : 'Promover'}
-                            </button>
+                            <div className="action-stack">
+                              <button
+                                type="button"
+                                disabled={promoteDisabled}
+                                onClick={(event) => {
+                                  promotionTriggerRef.current = event.currentTarget
+                                  setPromoteTarget(row)
+                                }}
+                                aria-haspopup="dialog"
+                                aria-controls="promotion-modal"
+                                aria-expanded={promoteTarget?.result_id === row.result_id}
+                                aria-describedby={lowSample || duplicate ? `reason-${row.result_id}` : undefined}
+                                data-testid={`promote-${row.result_id}`}
+                                className={`promote-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold ${
+                                  promoteDisabled
+                                    ? 'cursor-not-allowed border-[var(--accent-primary-disabled)] bg-[var(--accent-primary-disabled)] text-[var(--text-muted)]'
+                                    : 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-[#181a20] hover:bg-[var(--accent-primary-hover)]'
+                                }`}
+                              >
+                                {lowSample ? 'Baixa amostra' : duplicate ? 'Já existe' : 'Promover'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy || discarding}
+                                onClick={(event) => {
+                                  discardTriggerRef.current = event.currentTarget
+                                  setDiscardTarget(row)
+                                }}
+                                aria-haspopup="dialog"
+                                aria-controls="discard-modal"
+                                aria-expanded={discardTarget?.result_id === row.result_id}
+                                aria-label={`Excluir resultado ${row.result_id} ${row.display_name || row.template_id}`}
+                                data-testid={`discard-${row.result_id}`}
+                                className="discard-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold border-[rgba(246,70,93,0.45)] bg-transparent text-[var(--trading-down-text)] hover:bg-[rgba(246,70,93,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Excluir
+                              </button>
+                            </div>
                           )}
                           {lowSample || duplicate ? (
                             <span id={`reason-${row.result_id}`} className="sr-only">
@@ -1810,6 +1901,77 @@ export function DiscoveryPage() {
               >
                 <Star className="h-4 w-4" />
                 Promover como tier 3
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {discardTarget ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-5"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeDiscard(true)
+          }}
+        >
+          <div
+            ref={discardModalRef}
+            id="discard-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="discard-title"
+            aria-describedby="discard-description"
+            className="w-full max-w-[480px] rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] p-5">
+              <div>
+                <h2 id="discard-title" className="text-xl font-semibold">Excluir resultado</h2>
+                <p id="discard-description" className="mt-1 text-xs text-[var(--text-tertiary)]">
+                  Remove só este resultado do ranking desta varredura. Não cancela a varredura e não apaga favoritos.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => closeDiscard(true)}
+                aria-label="Fechar"
+                className="grid h-11 w-11 min-h-[44px] place-items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3.5">
+                <strong className="block">{discardTarget.display_name || discardTarget.template_id}</strong>
+                <span className="mt-2 block text-xs text-[var(--text-tertiary)]">{discardTarget.result_id}</span>
+              </div>
+              <div className="my-4 grid grid-cols-2 gap-2.5">
+                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+                  <small className="block text-[var(--text-muted)]">Varredura</small>
+                  <b className="font-mono text-xs">#{viewSweep?.sweep_id ?? '—'}</b>
+                </div>
+                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+                  <small className="block text-[var(--text-muted)]">Resultado</small>
+                  <b className="font-mono text-xs" data-testid="discard-modal-result">{discardTarget.result_id}</b>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2.5 p-5 pt-0">
+              <button
+                type="button"
+                onClick={() => closeDiscard(true)}
+                className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)]"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={() => void discard()}
+                disabled={discarding}
+                data-testid="confirm-discard"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[rgba(246,70,93,0.55)] bg-[rgba(246,70,93,0.12)] px-4 py-2 text-sm font-bold text-[var(--trading-down-text)] disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Confirmar exclusão
               </button>
             </div>
           </div>
