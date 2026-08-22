@@ -255,4 +255,3 @@ def discard_discovery_result(
     if status >= 400:
         raise HTTPException(status_code=status, detail=body)
     return body
-
