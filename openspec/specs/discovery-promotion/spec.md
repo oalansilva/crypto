@@ -68,3 +68,13 @@ Promotion SHALL derive `actor` from the authenticated principal, never trust a c
 - **THEN** the whole transaction rolls back
 - **AND** neither an orphan favorite nor an `already_promoted` result remains
 
+### Requirement: Reject promotion of a discarded result
+
+The system SHALL reject promotion when the result `dedup_state` is `discarded`. Discarded rows are omitted from the default leaderboard.
+
+#### Scenario: Promote discarded result via API
+
+- **WHEN** a client posts promotion for a `discarded` `result_id`
+- **THEN** the server rejects the request
+- **AND** no favorite is created
+

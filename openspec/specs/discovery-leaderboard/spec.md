@@ -78,13 +78,29 @@ The leaderboard SHALL support Calmar (default) and CAGR delta versus Buy & Hold.
 
 ### Requirement: Filter and page within one selected sweep
 
-Leaderboard queries SHALL require one `sweep_id`, combine symbol/timeframe/direction/eligibility filters with AND semantics, return filtered and unfiltered totals, and use deterministic cursor/page ordering. The UI SHALL provide search and pagination appropriate to up to 30 templates, 126 symbols and hundreds of results. A run selector SHALL navigate historical sweeps without mixing progress/snapshot counters.
+Leaderboard queries SHALL require one `sweep_id`, combine symbol/timeframe/direction/eligibility filters with AND semantics, return filtered and unfiltered totals, and use deterministic cursor/page ordering. The default list SHALL omit results whose `dedup_state` is `discarded`. Rank SHALL be computed among remaining eligible results. The UI SHALL provide search and pagination appropriate to up to 30 templates, 126 symbols and hundreds of results. A run selector SHALL navigate historical sweeps without mixing progress/snapshot counters.
 
 #### Scenario: Select a historical run
 
 - **WHEN** the administrator changes the run selector
 - **THEN** loading blocks promotion and then heading, lifecycle, snapshot metadata, counts, rows, promotion dialog and success feedback all atomically identify the selected `sweep_id`
 - **AND** an active sweep remains separately identified
+
+#### Scenario: Discarded rows omitted from default list
+
+- **WHEN** a sweep has a discarded result and the administrator opens the default leaderboard
+- **THEN** that `result_id` is absent
+- **AND** remaining rows keep stable ordering among themselves
+
+### Requirement: Action column always exposes promote and discard when allowed
+
+Each visible non-promoted row SHALL show a Promote control (enabled only when unique and eligible; otherwise visible and disabled with reason) **and** a Discard control. An `already_promoted` row SHALL show the promoted state and SHALL NOT show Discard. Promote MUST NOT be hidden solely because eligibility failed.
+
+#### Scenario: Low sample still shows both actions
+
+- **WHEN** a row is `Baixa amostra`
+- **THEN** Promote is visible and disabled with the sample reason
+- **AND** Excluir is visible and enabled
 
 ### Requirement: Communicate metric meaning accessibly
 

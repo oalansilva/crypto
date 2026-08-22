@@ -795,6 +795,59 @@ class TestIdentityAndLeaderboard:
         assert raw["display_name"] != "Estratégia Cripto Farol"
         assert raw["rank"] == 2
 
+    def test_leaderboard_omits_discarded_results(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        sweep_id = "sw-discard-lb"
+        db.add(
+            DiscoverySweep(
+                id=sweep_id,
+                actor="admin-1",
+                state="completed",
+                idempotency_key="disc-lb-1",
+                payload_hash="a" * 64,
+                snapshot_token="tok",
+                snapshot_hash="b" * 64,
+                snapshot={},
+                total=2,
+                succeeded=2,
+            )
+        )
+        for rid, state, calmar, cid in (
+            ("RS-KEEP", "unique", 2.0, 700001),
+            ("RS-DROP", "discarded", 9.0, 700002),
+        ):
+            db.add(
+                DiscoveryResult(
+                    id=rid,
+                    sweep_id=sweep_id,
+                    combination_id=cid,
+                    template_id="t1",
+                    symbol="BTCUSDT",
+                    timeframe="1d",
+                    direction="long",
+                    parameters={},
+                    start_at=now,
+                    end_at=now + timedelta(days=1),
+                    metrics={},
+                    trades_count=40,
+                    calmar_ratio=calmar,
+                    strategy_identity_key=f"id-{rid}",
+                    evidence_fingerprint=f"fp-{rid}",
+                    eligibility="eligible",
+                    dedup_state=state,
+                )
+            )
+        db.commit()
+        rows, total, unfiltered = service.leaderboard(sweep_id, db=db)
+        assert [r["result_id"] for r in rows] == ["RS-KEEP"]
+        assert total == 1
+        assert unfiltered == 1
+        assert rows[0]["rank"] == 1
+        db.close()
+
 
 @pytest.fixture
 def engine_factory():
@@ -937,6 +990,82 @@ class TestPromotion:
         )
         assert status == 422
         assert "ineligible" in body["error"]
+        db.close()
+
+    def test_discard_persists_and_blocks_promote(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        db.add(
+            DiscoveryResult(
+                id="RS-DSC-1",
+                sweep_id="sw-dsc",
+                combination_id=888001,
+                template_id="t1",
+                symbol="BTCUSDT",
+                timeframe="1d",
+                direction="long",
+                parameters={},
+                start_at=now,
+                end_at=now + timedelta(days=30),
+                metrics={},
+                trades_count=40,
+                calmar_ratio=1.5,
+                strategy_identity_key="id-dsc-1",
+                evidence_fingerprint="fp-dsc-1",
+                eligibility="eligible",
+                dedup_state="unique",
+            )
+        )
+        db.commit()
+        body, status = service.discard_result(result_id="RS-DSC-1", db=db)
+        assert status == 200
+        assert body["dedup_state"] == "discarded"
+        again, status2 = service.discard_result(result_id="RS-DSC-1", db=db)
+        assert status2 == 200
+        promo, pstatus = service.promote_result(
+            result_id="RS-DSC-1",
+            actor="admin-1",
+            idempotency_key=f"p-{uuid.uuid4().hex[:12]}",
+            payload={"tier": 3, "result_id": "RS-DSC-1"},
+            db=db,
+        )
+        assert pstatus == 422
+        assert promo["error"] == "discarded"
+        db.close()
+
+    def test_discard_rejects_already_promoted(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        db.add(
+            DiscoveryResult(
+                id="RS-DSC-2",
+                sweep_id="sw-dsc",
+                combination_id=888002,
+                template_id="t1",
+                symbol="ETHUSDT",
+                timeframe="1d",
+                direction="long",
+                parameters={},
+                start_at=now,
+                end_at=now + timedelta(days=30),
+                metrics={},
+                trades_count=40,
+                calmar_ratio=1.2,
+                strategy_identity_key="id-dsc-2",
+                evidence_fingerprint="fp-dsc-2",
+                eligibility="eligible",
+                dedup_state="already_promoted",
+                dedup_reference="fav-1",
+            )
+        )
+        db.commit()
+        body, status = service.discard_result(result_id="RS-DSC-2", db=db)
+        assert status == 409
+        assert body["error"] == "already_promoted"
         db.close()
 
 
@@ -1146,6 +1275,8 @@ class TestDiscoveryRoutes:
                 json={"tier": 3, "idempotency_key": "promote-rte-1"},
             )
             assert promote2.status_code == 200
+            discarded = await client.post("/api/combos/discovery/results/RS-RTE-1/discard")
+            assert discarded.status_code == 409
 
     async def test_command_endpoints(self, engine_factory, monkeypatch):
         from app.tasks import discovery_tasks
