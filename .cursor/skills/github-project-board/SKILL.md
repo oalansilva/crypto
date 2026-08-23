@@ -40,7 +40,7 @@ done
 
 - O campo `Status` e a fonte principal das colunas visuais.
 - No **Project 1 / Cripto**, o caminho obrigatório e `Em Refinamento -> Todo -> Design -> Aprovação de Design -> Pronto para Dev -> Em desenvolvimento -> Code Review -> QA -> Done -> Homologado -> Pronto`. **Nao existe bypass** dessas colunas; `UI impact: none` e pedidos `implemente` nao autorizam pular. So Alan move `Aprovação de Design -> Pronto para Dev` e `Done -> Homologado`. Homologado -> Pronto e `process_event fechar_release` (T16). `Todo` nao e codigo.
-- `Em Refinamento` e a entrada de todo card novo (Alan escolhe/prioriza/cancela).
+- `Em Refinamento` e a entrada de todo card novo **e** a grelha da história (`grill-card` no body do issue). Alan escolhe/prioriza/cancela. O agente **nao** arrasta T1 (`Em Refinamento -> Todo`). Sem `CONTEXT.md`.
 - `Done` e fechamento tecnico; fechamento final e `Pronto` (exige deploy PROD no cripto).
 - `Cancelado` e terminal, inclusive a partir de `Em Refinamento`.
 - Se o Project tiver campo `Fluxo`, trate-o como substatus/legado. `Status` prevalece.

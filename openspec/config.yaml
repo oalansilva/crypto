@@ -22,7 +22,12 @@ rules:
   tasks:
     - Include a short note reminding to use project skills available to Cursor when applicable (.agents/skills, .cursor/skills).
     - For UI-impact work, include the design gate before implementation: Design -> Aprovação de Design -> Pronto para Dev, using the design-critic skill and waiting for Alan's human approval.
+  proposal:
+    - Use vocabulary and non-goals from the bound GitHub issue. Do not introduce synonyms or reopen decisions already closed in the issue body.
+    - Do not invoke grill-card or grill-with-docs as a step while generating proposal.md.
   design:
+    - Use vocabulary and non-goals from the bound GitHub issue. Do not introduce synonyms or reopen decisions already closed in the issue body.
+    - Do not invoke grill-card or grill-with-docs while generating proposal.md or design.md.
     - For UI-impact work, include Prototype and Design Critique sections with versioned evidence and an explicit Design Agent verdict.
     - In Cursor, UI-impact work also includes the project-local Impeccable context, shape, dual-agent critique, audit, targeted-fix, polish, and browser-gate trace; the critics inherit the chat-selected model via isolated Tasks instructed not to edit. OpenCode is not an active harness.
     - For UI impact none, record Impeccable as N/A with a non-empty justification without reducing the Design or human-approval gates.
