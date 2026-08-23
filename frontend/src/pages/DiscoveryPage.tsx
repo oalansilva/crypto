@@ -268,7 +268,7 @@ export function DiscoveryPage() {
   const pollRevRef = useRef(0)
   const pollInFlightRef = useRef(false)
   const lbReqRef = useRef(0)
-  const appliedUpdatedAtRef = useRef<string | null>(null)
+  const appliedUpdatedAtRef = useRef<Record<string, string>>({})
   const modalRef = useRef<HTMLDivElement | null>(null)
   const promotionTriggerRef = useRef<HTMLButtonElement | null>(null)
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
@@ -640,7 +640,7 @@ export function DiscoveryPage() {
         return
       }
       setActiveSweep(newest)
-      appliedUpdatedAtRef.current = newest.updated_at ?? null
+      if (newest.updated_at) appliedUpdatedAtRef.current[newest.sweep_id] = newest.updated_at
       if (viewOriginRef.current === 'auto') {
         setViewSweep(newest)
         setMetric('calmar_ratio')
@@ -665,10 +665,10 @@ export function DiscoveryPage() {
   }, [restoreSession])
 
   const refreshSweep = useCallback(async () => {
-    if (!activeSweep || pollInFlightRef.current) return
-    pollInFlightRef.current = true
-    const rev = ++pollRevRef.current
+    if (!activeSweep) return
     const sweepId = activeSweep.sweep_id
+    const rev = ++pollRevRef.current
+    pollInFlightRef.current = true
     try {
       const res = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps/${sweepId}`)
       if (rev !== pollRevRef.current) return
@@ -686,9 +686,9 @@ export function DiscoveryPage() {
       }
       const data: Sweep = await res.json()
       if (rev !== pollRevRef.current) return
-      const prevApplied = appliedUpdatedAtRef.current
+      const prevApplied = appliedUpdatedAtRef.current[sweepId]
       if (prevApplied && data.updated_at && data.updated_at < prevApplied) return
-      appliedUpdatedAtRef.current = data.updated_at ?? prevApplied
+      if (data.updated_at) appliedUpdatedAtRef.current[sweepId] = data.updated_at
       if (TERMINAL.has(data.state)) {
         setActiveSweep(data)
         setViewSweep(data)
