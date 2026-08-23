@@ -1,5 +1,45 @@
 # Decision Log
 
+## 2026-08-23 - Discovery restaura varredura ativa após reload (card #664)
+
+**Decisão:** ao abrir Descoberta, se existir sweep não terminal do ator (`pending`/`running`/`paused`/`cancelling`), a tela reconstitui o bloco Sweep ativo, progresso, leaderboard da run e rascunho congelado. `Retomar` (e reload com sweep `running` incompleto) volta a despachar o orquestrador via wake-up durável da outbox. Sweep terminal não reaparece como ativo.
+
+**Motivo:** o painel vivia só na sessão React; F5 apagava o progresso e Retomar não reabria o outbox.
+
+**Onde:** `DiscoveryPage`, `GET /combos/discovery/sweeps/active`, outbox/wake-up, spec `discovery-sweep`. Card #664. Migration `20260823_0001`.
+
+## 2026-08-23 - Discovery permite excluir resultado da varredura (card #663)
+
+**Decisão:** no leaderboard de uma varredura concluída, cada linha tem promover (quando elegível, com motivo se bloqueado) e excluir/descartar com confirmação. Após confirmar, o resultado some do ranking daquela varredura e não pode ser promovido. Default: descarte permanente do candidato (não apaga favorito já promovido).
+
+**Motivo:** pedido de Alan — promoção muitas vezes bloqueada e sem ação para descartar descoberta indesejada.
+
+**Onde:** Discovery leaderboard + detalhe, specs `discovery-discard`, `discovery-leaderboard`, `discovery-promotion`. Card #663.
+
+## 2026-08-23 - Em Refinamento grelha a história no issue (card #667)
+
+**Decisão:** em `Em Refinamento` o agente afia a história no **body do GitHub** via skill `grill-card` (primitivo vendorado `grilling`). Artefato = issue, não `CONTEXT.md`/`docs/adr/`. T1 continua só Alan. OpenSpec em Design sintetiza o issue grelhado; não reentrevista e não usa `grill-with-docs`/`to-spec` como porta. Sem coluna nova.
+
+**Motivo:** Design herdava card vago; a entrevista no chat morria entre colunas.
+
+**Onde:** `.cursor/skills/grill-card/`, `.cursor/skills/grilling/`, `alan-workflow`, `context_file` Em Refinamento/Todo/Design, spec `grill-card`. Card #667.
+
+## 2026-08-23 - Núcleo único, adapters Cursor e Grok (card #668)
+
+**Decisão:** a lei do processo mora no núcleo (`process-fsm.yaml` + `scripts/process-fsm/` + skills canônicas + stub `AGENTS.md`). Cursor e Grok Build são adapters (hooks, JSON deny dual `{permission, decision}`, paging por arquivo no Grok). Sem dual-write de colunas/I1–I9. Grok permanece cooperativo até o ensaio deny humano PASS no mesmo worktree.
+
+**Motivo:** o runtime compilado só existia como pele Cursor; abrir o repo no Grok era fail-open e a lei divergia.
+
+**Onde:** `scripts/process-fsm/guard.py`, `.grok/hooks/`, `.grok/rules/00-harness.md`, specs `process-harness`, `cursor-harness`, `process-fsm-guard`, `process-fsm-paging`. Card #668.
+
+## 2026-08-23 - post exige materialização Kaizen (card #661)
+
+**Decisão:** `release-guard post` exige, na entrada canônica de `/kaizen release`, tabela `### Cards kaizen criados…` com 1–3 issues novas, ou `(não criado) … coberto por #N` com `#N` ainda em fluxo (não Pronto/Cancelado), ou o marcador `Sem achados acionáveis` sem linhas de dados. A skill `kaizen` continua read-only; o orquestrador materializa.
+
+**Motivo:** nos lotes de 2026-08-21 o log passou, o `post` PASS, e zero cards novos nasceram.
+
+**Onde:** `scripts/release-guard`, `scripts/kaizen_materialization_check.py`, spec `kaizen-continuous-improvement`. Card #661.
+
 ## 2026-08-21 - sessionStart pagina só o frame Moore (card #613)
 
 **Decisão:** o hook `sessionStart` injeta no máximo ~20 linhas com `(q, bound_card, q_git)`, `enabled_events` e o stub `context_file[q]` (ou unbound: Write produto deny, sem playbook de release). `harness.mdc` fica em 8–15 linhas; `AGENTS.md` é stub e aponta `docs/crypto-overlay.md` on-demand. Prioridade da skill: δ e Guard > overlay > skill > wording. Pedido explícito de release continua carregando o overlay (T16 / `release-guard`), mesmo com sessão unbound.
