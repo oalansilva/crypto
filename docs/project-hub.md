@@ -31,7 +31,7 @@ Aqui deve ficar:
 
 - Fase atual: fechamento do beta fechado.
 - Fonte operacional: GitHub Project `MVP Cripto - Beta Fechado`.
-- Release 2026-08-23 publicada em PROD (`aa36deb1`): Discovery discard/restore (#663/#664), grill-card (#667), adapters Cursor/Grok (#668), materialização Kaizen (#661). Doc: `docs/release-2026-08-23.md`.
+- Release 2026-08-23 publicada em PROD em dois lotes: `aa36deb1` (#661/#663/#664/#667/#668) e `36534ae1` (#673 cortar emissão LLM no fluxo). Doc: `docs/release-2026-08-23.md`.
 - Release 2026-08-21 publicada em PROD (`7df18d54`): paging `sessionStart` (#613). Doc: `docs/release-2026-08-21.md`.
 - Release 2026-08-20 publicada em PROD em dois lotes: `ad8158fd` (#605/#610/#611) e `5110b9b0` (#612 process_event). Doc: `docs/release-2026-08-20.md`.
 - Release 2026-08-19 publicada em PROD (`c6762a27`): identidade pública de estratégia (#549), métricas Discovery (#599), palestra HITL (#582), `process-fsm.yaml` (#609). Doc: `docs/release-2026-08-19.md`.

@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-23 - Cortar emissão LLM no fluxo sem perder gates (card #673)
+
+**Decisão:** Design/Apply/Review **avaliam** com a rubrica Impeccable completa e **publicam** só o veredito (bullets P0–P3 + disposition + verdict). Relatório longo fica em `.impeccable/critique/` (git-tracked, link no card); apply/review não leem o snapshot. Um chat por coluna (`#id Design|Apply|Review|Release`). Vale nos dois clientes (Cursor e Grok). Avaliação intacta: dual critic, browser gate, zero P0/P1; snapshot vazio ⇒ `BLOCKED`.
+
+**Motivo:** o custo era dominado por output (prosa Impeccable no chat e no `design.md`) e por cache × turnos em chat longo, sem ganho de qualidade no retorno.
+
+**Onde:** `.agents/skills/design-critic`, skill Impeccable (token-sheet), `alan-workflow`, apply skill, reviewers, stubs Grok, specs `llm-flow-emission` / `impeccable-design-gate` / `cursor-harness`. Card #673.
+
 ## 2026-08-23 - Discovery restaura varredura ativa após reload (card #664)
 
 **Decisão:** ao abrir Descoberta, se existir sweep não terminal do ator (`pending`/`running`/`paused`/`cancelling`), a tela reconstitui o bloco Sweep ativo, progresso, leaderboard da run e rascunho congelado. `Retomar` (e reload com sweep `running` incompleto) volta a despachar o orquestrador via wake-up durável da outbox. Sweep terminal não reaparece como ativo.
