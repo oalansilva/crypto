@@ -105,6 +105,8 @@ def test_page_uses_yaml_stubs():
     fsm = load_fsm()
     assert TODO_STUB in str(fsm["context_file"]["Todo"])
     assert HOMOLOGADO_STUB in str(fsm["context_file"]["Homologado"])
+    assert "grill-card" in str(fsm["context_file"]["Em Refinamento"])
+    assert "sintetizar" in str(fsm["context_file"]["Design"])
 
 
 def _harness_body_lines() -> list[str]:
