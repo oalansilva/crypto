@@ -62,6 +62,8 @@ Exemplos de evidencia:
 - Antes de `PASS`, a URL final precisa ser validada em navegador real nos viewports desktop/mobile, cobrindo estado padrão, interações e asserts dos critérios críticos. HTTP 200/build não bastam; a evidência fica registrada em `## Prototype Validation`.
 - Em remoções, o estado final precisa provar ausência/invisibilidade do elemento. Mudança posterior no protótipo ou rebuild/restart exige nova validação.
 - Com `UI impact: none`, a entrega de design é enxuta (`design.md` + `Design Critique` + Prototype N/A justificado), mas as colunas continuam obrigatórias.
+- Impeccable (#673): a **avaliação** permanece completa (rubrica, dual critic, browser, zero P0/P1). A **emissão** publicada (chat e `design.md`) é só bullets P0–P3 + disposition + verdict; o relatório longo fica em `.impeccable/critique/` (link no card). Apply/review não leem o snapshot.
+- Um chat por coluna (`#id Design|Apply|Review|Release`); não misturar essas colunas no mesmo transcript.
 - O Designer/Critic Agent pode mover apenas `Design -> Aprovação de Design` quando a entrega estiver completa.
 - Alan aprova arrastando `Aprovação de Design -> Pronto para Dev`. O gesto aprova a versão específica do design e do protótipo (quando houver); agentes não podem executar essa transição.
 - Pedidos como `implemente` / `pode codar` não autorizam pular o gate.
