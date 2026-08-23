@@ -163,6 +163,13 @@ async function installMocks(page: Page) {
   await page.route('**/api/combos/discovery/sweeps/preflight', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(PREFLIGHT) }),
   )
+  await page.route('**/api/combos/discovery/sweeps/active', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ sweeps: [] }),
+    }),
+  )
   await page.route('**/api/combos/discovery/sweeps/history', (route) =>
     route.fulfill({
       status: 200,

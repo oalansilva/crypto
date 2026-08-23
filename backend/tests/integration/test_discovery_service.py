@@ -1281,3 +1281,364 @@ class TestOrchestratorTasks:
         end = start + timedelta(days=10)
         assert _expected_candles_for_window("1d", start, end) == 10
         assert _expected_candles_for_window("4h", start, end) == 60
+
+
+class TestRestoreAndWakeup:
+    def test_active_lists_non_terminal_for_actor_only(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        db.add(
+            DiscoverySweep(
+                id="sw-other",
+                actor="admin-2",
+                state="running",
+                idempotency_key="k-other",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={
+                    "axes": {
+                        "templates": ["t"],
+                        "symbols": ["BTCUSDT"],
+                        "timeframes": ["1d"],
+                        "directions": ["long"],
+                    }
+                },
+                total=1,
+                created_at=now,
+            )
+        )
+        db.add(
+            DiscoverySweep(
+                id="sw-done",
+                actor="admin-1",
+                state="completed",
+                idempotency_key="k-done",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={},
+                total=1,
+                created_at=now,
+            )
+        )
+        db.add(
+            DiscoverySweep(
+                id="sw-old",
+                actor="admin-1",
+                state="paused",
+                idempotency_key="k-old",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={
+                    "axes": {
+                        "templates": ["t"],
+                        "symbols": ["BTCUSDT"],
+                        "timeframes": ["1d"],
+                        "directions": ["long"],
+                    }
+                },
+                total=2,
+                created_at=now - timedelta(hours=1),
+            )
+        )
+        db.add(
+            DiscoverySweep(
+                id="sw-new",
+                actor="admin-1",
+                state="running",
+                idempotency_key="k-new",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={
+                    "axes": {
+                        "templates": ["t"],
+                        "symbols": ["BTCUSDT"],
+                        "timeframes": ["1d"],
+                        "directions": ["long"],
+                    }
+                },
+                total=3,
+                created_at=now,
+            )
+        )
+        db.add(
+            DiscoverySweep(
+                id="sw-pend",
+                actor="admin-1",
+                state="pending",
+                idempotency_key="k-pend",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={"axes": {"templates": ["t"], "symbols": ["BTCUSDT"], "timeframes": ["1d"], "directions": ["long"]}},
+                total=1,
+                created_at=now - timedelta(minutes=30),
+            )
+        )
+        db.add(
+            DiscoverySweep(
+                id="sw-can",
+                actor="admin-1",
+                state="cancelling",
+                idempotency_key="k-can",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={"axes": {"templates": ["t"], "symbols": ["BTCUSDT"], "timeframes": ["1d"], "directions": ["long"]}},
+                total=1,
+                created_at=now - timedelta(minutes=10),
+            )
+        )
+        db.commit()
+        active = service.list_active_sweeps("admin-1", db)
+        assert [row["sweep_id"] for row in active] == ["sw-new", "sw-can", "sw-pend", "sw-old"]
+        assert {row["state"] for row in active} == {"running", "paused", "pending", "cancelling"}
+        assert active[0]["draft_key"] == "k-new"
+        assert service.get_sweep("sw-other", db, actor="admin-1") is None
+        db.close()
+
+    async def test_active_and_cross_actor_routes(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        now = datetime.now(timezone.utc)
+        db.add(
+            DiscoverySweep(
+                id="sw-other",
+                actor="admin-2",
+                state="running",
+                idempotency_key="k-other-r",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={},
+                total=1,
+                created_at=now,
+            )
+        )
+        db.add(
+            DiscoverySweep(
+                id="sw-mine",
+                actor="admin-1",
+                state="paused",
+                idempotency_key="k-mine-r",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={},
+                total=1,
+                created_at=now,
+            )
+        )
+        db.commit()
+        db.close()
+        app, _ = TestDiscoveryRoutes()._build_app(engine=engine)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            active_res = await client.get("/api/combos/discovery/sweeps/active")
+            other_res = await client.get("/api/combos/discovery/sweeps/sw-other")
+            pause = await client.post("/api/combos/discovery/sweeps/sw-other/pause")
+        assert active_res.status_code == 200
+        assert [s["sweep_id"] for s in active_res.json()["sweeps"]] == ["sw-mine"]
+        assert other_res.status_code == 404
+        assert pause.status_code == 404
+
+    def _seed_paused_sweep(self, db, *, sweep_id: str, outbox_state: str, sweep_state: str = "paused"):
+        now = datetime.now(timezone.utc)
+        db.add(
+            DiscoverySweep(
+                id=sweep_id,
+                actor="admin-1",
+                state=sweep_state,
+                idempotency_key=f"k-{sweep_id}",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={
+                    "axes": {
+                        "templates": ["multi_ma_crossover"],
+                        "symbols": ["BTCUSDT"],
+                        "timeframes": ["1d"],
+                        "directions": ["long"],
+                    }
+                },
+                total=1,
+                created_at=now,
+            )
+        )
+        db.add(
+            DiscoveryCombination(
+                sweep_id=sweep_id,
+                template_id="multi_ma_crossover",
+                symbol="BTCUSDT",
+                timeframe="1d",
+                direction="long",
+                state="pending",
+            )
+        )
+        db.add(DiscoveryOutbox(sweep_id=sweep_id, generation=1, state=outbox_state))
+        db.commit()
+
+    def test_resume_creates_next_generation_after_acked(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed_paused_sweep(db, sweep_id="sw-resume-ack", outbox_state="acked")
+        payload, status = service.command("sw-resume-ack", "resume", db, actor="admin-1")
+        assert status == 200
+        assert payload["state"] == "running"
+        intents = (
+            db.query(DiscoveryOutbox)
+            .filter_by(sweep_id="sw-resume-ack")
+            .order_by(DiscoveryOutbox.generation)
+            .all()
+        )
+        assert intents[-1].generation == 2
+        assert intents[-1].state in ("pending", "delivered")
+        db.close()
+
+    def test_resume_does_not_duplicate_delivered_wakeup(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed_paused_sweep(db, sweep_id="sw-resume-del", outbox_state="delivered")
+        service.command("sw-resume-del", "resume", db)
+        gens = [row.generation for row in db.query(DiscoveryOutbox).filter_by(sweep_id="sw-resume-del").all()]
+        assert gens == [1]
+        db.close()
+
+    def test_resume_deferred_when_broker_down(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+
+        def _boom(*_a, **_k):
+            raise RuntimeError("broker down")
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", _boom)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed_paused_sweep(db, sweep_id="sw-resume-def", outbox_state="acked")
+        payload, status = service.command("sw-resume-def", "resume", db)
+        assert status == 200
+        assert payload["state"] == "running"
+        assert payload["wake_up_state"] == "pending"
+        assert payload["dispatch_status"] == "deferred"
+        db.close()
+
+    def test_dispatcher_repairs_running_without_claimable_wakeup(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed_paused_sweep(
+            db, sweep_id="sw-repair", outbox_state="acked", sweep_state="running"
+        )
+        published = service.dispatch_outbox(db=db)
+        assert published >= 1
+        newest = (
+            db.query(DiscoveryOutbox)
+            .filter_by(sweep_id="sw-repair")
+            .order_by(DiscoveryOutbox.generation.desc())
+            .first()
+        )
+        assert newest.generation == 2
+        assert newest.state == "delivered"
+        db.close()
+
+    def test_pause_does_not_create_wakeup(self, engine_factory, monkeypatch):
+        from app.tasks import discovery_tasks
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed_paused_sweep(db, sweep_id="sw-pause-wu", outbox_state="acked")
+        before = db.query(DiscoveryOutbox).filter_by(sweep_id="sw-pause-wu").count()
+        service.ensure_sweep_wakeup(db, "sw-pause-wu")
+        db.commit()
+        assert db.query(DiscoveryOutbox).filter_by(sweep_id="sw-pause-wu").count() == before
+        db.close()
+
+    def test_rotate_from_creates_next_generation_while_current_delivered(
+        self, engine_factory, monkeypatch
+    ):
+        from app.tasks import discovery_tasks
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed_paused_sweep(
+            db, sweep_id="sw-rotate", outbox_state="delivered", sweep_state="running"
+        )
+        result = service.ensure_sweep_wakeup(db, "sw-rotate", rotate_from=1)
+        db.commit()
+        assert result["created"] is True
+        assert result["generation"] == 2
+        states = {
+            row.generation: row.state
+            for row in db.query(DiscoveryOutbox).filter_by(sweep_id="sw-rotate").all()
+        }
+        assert states[1] == "delivered"
+        assert states[2] == "pending"
+        skipped = service.ensure_sweep_wakeup(db, "sw-rotate", rotate_from=1)
+        db.commit()
+        assert skipped["created"] is False
+        assert skipped["generation"] == 2
+        db.close()
+
+    def test_concurrent_ensure_creates_single_next_generation(self, engine_factory, monkeypatch):
+        from concurrent.futures import ThreadPoolExecutor
+
+        from app.tasks import discovery_tasks
+
+        monkeypatch.setattr(discovery_tasks, "enqueue_sweep_orchestrator", lambda *a, **k: None)
+        engine = engine_factory()
+        service = DiscoveryService()
+        db = _session_factory(engine)()
+        self._seed_paused_sweep(
+            db, sweep_id="sw-race", outbox_state="acked", sweep_state="running"
+        )
+        db.close()
+
+        def _once():
+            session = _session_factory(engine)()
+            try:
+                service.ensure_sweep_wakeup(session, "sw-race")
+                session.commit()
+            finally:
+                session.close()
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            list(pool.map(lambda _: _once(), range(4)))
+        check = _session_factory(engine)()
+        gens = [
+            row.generation
+            for row in check.query(DiscoveryOutbox).filter_by(sweep_id="sw-race").all()
+        ]
+        pending_or_delivered = (
+            check.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == "sw-race",
+                DiscoveryOutbox.state.in_(("pending", "delivered")),
+            )
+            .count()
+        )
+        check.close()
+        assert 2 in gens
+        assert pending_or_delivered >= 1
+
+
+
