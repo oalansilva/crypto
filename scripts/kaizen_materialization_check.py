@@ -219,8 +219,13 @@ def main(argv: Iterable[str] | None = None) -> int:
     )
     parser.add_argument(
         "--board-json",
-        default=os.environ.get("BOARD_JSON", ""),
-        help="Project board snapshot JSON (or set BOARD_JSON)",
+        default="",
+        help="Project board snapshot JSON (prefer --board-json-file; env BOARD_JSON is not used)",
+    )
+    parser.add_argument(
+        "--board-json-file",
+        default=os.environ.get("BOARD_JSON_FILE", ""),
+        help="Path to Project board snapshot JSON (avoids ARG_MAX vs env/argv)",
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
@@ -231,9 +236,16 @@ def main(argv: Iterable[str] | None = None) -> int:
         return 1
 
     board = None
-    if args.board_json.strip():
+    raw_json = args.board_json
+    if args.board_json_file.strip():
         try:
-            board = json.loads(args.board_json)
+            raw_json = open(args.board_json_file, encoding="utf-8").read()
+        except OSError as exc:
+            print(f"kaizen materialization: board JSON file unreadable: {exc}")
+            return 1
+    if raw_json.strip():
+        try:
+            board = json.loads(raw_json)
         except json.JSONDecodeError:
             print("kaizen materialization: BOARD_JSON is not valid JSON")
             return 1

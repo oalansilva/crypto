@@ -1255,11 +1255,21 @@ if [[ "$mode" == "post" ]]; then
     else
       mat_out=""
       mat_rc=0
+      mat_board_file=""
+      if [[ -n "$BOARD_JSON" ]]; then
+        mat_board_file="$(mktemp)"
+        printf '%s' "$BOARD_JSON" > "$mat_board_file"
+      fi
       mat_out="$(
-        BOARD_STATE="$BOARD_STATE" BOARD_JSON="${BOARD_JSON:-}" \
+        BOARD_STATE="$BOARD_STATE" \
           python3 "$kaizen_mat_script" "$kaizen_log" "$RELEASE_DATE" \
-          --board-state "$BOARD_STATE" 2>&1
+          --board-state "$BOARD_STATE" \
+          ${mat_board_file:+--board-json-file "$mat_board_file"} \
+          2>&1
       )" || mat_rc=$?
+      if [[ -n "$mat_board_file" ]]; then
+        rm -f "$mat_board_file"
+      fi
       if [[ "$mat_rc" -eq 0 ]]; then
         printf '%s\n' "$mat_out"
       else
