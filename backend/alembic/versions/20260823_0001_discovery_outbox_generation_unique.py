@@ -16,16 +16,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        """
+    op.execute("""
         DELETE FROM discovery_outbox AS d
         WHERE d.id NOT IN (
             SELECT MAX(id)
             FROM discovery_outbox
             GROUP BY sweep_id, generation
         )
-        """
-    )
+        """)
     op.create_unique_constraint(
         "uq_discovery_outbox_sweep_generation",
         "discovery_outbox",

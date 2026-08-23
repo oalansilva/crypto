@@ -1375,7 +1375,14 @@ class TestRestoreAndWakeup:
                 payload_hash="h" * 64,
                 snapshot_token="tok",
                 snapshot_hash="y" * 64,
-                snapshot={"axes": {"templates": ["t"], "symbols": ["BTCUSDT"], "timeframes": ["1d"], "directions": ["long"]}},
+                snapshot={
+                    "axes": {
+                        "templates": ["t"],
+                        "symbols": ["BTCUSDT"],
+                        "timeframes": ["1d"],
+                        "directions": ["long"],
+                    }
+                },
                 total=1,
                 created_at=now - timedelta(minutes=30),
             )
@@ -1389,7 +1396,14 @@ class TestRestoreAndWakeup:
                 payload_hash="h" * 64,
                 snapshot_token="tok",
                 snapshot_hash="y" * 64,
-                snapshot={"axes": {"templates": ["t"], "symbols": ["BTCUSDT"], "timeframes": ["1d"], "directions": ["long"]}},
+                snapshot={
+                    "axes": {
+                        "templates": ["t"],
+                        "symbols": ["BTCUSDT"],
+                        "timeframes": ["1d"],
+                        "directions": ["long"],
+                    }
+                },
                 total=1,
                 created_at=now - timedelta(minutes=10),
             )
@@ -1447,7 +1461,9 @@ class TestRestoreAndWakeup:
         assert other_res.status_code == 404
         assert pause.status_code == 404
 
-    def _seed_paused_sweep(self, db, *, sweep_id: str, outbox_state: str, sweep_state: str = "paused"):
+    def _seed_paused_sweep(
+        self, db, *, sweep_id: str, outbox_state: str, sweep_state: str = "paused"
+    ):
         now = datetime.now(timezone.utc)
         db.add(
             DiscoverySweep(
@@ -1513,7 +1529,10 @@ class TestRestoreAndWakeup:
         service = DiscoveryService()
         self._seed_paused_sweep(db, sweep_id="sw-resume-del", outbox_state="delivered")
         service.command("sw-resume-del", "resume", db)
-        gens = [row.generation for row in db.query(DiscoveryOutbox).filter_by(sweep_id="sw-resume-del").all()]
+        gens = [
+            row.generation
+            for row in db.query(DiscoveryOutbox).filter_by(sweep_id="sw-resume-del").all()
+        ]
         assert gens == [1]
         db.close()
 
@@ -1608,9 +1627,7 @@ class TestRestoreAndWakeup:
         engine = engine_factory()
         service = DiscoveryService()
         db = _session_factory(engine)()
-        self._seed_paused_sweep(
-            db, sweep_id="sw-race", outbox_state="acked", sweep_state="running"
-        )
+        self._seed_paused_sweep(db, sweep_id="sw-race", outbox_state="acked", sweep_state="running")
         db.close()
 
         def _once():
@@ -1639,6 +1656,3 @@ class TestRestoreAndWakeup:
         check.close()
         assert 2 in gens
         assert pending_or_delivered >= 1
-
-
-

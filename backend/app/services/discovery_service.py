@@ -681,10 +681,7 @@ class DiscoveryService:
 
     def _lock_sweep(self, db: Session, sweep_id: str) -> DiscoverySweep | None:
         return (
-            db.query(DiscoverySweep)
-            .filter(DiscoverySweep.id == sweep_id)
-            .with_for_update()
-            .first()
+            db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).with_for_update().first()
         )
 
     def ensure_sweep_wakeup(
