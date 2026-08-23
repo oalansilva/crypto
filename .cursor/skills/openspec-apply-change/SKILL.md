@@ -52,12 +52,14 @@ Implement tasks from an OpenSpec change.
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
 
-4. **Read context files**
+4. **Load sliced apply context (per task)**
 
-   Read every file path listed under `contextFiles` from the apply instructions output.
-   The files depend on the schema being used:
-   - **spec-driven**: proposal, specs, design, tasks
-   - Other schemas: follow the contextFiles from CLI output
+   Do **not** read every `contextFiles` path as a single dump. Do **not** read `.impeccable/critique/`.
+   For each pending task, load only:
+   - that task (checkbox + text in `tasks.md`);
+   - the spec file(s) of the capability the task implements;
+   - the short apply sections of `design.md`: `## Apply contract`, UI impact, and prototype URL/digest when UI-affected.
+   Use `contextFiles` from the CLI only as a path index — open the matching capability spec and the short `design.md` sections, not the whole OpenSpec package or the Impeccable snapshot.
 
 5. **Show current progress**
 
@@ -79,6 +81,7 @@ Implement tasks from an OpenSpec change.
 
    For each pending task:
    - Show which task is being worked on
+   - Load that task + matching capability spec + `## Apply contract` (still do not ingest the whole change or `.impeccable/critique/`)
    - Make the code changes required
    - Keep changes minimal and focused
    - Mark task complete in the tasks file: `- [ ]` → `- [x]`
@@ -151,13 +154,14 @@ What would you like to do?
 
 **Guardrails**
 - Keep going through tasks until done or blocked
-- Always read context files before starting (from the apply instructions output)
+- Per task: current task + matching capability spec + short `design.md` apply sections — not every `contextFiles` path, not `.impeccable/critique/`
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
 - Keep code changes minimal and scoped to each task
 - Update task checkbox immediately after completing each task
 - Pause on errors, blockers, or unclear requirements - don't guess
-- Use contextFiles from CLI output, don't assume specific file names
+- Treat CLI `contextFiles` as a path index, not a dump to ingest in one pass
+- For `UI impact: affected`, still read the prototype files from disk as the layout spec (#530)
 
 **Fluid Workflow Integration**
 

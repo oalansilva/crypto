@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage:
-  publish-openspec-card-artifacts.sh --repo <owner/repo> --issue <number> --change <change-name> [--change-dir <path>] [--gist-id <id>] [--comment-id <id>] [--desc <gist description>] [--prototype-url <http-url>] [--prototype-path <repo-path>]
+  publish-openspec-card-artifacts.sh --repo <owner/repo> --issue <number> --change <change-name> [--change-dir <path>] [--gist-id <id>] [--comment-id <id>] [--desc <gist description>] [--prototype-url <http-url>] [--prototype-path <repo-path>] [--snapshot-path <repo-path>] [--design-md-words <n>] [--html-generated-bytes <n|N/A>] [--html-copied-bytes <n|N/A>] [--spawn-count <n>]
 
 Publishes OpenSpec text artifacts to a secret GitHub Gist and comments the linked
 GitHub issue/card with the Gist URL. Run this before implementation edits.
@@ -21,6 +21,8 @@ Gist contents are ONLY text OpenSpec artifacts:
   proposal.md, design.md, tasks.md, specs/**/*.md
 
 Never upload HTML/CSS/JS prototypes to the Gist as the review surface.
+Never upload `.impeccable/critique/` to the Gist; pass --snapshot-path so the card
+comment links the git-tracked snapshot for T7.
 HTML prototypes must be published to the project's browsable static path
 (Cripto: frontend/public/prototypes/<slug>/ → https://dev.criptofarol.com.br/prototypes/<slug>/).
 On the Cripto DEV host, that URL is served by criptofarol-dev-prototypes.service from
@@ -38,6 +40,11 @@ comment_id=""
 desc=""
 prototype_url=""
 prototype_path=""
+snapshot_path=""
+design_md_words=""
+html_generated_bytes=""
+html_copied_bytes=""
+spawn_count=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -50,6 +57,11 @@ while [[ $# -gt 0 ]]; do
     --desc) desc="${2:-}"; shift 2 ;;
     --prototype-url) prototype_url="${2:-}"; shift 2 ;;
     --prototype-path) prototype_path="${2:-}"; shift 2 ;;
+    --snapshot-path) snapshot_path="${2:-}"; shift 2 ;;
+    --design-md-words) design_md_words="${2:-}"; shift 2 ;;
+    --html-generated-bytes) html_generated_bytes="${2:-}"; shift 2 ;;
+    --html-copied-bytes) html_copied_bytes="${2:-}"; shift 2 ;;
+    --spawn-count) spawn_count="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *)
       printf 'Unknown argument: %s\n' "$1" >&2
@@ -96,6 +108,10 @@ fi
 
 if [[ -d "$change_dir/prototype" ]]; then
   printf 'Note: skipping %s/prototype from Gist (use --prototype-url for the browsable screen).\n' "$change_dir"
+fi
+
+if [[ -d "$change_dir/.impeccable" || -d ".impeccable/critique" ]]; then
+  printf 'Note: skipping .impeccable/critique from Gist (use --snapshot-path for the T7 link).\n'
 fi
 
 if [[ ${#sources[@]} -eq 0 ]]; then
@@ -189,6 +205,18 @@ bt='`'
       printf '%s\n' "- Path: ${bt}${prototype_path}${bt}"
     fi
     printf '%s\n' '- Não use o Gist para visualizar HTML.'
+  fi
+  if [[ -n "$snapshot_path" ]]; then
+    printf '\n### Snapshot Impeccable\n'
+    printf '%s\n' "- Path: ${bt}${snapshot_path}${bt}"
+    printf '%s\n' '- Gist OpenSpec **não** é a crítica. Alan abre este arquivo no T7.'
+    printf '%s\n' '- Apply e Code Review **não** lêem `.impeccable/critique/`.'
+  fi
+  if [[ -n "$design_md_words" || -n "$html_generated_bytes" || -n "$html_copied_bytes" || -n "$spawn_count" ]]; then
+    printf '\n### Proxies\n'
+    printf '%s\n' "- \`design.md\` words: ${design_md_words:-N/A}"
+    printf '%s\n' "- HTML generated vs copied: ${html_generated_bytes:-N/A} vs ${html_copied_bytes:-N/A}"
+    printf '%s\n' "- Spawns: ${spawn_count:-N/A}"
   fi
 } > "$body_file"
 

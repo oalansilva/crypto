@@ -245,6 +245,66 @@ def test_stale_stub_fails_check():
         dest.write_text(original, encoding="utf-8")
 
 
+def test_agents_extra_grok_stubs_point_at_agents_skills():
+    errors = stub_errors()
+    assert errors == []
+    critic = (REPO / ".grok" / "skills" / "design-critic" / "SKILL.md").read_text(encoding="utf-8")
+    assert ".agents/skills/design-critic/SKILL.md" in critic
+    assert ".cursor/skills/design-critic" not in critic
+    body = critic.split("---", 2)[2]
+    assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8
+    assert "Em Refinamento → Todo → Design" not in critic
+    assert "context -> shape -> prototype" not in critic
+    impeccable = (REPO / ".grok" / "skills" / "impeccable" / "SKILL.md").read_text(encoding="utf-8")
+    assert ".agents/skills/impeccable/SKILL.md" in impeccable
+    body_i = impeccable.split("---", 2)[2]
+    assert len([ln for ln in body_i.splitlines() if ln.strip()]) <= 8
+    alan = (REPO / ".grok" / "skills" / "alan-workflow" / "SKILL.md").read_text(encoding="utf-8")
+    assert ".cursor/skills/alan-workflow/SKILL.md" in alan
+
+
+def test_missing_agents_stub_fails_check():
+    dest = REPO / ".grok" / "skills" / "design-critic" / "SKILL.md"
+    original = dest.read_text(encoding="utf-8")
+    dest.unlink()
+    try:
+        errors = stub_errors()
+        assert any("design-critic" in item and "missing" in item for item in errors)
+    finally:
+        dest.write_text(original, encoding="utf-8")
+
+
+def test_stale_agents_stub_fails_check():
+    dest = REPO / ".grok" / "skills" / "impeccable" / "SKILL.md"
+    original = dest.read_text(encoding="utf-8")
+    dest.write_text("stale\n", encoding="utf-8")
+    try:
+        assert stub_errors()
+    finally:
+        dest.write_text(original, encoding="utf-8")
+
+
+def test_apply_skill_does_not_dump_every_context_file():
+    skill = (REPO / ".cursor" / "skills" / "openspec-apply-change" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    command = (REPO / ".cursor" / "commands" / "opsx-apply.md").read_text(encoding="utf-8")
+    for text in (skill, command):
+        assert "Read every file path listed under `contextFiles`" not in text
+        assert "Always read context files before starting" not in text
+        assert ".impeccable/critique/" in text
+        assert "## Apply contract" in text
+
+
+def test_design_critic_forbids_nielsen_table_and_full_brief_in_design_md():
+    text = (REPO / ".agents" / "skills" / "design-critic" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Nielsen" in text
+    assert "design.md" in text
+    assert "Proibido tabela Nielsen" in text
+    assert "Brief/Critique/Audit/Trace integrais" in text
+    assert ".impeccable/critique/" in text
+
+
 def test_grok_session_start_script_exists():
     adapter = REPO / ".grok" / "hooks" / "process-fsm-session-start.sh"
     assert adapter.is_file()

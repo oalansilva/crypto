@@ -13,89 +13,86 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 2. `UI impact: none` **não** autoriza pular colunas. Só reduz o peso da evidência (Prototype pode ser N/A explícito).
 3. Pedidos como `implemente`, `pode codar` ou equivalentes **não** autorizam pular este gate.
 4. OpenSpec `design.md` ≠ coluna Kanban `Design`: o artefato pode existir cedo, mas o card ainda precisa visitar as colunas e aguardar Alan em `Aprovação de Design`.
-5. **Fidelidade ao sistema atual (quando a tela já existir):** o protótipo MUST partir da UI real em DEV/produção (shell, nav, tokens, densidade, componentes) e redesenhar só o delta do card. Proibido inventar layout paralelo. Se a tela ainda não existir, desenhar a nova superfície alinhada a `DESIGN.md` e ao shell autenticado do app.
+5. **Fidelidade ao sistema atual (quando a tela já existir):** o protótipo MUST partir da UI real em DEV/produção (shell, nav, tokens, densidade, componentes) e redesenhar só o delta do card. Proibido inventar layout paralelo. Se a tela ainda não existir, desenhar a nova superfície alinhada a `DESIGN.md`, à folha de tokens e ao shell autenticado do app.
+6. **Um chat por coluna.** Título `#<id> Design`. Recusar Apply/Review/Release neste transcript. Sem evento FSM. Sem dual-write da lei em `.grok/`.
+
+## Avaliação vs emissão
+
+- **Avaliação** permanece intacta: rubrica Impeccable (especificidade, heurísticas, carga cognitiva, 2–3 personas relevantes, estados), pipeline `context → shape → prototype → critique → audit → polish → browser`, dual critic, detector, browser real, zero P0/P1.
+- **Emissão** (chat do operador e seções Impeccable/Design Critique de `design.md`): só bullets P0–P3, disposition e verdict. Achados extras = mais bullets (sem teto rígido de linhas). Proibido tabela Nielsen, ensaio de personas ou Brief/Critique/Audit/Trace integrais no chat ou no `design.md`. Truncar achado por limite de linhas é proibido.
+- Relatório longo: `.impeccable/critique/` (git-tracked). Apply e Code Review **não lêem** esse arquivo. Gist OpenSpec **não** envia a pasta. Alan abre o snapshot no T7 pelo link no card.
+- `$impeccable critique` vendor **não** é a emissão da coluna Design; o contrato desta coluna é este skill.
 
 ## Preflight
 
-1. Confirmar o card/change e, na sessão orquestradora, ler `AGENTS.md`, `rules.md`, `DESIGN.md` (quando UI) e os `contextFiles` retornados pelo OpenSpec.
+1. Confirmar o card/change e, na sessão orquestradora, ler `AGENTS.md`, `rules.md`, a folha `.agents/skills/impeccable/references/cripto-farol-token-sheet.md` (quando UI) e `DESIGN.md` como autoridade visual (não reescrever). Não despejar o YAML inteiro no chat.
 2. Confirmar `Status=Design`. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia.
-3. A sessão Cursor cria o scaffold OpenSpec e escreve os artifacts do estágio. Não editar código de produção enquanto `Status=Design`.
-4. O author é a própria sessão (modelo do chat). A crítica usa `Task` isolada com `inherit`, instruída a não editar arquivos.
-5. Se a superfície já existir, a sessão inclui a tela/código/tokens atuais necessários para preservar a base real.
+3. A sessão cria o scaffold OpenSpec e escreve os artifacts do estágio. Não editar código de produção enquanto `Status=Design`.
+4. O author é a própria sessão (modelo do chat). A crítica usa `Task` / `spawn_subagent` isolada com inherit de **modelo**, prompt autocontido, **sem inherit de transcript**. Critics MAY escrever **apenas** `.impeccable/critique/**`. MUST NOT editar `design.md`, HTML de protótipo ou produto.
+5. Se a superfície já existir, clonar a tela atual (folha de tokens + rota); não mandar HTML fonte no prompt dos critics.
 
 ## Integração Impeccable no Cursor
 
-Esta integração é obrigatória para `UI impact: affected`. Navegador e visão são etapas da orquestração; a crítica isolada não edita arquivos.
+Esta integração é obrigatória para `UI impact: affected`. Navegador e visão são etapas da orquestração.
 
-Antes do `PASS`, a sessão Cursor deve executar o pipeline local do Impeccable na ordem abaixo, sempre contra a superfície versionada da change:
+Antes do `PASS`, a sessão deve executar o pipeline local do Impeccable na ordem abaixo, sempre contra a superfície versionada da change:
 
 `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`
 
-- Executar `node .agents/skills/impeccable/scripts/context.mjs --target <surface>` uma vez por sessão e conservar `PRODUCT.md` como contexto de produto. `DESIGN.md` permanece a autoridade visual canônica e não pode ser reescrito pelo setup.
-- Usar a skill Impeccable `shape` para registrar brief, direção, escopo, estados, interação e restrições antes de editar a direção visual.
-- Executar Assessment A e B em Tasks distintas, ambas instruídas a não editar, sobre o mesmo `design.md`/protótipo. Detector, navegador e visão ficam na sessão principal.
-- Executar audit e aplicar somente `harden`, `adapt` ou `clarify` quando houver achado correspondente. Agrupar a correção em uma rodada e executar polish por último.
+- Executar `node .agents/skills/impeccable/scripts/context.mjs --target <surface>` uma vez por sessão. Conservar `PRODUCT.md`. Usar a folha de tokens para clone+delta. `DESIGN.md` permanece a autoridade visual canônica e **não pode ser reescrito**.
+- Usar a skill Impeccable `shape` para brief, direção, escopo, estados, interação e restrições **antes** de editar a direção visual. O brief **integral** vai para o snapshot; `design.md` guarda só recorte (audience, outcome, direction, scope).
+- Executar Assessment A e B em Tasks distintas, mesmo modelo, prompt autocontido (URL, digest, screenshot, folha, rubrica, contrato de saída). Sem transcript do pai. Detector, navegador e visão ficam na sessão principal.
+- Executar audit e aplicar somente `harden`, `adapt` ou `clarify` quando houver achado correspondente. Polish = **patch** no arquivo do protótipo (`StrReplace`); proibido reemitir o HTML inteiro na LLM.
 - Repetir o gate de navegador real desktop/mobile e os asserts depois do polish. O hook Cursor pode alertar durante a edição, mas não substitui a crítica, o audit nem a validação final.
 
 ### Modelo e isolamento dos critics
 
-Assessment A e Assessment B usam o **mesmo modelo do chat** (`Task` `inherit`) em sessões distintas. Eles não compartilham transcript/resultados antes da síntese. Isolamento é de processo (instrução de não editar), não de plugin. Sem Task de crítica, o veredito é `BLOCKED` sem fallback.
+Assessment A e Assessment B usam o **mesmo modelo do chat** (`Task` `inherit` / Grok `spawn_subagent` inherit) em sessões distintas. Prompt autocontido; não compartilham transcript/resultados antes da síntese. Podem gravar só `.impeccable/critique/**`. Retorno ao pai: bullets P0–P3 + disposition + verdict + path do snapshot. Sem Task de crítica, o veredito é `BLOCKED` sem fallback. Snapshot vazio ou ausente em UI affected ⇒ `BLOCKED`.
+
+Nome do snapshot: helper `critique-storage.mjs` quando couber; senão `<card>-<change>-<utc>.md` em `.impeccable/critique/`.
 
 ## Produzir a solução
 
 ### Quando `UI impact: affected`
 
-1. Explicitar no `design.md` o problema, o usuário afetado, a hipótese de produto e o resultado esperado.
-2. Incorporar o `Impeccable Brief` antes de produzir ou refatorar o protótipo verificável. Aceitar Figma versionado, HTML navegável, arquivo versionado ou wireframe Markdown quando proporcional ao card.
-3. **Base do protótipo:**
-   - Tela já existente: clonar shell/estrutura visual atual (sidebar 224px, header workspace, tokens `--bg-*`/`--accent-primary`, tipografia Inter, itens de nav reais) e aplicar só a mudança do card.
-   - Tela nova: compor a partir de `DESIGN.md` + shell do app; não usar landing genérica.
+1. Explicitar no `design.md` o problema, o usuário afetado, a hipótese de produto, o resultado esperado e `## Apply contract`.
+2. Shape confirma direção antes do protótipo. Brief integral no snapshot, não no `design.md`.
+3. **Base do protótipo (clone+delta):**
+   - Tela já existente: copiar shell atual (sidebar 224px, header workspace, tokens `--bg-*`/`--accent-primary`/`--text-*`/`--border-default`, Inter, nav autenticada real) e aplicar só a mudança do card.
+   - Tela nova: shell autenticado + folha de tokens; não usar landing genérica.
    - Remoção de UI existente: mostrar a tela/shell atual **sem** o elemento removido (delta negativo), não um mock abstrato.
-4. **HTML nunca fica no Gist OpenSpec.** Gist renderiza fonte, não a tela. Para protótipo HTML neste repo:
+4. **HTML nunca fica no Gist, no chat, nem no `design.md`.** Design/critics usam URL + screenshot + digest. Apply continua lendo o arquivo do disco (`frontend/public/prototypes/<slug>/`) como spec de layout (#530). Para protótipo HTML neste repo:
    - publicar em `frontend/public/prototypes/<change-or-card-slug>/` (entrada preferencial `index.html`);
-   - servir na URL DEV navegável `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/`. No host Cripto, `/prototypes*` não passa pelo preview SPA: o unit `criptofarol-dev-prototypes` serve o HTML do worktree/`public`/`dist`. Não copiar para `source` nem rebuild do frontend DEV só para o link público.
-   - opcionalmente manter cópia espelho em `openspec/changes/<change>/prototype/` para o pacote da change (não publicar esse HTML no Gist);
-   - no comentário do card: bloco OpenSpec = só Markdown do Gist; bloco separado **Protótipo navegável** = link HTTP da tela;
-   - usar `publish-openspec-card-artifacts.sh --prototype-url <url>` (o script não envia `prototype/**` ao Gist).
-5. Registrar em `## Prototype`:
-   - **URL HTTP navegável** (obrigatória para HTML; Figma/Markdown usam URL ou caminho verificável);
-   - caminho versionado no repo (`frontend/public/prototypes/...`);
-   - versão, commit ou digest;
-   - escopo desktop e mobile;
-   - base do sistema atual usada (rota/tela) ou justificativa de tela nova;
-   - fluxos e estados representados; delta destacado.
-6. Aplicar os tokens, componentes e padrões do `DESIGN.md`. Registrar qualquer exceção e sua justificativa.
-
-7. Depois da primeira entrega, completar `Impeccable Critique` e `Impeccable Audit`, classificar cada finding determinístico como resolvido ou aceito com justificativa, aplicar uma única rodada de correções direcionadas e registrar `Impeccable Trace` antes do gate final.
+   - servir na URL DEV navegável `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/`. No host Cripto, `/prototypes*` não passa pelo preview SPA: o unit `criptofarol-dev-prototypes` serve o HTML do worktree/`public`/`dist`. Não copiar para `source` nem rebuild do frontend DEV só para o link público;
+   - no comentário do card: bloco OpenSpec = só Markdown do Gist; bloco **Protótipo navegável** = link HTTP; bloco **Snapshot Impeccable** = path (e blob URL da branch quando existir);
+   - usar `publish-openspec-card-artifacts.sh --prototype-url <url> --snapshot-path <path>` (o script não envia `prototype/**` nem `.impeccable/critique/` ao Gist).
+5. Registrar em `## Prototype`: URL HTTP, caminho versionado, digest, desktop/mobile, base usada, fluxos/estados, delta. Sem fonte HTML.
+6. Aplicar tokens/padrões da folha + `DESIGN.md`. Registrar exceção e justificativa.
 
 ## Gate de validação do protótipo
 
 Antes de emitir `PASS` ou mover para `Aprovação de Design`:
 
-1. Publicar/servir a versão final do protótipo e abri-la em **navegador real** (Playwright ou ferramenta equivalente). `curl`, HTTP 200, build verde, leitura do HTML ou inspeção estática **não** validam comportamento visual.
+1. Publicar/servir a versão final do protótipo e abri-la em **navegador real** (Playwright ou equivalente). `curl`, HTTP 200, build verde, leitura do HTML ou inspeção estática **não** validam comportamento visual.
 2. Validar pelo menos um viewport desktop e um mobile.
-3. Exercitar o **estado padrão** e todas as interações relevantes (toggle Antes/Depois, menus, tabs, drawers, botões e estados de erro).
-4. Converter os critérios visuais críticos em asserts observáveis:
-   - remoção: elemento ausente ou invisível no estado final (`count=0`, `not.toBeVisible()` ou `display:none`);
-   - adição: elemento visível e acessível;
-   - interação: estado/DOM muda conforme esperado;
-   - fidelidade: shell, tokens e hierarquia conferem com a tela-base.
-5. Verificar erros de console/página e recursos quebrados que afetem a revisão.
-6. Registrar em `design.md`, dentro de `## Prototype Validation`, URL servida, viewports, ações/asserts e resultado.
-7. Reexecutar a validação depois de **qualquer** alteração final no HTML/CSS/JS ou rebuild/restart. Evidência de versão anterior é inválida.
-8. Confirmar que a versão validada é a mesma versão polida registrada no `Impeccable Trace`, incluindo digest e ausência de erros de console/página com impacto no fluxo.
+3. Exercitar o **estado padrão** e todas as interações relevantes.
+4. Converter critérios visuais críticos em asserts observáveis (remoção/adição/interação/fidelidade).
+5. Verificar erros de console/página e recursos quebrados.
+6. Registrar em `design.md`, `## Prototype Validation`: URL, viewports, ações/asserts e resultado (resumo, não dump).
+7. Reexecutar depois de **qualquer** alteração final. Evidência de versão anterior é inválida.
+8. Confirmar que a versão validada é a polida no snapshot (digest; sem erros de console/página com impacto).
 
-Se navegador real estiver indisponível, se qualquer assert falhar ou se a versão servida divergir da versão local, o veredito MUST ser `BLOCKED`. Não promover o card.
+Se navegador real estiver indisponível, se qualquer assert falhar, se a versão servida divergir, ou se o snapshot estiver vazio, o veredito MUST ser `BLOCKED`. Não promover o card.
 
 ### Quando `UI impact: none`
 
-1. Explicitar no `design.md` o problema, a decisão, o escopo, riscos e o que explicitamente não muda na UI.
-2. Em `## Prototype`, registrar `N/A` com justificativa não vazia (ex.: remoção sem tela nova, backend-only, infra).
-3. Ainda assim completar `## Design Critique` e obter veredito antes de pedir aprovação humana.
+1. Explicitar no `design.md` o problema, a decisão, o escopo, riscos e o que explicitamente não muda na UI. `## Apply contract` curto.
+2. Em `## Prototype`, registrar `N/A` com justificativa não vazia.
+3. Impeccable/`DESIGN.md`/Playwright = `N/A` justificado. Ainda completar `## Design Critique` (bullets) e obter veredito. T7 permanece. Snapshot N/A justificado neste caso.
 
 ## Criticar de forma independente
 
-Depois da primeira entrega de design, assumir postura crítica e procurar problemas concretos antes de emitir o veredito.
+Depois da primeira entrega de design, A avalia com a rubrica; B corre detector + browser. Procurar problemas concretos antes do veredito.
 
 Com UI, cobrir:
 
@@ -110,38 +107,38 @@ Tratar falta de fidelidade em tela existente como achado **bloqueante** (não em
 
 Sem UI nova, cobrir no mínimo: escopo, regressão de produto, riscos operacionais e confirmação de que nenhuma superfície visual nova/alterada ficou sem classificação.
 
-Para `UI impact: none`, registrar `Impeccable Brief`, `Impeccable Critique`, `Impeccable Audit` e `Impeccable Trace` como `N/A`, com justificativa explícita. Isso não reduz o gate de Design, a aprovação de Alan ou a crítica independente do card.
-
-Corrigir no protótipo (se houver) e no `design.md` todo achado bloqueante que estiver no escopo. Não marcar como resolvido um achado sem evidência correspondente.
+Corrigir no protótipo (patch) e consolidar no `design.md` (seções curtas) todo achado bloqueante no escopo. Não marcar como resolvido sem evidência. Não colar tabela Nielsen nem Brief integral no `design.md`.
 
 ## Registrar a entrega
 
-Adicionar ou atualizar `## Design Critique` no `design.md` com:
+Adicionar ou atualizar `## Design Critique` no `design.md` **só** com:
 
-- achados por dimensão e correções realizadas;
-- riscos ou pendências não bloqueantes;
-- referências exatas do design e do protótipo avaliados (ou `Prototype: N/A` justificado);
-- evidência de `## Prototype Validation` quando houver protótipo;
+- bullets P0–P3 e disposition;
+- riscos ou pendências não bloqueantes (bullets);
+- referências do design e do protótipo (URL/digest) ou `Prototype: N/A` justificado;
+- path do snapshot (UI affected) ou N/A justificado;
 - `Design Agent verdict: PASS` ou `Design Agent verdict: BLOCKED`.
 
-Para `UI impact: affected`, o mesmo `design.md` também deve conter:
+Para `UI impact: affected`, o mesmo `design.md` também deve conter seções **curtas** (não integrais):
 
-- `## Impeccable Brief`: problema, usuário, resultado, direção, escopo, estados, interação e restrições.
-- `## Impeccable Critique`: Assessment A e B separados, achados por dimensão, severidade e disposição.
-- `## Impeccable Audit`: acessibilidade, performance, responsividade, theming e integridade de implementação.
-- `## Impeccable Trace`: versão do CLI/payload/commit, comandos, target, digest, metadata da sessão de design designada e dos dois critics, prova de igualdade do modelo/versão, findings do detector e vínculo com `Prototype Validation`.
+- recorte de audience/outcome/direction/scope (não `## Impeccable Brief` integral);
+- `## Apply contract`;
+- `## Prototype` + `## Prototype Validation` resumidos;
+- bullets Impeccable/Design Critique + verdict.
 
-`PASS` exige zero P0/P1 aberto, nenhum finding determinístico sem classificação, browser gate e asserts críticos verdes, nenhum erro de console/página com impacto no fluxo e evidência de crítica isolada no mesmo modelo do chat. Ausência de qualquer evidência mantém `BLOCKED`.
+O relatório completo (Brief/Critique/Audit/Trace, tabela Nielsen, personas, metadata de modelo) vive **somente** no snapshot `.impeccable/critique/`.
 
-Usar `PASS` somente quando `design.md` e crítica estiverem completos/coerentes e sem achado bloqueante; com UI, o protótipo versionado/verificável e validado em navegador real também é obrigatório; com tela já existente, fidelidade ao sistema atual é obrigatória. HTTP 200 isolado nunca é evidência de PASS. Publicar novamente os artefatos OpenSpec no card quando a entrega mudar; com HTML, o comentário de handoff MUST incluir o link da tela prototipada.
+`PASS` exige zero P0/P1 aberto, nenhum finding determinístico sem classificação, browser gate e asserts críticos verdes, nenhum erro de console/página com impacto no fluxo, evidência de crítica isolada no mesmo modelo **sem transcript**, e snapshot **não vazio** (UI affected). Ausência de qualquer evidência mantém `BLOCKED`. HTTP 200 isolado nunca é evidência de PASS.
+
+Publicar novamente os artefatos OpenSpec no card quando a entrega mudar. Handoff MUST incluir link do snapshot (UI affected), URL do protótipo quando houver HTML, e **proxies**: palavras de `design.md`, bytes HTML gerado vs copiado (`cp`/clone = copied; delta = generated; sem protótipo = `N/A`), número de spawns.
 
 ## Handoff permitido
 
 - Com `BLOCKED`, manter `Status=Design`, registrar o motivo e parar.
-- Com `PASS` e evidência completa, mover somente `Design -> Aprovação de Design` e registrar handoff com change, design digest, protótipo/versão ou N/A justificado, resumo da crítica e pendências aceitas.
-- Nunca mover `Aprovação de Design -> Pronto para Dev`, nunca autoaprovar, nunca enviar `actor=Alan` nem alegar identidade humana. Essa transição pertence exclusivamente a Alan autenticado.
+- Com `PASS` e evidência completa, mover somente `Design -> Aprovação de Design` e registrar handoff com change, design digest, protótipo/versão ou N/A, snapshot path ou N/A, proxies, resumo em bullets e pendências aceitas.
+- Nunca mover `Aprovação de Design -> Pronto para Dev`, nunca autoaprovar, nunca enviar `actor=Alan` nem alegar identidade humana. Essa transição pertence exclusivamente a Alan autenticado. T7: Alan abre o snapshot linkado; o Gist não é a crítica.
 - Se o design ou protótipo mudar depois da aprovação, considerar a aprovação obsoleta e bloquear desenvolvimento até nova aprovação humana.
-- Não mover nenhum outro status. Desenvolvimento / `/opsx-apply` começa somente depois que o card estiver em `Pronto para Dev`.
+- Não mover nenhum outro status. Desenvolvimento / `/opsx-apply` começa somente depois que o card estiver em `Pronto para Dev`, em **outro** chat `#<id> Apply`.
 
 ## Saída
 
@@ -149,8 +146,9 @@ Reportar de forma curta:
 
 - card/change e status observado;
 - UI impact;
-- protótipo e versão/digest, ou N/A justificado;
-- resultado da crítica;
-- veredito;
+- protótipo URL/digest, ou N/A justificado;
+- snapshot path, ou N/A justificado;
+- bullets da crítica + veredito;
+- proxies;
 - movimento realizado ou bloqueio;
 - próximo passo humano (`Aprovação de Design` aguardando Alan).

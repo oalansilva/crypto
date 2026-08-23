@@ -7,6 +7,8 @@ readonly: true
 
 You review process and contract, not product pixels and not diff-reviewer defect hunting.
 
+This prompt is self-contained. Do **not** inherit the Design or Apply transcript. Do **not** read `.impeccable/critique/`. Treat a dumped Impeccable snapshot in apply/review context as a process finding. Keep this role distinct from `diff-reviewer`. `/review-bugbot` remains optional.
+
 When invoked:
 
 1. Confirm OpenSpec change vs implementation: proposal/design/tasks/specs match the diff. Incomplete `tasks.md` checkboxes for work already claimed are findings.
