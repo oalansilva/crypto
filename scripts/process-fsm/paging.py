@@ -79,7 +79,23 @@ def page(
     }
 
 
+def write_grok_page(
+    *,
+    cwd: str | Path,
+    dest: Path | None = None,
+    **kwargs: Any,
+) -> Path:
+    """SessionStart Grok: persist Moore page; stdout is ignored by the product."""
+    workdir = Path(cwd)
+    result = page(cwd=workdir, path=kwargs.pop("path", workdir), **kwargs)
+    path = dest if dest is not None else workdir / ".grok" / "rules" / "process-fsm-page.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(str(result["additional_context"]), encoding="utf-8")
+    return path
+
+
 def main() -> int:
+    write_file = "--write-grok-page" in sys.argv
     raw = sys.stdin.read()
     try:
         payload = json.loads(raw) if raw.strip() else {}
@@ -87,7 +103,11 @@ def main() -> int:
         payload = {}
     if not isinstance(payload, dict):
         payload = {}
-    cwd = payload.get("cwd") or os.getcwd()
+    cwd = payload.get("cwd") or payload.get("workspaceRoot") or os.getcwd()
+    if write_file:
+        dest = Path(__file__).resolve().parents[2] / ".grok" / "rules" / "process-fsm-page.md"
+        write_grok_page(cwd=cwd, dest=dest)
+        return 0
     result = page(cwd=cwd, path=cwd)
     json.dump({"additional_context": result["additional_context"]}, sys.stdout, ensure_ascii=True)
     sys.stdout.write("\n")

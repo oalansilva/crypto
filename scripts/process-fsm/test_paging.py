@@ -13,7 +13,8 @@ REPO = ROOT.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from fsm import load_fsm  # noqa: E402
-from paging import UNBOUND_PAGE, page  # noqa: E402
+from grok_stubs import stub_errors  # noqa: E402
+from paging import UNBOUND_PAGE, page, write_grok_page  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -118,11 +119,13 @@ def _harness_body_lines() -> list[str]:
 def test_harness_mdc_body_budget():
     lines = _harness_body_lines()
     text = "\n".join(lines)
-    assert 8 <= len(lines) <= 15
-    assert "Em Refinamento" in text
-    assert "(q, bound_card, q_git)" in text
+    assert 4 <= len(lines) <= 12
+    assert "inherit" in text or ".cursor/hooks.json" in text
+    assert "T1/T7/T15" not in text
     assert "diff-reviewer" not in text
     assert "release-guard" not in text
+    assert "Grok Auto" not in text
+    assert "Auto permitido" not in text
 
 
 def test_agents_md_is_stub():
@@ -133,6 +136,12 @@ def test_agents_md_is_stub():
     assert "github.com/users/oalansilva/projects/1" in text
     assert "scripts/release-guard pre" not in text
     assert "Em Refinamento -> Todo -> Design" not in text
+    assert "(q, bound_card, q_git)" in text
+    assert "T1/T7/T15" in text
+    assert "Cursor Agent" in text and "Grok Build" in text
+    assert "não always-on" not in text
+    assert "Grok Auto" not in text
+    assert "cooperativo" in text
 
 
 def test_skill_priority_anchor():
@@ -185,3 +194,77 @@ def test_session_start_adapter_fallback(tmp_path: Path):
     assert UNBOUND_PAGE in ctx
     assert "docs/crypto-overlay.md" not in ctx
     assert "release-guard" not in ctx
+
+
+def test_write_grok_page_todo(tmp_path: Path):
+    dest = tmp_path / ".grok" / "rules" / "process-fsm-page.md"
+    write_grok_page(
+        cwd=tmp_path,
+        dest=dest,
+        resolve_fn=_resolve("613", "card-613-process-fsm-paging"),
+        status_provider=_provider("Todo"),
+    )
+    text = dest.read_text(encoding="utf-8")
+    assert TODO_STUB in text
+    assert "q=Todo" in text
+    for needle in PLAYBOOK:
+        assert needle not in text
+    assert _line_count(text) <= 20
+
+
+def test_gitignore_skips_generated_page():
+    text = (REPO / ".gitignore").read_text(encoding="utf-8")
+    assert ".grok/rules/process-fsm-page.md" in text
+    assert (REPO / ".grok" / "rules" / "00-harness.md").is_file()
+    harness = (REPO / ".grok" / "rules" / "00-harness.md").read_text(encoding="utf-8")
+    assert "MUST Read" in harness
+    assert "process-fsm-page.md" in harness
+    assert "| T0" not in harness
+    assert "### Requirement:" not in harness
+
+
+def test_grok_skill_stubs_match_canonical():
+    errors = stub_errors()
+    assert errors == []
+    stub = (REPO / ".grok" / "skills" / "alan-workflow" / "SKILL.md").read_text(encoding="utf-8")
+    assert ".cursor/skills/alan-workflow/SKILL.md" in stub
+    assert "Em Refinamento → Todo → Design" not in stub
+    body = stub.split("---", 2)[2]
+    assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8
+
+
+def test_stale_stub_fails_check():
+    dest = REPO / ".grok" / "skills" / "alan-workflow" / "SKILL.md"
+    original = dest.read_text(encoding="utf-8")
+    dest.write_text("stale\n", encoding="utf-8")
+    try:
+        assert stub_errors()
+    finally:
+        dest.write_text(original, encoding="utf-8")
+
+
+def test_grok_session_start_script_exists():
+    adapter = REPO / ".grok" / "hooks" / "process-fsm-session-start.sh"
+    assert adapter.is_file()
+    assert adapter.stat().st_mode & stat.S_IXUSR
+    text = adapter.read_text(encoding="utf-8")
+    assert "--write-grok-page" in text
+    wrapper = REPO / ".grok" / "hooks" / "process-fsm-guard.sh"
+    assert wrapper.is_file()
+    assert wrapper.stat().st_mode & stat.S_IXUSR
+
+
+def test_write_grok_page_cli_uses_repo_root(tmp_path: Path):
+    paging = REPO / "scripts" / "process-fsm" / "paging.py"
+    proc = subprocess.run(
+        [sys.executable, str(paging), "--write-grok-page"],
+        input="{}",
+        capture_output=True,
+        text=True,
+        cwd=str(tmp_path),
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    generated = REPO / ".grok" / "rules" / "process-fsm-page.md"
+    assert generated.is_file()
+    generated.unlink(missing_ok=True)
