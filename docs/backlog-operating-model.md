@@ -37,7 +37,7 @@ Exemplos de evidencia:
 ## Colunas do GitHub Project
 
 - `Status` e a fonte principal das colunas:
-  - `Em Refinamento`: primeira coluna e entrada obrigatoria de todo card novo; Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ir para `Todo`. Cards kaizen tambem nascem aqui.
+  - `Em Refinamento`: primeira coluna e entrada obrigatoria de todo card novo; o agente pode grelhar a história no body do issue (`grill-card`); Alan escolhe, prioriza (campo `Prioridade`) ou cancela o card antes de ir para `Todo` (T1 só Alan). Cards kaizen tambem nascem aqui.
   - `Todo`: backlog ou pronto para comecar.
   - `Design`: Designer/Critic Agent prepara protótipo, crítica e evidências.
   - `Aprovação de Design`: entrega completa aguardando decisão humana de Alan.

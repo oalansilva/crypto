@@ -19,6 +19,37 @@
 
 ---
 
+## 2026-08-23 — Kaizen release (lote 661/663/664/667/668)
+
+- **Release/card**: 2026-08-23 — Homologado → Pronto após deploy PROD `aa36deb1` via T16 live.
+- **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees + `release-guard pre` PASS, CI PR #671, PROD health pós-deploy, overlay/runbook. Transcript Cursor deste host não indexado nesta sessão (Grok Build). Sem `opencode.db`.
+- **Sessões analisadas**: closeout `suba a release` neste chat (Grok Build, sessão unbound; pedido explícito carregou overlay/T16).
+- **Custo/eficácia**: cinco Homologados no pacote; comentários Homologado ausentes até o closeout (postados antes do `pre`). `#667` chegou Homologado sem Prioridade/Responsável (preenchido neste turno).
+
+### Métricas
+- **Board**: 5 Homologado (`#661` `#663` `#664` `#667` `#668`). Fora: `#600`/`#614` Aprovação de Design; `#658`/`#659`/`#660` Em Refinamento.
+- **Git**: `origin/develop` só com o pacote (`c88ba0a3`); archive via `release-2026-08-23` `b3373491`; merge `aa36deb1`. Stash 0. Worktrees classificadas via `PRESERVED_BRANCHES`.
+- **CI**: PR #671 verde; `qa-gate`/`deploy-staging` skip (`base_ref != develop`).
+- **OpenSpec**: 5 changes arquivadas; `--skip-specs` em #661/#663/#664/#668; sync em #667 (`grill-card`).
+- **PROD**: source `aa36deb1`; migration `20260823_0001`; bundle `index-Dtfnr-Df.js` / `index-DzSLxG6d.css`; health 200.
+
+### Achados
+- F-1 [major] Comentários Homologado canônicos ausentes nos 5 cards até o closeout. Recidiva #579/#658. Esforço S | P1 | Card existente: #658.
+- F-2 [minor] `openspec archive` falhou em #661/#663/#664/#668 por headers ADDED já no main spec / MODIFIED divergente; `--skip-specs` operacional. Recidiva #659. Esforço S | P1 | Card existente: #659.
+- F-3 [minor] `#667` Homologado sem Prioridade/Responsável; o `post` teria bloqueado. Preenchido no closeout (Clara/P2). Sem card novo (o gate de campos já existe).
+- F-4 [info] Pedido `suba a release` em sessão unbound: página Moore pede para não carregar playbook; overlay T16 carregado. Alinhado ao decision-log #613.
+- F-5 [info] Ensaio deny Grok Auto (#668 task 4.5) permanece pendente; Grok continua cooperativo. Sem card novo.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | 7+ auditorias | #658
+- Archive `--skip-specs` quando o apply já sincronizou o main spec | #659
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário | — | F-1 | coberto por #658 |
+| (não criado) archive --skip-specs headers | — | F-2 | coberto por #659 |
+
 ## 2026-08-21 — Kaizen release (lote card 652)
 
 - **Release/card**: 2026-08-21 (3º pacote do dia) — Homologado → Pronto após deploy PROD `0cb8aaf4` via T16 live.
