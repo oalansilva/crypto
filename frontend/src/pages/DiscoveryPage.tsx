@@ -526,6 +526,7 @@ export function DiscoveryPage() {
             snapshot: preflight,
           }
       focusStartedSweepRef.current = true
+      pollRevRef.current += 1
       setActiveSweep(fullSweep)
       if (!viewSweep) setViewSweep(fullSweep)
       setMetric(draftMetric)
@@ -617,12 +618,14 @@ export function DiscoveryPage() {
       const sweeps: Sweep[] = Array.isArray(data?.sweeps) ? data.sweeps : []
       const newest = sweeps[0]
       if (!newest) {
+        pollRevRef.current += 1
         setActiveSweep(null)
         setReconnected(false)
         setRecoveryStatus('ready')
         return
       }
       if (TERMINAL.has(newest.state)) {
+        pollRevRef.current += 1
         setActiveSweep(null)
         setViewSweep(newest)
         viewOriginRef.current = 'auto'
@@ -639,6 +642,7 @@ export function DiscoveryPage() {
         setRecoveryStatus('error')
         return
       }
+      pollRevRef.current += 1
       setActiveSweep(newest)
       if (newest.updated_at) appliedUpdatedAtRef.current[newest.sweep_id] = newest.updated_at
       if (viewOriginRef.current === 'auto') {
@@ -762,6 +766,7 @@ export function DiscoveryPage() {
         viewOriginRef.current = 'user'
         setViewSweep(data)
         if (NON_TERMINAL.has(data.state)) {
+          pollRevRef.current += 1
           setActiveSweep(data)
         }
         setFSymbol('all')
