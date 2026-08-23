@@ -61,7 +61,26 @@
 .positive { color: var(--accent-success) !important; }
 .negative { color: #ff8294 !important; }
 
-.promoted-state { display: inline-flex; align-items: center; gap: 6px; color: #bfdbfe; font-size: 12px; font-weight: 600; }
+.recovery-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(59, 130, 246, 0.38);
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.07);
+  color: #bfdbfe;
+}
+.recovery-banner strong { display: block; color: var(--text-secondary); font-size: 13px; }
+.recovery-banner span { display: block; margin-top: 2px; font-size: 12px; overflow-wrap: anywhere; }
+.recovery-banner.error {
+  border-color: rgba(246, 70, 93, 0.42);
+  background: rgba(246, 70, 93, 0.07);
+  color: #ff8294;
+}
+@media (max-width: 720px) {
+  .recovery-banner { flex-wrap: wrap; }
+}
 
 .progress-track {
   height: 8px; overflow: hidden; border-radius: 99px; background: var(--bg-input);

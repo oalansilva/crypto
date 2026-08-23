@@ -165,6 +165,13 @@ async function installMocks(page: Page) {
   await page.route('**/api/combos/discovery/sweeps/preflight', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(PREFLIGHT) }),
   )
+  await page.route('**/api/combos/discovery/sweeps/active', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ sweeps: [] }),
+    }),
+  )
   await page.route('**/api/combos/discovery/sweeps/history', (route) =>
     route.fulfill({
       status: 200,
@@ -458,8 +465,7 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   expect(captured.sweepIdempotencyKey).not.toBe(`sweep-${PREFLIGHT.snapshot_hash}`.slice(0, 64))
   await expect(page.getByTestId('draft-key')).toContainText(captured.sweepIdempotencyKey as string)
   const firstKey = captured.sweepIdempotencyKey
-  await page.getByTestId('start-sweep').click()
-  expect(captured.sweepIdempotencyKey).toBe(firstKey)
+  await expect(page.getByTestId('start-sweep')).toBeDisabled()
 
   await page.getByTestId('pause-sweep').click()
   await expect(page.getByTestId('active-state-chip')).toHaveText('PAUSED')

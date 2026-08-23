@@ -45,6 +45,10 @@ def test_orchestrator_reconciles_progress_after_each_combination(monkeypatch):
             events.append("ack")
             return 1
 
+        def ensure_sweep_wakeup(self, db, sweep_id, sweep=None, rotate_from=None):
+            events.append("ensure")
+            return {}
+
     class FakeDb:
         def close(self):
             events.append("close")
@@ -72,6 +76,57 @@ def test_orchestrator_reconciles_progress_after_each_combination(monkeypatch):
         "reconcile",
         "release",
         "reconcile",
+        "ack",
+        "close",
+    ]
+
+
+def test_orchestrator_rotates_wakeup_before_ack(monkeypatch):
+    events: list[str] = []
+    combinations = [SimpleNamespace(id="c1")]
+
+    class FakeService:
+        def claim_combinations(self, sweep_id, owner, db):
+            return combinations
+
+        def release_expired_leases(self, db):
+            events.append("release")
+
+        def count_claimable(self, sweep_id, db):
+            return 3
+
+        def ensure_sweep_wakeup(self, db, sweep_id, sweep=None, rotate_from=None):
+            events.append(f"ensure:{rotate_from}")
+            return {"created": True}
+
+        def ack_outbox(self, sweep_id, generation, db):
+            events.append("ack")
+            return 1
+
+    class FakeDb:
+        def close(self):
+            events.append("close")
+
+    monkeypatch.setattr(discovery_celery_tasks, "DiscoveryService", FakeService)
+    monkeypatch.setattr(discovery_celery_tasks, "SessionLocal", FakeDb)
+    monkeypatch.setattr(
+        discovery_tasks,
+        "run_combination",
+        lambda db, combination, owner: events.append(f"run:{combination.id}"),
+    )
+    monkeypatch.setattr(
+        discovery_tasks,
+        "reconcile_sweep",
+        lambda sweep_id, db: events.append("reconcile") or {"state": "running"},
+    )
+
+    discovery_celery_tasks.run_sweep_orchestrator("sweep-1", 4)
+    assert events == [
+        "run:c1",
+        "reconcile",
+        "release",
+        "reconcile",
+        "ensure:4",
         "ack",
         "close",
     ]
