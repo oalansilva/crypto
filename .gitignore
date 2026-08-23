@@ -17,6 +17,9 @@ build/
 data/*.csv
 data/*.parquet
 
+# Grok Moore page is generated at SessionStart (not auto-injected; gitignored).
+.grok/rules/process-fsm-page.md
+
 # IDE
 .vscode/
 .idea/

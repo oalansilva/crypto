@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|StrReplace|Delete|EditNotebook|write|search_replace|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./process-fsm-guard.sh",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Shell|run_terminal_command|run_terminal_cmd",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./process-fsm-guard.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./process-fsm-session-start.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

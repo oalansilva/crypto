@@ -12,7 +12,8 @@ REPO = ROOT.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from fsm import load_fsm  # noqa: E402
-from guard import decide, extract_path  # noqa: E402
+from board_status import STATUS_FIELD_ID  # noqa: E402
+from guard import decide, emit, extract_path, normalize  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -341,3 +342,149 @@ def test_shell_redirect_sidecar_denied(tmp_path: Path):
     result = decide(payload, status_provider=SILENT)
     assert result["permission"] == "deny"
     assert "sidecar" in result["agent_message"]
+
+
+def _assert_dual_deny(result: dict) -> None:
+    assert result["permission"] == "deny"
+    assert result["decision"] == "deny"
+    assert result.get("agent_message")
+    assert result.get("reason")
+
+
+def _assert_dual_allow(result: dict) -> None:
+    assert result["permission"] == "allow"
+    assert result["decision"] == "allow"
+
+
+def test_normalize_grok_and_cursor_keys():
+    grok = normalize(
+        {
+            "toolName": "write",
+            "toolInput": {"file_path": "backend/a.py"},
+            "workspaceRoot": "/tmp/ws",
+        }
+    )
+    assert grok["tool_name"] == "write"
+    assert grok["tool_input"]["file_path"] == "backend/a.py"
+    assert grok["cwd"] == "/tmp/ws"
+    cursor = normalize({"tool_name": "Write", "tool_input": {"path": "backend/a.py"}, "cwd": "/x"})
+    assert cursor["tool_name"] == "Write"
+    assert extract_path({"toolName": "search_replace", "toolInput": {"file_path": "backend/a.py"}}) == (
+        "backend/a.py"
+    )
+    assert extract_path({"toolName": "write", "toolInput": {"target_file": "backend/a.py"}}) == (
+        "backend/a.py"
+    )
+
+
+def test_emit_dual_keys():
+    denied = emit("deny", "nope")
+    _assert_dual_deny(denied)
+    allowed = emit("allow")
+    _assert_dual_allow(allowed)
+
+
+def test_grok_write_product_on_develop_denied(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "backend/app/main.py")
+    for tool in ("write", "search_replace"):
+        payload = {
+            "toolName": tool,
+            "toolInput": {"file_path": "backend/app/main.py"},
+            "cwd": str(repo),
+            "status": "Todo",
+        }
+        result = decide(payload, status_provider=SILENT)
+        _assert_dual_deny(result)
+
+
+def test_grok_tee_denied(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "backend/app/main.py")
+    payload = {
+        "toolName": "run_terminal_command",
+        "toolInput": {"command": "echo x | tee backend/app/main.py"},
+        "cwd": str(repo),
+        "status": "Em desenvolvimento",
+    }
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+
+
+def test_grok_openspec_write_allowed_in_design(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-668-multi-harness-adapters", "openspec/changes/card-668-x/proposal.md")
+    calls: list = []
+
+    def wrapped(fsm, ctx):
+        calls.append(ctx)
+        raise AssertionError("evaluate must not run for design_globs")
+
+    payload = {
+        "toolName": "search_replace",
+        "toolInput": {"file_path": "openspec/changes/card-668-x/proposal.md"},
+        "cwd": str(repo),
+        "status": "Design",
+    }
+    result = decide(payload, status_provider=SILENT, evaluate_fn=wrapped)
+    _assert_dual_allow(result)
+    assert calls == []
+
+
+def test_grok_status_item_edit_denied(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-668-multi-harness-adapters", "backend/app/main.py")
+    payload = {
+        "toolName": "run_terminal_command",
+        "toolInput": {
+            "command": f"gh project item-edit --field-id {STATUS_FIELD_ID} --id x",
+        },
+        "cwd": str(repo),
+        "status": "Design",
+    }
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+    assert "process_event" in result["reason"]
+
+
+def test_bash_fallback_parses_grok_write(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "backend/app/main.py")
+    hooks = repo / ".cursor" / "hooks"
+    hooks.mkdir(parents=True)
+    src = (REPO / ".cursor" / "hooks" / "process-fsm-guard.sh").read_text(encoding="utf-8")
+    script = hooks / "process-fsm-guard.sh"
+    script.write_text(src, encoding="utf-8")
+    script.chmod(0o755)
+    payload = {
+        "toolName": "write",
+        "toolInput": {"file_path": "backend/app/main.py"},
+        "cwd": str(repo),
+        "status": "Todo",
+    }
+    proc = subprocess.run(
+        [str(script)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(repo),
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout)
+    _assert_dual_deny(data)
+
+
+def test_grok_hooks_json_registers_guard():
+    hooks = json.loads((REPO / ".grok" / "hooks" / "process-fsm.json").read_text(encoding="utf-8"))
+    pre = hooks["hooks"]["PreToolUse"]
+    matchers = " ".join(item.get("matcher") or "" for item in pre)
+    assert "write" in matchers and "search_replace" in matchers
+    assert "Write" in matchers and "Edit" in matchers
+    assert "run_terminal_command" in matchers and "run_terminal_cmd" in matchers
+    for item in pre:
+        handler = item["hooks"][0]
+        assert handler["timeout"] >= 30
+        assert handler["command"] == "./process-fsm-guard.sh"
+    start = hooks["hooks"]["SessionStart"][0]["hooks"][0]
+    assert "process-fsm-session-start.sh" in start["command"]

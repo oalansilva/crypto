@@ -1,4 +1,4 @@
-"""Compile process-fsm.yaml + resolver into a Cursor Write Guard.
+"""Compile process-fsm.yaml + resolver into a Write Guard (Cursor + Grok).
 
 Glob-first: evaluate(write_produto) only for product_globs. No GitHub in unit tests.
 """
@@ -26,7 +26,20 @@ from fsm import CARD_GIT_RE, EvalContext, EvalResult, evaluate, load_fsm  # noqa
 from resolve import UNBOUND, resolve  # noqa: E402
 
 REPO_ROOT = ROOT.parents[1]
-WRITE_TOOLS = frozenset({"Write", "StrReplace", "Delete", "EditNotebook"})
+WRITE_TOOLS = frozenset(
+    {
+        "Write",
+        "StrReplace",
+        "Delete",
+        "EditNotebook",
+        "write",
+        "search_replace",
+        "Edit",
+        "MultiEdit",
+    }
+)
+SHELL_TOOLS = frozenset({"Shell", "Bash", "run_terminal_command", "run_terminal_cmd"})
+PATH_KEYS = ("path", "file_path", "file", "target_file", "target_notebook")
 MUTATION_RE = re.compile(r"(?:>>|>|\btee\s+|sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)")
 NON_REDIRECT_MUTATION_RE = re.compile(r"(?:sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)")
 # File redirects / tee destinations. Targets starting with & are fd redirects (2>&1).
@@ -88,23 +101,75 @@ def repo_relative(cwd: Path, path: str) -> str:
         return Path(path).as_posix().removeprefix("./")
 
 
-def _tool_input(payload: Mapping[str, Any]) -> dict[str, Any]:
-    raw = payload.get("tool_input")
+def _first_str(mapping: Mapping[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = mapping.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _as_dict(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
     if isinstance(raw, str) and raw.strip():
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError:
             return {}
         return parsed if isinstance(parsed, dict) else {}
-    return raw if isinstance(raw, dict) else {}
+    return {}
+
+
+def _tool_input(payload: Mapping[str, Any]) -> dict[str, Any]:
+    data = _as_dict(payload.get("tool_input"))
+    if data:
+        return data
+    return _as_dict(payload.get("toolInput"))
+
+
+def normalize(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Canonical envelope: Cursor snake_case and Grok camelCase both work."""
+    src = payload if isinstance(payload, Mapping) else {}
+    tool = _first_str(src, "tool_name", "toolName") or ""
+    cwd = _first_str(src, "cwd") or _first_str(src, "workspaceRoot") or os.getcwd()
+    data = _tool_input(src)
+    command = src.get("command") if isinstance(src.get("command"), str) else ""
+    if not str(command).strip():
+        nested = data.get("command")
+        command = nested.strip() if isinstance(nested, str) and nested.strip() else ""
+    out: dict[str, Any] = {
+        "tool_name": tool,
+        "tool_input": data,
+        "command": command,
+        "cwd": cwd,
+    }
+    status = src.get("status")
+    if isinstance(status, str) and status.strip():
+        out["status"] = status.strip()
+    return out
+
+
+def emit(permission: str, message: str = "") -> dict[str, str]:
+    """Dual Cursor (`permission`) + Grok (`decision`) JSON."""
+    allowed = permission == "allow"
+    token = "allow" if allowed else "deny"
+    out = {
+        "permission": token,
+        "decision": token,
+        "reason": "" if allowed else message,
+        "agent_message": "" if allowed else message,
+        "user_message": "" if allowed else message,
+    }
+    return out
 
 
 def _path_from_write(payload: Mapping[str, Any]) -> str | None:
-    tool = str(payload.get("tool_name") or "")
     data = _tool_input(payload)
-    keys = ("path", "file_path", "file")
+    keys = PATH_KEYS
+    tool = str(payload.get("tool_name") or "")
     if tool == "EditNotebook":
-        keys = ("target_notebook",) + keys
+        keys = ("target_notebook",) + PATH_KEYS
     for key in keys:
         value = data.get(key)
         if isinstance(value, str) and value.strip():
@@ -196,19 +261,16 @@ def _path_from_command(command: str, cwd: Path | None = None) -> str | None:
 
 
 def _command(payload: Mapping[str, Any]) -> str:
-    raw = payload.get("command")
-    if isinstance(raw, str) and raw.strip():
-        return raw
-    data = _tool_input(payload)
-    cmd = data.get("command")
-    return cmd.strip() if isinstance(cmd, str) and cmd.strip() else ""
+    canonical = normalize(payload)
+    raw = canonical.get("command")
+    return raw.strip() if isinstance(raw, str) and raw.strip() else ""
 
 
 def _sidecar_deny() -> dict[str, str]:
     message = (
         "process-fsm-guard deny reason=sidecar. .design-digest is written only by process_event T5."
     )
-    return {"permission": "deny", "agent_message": message, "user_message": message}
+    return emit("deny", message)
 
 
 def _status_edit_deny() -> dict[str, str]:
@@ -216,7 +278,7 @@ def _status_edit_deny() -> dict[str, str]:
         "process-fsm-guard deny reason=status_item_edit. Use scripts/process-fsm/process_event.py; "
         "do not gh project item-edit Status."
     )
-    return {"permission": "deny", "agent_message": message, "user_message": message}
+    return emit("deny", message)
 
 
 def git_anchor(cwd: Path, path: str) -> str:
@@ -230,19 +292,17 @@ def git_anchor(cwd: Path, path: str) -> str:
 
 
 def extract_path(payload: Mapping[str, Any]) -> str | None:
-    tool = str(payload.get("tool_name") or "")
-    if tool in WRITE_TOOLS:
-        return _path_from_write(payload)
-    cwd_raw = payload.get("cwd")
+    canonical = normalize(payload)
+    tool = str(canonical.get("tool_name") or "")
+    cwd_raw = canonical.get("cwd")
     cwd = Path(str(cwd_raw)) if isinstance(cwd_raw, str) and cwd_raw.strip() else None
-    command = payload.get("command")
+    if tool in WRITE_TOOLS:
+        return _path_from_write(canonical)
+    command = canonical.get("command")
     if isinstance(command, str) and command.strip():
         return _path_from_command(command, cwd)
-    if tool == "Shell":
-        data = _tool_input(payload)
-        cmd = data.get("command")
-        if isinstance(cmd, str):
-            return _path_from_command(cmd, cwd)
+    if tool in SHELL_TOOLS:
+        return _path_from_command(str(command or ""), cwd)
     return None
 
 
@@ -315,12 +375,11 @@ def _reason_message(reason: str, state: str | None, q_git: str | None, bound: st
 
 
 def _allow() -> dict[str, str]:
-    return {"permission": "allow"}
+    return emit("allow")
 
 
 def _deny(reason: str, state: str | None, q_git: str | None, bound: str | None) -> dict[str, str]:
-    message = _reason_message(reason, state, q_git, bound)
-    return {"permission": "deny", "agent_message": message, "user_message": message}
+    return emit("deny", _reason_message(reason, state, q_git, bound))
 
 
 def decide(
@@ -332,10 +391,11 @@ def decide(
     evaluate_fn: EvaluateFn = evaluate,
     load_fsm_fn: Callable[..., dict[str, Any]] = load_fsm,
 ) -> dict[str, str]:
-    cwd_raw = payload.get("cwd") or os.getcwd()
+    canonical = normalize(payload)
+    cwd_raw = canonical.get("cwd") or os.getcwd()
     cwd = Path(str(cwd_raw))
-    path = extract_path(payload)
-    command = _command(payload)
+    path = extract_path(canonical)
+    command = _command(canonical)
     if is_sidecar_path(path) or sidecar_in_command(command):
         return _sidecar_deny()
     if is_status_edit_command(command):
