@@ -22,6 +22,14 @@ Drive/Docs: `Read docs/crypto-overlay.md` on-demand neste repo. No cripto, Drive
 
 PT-BR curto. Não diga `concluído` / `Pronto` / `publicado` até a evidência do estado ser verdadeira. `Done` = Done técnico.
 
+## Um chat por coluna
+
+Título `#<id> Design|Apply|Review|Release` nos dois clientes. Recusar misturar essas colunas no mesmo transcript; pedir chat novo com o título da coluna. Sem estado, evento, hook ou `enabled_tools` novo na FSM. `AGENTS.md` always-on não cresce com esta regra.
+
+T7: Alan abre o **Snapshot Impeccable** linkado no comentário do card (path / blob). O Gist OpenSpec **não** é a crítica.
+
+Handoff de Design/Apply/Review registra **proxies**: palavras de `design.md`, bytes de HTML gerado vs copiado (`cp`/clone = copied; delta = generated; sem protótipo = `N/A`), número de spawns. Sem parser de usage Cursor/Grok e sem dashboard.
+
 ## Colunas (Project 1)
 
 Caminho obrigatório:

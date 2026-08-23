@@ -1,36 +1,4 @@
-# impeccable-design-gate Specification
-
-## Purpose
-
-Define a reproducible Impeccable-assisted Design gate for Codex cards while preserving the Cripto Farol design system and the mandatory human approval step.
-
-## Requirements
-
-### Requirement: Codex Impeccable installation is project-local and reproducible
-The project MUST provide a versioned project-local Impeccable installation for Codex, including the provider skill and its hook configuration, with the upstream version and resolved commit recorded in project documentation.
-
-#### Scenario: Fresh checkout loads the same Codex skill
-- **WHEN** an agent checks out the project and loads Codex skills
-- **THEN** `.agents/skills/impeccable/` and `.codex/hooks.json` MUST be available from the repository
-- **AND** the recorded Impeccable version and commit MUST identify the expected payload
-
-#### Scenario: Hook installation preserves unrelated configuration
-- **WHEN** the Impeccable hook is installed or updated
-- **THEN** existing unrelated Codex hook entries MUST remain intact
-- **AND** malformed or conflicting hook configuration MUST block installation rather than silently overwrite it
-
-### Requirement: Product context MUST preserve the canonical Cripto Farol design system
-The Impeccable context MUST identify the Cripto Farol product, audience, surface mode and anti-goals while treating the repository `DESIGN.md` as the canonical source for visual tokens and shell rules.
-
-#### Scenario: Initialize context in the existing product
-- **WHEN** the Impeccable context is initialized
-- **THEN** a project product context MUST be available to later commands
-- **AND** initialization MUST NOT overwrite or silently rewrite the existing `DESIGN.md`
-
-#### Scenario: Existing surface is reviewed
-- **WHEN** a card targets an existing screen or shell
-- **THEN** the context and prototype MUST reference the current product surface as the base
-- **AND** only the card delta MAY be introduced in the prototype
+## MODIFIED Requirements
 
 ### Requirement: UI-impacting Design MUST run the structured Impeccable pipeline
 For a Codex card marked `UI impact: affected`, the Design stage MUST run context loading, `shape`, a versioned prototype, independent `critique`, `audit`, applicable hardening commands, and final `polish` before requesting human design approval. The full shape brief MUST live in the `.impeccable/critique/` snapshot. `design.md` MUST record only a short recorte (audience, outcome, direction, scope) — not the integral Brief.
@@ -45,6 +13,7 @@ For a Codex card marked `UI impact: affected`, the Design stage MUST run context
 - **WHEN** critique or audit identifies an error-state, device, copy, accessibility or overflow problem
 - **THEN** the agent MUST run the applicable `harden`, `adapt`, `clarify` or equivalent targeted command
 - **AND** the agent MUST NOT run unrelated visual commands merely to increase activity
+
 
 ### Requirement: Independent critics MUST inherit the primary Codex LLM
 Assessment A and Assessment B MUST run in isolated subagents using exactly the same LLM/model identifier and version as the primary Design session. They MUST receive a self-contained prompt and MUST NOT inherit the parent transcript. They MAY write only `.impeccable/critique/**`. They MUST NOT edit `design.md`, prototype files, or product code. Isolation is process (no shared transcript, instruction not to edit product), not a plugin.
@@ -90,13 +59,7 @@ The Design artifact MUST persist a short published verdict in `design.md` (bulle
 - **THEN** it has no Nielsen heuristic table, no persona essay, and no integral Impeccable Brief/Critique/Audit/Trace
 - **AND** those full sections exist only in the snapshot
 
-### Requirement: Non-UI cards MUST retain the existing Design gate
-Cards marked `UI impact: none` MUST continue through Design, Approval of Design and Alan's human approval, while documenting Impeccable as not applicable.
-
-#### Scenario: Non-UI Design handoff
-- **WHEN** a card has no new or changed visual surface
-- **THEN** `design.md` MUST record `Prototype: N/A` and a non-empty justification
-- **AND** the Design Critique MUST still cover scope, regressions, risks and the absence of visual change
+## ADDED Requirements
 
 ### Requirement: Prototype clone+delta without HTML dump
 For an existing product surface, the prototype MUST clone the current shell/nav/tokens/density and apply only the card delta. Design, critics, and operator chat MUST use the navigable URL, screenshot, and digest — they MUST NOT dump prototype HTML into chat or `design.md`. `/opsx:apply` MUST still read the prototype file on disk as the layout spec. Polish MUST patch the prototype file; it MUST NOT rewrite the whole HTML in the LLM. New surfaces still compose from the token sheet plus the authenticated app shell, not a generic landing.
