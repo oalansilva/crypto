@@ -7,6 +7,8 @@ readonly: true
 
 You review the diff for correctness, security, performance, and maintainability defects introduced by this change.
 
+This prompt is self-contained. Do **not** inherit the Design or Apply transcript. Do **not** read `.impeccable/critique/`. Do not paste Impeccable prose.
+
 When invoked:
 
 1. Read `.cursor/BUGBOT.md`. If the diff touches `backend/`, also read `backend/.cursor/BUGBOT.md`. If it touches `frontend/`, also read `frontend/.cursor/BUGBOT.md`.

@@ -6,16 +6,22 @@ Contrato do gate `Status=Code Review` no Cripto Farol: reviewers locais versiona
 ## Requirements
 
 ### Requirement: Code Review MUST run the versioned diff reviewer on the uncommitted diff versus HEAD
-While `Status=Code Review` and before any implementation commit, the Cursor Agent SHALL launch one `generalPurpose` Task with `model: inherit`, instructed not to edit, whose prompt is the body of `.cursor/agents/diff-reviewer.md` plus the uncommitted diff versus HEAD. A generic Task without that file MUST NOT be the happy-path reviewer. `/review-bugbot` MUST NOT be required.
+While `Status=Code Review` and before any implementation commit, the Cursor Agent SHALL launch one `generalPurpose` Task with `model: inherit`, instructed not to edit, whose prompt is the body of `.cursor/agents/diff-reviewer.md` plus the uncommitted diff versus HEAD. The spawn MUST be self-contained and MUST NOT inherit the Design or Apply transcript. A generic Task without that file MUST NOT be the happy-path reviewer. `/review-bugbot` MUST NOT be required. The reviewer output MUST be findings with severity or the exact line `No findings.`
 
 #### Scenario: Pre-commit Code Review
 - **WHEN** a card is in `Status=Code Review` and the agent is about to commit implementation changes
 - **THEN** the agent MUST run the `diff-reviewer` Task against the uncommitted diff versus HEAD
 - **AND** it MUST wait for the subagent result before committing
+- **AND** the spawn prompt MUST NOT include the Design or Apply chat
 
 #### Scenario: Generic Task is not the default reviewer
 - **WHEN** Code Review starts
 - **THEN** the agent MUST NOT start with a generic `generalPurpose` Task that lacks the versioned `diff-reviewer` and `code-reviewer` prompts
+
+#### Scenario: Reviewer output is findings or No findings
+- **WHEN** `diff-reviewer` finishes
+- **THEN** the published result is findings with severity, or `No findings.`
+- **AND** it MUST NOT paste Design Impeccable prose
 
 ### Requirement: Closing review MUST cover branch changes versus develop on the card branch
 After the implementation commit and before `Status=QA`, the agent SHALL run the `diff-reviewer` Task against `origin/develop...HEAD` while still on the card branch. The agent MUST NOT run this comparison after squash/merge into `develop` (empty diff). Reuse is allowed only when that exact SHA already has this versus-`develop` run.
@@ -48,12 +54,18 @@ If either local reviewer Task fails to spawn or returns zero messages/parts, the
 - **THEN** the Code Review stage remains incomplete until a successful local review or an explicit fallback after the error is recorded
 
 ### Requirement: Process reviewer MUST stay read-only and inherit the chat model
-The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: true` and `model: inherit`. During Code Review the primary session SHALL launch one `generalPurpose` Task instructed not to edit, whose prompt is that file's body plus the diff under review (uncommitted patch before the commit; the committed SHA after it exists). It SHALL review process/contract (OpenSpec vs implementation, Design approval evidence, status non-regression). It MUST NOT duplicate diff-reviewer defect hunting and MUST NOT edit files. The versus-`develop` comparison is owned by `diff-reviewer` after the commit and before `Status=QA`.
+The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: true` and `model: inherit`. During Code Review the primary session SHALL launch one `generalPurpose` Task instructed not to edit, whose prompt is that file's body plus the diff under review (uncommitted patch before the commit; the committed SHA after it exists). The spawn MUST NOT inherit the Design or Apply transcript. It SHALL review process/contract (OpenSpec vs implementation, Design approval evidence, status non-regression). It MUST NOT duplicate diff-reviewer defect hunting and MUST NOT edit files. It MUST NOT read `.impeccable/critique/`. The versus-`develop` comparison is owned by `diff-reviewer` after the commit and before `Status=QA`. Published output MUST be findings or `No findings.`
 
 #### Scenario: Process reviewer does not mutate
 - **WHEN** the process reviewer Task runs during Code Review
 - **THEN** it reports findings only
 - **AND** it MUST NOT write files, commit, push or change board status
+- **AND** it MUST NOT load the Impeccable snapshot
+
+#### Scenario: Process reviewer has no parent Design chat
+- **WHEN** `code-reviewer` is spawned
+- **THEN** the prompt is the versioned file plus the diff
+- **AND** it does not include the Design or Apply transcript
 
 ### Requirement: Principal session applies reviewer findings
 The local reviewers SHALL NOT apply fixes. The primary session SHALL fix or classify blocking findings, then re-run the affected reviewer when the uncommitted diff changed.
