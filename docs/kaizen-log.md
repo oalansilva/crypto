@@ -39,6 +39,7 @@
 - F-3 [minor] `#667` Homologado sem Prioridade/Responsável; o `post` teria bloqueado. Preenchido no closeout (Clara/P2). Sem card novo (o gate de campos já existe).
 - F-4 [info] Pedido `suba a release` em sessão unbound: página Moore pede para não carregar playbook; overlay T16 carregado. Alinhado ao decision-log #613.
 - F-5 [info] Ensaio deny Grok Auto (#668 task 4.5) permanece pendente; Grok continua cooperativo. Sem card novo.
+- F-6 [major] `release-guard post` falhou com `python3: Argument list too long` ao exportar `BOARD_JSON` (~245 cards com body) para o checker do #661. Corrigido no closeout: tempfile `--board-json-file` (PR #675, `478f0398`). Sem card novo neste lote (hotfix no pacote).
 
 ### Padrões recorrentes
 - Homologado sem comentário canônico no turno do arraste | 7+ auditorias | #658
