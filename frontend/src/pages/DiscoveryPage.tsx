@@ -267,6 +267,7 @@ export function DiscoveryPage() {
   const viewOriginRef = useRef<'auto' | 'user'>('auto')
   const pollRevRef = useRef(0)
   const pollInFlightRef = useRef(false)
+  const activeSweepRef = useRef<Sweep | null>(null)
   const lbReqRef = useRef(0)
   const appliedUpdatedAtRef = useRef<Record<string, string>>({})
   const modalRef = useRef<HTMLDivElement | null>(null)
@@ -527,6 +528,7 @@ export function DiscoveryPage() {
           }
       focusStartedSweepRef.current = true
       pollRevRef.current += 1
+      activeSweepRef.current = fullSweep
       setActiveSweep(fullSweep)
       if (!viewSweep) setViewSweep(fullSweep)
       setMetric(draftMetric)
@@ -619,6 +621,7 @@ export function DiscoveryPage() {
       const newest = sweeps[0]
       if (!newest) {
         pollRevRef.current += 1
+        activeSweepRef.current = null
         setActiveSweep(null)
         setReconnected(false)
         setRecoveryStatus('ready')
@@ -626,6 +629,7 @@ export function DiscoveryPage() {
       }
       if (TERMINAL.has(newest.state)) {
         pollRevRef.current += 1
+        activeSweepRef.current = null
         setActiveSweep(null)
         setViewSweep(newest)
         viewOriginRef.current = 'auto'
@@ -643,6 +647,7 @@ export function DiscoveryPage() {
         return
       }
       pollRevRef.current += 1
+      activeSweepRef.current = newest
       setActiveSweep(newest)
       if (newest.updated_at) appliedUpdatedAtRef.current[newest.sweep_id] = newest.updated_at
       if (viewOriginRef.current === 'auto') {
@@ -669,13 +674,15 @@ export function DiscoveryPage() {
   }, [restoreSession])
 
   const refreshSweep = useCallback(async () => {
-    if (!activeSweep) return
-    const sweepId = activeSweep.sweep_id
+    const live = activeSweepRef.current
+    if (!live || TERMINAL.has(live.state)) return
+    const sweepId = live.sweep_id
     const rev = ++pollRevRef.current
     pollInFlightRef.current = true
     try {
       const res = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps/${sweepId}`)
       if (rev !== pollRevRef.current) return
+      if (activeSweepRef.current?.sweep_id !== sweepId) return
       if (!res.ok) {
         if (res.status === 401) {
           setSessionExpired(true)
@@ -690,10 +697,12 @@ export function DiscoveryPage() {
       }
       const data: Sweep = await res.json()
       if (rev !== pollRevRef.current) return
+      if (activeSweepRef.current?.sweep_id !== sweepId) return
       const prevApplied = appliedUpdatedAtRef.current[sweepId]
       if (prevApplied && data.updated_at && data.updated_at < prevApplied) return
       if (data.updated_at) appliedUpdatedAtRef.current[sweepId] = data.updated_at
       if (TERMINAL.has(data.state)) {
+        activeSweepRef.current = data
         setActiveSweep(data)
         setViewSweep(data)
         setDraftFrozen(false)
@@ -705,13 +714,14 @@ export function DiscoveryPage() {
         void loadHistory()
         return
       }
+      activeSweepRef.current = data
       setActiveSweep(data)
     } catch {
       /* poll continua */
     } finally {
       if (rev === pollRevRef.current) pollInFlightRef.current = false
     }
-  }, [activeSweep, metric, loadLeaderboard, loadHistory])
+  }, [metric, loadLeaderboard, loadHistory])
 
   useEffect(() => {
     if (!activeSweep || TERMINAL.has(activeSweep.state) || sessionExpired) {
@@ -767,6 +777,7 @@ export function DiscoveryPage() {
         setViewSweep(data)
         if (NON_TERMINAL.has(data.state)) {
           pollRevRef.current += 1
+          activeSweepRef.current = data
           setActiveSweep(data)
         }
         setFSymbol('all')
