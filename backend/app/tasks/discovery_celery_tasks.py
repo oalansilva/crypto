@@ -9,7 +9,6 @@ from celery import Task
 
 from app.celery_app import celery_app
 from app.database import SessionLocal
-from app.models_discovery import DiscoveryOutbox
 from app.services.discovery_service import DiscoveryService
 
 logger = logging.getLogger(__name__)
@@ -46,18 +45,9 @@ def run_sweep_orchestrator(sweep_id: str, generation: int) -> dict[str, Any]:
         service.release_expired_leases(db=db)
         summary = reconcile_sweep(sweep_id, db)
         if summary.get("state") == "running":
-            # Só re-agenda quando ainda há trabalho reclamável (evita
-            # busy-polling com todas as combinações em voo/terminais).
-            pending = (
-                db.query(DiscoveryOutbox)
-                .filter(DiscoveryOutbox.sweep_id == sweep_id, DiscoveryOutbox.state == "pending")
-                .count()
-            )
             claimable = service.count_claimable(sweep_id, db=db)
-            if claimable > 0 or pending > 0:
-                from app.tasks.discovery_tasks import enqueue_sweep_orchestrator
-
-                enqueue_sweep_orchestrator(sweep_id, generation)
+            if claimable > 0:
+                service.ensure_sweep_wakeup(db, sweep_id, rotate_from=generation)
         service.ack_outbox(sweep_id, generation, db=db)
         logger.info("Discovery orchestrator finished: sweep=%s summary=%s", sweep_id, summary)
         return summary

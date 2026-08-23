@@ -185,6 +185,7 @@ class DiscoveryOutbox(Base):
     updated_at = Column(DateTime, nullable=False, default=_utcnow)
 
     __table_args__ = (
+        UniqueConstraint("sweep_id", "generation", name="uq_discovery_outbox_sweep_generation"),
         Index("ix_discovery_outbox_state", "state", "created_at"),
         Index("ix_discovery_outbox_sweep", "sweep_id"),
     )

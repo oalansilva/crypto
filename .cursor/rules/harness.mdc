@@ -1,15 +1,10 @@
 ---
-description: Cursor harness; resolve FSM page first
+description: Cursor harness identity
 alwaysApply: true
 ---
 
-# Harness
+# Harness (Cursor)
 
-- Resolva `(q, bound_card, q_git)`; não invente aresta.
-- Chat é wording, não autorização. NLU ≠ δ. `implemente` ∉ δ.
-- `Em Refinamento` é a entrada. Não pular Design / Aprovação de Design.
-- `Todo` não é código; próxima = `iniciar_design` via `process_event`.
-- Código / `/opsx:apply` só após `Status=Pronto para Dev` (T8).
-- Alan único em T1/T7/T15. Agent não arrasta essas colunas. T16 = process_event fechar_release.
-- Overlay on-demand; runbook = skill `alan-workflow`; lei = `rules.md`.
-- Skills deste repo `.cursor/skills/`. Task `inherit`. Cliente: Cursor Agent. Auto permitido.
+- Cliente: Cursor Agent. Hooks: `.cursor/hooks.json`. Task `inherit`.
+- Always-on δ vive em `AGENTS.md`. Não invente aresta; use `process_event`.
+- Overlay on-demand; runbook = skill `alan-workflow`.

@@ -16,7 +16,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import func, or_
+from sqlalchemy import desc, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import FavoriteStrategy
@@ -58,6 +59,7 @@ SWEEP_STATES = {
     "completed": set(),
 }
 TERMINAL_STATES = {"cancelled", "failed", "partial_failure", "completed"}
+NON_TERMINAL_STATES = {"pending", "running", "paused", "cancelling"}
 
 STRUCTURE_VERSION = "discovery-structure-v1"
 QUANTUM_VERSION = "discovery-quantum-v1"
@@ -543,9 +545,9 @@ class DiscoveryService:
 
     # --- Lifecycle ---------------------------------------------------------
 
-    def _transition(
-        self, db: Session, sweep: DiscoverySweep, target: str
-    ) -> tuple[dict[str, Any], int]:
+    def _apply_transition(
+        self, sweep: DiscoverySweep, target: str
+    ) -> tuple[dict[str, Any], int] | None:
         if sweep.state in TERMINAL_STATES:
             return {"sweep_id": sweep.id, "state": sweep.state}, 200
         if sweep.state == "cancelling" and target in ("running", "paused"):
@@ -572,38 +574,324 @@ class DiscoveryService:
             sweep.cancellation_requested = True
         if target in TERMINAL_STATES:
             sweep.completed_at = _utcnow()
+        return None
+
+    def _transition(
+        self, db: Session, sweep: DiscoverySweep, target: str
+    ) -> tuple[dict[str, Any], int]:
+        error = self._apply_transition(sweep, target)
+        if error is not None and error[1] != 200:
+            return error
+        if error is not None and error[1] == 200 and sweep.state in TERMINAL_STATES:
+            db.commit()
+            return error
+        if error is not None:
+            db.commit()
+            return error
         db.commit()
         return {"sweep_id": sweep.id, "state": sweep.state}, 200
 
-    def get_sweep(self, sweep_id: str, db: Session) -> dict[str, Any] | None:
-        sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).first()
-        if not sweep:
-            return None
+    def _combination_counts(self, sweep_id: str, db: Session) -> dict[str, int]:
+        rows = (
+            db.query(DiscoveryCombination.state, func.count())
+            .filter(DiscoveryCombination.sweep_id == sweep_id)
+            .group_by(DiscoveryCombination.state)
+            .all()
+        )
+        counts = {state: int(n) for state, n in rows}
+        succeeded = counts.get("succeeded", 0)
+        failed = counts.get("failed", 0)
+        skipped = counts.get("skipped", 0)
+        return {
+            "succeeded": succeeded,
+            "failed": failed,
+            "skipped": skipped,
+            "processed": succeeded + failed + skipped,
+            "pending": counts.get("pending", 0),
+            "running": counts.get("running", 0),
+        }
+
+    def _serialize_sweep(self, sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
+        counters = self._combination_counts(sweep.id, db)
         return {
             "sweep_id": sweep.id,
-            "actor": sweep.actor,
             "state": sweep.state,
             "total": sweep.total,
-            "succeeded": sweep.succeeded,
-            "failed": sweep.failed,
-            "skipped": sweep.skipped,
-            "processed": sweep.processed,
+            "succeeded": counters["succeeded"],
+            "failed": counters["failed"],
+            "skipped": counters["skipped"],
+            "processed": counters["processed"],
             "terminal_reason": sweep.terminal_reason,
             "terminal_code": sweep.terminal_code,
+            "draft_key": sweep.idempotency_key,
             "snapshot": sweep.snapshot,
             "started_at": _utc_iso(sweep.started_at),
             "completed_at": _utc_iso(sweep.completed_at),
             "created_at": _utc_iso(sweep.created_at),
+            "updated_at": _utc_iso(sweep.updated_at),
         }
 
-    def command(self, sweep_id: str, command: str, db: Session) -> tuple[dict[str, Any], int]:
+    def get_sweep(
+        self, sweep_id: str, db: Session, actor: str | None = None
+    ) -> dict[str, Any] | None:
         sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).first()
         if not sweep:
+            return None
+        if actor is not None and sweep.actor != actor:
+            return None
+        return self._serialize_sweep(sweep, db)
+
+    def list_active_sweeps(self, actor: str, db: Session) -> list[dict[str, Any]]:
+        rows = (
+            db.query(DiscoverySweep)
+            .filter(
+                DiscoverySweep.actor == actor,
+                DiscoverySweep.state.in_(tuple(NON_TERMINAL_STATES)),
+            )
+            .order_by(desc(DiscoverySweep.created_at), desc(DiscoverySweep.id))
+            .all()
+        )
+        return [self._serialize_sweep(row, db) for row in rows]
+
+    def list_history(self, actor: str, db: Session, *, limit: int = 50) -> list[dict[str, Any]]:
+        rows = (
+            db.query(DiscoverySweep)
+            .filter(DiscoverySweep.actor == actor)
+            .order_by(desc(DiscoverySweep.created_at), desc(DiscoverySweep.id))
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                **self._serialize_sweep(row, db),
+                "snapshot_hash": (row.snapshot or {}).get("snapshot_hash"),
+            }
+            for row in rows
+        ]
+
+    def _claimable_pending(self, sweep_id: str, db: Session) -> int:
+        return (
+            db.query(DiscoveryCombination)
+            .filter(
+                DiscoveryCombination.sweep_id == sweep_id,
+                DiscoveryCombination.state == "pending",
+            )
+            .count()
+        )
+
+    def _lock_sweep(self, db: Session, sweep_id: str) -> DiscoverySweep | None:
+        return (
+            db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).with_for_update().first()
+        )
+
+    def ensure_sweep_wakeup(
+        self,
+        db: Session,
+        sweep_id: str,
+        *,
+        sweep: DiscoverySweep | None = None,
+        rotate_from: int | None = None,
+    ) -> dict[str, Any]:
+        """Garante no máximo um wake-up reclamável (pending/delivered) para o sweep.
+
+        Não cria intent enquanto o sweep está paused ou cancelling. Sweep pending
+        com combinações é promovido a running sob o lock da linha pai.
+        Com rotate_from, insere a próxima generation pending mesmo se a generation
+        atual ainda estiver delivered (rotação antes do ACK).
+        """
+        locked = sweep or self._lock_sweep(db, sweep_id)
+        if not locked:
+            return {"sweep_id": sweep_id, "wake_up_state": None, "created": False}
+        now = _utcnow()
+        if locked.state == "pending":
+            locked.state = "running"
+            if locked.started_at is None:
+                locked.started_at = now
+            locked.updated_at = now
+        if locked.state != "running":
+            return {
+                "sweep_id": locked.id,
+                "state": locked.state,
+                "wake_up_state": None,
+                "created": False,
+            }
+        if self._claimable_pending(locked.id, db) <= 0:
+            outstanding = (
+                db.query(DiscoveryOutbox)
+                .filter(
+                    DiscoveryOutbox.sweep_id == locked.id,
+                    DiscoveryOutbox.state.in_(("pending", "delivered")),
+                )
+                .order_by(desc(DiscoveryOutbox.generation))
+                .first()
+            )
+            return {
+                "sweep_id": locked.id,
+                "state": locked.state,
+                "wake_up_state": outstanding.state if outstanding else None,
+                "generation": outstanding.generation if outstanding else None,
+                "created": False,
+            }
+        pending_intent = (
+            db.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == locked.id,
+                DiscoveryOutbox.state == "pending",
+            )
+            .order_by(desc(DiscoveryOutbox.generation))
+            .first()
+        )
+        if pending_intent is not None:
+            return {
+                "sweep_id": locked.id,
+                "state": locked.state,
+                "wake_up_state": pending_intent.state,
+                "generation": pending_intent.generation,
+                "created": False,
+            }
+        delivered_intent = (
+            db.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == locked.id,
+                DiscoveryOutbox.state == "delivered",
+            )
+            .order_by(desc(DiscoveryOutbox.generation))
+            .first()
+        )
+        if delivered_intent is not None and (
+            rotate_from is None or delivered_intent.generation != rotate_from
+        ):
+            return {
+                "sweep_id": locked.id,
+                "state": locked.state,
+                "wake_up_state": delivered_intent.state,
+                "generation": delivered_intent.generation,
+                "created": False,
+            }
+        max_gen = (
+            db.query(func.max(DiscoveryOutbox.generation))
+            .filter(DiscoveryOutbox.sweep_id == locked.id)
+            .scalar()
+        )
+        next_gen = int(max_gen or 0) + 1
+        intent = DiscoveryOutbox(sweep_id=locked.id, generation=next_gen, state="pending")
+        nested = db.begin_nested()
+        try:
+            db.add(intent)
+            db.flush()
+            nested.commit()
+        except IntegrityError:
+            nested.rollback()
+            existing = (
+                db.query(DiscoveryOutbox)
+                .filter(
+                    DiscoveryOutbox.sweep_id == locked.id,
+                    DiscoveryOutbox.state.in_(("pending", "delivered")),
+                )
+                .order_by(desc(DiscoveryOutbox.generation))
+                .first()
+            )
+            return {
+                "sweep_id": locked.id,
+                "state": locked.state,
+                "wake_up_state": existing.state if existing else None,
+                "generation": existing.generation if existing else None,
+                "created": False,
+            }
+        return {
+            "sweep_id": locked.id,
+            "state": locked.state,
+            "wake_up_state": "pending",
+            "generation": next_gen,
+            "created": True,
+        }
+
+    def _wakeup_status(self, db: Session, sweep_id: str) -> dict[str, Any]:
+        outstanding = (
+            db.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == sweep_id,
+                DiscoveryOutbox.state.in_(("pending", "delivered")),
+            )
+            .order_by(desc(DiscoveryOutbox.generation))
+            .first()
+        )
+        latest = (
+            db.query(DiscoveryOutbox)
+            .filter(DiscoveryOutbox.sweep_id == sweep_id)
+            .order_by(desc(DiscoveryOutbox.generation))
+            .first()
+        )
+        wake_state = outstanding.state if outstanding else (latest.state if latest else None)
+        return {
+            "wake_up_state": wake_state,
+            "generation": (outstanding or latest).generation if (outstanding or latest) else None,
+        }
+
+    def command(
+        self, sweep_id: str, command: str, db: Session, actor: str | None = None
+    ) -> tuple[dict[str, Any], int]:
+        sweep = self._lock_sweep(db, sweep_id)
+        if not sweep:
+            return {"error": "sweep not found"}, 404
+        if actor is not None and sweep.actor != actor:
             return {"error": "sweep not found"}, 404
         target = {"pause": "paused", "resume": "running", "cancel": "cancelling"}.get(command)
         if not target:
             return {"error": "unknown command"}, 400
-        return self._transition(db, sweep, target)
+        if command == "resume" and sweep.state == "running":
+            wake = self.ensure_sweep_wakeup(db, sweep.id, sweep=sweep)
+            del wake
+            db.commit()
+            published = self.dispatch_outbox(db=db)
+            status = self._wakeup_status(db, sweep.id)
+            if status.get("wake_up_state") == "delivered":
+                dispatch_status = "published"
+            elif status.get("wake_up_state") == "pending":
+                dispatch_status = "deferred" if published == 0 else "queued"
+            else:
+                dispatch_status = "idle"
+            body = self.get_sweep(sweep.id, db) or {"sweep_id": sweep.id, "state": sweep.state}
+            body.update(
+                {
+                    "wake_up_state": status.get("wake_up_state"),
+                    "dispatch_status": dispatch_status,
+                }
+            )
+            return body, 200
+        if command == "pause" and sweep.state == "paused":
+            db.commit()
+            return {"sweep_id": sweep.id, "state": sweep.state}, 200
+        if command == "cancel" and sweep.state in ("cancelling", "cancelled"):
+            db.commit()
+            return {"sweep_id": sweep.id, "state": sweep.state}, 200
+        error = self._apply_transition(sweep, target)
+        if error is not None:
+            db.commit()
+            return error
+        wake = {"wake_up_state": None, "created": False}
+        if command == "resume" and sweep.state == "running":
+            wake = self.ensure_sweep_wakeup(db, sweep.id, sweep=sweep)
+        db.commit()
+        dispatch_status = "idle"
+        if command == "resume" and sweep.state == "running":
+            published = self.dispatch_outbox(db=db)
+            status = self._wakeup_status(db, sweep.id)
+            if status.get("wake_up_state") == "delivered":
+                dispatch_status = "published"
+            elif status.get("wake_up_state") == "pending":
+                dispatch_status = "deferred" if published == 0 else "queued"
+            else:
+                dispatch_status = "idle"
+            body = self.get_sweep(sweep.id, db) or {"sweep_id": sweep.id, "state": sweep.state}
+            body.update(
+                {
+                    "wake_up_state": status.get("wake_up_state"),
+                    "dispatch_status": dispatch_status,
+                }
+            )
+            return body, 200
+        return {"sweep_id": sweep.id, "state": sweep.state}, 200
 
     # --- Claims / leases (spec discovery-sweep) ----------------------------
 
@@ -697,6 +985,21 @@ class DiscoveryService:
 
     # --- Outbox at-least-once (spec discovery-sweep) ------------------------
 
+    def _repair_incomplete_sweeps(self, session: Session) -> None:
+        """Promove start interrompido e cria wake-up para running sem intent reclamável."""
+        incomplete = (
+            session.query(DiscoverySweep)
+            .filter(DiscoverySweep.state.in_(("pending", "running")))
+            .order_by(DiscoverySweep.created_at.asc())
+            .all()
+        )
+        for row in incomplete:
+            locked = self._lock_sweep(session, row.id)
+            if not locked:
+                continue
+            if locked.state in ("pending", "running"):
+                self.ensure_sweep_wakeup(session, locked.id, sweep=locked)
+
     def dispatch_outbox(self, db: Session | None = None) -> int:
         """Lê intents pending (≤100), publica lotes (≤20) respeitando limites
         globais (8) e por sweep (1). Payload idempotente: sweep_id+generation.
@@ -707,6 +1010,7 @@ class DiscoveryService:
         published = 0
         try:
             now = _utcnow()
+            self._repair_incomplete_sweeps(session)
             # Redelivery: intents entregues há mais de OUTBOX_REDELIVERY_SECONDS
             # voltam a pending (broker caiu antes do ACK; at-least-once).
             stale = (
@@ -854,6 +1158,7 @@ class DiscoveryService:
         session = db or SessionLocal()
         try:
             rows = session.query(DiscoveryResult).filter(DiscoveryResult.sweep_id == sweep_id).all()
+            rows = [row for row in rows if row.dedup_state != "discarded"]
             eligible: list[DiscoveryResult] = []
             ineligible: list[DiscoveryResult] = []
             for row in rows:
@@ -964,6 +1269,14 @@ class DiscoveryService:
         result = db.query(DiscoveryResult).filter(DiscoveryResult.id == result_id).first()
         if not result:
             return {"error": "result not found"}, 404
+        if result.dedup_state == "discarded":
+            return (
+                {
+                    "error": "discarded",
+                    "detail": "resultado descartado não pode ser promovido",
+                },
+                422,
+            )
         if result.eligibility != "eligible":
             return (
                 {
@@ -997,6 +1310,17 @@ class DiscoveryService:
         from sqlalchemy import text
 
         db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
+        db.refresh(result)
+        if result.dedup_state == "discarded":
+            return (
+                {
+                    "error": "discarded",
+                    "detail": "resultado descartado não pode ser promovido",
+                },
+                422,
+            )
+        if result.dedup_state == "already_promoted":
+            return {"favorite_id": result.dedup_reference, "result_id": result.id}, 200
 
         duplicate = None
         try:
@@ -1115,3 +1439,38 @@ class DiscoveryService:
                 }, 200
             raise
         return {"favorite_id": str(favorite.id), "result_id": result.id}, 201
+
+    def discard_result(self, *, result_id: str, db: Session) -> tuple[dict[str, Any], int]:
+        from sqlalchemy import text
+
+        result = db.query(DiscoveryResult).filter(DiscoveryResult.id == result_id).first()
+        if not result:
+            return {"error": "result not found"}, 404
+        if result.dedup_state == "already_promoted":
+            return (
+                {
+                    "error": "already_promoted",
+                    "detail": "resultado já promovido não pode ser descartado nesta tela",
+                },
+                409,
+            )
+        if result.dedup_state == "discarded":
+            return {"result_id": result.id, "dedup_state": "discarded"}, 200
+        lock_key = int(hashlib.sha256(result.strategy_identity_key.encode()).hexdigest()[:16], 16)
+        lock_key &= 0x7FFFFFFFFFFFFFFF
+        db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
+        db.refresh(result)
+        if result.dedup_state == "already_promoted":
+            return (
+                {
+                    "error": "already_promoted",
+                    "detail": "resultado já promovido não pode ser descartado nesta tela",
+                },
+                409,
+            )
+        if result.dedup_state == "discarded":
+            return {"result_id": result.id, "dedup_state": "discarded"}, 200
+        result.dedup_state = "discarded"
+        result.updated_at = _utcnow()
+        db.commit()
+        return {"result_id": result.id, "dedup_state": "discarded"}, 200

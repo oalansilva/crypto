@@ -34,17 +34,57 @@ A auditoria SHALL consultar o banco de sessões do opencode (`~/.local/share/ope
 - **THEN** a limitação é declarada no relatório em vez de audit vazio
 
 ### Requirement: Registro de melhorias como cards PO no board
-Cada melhoria acionável da auditoria SHALL ser registrada como 1 issue separada no repo, em formato de proposta PO (`## Proposta (PO)` com Contexto, Escopo, Critérios de aceite), com label `kaizen`, `Status=Todo` no Project 1, campos preenchidos (`Prioridade` P0/P1/P2, `Tipo`, `Frente`, `Responsavel`, `Semana`) e dependências linkadas.
+Cada melhoria acionável da auditoria SHALL ser registrada como 1 issue separada no repo, em formato de proposta PO (`## Proposta (PO)` com Contexto, Escopo, Critérios de aceite), com label `kaizen`, `Status=Em Refinamento` no Project 1, campos preenchidos (`Prioridade` P0/P1/P2, `Tipo`, `Frente`, `Responsavel`, `Semana`) e dependências linkadas.
 
-#### Scenario: Card criado como backlog
-- **WHEN** o Kaizen registra uma melhoria
-- **THEN** a issue é criada com label `kaizen` e `Status=Todo` no board
-- **AND** o fluxo normal do board (Design, Aprovação de Design, ...) é seguido a partir daí
+#### Scenario: Card criado como entrada
+- **WHEN** o Kaizen (via orquestrador de closeout) registra uma melhoria
+- **THEN** a issue é criada com label `kaizen` e `Status=Em Refinamento` no board
+- **AND** o fluxo normal do board (`Em Refinamento` → `Todo` → Design → …) é seguido a partir daí
 
 #### Scenario: Limite de 3 cards por release
 - **WHEN** uma análise gera mais de 3 melhorias
 - **THEN** apenas os 3 de maior prioridade entram como cards na release atual
 - **AND** as demais permanecem no backlog kaizen para releases seguintes
+
+### Requirement: Evidência de materialização Kaizen no fechamento de release
+
+Antes de concluir o `release-guard post`, a entrada canônica de `/kaizen release` em `docs/kaizen-log.md` para a data da release MUST evidenciar materialização de melhorias acionáveis: (a) 1 a 3 issues novas listadas na tabela cujo heading `###` **começa com** `Cards kaizen criados` (sufixo livre) sob o(s) heading(s) `## YYYY-MM-DD — Kaizen release`, ou (b) linhas `(não criado)` com `coberto por` seguido de um ou mais `#N` (todos em fluxo no Project 1: Status presente e não `Pronto`/`Cancelado`), ou (c) marcador explícito `Sem achados acionáveis` quando não houver linhas de dados na união das tabelas. Qualquer linha de dados inválida MUST falhar o check mesmo se houver cards criados ou marcador. A auditoria da skill `kaizen` permanece read-only; a criação de issues é responsabilidade do orquestrador de closeout e o guard apenas valida.
+
+#### Scenario: Post bloqueia sem cards nem dedupe válido
+- **WHEN** o `post` encontra heading Kaizen da data mas a união das tabelas não tem issues novas nem dedupe válido nem marcador sem achados acionáveis
+- **THEN** o guard emite blocker e não autoriza promover o pacote a `Pronto`
+
+#### Scenario: Post passa com cards listados
+- **WHEN** a união das tabelas lista entre 1 e 3 issues `#N` criadas, sem linhas inválidas, e qualquer dedupe extra tem todas as coberturas em fluxo
+- **THEN** o check de materialização Kaizen passa
+
+#### Scenario: Post passa com zero cards e dedupe em fluxo
+- **WHEN** não há issues novas e cada linha `(não criado)` cita `coberto por` com um ou mais `#N` em Status de fluxo
+- **THEN** o check de materialização Kaizen passa
+
+#### Scenario: Post passa com marcador sem achados acionáveis
+- **WHEN** não há linhas de dados na(s) tabela(s) e o corpo contém `Sem achados acionáveis`
+- **THEN** o check de materialização Kaizen passa
+
+#### Scenario: Dedupe com cobertura Pronto ou Cancelado falha
+- **WHEN** cobertura `#N` está `Pronto` ou `Cancelado` (ou ausente)
+- **THEN** o guard emite blocker
+
+#### Scenario: Mais de 3 cards na data falha
+- **WHEN** a união das tabelas lista mais de 3 issues distintas criadas
+- **THEN** o guard emite blocker
+
+#### Scenario: Linha inválida falha mesmo com cards criados
+- **WHEN** há 1–3 `#N` criados e também uma linha `(não criado)` sem `coberto por #N`
+- **THEN** o guard emite blocker
+
+#### Scenario: Marcador não salva linhas inválidas
+- **WHEN** existe `Sem achados acionáveis` e também há linha de dados inválida na tabela
+- **THEN** o guard emite blocker
+
+#### Scenario: Board indisponível com dedupe falha fechado
+- **WHEN** há dedupe e o snapshot do Project 1 está indisponível
+- **THEN** o guard emite blocker fail-closed
 
 ### Requirement: Priorização visível com override humano
 O campo `Prioridade` (P0/P1/P2) SHALL ser preenchido na criação do card pela regra severidade × frequência / esforço: P0 = risco de segurança/dados/produção ou falha recorrente bloqueante ou alucinação cara → semana atual; P1 = quick win/higiene → próxima semana; P2 = desejável → backlog. O override humano deve ser sempre possível.

@@ -1,10 +1,10 @@
 # cursor-harness Specification
 
 ## Purpose
-Contrato do cliente de desenvolvimento ativo do Cripto Farol: Cursor Agent, com o modelo selecionado no chat em todos os papéis.
+Contrato do adapter Cursor sobre o núcleo do processo (yaml + `scripts/process-fsm/` + `AGENTS.md`). Grok Build é o adapter irmão em `.grok/`.
 ## Requirements
 ### Requirement: Cursor is the versioned development harness
-The repository SHALL contain versioned Cursor Agent configuration under `.cursor/` (rules, skills, commands, hooks) and MUST NOT keep OpenCode (`opencode.json`, `.opencode/`) as an active contract.
+The repository SHALL contain a versioned Cursor **adapter** under `.cursor/` (rules, skills, commands, hooks) that compiles the process nucleus (`.cursor/process-fsm.yaml` + `scripts/process-fsm/` + root `AGENTS.md`). Cursor is not the only versioned client: Grok Build has a sibling adapter under `.grok/`. The repo MUST NOT keep OpenCode (`opencode.json`, `.opencode/`) as an active contract. `.cursor/rules/harness.mdc` SHALL identify the Cursor client (hooks + Task `inherit`) and MUST NOT repeat the δ table or the 12-column runbook.
 
 #### Scenario: Fresh checkout loads Cursor config
 - **WHEN** a Cursor Agent session starts in the repo
@@ -14,6 +14,11 @@ The repository SHALL contain versioned Cursor Agent configuration under `.cursor
 #### Scenario: No secrets in versioned harness files
 - **WHEN** `.cursor/` is inspected
 - **THEN** no token, key or credential is present in versioned files
+
+#### Scenario: harness.mdc is Cursor identity not the law
+- **WHEN** `.cursor/rules/harness.mdc` is counted excluding the YAML frontmatter
+- **THEN** the body names Cursor hooks and Task `inherit`
+- **AND** it does not contain a T0–T17 table or `release-guard`
 
 ### Requirement: OpenSpec flow is available in Cursor
 Cursor SHALL load OpenSpec skills and `/opsx-*` commands that invoke the same `openspec` CLI used by the project.
@@ -60,7 +65,7 @@ The Cursor harness SHALL load `alan-workflow`, `alan-workflow-ambientes` and `gi
 - **AND** docs instruct preferring the repo path over Codex compatibility discovery
 
 ### Requirement: Column gate is always-on; full workflow is a skill
-The always-apply harness rule SHALL state that `Em Refinamento` is the entry column, Todo is not implementation, and Design columns must not be skipped. The detailed 12-column runbook SHALL live in the `alan-workflow` skill (on-demand). Chat requests such as `implemente` SHALL NOT authorize `/opsx:apply` or product code while `Status=Todo`. The always-on layer SHALL be the short `harness.mdc` plus the `sessionStart` Moore page; it MUST NOT include the `AGENTS.md` overlay body.
+The always-on layer SHALL be the short root `AGENTS.md` plus the client paging (Cursor: `sessionStart` Moore page; Grok: generated `.grok/rules/` page). It MUST state that `Em Refinamento` is the entry column, Todo is not implementation, and Design columns must not be skipped. The detailed 12-column runbook SHALL live in the `alan-workflow` skill (on-demand). Chat requests such as `implemente` SHALL NOT authorize `/opsx:apply` or product code while `Status=Todo`. The always-on layer MUST NOT include the `AGENTS.md` overlay body (`docs/crypto-overlay.md`).
 
 #### Scenario: Chat says implement all Todo cards
 - **WHEN** the user asks to implement cards in `Status=Todo`
@@ -68,7 +73,7 @@ The always-apply harness rule SHALL state that `Em Refinamento` is the entry col
 
 #### Scenario: Todo session does not load release playbook
 - **WHEN** a session starts bound to a card with `Status=Todo`
-- **THEN** always-on context is harness.mdc plus `context_file[Todo]`
+- **THEN** always-on context is `AGENTS.md` plus `context_file[Todo]`
 - **AND** it MUST NOT include the release-guard closeout playbook
 
 ### Requirement: OpenSpec Gist is a Design gate
@@ -138,7 +143,7 @@ While this change is active, the Cursor Agent MUST NOT invoke `gh project item-e
 - **AND** `failClosed` is not true on that shell hook
 
 ### Requirement: Root AGENTS.md is a stub; overlay is on-demand
-The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines that points to `docs/crypto-overlay.md` for ports/URLs, Drive, PostgreSQL, and release-guard/lote/PROD, and MUST include the board URL `github.com/users/oalansilva/projects/1`. The long overlay body SHALL live in `docs/crypto-overlay.md` (not always-injected by Cursor). Agents MUST `Read` that overlay only when the task needs those topics. The stub MUST NOT contain the 12-column runbook, `release-guard pre`/`post` snippets, or deploy PROD procedure.
+The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines that points to `docs/crypto-overlay.md` for ports/URLs, Drive, PostgreSQL, and release-guard/lote/PROD, MUST include the board URL `github.com/users/oalansilva/projects/1`, and MUST carry the short always-on δ (resolve the tuple, chat ≠ δ, Todo ≠ código, Alan-only T1/T7/T15, clients Cursor and Grok Build). The long overlay body SHALL live in `docs/crypto-overlay.md` (not always-injected). Agents MUST `Read` that overlay only when the task needs those topics. The stub MUST NOT contain the 12-column runbook, `release-guard pre`/`post` snippets, or deploy PROD procedure.
 
 #### Scenario: Fresh session does not ingest the overlay body from AGENTS.md
 - **WHEN** the root `AGENTS.md` is read as the always-on workspace file
@@ -147,14 +152,21 @@ The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines th
 - **AND** it names `docs/crypto-overlay.md` as the on-demand overlay
 - **AND** it contains `github.com/users/oalansilva/projects/1`
 
+#### Scenario: Stub names both clients and the tuple
+- **WHEN** the root `AGENTS.md` is read
+- **THEN** it mentions Cursor Agent and Grok Build
+- **AND** it tells the agent to resolve `(q, bound_card, q_git)`
+- **AND** it states that chat wording is not authorization
+
 ### Requirement: Always-on harness rule is 8-15 body lines
-`.cursor/rules/harness.mdc` SHALL remain `alwaysApply: true` and its body (non-empty lines after the YAML frontmatter) MUST contain between 8 and 15 lines. The body SHALL tell the agent to resolve `(q, bound_card, q_git)`, that chat wording is not authorization, that NLU is not δ, that `Todo` is not implementation, and that the overlay is on-demand. It MUST NOT include the Code Review reviewer procedure, the OpenSpec Gist republication helper, or the release closeout.
+`.cursor/rules/harness.mdc` SHALL remain `alwaysApply: true`. Its body (non-empty lines after the YAML frontmatter) MUST contain between 4 and 12 lines. The body SHALL identify the Cursor client: hooks under `.cursor/hooks.json`, Task `inherit`, and that the always-on δ lives in `AGENTS.md`. It MUST NOT include the Code Review reviewer procedure, the OpenSpec Gist republication helper, the release closeout, a T0–T17 table, or a restatement of I1–I9.
 
 #### Scenario: harness.mdc body budget
 - **WHEN** `.cursor/rules/harness.mdc` is counted excluding the YAML frontmatter
-- **THEN** non-empty body lines are between 8 and 15 inclusive
-- **AND** the body mentions resolving `(q, bound_card, q_git)`
+- **THEN** non-empty body lines are between 4 and 12 inclusive
+- **AND** the body mentions Task `inherit` or Cursor hooks
 - **AND** the body does not mention `diff-reviewer` or `release-guard`
+- **AND** the body does not claim Grok Auto
 
 ### Requirement: alan-workflow skill priority is delta and Guard first
 `.cursor/skills/alan-workflow/SKILL.md` SHALL declare priority order **δ and Guard > overlay > skill > wording**. Chat utterances such as `implemente` MUST be classified as wording (lowest). Overlay (`docs/crypto-overlay.md`) MUST be loaded only when ports, Drive, PostgreSQL, or release are in scope.
@@ -165,7 +177,7 @@ The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines th
 - **AND** it no longer lists “Instrução direta de Alan no chat” as item 1 ahead of δ
 
 ### Requirement: Pronto closeout is process_event fechar_release
-After an explicit release request, the Agent SHALL publish (`main`, deploy PROD, docs) using the overlay and `release-guard`. Closing Homologado → Pronto SHALL be `process_event fechar_release` with live `M_lote` (`release-guard post` PASS) for the `RELEASE_CARDS` package. The Agent MUST NOT treat `gh project item-edit` of Status or a chat `suba a release` / `autorizo Pronto` as T16. `priorizar`, `aprovar_design`, and `homologar` remain Alan-only. Always-on `harness.mdc` SHALL say Alan-only is T1/T7/T15 (not T16).
+After an explicit release request, the Agent SHALL publish (`main`, deploy PROD, docs) using the overlay and `release-guard`. Closing Homologado → Pronto SHALL be `process_event fechar_release` with live `M_lote` (`release-guard post` PASS) for the `RELEASE_CARDS` package. The Agent MUST NOT treat `gh project item-edit` of Status or a chat `suba a release` / `autorizo Pronto` as T16. `priorizar`, `aprovar_design`, and `homologar` remain Alan-only. Always-on `AGENTS.md` SHALL say Alan-only is T1/T7/T15 (not T16). `.cursor/rules/harness.mdc` MUST NOT restate that table.
 
 #### Scenario: Agent closes Homologado to Pronto after post PASS
 - **WHEN** the package cards are Homologado, `release-guard post` exits 0, and the Agent runs `process_event fechar_release`
@@ -175,4 +187,33 @@ After an explicit release request, the Agent SHALL publish (`main`, deploy PROD,
 #### Scenario: Chat does not close Pronto
 - **WHEN** the user says `implemente` or `autorizo Pronto` without `process_event fechar_release` succeeding
 - **THEN** Status MUST remain Homologado
+
+#### Scenario: Alan-only lives in AGENTS.md not harness.mdc
+- **WHEN** `AGENTS.md` and `.cursor/rules/harness.mdc` are read
+- **THEN** `AGENTS.md` states Alan-only T1/T7/T15
+- **AND** `harness.mdc` does not contain the string `T1/T7/T15` as the always-on law
+
+### Requirement: Em Refinamento story sharpening uses grill-card
+
+The Cursor harness SHALL load `.cursor/skills/grill-card/SKILL.md` and `.cursor/skills/grilling/SKILL.md` as regular files in `oalansilva/crypto`. `alan-workflow` SHALL describe Em Refinamento as intake **and** story grilling (issue body ledger, T1 Alan-only). `github-project-board` SHALL state the same for the Em Refinamento column. Agents MUST NOT treat `grill-with-docs` or `to-spec` as the project entry skill.
+
+#### Scenario: Fresh clone has adapter and primitive
+- **WHEN** a Cursor session starts from a GitHub checkout
+- **THEN** `.cursor/skills/grill-card/SKILL.md` and `.cursor/skills/grilling/SKILL.md` exist and are not mode `120000`
+- **AND** `alan-workflow` names `grill-card` for Em Refinamento
+
+#### Scenario: Design synthesizes a grilled issue
+- **WHEN** `Status=Design` and the bound issue body contains the grill-card DoD sections
+- **THEN** `/opsx:new` / `/opsx:ff` SHALL use that issue as briefing and MUST NOT start a new interview
+- **AND** MUST NOT invoke `grill-card` or `grill-with-docs` as a step to generate `proposal.md`
+
+#### Scenario: Incomplete DoD in Design
+- **WHEN** `Status=Design` and the bound issue body is missing any grill-card DoD section
+- **THEN** the agent MUST NOT run `/opsx:ff` and MUST NOT invent story text
+- **AND** SHALL comment the missing sections and remain in Design
+- **AND** `/opsx:explore` MAY run only for technical codebase questions, not to rewrite product scope
+
+#### Scenario: Em Refinamento page mentions grilling the issue
+- **WHEN** a session starts bound to a card with `Status=Em Refinamento`
+- **THEN** `context_file[Em Refinamento]` instructs issue clarification / grill-card and that chat is not T1
 

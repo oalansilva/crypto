@@ -15,16 +15,20 @@ Start a new change using the experimental artifact-driven approach.
 
 **Input**: The user's request should include a change name (kebab-case) OR a description of what they want to build.
 
+**Bound grilled issue (this repo):** If the session is bound to a card in `Status=Design` and that GitHub issue body already has the `grill-card` DoD sections (Problema, História, Entra/não entra, Vocabulário, critérios, Riscos), use the issue as the briefing. Do **not** AskUser "what to build". Do **not** invoke `grill-card` or `grill-with-docs` to generate `proposal.md`. If any DoD section is missing: do **not** invent story text; comment the gaps on the issue; remain in Design. `/opsx:explore` MAY run only for technical holes in the codebase, never to rewrite product scope. `grill-card` is Em Refinamento only — not a step of this skill.
+
 **Steps**
 
 1. **If no clear input provided, ask what they want to build**
+
+   Skip this step when the bound issue already has the `grill-card` DoD (use that issue as the briefing).
 
    Use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
    > "What change do you want to work on? Describe what you want to build or fix."
 
    From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
 
-   **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
+   **IMPORTANT**: Do NOT proceed without understanding what the user wants to build (issue DoD counts as that understanding).
 
 2. **Determine the workflow schema**
 
@@ -74,3 +78,5 @@ After completing the steps, summarize:
 - If the name is invalid (not kebab-case), ask for a valid name
 - If a change with that name already exists, suggest continuing that change instead
 - Pass --schema if using a non-default workflow
+- Do NOT invoke `grill-card` or `grill-with-docs` while generating OpenSpec artifacts
+- If the bound Design issue is missing DoD sections, do NOT invent them — comment gaps and stay in Design

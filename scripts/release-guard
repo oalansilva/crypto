@@ -1248,6 +1248,26 @@ if [[ "$mode" == "post" ]]; then
     issue "kaizen-log has no canonical Kaizen release entry for $RELEASE_DATE (required: heading '## $RELEASE_DATE — Kaizen release ...' before moving cards to Pronto)"
   else
     printf 'Kaizen release entry present for %s.\n' "$RELEASE_DATE"
+    # Card #661: materialization (1–3 created / dedupe in-flow / Sem achados acionáveis).
+    kaizen_mat_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/kaizen_materialization_check.py"
+    if ! [[ -f "$kaizen_mat_script" ]]; then
+      issue "kaizen materialization checker missing: $kaizen_mat_script"
+    else
+      mat_out=""
+      mat_rc=0
+      mat_out="$(
+        BOARD_STATE="$BOARD_STATE" BOARD_JSON="${BOARD_JSON:-}" \
+          python3 "$kaizen_mat_script" "$kaizen_log" "$RELEASE_DATE" \
+          --board-state "$BOARD_STATE" 2>&1
+      )" || mat_rc=$?
+      if [[ "$mat_rc" -eq 0 ]]; then
+        printf '%s\n' "$mat_out"
+      else
+        while IFS= read -r mat_line; do
+          [[ -n "$mat_line" ]] && issue "$mat_line"
+        done <<< "$mat_out"
+      fi
+    fi
   fi
 else
   printf 'Skipped (kaizen release evidence check runs in post).\n'

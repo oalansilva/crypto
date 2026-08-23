@@ -34,9 +34,9 @@ Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de
 
 | Status | Significado |
 | --- | --- |
-| `Em Refinamento` | Entrada de todo card novo; Alan escolhe, prioriza ou cancela |
-| `Todo` | Backlog. **Não é código.** Próxima etapa: Design |
-| `Design` | OpenSpec + crítica; Gist no card; protótipo se UI |
+| `Em Refinamento` | Entrada **e** grelha da história (`grill-card` no issue). Alan escolhe, prioriza ou cancela. T1 só Alan |
+| `Todo` | Backlog (história já afiada). **Não é código.** Próxima etapa: Design |
+| `Design` | OpenSpec sintetiza o issue grelhado + crítica; Gist no card; protótipo se UI. Não reentrevistar |
 | `Aprovação de Design` | Aguardando Alan |
 | `Pronto para Dev` | Design aprovado; único status que libera `/opsx:apply` |
 | `Em desenvolvimento` | Implementando |
@@ -58,13 +58,22 @@ Antes de editar:
 - Consultar `Status` no board (`github-project-board`).
 - Release/deploy/PROD: carregar também `alan-workflow-ambientes`.
 
+## Grill-card (Em Refinamento)
+
+Skill de entrada: `.cursor/skills/grill-card/` (adapter). Primitivo vendorado: `.cursor/skills/grilling/`. **Não** usar `grill-with-docs` nem `to-spec`.
+
+Disparar quando Alan pede para grelhar/afiar **ou** o card bound está em Em Refinamento **e** o body não tem as 6 seções do DoD. Não em todo T0 (cards nítidos podem T1 direto). Não em Todo/Design.
+
+O agente reescreve o **body do issue** e, com fronteira vazia, comenta o handoff T1. Não arrasta Status. Não grava `CONTEXT.md` / `docs/adr/`. Não chama `/opsx:*`.
+
 ## Card primeiro, OpenSpec mais completo
 
-1. O card nasce primeiro (pode estar incompleto).
-2. Design refina em OpenSpec + Gist secreto `crypto openspec <change>`.
+1. O card nasce primeiro (pode estar incompleto). Em Refinamento: `grill-card` afia o issue; T1 continua só Alan.
+2. Design refina em OpenSpec + Gist secreto `crypto openspec <change>`, **sintetizando** o issue grelhado (não reentrevista).
 3. O Gist SHALL ser **superset** do issue. `/opsx:apply` lê Gist + `openspec/changes/`, não o body do GitHub como spec paralela.
 4. Sem Gist/comentário no card, Design está incompleto. Republicar: `--gist-id` + `--comment-id`.
 5. HTML de protótipo **não** vai no Gist. URL HTTP em bloco separado. No DEV Cripto, `/prototypes*` é servido por `criptofarol-dev-prototypes` (worktree + public/dist), sem fallback SPA.
+6. Se o body em Design **não** tiver o DoD: não `/opsx:ff`; comentar as seções em falta; permanecer em Design. `/opsx:explore` só para furo técnico (código/specs), nunca para reescrever a história.
 
 Helper (path relativo a esta skill no repo):
 
@@ -77,7 +86,7 @@ Helper (path relativo a esta skill no repo):
 
 Usar skills `.cursor/skills/openspec-*` e CLI `openspec`. Não inventar artefatos fora de `openspec instructions`.
 
-Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto para Dev → `/opsx:apply` → `/opsx:verify`. Archive só no fechamento de lote/release.
+Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto para Dev → `/opsx:apply` → `/opsx:verify`. Archive só no fechamento de lote/release. Se o issue bound já tiver o DoD do `grill-card`, o briefing **é** o issue; não perguntar de novo o que construir; não invocar `grill-card` para gerar `proposal.md`. Sem schema `grill-driven`.
 
 ## Implementação
 
@@ -89,7 +98,7 @@ Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evid
 
 ## Release
 
-Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `alan-workflow-ambientes`. Detalhe canônico: `docs/crypto-overlay.md` (Release em lote). No cripto: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`.
+Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `alan-workflow-ambientes`. Detalhe canônico: `docs/crypto-overlay.md` (Release em lote). No cripto: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
 
 Quando o push do archive em `develop` for recusado por proteção (`qa-gate`), mesmo com pacote só Homologado: use `release-*` = `origin/develop` + archive → PR `release-* → main`; `pre` em `release-*` **não** exige archive em `origin/develop`. Após merge + deploy PROD, sync `main → develop` é obrigatório antes do `post` final (reexecutar `post` se as árvores ainda divergirem). Não dual-write o playbook completo neste `SKILL.md` nem no stub `AGENTS.md`.
 

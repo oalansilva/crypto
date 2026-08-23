@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Check, ChevronLeft, ChevronRight, Copy, Edit3, History, Pause, Play, RefreshCw,
-  Shield, Square, Star, X,
+  Shield, Square, Star, Trash2, X,
 } from 'lucide-react'
 import { authFetch } from '../lib/authFetch'
 import { API_BASE_URL } from '../lib/apiBase'
@@ -21,6 +21,9 @@ type PreflightResult = {
   expires_at: string
   snapshot_token: string
   snapshot_hash: string
+  period_type?: string | null
+  start_date?: string | null
+  end_date?: string | null
 }
 
 type SweepState =
@@ -37,7 +40,11 @@ type Sweep = {
   processed: number
   terminal_reason: string | null
   terminal_code: string | null
+  draft_key?: string | null
   snapshot: PreflightResult | null
+  updated_at?: string | null
+  wake_up_state?: string | null
+  dispatch_status?: string | null
 }
 
 type HistoryRun = {
@@ -88,6 +95,7 @@ type LeaderboardRow = {
 type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
 
 const TERMINAL = new Set<SweepState>(['cancelled', 'failed', 'partial_failure', 'completed'])
+const NON_TERMINAL = new Set<SweepState>(['pending', 'running', 'paused', 'cancelling'])
 const PAGE_SIZE = 3
 const DRAFT_KEY_STORAGE = 'discovery-draft-idempotency-key'
 const idempotencyKey = (prefix: string, value: string) => `${prefix}-${value}`.slice(0, 64)
@@ -223,6 +231,8 @@ export function DiscoveryPage() {
   const [snapshotStale, setSnapshotStale] = useState(false)
   const [draftFrozen, setDraftFrozen] = useState(false)
   const [draftKey, setDraftKey] = useState(() => readStoredDraftKey() || newDraftKey())
+  const [recoveryStatus, setRecoveryStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [reconnected, setReconnected] = useState(false)
   // Sweep ativo e run histórico exibido permanecem separados, como no protótipo.
   const [activeSweep, setActiveSweep] = useState<Sweep | null>(null)
   const [viewSweep, setViewSweep] = useState<Sweep | null>(null)
@@ -244,6 +254,8 @@ export function DiscoveryPage() {
   const [promoteConflict, setPromoteConflict] = useState<string | null>(null)
   const [promotedFocusId, setPromotedFocusId] = useState<string | null>(null)
   const [promoting, setPromoting] = useState(false)
+  const [discardTarget, setDiscardTarget] = useState<LeaderboardRow | null>(null)
+  const [discarding, setDiscarding] = useState(false)
   const [toast, setToast] = useState<{ title: string; copy: string } | null>(null)
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
@@ -253,8 +265,17 @@ export function DiscoveryPage() {
   const preflightTimer = useRef<number | null>(null)
   const toastTimer = useRef<number | null>(null)
   const focusStartedSweepRef = useRef(false)
+  const skipCatalogDefaultsRef = useRef(false)
+  const viewOriginRef = useRef<'auto' | 'user'>('auto')
+  const pollRevRef = useRef(0)
+  const pollInFlightRef = useRef(false)
+  const activeSweepRef = useRef<Sweep | null>(null)
+  const lbReqRef = useRef(0)
+  const appliedUpdatedAtRef = useRef<Record<string, string>>({})
   const modalRef = useRef<HTMLDivElement | null>(null)
+  const discardModalRef = useRef<HTMLDivElement | null>(null)
   const promotionTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const discardTriggerRef = useRef<HTMLButtonElement | null>(null)
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
   const previousActiveStateRef = useRef<SweepState | null>(null)
 
@@ -323,10 +344,15 @@ export function DiscoveryPage() {
           display_name: String(t.display_name ?? ''),
           description: String(t.description ?? ''),
         }))
-        setSelectedTemplates(flat.slice(0, 3).map((t) => t.name))
         const catT = catalogFromTemplates(flat)
         setTemplatesCatalog(catT)
-        setCommittedSelection((prev) => ({ ...prev, templates: { ...prev.templates, selected: new Set(flat.slice(0, 3).map((t) => t.name)) } }))
+        if (!skipCatalogDefaultsRef.current) {
+          setSelectedTemplates(flat.slice(0, 3).map((t) => t.name))
+          setCommittedSelection((prev) => ({
+            ...prev,
+            templates: { ...prev.templates, selected: new Set(flat.slice(0, 3).map((t) => t.name)) },
+          }))
+        }
       } catch {
         /* catálogo auxiliar */
       }
@@ -341,10 +367,12 @@ export function DiscoveryPage() {
         const data = await res.json()
         const list: string[] = data.symbols || []
         setSymbols(list)
-        setSelectedSymbols(list.slice(0, 4))
         const catS = catalogFromSymbols(list)
         setSymbolsCatalog(catS)
-        setCommittedSelection((prev) => ({ ...prev, symbols: { ...prev.symbols, selected: new Set(list.slice(0, 4)) } }))
+        if (!skipCatalogDefaultsRef.current) {
+          setSelectedSymbols(list.slice(0, 4))
+          setCommittedSelection((prev) => ({ ...prev, symbols: { ...prev.symbols, selected: new Set(list.slice(0, 4)) } }))
+        }
       } catch {
         /* catálogo auxiliar */
       }
@@ -352,6 +380,29 @@ export function DiscoveryPage() {
   }, [])
 
   // ---------- Histórico ----------
+  const hydrateFromSweep = useCallback((sweep: Sweep) => {
+    const snapshot = sweep.snapshot
+    const axes = snapshot?.axes
+    if (!axes) return false
+    skipCatalogDefaultsRef.current = true
+    setSelectedTemplates(axes.templates || [])
+    setSelectedSymbols(axes.symbols || [])
+    setTimeframes(axes.timeframes?.length ? axes.timeframes : ['4h', '1d'])
+    setDirections(axes.directions?.length ? axes.directions : ['long'])
+    const periodType = snapshot.period_type
+    if (periodType === '6m' || periodType === '2y' || periodType === 'all') {
+      setPeriod(periodType)
+    }
+    setPreflight(snapshot)
+    setDraftFrozen(true)
+    if (sweep.draft_key) setDraftKey(sweep.draft_key)
+    setCommittedSelection({
+      templates: { ...makeEmptyAxis(), selected: new Set(axes.templates || []) },
+      symbols: { ...makeEmptyAxis(), selected: new Set(axes.symbols || []) },
+    })
+    return true
+  }, [])
+
   const loadHistory = useCallback(async () => {
     try {
       const res = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps/history`)
@@ -364,13 +415,9 @@ export function DiscoveryPage() {
     }
   }, [])
 
-  useEffect(() => {
-    void loadHistory()
-  }, [loadHistory])
-
   // ---------- Preflight (auto, com debounce) ----------
   const runPreflight = useCallback(async () => {
-    if (draftFrozen) return
+    if (recoveryStatus !== 'ready' || draftFrozen) return
     if (selectedTemplates.length === 0 || selectedSymbols.length === 0 || timeframes.length === 0 || directions.length === 0) {
       setPreflight(null)
       setSnapshotStale(false)
@@ -404,10 +451,10 @@ export function DiscoveryPage() {
     } finally {
       setPreflightLoading(false)
     }
-  }, [draftFrozen, selectedTemplates, selectedSymbols, timeframes, directions, period])
+  }, [draftFrozen, recoveryStatus, selectedTemplates, selectedSymbols, timeframes, directions, period])
 
   useEffect(() => {
-    if (draftFrozen) return
+    if (recoveryStatus !== 'ready' || draftFrozen) return
     if (preflightTimer.current !== null) window.clearTimeout(preflightTimer.current)
     preflightTimer.current = window.setTimeout(() => void runPreflight(), 450)
     return () => {
@@ -426,6 +473,8 @@ export function DiscoveryPage() {
   ].length * timeframes.length * directions.length
   const overLimit = Boolean(preflight?.errors?.total)
   const canStart =
+    recoveryStatus === 'ready' &&
+    !draftFrozen &&
     preflight !== null &&
     Object.keys(preflight.errors || {}).length === 0 &&
     !snapshotStale
@@ -482,6 +531,8 @@ export function DiscoveryPage() {
             snapshot: preflight,
           }
       focusStartedSweepRef.current = true
+      pollRevRef.current += 1
+      activeSweepRef.current = fullSweep
       setActiveSweep(fullSweep)
       if (!viewSweep) setViewSweep(fullSweep)
       setMetric(draftMetric)
@@ -513,6 +564,7 @@ export function DiscoveryPage() {
 
   const loadLeaderboard = useCallback(
     async (sweepId: string, m: Metric, symbol: string, timeframe: string, direction: string, pg: number, silent = false) => {
+      const req = ++lbReqRef.current
       if (!silent) setLbLoading(true)
       setLbError(false)
       try {
@@ -527,6 +579,7 @@ export function DiscoveryPage() {
         const res = await authFetch(
           `${API_BASE_URL}/combos/discovery/sweeps/${sweepId}/leaderboard?${params.toString()}`,
         )
+        if (req !== lbReqRef.current) return
         if (!res.ok) {
           if (res.status === 401) {
             setSessionExpired(true)
@@ -540,22 +593,100 @@ export function DiscoveryPage() {
           return
         }
         const data = await res.json()
+        if (req !== lbReqRef.current) return
         setRows(data.results || [])
         setTotalMatched(data.total || 0)
         setTotalAvailable(data.unfiltered_total ?? data.total ?? 0)
       } catch {
+        if (req !== lbReqRef.current) return
         setLbError(true)
       } finally {
-        setLbLoading(false)
+        if (req === lbReqRef.current) setLbLoading(false)
       }
     },
     [],
   )
 
-  const refreshSweep = useCallback(async () => {
-    if (!activeSweep) return
+  const restoreSession = useCallback(async (opts?: { focus?: boolean }) => {
+    setRecoveryStatus('loading')
     try {
-      const res = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps/${activeSweep.sweep_id}`)
+      const [activeRes] = await Promise.all([
+        authFetch(`${API_BASE_URL}/combos/discovery/sweeps/active`),
+        loadHistory(),
+      ])
+      if (!activeRes.ok) {
+        if (activeRes.status === 401) setSessionExpired(true)
+        if (activeRes.status === 403) setPermissionDenied(true)
+        setRecoveryStatus('error')
+        return
+      }
+      const data = await activeRes.json()
+      const sweeps: Sweep[] = Array.isArray(data?.sweeps) ? data.sweeps : []
+      const newest = sweeps[0]
+      if (!newest) {
+        pollRevRef.current += 1
+        activeSweepRef.current = null
+        setActiveSweep(null)
+        setReconnected(false)
+        setRecoveryStatus('ready')
+        return
+      }
+      if (TERMINAL.has(newest.state)) {
+        pollRevRef.current += 1
+        activeSweepRef.current = null
+        setActiveSweep(null)
+        setViewSweep(newest)
+        viewOriginRef.current = 'auto'
+        setRecoveryStatus('ready')
+        setPage(1)
+        setFSymbol('all')
+        setFTimeframe('all')
+        setFDirection('all')
+        await loadLeaderboard(newest.sweep_id, 'calmar_ratio', 'all', 'all', 'all', 1)
+        return
+      }
+      const ok = hydrateFromSweep(newest)
+      if (!ok) {
+        setRecoveryStatus('error')
+        return
+      }
+      pollRevRef.current += 1
+      activeSweepRef.current = newest
+      setActiveSweep(newest)
+      if (newest.updated_at) appliedUpdatedAtRef.current[newest.sweep_id] = newest.updated_at
+      if (viewOriginRef.current === 'auto') {
+        setViewSweep(newest)
+        setMetric('calmar_ratio')
+        setPage(1)
+        setFSymbol('all')
+        setFTimeframe('all')
+        setFDirection('all')
+        await loadLeaderboard(newest.sweep_id, 'calmar_ratio', 'all', 'all', 'all', 1)
+      }
+      setReconnected(true)
+      setRecoveryStatus('ready')
+      if (opts?.focus) {
+        window.setTimeout(() => progressHeadingRef.current?.focus(), 0)
+      }
+    } catch {
+      setRecoveryStatus('error')
+    }
+  }, [hydrateFromSweep, loadHistory, loadLeaderboard])
+
+  useEffect(() => {
+    void restoreSession()
+  }, [restoreSession])
+
+  const refreshSweep = useCallback(async () => {
+    const live = activeSweepRef.current
+    if (!live || TERMINAL.has(live.state)) return
+    const sweepId = live.sweep_id
+    const rev = ++pollRevRef.current
+    pollInFlightRef.current = true
+    try {
+      const res = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps/${sweepId}`)
+      if (rev !== pollRevRef.current) return
+      if (activeSweepRef.current?.sweep_id !== sweepId) return
       if (!res.ok) {
         if (res.status === 401) {
           setSessionExpired(true)
@@ -568,21 +699,33 @@ export function DiscoveryPage() {
         if (res.status === 403) setPermissionDenied(true)
         return
       }
-      const data = await res.json()
-      setActiveSweep(data)
+      const data: Sweep = await res.json()
+      if (rev !== pollRevRef.current) return
+      if (activeSweepRef.current?.sweep_id !== sweepId) return
+      const prevApplied = appliedUpdatedAtRef.current[sweepId]
+      if (prevApplied && data.updated_at && data.updated_at < prevApplied) return
+      if (data.updated_at) appliedUpdatedAtRef.current[sweepId] = data.updated_at
       if (TERMINAL.has(data.state)) {
+        activeSweepRef.current = data
+        setActiveSweep(data)
         setViewSweep(data)
+        setDraftFrozen(false)
         setFSymbol('all')
         setFTimeframe('all')
         setFDirection('all')
         setPage(1)
         await loadLeaderboard(data.sweep_id, metric, 'all', 'all', 'all', 1, true)
         void loadHistory()
+        return
       }
+      activeSweepRef.current = data
+      setActiveSweep(data)
     } catch {
       /* poll continua */
+    } finally {
+      if (rev === pollRevRef.current) pollInFlightRef.current = false
     }
-  }, [activeSweep, metric, loadLeaderboard, loadHistory])
+  }, [metric, loadLeaderboard, loadHistory])
 
   useEffect(() => {
     if (!activeSweep || TERMINAL.has(activeSweep.state) || sessionExpired) {
@@ -634,7 +777,13 @@ export function DiscoveryPage() {
           return
         }
         const data = await res.json()
+        viewOriginRef.current = 'user'
         setViewSweep(data)
+        if (NON_TERMINAL.has(data.state)) {
+          pollRevRef.current += 1
+          activeSweepRef.current = data
+          setActiveSweep(data)
+        }
         setFSymbol('all')
         setFTimeframe('all')
         setFDirection('all')
@@ -657,10 +806,11 @@ export function DiscoveryPage() {
   }, [showToast])
 
   useEffect(() => {
+    if (recoveryStatus !== 'ready') return
     if (!viewSweep && history.length > 0) {
       void selectHistory(history[0].sweep_id)
     }
-  }, [history, viewSweep, selectHistory])
+  }, [history, viewSweep, selectHistory, recoveryStatus])
 
   // Filtros / paginação do leaderboard
   const applyFilters = useCallback(
@@ -795,6 +945,74 @@ export function DiscoveryPage() {
       window.clearTimeout(t)
     }
   }, [promoteTarget, closePromotion])
+
+  const closeDiscard = useCallback((returnFocus = true) => {
+    setDiscardTarget(null)
+    if (returnFocus) {
+      window.setTimeout(() => discardTriggerRef.current?.focus(), 0)
+    }
+  }, [])
+
+  const discard = useCallback(async () => {
+    if (!discardTarget) return
+    setDiscarding(true)
+    try {
+      const res = await authFetch(
+        `${API_BASE_URL}/combos/discovery/results/${discardTarget.result_id}/discard`,
+        { method: 'POST' },
+      )
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        if (res.status === 403) {
+          setPermissionDenied(true)
+          return
+        }
+        showToast('Falha na exclusão', errorDetail(data, 'Não foi possível excluir o resultado.'))
+        return
+      }
+      closeDiscard(false)
+      showToast(
+        'Resultado excluído.',
+        `O candidato saiu do ranking da varredura #${viewSweep?.sweep_id ?? '—'}.`,
+      )
+      setPage(1)
+      applyFilters(metric, fSymbol, fTimeframe, fDirection, 1)
+    } finally {
+      setDiscarding(false)
+    }
+  }, [discardTarget, showToast, closeDiscard, viewSweep, applyFilters, metric, fSymbol, fTimeframe, fDirection])
+
+  useEffect(() => {
+    if (!discardTarget) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closeDiscard(true)
+        return
+      }
+      if (e.key === 'Tab' && discardModalRef.current) {
+        const focusables = discardModalRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), [href]')
+        const first = focusables[0]
+        const last = focusables[focusables.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last?.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first?.focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey, true)
+    const t = window.setTimeout(
+      () => discardModalRef.current?.querySelector<HTMLElement>('[data-testid="confirm-discard"]')?.focus(),
+      30,
+    )
+    return () => {
+      document.removeEventListener('keydown', onKey, true)
+      window.clearTimeout(t)
+    }
+  }, [discardTarget, closeDiscard])
 
   useEffect(() => {
     const previous = previousActiveStateRef.current
@@ -931,6 +1149,198 @@ export function DiscoveryPage() {
             >
               Voltar ao Combo
             </button>
+          </section>
+        ) : null}
+
+        {recoveryStatus === 'loading' || recoveryStatus === 'error' || (reconnected && activeSweep && !TERMINAL.has(activeSweep.state)) ? (
+          <div
+            className={`recovery-banner mb-4 ${recoveryStatus === 'error' ? 'error' : ''}`}
+            role="status"
+            aria-live="polite"
+            data-testid="recovery-banner"
+          >
+            <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <strong>
+                {recoveryStatus === 'loading'
+                  ? 'Verificando varredura ativa…'
+                  : recoveryStatus === 'error'
+                    ? 'Não foi possível verificar a varredura ativa'
+                    : activeSweep && TERMINAL.has(activeSweep.state)
+                      ? 'Sweep reconciliado nesta sessão'
+                      : 'Varredura ativa recuperada do servidor'}
+              </strong>
+              <span>
+                {recoveryStatus === 'loading'
+                  ? 'O servidor está confirmando o estado antes de liberar um novo rascunho.'
+                  : recoveryStatus === 'error'
+                    ? 'O sweep continua protegido no servidor. Tente novamente antes de iniciar outra run.'
+                    : 'F5 não inicia outra run. O snapshot segue congelado enquanto o sweep continua.'}
+              </span>
+            </div>
+            {recoveryStatus === 'error' ? (
+              <button
+                type="button"
+                className="ml-auto inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 text-sm font-semibold"
+                data-testid="recovery-retry"
+                onClick={() => void restoreSession({ focus: true })}
+              >
+                Tentar novamente
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Progress card */}
+        {activeSweep ? (
+          <section
+            className="mb-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)]"
+            aria-labelledby="progress-heading"
+            data-testid="sweep-progress"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  Sweep ativo · <span className="font-mono">#{activeSweep.sweep_id}</span>
+                </h2>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                  Reconectado ao servidor · snapshot <span className="font-mono">{snapshotLabel(activeSnapshotHash, activeSweep.total)}</span>
+                  {' · '}separado do histórico exibido
+                </p>
+              </div>
+              <span
+                className={`inline-flex min-h-[28px] items-center rounded border px-2 py-1 text-[11px] font-bold ${
+                  activeSweep.state === 'paused'
+                    ? 'border-[rgba(245,158,11,0.42)] text-[#fbbf24]'
+                    : TERMINAL.has(activeSweep.state)
+                      ? 'border-[var(--border-default)] text-[var(--text-tertiary)]'
+                      : 'border-[rgba(59,130,246,0.42)] text-[#93c5fd]'
+                }`}
+                data-testid="active-state-chip"
+              >
+                {activeSweep.state.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 items-center gap-5 p-5 md:grid-cols-[1fr_auto]">
+              <div>
+                <div className="mb-2.5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2.5 font-semibold">
+                    <span
+                      className={`status-dot ${
+                        activeSweep.state === 'paused' ? 'paused' : TERMINAL.has(activeSweep.state) ? 'cancelled' : ''
+                      }`}
+                    />
+                    <span id="progress-heading" ref={progressHeadingRef} tabIndex={-1}>
+                      {{
+                        pending: 'Varredura pendente',
+                        running: 'Varredura em execução',
+                        paused: 'Varredura pausada',
+                        cancelling: 'Cancelamento em andamento',
+                        cancelled: 'Varredura cancelada',
+                        failed: 'Varredura falhou',
+                        partial_failure: 'Varredura concluída com falhas',
+                        completed: 'Varredura concluída',
+                      }[activeSweep.state]}
+                    </span>
+                  </div>
+                  <strong className="font-mono" data-testid="progress-count">
+                    {activeSweep.processed} de {activeSweep.total}
+                  </strong>
+                </div>
+                <div
+                  className="progress-track"
+                  role="progressbar"
+                  aria-label="Progresso da varredura ativa"
+                  aria-valuemin={0}
+                  aria-valuemax={activeSweep.total}
+                  aria-valuenow={activeSweep.processed}
+                >
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${activeSweep.total ? Math.round((activeSweep.processed / activeSweep.total) * 100) : 0}%` }}
+                  />
+                </div>
+                <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-tertiary)]">
+                  <span data-testid="counter-invariant">
+                    {activeSweep.processed} processadas = {activeSweep.succeeded} sucesso + {activeSweep.failed} falha + {activeSweep.skipped} ignoradas
+                  </span>
+                  <span>Limites: 8 global · 1 por sweep · fila justa</span>
+                  {activeSweep.terminal_reason ? <span>terminal: {activeSweep.terminal_reason}</span> : null}
+                </div>
+
+                {cancelConfirmOpen ? (
+                  <div
+                    className="mt-3 flex items-center justify-between gap-3.5 rounded-lg border border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.06)] p-3"
+                    role="alertdialog"
+                    aria-modal="false"
+                    aria-labelledby="cancel-title"
+                  >
+                    <p id="cancel-title" className="text-xs text-[var(--text-secondary)]">
+                      Cancelar após as leases ativas? Resultados concluídos ficam; pendentes viram ignorados.
+                    </p>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCancelConfirmOpen(false)}
+                        className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)]"
+                      >
+                        Continuar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void command('cancel')}
+                        data-testid="confirm-cancel"
+                        className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)]"
+                      >
+                        Confirmar cancelamento
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {running ? (
+                  <button
+                    type="button"
+                    onClick={() => void command(activeSweep.state === 'paused' ? 'resume' : 'pause')}
+                    disabled={activeSweep.state === 'cancelling'}
+                    data-testid="pause-sweep"
+                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3.5 py-2 text-sm font-semibold ${
+                      activeSweep.state === 'paused'
+                        ? 'border-[rgba(252,213,53,0.45)] bg-[rgba(252,213,53,0.08)] text-[var(--accent-primary)]'
+                        : 'border-[rgba(245,158,11,0.42)] bg-[rgba(245,158,11,0.08)] text-[#fbbf24]'
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    {activeSweep.state === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                    {activeSweep.state === 'paused' ? 'Retomar' : 'Pausar'}
+                  </button>
+                ) : null}
+                {running ? (
+                  <button
+                    type="button"
+                    onClick={() => setCancelConfirmOpen(true)}
+                    disabled={activeSweep.state === 'cancelling'}
+                    aria-expanded={cancelConfirmOpen}
+                    data-testid="cancel-sweep"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 py-2 text-sm font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Square className="h-4 w-4" />
+                    Cancelar
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={newDraft}
+                  data-testid="new-draft"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 py-2 text-sm font-semibold text-[var(--text-secondary)]"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Novo rascunho
+                </button>
+              </div>
+            </div>
           </section>
         ) : null}
 
@@ -1246,150 +1656,6 @@ export function DiscoveryPage() {
           </aside>
         </section>
 
-        {/* Progress card */}
-        {activeSweep ? (
-          <section
-            className="mt-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)]"
-            aria-labelledby="progress-heading"
-            aria-live="polite"
-            data-testid="sweep-progress"
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] px-5 py-4">
-              <div>
-                <h2 className="text-lg font-semibold">
-                  Sweep ativo · <span className="font-mono">#{activeSweep.sweep_id}</span>
-                </h2>
-                <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                  Snapshot <span className="font-mono">{snapshotLabel(activeSnapshotHash, activeSweep.total)}</span> · separado do histórico exibido
-                </p>
-              </div>
-              <span className="inline-flex min-h-[28px] items-center rounded border border-[rgba(59,130,246,0.42)] px-2 py-1 text-[11px] font-bold text-[#93c5fd]" data-testid="active-state-chip">
-                {activeSweep.state.toUpperCase()}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 items-center gap-5 p-5 md:grid-cols-[1fr_auto]">
-              <div>
-                <div className="mb-2.5 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2.5 font-semibold">
-                    <span
-                      className={`status-dot ${
-                        activeSweep.state === 'paused' ? 'paused' : TERMINAL.has(activeSweep.state) ? 'cancelled' : ''
-                      }`}
-                    />
-                    <span id="progress-heading" ref={progressHeadingRef} tabIndex={-1}>
-                      {{
-                        pending: 'Varredura pendente',
-                        running: 'Varredura em execução',
-                        paused: 'Varredura pausada',
-                        cancelling: 'Cancelamento em andamento',
-                        cancelled: 'Varredura cancelada',
-                        failed: 'Varredura falhou',
-                        partial_failure: 'Varredura concluída com falhas',
-                        completed: 'Varredura concluída',
-                      }[activeSweep.state]}
-                    </span>
-                  </div>
-                  <strong className="font-mono" data-testid="progress-count">
-                    {activeSweep.processed} de {activeSweep.total}
-                  </strong>
-                </div>
-                <div
-                  className="progress-track"
-                  role="progressbar"
-                  aria-label="Progresso da varredura ativa"
-                  aria-valuemin={0}
-                  aria-valuemax={activeSweep.total}
-                  aria-valuenow={activeSweep.processed}
-                >
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${activeSweep.total ? Math.round((activeSweep.processed / activeSweep.total) * 100) : 0}%` }}
-                  />
-                </div>
-                <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-tertiary)]">
-                  <span data-testid="counter-invariant">
-                    {activeSweep.processed} processadas = {activeSweep.succeeded} sucesso + {activeSweep.failed} falha + {activeSweep.skipped} ignoradas
-                  </span>
-                  <span>Limites: 8 global · 1 por sweep · fila justa</span>
-                  {activeSweep.terminal_reason ? <span>terminal: {activeSweep.terminal_reason}</span> : null}
-                </div>
-
-                {cancelConfirmOpen ? (
-                  <div
-                    className="mt-3 flex items-center justify-between gap-3.5 rounded-lg border border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.06)] p-3"
-                    role="alertdialog"
-                    aria-modal="false"
-                    aria-labelledby="cancel-title"
-                  >
-                    <p id="cancel-title" className="text-xs text-[var(--text-secondary)]">
-                      Cancelar após as leases ativas? Resultados concluídos ficam; pendentes viram ignorados.
-                    </p>
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCancelConfirmOpen(false)}
-                        className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)]"
-                      >
-                        Continuar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void command('cancel')}
-                        data-testid="confirm-cancel"
-                        className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)]"
-                      >
-                        Confirmar cancelamento
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {running ? (
-                  <button
-                    type="button"
-                    onClick={() => void command(activeSweep.state === 'paused' ? 'resume' : 'pause')}
-                    disabled={activeSweep.state === 'cancelling'}
-                    data-testid="pause-sweep"
-                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3.5 py-2 text-sm font-semibold ${
-                      activeSweep.state === 'paused'
-                        ? 'border-[rgba(14,203,129,0.4)] bg-[rgba(14,203,129,0.08)] text-[var(--accent-success)]'
-                        : 'border-[rgba(245,158,11,0.42)] bg-[rgba(245,158,11,0.08)] text-[#fbbf24]'
-                    } disabled:cursor-not-allowed disabled:opacity-50`}
-                  >
-                    {activeSweep.state === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                    {activeSweep.state === 'paused' ? 'Retomar' : 'Pausar'}
-                  </button>
-                ) : null}
-                {running ? (
-                  <button
-                    type="button"
-                    onClick={() => setCancelConfirmOpen(true)}
-                    disabled={activeSweep.state === 'cancelling'}
-                    aria-expanded={cancelConfirmOpen}
-                    data-testid="cancel-sweep"
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 py-2 text-sm font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Square className="h-4 w-4" />
-                    Cancelar
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={newDraft}
-                  data-testid="new-draft"
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 py-2 text-sm font-semibold text-[var(--text-secondary)]"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Novo rascunho
-                </button>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
         {/* Workbench */}
         <SelectionWorkbench
           open={workbenchOpen}
@@ -1631,26 +1897,45 @@ export function DiscoveryPage() {
                               Favorito tier 3
                             </span>
                           ) : (
-                            <button
-                              type="button"
-                              disabled={promoteDisabled}
-                              onClick={(event) => {
-                                promotionTriggerRef.current = event.currentTarget
-                                setPromoteTarget(row)
-                              }}
-                              aria-haspopup="dialog"
-                              aria-controls="promotion-modal"
-                              aria-expanded={promoteTarget?.result_id === row.result_id}
-                              aria-describedby={lowSample || duplicate ? `reason-${row.result_id}` : undefined}
-                              data-testid={`promote-${row.result_id}`}
-                              className={`promote-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold ${
-                                promoteDisabled
-                                  ? 'cursor-not-allowed border-[var(--accent-primary-disabled)] bg-[var(--accent-primary-disabled)] text-[var(--text-muted)]'
-                                  : 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-[#181a20] hover:bg-[var(--accent-primary-hover)]'
-                              }`}
-                            >
-                              {lowSample ? 'Baixa amostra' : duplicate ? 'Já existe' : 'Promover'}
-                            </button>
+                            <div className="action-stack">
+                              <button
+                                type="button"
+                                disabled={promoteDisabled}
+                                onClick={(event) => {
+                                  promotionTriggerRef.current = event.currentTarget
+                                  setPromoteTarget(row)
+                                }}
+                                aria-haspopup="dialog"
+                                aria-controls="promotion-modal"
+                                aria-expanded={promoteTarget?.result_id === row.result_id}
+                                aria-describedby={lowSample || duplicate ? `reason-${row.result_id}` : undefined}
+                                data-testid={`promote-${row.result_id}`}
+                                className={`promote-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold ${
+                                  promoteDisabled
+                                    ? 'cursor-not-allowed border-[var(--accent-primary-disabled)] bg-[var(--accent-primary-disabled)] text-[var(--text-muted)]'
+                                    : 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-[#181a20] hover:bg-[var(--accent-primary-hover)]'
+                                }`}
+                              >
+                                {lowSample ? 'Baixa amostra' : duplicate ? 'Já existe' : 'Promover'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy || discarding}
+                                onClick={(event) => {
+                                  discardTriggerRef.current = event.currentTarget
+                                  setDiscardTarget(row)
+                                }}
+                                aria-haspopup="dialog"
+                                aria-controls="discard-modal"
+                                aria-expanded={discardTarget?.result_id === row.result_id}
+                                aria-label={`Excluir resultado ${row.result_id} ${row.display_name || row.template_id}`}
+                                data-testid={`discard-${row.result_id}`}
+                                className="discard-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold border-[rgba(246,70,93,0.45)] bg-transparent text-[var(--trading-down-text)] hover:bg-[rgba(246,70,93,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Excluir
+                              </button>
+                            </div>
                           )}
                           {lowSample || duplicate ? (
                             <span id={`reason-${row.result_id}`} className="sr-only">
@@ -1810,6 +2095,77 @@ export function DiscoveryPage() {
               >
                 <Star className="h-4 w-4" />
                 Promover como tier 3
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {discardTarget ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-5"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeDiscard(true)
+          }}
+        >
+          <div
+            ref={discardModalRef}
+            id="discard-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="discard-title"
+            aria-describedby="discard-description"
+            className="w-full max-w-[480px] rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] p-5">
+              <div>
+                <h2 id="discard-title" className="text-xl font-semibold">Excluir resultado</h2>
+                <p id="discard-description" className="mt-1 text-xs text-[var(--text-tertiary)]">
+                  Remove só este resultado do ranking desta varredura. Não cancela a varredura e não apaga favoritos.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => closeDiscard(true)}
+                aria-label="Fechar"
+                className="grid h-11 w-11 min-h-[44px] place-items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3.5">
+                <strong className="block">{discardTarget.display_name || discardTarget.template_id}</strong>
+                <span className="mt-2 block text-xs text-[var(--text-tertiary)]">{discardTarget.result_id}</span>
+              </div>
+              <div className="my-4 grid grid-cols-2 gap-2.5">
+                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+                  <small className="block text-[var(--text-muted)]">Varredura</small>
+                  <b className="font-mono text-xs">#{viewSweep?.sweep_id ?? '—'}</b>
+                </div>
+                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+                  <small className="block text-[var(--text-muted)]">Resultado</small>
+                  <b className="font-mono text-xs" data-testid="discard-modal-result">{discardTarget.result_id}</b>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2.5 p-5 pt-0">
+              <button
+                type="button"
+                onClick={() => closeDiscard(true)}
+                className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)]"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={() => void discard()}
+                disabled={discarding}
+                data-testid="confirm-discard"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[rgba(246,70,93,0.55)] bg-[rgba(246,70,93,0.12)] px-4 py-2 text-sm font-bold text-[var(--trading-down-text)] disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Confirmar exclusão
               </button>
             </div>
           </div>

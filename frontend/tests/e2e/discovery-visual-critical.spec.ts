@@ -132,9 +132,11 @@ test.afterEach(async ({ page }) => {
 
 async function installMocks(page: Page) {
   let activeState = 'running'
+  const discardedIds = new Set<string>()
   const captured = {
     sweepIdempotencyKey: '',
     promotionIdempotencyKey: '',
+    discardedResultId: '',
   }
 
   await page.addInitScript((user) => {
@@ -162,6 +164,13 @@ async function installMocks(page: Page) {
   )
   await page.route('**/api/combos/discovery/sweeps/preflight', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(PREFLIGHT) }),
+  )
+  await page.route('**/api/combos/discovery/sweeps/active', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ sweeps: [] }),
+    }),
   )
   await page.route('**/api/combos/discovery/sweeps/history', (route) =>
     route.fulfill({
@@ -234,7 +243,8 @@ async function installMocks(page: Page) {
     const direction = url.searchParams.get('direction')
     const offset = Number(url.searchParams.get('offset') || 0)
     const limit = Number(url.searchParams.get('limit') || 10)
-    const matched = RESULTS.filter((row) =>
+    const remaining = RESULTS.filter((row) => !discardedIds.has(row.result_id))
+    const matched = remaining.filter((row) =>
       (!symbol || row.symbol === symbol) &&
       (!timeframe || row.timeframe === timeframe) &&
       (!direction || row.direction === direction),
@@ -245,10 +255,20 @@ async function installMocks(page: Page) {
       body: JSON.stringify({
         results: matched.slice(offset, offset + limit),
         total: matched.length,
-        unfiltered_total: RESULTS.length,
+        unfiltered_total: remaining.length,
         offset,
         limit,
       }),
+    })
+  })
+  await page.route('**/api/combos/discovery/results/*/discard', async (route) => {
+    const url = route.request().url()
+    captured.discardedResultId = url.split('/results/')[1].split('/')[0]
+    discardedIds.add(captured.discardedResultId)
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ result_id: captured.discardedResultId, dedup_state: 'discarded' }),
     })
   })
   await page.route('**/api/combos/discovery/results/*/promote', (route) => {
@@ -445,8 +465,7 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   expect(captured.sweepIdempotencyKey).not.toBe(`sweep-${PREFLIGHT.snapshot_hash}`.slice(0, 64))
   await expect(page.getByTestId('draft-key')).toContainText(captured.sweepIdempotencyKey as string)
   const firstKey = captured.sweepIdempotencyKey
-  await page.getByTestId('start-sweep').click()
-  expect(captured.sweepIdempotencyKey).toBe(firstKey)
+  await expect(page.getByTestId('start-sweep')).toBeDisabled()
 
   await page.getByTestId('pause-sweep').click()
   await expect(page.getByTestId('active-state-chip')).toHaveText('PAUSED')
@@ -484,6 +503,14 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   await page.getByTestId('prev-page').click()
   await page.getByTestId('prev-page').click()
 
+  await expect(page.getByTestId('discard-RS-1048')).toBeVisible()
+  await page.getByTestId('discard-RS-1049').click()
+  await expect(page.getByRole('dialog', { name: 'Excluir resultado' })).toBeVisible()
+  await expect(page.getByTestId('discard-modal-result')).toHaveText('RS-1049')
+  await page.getByTestId('confirm-discard').click()
+  await expect(page.getByTestId('promote-RS-1049')).toHaveCount(0)
+  expect(captured.discardedResultId).toBe('RS-1049')
+
   await page.getByTestId('promote-RS-1048').click()
   await expect(page.getByRole('dialog', { name: 'Promover a favorito tier 3' })).toBeVisible()
   await expect(page.getByTestId('modal-result')).toHaveText('RS-1048')
@@ -497,4 +524,5 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   const promoted = page.locator('[data-promoted-result="RS-1048"]')
   await expect(promoted).toBeVisible()
   await expect(promoted).toBeFocused()
+  await expect(page.getByTestId('discard-RS-1048')).toHaveCount(0)
 })

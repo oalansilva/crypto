@@ -92,36 +92,22 @@ def create_discovery_sweep(
     return body
 
 
+@router.get("/sweeps/active")
+def discovery_sweeps_active(
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    service = _service()
+    return {"sweeps": service.list_active_sweeps(actor, db)}
+
+
 @router.get("/sweeps/history")
 def discovery_sweeps_history(
     actor: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    from app.models_discovery import DiscoverySweep
-
-    rows = (
-        db.query(DiscoverySweep)
-        .filter(DiscoverySweep.actor == actor)
-        .order_by(DiscoverySweep.created_at.desc())
-        .limit(50)
-        .all()
-    )
-    return {
-        "sweeps": [
-            {
-                "sweep_id": r.id,
-                "state": r.state,
-                "total": r.total,
-                "processed": r.processed,
-                "succeeded": r.succeeded,
-                "failed": r.failed,
-                "skipped": r.skipped,
-                "snapshot_hash": (r.snapshot or {}).get("snapshot_hash"),
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in rows
-        ]
-    }
+    service = _service()
+    return {"sweeps": service.list_history(actor, db)}
 
 
 @router.get("/sweeps/{sweep_id}")
@@ -131,7 +117,7 @@ def get_discovery_sweep(
     db: Session = Depends(get_db),
 ):
     service = _service()
-    sweep = service.get_sweep(sweep_id, db)
+    sweep = service.get_sweep(sweep_id, db, actor=actor)
     if not sweep:
         raise HTTPException(status_code=404, detail="sweep not found")
     return sweep
@@ -143,7 +129,7 @@ def pause_discovery_sweep(
     actor: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    return _command(sweep_id, "pause", db)
+    return _command(sweep_id, "pause", actor, db)
 
 
 @router.post("/sweeps/{sweep_id}/resume")
@@ -152,7 +138,7 @@ def resume_discovery_sweep(
     actor: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    return _command(sweep_id, "resume", db)
+    return _command(sweep_id, "resume", actor, db)
 
 
 @router.post("/sweeps/{sweep_id}/cancel")
@@ -161,12 +147,12 @@ def cancel_discovery_sweep(
     actor: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    return _command(sweep_id, "cancel", db)
+    return _command(sweep_id, "cancel", actor, db)
 
 
-def _command(sweep_id: str, command: str, db: Session) -> dict[str, Any]:
+def _command(sweep_id: str, command: str, actor: str, db: Session) -> dict[str, Any]:
     service = _service()
-    body, status = service.command(sweep_id, command, db)
+    body, status = service.command(sweep_id, command, db, actor=actor)
     if status >= 400:
         raise HTTPException(status_code=status, detail=body)
     return body
@@ -186,7 +172,7 @@ def discovery_leaderboard(
     db: Session = Depends(get_db),
 ):
     service = _service()
-    sweep = service.get_sweep(sweep_id, db)
+    sweep = service.get_sweep(sweep_id, db, actor=actor)
     if not sweep:
         raise HTTPException(status_code=404, detail="sweep not found")
     if metric not in ("calmar_ratio", "delta_cagr_vs_bh"):
@@ -240,4 +226,18 @@ def promote_discovery_result(
         raise HTTPException(status_code=status, detail=body)
     if status == 200:
         return JSONResponse(status_code=200, content=body)
+    return body
+
+
+@router.post("/results/{result_id}/discard")
+def discard_discovery_result(
+    result_id: str,
+    actor: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    del actor
+    service = _service()
+    body, status = service.discard_result(result_id=result_id, db=db)
+    if status >= 400:
+        raise HTTPException(status_code=status, detail=body)
     return body
