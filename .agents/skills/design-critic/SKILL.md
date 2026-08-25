@@ -35,7 +35,7 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 
 Esta integração é obrigatória para `UI impact: affected`. Corre **no filho autor** (shape/protótipo/polish) e na **onda A/B do pai** (crítica isolada). O pai não executa o pipeline nem spawna A/B de dentro do filho autor. Navegador e visão: filho autor (validação) e B (detector), não o transcript do orquestrador.
 
-Antes do `PASS`, a sessão deve executar o pipeline local do Impeccable na ordem abaixo, sempre contra a superfície versionada da change:
+Antes do `PASS`, o **filho autor** executa shape/protótipo/polish e o **pai** dispara A/B, sempre contra a superfície versionada da change:
 
 `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`
 
@@ -73,7 +73,7 @@ Estas etapas são do **filho autor**. O pai não as executa.
 
 ## Gate de validação do protótipo
 
-Antes de emitir `PASS` ou mover para `Aprovação de Design`:
+O **filho autor** valida o protótipo. Não emite `PASS` e não chama `process_event submeter_design`.
 
 1. Publicar/servir a versão final do protótipo e abri-la em **navegador real** (Playwright ou equivalente). `curl`, HTTP 200, build verde, leitura do HTML ou inspeção estática **não** validam comportamento visual.
 2. Validar pelo menos um viewport desktop e um mobile.
@@ -90,7 +90,7 @@ Se navegador real estiver indisponível, se qualquer assert falhar, se a versão
 
 1. Explicitar no `design.md` o problema, a decisão, o escopo, riscos e o que explicitamente não muda na UI. `## Apply contract` curto.
 2. Em `## Prototype`, registrar `N/A` com justificativa não vazia.
-3. Impeccable/`DESIGN.md`/Playwright = `N/A` justificado. Ainda completar `## Design Critique` (bullets) e obter veredito. T7 permanece. Snapshot N/A justificado neste caso.
+3. Impeccable/`DESIGN.md`/Playwright = `N/A` justificado. O filho **não** escreve `## Design Critique`. T7 permanece. Snapshot N/A justificado neste caso.
 
 ## Criticar de forma independente
 
@@ -113,7 +113,7 @@ Achado bloqueante: o pai **re-despacha o filho autor** com os bullets no prompt.
 
 ## Registrar a entrega
 
-Adicionar ou atualizar `## Design Critique` no `design.md` **só** com:
+O **pai** (não o filho autor) adiciona `## Design Critique` no `design.md` **só** com:
 
 - bullets P0–P3 e disposition;
 - riscos ou pendências não bloqueantes (bullets);
@@ -137,7 +137,7 @@ Publicar novamente os artefatos OpenSpec no card quando a entrega mudar. Handoff
 ## Handoff permitido
 
 - Com `BLOCKED`, manter `Status=Design`, registrar o motivo e parar.
-- Com `PASS` e evidência completa, mover somente `Design -> Aprovação de Design` e registrar handoff com change, design digest, protótipo/versão ou N/A, snapshot path ou N/A, proxies, resumo em bullets e pendências aceitas.
+- Com `PASS` e evidência completa, o **pai** chama `process_event submeter_design` e registra handoff com change, design digest, protótipo/versão ou N/A, snapshot path ou N/A, proxies, resumo em bullets e pendências aceitas. O filho autor MUST NOT T5.
 - Nunca mover `Aprovação de Design -> Pronto para Dev`, nunca autoaprovar, nunca enviar `actor=Alan` nem alegar identidade humana. Essa transição pertence exclusivamente a Alan autenticado. T7: Alan abre o snapshot linkado; o Gist não é a crítica.
 - Se o design ou protótipo mudar depois da aprovação, considerar a aprovação obsoleta e bloquear desenvolvimento até nova aprovação humana.
 - Não mover nenhum outro status. Desenvolvimento / `/opsx-apply` começa somente depois que o card estiver em `Pronto para Dev`, no **mesmo** chat `#<id>`, via filho Apply (pai `iniciar_apply` antes do spawn).

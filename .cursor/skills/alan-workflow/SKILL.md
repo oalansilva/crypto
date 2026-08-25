@@ -108,9 +108,9 @@ Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto
 
 ## Implementação
 
-Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`. O **filho** Apply edita o código (loop fatiado); **não** `process_event`, **não** commit/push, **não** spawna reviewers. Pai commita, `pedir_review`, onda de review, `aceitar_sha`, filho QA, T14.
+Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`. O **filho** Apply edita o código (loop fatiado); **não** `process_event`, **não** commit/push, **não** spawna reviewers; devolve status ao pai.
 
-Antes do commit: `Status=Code Review`, `diff-reviewer` + `code-reviewer` no diff não commitado vs HEAD. Depois do commit, ainda na branch e antes de `Status=QA`: `diff-reviewer` em `origin/develop...HEAD`. Então push e `Status=QA`. `/review-bugbot` só se Alan pedir.
+Pai: `pedir_review` (Code Review), `diff-reviewer` + `code-reviewer` no diff **não commitado** vs HEAD, commit, `diff-reviewer` em `origin/develop...HEAD`, push, `aceitar_sha` (QA), filho QA (checks), T14. `/review-bugbot` só se Alan pedir.
 
 Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evidence-comment.sh --transition homologado` (mesmo sem lote).
 

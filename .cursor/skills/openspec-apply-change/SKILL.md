@@ -51,7 +51,7 @@ Implement tasks from an OpenSpec change.
 
    **Handle states:**
    - If `state: "blocked"` (missing artifacts): show message, suggest using openspec-continue-change
-   - If `state: "all_done"`: congratulate, suggest archive
+   - If `state: "all_done"`: report all tasks complete to the parent; do not archive; do not `process_event`
    - Otherwise: proceed to implementation
 
 4. **Load sliced apply context (per task)**
@@ -133,7 +133,7 @@ Working on task 4/7: <task description>
 - [x] Task 2
 ...
 
-All tasks complete! Ready to archive this change.
+All tasks complete. Return to parent for git + pedir_review. Do not archive.
 ```
 
 **Output On Pause (Issue Encountered)**
