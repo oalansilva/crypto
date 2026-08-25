@@ -3,11 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
+
+from app.jwt_secret import resolve_jwt_secret
+
+JWT_SECRET = resolve_jwt_secret()
 
 _JS_MAX_SAFE_INTEGER = (1 << 53) - 1
 
@@ -82,7 +85,7 @@ def issue_oos_promotion_proof(payload: dict[str, Any]) -> str:
             "iat": now,
             "exp": now + timedelta(hours=6),
         },
-        os.getenv("JWT_SECRET", "dev-secret-change-in-production"),
+        JWT_SECRET,
         algorithm="HS256",
     )
 
@@ -91,7 +94,7 @@ def verify_oos_promotion_proof(proof: str, payload: dict[str, Any]) -> bool:
     try:
         claims = jwt.decode(
             proof,
-            os.getenv("JWT_SECRET", "dev-secret-change-in-production"),
+            JWT_SECRET,
             algorithms=["HS256"],
         )
         digest = _canonical_digest(payload)

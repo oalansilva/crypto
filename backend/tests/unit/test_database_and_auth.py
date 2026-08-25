@@ -202,11 +202,11 @@ def test_postgres_runtime_schema_migrations_execute_admin_user_statements(monkey
 
 
 def test_decode_token_handles_valid_expired_and_invalid_tokens(monkeypatch):
-    monkeypatch.setattr(auth_middleware, "JWT_SECRET", "unit-test-secret")
+    monkeypatch.setattr(auth_middleware, "JWT_SECRET", "pytest-jwt-secret-do-not-use-elsewhere")
 
     valid_token = jwt.encode(
         {"sub": "123", "type": "access"},
-        "unit-test-secret",
+        "pytest-jwt-secret-do-not-use-elsewhere",
         algorithm="HS256",
     )
     assert auth_middleware._decode_token(valid_token)["sub"] == "123"
@@ -217,7 +217,7 @@ def test_decode_token_handles_valid_expired_and_invalid_tokens(monkeypatch):
             "type": "access",
             "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
         },
-        "unit-test-secret",
+        "pytest-jwt-secret-do-not-use-elsewhere",
         algorithm="HS256",
     )
     with pytest.raises(HTTPException) as expired_exc:
@@ -233,7 +233,7 @@ def test_decode_token_handles_valid_expired_and_invalid_tokens(monkeypatch):
 async def test_auth_dependencies_cover_optional_required_and_admin_paths(
     monkeypatch, auth_db_session
 ):
-    monkeypatch.setattr(auth_middleware, "JWT_SECRET", "unit-test-secret")
+    monkeypatch.setattr(auth_middleware, "JWT_SECRET", "pytest-jwt-secret-do-not-use-elsewhere")
     monkeypatch.setattr(auth_middleware, "ADMIN_EMAILS", {"admin@example.com"})
 
     admin_id = uuid.uuid4()
@@ -257,7 +257,7 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
     auth_db_session.commit()
 
     def _credentials(payload: dict) -> HTTPAuthorizationCredentials:
-        token = jwt.encode(payload, "unit-test-secret", algorithm="HS256")
+        token = jwt.encode(payload, "pytest-jwt-secret-do-not-use-elsewhere", algorithm="HS256")
         return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
     request = SimpleNamespace(method="GET", url=SimpleNamespace(path="/api/favorites/"))
@@ -345,7 +345,7 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
 async def test_auth_middleware_handles_banned_suspended_and_expired_users(
     monkeypatch, auth_db_session
 ):
-    monkeypatch.setattr(auth_middleware, "JWT_SECRET", "unit-test-secret")
+    monkeypatch.setattr(auth_middleware, "JWT_SECRET", "pytest-jwt-secret-do-not-use-elsewhere")
 
     banned_user = User(
         id=uuid.uuid4(),
@@ -389,7 +389,7 @@ async def test_auth_middleware_handles_banned_suspended_and_expired_users(
 
     token = jwt.encode(
         {"type": "access", "sub": str(expired_user.id)},
-        "unit-test-secret",
+        "pytest-jwt-secret-do-not-use-elsewhere",
         algorithm="HS256",
     )
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
@@ -400,7 +400,7 @@ async def test_auth_middleware_handles_banned_suspended_and_expired_users(
 
 
 def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_session):
-    monkeypatch.setattr(auth_routes, "JWT_SECRET", "unit-test-secret")
+    monkeypatch.setattr(auth_routes, "JWT_SECRET", "pytest-jwt-secret-do-not-use-elsewhere")
     monkeypatch.setattr(auth_routes, "JWT_ACCESS_EXPIRE_MINUTES", 15)
     monkeypatch.setattr(auth_routes, "JWT_REFRESH_EXPIRE_DAYS", 7)
     monkeypatch.setattr(
@@ -492,7 +492,7 @@ def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_ses
     with pytest.raises(HTTPException, match="User not found"):
         ghost_refresh = jwt.encode(
             {"sub": str(uuid.uuid4()), "type": "refresh"},
-            "unit-test-secret",
+            "pytest-jwt-secret-do-not-use-elsewhere",
             algorithm="HS256",
         )
         auth_routes.refresh(auth_routes.RefreshRequest(refreshToken=ghost_refresh), auth_db_session)

@@ -15,10 +15,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.jwt_secret import resolve_jwt_secret
 from app.models import User
 from app.services.beta_access import temporary_password_expired
 
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+JWT_SECRET = resolve_jwt_secret()
 JWT_ACCESS_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRE_MINUTES", "15"))
 ADMIN_EMAILS = {
     email.strip().lower()

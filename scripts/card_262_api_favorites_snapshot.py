@@ -39,7 +39,9 @@ def _admin_user() -> User:
 
 
 def _access_token(user: User) -> str:
-    secret = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+    secret = os.getenv("JWT_SECRET")
+    if not secret:
+        raise SystemExit("JWT_SECRET is required")
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user.id),

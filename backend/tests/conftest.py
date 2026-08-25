@@ -7,6 +7,7 @@ from pathlib import Path
 os.environ["ARBITRAGE_MONITOR_ENABLED"] = "0"
 os.environ["WORKFLOW_DB_ENABLED"] = "1"
 os.environ["WORKFLOW_ALLOW_SHARED_PROJECT_DB"] = "1"
+os.environ["JWT_SECRET"] = "pytest-jwt-secret-do-not-use-elsewhere"
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql://postgres:postgres@127.0.0.1:5432/crypto_app_test",

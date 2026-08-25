@@ -9,6 +9,7 @@ import os
 from typing import Annotated
 
 from app.database import get_db
+from app.jwt_secret import resolve_jwt_secret
 from app.models import User
 from app.middleware.authMiddleware import ADMIN_EMAILS, is_admin_email
 from app.services.beta_access import hash_password as _hash_password
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # --- Config ---
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+JWT_SECRET = resolve_jwt_secret()
 JWT_ACCESS_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRE_MINUTES", "15"))
 JWT_REFRESH_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_EXPIRE_DAYS", "7"))
 BETA_PUBLIC_REGISTRATION_ENABLED = os.getenv(
