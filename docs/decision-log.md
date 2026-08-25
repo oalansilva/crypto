@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-25 - JWT_SECRET fail-closed sem default do repositório (card #684)
+
+**Decisão:** o runtime que assina/valida JWT recusa subir se `JWT_SECRET` estiver ausente, vazio, igual a `dev-secret-change-in-production` ou com comprimento menor que 32. Um único `resolve_jwt_secret()` no import (auth, middleware, prova OOS). Pytest usa secret explícito. Rotação operacional no `.env` (DEV no Done, PROD no release); o valor não vai para git, `Environment=`, chat ou evidência.
+
+**Motivo:** o fallback versionado permitia forjar HS256 `access`/`refresh` para qualquer `sub`.
+
+**Onde:** `backend/app/jwt_secret.py`, auth/middleware/OOS, `backend/.env.example`, spec `jwt-secret-fail-closed`. Card #684.
+
 ## 2026-08-23 - Cortar emissão LLM no fluxo sem perder gates (card #673)
 
 **Decisão:** Design/Apply/Review **avaliam** com a rubrica Impeccable completa e **publicam** só o veredito (bullets P0–P3 + disposition + verdict). Relatório longo fica em `.impeccable/critique/` (git-tracked, link no card); apply/review não leem o snapshot. Um chat por coluna (`#id Design|Apply|Review|Release`). Vale nos dois clientes (Cursor e Grok). Avaliação intacta: dual critic, browser gate, zero P0/P1; snapshot vazio ⇒ `BLOCKED`.
