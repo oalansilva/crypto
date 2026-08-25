@@ -1,6 +1,6 @@
 ---
 name: grill-card
-description: "Grelha a história de um card em Em Refinamento no body do GitHub issue. Use when bound_card is set, Status=Em Refinamento, and Alan asks to grill/afiar or the issue body lacks the DoD sections. Not for Todo, Design, OpenSpec, or unbound sessions."
+description: "Grelha a história de um card em Em Refinamento no body do GitHub issue. Use when Project Status of issue N is Em Refinamento, N is in the spawn prompt matching parent #id, and Alan asks to grill/afiar or the issue body lacks the DoD sections. Not for Todo, Design, or OpenSpec. Does not require git branch card-N-*."
 ---
 
 # grill-card

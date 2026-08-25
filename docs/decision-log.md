@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-25 - Filho por atividade no mesmo chat `#id` (card #729)
+
+**Decisão:** um transcript `#<id>` cobre Em Refinamento → Done técnico. O pai orquestra; grill, Design, Apply, Code Review e QA correm em filhos/ondas com contexto próprio (sem inherit de transcript). Recusa de mistura = o pai não executa a outra atividade no mesmo chat — não “abra `#id Apply`”. Grill bind = Status + id no prompt, não branch `card-<id>-*`. T1/T7 e dual critic/reviewer intactos. Sem gate FSM. Sucessor do D8 do #673 (a entrada #673 permanece histórica).
+
+**Motivo:** o freeze de chat novo por coluna era UX ruim; o custo real é misturar atividades no mesmo prefixo, não o título do transcript.
+
+**Onde:** `alan-workflow`, `design-critic`, `grill-card`, `openspec-apply-change`, specs `llm-flow-emission` / `cursor-harness` / `grill-card`. Card #729.
+
 ## 2026-08-25 - JWT_SECRET fail-closed sem default do repositório (card #684)
 
 **Decisão:** o runtime que assina/valida JWT recusa subir se `JWT_SECRET` estiver ausente, vazio, igual a `dev-secret-change-in-production` ou com comprimento menor que 32. Um único `resolve_jwt_secret()` no import (auth, middleware, prova OOS). Pytest usa secret explícito. Rotação operacional no `.env` (DEV no Done, PROD no release); o valor não vai para git, `Environment=`, chat ou evidência.

@@ -14,7 +14,7 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 3. Pedidos como `implemente`, `pode codar` ou equivalentes **não** autorizam pular este gate.
 4. OpenSpec `design.md` ≠ coluna Kanban `Design`: o artefato pode existir cedo, mas o card ainda precisa visitar as colunas e aguardar Alan em `Aprovação de Design`.
 5. **Fidelidade ao sistema atual (quando a tela já existir):** o protótipo MUST partir da UI real em DEV/produção (shell, nav, tokens, densidade, componentes) e redesenhar só o delta do card. Proibido inventar layout paralelo. Se a tela ainda não existir, desenhar a nova superfície alinhada a `DESIGN.md`, à folha de tokens e ao shell autenticado do app.
-6. **Um chat por coluna.** Título `#<id> Design`. Recusar Apply/Review/Release neste transcript. Sem evento FSM. Sem dual-write da lei em `.grok/`.
+6. **Um chat `#<id>`.** Recusar executar Apply/Review/Release neste transcript (sem spawn Apply até `Pronto para Dev`). Sem pedir outro chat. Sem evento FSM. Sem dual-write da lei em `.grok/`.
 
 ## Avaliação vs emissão
 
@@ -27,21 +27,21 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 
 1. Confirmar o card/change e, na sessão orquestradora, ler `AGENTS.md`, `rules.md`, a folha `.agents/skills/impeccable/references/cripto-farol-token-sheet.md` (quando UI) e `DESIGN.md` como autoridade visual (não reescrever). Não despejar o YAML inteiro no chat.
 2. Confirmar `Status=Design`. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia.
-3. A sessão cria o scaffold OpenSpec e escreve os artifacts do estágio. Não editar código de produção enquanto `Status=Design`.
-4. O author é a própria sessão (modelo do chat). A crítica usa `Task` / `spawn_subagent` isolada com inherit de **modelo**, prompt autocontido, **sem inherit de transcript**. Critics MAY escrever **apenas** `.impeccable/critique/**`. MUST NOT editar `design.md`, HTML de protótipo ou produto.
+3. O **pai** spawna um filho Design-autor (mesmo modelo, prompt autocontido, sem transcript) para criar o scaffold OpenSpec e os artifacts. O pai **não** escreve `design.md`/protótipo, salvo depois de A/B: **somente** `## Design Critique`. Não editar código de produção enquanto `Status=Design`.
+4. A crítica usa `Task` / `spawn_subagent` isolada com inherit de **modelo**, prompt autocontido, **sem inherit de transcript**, disparada pelo **pai** após os artefatos (não nested no filho autor). Critics MAY escrever **apenas** `.impeccable/critique/**`. MUST NOT editar `design.md`, HTML de protótipo ou produto. P0/P1 abertos → pai re-despacha o filho autor com os achados no prompt; o pai não faz polish. `process_event submeter_design` é só o pai.
 5. Se a superfície já existir, clonar a tela atual (folha de tokens + rota); não mandar HTML fonte no prompt dos critics.
 
 ## Integração Impeccable no Cursor
 
-Esta integração é obrigatória para `UI impact: affected`. Navegador e visão são etapas da orquestração.
+Esta integração é obrigatória para `UI impact: affected`. Corre **no filho autor** (shape/protótipo/polish) e na **onda A/B do pai** (crítica isolada). O pai não executa o pipeline nem spawna A/B de dentro do filho autor. Navegador e visão: filho autor (validação) e B (detector), não o transcript do orquestrador.
 
-Antes do `PASS`, a sessão deve executar o pipeline local do Impeccable na ordem abaixo, sempre contra a superfície versionada da change:
+Antes do `PASS`, o **filho autor** executa shape/protótipo/polish e o **pai** dispara A/B, sempre contra a superfície versionada da change:
 
 `context -> shape -> prototype -> critique -> audit -> targeted fixes -> polish -> browser gate`
 
 - Executar `node .agents/skills/impeccable/scripts/context.mjs --target <surface>` uma vez por sessão. Conservar `PRODUCT.md`. Usar a folha de tokens para clone+delta. `DESIGN.md` permanece a autoridade visual canônica e **não pode ser reescrito**.
 - Usar a skill Impeccable `shape` para brief, direção, escopo, estados, interação e restrições **antes** de editar a direção visual. O brief **integral** vai para o snapshot; `design.md` guarda só recorte (audience, outcome, direction, scope).
-- Executar Assessment A e B em Tasks distintas, mesmo modelo, prompt autocontido (URL, digest, screenshot, folha, rubrica, contrato de saída). Sem transcript do pai. Detector, navegador e visão ficam na sessão principal.
+- O **pai** dispara Assessment A e B em Tasks distintas (não o filho autor), mesmo modelo, prompt autocontido (URL, digest, screenshot, folha, rubrica, contrato de saída). Sem transcript do pai. Detector/browser de B; o filho autor não nested-spawna A/B.
 - Executar audit e aplicar somente `harden`, `adapt` ou `clarify` quando houver achado correspondente. Polish = **patch** no arquivo do protótipo (`StrReplace`); proibido reemitir o HTML inteiro na LLM.
 - Repetir o gate de navegador real desktop/mobile e os asserts depois do polish. O hook Cursor pode alertar durante a edição, mas não substitui a crítica, o audit nem a validação final.
 
@@ -52,6 +52,8 @@ Assessment A e Assessment B usam o **mesmo modelo do chat** (`Task` `inherit` / 
 Nome do snapshot: helper `critique-storage.mjs` quando couber; senão `<card>-<change>-<utc>.md` em `.impeccable/critique/`.
 
 ## Produzir a solução
+
+Estas etapas são do **filho autor**. O pai não as executa.
 
 ### Quando `UI impact: affected`
 
@@ -71,7 +73,7 @@ Nome do snapshot: helper `critique-storage.mjs` quando couber; senão `<card>-<c
 
 ## Gate de validação do protótipo
 
-Antes de emitir `PASS` ou mover para `Aprovação de Design`:
+O **filho autor** valida o protótipo. Não emite `PASS` e não chama `process_event submeter_design`.
 
 1. Publicar/servir a versão final do protótipo e abri-la em **navegador real** (Playwright ou equivalente). `curl`, HTTP 200, build verde, leitura do HTML ou inspeção estática **não** validam comportamento visual.
 2. Validar pelo menos um viewport desktop e um mobile.
@@ -88,7 +90,7 @@ Se navegador real estiver indisponível, se qualquer assert falhar, se a versão
 
 1. Explicitar no `design.md` o problema, a decisão, o escopo, riscos e o que explicitamente não muda na UI. `## Apply contract` curto.
 2. Em `## Prototype`, registrar `N/A` com justificativa não vazia.
-3. Impeccable/`DESIGN.md`/Playwright = `N/A` justificado. Ainda completar `## Design Critique` (bullets) e obter veredito. T7 permanece. Snapshot N/A justificado neste caso.
+3. Impeccable/`DESIGN.md`/Playwright = `N/A` justificado. O filho **não** escreve `## Design Critique`. T7 permanece. Snapshot N/A justificado neste caso.
 
 ## Criticar de forma independente
 
@@ -107,11 +109,11 @@ Tratar falta de fidelidade em tela existente como achado **bloqueante** (não em
 
 Sem UI nova, cobrir no mínimo: escopo, regressão de produto, riscos operacionais e confirmação de que nenhuma superfície visual nova/alterada ficou sem classificação.
 
-Corrigir no protótipo (patch) e consolidar no `design.md` (seções curtas) todo achado bloqueante no escopo. Não marcar como resolvido sem evidência. Não colar tabela Nielsen nem Brief integral no `design.md`.
+Achado bloqueante: o pai **re-despacha o filho autor** com os bullets no prompt. O pai não faz polish. O filho autor patcha o protótipo e as seções curtas de `design.md`. Não marcar como resolvido sem evidência. Não colar tabela Nielsen nem Brief integral no `design.md`.
 
 ## Registrar a entrega
 
-Adicionar ou atualizar `## Design Critique` no `design.md` **só** com:
+O **pai** (não o filho autor) adiciona `## Design Critique` no `design.md` **só** com:
 
 - bullets P0–P3 e disposition;
 - riscos ou pendências não bloqueantes (bullets);
@@ -135,10 +137,10 @@ Publicar novamente os artefatos OpenSpec no card quando a entrega mudar. Handoff
 ## Handoff permitido
 
 - Com `BLOCKED`, manter `Status=Design`, registrar o motivo e parar.
-- Com `PASS` e evidência completa, mover somente `Design -> Aprovação de Design` e registrar handoff com change, design digest, protótipo/versão ou N/A, snapshot path ou N/A, proxies, resumo em bullets e pendências aceitas.
+- Com `PASS` e evidência completa, o **pai** chama `process_event submeter_design` e registra handoff com change, design digest, protótipo/versão ou N/A, snapshot path ou N/A, proxies, resumo em bullets e pendências aceitas. O filho autor MUST NOT T5.
 - Nunca mover `Aprovação de Design -> Pronto para Dev`, nunca autoaprovar, nunca enviar `actor=Alan` nem alegar identidade humana. Essa transição pertence exclusivamente a Alan autenticado. T7: Alan abre o snapshot linkado; o Gist não é a crítica.
 - Se o design ou protótipo mudar depois da aprovação, considerar a aprovação obsoleta e bloquear desenvolvimento até nova aprovação humana.
-- Não mover nenhum outro status. Desenvolvimento / `/opsx-apply` começa somente depois que o card estiver em `Pronto para Dev`, em **outro** chat `#<id> Apply`.
+- Não mover nenhum outro status. Desenvolvimento / `/opsx-apply` começa somente depois que o card estiver em `Pronto para Dev`, no **mesmo** chat `#<id>`, via filho Apply (pai `iniciar_apply` antes do spawn).
 
 ## Saída
 

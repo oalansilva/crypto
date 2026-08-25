@@ -11,6 +11,8 @@ metadata:
 
 Implement tasks from an OpenSpec change.
 
+**Parent vs child (this repo):** this skill runs **inside** the Em desenvolvimento child, spawned by the parent after `process_event iniciar_apply`. The parent does not implement. This child MUST NOT call `process_event`, MUST NOT `git commit`/`push`, MUST NOT spawn reviewers. Return task status to the parent.
+
 **Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
@@ -49,7 +51,7 @@ Implement tasks from an OpenSpec change.
 
    **Handle states:**
    - If `state: "blocked"` (missing artifacts): show message, suggest using openspec-continue-change
-   - If `state: "all_done"`: congratulate, suggest archive
+   - If `state: "all_done"`: report all tasks complete to the parent; do not archive; do not `process_event`
    - Otherwise: proceed to implementation
 
 4. **Load sliced apply context (per task)**
@@ -78,6 +80,8 @@ Implement tasks from an OpenSpec change.
    - Before moving to Code Review, compare the delivered route vs the approved prototype (layout, components, states, a11y, responsiveness) and record the result. Unjustified drift is a review blocker.
 
 6. **Implement tasks (loop until done or blocked)**
+
+   This loop runs in the Apply **child**. One child per Em desenvolvimento column (not one spawn per task). Per-task sliced reads stay **inside** this child.
 
    For each pending task:
    - Show which task is being worked on
@@ -129,7 +133,7 @@ Working on task 4/7: <task description>
 - [x] Task 2
 ...
 
-All tasks complete! Ready to archive this change.
+All tasks complete. Return to parent for git + pedir_review. Do not archive.
 ```
 
 **Output On Pause (Issue Encountered)**
@@ -153,6 +157,7 @@ What would you like to do?
 ```
 
 **Guardrails**
+- This skill is the Apply child: no `process_event`, no commit/push, no reviewer spawns
 - Keep going through tasks until done or blocked
 - Per task: current task + matching capability spec + short `design.md` apply sections — not every `contextFiles` path, not `.impeccable/critique/`
 - If task is ambiguous, pause and ask before implementing

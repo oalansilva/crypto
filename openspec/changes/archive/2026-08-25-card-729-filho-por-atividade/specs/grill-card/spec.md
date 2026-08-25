@@ -1,8 +1,5 @@
-# grill-card Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change card-667-grill-card. Update Purpose after archive.
-## Requirements
 ### Requirement: grill-card is the Em Refinamento interview front door
 The repository SHALL contain `.cursor/skills/grill-card/SKILL.md` as a regular file (not git symlink mode `120000`). The skill SHALL require Project 1 `Status=Em Refinamento` and an explicit GitHub issue id in the spawn prompt (title `#<id>` or equivalent) before editing that issue. It MUST NOT require git branch `card-<id>-*` or a card worktree. Frontmatter SHALL set `disable-model-invocation: false`. The **parent** session MUST spawn an isolated `grill-card` child (same model, no parent transcript) and MUST only relay rounds: show the child's questions, collect Alan's answers, re-spawn or resume the child. The child SHALL apply the vendored `grilling` primitive and write the DoD sections into the issue body in pt-BR: Problema, História (Como/quero/para), Entra/não entra, Vocabulário (`_Avoid:`), critérios observáveis, Riscos. When the frontier is empty, the child SHALL post a single canonical comment `grill-card: fronteira vazia; história no body; à espera de T1 (Alan).` When the frontier is not empty, the card MUST remain in Em Refinamento and MUST NOT receive that comment. The child MUST NOT call `process_event priorizar`.
 
@@ -33,18 +30,3 @@ The repository SHALL contain `.cursor/skills/grill-card/SKILL.md` as a regular f
 - **WHEN** `q_git` is `develop` or otherwise not `card-N-*` and Status of N is `Em Refinamento`
 - **THEN** spawning the grill child with N in the prompt is allowed
 - **AND** the skill MUST NOT refuse solely because the session is not on `card-N-*`
-
-### Requirement: grill-card does not persist glossary files or OpenSpec
-
-While executing `grill-card`, the agent MUST NOT create or update `CONTEXT.md`, `docs/adr/**`, or `openspec/changes/**`, and MUST NOT invoke `/opsx:new`, `/opsx:ff`, `/opsx:explore`, or `/opsx:apply`. The change MUST NOT dual-write `grill-card` or `grilling` to Hermes, `/srv/knowledge/hermes-second-brain/skills/`, or `~/.codex/skills/`.
-
-#### Scenario: Refinement session stays on the issue
-- **WHEN** a grill-card round completes
-- **THEN** git status in the develop checkout MUST NOT show new `CONTEXT.md` or ADR files from that session
-- **AND** no OpenSpec change is created from that skill
-
-#### Scenario: No Hermes dual-write
-- **WHEN** this change is applied
-- **THEN** `grill-card` and `grilling` exist only under `.cursor/skills/` in this repo
-- **AND** the apply MUST NOT copy those skills into Hermes or `~/.codex/skills/`
-

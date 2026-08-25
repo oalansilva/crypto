@@ -14,7 +14,7 @@ Prioridade (δ e Guard > overlay > skill > wording):
 3. **Esta skill** (runbook).
 4. **Wording** do chat (`implemente`, `autorizo`, `gostaria sempre`).
 
-Cliente: **Cursor Agent**. Task/subagent usa `inherit` salvo pedido explícito no chat. Review = diff **exato** (não “Codex review”).
+Cliente: **Cursor Agent**. Task/subagent usa `inherit` salvo pedido explícito no chat. **Exceção — lista fechada isolada** (inherit de modelo, **sem** transcript do pai): `grill-card`, Design-autor, Apply-coluna, QA checks, Assessment A/B, `diff-reviewer`, `code-reviewer`. Review = diff **exato** (não “Codex review”).
 
 Drive/Docs: `Read docs/crypto-overlay.md` on-demand neste repo. No cripto, Drive da Clara sincroniza com `docs/*.md`; não aplicar a regra global antiga “não sincronizar Drive”.
 
@@ -22,9 +22,19 @@ Drive/Docs: `Read docs/crypto-overlay.md` on-demand neste repo. No cripto, Drive
 
 PT-BR curto. Não diga `concluído` / `Pronto` / `publicado` até a evidência do estado ser verdadeira. `Done` = Done técnico.
 
-## Um chat por coluna
+## Um chat por card
 
-Título `#<id> Design|Apply|Review|Release` nos dois clientes. Recusar misturar essas colunas no mesmo transcript; pedir chat novo com o título da coluna. Sem estado, evento, hook ou `enabled_tools` novo na FSM. `AGENTS.md` always-on não cresce com esta regra.
+Título `#<id>` nos dois clientes (Em Refinamento → Done técnico). Homologado e Release/lote fora. Pai orquestra: `process_event`, git, recusas, handoff, relaying do grill. **Não** grelha, não escreve OpenSpec/protótipo (exceção: só `## Design Critique` após A/B), não implementa, não review, não QA. Recusar executar outra atividade **no mesmo chat** — não pedir outro transcript. Sem Status=Pronto para Dev + `implemente`: uma frase com Status atual + “Apply só depois de Pronto para Dev (T7 teu)” + parar. Sem estado, evento, hook ou `enabled_tools` novo na FSM. `AGENTS.md` always-on não cresce com esta regra.
+
+Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd atual sem branch):
+
+| Atividade | Spawn |
+| --- | --- |
+| Em Refinamento | 1 filho `grill-card` (bind Status da issue N + N no prompt = `#<id>`) |
+| Design | 1 filho autor; depois onda A/B do pai |
+| Em desenvolvimento | pai `iniciar_apply`, depois 1 filho apply (loop fatiado interno) |
+| Code Review | onda `diff-reviewer` + `code-reviewer` |
+| QA | 1 filho checks/evidência; T14 no pai |
 
 T7: Alan abre o **Snapshot Impeccable** linkado no comentário do card (path / blob). O Gist OpenSpec **não** é a crítica.
 
@@ -70,9 +80,9 @@ Antes de editar:
 
 Skill de entrada: `.cursor/skills/grill-card/` (adapter). Primitivo vendorado: `.cursor/skills/grilling/`. **Não** usar `grill-with-docs` nem `to-spec`.
 
-Disparar quando Alan pede para grelhar/afiar **ou** o card bound está em Em Refinamento **e** o body não tem as 6 seções do DoD. Não em todo T0 (cards nítidos podem T1 direto). Não em Todo/Design.
+Disparar quando Alan pede para grelhar/afiar **ou** Status da issue N é Em Refinamento **e** o body não tem as 6 seções do DoD (N no prompt, mesmo em `develop`). Não em todo T0 (cards nítidos podem T1 direto). Não em Todo/Design.
 
-O agente reescreve o **body do issue** e, com fronteira vazia, comenta o handoff T1. Não arrasta Status. Não grava `CONTEXT.md` / `docs/adr/`. Não chama `/opsx:*`.
+O **pai** spawna o filho `grill-card` (id no prompt, mesmo em `develop`). O filho reescreve o **body do issue N** e, com fronteira vazia, comenta o handoff T1. Pai só relaying das rodadas. Não arrasta Status. Não grava `CONTEXT.md` / `docs/adr/`. Não chama `/opsx:*`.
 
 ## Card primeiro, OpenSpec mais completo
 
@@ -98,9 +108,9 @@ Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto
 
 ## Implementação
 
-Só com `Status=Pronto para Dev`. Mover para `Em desenvolvimento` antes de editar código de produto/`scripts/` de produto. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`.
+Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`. O **filho** Apply edita o código (loop fatiado); **não** `process_event`, **não** commit/push, **não** spawna reviewers; devolve status ao pai.
 
-Antes do commit: `Status=Code Review`, `diff-reviewer` + `code-reviewer` no diff não commitado vs HEAD. Depois do commit, ainda na branch e antes de `Status=QA`: `diff-reviewer` em `origin/develop...HEAD`. Então push e `Status=QA`. `/review-bugbot` só se Alan pedir.
+Pai: `pedir_review` (Code Review), `diff-reviewer` + `code-reviewer` no diff **não commitado** vs HEAD, commit, `diff-reviewer` em `origin/develop...HEAD`, push, `aceitar_sha` (QA), filho QA (checks), T14. `/review-bugbot` só se Alan pedir.
 
 Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evidence-comment.sh --transition homologado` (mesmo sem lote).
 
