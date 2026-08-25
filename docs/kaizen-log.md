@@ -19,6 +19,38 @@
 
 ---
 
+## 2026-08-25 — Kaizen release (lote 684)
+
+- **Release/card**: 2026-08-25 — Homologado → Pronto após deploy PROD `7af54584` via T16 live.
+- **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees + `release-guard pre` PASS, CI PR #721, PROD health pós-deploy, overlay/runbook. Transcript Cursor deste host não indexado nesta sessão (Grok Build). Sem `opencode.db`.
+- **Sessões analisadas**: closeout `suba a release` neste chat (Grok Build, sessão unbound; pedido explícito carregou overlay/T16).
+- **Custo/eficácia**: um Homologado no pacote; comentário Homologado e `Responsável` ausentes até o closeout (preenchidos neste turno).
+
+### Métricas
+- **Board**: 1 Homologado (`#684`). Fora: `#600`/`#614` Aprovação de Design; `#604` Pronto para Dev; `#658`/`#659`/`#660` Em Refinamento.
+- **Git**: `origin/develop` só com o pacote (`3ce00bd7`); archive via `release-2026-08-25` `bcd0c400`; merge `7af54584`. Stash 0. Worktrees classificadas via `PRESERVED_BRANCHES`.
+- **CI**: PR #721 verde; `e2e-playwright` pass; `qa-gate`/`deploy-staging` skip (`base_ref != develop`).
+- **OpenSpec**: 1 change arquivada; sync da spec `jwt-secret-fail-closed` + `--skip-specs` (#659).
+- **PROD**: source `7af54584`; alembic já head; bundle `index-Dtfnr-Df.js` / `index-DzSLxG6d.css`; health 200 após warmup; `JWT_SECRET` rotacionado no `.env` (presença/len, sem valor).
+
+### Achados
+- F-1 [major] Comentário Homologado canônico ausente em `#684` até o closeout. Recidiva #579/#658. Esforço S | P1 | Card existente: #658.
+- F-2 [minor] `openspec archive` falhou na primeira tentativa (headers ADDED já no main spec após sync); `--skip-specs` operacional. Recidiva #659. Esforço S | P1 | Card existente: #659.
+- F-3 [minor] `#684` Homologado sem `Responsável`; o `post` teria bloqueado. Preenchido no closeout (Codex). Sem card novo (o gate de campos já existe).
+- F-4 [info] Pedido `suba a release` em sessão unbound: página Moore pede para não carregar playbook; overlay T16 carregado. Alinhado ao decision-log #613.
+- F-5 [info] Task 4.1 (`JWT_SECRET` DEV) permaneceu `[ ]` no archive; rotação DEV/PROD foi operacional fora do git. Sem card novo.
+- F-6 [info] Health PROD 502 no primeiro segundo após restart; 200 na tentativa seguinte. Padrão já visto no lote 2026-08-23. Sem card novo.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | 9+ auditorias | #658
+- Archive `--skip-specs` quando o apply/sync já materializou o main spec | #659
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário | — | F-1 | coberto por #658 |
+| (não criado) archive --skip-specs headers | — | F-2 | coberto por #659 |
+
 ## 2026-08-23 — Kaizen release (lote 673)
 
 - **Release/card**: 2026-08-23 (2º pacote do dia) — Homologado → Pronto após deploy PROD `36534ae1` via T16 live.
