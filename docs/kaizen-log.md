@@ -19,6 +19,37 @@
 
 ---
 
+## 2026-08-25 — Kaizen release (lote 729)
+
+- **Release/card**: 2026-08-25 (3º pacote do dia) — Homologado → Pronto após deploy PROD `2b7e1768` via closeout T16.
+- **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees, CI PR #730 (`qa-gate` pass) e PR #731, overlay/runbook, transcript Grok Build desta sessão Apply/QA/T14/release. Sem `opencode.db`.
+- **Sessões analisadas**: `#729` Design→Apply→QA→Done; pedido `suba a release` com card já Homologado no board.
+- **Custo/eficácia**: um Homologado; comentário Homologado postado no mesmo turno do closeout (arraste de Alan foi antes do helper).
+
+### Métricas
+- **Board**: 1 Homologado (`#729`). Fora: kaizen `#658`/`#659`/`#660` Em Refinamento; worktrees in-flight `#600`/`#614`/`#604`/`#728`/`#472`/`#606`.
+- **Git**: `origin/develop` HEAD `f55c3b57` (PR #730). Archive via `release-2026-08-25-729`. Stash 0.
+- **CI**: PR #730 `qa-gate` pass na `develop`. PR #731 merge `2b7e1768`.
+- **OpenSpec**: 1 change arquivada; main specs `llm-flow-emission` / `cursor-harness` / `grill-card` + `--skip-specs` (#659).
+- **PROD**: source `2b7e1768`; alembic já head; bundle `index-Dtfnr-Df.js` / `index-DzSLxG6d.css`; health 200 após warmup.
+
+### Achados
+- F-1 [major] Comentário Homologado canônico ausente até o closeout (arraste no board sem helper no mesmo turno do T15). Recidiva #658. Esforço S | P1 | Card existente: #658.
+- F-2 [minor] Archive `--skip-specs` após sync do main spec. Recidiva #659. Esforço S | P1 | Card existente: #659.
+- F-3 [info] Terceiro pacote no mesmo dia; mesma doc canônica `docs/release-2026-08-25.md`.
+- F-4 [info] Pedido `suba a release` com sessão Grok unbound na página; overlay T16 carregado. Alinhado ao #613.
+- F-5 [info] Closing review achou P1 (filho autor ainda podia T5); corrigido em `9d1c494f` antes do QA.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | #658
+- Archive `--skip-specs` | #659
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário | — | F-1 | coberto por #658 |
+| (não criado) archive --skip-specs headers | — | F-2 | coberto por #659 |
+
 ## 2026-08-25 — Kaizen release (lote 685)
 
 - **Release/card**: 2026-08-25 (2º pacote do dia) — Homologado → Pronto após deploy PROD `3482c763` via closeout T16.
