@@ -1,6 +1,6 @@
 ---
 name: grill-card
-description: "Grelha a história de um card em Em Refinamento no body do GitHub issue. Use when bound_card is set, Status=Em Refinamento, and Alan asks to grill/afiar or the issue body lacks the DoD sections. Not for Todo, Design, OpenSpec, or unbound sessions."
+description: "Grelha a história de um card em Em Refinamento no body do GitHub issue. Use when Project Status of issue N is Em Refinamento, N is in the spawn prompt matching parent #id, and Alan asks to grill/afiar or the issue body lacks the DoD sections. Not for Todo, Design, or OpenSpec. Does not require git branch card-N-*."
 disable-model-invocation: false
 ---
 
@@ -14,14 +14,16 @@ Não é `grill-with-docs`. Não é `to-spec`.
 
 Só corre se **as duas** forem verdade:
 
-1. `bound_card` = número do issue (sessão bound a `card-<id>-*`).
-2. Project 1 `Status=Em Refinamento` **desse** issue.
+1. Número da issue N no prompt (título `#<id>` do pai = N). Não exige branch `card-<id>-*` nem worktree de card.
+2. Project 1 `Status=Em Refinamento` **dessa** issue N.
 
-Senão: recusar. Não editar issue de outro card. Não grelhar em Todo ou Design.
+Senão: recusar (id ausente, N ≠ `#<id>` do pai, ou Status ≠ Em Refinamento). Não editar issue de outro card. Não grelhar em Todo ou Design.
+
+O **pai** spawna este skill isolado (sem transcript) e só faz relaying das rodadas. Este filho escreve o body de N. `bound_card` aqui é o id N no prompt, não o git.
 
 ## Quando disparar
 
-- **Sim:** Alan pede grelhar/afiar, **ou** o card bound está em Em Refinamento **e** o body não tem as 6 seções do DoD. Oferecer; não arrastar coluna.
+- **Sim:** Alan pede grelhar/afiar, **ou** Status de N é Em Refinamento **e** o body não tem as 6 seções do DoD. Oferecer; não arrastar coluna. Vale em `develop` se N e Status baterem.
 - **Não:** automático em todo T0; não em Todo/Design; cards já nítidos (DoD completo) podem T1 sem grill.
 
 ## Como

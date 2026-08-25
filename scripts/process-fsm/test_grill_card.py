@@ -61,6 +61,8 @@ def test_grill_card_text_has_prohibitions() -> None:
         assert needle in text, needle
     assert "bound_card" in text
     assert "Em Refinamento" in text
+    assert "Não exige branch `card-<id>-*`" in text
+    assert "sessão bound a `card-<id>-*`" not in text
 
 
 def test_grill_skills_not_dual_written() -> None:
