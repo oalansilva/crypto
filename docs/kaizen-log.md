@@ -19,6 +19,36 @@
 
 ---
 
+## 2026-08-25 — Kaizen release (lote 685)
+
+- **Release/card**: 2026-08-25 (2º pacote do dia) — Homologado `#685` no closeout `suba a release`.
+- **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees, CI PR #725 (`qa-gate` pass), overlay/runbook, transcript Cursor desta sessão Apply/QA/T14. Sem `opencode.db`.
+- **Sessões analisadas**: `#685` Apply→QA→Done técnico; pedido `suba a release` com card já Homologado no board.
+- **Custo/eficácia**: um Homologado; comentário Homologado postado no mesmo turno do closeout (arraste de Alan foi antes do helper).
+
+### Métricas
+- **Board**: 1 Homologado (`#685`). Fora: kaizen `#658`/`#659`/`#660` Em Refinamento; worktrees in-flight `#600`/`#614`/`#604`/`#472`/`#606`.
+- **Git**: `origin/develop` HEAD `da77e93e` (PR #725). Archive via `release-2026-08-25-685`. Stash 0.
+- **CI**: PR #725 `qa-gate` pass na `develop`. PR de release para `main` neste closeout.
+- **OpenSpec**: 1 change arquivada; main spec `workflow-projects-lockdown` + `--skip-specs` (#659).
+
+### Achados
+- F-1 [major] Comentário Homologado canônico ausente até o closeout (arraste no board sem helper no mesmo turno do T15). Recidiva #658. Esforço S | P1 | Card existente: #658.
+- F-2 [minor] Archive `--skip-specs` após sync do main spec. Recidiva #659. Esforço S | P1 | Card existente: #659.
+- F-3 [info] Pedido `suba a release` com sessão Cursor ainda unbound na página; overlay T16 carregado. Alinhado ao #613.
+- F-4 [info] Pytest local de isolation no Postgres compartilhado falhou em 2 testes de changes/tasks; CI integration passou. Sem card novo (infra de teste local, não o lockdown).
+- F-5 [info] Segundo pacote no mesmo dia; mesma doc canônica `docs/release-2026-08-25.md`.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | #658
+- Archive `--skip-specs` | #659
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário | — | F-1 | coberto por #658 |
+| (não criado) archive --skip-specs headers | — | F-2 | coberto por #659 |
+
 ## 2026-08-25 — Kaizen release (lote 684)
 
 - **Release/card**: 2026-08-25 — Homologado → Pronto após deploy PROD `7af54584` via T16 live.
