@@ -21,7 +21,7 @@
 
 ## 2026-08-25 — Kaizen release (lote 685)
 
-- **Release/card**: 2026-08-25 (2º pacote do dia) — Homologado `#685` no closeout `suba a release`.
+- **Release/card**: 2026-08-25 (2º pacote do dia) — Homologado → Pronto após deploy PROD `3482c763` via closeout T16.
 - **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees, CI PR #725 (`qa-gate` pass), overlay/runbook, transcript Cursor desta sessão Apply/QA/T14. Sem `opencode.db`.
 - **Sessões analisadas**: `#685` Apply→QA→Done técnico; pedido `suba a release` com card já Homologado no board.
 - **Custo/eficácia**: um Homologado; comentário Homologado postado no mesmo turno do closeout (arraste de Alan foi antes do helper).
@@ -29,8 +29,9 @@
 ### Métricas
 - **Board**: 1 Homologado (`#685`). Fora: kaizen `#658`/`#659`/`#660` Em Refinamento; worktrees in-flight `#600`/`#614`/`#604`/`#472`/`#606`.
 - **Git**: `origin/develop` HEAD `da77e93e` (PR #725). Archive via `release-2026-08-25-685`. Stash 0.
-- **CI**: PR #725 `qa-gate` pass na `develop`. PR de release para `main` neste closeout.
+- **CI**: PR #725 `qa-gate` pass na `develop`. PR #726 merge `3482c763`.
 - **OpenSpec**: 1 change arquivada; main spec `workflow-projects-lockdown` + `--skip-specs` (#659).
+- **PROD**: source `3482c763`; alembic já head; bundle `index-Dtfnr-Df.js` / `index-DzSLxG6d.css`; health 200; GET `/api/workflow/projects` 401 sem connection string.
 
 ### Achados
 - F-1 [major] Comentário Homologado canônico ausente até o closeout (arraste no board sem helper no mesmo turno do T15). Recidiva #658. Esforço S | P1 | Card existente: #658.
