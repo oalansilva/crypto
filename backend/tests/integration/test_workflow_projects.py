@@ -9,13 +9,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.database import get_db
 from app.main import app
+from app.middleware.authMiddleware import get_current_admin, get_current_user
 from app.services.workflow_auth import WorkflowActor, get_workflow_actor
 from app.workflow_database import WorkflowBase, get_workflow_db
+from app.workflow_models import Project
 
 TEST_ACTOR = WorkflowActor(
     user_id="11111111-1111-1111-1111-111111111111", email="tester@example.com"
 )
+REDACTED_KEYS = ("database_url", "workflow_database_url", "root_directory")
+ADMIN_USER_ID = "22222222-2222-2222-2222-222222222222"
 
 
 def _reset_workflow_engine_cache():
@@ -29,8 +34,24 @@ def _reset_workflow_engine_cache():
     workflow_database.WorkflowSessionLocal = None
 
 
+def _assert_redacted_project(payload: dict) -> None:
+    for key in REDACTED_KEYS:
+        assert key not in payload
+    assert "id" in payload
+    assert "slug" in payload
+    assert "name" in payload
+
+
+def _assert_body_without_secrets(response) -> None:
+    body = response.text.lower()
+    assert "database_url" not in body
+    assert "workflow_database_url" not in body
+    assert "root_directory" not in body
+    assert "postgresql://" not in body
+
+
 @contextmanager
-def _build_client():
+def _build_client(*, as_admin: bool = False):
     _reset_workflow_engine_cache()
     engine = create_engine(
         "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
@@ -48,9 +69,11 @@ def _build_client():
 
     app.dependency_overrides[get_workflow_db] = override_get_db
     app.dependency_overrides[get_workflow_actor] = lambda: TEST_ACTOR
+    if as_admin:
+        app.dependency_overrides[get_current_admin] = lambda: ADMIN_USER_ID
     client = TestClient(app)
     try:
-        yield client
+        yield client, SessionLocal
     finally:
         client.close()
         app.dependency_overrides.clear()
@@ -58,16 +81,43 @@ def _build_client():
         _reset_workflow_engine_cache()
 
 
+def test_anonymous_get_projects_is_401_without_secrets():
+    with _build_client() as (client, _):
+        response = client.get("/api/workflow/projects")
+        assert response.status_code == 401
+        _assert_body_without_secrets(response)
+
+
+def test_authenticated_non_admin_get_projects_is_403_without_secrets():
+    class _NonAdmin:
+        email = "user@example.com"
+
+    class _FakeDb:
+        def query(self, *_args, **_kwargs):
+            return self
+
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def first(self):
+            return _NonAdmin()
+
+    with _build_client() as (client, _):
+        assert get_current_admin not in app.dependency_overrides
+        app.dependency_overrides[get_current_user] = lambda: TEST_ACTOR.user_id
+        app.dependency_overrides[get_db] = lambda: _FakeDb()
+        response = client.get("/api/workflow/projects")
+        assert response.status_code == 403
+        _assert_body_without_secrets(response)
+
+
 def test_projects_api_list_and_create():
     """Test GET and POST /api/workflow/projects."""
-    with _build_client() as client:
-
-        # List projects (should be empty initially)
+    with _build_client(as_admin=True) as (client, SessionLocal):
         response = client.get("/api/workflow/projects")
         assert response.status_code == 200
         assert response.json() == []
 
-        # Create first project
         project1 = client.post(
             "/api/workflow/projects",
             json={
@@ -84,22 +134,26 @@ def test_projects_api_list_and_create():
         p1 = project1.json()
         assert p1["slug"] == "crypto"
         assert p1["name"] == "Crypto Project"
-        assert p1["root_directory"] == "/srv/projects/crypto"
         assert p1["frontend_url"] == "https://crypto.example.com"
         assert p1["backend_url"] == "https://api.crypto.example.com"
-        assert p1["workflow_database_url"] == "postgresql://wf-crypto"
         assert p1["tech_stack"] == "FastAPI, React"
-        assert "id" in p1
+        _assert_redacted_project(p1)
 
-        # List projects again (should have one)
+        db = SessionLocal()
+        try:
+            stored = db.query(Project).filter(Project.slug == "crypto").one()
+            assert stored.root_directory == "/srv/projects/crypto"
+            assert stored.workflow_database_url == "postgresql://wf-crypto"
+        finally:
+            db.close()
+
         response = client.get("/api/workflow/projects")
         assert response.status_code == 200
         projects = response.json()
         assert len(projects) == 1
         assert projects[0]["slug"] == "crypto"
-        assert projects[0]["root_directory"] == "/srv/projects/crypto"
+        _assert_redacted_project(projects[0])
 
-        # Create second project
         project2 = client.post(
             "/api/workflow/projects",
             json={
@@ -116,9 +170,8 @@ def test_projects_api_list_and_create():
         p2 = project2.json()
         assert p2["slug"] == "trading-bot"
         assert p2["name"] == "Trading Bot"
-        assert p2["workflow_database_url"] == "postgresql://wf-bot"
+        _assert_redacted_project(p2)
 
-        # List projects (should have two)
         response = client.get("/api/workflow/projects")
         assert response.status_code == 200
         projects = response.json()
@@ -127,18 +180,17 @@ def test_projects_api_list_and_create():
         assert "crypto" in slugs
         assert "trading-bot" in slugs
 
-        # Idempotent: creating same slug returns existing
         project1_again = client.post(
             "/api/workflow/projects", json={"slug": "crypto", "name": "Different Name"}
         )
         assert project1_again.status_code == 200
         assert project1_again.json()["id"] == p1["id"]
-        assert project1_again.json()["root_directory"] == "/srv/projects/crypto"
+        _assert_redacted_project(project1_again.json())
 
 
 def test_kanban_filter_by_project():
     """Test that Kanban endpoints respect project_slug parameter."""
-    with _build_client() as client:
+    with _build_client() as (client, _):
         # Create projects
         client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"})
         client.post("/api/workflow/projects", json={"slug": "trading-bot", "name": "Trading Bot"})
@@ -183,7 +235,7 @@ def test_kanban_filter_by_project():
 
 
 def test_projects_can_store_independent_runtime_metadata():
-    with _build_client() as client:
+    with _build_client(as_admin=True) as (client, SessionLocal):
         created = client.post(
             "/api/workflow/projects",
             json={
@@ -197,20 +249,28 @@ def test_projects_can_store_independent_runtime_metadata():
             },
         )
         assert created.status_code == 200
+        _assert_redacted_project(created.json())
 
         listed = client.get("/api/workflow/projects")
         assert listed.status_code == 200
         erp = next(project for project in listed.json() if project["slug"] == "erp")
-        assert erp["root_directory"] == "/srv/projects/erp"
         assert erp["frontend_url"] == "https://erp.example.com"
         assert erp["backend_url"] == "https://api.erp.example.com"
-        assert erp["workflow_database_url"] == "postgresql://wf-erp"
         assert erp["tech_stack"] == "Laravel, Vue, MariaDB"
+        _assert_redacted_project(erp)
+
+        db = SessionLocal()
+        try:
+            stored = db.query(Project).filter(Project.slug == "erp").one()
+            assert stored.root_directory == "/srv/projects/erp"
+            assert stored.workflow_database_url == "postgresql://wf-erp"
+        finally:
+            db.close()
 
 
 def test_changes_api_per_project():
     """Test that change API endpoints work per project."""
-    with _build_client() as client:
+    with _build_client() as (client, _):
         # Create projects
         client.post("/api/workflow/projects", json={"slug": "project-a", "name": "Project A"})
         client.post("/api/workflow/projects", json={"slug": "project-b", "name": "Project B"})
@@ -242,7 +302,7 @@ def test_changes_api_per_project():
 
 def test_work_items_per_project():
     """Test that work items are isolated per project."""
-    with _build_client() as client:
+    with _build_client() as (client, _):
         # Create projects
         client.post("/api/workflow/projects", json={"slug": "proj-1", "name": "Project 1"})
         client.post("/api/workflow/projects", json={"slug": "proj-2", "name": "Project 2"})
