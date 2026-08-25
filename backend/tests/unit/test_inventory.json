@@ -246,6 +246,15 @@
       "evidence": "deterministic score rows and mocked service"
     },
     {
+      "file": "backend/tests/unit/test_jwt_secret.py",
+      "protected_behavior": "fail-closed JWT_SECRET resolver and forged default token",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "env monkeypatch of resolve_jwt_secret and FastAPI 401 on known-default HS256"
+    },
+    {
       "file": "backend/tests/unit/test_logs_tail_cursor.py",
       "protected_behavior": "cursor incremental de GET /api/logs/tail (after_offset/file_id/cursor_reset), retenção UTF-8 e compatibilidade do tail legado",
       "production_reachability": "GET /api/logs/tail usado por BackendLogViewer na configuração de combos",
