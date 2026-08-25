@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { FolderKanban } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
 import { Dropdown } from '@/components/ui/DropdownMenu'
 
 export type Project = {
@@ -18,7 +19,7 @@ export function ProjectSelector({ selectedProject, onProjectChange }: ProjectSel
   const { data: projects, isLoading, error } = useQuery<Project[]>({
     queryKey: ['workflow', 'projects'],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/workflow/projects`)
+      const res = await authFetch(`${API_BASE_URL}/workflow/projects`)
       if (!res.ok) throw new Error(`Failed to load projects (${res.status})`)
       return res.json()
     },

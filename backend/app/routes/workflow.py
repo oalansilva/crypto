@@ -22,6 +22,7 @@ import json
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.middleware.authMiddleware import get_current_admin
 from app.services.change_tasks_service import toggle_task_checkbox
 from app.services.coordination_service import resolve_change_relative_path
 from app.services.workflow_auth import (
@@ -320,11 +321,8 @@ class ProjectOut(BaseModel):
     id: str
     slug: str
     name: str
-    root_directory: Optional[str] = None
-    database_url: Optional[str] = None
     frontend_url: Optional[str] = None
     backend_url: Optional[str] = None
-    workflow_database_url: Optional[str] = None
     tech_stack: Optional[str] = None
 
 
@@ -333,17 +331,17 @@ def _project_out(project: Project) -> ProjectOut:
         id=project.id,
         slug=project.slug,
         name=project.name,
-        root_directory=project.root_directory,
-        database_url=project.database_url,
         frontend_url=project.frontend_url,
         backend_url=project.backend_url,
-        workflow_database_url=project.workflow_database_url,
         tech_stack=project.tech_stack,
     )
 
 
 @router.get("/projects", response_model=List[ProjectOut])
-def list_projects(db: Session = Depends(get_workflow_db)):
+def list_projects(
+    db: Session = Depends(get_workflow_db),
+    _admin_user_id: str = Depends(get_current_admin),
+):
     items = db.query(Project).order_by(Project.created_at.asc()).all()
     return [_project_out(p) for p in items]
 
