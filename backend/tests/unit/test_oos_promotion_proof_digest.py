@@ -198,12 +198,11 @@ def _digest(payload: dict) -> str:
 
 
 def _expired_proof(payload: dict) -> str:
-    import os
     from datetime import datetime, timedelta, timezone
 
     import jwt
 
-    from app.services.oos_promotion_proof import _canonical_digest
+    from app.services.oos_promotion_proof import JWT_SECRET, _canonical_digest
 
     now = datetime.now(timezone.utc)
     return jwt.encode(
@@ -213,18 +212,17 @@ def _expired_proof(payload: dict) -> str:
             "iat": now - timedelta(hours=7),
             "exp": now - timedelta(hours=1),
         },
-        os.getenv("JWT_SECRET", "dev-secret-change-in-production"),
+        JWT_SECRET,
         algorithm="HS256",
     )
 
 
 def _proof_with_purpose(payload: dict, purpose: str) -> str:
-    import os
     from datetime import datetime, timedelta, timezone
 
     import jwt
 
-    from app.services.oos_promotion_proof import _canonical_digest
+    from app.services.oos_promotion_proof import JWT_SECRET, _canonical_digest
 
     now = datetime.now(timezone.utc)
     return jwt.encode(
@@ -234,6 +232,6 @@ def _proof_with_purpose(payload: dict, purpose: str) -> str:
             "iat": now,
             "exp": now + timedelta(hours=1),
         },
-        os.getenv("JWT_SECRET", "dev-secret-change-in-production"),
+        JWT_SECRET,
         algorithm="HS256",
     )
