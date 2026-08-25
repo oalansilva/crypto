@@ -21,7 +21,7 @@
 
 ## 2026-08-25 — Kaizen release (lote 685)
 
-- **Release/card**: 2026-08-25 (2º pacote do dia) — Homologado `#685` no closeout `suba a release`.
+- **Release/card**: 2026-08-25 (2º pacote do dia) — Homologado → Pronto após deploy PROD `3482c763` via closeout T16.
 - **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees, CI PR #725 (`qa-gate` pass), overlay/runbook, transcript Cursor desta sessão Apply/QA/T14. Sem `opencode.db`.
 - **Sessões analisadas**: `#685` Apply→QA→Done técnico; pedido `suba a release` com card já Homologado no board.
 - **Custo/eficácia**: um Homologado; comentário Homologado postado no mesmo turno do closeout (arraste de Alan foi antes do helper).
