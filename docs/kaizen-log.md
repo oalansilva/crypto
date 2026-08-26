@@ -19,6 +19,39 @@
 
 ---
 
+
+## 2026-08-26 — Kaizen release
+
+- **Release/card**: 2026-08-26 — Homologado → Pronto após deploy PROD `ef053514` (pacote `#686` + `#687`).
+- **Fontes consultadas**: board Project 1 (`item-list`), git/worktrees + `release-guard audit`, CI PRs #735/#737/#738/#739, OpenSpec validate, transcript Cursor do Apply #687 + closeout. Sem `opencode.db`.
+- **Sessões analisadas**: Design→Apply→Done `#687` (T6 sem rotação); closeout no mesmo chat com overlay T16; `#686` já Homologado no pacote.
+- **Custo/eficácia**: 2 Homologados; comentários Homologado canônicos só no closeout (bloqueio do `pre`); PROD `BINANCE_*` já no `.env` raiz (sem rotação).
+
+### Métricas
+- **Board**: 2 Homologado (`#686` `#687`, Codex/P0). Fora: kaizen `#658`/`#659`/`#660` Em Refinamento; Aprovação de Design `#600`/`#614`/`#728`; worktrees in-flight `#472`/`#600`/`#604`/`#606`/`#614`/`#686`/`#687`/`#728`.
+- **Git**: `origin/main` `ef053514` (PR #738); archive via `release-2026-08-26` `95be91bd`; sync PR #739. Stash 0. Tip `main` limpo de `.env.binance`.
+- **CI**: PRs #735/#737 `qa-gate` pass na `develop`. PR #738 checks verdes; `qa-gate`/`deploy-staging` skip (`base_ref != develop`).
+- **OpenSpec**: 2 changes arquivadas com sync de specs (`log-viewer`/`logging`, `env-binance-git-hygiene`); sem `--skip-specs` neste lote.
+- **PROD**: source `ef053514`; health 200 `ok`; `BINANCE_API_KEY`/`BINANCE_API_SECRET` presentes no `.env` raiz (sem rotação, T6).
+
+### Achados
+- F-1 [major] Comentários Homologado canônicos ausentes em `#686`/`#687` até o closeout (`release-guard pre` bloqueou; helper postado no mesmo turno do release). Recidiva #658. Esforço S | P1 | Card existente: #658.
+- F-2 [info] `openspec archive -y` sincronizou main specs sem `--skip-specs` (#659 não recidivou neste lote).
+- F-3 [minor] Sync `main→develop` (#739) pode deixar change ativa ao lado do archive no worktree até limpeza. WARN #428. Sem card novo.
+- F-4 [minor] Título board `#687` ainda “rotacionar as chaves” vs issue “sem rotação” pós-T6. Sem card novo.
+- F-5 [info] Pedido `suba a releas` em sessão do card `#687` unbound na página; overlay T16 carregado. Alinhado ao #613.
+- F-6 [info] Guard `fail_closed` em `q_git=release-*` unbound atrapalhou o 1º commit do archive; contornado com `git add -A`. Sem card novo.
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | 10+ auditorias | #658
+- Archive `--skip-specs` | **não** neste lote | #659
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário | — | F-1 | coberto por #658 |
+
+---
 ## 2026-08-25 — Kaizen release (lote 729)
 
 - **Release/card**: 2026-08-25 (3º pacote do dia) — Homologado → Pronto após deploy PROD `2b7e1768` via closeout T16.
