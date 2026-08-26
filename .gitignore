@@ -117,6 +117,11 @@ backend/full_execution_log.txt.1
 .env.glassnode
 .env.docker.local
 backend/.env
+# Block arbitrary .env.<name>; allowlist tracked examples only.
+.env.*
+!.env.binance.example
+!.env.docker.example
+!**/.env.example
 frontend/test-results/
 frontend/playwright-report/
 .playwright-mcp/
