@@ -22,7 +22,9 @@ def test_forgot_password_info_omits_email_token_and_link(caplog):
         )
 
     assert "reset link" in response.message.lower() or "If the email exists" in response.message
-    info_text = "\n".join(record.getMessage() for record in caplog.records if record.levelno == logging.INFO)
+    info_text = "\n".join(
+        record.getMessage() for record in caplog.records if record.levelno == logging.INFO
+    )
     assert info_text, "expected at least one INFO log for existing user"
     assert email not in info_text
     assert "simulated-token" not in info_text
