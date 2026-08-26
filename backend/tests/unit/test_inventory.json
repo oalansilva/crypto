@@ -210,6 +210,15 @@
       "evidence": "helper unit cases plus run_combination persistence with mocked optimizer, split_train_ratio=0.7, N/A sanitization, holdout ERROR enrich, IS coverage window"
     },
     {
+      "file": "backend/tests/unit/test_forgot_password_logging.py",
+      "protected_behavior": "forgot-password INFO não contém e-mail, token nem reset link",
+      "production_reachability": "POST /api/auth/forgot-password",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "caplog INFO assertions after forgot_password with existing user mock"
+    },
+    {
       "file": "backend/tests/unit/test_gateway_and_agent_chat.py",
       "protected_behavior": "gateway and agent chat routes",
       "production_reachability": "reachable",
@@ -253,6 +262,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "env monkeypatch of resolve_jwt_secret and FastAPI 401 on known-default HS256"
+    },
+    {
+      "file": "backend/tests/unit/test_logs_tail_auth.py",
+      "protected_behavior": "GET /api/logs/tail exige admin (401/403) e omite path no 200",
+      "production_reachability": "GET /api/logs/tail usado por BackendLogViewer na configuração de combos",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ASGI 401 sem token, 403 não-admin, 200 admin sem chave path"
     },
     {
       "file": "backend/tests/unit/test_logs_tail_cursor.py",

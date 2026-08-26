@@ -139,7 +139,7 @@ class TestIncrementalCursor:
         assert legacy["name"] == "custom"
         assert legacy["content"] == "l2\nl3"
         assert legacy["lines"] == 2
-        assert legacy["path"] == str(log)
+        assert "path" not in legacy
         assert legacy["next_offset"] == log.stat().st_size
         assert legacy["file_id"]
         assert legacy["cursor_reset"] is False

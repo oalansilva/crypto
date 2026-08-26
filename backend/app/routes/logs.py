@@ -13,7 +13,9 @@ import stat
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.middleware.authMiddleware import get_current_admin
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 
@@ -176,6 +178,7 @@ def tail_log(
     lines: Annotated[int, Query(ge=10, le=MAX_TAIL_LINES)] = 200,
     after_offset: Annotated[int | None, Query(ge=0)] = None,
     file_id: Annotated[str | None, Query()] = None,
+    _admin_user_id: str = Depends(get_current_admin),
 ):
     path = LOG_MAP.get(name)
     if not path:
@@ -186,7 +189,6 @@ def tail_log(
         # Arquivo ainda não existe: sessão vazia que aguarda os primeiros bytes.
         return {
             "name": name,
-            "path": str(path),
             "lines": lines,
             "content": "",
             "next_offset": 0,
@@ -199,7 +201,6 @@ def tail_log(
         increment = _read_incremental(path, after_offset, snapshot, file_id)
         return {
             "name": name,
-            "path": str(path),
             "lines": lines,
             "content": increment["content"],
             "next_offset": increment["next_offset"],
@@ -211,7 +212,6 @@ def tail_log(
     content = _tail_lines(path, lines)
     return {
         "name": name,
-        "path": str(path),
         "lines": lines,
         "content": content,
         "next_offset": snapshot["file_size"],
