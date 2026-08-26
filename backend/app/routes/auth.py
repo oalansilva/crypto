@@ -226,11 +226,8 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email.lower()).first()
 
     if user:
-        # Simulate sending email - log the "email"
-        reset_link = f"http://localhost:5173/reset-password?token=simulated-token-{uuid.uuid4()}"
-        logger.info(
-            f"[AUTH] Password reset email SIMULATED for {user.email}. " f"Reset link: {reset_link}"
-        )
+        # Simulate sending email without logging email, token, or reset link.
+        logger.info("[AUTH] Password reset requested")
 
     # Always return 200 to prevent email enumeration
     return ForgotPasswordResponse(message="If the email exists, a reset link was sent")

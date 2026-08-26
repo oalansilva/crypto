@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { API_BASE_URL } from '../lib/apiBase'
+import { authFetch } from '../lib/authFetch'
 
 type LogName = 'full_execution_log' | 'backtest_debug'
 
@@ -14,6 +15,16 @@ type TailResponse = TailSnapshot & {
 }
 
 const SCROLL_THRESHOLD_PX = 24
+
+function tailHttpErrorMessage(status: number): string {
+  if (status === 401) return 'HTTP 401 — faça login para ver logs'
+  if (status === 403) return 'HTTP 403 — apenas admin pode ver logs'
+  return `HTTP ${status}`
+}
+
+function isTerminalAuthStatus(status: number): boolean {
+  return status === 401 || status === 403
+}
 
 export function BackendLogViewer({
   open,
@@ -101,29 +112,38 @@ export function BackendLogViewer({
       pollInFlightRef.current = true
       const controller = new AbortController()
       abortRef.current = controller
-      setError(null)
+      let stopPolling = false
       try {
         const cursor = cursorRef.current
         const target = cursor
           ? url(cursor.nextOffset, cursor.fileId)
           : url(undefined, undefined)
-        const res = await fetch(target, { signal: controller.signal })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const res = await authFetch(target, { signal: controller.signal })
+        if (!res.ok) {
+          setError(tailHttpErrorMessage(res.status))
+          if (isTerminalAuthStatus(res.status)) {
+            stopPolling = true
+          }
+          return
+        }
         const data = (await res.json()) as TailResponse
 
         if (!openRef.current || session !== sessionRef.current) return
 
         if (cursor && data.cursorReset) {
           // Arquivo truncado/rotacionado: reinicia a sessão no arquivo atual.
+          // startSession decide se agenda o próximo poll (ou para em 401/403).
           cursorRef.current = null
           setContent('')
           setWaiting(true)
           setError(null)
+          stopPolling = true
           await startSession(session)
           return
         }
 
         cursorRef.current = { nextOffset: data.nextOffset, fileId: data.fileId }
+        setError(null)
         if (data.content) {
           setContent((prev) => prev + data.content)
           setWaiting(false)
@@ -134,17 +154,16 @@ export function BackendLogViewer({
               if (el) el.scrollTop = el.scrollHeight
             })
           }
-        } else {
-          setError(null)
         }
       } catch (e: unknown) {
         if (!openRef.current || session !== sessionRef.current) return
         if (e instanceof DOMException && e.name === 'AbortError') return
         const msg = e instanceof Error ? e.message : 'Erro ao buscar logs'
         setError((prev) => (prev ? prev : msg))
-      } finally {        pollInFlightRef.current = false
+      } finally {
+        pollInFlightRef.current = false
         abortRef.current = null
-        if (openRef.current && session === sessionRef.current) {
+        if (!stopPolling && openRef.current && session === sessionRef.current) {
           schedulePoll(session)
         }
       }
@@ -158,9 +177,16 @@ export function BackendLogViewer({
       if (!openRef.current || session !== sessionRef.current) return
       const controller = new AbortController()
       abortRef.current = controller
+      let stopPolling = false
       try {
-        const res = await fetch(url(undefined, undefined), { signal: controller.signal })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const res = await authFetch(url(undefined, undefined), { signal: controller.signal })
+        if (!res.ok) {
+          setError(tailHttpErrorMessage(res.status))
+          if (isTerminalAuthStatus(res.status)) {
+            stopPolling = true
+          }
+          return
+        }
         const data = (await res.json()) as TailResponse
         if (!openRef.current || session !== sessionRef.current) return
         // Conteúdo-base descartado: a sessão começa vazia a partir do cursor.
@@ -174,7 +200,7 @@ export function BackendLogViewer({
         setError(msg)
       } finally {
         abortRef.current = null
-        if (openRef.current && session === sessionRef.current) {
+        if (!stopPolling && openRef.current && session === sessionRef.current) {
           schedulePoll(session)
         }
       }
