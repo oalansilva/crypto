@@ -22,6 +22,40 @@
 
 ## 2026-08-27 — Kaizen release
 
+### Lote #755 (segundo pacote do dia)
+
+- **Release/card**: 2026-08-27 — Homologado `#755` após deploy PROD `acc10988`.
+- **Fontes consultadas**: board Project 1 (item Homologado `#755`), git/worktrees + `release-guard pre` PASS, CI PRs #757/#758, OpenSpec archive, transcript Grok Build desta sessão (grill→Design→Apply→T14→release). Sem `opencode.db`.
+- **Sessões analisadas**: grill/Design/Apply `#755`; pedido explícito `suba a release`.
+- **Custo/eficácia**: 1 Homologado; comentário Homologado postado no turno do release (não no arraste T15).
+
+#### Métricas
+- **Board**: 1 Homologado (`#755`). Fora: `#749` P0; kaizen `#658`/`#659`/`#660`/`#752`; `#759` criado neste closeout; worktrees in-flight `#472`/`#600`/`#604`/`#606`/`#614`/`#728`.
+- **Git**: `origin/main` `acc10988` (PR #758); archive via `release-2026-08-27-755` `075c2682`. Stash 0. `main` e `develop` divergiram (docs #747 só em `main`).
+- **CI**: PR #757 `qa-gate` pass na `develop`. PR #758 checks verdes; `qa-gate` skip (base `main`).
+- **OpenSpec**: 1 change arquivada; specs `grill-card`/`cursor-harness` sync; `validate --all` 158/158.
+- **PROD**: source `acc10988`; health 200 `ok` após boot (502 ~2s).
+
+#### Achados
+- F-1 [minor] `scripts/release-guard` `branch_merged` só testa `origin/develop`. Local `main` == `origin/main` bloqueou o `pre` até `PRESERVED_BRANCHES=main`. Esforço S | P2 | Card novo: #759.
+- F-2 [minor] Comentário Homologado canônico de `#755` postado no closeout, não no turno do arraste T15. Recidiva #658.
+- F-3 [info] 502 no health PROD logo após `systemctl restart`; 200 na retentativa. Sem card.
+- F-4 [info] Needles do #755 não provam TUI; sessão real Grok+Cursor permanece Homologado/Alan.
+
+#### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | #658
+- `branch_merged` cego a `origin/main` | **novo** | #759
+
+#### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #759 — release-guard pre trata local `main` como não mergeada | P2 | F-1 | Em Refinamento |
+| (não criado) comentário Homologado no arraste | — | F-2 | coberto por #658 |
+
+---
+
+### Lote #747 (primeiro pacote do dia)
+
 - **Release/card**: 2026-08-27 — Homologado → Pronto após deploy PROD `255b8652` (pacote `#747`).
 - **Fontes consultadas**: board Project 1 (item Homologado `#747`), git/worktrees + `release-guard pre` PASS, CI PRs #748/#750/#751, OpenSpec archive, transcript Cursor desta sessão (homologação Telegram + wipe `.env` PROD). Sem `opencode.db`.
 - **Sessões analisadas**: Apply/QA/T14 `#747`; homologação DEV (vínculo + DM teste); pedido explícito de release + copiar secrets Telegram para PROD.
