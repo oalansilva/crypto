@@ -34,9 +34,6 @@ def db_session(postgres_isolation, unit_database_url):
         engine.dispose()
 
 
-pytestmark = pytest.mark.postgres
-
-
 def test_normalize_telegram_username():
     assert normalize_telegram_username("@Alan_Test") == "alan_test"
 
@@ -56,6 +53,7 @@ def test_should_send_position_aware_matrix():
     ) == (False, "suppressed_reentry")
 
 
+@pytest.mark.postgres
 def test_link_token_and_process(db_session):
     user = User(
         id=uuid.uuid4(),
@@ -80,6 +78,8 @@ def test_link_token_and_process(db_session):
     assert user.telegram_username_mismatch is True
 
 
+@pytest.mark.postgres
+@pytest.mark.postgres
 def test_link_token_expired(db_session):
     user = User(
         id=uuid.uuid4(),
@@ -103,6 +103,8 @@ def test_link_token_expired(db_session):
     assert "expir" in reply.lower()
 
 
+@pytest.mark.postgres
+@pytest.mark.postgres
 def test_resolve_portfolio_manual_when_no_binance(db_session):
     user = User(
         id=uuid.uuid4(),
