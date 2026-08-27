@@ -20,6 +20,9 @@ data/*.parquet
 # Grok Moore page is generated at SessionStart (not auto-injected; gitignored).
 .grok/rules/process-fsm-page.md
 
+# OpenCode 1.18.18 also discovers .opencode/plugins/; version only .opencode/plugin/.
+.opencode/plugins/
+
 # IDE
 .vscode/
 .idea/

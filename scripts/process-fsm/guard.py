@@ -1,4 +1,4 @@
-"""Compile process-fsm.yaml + resolver into a Write Guard (Cursor + Grok).
+"""Compile process-fsm.yaml + resolver into a Write Guard (Cursor + Grok + OpenCode).
 
 Glob-first: evaluate(write_produto) only for product_globs. No GitHub in unit tests.
 """
@@ -36,10 +36,22 @@ WRITE_TOOLS = frozenset(
         "search_replace",
         "Edit",
         "MultiEdit",
+        "edit",
+        "apply_patch",
     }
 )
-SHELL_TOOLS = frozenset({"Shell", "Bash", "run_terminal_command", "run_terminal_cmd"})
-PATH_KEYS = ("path", "file_path", "file", "target_file", "target_notebook")
+OPENCODE_WRITE_TOOLS = frozenset({"write", "edit", "apply_patch"})
+SHELL_TOOLS = frozenset(
+    {"Shell", "Bash", "run_terminal_command", "run_terminal_cmd", "bash"}
+)
+PATH_KEYS = ("path", "file_path", "file", "target_file", "target_notebook", "filePath")
+PATCH_MARKERS = (
+    "*** Add File:",
+    "*** Update File:",
+    "*** Delete File:",
+    "*** Move to:",
+    "*** Move File:",
+)
 MUTATION_RE = re.compile(r"(?:>>|>|\btee\s+|sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)")
 NON_REDIRECT_MUTATION_RE = re.compile(r"(?:sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\binstall\s+)")
 # File redirects / tee destinations. Targets starting with & are fd redirects (2>&1).
@@ -125,14 +137,23 @@ def _tool_input(payload: Mapping[str, Any]) -> dict[str, Any]:
     data = _as_dict(payload.get("tool_input"))
     if data:
         return data
-    return _as_dict(payload.get("toolInput"))
+    data = _as_dict(payload.get("toolInput"))
+    if data:
+        return data
+    return _as_dict(payload.get("args"))
 
 
 def normalize(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Canonical envelope: Cursor snake_case and Grok camelCase both work."""
+    """Canonical envelope: Cursor, Grok, and OpenCode `{ tool, args }` all work."""
     src = payload if isinstance(payload, Mapping) else {}
-    tool = _first_str(src, "tool_name", "toolName") or ""
-    cwd = _first_str(src, "cwd") or _first_str(src, "workspaceRoot") or os.getcwd()
+    tool = _first_str(src, "tool_name", "toolName", "tool") or ""
+    cwd = (
+        _first_str(src, "cwd")
+        or _first_str(src, "workspaceRoot")
+        or _first_str(src, "directory")
+        or _first_str(src, "worktree")
+        or os.getcwd()
+    )
     data = _tool_input(src)
     command = src.get("command") if isinstance(src.get("command"), str) else ""
     if not str(command).strip():
@@ -291,19 +312,56 @@ def git_anchor(cwd: Path, path: str) -> str:
     return str(current if current.exists() else cwd)
 
 
-def extract_path(payload: Mapping[str, Any]) -> str | None:
+def _paths_from_patch_text(text: str) -> list[str]:
+    out: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        for marker in PATCH_MARKERS:
+            if line.startswith(marker):
+                found = line[len(marker) :].strip()
+                if found:
+                    out.append(found)
+                break
+    return out
+
+
+def extract_paths(payload: Mapping[str, Any]) -> list[str]:
+    """Every write path in envelope order (filePath then patchText markers)."""
     canonical = normalize(payload)
     tool = str(canonical.get("tool_name") or "")
+    data = canonical.get("tool_input")
+    mapping = data if isinstance(data, dict) else {}
     cwd_raw = canonical.get("cwd")
     cwd = Path(str(cwd_raw)) if isinstance(cwd_raw, str) and cwd_raw.strip() else None
+    found: list[str] = []
     if tool in WRITE_TOOLS:
-        return _path_from_write(canonical)
+        write_path = _path_from_write(canonical)
+        if write_path:
+            found.append(write_path)
+        patch = mapping.get("patchText")
+        if not isinstance(patch, str):
+            patch = mapping.get("patch_text")
+        if isinstance(patch, str) and patch:
+            for item in _paths_from_patch_text(patch):
+                if item not in found:
+                    found.append(item)
+        if found:
+            return found
     command = canonical.get("command")
     if isinstance(command, str) and command.strip():
-        return _path_from_command(command, cwd)
+        one = _path_from_command(command, cwd)
+        if one:
+            return [one]
     if tool in SHELL_TOOLS:
-        return _path_from_command(str(command or ""), cwd)
-    return None
+        one = _path_from_command(str(command or ""), cwd)
+        if one:
+            return [one]
+    return []
+
+
+def extract_path(payload: Mapping[str, Any]) -> str | None:
+    paths = extract_paths(payload)
+    return paths[0] if paths else None
 
 
 def github_status_provider(bound_card: str | None) -> str | None:
@@ -382,6 +440,14 @@ def _deny(reason: str, state: str | None, q_git: str | None, bound: str | None) 
     return emit("deny", _reason_message(reason, state, q_git, bound))
 
 
+def _empty_path_deny() -> dict[str, str]:
+    message = (
+        "process-fsm-guard deny reason=empty_path. "
+        "OpenCode write/edit/apply_patch requires an extractable path."
+    )
+    return emit("deny", message)
+
+
 def decide(
     payload: Mapping[str, Any],
     *,
@@ -394,22 +460,32 @@ def decide(
     canonical = normalize(payload)
     cwd_raw = canonical.get("cwd") or os.getcwd()
     cwd = Path(str(cwd_raw))
-    path = extract_path(canonical)
+    paths = extract_paths(canonical)
     command = _command(canonical)
-    if is_sidecar_path(path) or sidecar_in_command(command):
+    tool = str(canonical.get("tool_name") or "")
+    if any(is_sidecar_path(item) for item in paths) or sidecar_in_command(command):
         return _sidecar_deny()
     if is_status_edit_command(command):
         return _status_edit_deny()
-    if not path:
+    if not paths:
+        if tool in OPENCODE_WRITE_TOOLS:
+            return _empty_path_deny()
         return _allow()
 
     table = fsm if fsm is not None else load_fsm_fn()
-    rel = repo_relative(cwd, path)
-    kind = glob_kind(rel, table)
+    classified: list[tuple[str, str, str]] = []
+    for item in paths:
+        rel = repo_relative(cwd, item)
+        classified.append((item, rel, glob_kind(rel, table)))
+    product = [(orig, rel) for orig, rel, kind in classified if kind == "product"]
+    design = [(orig, rel) for orig, rel, kind in classified if kind == "design"]
+    kind = "product" if product else ("design" if design else "other")
+    anchor = product[0][0] if product else (design[0][0] if design else paths[0])
+    rel = product[0][1] if product else (design[0][1] if design else classified[0][1])
     injected = payload.get("status")
     status = injected if isinstance(injected, str) and injected.strip() else None
 
-    resolved = resolve_fn(cwd, git_anchor(cwd, path), status=status)
+    resolved = resolve_fn(cwd, git_anchor(cwd, anchor), status=status)
     q_git = resolved.get("q_git")
     bound = resolved.get("bound_card")
     q: str | None = status if status is not None else resolved.get("q")

@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from fsm import load_fsm  # noqa: E402
 from board_status import STATUS_FIELD_ID  # noqa: E402
-from guard import decide, emit, extract_path, normalize  # noqa: E402
+from guard import decide, emit, extract_path, extract_paths, normalize  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -488,3 +488,228 @@ def test_grok_hooks_json_registers_guard():
         assert handler["command"] == "./process-fsm-guard.sh"
     start = hooks["hooks"]["SessionStart"][0]["hooks"][0]
     assert "process-fsm-session-start.sh" in start["command"]
+    post = hooks["hooks"]["PostToolUse"][0]["hooks"][0]
+    assert post["command"] == "./impeccable.sh PostToolUse"
+    assert post["timeout"] >= 30
+    stop = hooks["hooks"]["Stop"][0]["hooks"][0]
+    assert stop["command"] == "./impeccable.sh Stop"
+    assert stop["timeout"] >= 30
+    assert (REPO / ".grok" / "hooks" / "impeccable.sh").is_file()
+
+
+def _oc_payload(cwd: Path, tool: str, args: dict, status: str | None = None) -> dict:
+    payload: dict = {"tool": tool, "args": args, "cwd": str(cwd)}
+    if status is not None:
+        payload["status"] = status
+    return payload
+
+
+def test_g1_opencode_edit_product_on_develop_denied(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "backend/app/tasks/discovery_tasks.py")
+    payload = _oc_payload(
+        repo,
+        "edit",
+        {"filePath": "backend/app/tasks/discovery_tasks.py"},
+        status="Em desenvolvimento",
+    )
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+
+
+def test_g2_opencode_write_frontend_on_develop_denied(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "frontend/src/x.tsx")
+    payload = _oc_payload(repo, "write", {"filePath": "frontend/src/x.tsx"}, status="Todo")
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+
+
+def test_g3_apply_patch_update_file_extract_paths_and_deny(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "backend/app/main.py")
+    payload = _oc_payload(
+        repo,
+        "apply_patch",
+        {"patchText": "*** Begin Patch\n*** Update File: backend/app/main.py\n*** End Patch"},
+        status="Todo",
+    )
+    assert extract_paths(payload) == ["backend/app/main.py"]
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+    assert "empty_path" not in result["reason"]
+
+
+def test_g4_apply_patch_empty_patchtext_denied():
+    payload = {"tool": "apply_patch", "args": {"patchText": ""}, "cwd": "/"}
+    assert extract_paths(payload) == []
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+    assert "empty_path" in result["reason"]
+
+
+def test_g5_apply_patch_unparseable_patchtext_denied():
+    payload = {
+        "tool": "apply_patch",
+        "args": {"patchText": "*** Begin Patch\n*** End Patch"},
+        "cwd": "/",
+    }
+    assert extract_paths(payload) == []
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+    assert "empty_path" in result["reason"]
+
+
+def test_g6_edit_empty_filepath_denied():
+    payload = {"tool": "edit", "args": {"filePath": ""}, "cwd": "/"}
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+    assert "empty_path" in result["reason"]
+
+
+def test_g7_opencode_bash_tee_denied(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "backend/app/main.py")
+    payload = _oc_payload(
+        repo,
+        "bash",
+        {"command": "echo x | tee backend/app/main.py"},
+        status="Em desenvolvimento",
+    )
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+
+
+def test_g8_opencode_bash_status_item_edit_denied(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-720-opencode-three-adapters", "backend/app/main.py")
+    command = (
+        "gh project item-edit --id X "
+        f"--field-id {STATUS_FIELD_ID} --single-select-option-id bd47fbe8"
+    )
+    payload = _oc_payload(repo, "bash", {"command": command}, status="Design")
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+    assert "process_event" in result["reason"]
+
+
+def test_g9_opencode_edit_openspec_design_allowed(tmp_path: Path):
+    repo = tmp_path / "card"
+    rel = "openspec/changes/card-720-opencode-three-adapters/design.md"
+    _init_repo(repo, "card-720-opencode-three-adapters", rel)
+    calls: list = []
+
+    def wrapped(fsm, ctx):
+        calls.append(ctx)
+        raise AssertionError("evaluate must not run for design_globs")
+
+    payload = _oc_payload(repo, "edit", {"filePath": rel}, status="Design")
+    result = decide(payload, status_provider=SILENT, evaluate_fn=wrapped)
+    _assert_dual_allow(result)
+    assert calls == []
+
+
+def test_g10_unknown_opencode_tool_allowed():
+    result = decide({"tool": "grep", "args": {}, "cwd": "/"}, status_provider=SILENT)
+    _assert_dual_allow(result)
+
+
+def test_g11_three_dialects_same_deny(tmp_path: Path):
+    repo = tmp_path / "develop"
+    rel = "backend/app/tasks/discovery_tasks.py"
+    _init_repo(repo, "develop", rel)
+    envelopes = [
+        {"tool_name": "Write", "tool_input": {"path": rel}, "cwd": str(repo), "status": "Todo"},
+        {"toolName": "write", "toolInput": {"file_path": rel}, "cwd": str(repo), "status": "Todo"},
+        {"tool": "edit", "args": {"filePath": rel}, "cwd": str(repo), "status": "Todo"},
+    ]
+    results = [decide(item, status_provider=SILENT) for item in envelopes]
+    for item in results:
+        _assert_dual_deny(item)
+    assert {item["permission"] for item in results} == {"deny"}
+    assert {item["decision"] for item in results} == {"deny"}
+
+
+def test_g12_bash_fallback_parses_opencode_edit(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "backend/app/main.py")
+    hooks = repo / ".cursor" / "hooks"
+    hooks.mkdir(parents=True)
+    src = (REPO / ".cursor" / "hooks" / "process-fsm-guard.sh").read_text(encoding="utf-8")
+    script = hooks / "process-fsm-guard.sh"
+    script.write_text(src, encoding="utf-8")
+    script.chmod(0o755)
+    payload = {
+        "tool": "edit",
+        "args": {"filePath": "backend/app/main.py"},
+        "cwd": str(repo),
+        "status": "Todo",
+    }
+    proc = subprocess.run(
+        [str(script)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(repo),
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout)
+    _assert_dual_deny(data)
+
+
+def test_g17_apply_patch_add_file_openspec_allowed(tmp_path: Path):
+    repo = tmp_path / "card"
+    rel = "openspec/changes/card-720-opencode-three-adapters/design.md"
+    _init_repo(repo, "card-720-opencode-three-adapters", rel)
+    calls: list = []
+
+    def wrapped(fsm, ctx):
+        calls.append(ctx)
+        raise AssertionError("evaluate must not run for design_globs")
+
+    payload = _oc_payload(
+        repo,
+        "apply_patch",
+        {"patchText": f"*** Begin Patch\n*** Add File: {rel}\n*** End Patch"},
+        status="Design",
+    )
+    assert extract_paths(payload) == [rel]
+    result = decide(payload, status_provider=SILENT, evaluate_fn=wrapped)
+    _assert_dual_allow(result)
+    assert calls == []
+
+
+def test_g18_apply_patch_move_to_product_denied(tmp_path: Path):
+    repo = tmp_path / "develop"
+    _init_repo(repo, "develop", "docs/note.md")
+    payload = _oc_payload(
+        repo,
+        "apply_patch",
+        {
+            "patchText": (
+                "*** Begin Patch\n*** Update File: docs/note.md\n"
+                "*** Move to: backend/app/moved.py\n*** End Patch"
+            )
+        },
+        status="Todo",
+    )
+    paths = extract_paths(payload)
+    assert "backend/app/moved.py" in paths
+    assert "docs/note.md" in paths
+    result = decide(payload, status_provider=SILENT)
+    _assert_dual_deny(result)
+
+
+def test_normalize_opencode_native_keys():
+    native = normalize(
+        {
+            "tool": "edit",
+            "args": {"filePath": "backend/a.py"},
+            "directory": "/tmp/ws",
+        }
+    )
+    assert native["tool_name"] == "edit"
+    assert native["tool_input"]["filePath"] == "backend/a.py"
+    assert native["cwd"] == "/tmp/ws"
+    assert extract_path({"tool": "write", "args": {"filePath": "backend/a.py"}}) == "backend/a.py"

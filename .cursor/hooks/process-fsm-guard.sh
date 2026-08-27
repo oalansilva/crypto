@@ -22,25 +22,56 @@ except json.JSONDecodeError:
 if not isinstance(payload, dict):
     payload = {}
 
-cwd = str(payload.get("cwd") or payload.get("workspaceRoot") or os.getcwd())
-tool = str(payload.get("tool_name") or payload.get("toolName") or "")
-data = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
-if not data:
-    gi = payload.get("toolInput")
-    if isinstance(gi, dict):
-        data = gi
-    elif isinstance(gi, str) and gi.strip():
+cwd = str(
+    payload.get("cwd")
+    or payload.get("workspaceRoot")
+    or payload.get("directory")
+    or payload.get("worktree")
+    or os.getcwd()
+)
+tool = str(payload.get("tool_name") or payload.get("toolName") or payload.get("tool") or "")
+
+def _as_dict(raw):
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw.strip():
         try:
-            parsed = json.loads(gi)
+            parsed = json.loads(raw)
         except json.JSONDecodeError:
-            parsed = {}
-        data = parsed if isinstance(parsed, dict) else {}
-path = None
-for key in ("path", "file_path", "file", "target_file", "target_notebook"):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+data = _as_dict(payload.get("tool_input"))
+if not data:
+    data = _as_dict(payload.get("toolInput"))
+if not data:
+    data = _as_dict(payload.get("args"))
+paths = []
+for key in ("path", "file_path", "file", "target_file", "target_notebook", "filePath"):
     value = data.get(key)
     if isinstance(value, str) and value.strip():
-        path = value.strip()
+        paths.append(value.strip())
         break
+patch = data.get("patchText") if isinstance(data.get("patchText"), str) else ""
+if not patch:
+    patch = data.get("patch_text") if isinstance(data.get("patch_text"), str) else ""
+if patch:
+    for line in patch.splitlines():
+        stripped = line.strip()
+        for marker in (
+            "*** Add File:",
+            "*** Update File:",
+            "*** Delete File:",
+            "*** Move to:",
+            "*** Move File:",
+        ):
+            if stripped.startswith(marker):
+                found = stripped[len(marker):].strip()
+                if found and found not in paths:
+                    paths.append(found)
+                break
+path = paths[0] if paths else None
 command = payload.get("command") if isinstance(payload.get("command"), str) else ""
 if not command:
     nested = data.get("command")
@@ -70,7 +101,7 @@ except Exception:
         return bool(p) and str(p).replace("\\", "/").endswith(".design-digest")
     def _sidecar_mut(c):
         return False
-if _sidecar_mut(command) or _is_sidecar_path(path):
+if _sidecar_mut(command) or any(_is_sidecar_path(p) for p in paths):
     msg = "process-fsm-guard deny reason=sidecar"
     print(json.dumps({"permission": "deny", "decision": "deny", "agent_message": msg, "user_message": msg, "reason": msg}))
     sys.exit(0)
@@ -126,25 +157,42 @@ if path is None and command:
                 path = match.group(1)
                 if path.startswith("./"):
                     path = path[2:]
-if not path:
+if path and path not in paths:
+    paths.append(path)
+if not paths:
+    if tool in ("write", "edit", "apply_patch"):
+        msg = "process-fsm-guard deny reason=empty_path. OpenCode write/edit/apply_patch requires an extractable path."
+        print(json.dumps({"permission": "deny", "decision": "deny", "agent_message": msg, "user_message": msg, "reason": msg}))
+        sys.exit(0)
     print(json.dumps({"permission": "allow", "decision": "allow", "reason": ""}))
     sys.exit(0)
 
-posix = path.replace("\\", "/")
-if posix.startswith("./"):
-    posix = posix[2:]
-if posix.endswith(".design-digest"):
+def _posix(p):
+    text = p.replace("\\", "/")
+    if text.startswith("./"):
+        text = text[2:]
+    for marker in ("/backend/", "/frontend/src/", "/openspec/changes/", "/frontend/public/prototypes/"):
+        idx = text.find(marker)
+        if idx != -1:
+            text = text[idx + 1 :]
+            break
+    return text
+
+normalized = [_posix(p) for p in paths]
+if any(item.endswith(".design-digest") for item in normalized):
     msg = "process-fsm-guard deny reason=sidecar"
     print(json.dumps({"permission": "deny", "decision": "deny", "agent_message": msg, "user_message": msg, "reason": msg}))
     sys.exit(0)
-for marker in ("/backend/", "/frontend/src/", "/openspec/changes/", "/frontend/public/prototypes/"):
-    idx = posix.find(marker)
-    if idx != -1:
-        posix = posix[idx + 1 :]
-        break
-is_product = posix.startswith("backend/") or posix.startswith("frontend/src/")
-is_design = posix.startswith("openspec/changes/") or posix.startswith("frontend/public/prototypes/")
-target = path if os.path.isabs(path) else os.path.join(cwd, path)
+is_product = any(item.startswith("backend/") or item.startswith("frontend/src/") for item in normalized)
+is_design = any(
+    item.startswith("openspec/changes/") or item.startswith("frontend/public/prototypes/")
+    for item in normalized
+)
+anchor = next(
+    (p for p, item in zip(paths, normalized) if item.startswith("backend/") or item.startswith("frontend/src/")),
+    paths[0],
+)
+target = anchor if os.path.isabs(anchor) else os.path.join(cwd, anchor)
 git_dir = target if os.path.isdir(target) else os.path.dirname(target) or cwd
 while git_dir and not os.path.isdir(git_dir):
     parent = os.path.dirname(git_dir)

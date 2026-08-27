@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-08-27 - Terceiro adapter OpenCode; unicidade #562 revogada; lock machine continua morto (card #720)
+
+**Decisão:** o núcleo (`process-fsm.yaml` + `scripts/process-fsm/` + skills canônicas + stub `AGENTS.md`) ganha um terceiro adapter: OpenCode 1.18.18 (`.opencode/plugin/` auto-load, throw no deny, paging via `experimental.chat.system.transform`, stubs só para `.cursor/skills/`). Cursor e Grok #668 permanecem. A unicidade operacional do Cursor (#562) é **revogada**; a morte do lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` no kaizen) **não** é revogada. Detector Impeccable (`hook.mjs`) passa a existir nos três clientes (Cursor `afterFileEdit`/`stop`; Grok `PostToolUse`/`Stop`; OpenCode `tool.execute.after`/`session.idle`), fail-open. Sem `opencode.json`, sem `/opsx-*` no OpenCode, sem Auto OpenCode/Grok até ensaio.
+
+**Motivo:** abrir o repo no OpenCode 1.18.18 era fail-open no Guard e o detector só existia no Cursor.
+
+**Onde:** `scripts/process-fsm/guard.py`, `.opencode/plugin/`, `.opencode/skills/`, `.grok/hooks/` (PostToolUse/Stop), `AGENTS.md`, specs `process-harness` / `cursor-harness` / `developer-tooling` / `process-fsm-guard` / `process-fsm-paging`. Card #720.
+
 ## 2026-08-25 - Filho por atividade no mesmo chat `#id` (card #729)
 
 **Decisão:** um transcript `#<id>` cobre Em Refinamento → Done técnico. O pai orquestra; grill, Design, Apply, Code Review e QA correm em filhos/ondas com contexto próprio (sem inherit de transcript). Recusa de mistura = o pai não executa a outra atividade no mesmo chat — não “abra `#id Apply`”. Grill bind = Status + id no prompt, não branch `card-<id>-*`. T1/T7 e dual critic/reviewer intactos. Sem gate FSM. Sucessor do D8 do #673 (a entrada #673 permanece histórica).
