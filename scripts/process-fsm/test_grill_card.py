@@ -15,8 +15,12 @@ from paging import page  # noqa: E402
 TODO_STUB = "Próximo evento = iniciar_design. Não apply. Não /opsx:new ainda."
 GRILL_CARD = REPO / ".cursor" / "skills" / "grill-card" / "SKILL.md"
 GRILLING = REPO / ".cursor" / "skills" / "grilling" / "SKILL.md"
+ALAN_WORKFLOW = REPO / ".cursor" / "skills" / "alan-workflow" / "SKILL.md"
+GROK_GRILL_CARD = REPO / ".grok" / "skills" / "grill-card" / "SKILL.md"
+GROK_GRILLING = REPO / ".grok" / "skills" / "grilling" / "SKILL.md"
 HERMES = Path("/srv/knowledge/hermes-second-brain/skills")
 CODEX = Path.home() / ".codex" / "skills"
+HOST_TOOLS = ("AskUserQuestion", "ask_user_question")
 DOD_NEEDLES = (
     "CONTEXT.md",
     "docs/adr",
@@ -90,6 +94,57 @@ def test_em_refinamento_stub_names_grill() -> None:
     assert transitions["T1"]["actor"] == "Alan"
     assert transitions["T1"]["from"] == "Em Refinamento"
     assert transitions["T1"]["to"] == "Todo"
+
+
+def _near(text: str, left: str, right: str, window: int = 80) -> bool:
+    start = 0
+    while True:
+        pos = text.find(left, start)
+        if pos < 0:
+            return False
+        lo = max(0, pos - window)
+        hi = min(len(text), pos + len(left) + window)
+        if right in text[lo:hi]:
+            return True
+        start = pos + 1
+
+
+def _heading_section(text: str, heading: str) -> str:
+    start = text.find(heading)
+    assert start >= 0, heading
+    rest = text[start + len(heading) :]
+    nxt = rest.find("\n## ")
+    return heading + (rest if nxt < 0 else rest[:nxt])
+
+
+def test_grill_card_host_options_needles() -> None:
+    text = GRILL_CARD.read_text(encoding="utf-8")
+    for needle in HOST_TOOLS:
+        assert needle in text, needle
+    assert "N≥2" in text or "N>=2" in text
+    assert _near(text, "Other", "não conta")
+
+
+def test_grilling_vendor_stays_matt() -> None:
+    text = GRILLING.read_text(encoding="utf-8")
+    assert "❓" in text
+    assert "➡️" in text
+    for needle in HOST_TOOLS:
+        assert needle not in text, needle
+
+
+def test_alan_workflow_grill_card_relays_all_options() -> None:
+    text = ALAN_WORKFLOW.read_text(encoding="utf-8")
+    section = _heading_section(text, "## Grill-card")
+    assert "todas as options" in section
+    assert "não colapsa" in section
+
+
+def test_grok_grill_stubs_do_not_name_host_tools() -> None:
+    for path in (GROK_GRILL_CARD, GROK_GRILLING):
+        text = path.read_text(encoding="utf-8")
+        for needle in HOST_TOOLS:
+            assert needle not in text, (path, needle)
 
 
 def test_em_refinamento_page_stays_short() -> None:

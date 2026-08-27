@@ -19,7 +19,7 @@ Só corre se **as duas** forem verdade:
 
 Senão: recusar (id ausente, N ≠ `#<id>` do pai, ou Status ≠ Em Refinamento). Não editar issue de outro card. Não grelhar em Todo ou Design.
 
-O **pai** spawna este skill isolado (sem transcript) e só faz relaying das rodadas. Este filho escreve o body de N. `bound_card` aqui é o id N no prompt, não o git.
+O **pai** spawna este skill isolado (sem transcript) e só faz relaying das rodadas. Este filho escreve o body de N e **não** chama a ferramenta do host. `bound_card` aqui é o id N no prompt, não o git.
 
 ## Quando disparar
 
@@ -39,10 +39,20 @@ O **pai** spawna este skill isolado (sem transcript) e só faz relaying das roda
    5. **Critérios de aceite** — observáveis (Given/When/Then ou lista comportamental).
    6. **Riscos / perguntas abertas**.
 
-4. Se a fronteira **não** zerou: o card **fica** em Em Refinamento. Não comentar o handoff T1. Não ir para Todo com furo bloqueante.
-5. Se a fronteira **zerou** e o body tem as 6 seções: um único comentário canônico (exato):
+4. Se a fronteira **não** zerou: o card **fica** em Em Refinamento. Não comentar o handoff T1 (não postar segunda cópia do canônico). Não ir para Todo com furo bloqueante.
+5. Se a fronteira **zerou** e o body tem as 6 seções: exatamente um comentário canônico (texto exato):
 
    `grill-card: fronteira vazia; história no body; à espera de T1 (Alan).`
+
+   Idempotente: texto exato já no issue = deixar; texto canônico errado = editar/minimizar esse comentário; **não** postar segundo.
+
+## Perguntas da rodada (host)
+
+O filho **não** chama a ferramenta do host. Devolve dump D5: cada Q fechada com as N alternativas reais listadas (A/B/…, recomendada primeiro) + recomendação, para o pai mapear 1:1 em `options[]` na mesma ordem. Quem chama `AskUserQuestion` (Cursor) / `ask_user_question` (Grok) é o **pai**.
+
+- **Q fechada** (alternativas mutuamente exclusivas reais): N≥2 em `options[]`. Recomendada primeiro, label com `(Recommended)`. A linha automática **Other não conta** no N e não substitui alternativa em falta. Proibido apresentar só 1 option.
+- **Q aberta** (texto livre): markdown e/ou Other; **não** inventar `options[]` fictícias.
+- **Fallback Matt** (host indisponível): escolhas no **corpo** da Q fechada; `➡️` só a recomendação (não só a seta).
 
 ## Proibido
 
