@@ -30,7 +30,7 @@ def test_inventory_matches_all_unit_test_files():
         ROOT,
         ROOT / "backend/tests/unit/test_inventory.json",
     )
-    assert result["discovered_files"] == result["inventory_entries"] == 66
+    assert result["discovered_files"] == result["inventory_entries"] == 67
 
 
 def test_inventory_rejects_missing_stale_and_duplicate_entries(tmp_path):

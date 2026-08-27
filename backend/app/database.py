@@ -127,6 +127,50 @@ def ensure_runtime_schema_migrations() -> None:
                 ALTER TABLE users
                 ADD COLUMN IF NOT EXISTS access_invitation_created_at TIMESTAMP NULL
                 """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS telegram_username VARCHAR NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS telegram_alerts_enabled BOOLEAN NOT NULL DEFAULT FALSE
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS telegram_link_token VARCHAR NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS telegram_link_expires_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS telegram_linked_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS telegram_username_mismatch BOOLEAN NOT NULL DEFAULT FALSE
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_users_telegram_chat_id
+                ON users (telegram_chat_id)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_users_telegram_link_token
+                ON users (telegram_link_token)
+                """))
+        conn.execute(text("""
+                ALTER TABLE monitor_telegram_alerts
+                ADD COLUMN IF NOT EXISTS user_id VARCHAR NULL
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_user_id
+                ON monitor_telegram_alerts (user_id)
+                """))
 
         conn.execute(text("""
                 UPDATE users
@@ -210,6 +254,7 @@ def ensure_runtime_schema_migrations() -> None:
                 CREATE TABLE IF NOT EXISTS monitor_telegram_alerts (
                     id SERIAL PRIMARY KEY,
                     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    user_id VARCHAR NULL,
                     symbol VARCHAR NOT NULL,
                     timeframe VARCHAR NOT NULL,
                     previous_status VARCHAR NULL,

@@ -14,7 +14,6 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR = ROOT_DIR / "backend"
 SECRETS_CANDIDATES = (
     Path(os.getenv("MONITOR_TELEGRAM_SECRETS_FILE") or ""),
-    Path("/root/.hermes/secrets/runtime-secrets.json"),
     ROOT_DIR / "backend" / ".monitor-telegram-secrets.json",
 )
 
@@ -88,9 +87,7 @@ def main() -> int:
             "CONFIG_INCOMPLETE: "
             f"dry_run={summary.get('dry_run_count', 0)} "
             f"token_configured={summary.get('token_configured')} "
-            f"destination_allowed={summary.get('destination_allowed')} "
-            f"chat_id={summary.get('destination_chat_id')} "
-            f"thread_id={summary.get('destination_thread_id')}"
+            f"eligible_users={summary.get('eligible_users', 0)}"
         )
         return 1
 
