@@ -20,6 +20,37 @@
 ---
 
 
+## 2026-08-27 — Kaizen release
+
+- **Release/card**: 2026-08-27 — Homologado → Pronto após deploy PROD `255b8652` (pacote `#747`).
+- **Fontes consultadas**: board Project 1 (item Homologado `#747`), git/worktrees + `release-guard pre` PASS, CI PRs #748/#750/#751, OpenSpec archive, transcript Cursor desta sessão (homologação Telegram + wipe `.env` PROD). Sem `opencode.db`.
+- **Sessões analisadas**: Apply/QA/T14 `#747`; homologação DEV (vínculo + DM teste); pedido explícito de release + copiar secrets Telegram para PROD.
+- **Custo/eficácia**: 1 Homologado; comentário Homologado postado no closeout (bloqueio inicial do `pre`); outage PROD ~minutos por overwrite de `.env`.
+
+### Métricas
+- **Board**: 1 Homologado (`#747`). Fora: `#749` P0 Em Refinamento (UI reload); kaizen `#658`/`#659`/`#660`; worktrees in-flight `#472`/`#600`/`#604`/`#606`/`#614`/`#728`.
+- **Git**: `origin/main` `255b8652` (PR #750); archive via `release-2026-08-27` `6d11c7a8`; sync PR #751 `56f957d4`. Stash 0.
+- **CI**: PR #748 `qa-gate` pass na `develop`. PR #750 checks verdes; `qa-gate` skip (base `main`).
+- **OpenSpec**: 1 change arquivada com sync (`monitor-telegram-alerts`, `user-telegram-alerts`); `validate --all` 158/158.
+- **PROD**: source `255b8652`; health 200 `ok` após restore do `.env`; webhook 403 sem secret.
+
+### Achados
+- F-1 [major] Overwrite do `.env` PROD (`grep` Permission denied + `mv` de tmp só com Telegram) derrubou o backend (`DATABASE_URL` / depois `JWT_SECRET`). Restore de bak 09/08 + JWT do DEV. Esforço S | P0 | Card novo: #752.
+- F-2 [minor] Comentário Homologado canônico ausente até o `pre` do lote. Recidiva #658. Esforço S | P1 | coberto por #658.
+- F-3 [minor] Um bot Telegram = um webhook: apontar para PROD tira o DEV do `setWebhook`. Sem card novo (doc operacional).
+- F-4 [info] Guard `fail_closed` em `q_git=develop`/`main` unbound bloqueou escrita do `.env` pelo Agent; operador colou no shell. Alinhado ao harness.
+- F-5 [info] JWT_SECRET de PROD restaurado a partir do DEV (bak 09/08 não tinha). Dívida: rotacionar JWT PROD. Sem card extra neste lote (cap 3; F-1 priorizado).
+
+### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | #658
+- Secrets/env operacionais sem helper fail-closed | **novo** | #752
+
+### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #752 — bootstrap `.env` append-only | P0 | F-1 | Em Refinamento |
+
+---
 ## 2026-08-26 — Kaizen release
 
 - **Release/card**: 2026-08-26 — Homologado → Pronto após deploy PROD `ef053514` (pacote `#686` + `#687`).
