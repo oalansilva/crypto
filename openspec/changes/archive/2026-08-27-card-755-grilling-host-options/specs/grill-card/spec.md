@@ -1,8 +1,5 @@
-# grill-card Specification
+## MODIFIED Requirements
 
-## Purpose
-Em Refinamento grelha a história no body do GitHub issue (`grill-card` + vendor `grilling`). Q fechada lista todas as alternativas no card da ferramenta do host; o pai relaying não colapsa à recomendada.
-## Requirements
 ### Requirement: grill-card is the Em Refinamento interview front door
 The repository SHALL contain `.cursor/skills/grill-card/SKILL.md` as a regular file (not git symlink mode `120000`). The skill SHALL require Project 1 `Status=Em Refinamento` and an explicit GitHub issue id in the spawn prompt (title `#<id>` or equivalent) before editing that issue. It MUST NOT require git branch `card-<id>-*` or a card worktree. Frontmatter SHALL set `disable-model-invocation: false`. The **parent** session MUST spawn an isolated `grill-card` child (same model, no parent transcript) and MUST only relay rounds: present every closed question with **all** alternatives the child listed, collect Alan's answers, re-spawn or resume the child. The parent MUST NOT collapse a closed question to the recommended option alone. The child SHALL apply the vendored `grilling` primitive and write the DoD sections into the issue body in pt-BR: Problema, História (Como/quero/para), Entra/não entra, Vocabulário (`_Avoid:`), critérios observáveis, Riscos. When the frontier is empty, the child SHALL ensure exactly one canonical comment `grill-card: fronteira vazia; história no body; à espera de T1 (Alan).` exists on the issue: if an existing comment is already that exact text, leave it; if an existing canonical grill-card comment has the wrong text, edit or minimize that comment; MUST NOT post a second copy. When the frontier is not empty, the card MUST remain in Em Refinamento and MUST NOT receive a new copy of that comment. The child MUST NOT call `process_event priorizar`.
 
@@ -49,6 +46,8 @@ The repository SHALL contain `.cursor/skills/grill-card/SKILL.md` as a regular f
 - **THEN** the child SHALL edit or minimize that existing comment to the exact text
 - **AND** MUST NOT create a duplicate comment
 
+## ADDED Requirements
+
 ### Requirement: Closed grill questions list all host-tool options
 `.cursor/skills/grill-card/SKILL.md` SHALL state the host-tool contract for both clients. A **closed** frontier question with mutually exclusive real alternatives MUST be presented with every alternative in the host tool `options[]` (Cursor `AskUserQuestion`, Grok `ask_user_question`). N SHALL be the count of those real alternatives and MUST be ≥2. The recommended alternative MUST be the first option; its label MUST include `(Recommended)`. The host automatic Other line MUST NOT count toward N and MUST NOT replace a missing alternative. A closed question MUST NOT be presented with only one option. The isolated child MUST NOT call the host tool; it SHALL return each closed question with the N options listed (labels A/B/… plus the recommendation, recommended first) so the parent can map them 1:1 into `options[]` in the same order. An **open** (free-text) question MUST be presented as markdown and/or the host Other field; the agent MUST NOT invent fake `options[]` only to make a card appear. When the host tool is unavailable, the fallback SHALL be the Matt markdown format: the **body** of a closed question lists the choices and the `➡️` line is only the recommendation (MUST NOT be only the arrow). `.cursor/skills/grilling/SKILL.md` MUST remain the Matt copy and MUST NOT name the host tools. `.grok/skills/grill-card/SKILL.md` and `.grok/skills/grilling/SKILL.md` MUST NOT name `AskUserQuestion` or `ask_user_question`.
 
@@ -90,18 +89,3 @@ The repository SHALL contain `.cursor/skills/grill-card/SKILL.md` as a regular f
 - **THEN** `.cursor/skills/grilling/SKILL.md` SHALL still contain `❓` and `➡️` and MUST NOT contain `AskUserQuestion` or `ask_user_question`
 - **AND** `.grok/skills/grill-card/SKILL.md` and `.grok/skills/grilling/SKILL.md` MUST NOT contain `AskUserQuestion` or `ask_user_question`
 - **AND** `scripts/process-fsm/grok_stubs.py` MUST NOT be edited
-
-### Requirement: grill-card does not persist glossary files or OpenSpec
-
-While executing `grill-card`, the agent MUST NOT create or update `CONTEXT.md`, `docs/adr/**`, or `openspec/changes/**`, and MUST NOT invoke `/opsx:new`, `/opsx:ff`, `/opsx:explore`, or `/opsx:apply`. The change MUST NOT dual-write `grill-card` or `grilling` to Hermes, `/srv/knowledge/hermes-second-brain/skills/`, or `~/.codex/skills/`.
-
-#### Scenario: Refinement session stays on the issue
-- **WHEN** a grill-card round completes
-- **THEN** git status in the develop checkout MUST NOT show new `CONTEXT.md` or ADR files from that session
-- **AND** no OpenSpec change is created from that skill
-
-#### Scenario: No Hermes dual-write
-- **WHEN** this change is applied
-- **THEN** `grill-card` and `grilling` exist only under `.cursor/skills/` in this repo
-- **AND** the apply MUST NOT copy those skills into Hermes or `~/.codex/skills/`
-

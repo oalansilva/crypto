@@ -226,6 +226,20 @@ The Cursor harness SHALL load `.cursor/skills/grill-card/SKILL.md` and `.cursor/
 - **WHEN** a session starts bound to a card with `Status=Em Refinamento`
 - **THEN** `context_file[Em Refinamento]` instructs issue clarification / grill-card and that chat is not T1
 
+### Requirement: Parent grill relay presents all host options
+`.cursor/skills/alan-workflow/SKILL.md` SHALL include, in the Grill-card section, a line that the **parent** calls the host tool with **all** `options[]` of each closed question and MUST NOT collapse the card to the recommended option. The parent SHALL map the child's listed alternatives 1:1 into `options[]` in the same order, recommended first (Cursor `AskUserQuestion`, Grok `ask_user_question`). The isolated grill child MUST NOT call the host tool. This requirement MUST NOT add a FSM state, event, hook, or `enabled_tools` entry, MUST NOT edit `.cursor/process-fsm.yaml`, and MUST NOT name the host tool in `.grok/skills/*` stubs.
+
+#### Scenario: Parent relays every closed-question option
+- **WHEN** the grill child returns closed questions with listed options on Grok or Cursor
+- **THEN** the parent SHALL call the host tool and re-present all of those options
+- **AND** MUST NOT present only the `➡️` / recommended option
+- **AND** `alan-workflow` SHALL contain that relay line in the Grill-card section
+
+#### Scenario: No FSM change for host-option relay
+- **WHEN** this change is applied
+- **THEN** `.cursor/process-fsm.yaml` is unchanged
+- **AND** `AGENTS.md` always-on does not grow with this rule
+
 ### Requirement: One chat per column on both clients
 The Cursor and Grok runbooks SHALL require one chat per card titled `#<id>` from Em Refinamento through Done técnico. The parent MUST spawn isolated activity children (grill, Design author, Apply column, QA) and dual-reviewer / dual-critic waves. The parent MUST refuse to execute those activities itself and MUST NOT ask for a new chat titled `#<id> <coluna>`. This requirement MUST NOT add a FSM state, event, hook, or `enabled_tools` entry.
 
