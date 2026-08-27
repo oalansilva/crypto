@@ -12,7 +12,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
-from app.models import MonitorObservedStatus, MonitorTelegramAlert, SystemPreference
+import uuid
+
+from app.models import (
+    MonitorObservedStatus,
+    MonitorTelegramAlert,
+    MonitorPreference,
+    SystemPreference,
+    User,
+    UserExchangeCredential,
+)
+from app.services.user_exchange_credentials import BINANCE_PROVIDER
 from app.routes import monitor_telegram_alerts as monitor_alert_route
 from app.services.monitor_telegram_alerts import (
     MonitorTelegramAlertSettings,
@@ -25,6 +35,9 @@ from app.services.monitor_telegram_alerts import (
 
 @pytest.fixture
 def monitor_alert_db_session(postgres_isolation, unit_database_url):
+    from app.database import ensure_runtime_schema_migrations
+
+    ensure_runtime_schema_migrations()
     engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -52,9 +65,6 @@ def _settings(**overrides) -> MonitorTelegramAlertSettings:
     values = {
         "enabled": True,
         "bot_token": None,
-        "chat_id": "-1001",
-        "allowed_chat_ids": {"-1001"},
-        "thread_id": "45",
         "min_repeat_minutes": 360,
         "rate_limit_count": 5,
         "rate_limit_window_minutes": 60,
@@ -62,6 +72,33 @@ def _settings(**overrides) -> MonitorTelegramAlertSettings:
     }
     values.update(overrides)
     return MonitorTelegramAlertSettings(**values)
+
+
+def _add_eligible_user(db, *, chat_id: str = "9001") -> User:
+    user = User(
+        id=uuid.uuid4(),
+        email=f"alert-{chat_id}@test.local",
+        password_hash="x",
+        name="Alert User",
+        telegram_chat_id=chat_id,
+        telegram_username="alertuser",
+        telegram_alerts_enabled=True,
+    )
+    db.add(user)
+    db.commit()
+    return user
+
+
+def _add_binance_credential(db, user: User) -> None:
+    db.add(
+        UserExchangeCredential(
+            user_id=str(user.id),
+            provider=BINANCE_PROVIDER,
+            api_key="test-key",
+            api_secret="test-secret",
+        )
+    )
+    db.commit()
 
 
 class _FakeOpportunityService:
@@ -95,6 +132,7 @@ def _opportunity(status: str = "HOLD") -> dict:
         "stop_price": 101900.25,
         "next_status_label": "entry",
         "distance_to_next_status": 0.2,
+        "strategy_display_name": "Combo Alpha",
     }
 
 
@@ -105,26 +143,31 @@ def test_build_monitor_alert_candidate_formats_short_sell_summary():
     assert candidate.symbol == "BTC/USDT"
     assert candidate.new_status == "EXIT"
     assert candidate.severity == "Acao necessaria"
-    assert candidate.message == (
-        "Cripto Farol - Alerta Monitor\n\n"
-        "Ativo: BTC/USDT\n"
-        "TimeFrame: 1d\n"
-        "Acao: Venda\n"
-        "Data: 2026-05-11 15:30\n"
-        "Valor Entrada: 104.250,50\n"
-        "Stop: 101.900,25"
-    )
+    assert candidate.message.startswith("Cripto Farol - Alerta Monitor")
+    assert "Ativo: BTC/USDT" in candidate.message
+    assert "Leitura atual: Venda" in candidate.message
+    assert "104.250,50" in candidate.message
     assert candidate.payload["action"] == "Venda"
     assert candidate.payload["entry_price"] == 104250.5
     assert candidate.payload["stop_price"] == 101900.25
     assert candidate.payload_hash
 
 
+def test_build_monitor_alert_candidate_includes_stop_reason():
+    opportunity = _opportunity("EXIT")
+    opportunity["stop_breached_now"] = True
+    candidate = build_monitor_alert_candidate(opportunity, previous_status="HOLD")
+
+    assert candidate is not None
+    assert "Motivo=Stop" in candidate.message
+    assert candidate.stop_reason is True
+
+
 def test_build_monitor_alert_candidate_formats_short_buy_summary():
     candidate = build_monitor_alert_candidate(_opportunity("HOLD"), previous_status=None)
 
     assert candidate is not None
-    assert "Acao: Compra" in candidate.message
+    assert "Leitura atual: Compra" in candidate.message
     assert "Valor Entrada: 104.250,50" in candidate.message
     assert "Stop: 101.900,25" in candidate.message
 
@@ -132,6 +175,14 @@ def test_build_monitor_alert_candidate_formats_short_buy_summary():
 def test_scan_dry_run_records_audit_when_delivery_config_incomplete(
     monitor_alert_db_session,
 ):
+    user = _add_eligible_user(monitor_alert_db_session)
+    monitor_alert_db_session.add(
+        MonitorPreference(user_id=str(user.id), symbol="BTC/USDT", in_portfolio=True)
+    )
+    monitor_alert_db_session.add(
+        MonitorObservedStatus(symbol="BTC/USDT", timeframe="1d", status="EXIT", payload_json={})
+    )
+    monitor_alert_db_session.commit()
     service = _FakeOpportunityService([_opportunity("HOLD")])
 
     summary = run_monitor_telegram_alert_scan(
@@ -144,16 +195,15 @@ def test_scan_dry_run_records_audit_when_delivery_config_incomplete(
     assert summary["dry_run"] is True
     assert summary["token_configured"] is False
     assert summary["can_send"] is False
-    assert summary["destination_chat_id"] == "-1001"
-    assert summary["destination_thread_id"] == "45"
+    assert summary["eligible_users"] == 1
     assert summary["candidates"] == 1
     assert summary["dry_run_count"] == 1
     assert service.calls == [{"source": "catalog", "tier_filter": "1,2,3", "alerts_only": True}]
     row = monitor_alert_db_session.query(MonitorTelegramAlert).one()
     assert row.result_status == "dry_run"
     assert row.symbol == "BTC/USDT"
-    assert row.destination_chat_id == "-1001"
-    assert row.destination_thread_id == "45"
+    assert row.destination_chat_id == "9001"
+    assert row.destination_thread_id is None
     observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
     assert observed.symbol == "BTC/USDT"
     assert observed.timeframe == "1d"
@@ -182,14 +232,7 @@ def test_scan_skips_unchanged_observed_status(monitor_alert_db_session):
 
     assert summary["sent"] == 0
     assert summary["skipped"] == 1
-    assert summary["results"] == [
-        {
-            "symbol": "BTC/USDT",
-            "timeframe": "1d",
-            "status": "HOLD",
-            "result": "unchanged",
-        }
-    ]
+    assert summary["results"] == [{"result": "no_transitions"}]
     assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
 
 
@@ -223,20 +266,17 @@ def test_scan_reports_not_sendable_reason(monitor_alert_db_session):
 
     assert summary["sent"] == 0
     assert summary["skipped"] == 1
-    assert summary["results"] == [
-        {
-            "symbol": "BTC/USDT",
-            "timeframe": "1d",
-            "status": "UNKNOWN",
-            "result": "not_sendable",
-        }
-    ]
+    assert summary["results"] == [{"result": "no_transitions"}]
     assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
 
 
 def test_scan_alerts_when_silent_observed_status_becomes_sendable(
     monitor_alert_db_session,
 ):
+    user = _add_eligible_user(monitor_alert_db_session)
+    monitor_alert_db_session.add(
+        MonitorPreference(user_id=str(user.id), symbol="BTC/USDT", in_portfolio=True)
+    )
     monitor_alert_db_session.add(
         MonitorObservedStatus(
             symbol="BTC/USDT",
@@ -254,11 +294,11 @@ def test_scan_alerts_when_silent_observed_status_becomes_sendable(
         user_id="user-1",
         settings=_settings(bot_token="token"),
         opportunity_service=service,
-        sender=lambda _settings, text: sent_messages.append(text) or {"ok": True},
+        sender=lambda **kwargs: sent_messages.append(kwargs.get("text")) or {"ok": True},
     )
 
     assert summary["sent"] == 1
-    assert "Acao: Compra" in sent_messages[0]
+    assert "Leitura atual: Compra" in sent_messages[0]
     row = monitor_alert_db_session.query(MonitorTelegramAlert).one()
     assert row.previous_status == "EXIT"
     observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
@@ -278,7 +318,7 @@ def test_scan_updates_observed_status_for_non_sendable_status(monitor_alert_db_s
 
     assert summary["sent"] == 0
     assert summary["skipped"] == 1
-    assert summary["results"][0]["result"] == "not_sendable"
+    assert summary["results"] == [{"result": "no_transitions"}]
     assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
     observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
     assert observed.symbol == "BTC/USDT"
@@ -287,20 +327,28 @@ def test_scan_updates_observed_status_for_non_sendable_status(monitor_alert_db_s
 
 
 def test_scan_deduplicates_same_symbol_timeframe_status(monitor_alert_db_session):
+    user = _add_eligible_user(monitor_alert_db_session)
+    monitor_alert_db_session.add(
+        MonitorPreference(user_id=str(user.id), symbol="BTC/USDT", in_portfolio=True)
+    )
     existing = MonitorTelegramAlert(
         created_at=datetime.utcnow() - timedelta(minutes=5),
+        user_id=str(user.id),
         symbol="BTC/USDT",
         timeframe="1d",
         previous_status=None,
         new_status="HOLD",
         severity="Atencao",
-        destination_chat_id="-1001",
+        destination_chat_id="9001",
         result_status="sent",
         payload_hash="old",
         source="monitor",
         payload_json={},
     )
     monitor_alert_db_session.add(existing)
+    monitor_alert_db_session.add(
+        MonitorObservedStatus(symbol="BTC/USDT", timeframe="1d", status="EXIT", payload_json={})
+    )
     monitor_alert_db_session.commit()
     service = _FakeOpportunityService([_opportunity("HOLD")])
 
@@ -317,23 +365,37 @@ def test_scan_deduplicates_same_symbol_timeframe_status(monitor_alert_db_session
     assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 1
 
 
-def test_scan_applies_rate_limit_before_send(monitor_alert_db_session):
+def test_scan_applies_rate_limit_before_send(monitor_alert_db_session, monkeypatch):
+    user = _add_eligible_user(monitor_alert_db_session)
+    _add_binance_credential(monitor_alert_db_session, user)
+    monitor_alert_db_session.add(
+        MonitorPreference(user_id=str(user.id), symbol="BTC/USDT", in_portfolio=True)
+    )
+    monkeypatch.setattr(
+        "app.services.monitor_telegram_alerts.fetch_user_wallet_holdings",
+        lambda *_args, **_kwargs: ({"BTC": 2.0}, True),
+    )
     for idx in range(2):
         monitor_alert_db_session.add(
             MonitorTelegramAlert(
                 created_at=datetime.utcnow() - timedelta(minutes=idx),
+                user_id=str(user.id),
                 symbol=f"ETH{idx}/USDT",
                 timeframe="1d",
                 previous_status=None,
                 new_status="HOLD",
                 severity="Atencao",
-                destination_chat_id="-1001",
+                destination_chat_id="9001",
                 result_status="sent",
                 payload_hash=f"hash-{idx}",
                 source="monitor",
                 payload_json={},
             )
         )
+    monitor_alert_db_session.commit()
+    monitor_alert_db_session.add(
+        MonitorObservedStatus(symbol="BTC/USDT", timeframe="1d", status="HOLD", payload_json={})
+    )
     monitor_alert_db_session.commit()
     service = _FakeOpportunityService([_opportunity("EXIT")])
 
@@ -349,10 +411,23 @@ def test_scan_applies_rate_limit_before_send(monitor_alert_db_session):
     assert summary["sent"] == 0
 
 
-def test_scan_records_failure_and_continues(monitor_alert_db_session):
+def test_scan_records_failure_and_continues(monitor_alert_db_session, monkeypatch):
+    user = _add_eligible_user(monitor_alert_db_session)
+    _add_binance_credential(monitor_alert_db_session, user)
+    monitor_alert_db_session.add(
+        MonitorPreference(user_id=str(user.id), symbol="BTC/USDT", in_portfolio=True)
+    )
+    monkeypatch.setattr(
+        "app.services.monitor_telegram_alerts.fetch_user_wallet_holdings",
+        lambda *_args, **_kwargs: ({"BTC": 2.0}, True),
+    )
+    monitor_alert_db_session.add(
+        MonitorObservedStatus(symbol="BTC/USDT", timeframe="1d", status="HOLD", payload_json={})
+    )
+    monitor_alert_db_session.commit()
     service = _FakeOpportunityService([_opportunity("EXIT")])
 
-    def failing_sender(*_args, **_kwargs):
+    def failing_sender(**_kwargs):
         raise RuntimeError("telegram down")
 
     summary = run_monitor_telegram_alert_scan(
@@ -367,6 +442,47 @@ def test_scan_records_failure_and_continues(monitor_alert_db_session):
     row = monitor_alert_db_session.query(MonitorTelegramAlert).one()
     assert row.result_status == "failed"
     assert "telegram down" in row.error_text
+
+
+def test_scan_two_users_different_positions(monitor_alert_db_session, monkeypatch):
+    user_a = _add_eligible_user(monitor_alert_db_session, chat_id="9001")
+    user_b = _add_eligible_user(monitor_alert_db_session, chat_id="9002")
+    _add_binance_credential(monitor_alert_db_session, user_a)
+    for user in (user_a, user_b):
+        monitor_alert_db_session.add(
+            MonitorPreference(user_id=str(user.id), symbol="BTC/USDT", in_portfolio=True)
+        )
+    monitor_alert_db_session.add(
+        MonitorObservedStatus(symbol="BTC/USDT", timeframe="1d", status="HOLD", payload_json={})
+    )
+    monitor_alert_db_session.commit()
+
+    def fake_holdings(_db, user_id, **_kwargs):
+        if user_id == str(user_a.id):
+            return ({"BTC": 1.5}, True)
+        return ({}, True)
+
+    monkeypatch.setattr(
+        "app.services.monitor_telegram_alerts.fetch_user_wallet_holdings",
+        fake_holdings,
+    )
+    sent_chat_ids: list[str] = []
+
+    summary = run_monitor_telegram_alert_scan(
+        monitor_alert_db_session,
+        user_id="ignored",
+        settings=_settings(bot_token="token"),
+        opportunity_service=_FakeOpportunityService([_opportunity("EXIT")]),
+        sender=lambda **kwargs: sent_chat_ids.append(str(kwargs.get("chat_id"))) or {"ok": True},
+    )
+
+    assert summary["eligible_users"] == 2
+    assert summary["sent"] == 1
+    assert summary["suppressed_by_position_matrix"] == 1
+    assert sent_chat_ids == ["9001"]
+    rows = monitor_alert_db_session.query(MonitorTelegramAlert).all()
+    assert len(rows) == 1
+    assert rows[0].user_id == str(user_a.id)
 
 
 def test_send_telegram_message_uses_configured_thread(monkeypatch):
@@ -385,15 +501,7 @@ def test_send_telegram_message_uses_configured_thread(monkeypatch):
 
     monkeypatch.setattr("app.services.monitor_telegram_alerts.requests.post", fake_post)
 
-    response = send_telegram_message(
-        _settings(
-            bot_token="token",
-            chat_id="-1003891182144",
-            allowed_chat_ids={"-1003891182144"},
-            thread_id="5",
-        ),
-        "mensagem",
-    )
+    response = send_telegram_message(bot_token="token", chat_id="-1003891182144", text="mensagem")
 
     assert response == {"ok": True}
     assert requests_payloads == [
@@ -403,7 +511,6 @@ def test_send_telegram_message_uses_configured_thread(monkeypatch):
                 "chat_id": "-1003891182144",
                 "text": "mensagem",
                 "disable_web_page_preview": True,
-                "message_thread_id": "5",
             },
             "timeout": 10,
         }
@@ -432,16 +539,13 @@ def test_cron_wrapper_loads_monitor_token_from_runtime_secret(tmp_path, monkeypa
     assert module._load_telegram_token() == "monitor-token"
 
 
-def test_settings_require_allowlisted_destination(monkeypatch, monitor_alert_db_session):
+def test_settings_can_send_requires_bot_token(monkeypatch, monitor_alert_db_session):
     monkeypatch.setenv("MONITOR_TELEGRAM_ALERTS_ENABLED", "1")
-    monkeypatch.setenv("MONITOR_TELEGRAM_BOT_TOKEN", "token")
-    monkeypatch.setenv("MONITOR_TELEGRAM_CHAT_ID", "-1002")
-    monkeypatch.setenv("MONITOR_TELEGRAM_ALLOWED_CHAT_IDS", "-1001")
+    monkeypatch.delenv("MONITOR_TELEGRAM_BOT_TOKEN", raising=False)
 
     settings = load_monitor_telegram_alert_settings(monitor_alert_db_session)
 
     assert settings.enabled is True
-    assert settings.destination_allowed is False
     assert settings.can_send is False
 
 

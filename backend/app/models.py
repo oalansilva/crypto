@@ -258,6 +258,13 @@ class User(Base):
     access_invitation_created_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True, default=None)
+    telegram_chat_id = Column(String, nullable=True, index=True)
+    telegram_username = Column(String, nullable=True)
+    telegram_alerts_enabled = Column(Boolean, nullable=False, default=False)
+    telegram_link_token = Column(String, nullable=True, index=True)
+    telegram_link_expires_at = Column(DateTime, nullable=True)
+    telegram_linked_at = Column(DateTime, nullable=True)
+    telegram_username_mismatch = Column(Boolean, nullable=False, default=False)
 
 
 class BetaAccessAuditLog(Base):
@@ -303,6 +310,7 @@ class MonitorTelegramAlert(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    user_id = Column(String, nullable=True, index=True)
     symbol = Column(String, nullable=False, index=True)
     timeframe = Column(String, nullable=False, index=True)
     previous_status = Column(String, nullable=True)

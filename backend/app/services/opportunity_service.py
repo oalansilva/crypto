@@ -2101,6 +2101,8 @@ class OpportunityService:
                         "status": public_status,
                         "badge": public_badge,
                         "message": public_message,
+                        "raw_analysis_status": raw_analysis_status,
+                        "stop_breached_now": bool(stop_breached_now),
                         "details": public_details,
                         "last_price": float(df.iloc[-1]["close"]),
                         "timestamp": str(df.index[-1]),

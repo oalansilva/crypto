@@ -56,7 +56,40 @@ Nao consigo executar esse tipo de acao por aqui. Posso registrar como feedback d
 
 ## Destino dos Alertas
 
-Destino aprovado para o MVP: grupo interno `Grupo Crypto`, topico `Crypto` (`telegram:-1003891182144`, `threadId=5`).
+### Card #747 — DMs individuais (implementado)
+
+A partir do card `#747`, alertas position-aware do Monitor são enviados por **DM individual** para cada usuário elegível via **Bot API Telegram** (`sendMessage`), sem passar pelo Hermes.
+
+Elegibilidade por usuário:
+
+- conta `active`;
+- `telegram_alerts_enabled=true`;
+- `telegram_chat_id` vinculado (fluxo `/link <token>` no bot Cripto Farol);
+- `@username` declarado no Perfil.
+
+Configuração do usuário:
+
+- **Perfil** — toggle opt-in, `@username` (obrigatório), gerar comando `/link`;
+- **Monitor → Preferências** — mesmo toggle `telegram_alerts_enabled`, sincronizado com o Perfil.
+
+Escopo position-aware (por usuário):
+
+- apenas símbolos **Em portfólio** no Monitor;
+- posição Spot real via Binance (ou escopo manual quando Binance não configurado);
+- matriz: venda (`HOLD→EXIT`) só com posição Spot; compra (`EXIT→HOLD`) só sem posição;
+- **sem envio** ao grupo interno `Grupo Crypto` neste fluxo.
+
+Variáveis de ambiente:
+
+- `MONITOR_TELEGRAM_BOT_TOKEN` — token do bot;
+- `TELEGRAM_WEBHOOK_SECRET` — validação do webhook `/api/telegram/webhook`;
+- `MONITOR_TELEGRAM_BOT_USERNAME` (opcional) — instruções no Perfil.
+
+Anti-ruído e auditoria são **por usuário** (dedupe, rate limit, histórico em `monitor_telegram_alerts.user_id`).
+
+### Legado — grupo interno (pré-#747)
+
+Destino aprovado para o MVP original: grupo interno `Grupo Crypto`, topico `Crypto` (`telegram:-1003891182144`, `threadId=5`).
 
 Destino externo: grupo privado do beta, apenas por encaminhamento/manual de Alan.
 
