@@ -110,7 +110,9 @@ def piso_present(map_: OrderedDict[str, str]) -> tuple[bool, str | None]:
     return True, None
 
 
-def build_result_lines(dest_lines: list[str], patch: OrderedDict[str, str], dest_map: OrderedDict[str, str]) -> list[str]:
+def build_result_lines(
+    dest_lines: list[str], patch: OrderedDict[str, str], dest_map: OrderedDict[str, str]
+) -> list[str]:
     """Retorna novas linhas do destino após merge."""
     # índice da última ocorrência por chave
     last_idx: dict[str, int] = {}
@@ -300,7 +302,9 @@ def main() -> int:
         patch.move_to_end(k)
 
     if not patch:
-        eprint("error: patch sem nenhuma chave KEY=VALUE (ficheiro vazio/só comentários ou stdin vazio)")
+        eprint(
+            "error: patch sem nenhuma chave KEY=VALUE (ficheiro vazio/só comentários ou stdin vazio)"
+        )
         return 1
 
     # Validar piso no patch se trouxer valor diferente
@@ -434,7 +438,9 @@ def main() -> int:
     # Saída só nomes/contagens/paths, nunca valores
     new_keys = [k for k in patch if k not in dest_map]
     updated_keys = [k for k in patch if k in dest_map and patch[k] != dest_map.get(k)]
-    eprint(f"ok: {len(patch)} chaves no patch, {len(new_keys)} novas, {len(updated_keys)} atualizadas em {dest}")
+    eprint(
+        f"ok: {len(patch)} chaves no patch, {len(new_keys)} novas, {len(updated_keys)} atualizadas em {dest}"
+    )
     if new_keys:
         eprint(f"new: {', '.join(new_keys)}")
     if updated_keys:
