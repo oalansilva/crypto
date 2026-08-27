@@ -32,6 +32,28 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./impeccable.sh PostToolUse",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./impeccable.sh Stop",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }

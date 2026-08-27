@@ -140,10 +140,14 @@ def test_agents_md_is_stub():
     assert "Em Refinamento -> Todo -> Design" not in text
     assert "(q, bound_card, q_git)" in text
     assert "T1/T7/T15" in text
-    assert "Cursor Agent" in text and "Grok Build" in text
+    assert "Cursor Agent" in text and "Grok Build" in text and "OpenCode" in text
     assert "não always-on" not in text
     assert "Grok Auto" not in text
+    assert "OpenCode Auto" not in text
+    assert "Auto OpenCode" not in text
+    assert "Auto Grok" not in text
     assert "cooperativo" in text
+    assert "T0–T17" not in text and "T0-T17" not in text
 
 
 def test_skill_priority_anchor():
