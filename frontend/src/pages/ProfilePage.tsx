@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { CalendarClock, Mail, Save, UserRound } from 'lucide-react'
 
 import { BinanceCredentialsForm } from '@/components/binance/BinanceCredentialsForm'
+import { TelegramAlertsForm } from '@/components/telegram/TelegramAlertsForm'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -201,6 +202,10 @@ export default function ProfilePage() {
 
           <section className="p-6 sm:p-7">
             <BinanceCredentialsForm mode="full" variant="profile" />
+          </section>
+
+          <section className="p-6 sm:p-7">
+            <TelegramAlertsForm variant="profile" />
           </section>
         </CardContent>
       </Card>

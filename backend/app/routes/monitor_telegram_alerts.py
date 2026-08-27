@@ -31,14 +31,19 @@ class MonitorTelegramAlertRunRequest(BaseModel):
 class MonitorTelegramAlertRunResponse(BaseModel):
     enabled: bool
     dry_run: bool
+    eligible_users: int = 0
     candidates: int
     sent: int
     dry_run_count: int
     duplicates: int
     rate_limited: int
     skipped: int
+    suppressed_by_position_matrix: int = 0
     failed: int
-    destination_allowed: bool
+    binance_sync_failed_users: int = 0
+    operational_dms: int = 0
+    token_configured: bool | None = None
+    can_send: bool | None = None
     results: list[dict]
 
 

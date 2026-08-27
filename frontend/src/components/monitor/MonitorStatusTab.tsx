@@ -222,6 +222,8 @@ export const MonitorStatusTab: React.FC = () => {
     const [walletHoldingsByAsset, setWalletHoldingsByAsset] = useState<Record<string, number>>({});
     const [walletSyncState, setWalletSyncState] = useState<WalletSyncState>('idle');
     const [walletSyncMessage, setWalletSyncMessage] = useState<string | null>(null);
+    const [telegramAlertsEnabled, setTelegramAlertsEnabled] = useState(false);
+    const [telegramAlertsSaving, setTelegramAlertsSaving] = useState(false);
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
     const [sparklineByKey, setSparklineByKey] = useState<Record<string, number[]>>({});
     const [sparklineLoadingByKey, setSparklineLoadingByKey] = useState<Record<string, boolean>>({});
@@ -389,6 +391,41 @@ export const MonitorStatusTab: React.FC = () => {
         }
 
         await fetchWalletPortfolio(configured);
+
+        try {
+            const telegramResponse = await authFetch(`${API_BASE_URL}/users/me/telegram-settings`);
+            if (telegramResponse.ok) {
+                const telegramPayload = await telegramResponse.json() as { telegramAlertsEnabled?: boolean };
+                setTelegramAlertsEnabled(Boolean(telegramPayload.telegramAlertsEnabled));
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const toggleTelegramAlerts = async () => {
+        setTelegramAlertsSaving(true);
+        try {
+            const next = !telegramAlertsEnabled;
+            const response = await authFetch(`${API_BASE_URL}/users/me/telegram-settings`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegramAlertsEnabled: next }),
+            });
+            const payload = await response.json() as { telegramAlertsEnabled?: boolean; detail?: string };
+            if (!response.ok) {
+                throw new Error(String(payload.detail || `Falha (${response.status})`));
+            }
+            setTelegramAlertsEnabled(Boolean(payload.telegramAlertsEnabled));
+        } catch (error) {
+            toast({
+                title: 'Erro',
+                description: error instanceof Error ? error.message : 'Não foi possível atualizar alertas Telegram.',
+                variant: 'destructive',
+            });
+        } finally {
+            setTelegramAlertsSaving(false);
+        }
     };
 
     const fetchOpportunities = async (tier?: TierFilter, options?: { refresh?: boolean }): Promise<boolean> => {
@@ -948,6 +985,15 @@ export const MonitorStatusTab: React.FC = () => {
                         />
                         <span className="kbd">⌘K</span>
                     </label>
+                    <Button
+                        variant="secondary"
+                        className="topbar-btn"
+                        data-testid="monitor-telegram-alerts-toggle"
+                        onClick={() => void toggleTelegramAlerts()}
+                        disabled={telegramAlertsSaving}
+                    >
+                        {telegramAlertsEnabled ? 'Telegram: on' : 'Telegram: off'}
+                    </Button>
                     <Button
                         variant="secondary"
                         className="topbar-btn"

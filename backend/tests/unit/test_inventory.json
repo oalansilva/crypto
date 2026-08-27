@@ -345,6 +345,15 @@
       "evidence": "PostgreSQL session fixture and route assertions"
     },
     {
+      "file": "backend/tests/unit/test_card_747_telegram_alerts.py",
+      "protected_behavior": "card 747 Telegram link and position-aware matrix",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "link token, portfolio scope, and position matrix assertions"
+    },
+    {
       "file": "backend/tests/unit/test_ohlcv_backfill_service.py",
       "protected_behavior": "OHLCV backfill provider flow",
       "production_reachability": "reachable",
