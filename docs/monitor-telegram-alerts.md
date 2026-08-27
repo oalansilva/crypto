@@ -87,6 +87,29 @@ Variáveis de ambiente:
 
 Anti-ruído e auditoria são **por usuário** (dedupe, rate limit, histórico em `monitor_telegram_alerts.user_id`).
 
+### Operação DEV vs PROD — bootstrap append-only (card #752)
+
+Um bot Telegram = um webhook (`setWebhook`). O Telegram só entrega o webhook para **um** destino por vez: `setWebhook` para PROD invalida imediatamente o DEV e vice-versa. PROD e DEV **não** partilham webhook ao mesmo tempo. Operar DEV com o mesmo bot de PROD tira os eventos de PROD.
+
+Homes de dotenv:
+
+- `home backend`: `<checkout>/backend/.env` — o que o unit `criptofarol-prod-backend` (e workers `criptofarol-prod-runtime-worker` / `discovery` / `candle-writer`) e o DEV fazem `source` antes de subir o backend FastAPI. **Todas as vars Telegram deste card vivem aqui.**
+- `home raiz`: `<checkout>/.env` — home canónica de `BINANCE_*` após #687. O backend Python também faz `load_dotenv` deste path com `override=False`, mas o unit **não** faz `source` nele; Telegram no home raiz não chega ao worker.
+
+Vars Telegram (no dotenv do backend):
+
+- `MONITOR_TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+- `MONITOR_TELEGRAM_BOT_USERNAME` (opcional)
+- `MONITOR_TELEGRAM_ALERTS_ENABLED`
+
+Bootstrap seguro (card #752):
+
+- Script versionado `ops/bootstrap_env.py` (fail-closed, `chmod +x`). Uso operador: `python3 ops/bootstrap_env.py --file <dotenv-concreto> --from-file <patch.env>` e/ou `cat patch.env | python3 ops/bootstrap_env.py --file <dotenv-concreto>`. Sem `--set` na argv.
+- `--file` é **obrigatório** e sem default — o operador aponta explicitamente o dotenv concreto (DEV ou PROD). Destino ausente → exit ≠0 e não cria ficheiro. Não adivinha DEV vs PROD.
+- Merge append-only por chave: `destino ∪ patch`; nenhuma chave do destino desaparece; piso `DATABASE_URL`+`JWT_SECRET` imutável (valor diferente no patch → exit ≠0 sem backup). Ver `ops/bootstrap_env.py --help`.
+- Preserva comentários/linhas vazias/ordem; backup `.env.bak-YYYYMMDD-HHMMSS` com `chmod 600` no bak; replace atómico via tmp no mesmo filesystem; `chmod 600` no destino.
+
 ### Legado — grupo interno (pré-#747)
 
 Destino aprovado para o MVP original: grupo interno `Grupo Crypto`, topico `Crypto` (`telegram:-1003891182144`, `threadId=5`).
