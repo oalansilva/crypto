@@ -181,6 +181,21 @@ async function installStableApiMocks(page: Page) {
   await page.route('**/api/user/binance-credentials', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ configured: false, api_key_masked: null }) }),
   )
+  await page.route('**/api/users/me/telegram-settings', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        telegramUsername: null,
+        telegramAlertsEnabled: false,
+        linked: false,
+        linkedAt: null,
+        usernameMismatch: false,
+        botUsername: 'criptofarol_bot',
+        hasPendingLinkToken: false,
+      }),
+    }),
+  )
   await page.route('**/api/monitor/spot-market-orders/eligibility', (route) => {
     const body = route.request().postDataJSON() as { symbols?: string[] } | null
     return route.fulfill({
@@ -440,5 +455,6 @@ test('visual critical profile', async ({ page }) => {
   await page.goto('/profile')
   await expect(page.getByRole('heading', { name: 'Meu Perfil', exact: true })).toBeVisible()
   await expect(page.getByText('Credenciais Binance')).toBeVisible()
+  await expect(page.getByTestId('telegram-alerts-form')).toBeVisible()
   await capture(page, 'profile.png')
 })

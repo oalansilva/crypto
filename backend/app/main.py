@@ -43,7 +43,10 @@ from app.routes.retrospectives import router as retrospectives_router
 from app.routes.admin_users import router as admin_users_router
 from app.routes.admin_market_indicators import router as admin_market_indicators_router
 from app.routes.monitor_telegram_alerts import router as monitor_telegram_alerts_router
-from app.routes.user_telegram import router as user_telegram_router, webhook_router as telegram_webhook_router
+from app.routes.user_telegram import (
+    router as user_telegram_router,
+    webhook_router as telegram_webhook_router,
+)
 from app.services.signal_monitor import signal_monitor
 from app.services.binance_service import (
     start_signal_feed_snapshot_worker,

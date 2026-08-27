@@ -11,7 +11,11 @@ from app.database import Base
 from app.models import MonitorPreference, User
 from app.services.monitor_portfolio_status import resolve_portfolio_status_for_user
 from app.services.monitor_telegram_alerts import should_send_position_aware_alert
-from app.services.user_telegram_service import create_link_token, normalize_telegram_username, process_link_command
+from app.services.user_telegram_service import (
+    create_link_token,
+    normalize_telegram_username,
+    process_link_command,
+)
 
 
 @pytest.fixture

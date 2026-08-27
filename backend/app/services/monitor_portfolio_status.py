@@ -68,9 +68,7 @@ def resolve_portfolio_status_for_user(
 ) -> dict[str, SymbolPortfolioStatus]:
     prefs = {
         row.symbol: row
-        for row in db.query(MonitorPreference)
-        .filter(MonitorPreference.user_id == user_id)
-        .all()
+        for row in db.query(MonitorPreference).filter(MonitorPreference.user_id == user_id).all()
     }
     binance_configured = get_user_exchange_credential(db, user_id, BINANCE_PROVIDER) is not None
     holdings = wallet_holdings

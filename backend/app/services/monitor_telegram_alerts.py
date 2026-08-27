@@ -490,8 +490,7 @@ def _send_operational_pause_dm(
     message = (
         "Cripto Farol - Aviso operacional\n\n"
         "Sua carteira Binance está indisponível no momento. "
-        "Alertas position-aware pausados até a sincronização voltar."
-        + EDUCATIONAL_DISCLAIMER
+        "Alertas position-aware pausados até a sincronização voltar." + EDUCATIONAL_DISCLAIMER
     )
     chat_id = str(user.telegram_chat_id or "")
     try:
@@ -593,11 +592,7 @@ def run_monitor_telegram_alert_scan(
         return summary
 
     symbols = sorted(
-        {
-            str(item["candidate"].symbol)
-            for item in transitions
-            if item.get("candidate") is not None
-        }
+        {str(item["candidate"].symbol) for item in transitions if item.get("candidate") is not None}
     )
     duplicate_since = datetime.utcnow() - timedelta(minutes=max(settings.min_repeat_minutes, 1))
     rate_limit_since = datetime.utcnow() - timedelta(

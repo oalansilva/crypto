@@ -68,7 +68,9 @@ def create_link_token(db: Session, user: User) -> dict[str, str]:
     return {
         "token": token,
         "command": f"/link {token}",
-        "expiresAt": user.telegram_link_expires_at.isoformat() if user.telegram_link_expires_at else None,
+        "expiresAt": (
+            user.telegram_link_expires_at.isoformat() if user.telegram_link_expires_at else None
+        ),
     }
 
 
@@ -95,11 +97,7 @@ def process_link_command(
     if not cleaned:
         return False, "Token inválido. Gere um novo código no Perfil do Cripto Farol."
 
-    user = (
-        db.query(User)
-        .filter(User.telegram_link_token == cleaned)
-        .first()
-    )
+    user = db.query(User).filter(User.telegram_link_token == cleaned).first()
     if user is None:
         return False, "Token inválido ou expirado. Gere um novo código no Perfil."
 
@@ -129,7 +127,10 @@ def process_link_command(
             "Conta vinculada com aviso: o @username do Telegram difere do informado no Perfil. "
             "Revise em Meu Perfil se necessário."
         )
-    return True, "Conta vinculada. Alertas position-aware serão enviados neste chat quando habilitados."
+    return (
+        True,
+        "Conta vinculada. Alertas position-aware serão enviados neste chat quando habilitados.",
+    )
 
 
 def load_user_by_id(db: Session, user_id: str) -> User | None:
