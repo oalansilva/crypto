@@ -19,6 +19,43 @@
 
 ---
 
+## 2026-08-28 — Kaizen release
+
+### Lote 749+752 (Homologado → Pronto após deploy PROD `2478bdee`)
+
+- **Release/card**: 2026-08-28 — Homologado `#749` (P0 Perfil Telegram reload, `card-749-telegram-reload`, `37836e58`) + `#752` (Kaizen P0 bootstrap .env, `22eec442`) → `develop` → `main` PR #768 merged `2478bdee`.
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --format json` (271 items), git `fetch --prune` + `status -sb` + `worktree list` + `branch -a` + `log origin/main..origin/develop`, `scripts/release-guard audit` + `RELEASE_CARDS=749,752 scripts/release-guard pre`, `openspec validate --all`, `gh pr checks 768/767/766`, `gh issue view 749/752 --json comments`.
+- **Sessões analisadas**: OpenCode `card-749` grill (fronteira vazia `#749#issuecomment-5446669835`) → Design (1666 words, UI none, 2 critics PASS) → Apply (defense in depth `hasLoadedRef`/`isRealLogout`, 3 e2e pass) → `submeter_design` T5 → `aprovar_design` T7 → `iniciar_apply` T8 → `pedir_review` T9 → `accept_sha` T11 → `integrar_develop` T14 (`37836e58`); `card-752` similar; pedido `suba a release` (2026-08-28T01:10). Sem `~/.cursor/agent-transcripts` (OpenCode).
+- **Custo/eficácia**: 2 Homologados no pacote; homologation comments postados antes do PR release (`01:10:48Z`/`01:10:50Z` vs `01:11:02Z` PR #768) — correção vs recidiva #658; `release-guard pre` PASS após fix homolog comment; pre strict ainda com 7 warns (dirty worktrees) via `PRESERVED_BRANCHES`.
+
+#### Métricas
+- **Board**: 2 Homologado (`#749 P0 Monitor` `Responsavel=Codex`, `#752 P0 Operacao` `Responsavel=Codex`). Fora: 26 `Pronto`, 2 `Aprovação` (`#728` `#600`), 0 `Done` após T14.
+- **Git**: `origin/develop 37836e58` = `fix(telegram): preserve linked state (card-749) (#767)` sobre `22eec442`; `origin/main 2478bdee` merge PR #768; `log origin/main..origin/develop =0` pós-merge; `status -sb` clean `develop...origin/develop`; `worktree list` 7 + `develop`; `stash 0`.
+- **CI**: PR #768 `develop→main` 13 checks `pass` (`backend-tests` 2m02s, `frontend-tests` 26s, `e2e-playwright` 4m53s, `openspec-validate` 16s, `process-fsm` 16s) + `qa-gate` `skipping` (base `main` esperado); PR #767 (`card-749`) `qa-gate pass` 4s; PR #766 (`card-752`) `qa-gate pass`.
+- **OpenSpec**: `validate --all` 160/160; active `card-749`, `card-752` em `changes/` antes do archive (pendente); após archive `2026-08-28-card-749/752` specs `user-telegram-alerts` (+1) e `bootstrap-env-append-only` (+6) sync.
+- **PROD**: commit `2478bdee` não deployado no escopo desta auditoria (auditoria ainda com Homologado, antes de `release-guard post`); deploy PROD feito em lote com evidência `2478bdee services=criptofarol-prod-backend,criptofarol-prod-frontend url=https://criptofarol.com.br` (health 200).
+
+#### Achados
+- **F-1 [minor] `tasks.md` desatado após Done/merge — dívida de trilha** — `tasks.md` 3× `[ ]` (749 4.1-4.3) e 9× `[ ]` (752 1.1-4.2) apesar de merged `37836e58`/`22eec442` e homologado; `grep "^- \[ \]"` ⇒ 3/9 unchecked; recorrência `Done` sem fechar tasks (não bloqueou `audit` mas diverge `validate --all` vs board). Esforço S | P2.
+- **F-2 [minor] OpenSpec active changes ainda em `changes/` após merge em `main` — archive pendente** — `ls openspec/changes` = `archive, card-749, card-752` até closeout; `validate --all` lista `✓ change/card-749` active; archive só no docs-release branch. Recidiva #659. Esforço S.
+- **F-3 [minor] canonical release doc ausente antes de `release-guard post`** — `ls docs/release-2026-08-28.md: No such file` e `release-guard audit: WARN canonical release doc missing`. PR #768 body só texto, sem doc commit. Bloqueia `post`. Esforço S.
+- **F-4 [minor] `release-guard pre` strict bloqueado por dirty worktrees + `card-720` não mergeada** — `pre: BLOCKER dirty worktree` ×5 + `extra worktree card-720` + `local branch not merged: card-720`; contornado via `PRESERVED_BRANCHES` em PR body (7 in-flight). Recidiva #759. Esforço S.
+- **F-5 [info] homologation comment timing corrigido — positivo** — `749 01:10:48Z`/`752 01:10:50Z` antes de `768 01:11:02Z` (vs lotes 2026-08-27 onde F-2 recidiva #658). Cover #658.
+- **F-6 [info] `local main differs from origin/main` + board title divergence** — `audit: WARN local main differs` + 11 `WARN board title differs without divergence note` (#755 etc). Não bloqueia lote. Esforço S.
+
+#### Padrões recorrentes
+- Homologado sem comentário canônico no turno do arraste | corrigido neste lote (F-5) | #658
+- Archive active change não arquivada antes do próximo release | recidiva | #659
+- Dirty worktrees bloqueiam `pre` | recidiva | #759
+- Board title divergence | recidiva | #687
+
+#### Cards kaizen criados (máx. 3/release)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #769 — kaizen: tasks.md deve ir a [x] antes de Done (release 2026-08-28) | P2 | F-1 | Em Refinamento |
+| (não criado) archive pendente 749/752 → coberto por #659 — Kaizen: pre em release exige archive ou dedupe | — | F-2 | coberto por #659 (ainda Em Refinamento) |
+| (não criado) dirty worktrees / card-720 → coberto por #759 — release-guard branch_merged cego a origin/main | — | F-4 | coberto por #759 (ainda Em Refinamento) |
+| (não criado) homologation timing → coberto por #658 | — | F-5 | coberto por #658 (ainda Em Refinamento) |
 
 ## 2026-08-27 — Kaizen release
 
