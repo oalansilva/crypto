@@ -56,6 +56,39 @@
 | (não criado) archive pendente 749/752 → coberto por #659 — Kaizen: pre em release exige archive ou dedupe | — | F-2 | coberto por #659 (ainda Em Refinamento) |
 | (não criado) dirty worktrees / card-720 → coberto por #759 — release-guard branch_merged cego a origin/main | — | F-4 | coberto por #759 (ainda Em Refinamento) |
 
+### Lote 773 (Homologado → após deploy PROD `97ff2de6`)
+
+- **Release/card**: 2026-08-28 segundo pacote — Homologado `#773` (Covenant Flow pin Cripto `v1.0.1`, squash PR #778 `65d5bd74`) → `develop` → `main` PR #779 merged `97ff2de6`.
+- **Fontes consultadas**: board Project 1 (`#773` Homologado após arraste Alan), git `fetch --prune` + `status -sb` + `worktree list` + `log origin/main..origin/develop`, `RELEASE_CARDS=773 scripts/release-guard pre` PASS, `openspec validate --all` 160/160, `gh pr checks 779`, health PROD `https://criptofarol.com.br/api/health` 200, transcript Cursor desta sessão (Apply→T14→Homologado→release).
+- **Sessões analisadas**: pai Cursor `#773` (grill/Design/Apply/review/QA/T14); pedido `suba a release`; confirmação `agora movi para homologado`. Comentário canónico Homologado `65d5bd74` já existia (`#issuecomment-5454841606`) antes do `pre`.
+- **Custo/eficácia**: 1 Homologado; `pre` PASS com 9 warns (`PRESERVED_BRANCHES` 7 in-flight + worktree `#773` com críticas Impeccable untracked); archive via `openspec archive -y` no branch documental **depois** do merge em `main` (recidiva #659, caminho esperado).
+
+#### Métricas
+- **Board**: 1 Homologado (`#773`). Fora: 3 `Aprovação de Design` (`#728` `#600` `#614`), `#780` criado neste closeout em Em Refinamento; kaizen `#658`/`#659`/`#660`/`#759`/`#769` ainda Em Refinamento.
+- **Git**: `origin/develop 65d5bd74` pin; `origin/main 97ff2de6` merge PR #779; árvores `develop`/`main` idênticas (`1ba6e9a2`) após o merge de código; `stash 0`; 8 worktrees extra.
+- **CI**: PR #779 checks `pass` (`backend-tests` ~2m, `e2e-playwright` 4m38s, `openspec-validate`, `process-fsm`); `qa-gate`/`deploy-staging` `skipping` (base `main`).
+- **OpenSpec**: change `card-773-covenant-flow` arquivada `2026-08-28-card-773-covenant-flow`; spec nova `covenant-flow` (+11); updates cursor-harness/guard/event/paging/developer-tooling/oracle-environment-map/process-fsm/process-harness/release-archive-via-release-branch; `validate --all` 160/160.
+- **PROD**: source `97ff2de6`; alembic já head (PostgreSQL); frontend `VITE_APP_ENV=production` bundle `index-CCFZ7r0d.js` (harness-only, hashes iguais ao lote 749+752); services `criptofarol-prod-backend`+`criptofarol-prod-frontend` restart; health 200 `ok`.
+
+#### Achados
+- **F-7 [minor] Project item Title ≠ issue title no #773** — board Title `Produto: alan-process — …`; issue `Produto: covenant-flow — …`. `item-list` inventaria pelo Title do item; auditoria emite `board title differs`. Recidiva do padrão F-6 (lote 749+752 mapeou a #687, que é outro assunto e já Pronto). Esforço S | P2 | Card novo: #780.
+- **F-8 [minor] Archive da change completa só no PR documental após merge em `main`** — `openspec/changes/card-773-covenant-flow` ainda activa no tip do PR de código #779. Recidiva #659. Esforço S.
+- **F-9 [minor] Worktree do pacote `#773` dirty (críticas Impeccable untracked) + 7 in-flight** — `pre` só PASS com `PRESERVED_BRANCHES` incluindo `card-773-covenant-flow`. Recidiva #759. Esforço S.
+- **F-10 [info] Comentário Homologado canónico existia antes do arraste T15** — `16:08:56Z` vs arraste posterior; `post-card-evidence-comment.sh` DEDUPE no turno do `agora movi para homologado`. Cover #658.
+
+#### Padrões recorrentes
+- Archive active change depois do merge de código | recidiva | #659
+- Dirty worktrees / PRESERVED no `pre` | recidiva | #759
+- Board Title diverge da issue | recidiva agora com card próprio | #780
+- Homologado comment vs arraste | cover | #658
+
+### Cards kaizen criados (lote 773)
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #780 — kaizen: Project item Title deve seguir o title da issue (#773 alan-process vs covenant-flow) | P2 | F-7 | Em Refinamento |
+| (não criado) archive só no docs-release → coberto por #659 | — | F-8 | coberto por #659 (ainda Em Refinamento) |
+| (não criado) dirty worktrees / PRESERVED → coberto por #759 | — | F-9 | coberto por #759 (ainda Em Refinamento) |
+
 ## 2026-08-27 — Kaizen release
 
 ### Lote #755 (segundo pacote do dia)

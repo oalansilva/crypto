@@ -4,7 +4,7 @@
 TBD - created by archiving change card-617-release-archive-via-release-branch. Update Purpose after archive.
 ## Requirements
 ### Requirement: Runbook documents release-* archive when develop push is protected
-O runbook on-demand de release (`docs/crypto-overlay.md` e a skill `alan-workflow` neste repo) SHALL documentar o caminho de closeout via branch `release-*` quando o push para `refs/heads/develop` é recusado por branch protection (incluindo required check `qa-gate`), **mesmo** quando `origin/develop` contém somente conteúdo Homologado do pacote. O stub always-on `AGENTS.md` MUST NOT carregar o playbook completo; MUST continuar apontando o overlay on-demand para tarefas de release. O caminho feliz `develop → main` MUST permanecer documentado para o caso em que o push do archive em `develop` é aceito.
+O runbook on-demand de release (`overlay_doc`, Cripto: `docs/crypto-overlay.md`, e a skill `covenant-flow` no consumidor pinado) SHALL documentar o caminho de closeout via branch `release-*` quando o push para `refs/heads/develop` é recusado por branch protection (incluindo required check `qa-gate`), **mesmo** quando `origin/develop` contém somente conteúdo Homologado do pacote. O stub always-on `AGENTS.md` MUST NOT carregar o playbook completo; MUST continuar apontando o overlay on-demand (`overlay_doc`) para tarefas de release. O caminho feliz `develop → main` MUST permanecer documentado para o caso em que o push do archive em `develop` é aceito.
 
 #### Scenario: Protected develop blocks archive push with Homologado-only content
 - **WHEN** o operador tenta publicar o archive OpenSpec do lote em `develop` e o remoto recusa com proteção que exige `qa-gate` (ou equivalente)
@@ -19,7 +19,7 @@ O runbook on-demand de release (`docs/crypto-overlay.md` e a skill `alan-workflo
 #### Scenario: Always-on stub stays thin
 - **WHEN** um agente lê apenas `AGENTS.md` sem overlay
 - **THEN** não encontra o playbook completo de `release-guard`/lote/PROD
-- **AND** encontra indicação de carregar `docs/crypto-overlay.md` para release
+- **AND** encontra indicação de carregar o path `overlay_doc` (Cripto: `docs/crypto-overlay.md`) para release
 
 ### Requirement: Closeout requires explicit main to develop sync after release-* merge
 Após merge do PR `release-* → main` que carrega o archive (e demais paths de closeout do pacote), o runbook SHALL tornar **obrigatório e explícito** o sync `main → develop` (via PR ou merge) no closeout desse caminho, de forma que `origin/develop` e `origin/main` fiquem com o mesmo commit ou com árvores de conteúdo idênticas antes do `scripts/release-guard post` final e da promoção dos cards a `Pronto`. Se o primeiro `post` falhar por árvores divergentes, o runbook SHALL orientar reexecutar `post` após o sync.

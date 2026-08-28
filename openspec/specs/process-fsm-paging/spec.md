@@ -2,9 +2,7 @@
 
 ## Purpose
 Paging Moore do `sessionStart`: injeta só `context_file[q]` (≤20 linhas) e o stub unbound. Sem playbook de release.
-
 ## Requirements
-
 ### Requirement: sessionStart injects only the Moore page for q
 `scripts/process-fsm/` SHALL expose a paging module that, given cwd/path and an injectable `status_provider` / `resolve_fn` / `fsm`, returns `additional_context` for the Cursor `sessionStart` hook. The page MUST include the resolved tuple `(q, bound_card, q_git)`, the verbatim `context_file[q]` stub from `.cursor/process-fsm.yaml` when `q` is a known state, and MUST NOT include the release playbook (`release-guard pre`/`post`, `subir lote`, deploy PROD). The page MUST be at most 20 lines. When `bound_card` is `⊥` or `q` is missing, the page MUST use a fixed unbound stub that denies product Write and MUST NOT use the Homologado or release frames. Unit tests MUST inject `status_provider` (the production path: provider result becomes `q`) and MUST NOT call GitHub, Cursor hooks, or the live Project board.
 
@@ -30,7 +28,7 @@ Paging Moore do `sessionStart`: injeta só `context_file[q]` (≤20 linhas) e o 
 - **AND** no network call to GitHub is made
 
 ### Requirement: sessionStart adapter is registered and fail-open
-`.cursor/hooks.json` SHALL register a `sessionStart` command hook invoking `.cursor/hooks/process-fsm-session-start.sh`. The hook MUST emit valid JSON with `additional_context`. `failClosed` MUST NOT be true on this hook. Existing Guard (`preToolUse`, `beforeShellExecution`) and Impeccable (`afterFileEdit`, `stop`) entries MUST remain unchanged by this requirement. If Python/PyYAML fails, the adapter MUST still emit a minimal unbound page and MUST NOT dump `AGENTS.md` or `docs/crypto-overlay.md`.
+`.cursor/hooks.json` SHALL register a `sessionStart` command hook invoking `.cursor/hooks/process-fsm-session-start.sh`. The hook MUST emit valid JSON with `additional_context`. `failClosed` MUST NOT be true on this hook. Existing Guard (`preToolUse`, `beforeShellExecution`) and Impeccable (`afterFileEdit`, `stop`) entries MUST remain unchanged by this requirement. If Python/PyYAML fails, the adapter MUST still emit a minimal unbound page and MUST NOT dump `AGENTS.md` or the consumer overlay body (`overlay_doc`, Cripto: `docs/crypto-overlay.md`). The fallback MUST NOT hardcode `docs/crypto-overlay.md` as the product overlay path.
 
 #### Scenario: hooks.json lists sessionStart
 - **WHEN** `.cursor/hooks.json` is loaded
@@ -40,7 +38,8 @@ Paging Moore do `sessionStart`: injeta só `context_file[q]` (≤20 linhas) e o 
 #### Scenario: Python missing still pages unbound
 - **WHEN** the session-start adapter cannot import the paging module
 - **THEN** stdout is JSON with an unbound `additional_context`
-- **AND** the overlay files are not included
+- **AND** the overlay files (`overlay_doc` and `.covenant-flow/overlay.yaml`) are not included
+- **AND** the fallback does not dump `docs/crypto-overlay.md` as a hardcoded body
 
 ### Requirement: Grok paging is a generated Moore file not SessionStart stdout
 `page()` SHALL remain the single compiler of the Moore page from `.cursor/process-fsm.yaml` `context_file[q]`. Cursor SHALL keep injecting that page via `sessionStart` stdout `additional_context`. Grok `SessionStart` MUST NOT depend on stdout (the product ignores it). The Grok adapter SHALL write the same page body to `.grok/rules/process-fsm-page.md` as a SessionStart side effect. That generated file MUST be gitignored (Grok skips gitignored files in rules discovery, so it is NOT auto-injected always-on). A committed static `.grok/rules/00-harness.md` MUST tell the agent that always-on δ is `AGENTS.md` and MUST instruct the agent to Read `.grok/rules/process-fsm-page.md` when the file exists and treat it as the Moore page. `00-harness.md` MUST NOT copy columns or I1–I9. The generated page MUST be at most 20 lines, MUST include `(q, bound_card, q_git)` and the yaml stub, and MUST NOT include the release playbook. If the generated file is missing this turn, the Guard still live-resolves `q` (missing or gitignored page is not an allow token). Homologation paging is: agent follows `00-harness.md` and Reads the generated file; it is not a claim of auto-injection.
@@ -90,3 +89,4 @@ Paging Moore do `sessionStart`: injeta só `context_file[q]` (≤20 linhas) e o 
 - **WHEN** the OpenCode plugin is not loaded and a native `edit` targets `backend/` with `q_git=develop`
 - **THEN** if the Guard plugin were loaded it would still deny
 - **AND** homologation records whether the plugin actually loaded (unloaded plugin is residual allow, same class as Grok without trust)
+

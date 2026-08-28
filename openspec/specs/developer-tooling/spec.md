@@ -20,11 +20,11 @@ O repositório SHALL conter configuração versionada do Cursor Agent em `.curso
 - **THEN** nenhum token, chave ou credencial está presente nos arquivos versionados
 
 ### Requirement: Skills e fluxo OpenSpec disponíveis no Cursor
-O Cursor SHALL carregar as skills do projeto (OpenSpec `/opsx-*`, design-critic, impeccable, playwright-cli, kaizen) a partir de `.cursor/skills/`, `.cursor/commands/` e `.agents/skills/`, sem duplicar o conteúdo canônico das skills de produto.
+O Cursor SHALL carregar as skills do projeto (OpenSpec `/opsx-*`, design-critic, impeccable, playwright-cli, kaizen, `covenant-flow`, `covenant-flow-environments`, `implantar`) a partir de `.cursor/skills/`, `.cursor/commands/` e `.agents/skills/`, sem duplicar o conteúdo canônico das skills de produto.
 
 #### Scenario: Skills carregadas automaticamente
-- **WHEN** o Cursor inicia no repo
-- **THEN** as skills `openspec-*`, `design-critic`, `impeccable`, `playwright-cli` e `kaizen` estão disponíveis
+- **WHEN** o Cursor inicia no repo pinado
+- **THEN** as skills `openspec-*`, `design-critic`, `impeccable`, `playwright-cli`, `kaizen`, `covenant-flow`, `covenant-flow-environments` e `implantar` estão disponíveis
 
 #### Scenario: Commands opsx disponíveis
 - **WHEN** o usuário invoca `/opsx-new`, `/opsx-ff`, `/opsx-apply`, `/opsx-verify`, `/opsx-archive` ou equivalentes
@@ -59,12 +59,13 @@ O Cursor SHALL expor o command `/kaizen` e um fluxo de auditoria read-only equiv
 - **THEN** ela não edita arquivos de produto, não altera board/Git/PRs e não reinicia serviços
 
 ### Requirement: Global environments skill is part of developer tooling
-Developer tooling SHALL keep `alan-workflow-ambientes` aligned with the live Oracle map. A stale OpenClaw gateway map is a tooling defect, not an acceptable default.
+Developer tooling SHALL keep `covenant-flow-environments` aligned with overlay `environments.*`. A stale OpenClaw gateway map is a tooling defect, not an acceptable default. Packaged skill text MUST NOT hardcode Cripto unit names as the only topology; those values live in the consumer overlay.
 
 #### Scenario: Skill content is audited
 - **WHEN** the environments skill is reviewed
 - **THEN** it does not list `openclaw-gateway.service` as an active service
-- **AND** it lists Hermes and the real Cripto/Clara DEV/PROD units
+- **AND** it reads Hermes and Cripto/Clara DEV/PROD units from overlay when present
+- **AND** a project without `environments.prod` is treated as DEV-only
 
 ### Requirement: OpenSpec apply skill loads the approved prototype for UI cards
 The `/opsx:apply` skill SHALL include a mandatory step for `UI impact: affected`: read `design.md` and the approved HTML prototype before editing product UI files. API specs remain integration contracts only.
@@ -73,19 +74,6 @@ The `/opsx:apply` skill SHALL include a mandatory step for `UI impact: affected`
 - **WHEN** an agent runs `/opsx:apply` on a UI-affected change
 - **THEN** the skill instructs loading `frontend/public/prototypes/<slug>/` before coding UI
 
-### Requirement: Versioned review rules exist in the repo
-The repository SHALL contain `.cursor/BUGBOT.md` at the project root and nested `backend/.cursor/BUGBOT.md` and `frontend/.cursor/BUGBOT.md`. Local reviewers SHALL read these files. Cursor project rules (`*.mdc`) MUST NOT be treated as a substitute.
-
-#### Scenario: Root BUGBOT.md is present
-- **WHEN** a local `diff-reviewer` run starts
-- **THEN** `.cursor/BUGBOT.md` exists and encodes Cripto review constraints (PostgreSQL required, no SQLite, Design/`Pronto para Dev` not skippable, no secrets in commits, tests when `backend/**` changes, Playwright visual when UI changes)
-
-#### Scenario: Nested rules apply by tree
-- **WHEN** the reviewed diff includes `backend/` files
-- **THEN** `backend/.cursor/BUGBOT.md` is available for that review
-- **WHEN** the reviewed diff includes `frontend/` files
-- **THEN** `frontend/.cursor/BUGBOT.md` is available for that review
-
 ### Requirement: Versioned local reviewer subagents exist
 The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md`, each with `readonly: true` and `model: inherit`.
 
@@ -93,3 +81,25 @@ The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agen
 - **WHEN** a Cursor Agent session starts in the repo
 - **THEN** both agent files are available for delegation during Code Review
 - **AND** each MUST declare `readonly: true` and `model: inherit`
+
+### Requirement: Review stance lives in local reviewer agents
+The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md`, each with `readonly: true` and `model: inherit`, and those files SHALL carry review constraints (Design/`Pronto para Dev` not skippable, no secrets in commits, consumer overlay `runtime.database` when present, tests when backend changes, Playwright visual when UI changes). `REVIEW.md` MAY exist and MUST NOT mention Bugbot. `BUGBOT.md` MUST NOT exist. Cursor Bugbot MUST NOT be the Code Review path.
+
+#### Scenario: Reviewer files carry the stance
+- **WHEN** a local `diff-reviewer` run starts
+- **THEN** `.cursor/agents/diff-reviewer.md` exists and encodes the review constraints
+- **AND** `.cursor/BUGBOT.md` does not exist
+
+#### Scenario: Nested BUGBOT.md is gone
+- **WHEN** the reviewed diff includes `backend/` or `frontend/` files
+- **THEN** no nested `BUGBOT.md` is required
+- **AND** the same agent files apply
+
+### Requirement: Consumer git commits materialized harness skins
+A pinned consumer SHALL keep `.cursor/`, `.grok/`, `.opencode/`, `scripts/process-fsm/`, `.agents/skills/` (impeccable, design-critic, playwright-cli), and generated `AGENTS.md` as committed trees produced by `implantar --pin`. Those paths MUST NOT be gitignored as the install method and MUST NOT be a submodule as the v1 channel.
+
+#### Scenario: Pinned consumer shows skins in git
+- **WHEN** Cripto is pinned in the card worktree
+- **THEN** `git ls-files` includes `.cursor/hooks.json`, `.grok/` adapter files, `.opencode/plugin/`, `scripts/process-fsm/`, `.agents/skills/impeccable/`, and `AGENTS.md`
+- **AND** overlay `.covenant-flow/overlay.yaml` contains `pin` matching the product tag
+
