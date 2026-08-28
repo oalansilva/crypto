@@ -25,7 +25,7 @@ design_globs:
 - frontend/public/prototypes/**
 integration_branch: develop
 production_branch: main
-pin: v1.0.1
+pin: v1.1.0
 canonical_paths:
   dev: /srv/apps/dev/criptofarol/source
   prod: /srv/apps/prod/criptofarol/source
@@ -38,6 +38,8 @@ clients:
   grok:
     auto: false
   opencode:
+    auto: false
+  dsh:
     auto: false
 impeccable:
   critique_dir: .impeccable/critique
