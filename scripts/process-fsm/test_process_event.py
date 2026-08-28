@@ -9,7 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from board_status import STATUS_FIELD_ID  # noqa: E402
+from test_overlay_fixtures import FIELD_ID, filled_overlay_dict, write_overlay  # noqa: E402
 from fsm import load_fsm  # noqa: E402
 from guard import decide  # noqa: E402
 from process_event import (  # noqa: E402
@@ -77,7 +77,7 @@ def test_human_gates_rejected(event: str):
     assert out["result"] == "reject"
     assert mover.calls == []
     if event == "fechar_release":
-        assert "alan-workflow-ambientes" in (out.get("message") or "")
+        assert "covenant-flow-environments" in (out.get("message") or "")
         assert "release-guard" in (out.get("message") or "")
 
 
@@ -120,6 +120,7 @@ def test_iniciar_apply_does_not_grant_write():
         payload,
         status_provider=SILENT,
         resolve_fn=lambda *a, **k: {"q": "Pronto para Dev", "q_git": "card-612-process-event", "bound_card": "612"},
+        overlay=filled_overlay_dict(),
     )
     assert result["permission"] == "deny"
     assert "I3" in result["agent_message"]
@@ -323,7 +324,7 @@ def test_m_lote_false_message():
         m_lote=False,
     )
     assert out["result"] == "reject"
-    assert "alan-workflow-ambientes" in (out.get("message") or "")
+    assert "covenant-flow-environments" in (out.get("message") or "")
     assert "release-guard" in (out.get("message") or "")
 
 
@@ -344,7 +345,7 @@ def test_dry_run_does_not_call_mover():
 
 def test_item_edit_status_denied():
     payload = {
-        "command": f"gh project item-edit --id X --field-id {STATUS_FIELD_ID} --single-select-option-id bd47fbe8",
+        "command": f"gh project item-edit --id X --field-id {FIELD_ID} --single-select-option-id bd47fbe8",
         "cwd": "/",
         "status": "Design",
     }
@@ -357,7 +358,7 @@ def test_chained_process_event_and_item_edit_denied():
     payload = {
         "command": (
             "python scripts/process-fsm/process_event.py iniciar_apply && "
-            f"gh project item-edit --field-id {STATUS_FIELD_ID}"
+            f"gh project item-edit --field-id {FIELD_ID}"
         ),
         "cwd": "/",
     }
@@ -383,7 +384,7 @@ def test_gh_issue_view_allowed():
 
 def test_process_fsm_move_env_does_not_allow_item_edit():
     payload = {
-        "command": f"PROCESS_FSM_MOVE=1 gh project item-edit --field-id {STATUS_FIELD_ID}",
+        "command": f"PROCESS_FSM_MOVE=1 gh project item-edit --field-id {FIELD_ID}",
         "cwd": "/",
     }
     result = decide(payload, status_provider=SILENT)
@@ -643,7 +644,7 @@ def test_fechar_release_rejects_without_m_lote():
     )
     assert out["result"] == "reject"
     assert str(out["reason"] or "").startswith("guard:")
-    assert "alan-workflow-ambientes" in (out.get("message") or "")
+    assert "covenant-flow-environments" in (out.get("message") or "")
     assert "release-guard" in (out.get("message") or "")
     assert mover.calls == []
     assert closer.calls == []

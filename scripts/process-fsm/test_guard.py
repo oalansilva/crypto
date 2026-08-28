@@ -12,9 +12,9 @@ REPO = ROOT.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from fsm import load_fsm  # noqa: E402
-from board_status import STATUS_FIELD_ID  # noqa: E402
 from guard import decide, emit, extract_path, extract_paths, normalize  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
+from test_overlay_fixtures import FIELD_ID, write_overlay  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
@@ -55,6 +55,7 @@ def _init_repo(path: Path, branch: str, filename: str) -> Path:
     tracked.write_text("fixture\n", encoding="utf-8")
     _run_git(path, "add", filename)
     _run_git(path, "commit", "-m", "init")
+    write_overlay(path)
     return tracked
 
 
@@ -437,7 +438,7 @@ def test_grok_status_item_edit_denied(tmp_path: Path):
     payload = {
         "toolName": "run_terminal_command",
         "toolInput": {
-            "command": f"gh project item-edit --field-id {STATUS_FIELD_ID} --id x",
+            "command": f"gh project item-edit --field-id {FIELD_ID} --id x",
         },
         "cwd": str(repo),
         "status": "Design",
@@ -585,7 +586,7 @@ def test_g8_opencode_bash_status_item_edit_denied(tmp_path: Path):
     _init_repo(repo, "card-720-opencode-three-adapters", "backend/app/main.py")
     command = (
         "gh project item-edit --id X "
-        f"--field-id {STATUS_FIELD_ID} --single-select-option-id bd47fbe8"
+        f"--field-id {FIELD_ID} --single-select-option-id bd47fbe8"
     )
     payload = _oc_payload(repo, "bash", {"command": command}, status="Design")
     result = decide(payload, status_provider=SILENT)

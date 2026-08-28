@@ -113,8 +113,6 @@ def validate_fsm(fsm: dict[str, Any]) -> None:
         "enabled_tools",
         "enabled_events",
         "context_file",
-        "product_globs",
-        "design_globs",
         "invariants",
         "fail_closed_asymmetric",
     )
@@ -183,12 +181,8 @@ def validate_fsm(fsm: dict[str, Any]) -> None:
             if row.get("exclusive_group") != group:
                 raise ValidationError(f"{tid} must set exclusive_group={group}")
 
-    for glob_name, expected in (
-        ("product_globs", {"backend/**", "frontend/src/**"}),
-        ("design_globs", {"openspec/changes/**", "frontend/public/prototypes/**"}),
-    ):
-        if set(fsm.get(glob_name) or []) != expected:
-            raise ValidationError(f"{glob_name} must match Decision 7")
+    if "product_globs" in fsm or "design_globs" in fsm:
+        raise ValidationError("product_globs/design_globs belong in overlay, not yaml law")
 
     states = list(fsm.get("states") or [])
     for key in ("enabled_tools", "enabled_events", "context_file"):

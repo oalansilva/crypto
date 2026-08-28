@@ -1,27 +1,12 @@
-"""Project 1 Status field ids and Shell classification. Not secrets."""
+"""Project Status field ids from overlay + Shell classification. Not secrets."""
 
 from __future__ import annotations
 
 import re
+from typing import Any, Mapping
 
-STATUS_FIELD_ID = "PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM"
+from overlay import status_field_id, status_option_ids
 
-STATUS_OPTIONS: dict[str, str] = {
-    "Em Refinamento": "fed46e78",
-    "Todo": "4c26ac72",
-    "Design": "bd47fbe8",
-    "Aprovação de Design": "b45bf4aa",
-    "Pronto para Dev": "0257f58c",
-    "Em desenvolvimento": "fe1ad960",
-    "Code Review": "b1858de0",
-    "QA": "9220bf8c",
-    "Done": "e02597eb",
-    "Homologado": "dfcb47b5",
-    "Pronto": "8ca47888",
-    "Cancelado": "ce5cd459",
-}
-
-STATUS_OPTION_IDS = frozenset(STATUS_OPTIONS.values())
 PROCESS_EVENT_RE = re.compile(r"process-fsm/process_event\.py|\bprocess_event\.py\b")
 
 
@@ -70,13 +55,24 @@ def sidecar_in_command(command: str | None) -> bool:
     return sidecar_mutation_in_command(command)
 
 
-def is_status_edit_command(command: str | None) -> bool:
+def is_status_edit_command(
+    command: str | None,
+    overlay: Mapping[str, Any] | None = None,
+) -> bool:
     if not command:
         return False
-    if "updateProjectV2ItemFieldValue" in command and STATUS_FIELD_ID in command:
-        return True
-    if "item-edit" not in command:
+    field = status_field_id(overlay)
+    option_ids = status_option_ids(overlay)
+    graphql = "updateProjectV2ItemFieldValue" in command
+    item_edit = "item-edit" in command
+    if not graphql and not item_edit:
         return False
-    if STATUS_FIELD_ID in command:
+    if overlay is None:
         return True
-    return any(option_id in command for option_id in STATUS_OPTION_IDS)
+    if graphql and field and field in command:
+        return True
+    if item_edit and field and field in command:
+        return True
+    if item_edit and any(option_id in command for option_id in option_ids):
+        return True
+    return False
