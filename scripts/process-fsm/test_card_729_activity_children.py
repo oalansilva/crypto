@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-ALAN = REPO / ".cursor" / "skills" / "alan-workflow" / "SKILL.md"
+ALAN = REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md"
 CRITIC = REPO / ".agents" / "skills" / "design-critic" / "SKILL.md"
 GRILL = REPO / ".cursor" / "skills" / "grill-card" / "SKILL.md"
 APPLY = REPO / ".cursor" / "skills" / "openspec-apply-change" / "SKILL.md"

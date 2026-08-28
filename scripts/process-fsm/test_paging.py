@@ -134,8 +134,23 @@ def test_agents_md_is_stub():
     text = (REPO / "AGENTS.md").read_text(encoding="utf-8")
     nonempty = [ln for ln in text.splitlines() if ln.strip()]
     assert len(nonempty) <= 40
-    assert "docs/crypto-overlay.md" in text
-    assert "github.com/users/oalansilva/projects/1" in text
+    overlay_path = REPO / ".covenant-flow" / "overlay.yaml"
+    if overlay_path.is_file():
+        import yaml
+
+        data = yaml.safe_load(overlay_path.read_text(encoding="utf-8")) or {}
+        doc = str(data.get("overlay_doc") or "").strip()
+        if doc:
+            assert doc in text
+        board = data.get("board") or {}
+        owner = str(board.get("owner") or "").strip()
+        number = board.get("number")
+        if owner and isinstance(number, int):
+            assert f"github.com/users/{owner}/projects/{number}" in text
+    else:
+        assert "docs/crypto-overlay.md" not in text
+        assert "covenant-flow" in text
+        assert "overlay_doc" in text
     assert "scripts/release-guard pre" not in text
     assert "Em Refinamento -> Todo -> Design" not in text
     assert "(q, bound_card, q_git)" in text
@@ -151,7 +166,7 @@ def test_agents_md_is_stub():
 
 
 def test_skill_priority_anchor():
-    text = (REPO / ".cursor" / "skills" / "alan-workflow" / "SKILL.md").read_text(encoding="utf-8")
+    text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
     assert "δ e Guard > overlay > skill > wording" in text
     assert "1. Instrução direta de Alan no chat." not in text
 
@@ -232,15 +247,15 @@ def test_gitignore_skips_generated_page():
 def test_grok_skill_stubs_match_canonical():
     errors = stub_errors()
     assert errors == []
-    stub = (REPO / ".grok" / "skills" / "alan-workflow" / "SKILL.md").read_text(encoding="utf-8")
-    assert ".cursor/skills/alan-workflow/SKILL.md" in stub
+    stub = (REPO / ".grok" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    assert ".cursor/skills/covenant-flow/SKILL.md" in stub
     assert "Em Refinamento → Todo → Design" not in stub
     body = stub.split("---", 2)[2]
     assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8
 
 
 def test_stale_stub_fails_check():
-    dest = REPO / ".grok" / "skills" / "alan-workflow" / "SKILL.md"
+    dest = REPO / ".grok" / "skills" / "covenant-flow" / "SKILL.md"
     original = dest.read_text(encoding="utf-8")
     dest.write_text("stale\n", encoding="utf-8")
     try:
@@ -263,8 +278,8 @@ def test_agents_extra_grok_stubs_point_at_agents_skills():
     assert ".agents/skills/impeccable/SKILL.md" in impeccable
     body_i = impeccable.split("---", 2)[2]
     assert len([ln for ln in body_i.splitlines() if ln.strip()]) <= 8
-    alan = (REPO / ".grok" / "skills" / "alan-workflow" / "SKILL.md").read_text(encoding="utf-8")
-    assert ".cursor/skills/alan-workflow/SKILL.md" in alan
+    alan = (REPO / ".grok" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    assert ".cursor/skills/covenant-flow/SKILL.md" in alan
 
 
 def test_missing_agents_stub_fails_check():

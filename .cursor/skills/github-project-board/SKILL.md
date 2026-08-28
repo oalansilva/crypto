@@ -21,8 +21,8 @@ Antes de operar o board, descubra o alvo nesta ordem:
 
 Exemplos (pwd → board):
 
-- Em `/srv/apps/dev/criptofarol/source` (e worktrees `crypto-worktrees/`), o board vem do `AGENTS.md` local: `oalansilva/projects/1`.
-- Em `/srv/apps/dev/clara-realtime/source`, o board vem do `AGENTS.md` local: `oalansilva/projects/2` (quando o arquivo declarar).
+- O board vem do overlay `board.owner` / `board.number` e do `AGENTS.md` local (URL `github.com/users/<owner>/projects/<number>`).
+- Noutro clone, o board vem do `AGENTS.md` / overlay daquela árvore. Não use um Project hardcoded neste ficheiro.
 
 Comando util para descobrir contratos a partir da pasta atual:
 
@@ -140,7 +140,7 @@ gh project item-archive "$PROJECT_NUMBER" --owner "$OWNER" --id "<ITEM_ID>"
 ## Observações
 
 - A parte `views/1?layout=board` é apenas visual. Use sempre `owner + number` como identificadores principais.
-- Em worktrees do cripto, o `AGENTS.md` do worktree (mesmo repo) declara Project 1.
+- Em worktrees do consumidor, o `AGENTS.md` da árvore declara o board (gerado do overlay).
 - Se houver erro de permissão, confirme que a conta atual tem acesso ao board e use `--owner` correto.
 
 ## Referência rápida

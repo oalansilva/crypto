@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
 
 from fsm import enabled_events, load_fsm  # noqa: E402
 from guard import github_status_provider  # noqa: E402
+from overlay import try_load_overlay  # noqa: E402
 from resolve import UNBOUND, resolve  # noqa: E402
 
 UNBOUND_PAGE = "bound_card=⊥. Write produto deny. Não carregue playbook de release."
@@ -41,6 +42,9 @@ def page(
 ) -> dict[str, Any]:
     table = fsm if fsm is not None else load_fsm()
     workdir = Path(cwd)
+    # Overlay is optional for paging: missing/invalid MUST NOT abort the turn
+    # and MUST NOT dump overlay_doc.
+    try_load_overlay(workdir, require_filled=False)
     file_path = Path(path) if path is not None else workdir
     resolved = resolve_fn(workdir, file_path, issue_id=issue_id)
     bound = resolved.get("bound_card")

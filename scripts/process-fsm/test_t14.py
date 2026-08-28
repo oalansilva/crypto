@@ -11,9 +11,9 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from t14 import (  # noqa: E402
-    CANONICAL_DEV_SOURCE,
     T14Error,
     LiveT14Runner,
+    _overlay_health_url,
     measure_checks_green,
 )
 
@@ -97,6 +97,17 @@ def test_measure_checks_green_error_is_false():
     assert measure_checks_green("632", "card-632-x", runner=boom) is False
 
 
+def test_t14_health_url_uses_dev_not_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "t14.try_load_overlay",
+        lambda _root: {
+            "environments": {"dev": {"url": "https://dev.example.test"}},
+            "release": {"health_url": "https://prod.example.test/api/health"},
+        },
+    )
+    assert _overlay_health_url() == "https://dev.example.test/api/health"
+
+
 def _git(args: list[str], cwd: Path) -> None:
     proc = subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True)
     assert proc.returncode == 0
@@ -126,6 +137,12 @@ def test_sync_dirty_raises_before_mutate(tmp_path: Path):
 
 
 def test_restart_rejects_noncanonical_path_on_canonical_source(tmp_path: Path):
-    runner = LiveT14Runner(source=CANONICAL_DEV_SOURCE, restart_path=tmp_path / "restart")
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    runner = LiveT14Runner(
+        source=canonical,
+        restart_path=tmp_path / "restart",
+        canonical_restart=canonical / "restart",
+    )
     with pytest.raises(T14Error, match="path"):
         runner.restart()

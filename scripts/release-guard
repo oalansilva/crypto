@@ -53,6 +53,31 @@ indent() {
   sed 's/^/  /'
 }
 
+# Overlay release hooks (T16): empty production hooks refuse deploy.
+# Missing overlay is skipped so consumers/tests without pin still run hygiene checks.
+overlay_file="${PWD}/.covenant-flow/overlay.yaml"
+if [[ -f "$overlay_file" && "$mode" != "audit" ]]; then
+  if python3 - "$overlay_file" <<'PY'
+import sys
+from pathlib import Path
+try:
+    import yaml
+except ImportError:
+    sys.exit(0)
+data = yaml.safe_load(Path(sys.argv[1]).read_text(encoding="utf-8")) or {}
+rel = data.get("release") or {}
+keys = ("restart", "migrate", "build", "health_url")
+if not any(str(rel.get(key) or "").strip() for key in keys):
+    sys.exit(2)
+sys.exit(0)
+PY
+  then
+    :
+  else
+    issue "overlay release.restart/migrate/build/health_url are empty; T16 refuses deploy (covenant-flow-environments + release-guard)"
+  fi
+fi
+
 # --- Remote snapshots (card #509): single authoritative snapshot per run ---
 BOARD_JSON=""
 BOARD_STATE="unloaded"

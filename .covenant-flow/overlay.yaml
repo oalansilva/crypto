@@ -1,0 +1,73 @@
+board:
+  owner: oalansilva
+  number: 1
+  status_field_id: PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM
+  project_id: PVT_kwHOAAHtBM4BV8b2
+  status_options:
+    Em Refinamento: fed46e78
+    Todo: 4c26ac72
+    Design: bd47fbe8
+    Aprovação de Design: b45bf4aa
+    Pronto para Dev: 0257f58c
+    Em desenvolvimento: fe1ad960
+    Code Review: b1858de0
+    QA: 9220bf8c
+    Done: e02597eb
+    Homologado: dfcb47b5
+    Pronto: 8ca47888
+    Cancelado: ce5cd459
+repo: oalansilva/crypto
+product_globs:
+- backend/**
+- frontend/src/**
+design_globs:
+- openspec/changes/**
+- frontend/public/prototypes/**
+integration_branch: develop
+production_branch: main
+pin: v1.0.1
+canonical_paths:
+  dev: /srv/apps/dev/criptofarol/source
+  prod: /srv/apps/prod/criptofarol/source
+forbidden_worktrees:
+- /root/crypto
+overlay_doc: docs/crypto-overlay.md
+clients:
+  cursor:
+    auto: true
+  grok:
+    auto: false
+  opencode:
+    auto: false
+impeccable:
+  critique_dir: .impeccable/critique
+  design_md: DESIGN.md
+runtime:
+  playwright: frontend/tests
+  database: PostgreSQL
+environments:
+  dev:
+    source: /srv/apps/dev/criptofarol/source
+    url: https://dev.criptofarol.com.br
+    db: crypto_app_dev
+    services:
+    - criptofarol-dev-backend.service
+    - criptofarol-dev-frontend.service
+    - criptofarol-dev-runtime-worker.service
+    - criptofarol-dev-discovery-worker.service
+    - criptofarol-dev-candle-writer.service
+  prod:
+    source: /srv/apps/prod/criptofarol/source
+    url: https://criptofarol.com.br
+    db: crypto_app
+    services:
+    - criptofarol-prod-backend.service
+    - criptofarol-prod-frontend.service
+    - criptofarol-prod-leads.service
+    - criptofarol-prod-runtime-worker.service
+    - criptofarol-prod-candle-writer.service
+release:
+  restart: ./restart
+  migrate: alembic upgrade head
+  build: npm --prefix frontend run build
+  health_url: https://criptofarol.com.br/api/health

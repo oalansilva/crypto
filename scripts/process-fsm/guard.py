@@ -23,6 +23,15 @@ from board_status import (  # noqa: E402
     sidecar_in_command,
 )
 from fsm import CARD_GIT_RE, EvalContext, EvalResult, evaluate, load_fsm  # noqa: E402
+from overlay import (  # noqa: E402
+    OverlayError,
+    board_owner_number,
+    glob_lists,
+    integration_branches,
+    load_overlay,
+    repo_owner_name,
+    try_load_overlay,
+)
 from resolve import UNBOUND, resolve  # noqa: E402
 
 REPO_ROOT = ROOT.parents[1]
@@ -57,14 +66,8 @@ NON_REDIRECT_MUTATION_RE = re.compile(r"(?:sed\s+-i|perl\s+-i|\bcp\s+|\bmv\s+|\b
 # File redirects / tee destinations. Targets starting with & are fd redirects (2>&1).
 FILE_REDIRECT_RE = re.compile(r"(?:\d*)?(>>|>)\s*([^\s|;<>&]+)")
 TEE_TARGET_RE = re.compile(r"\btee(?:\s+-a)?\s+([^\s|;<>&]+)")
-PRODUCT_IN_CMD_RE = re.compile(
-    r"((?:/(?:[\w.-]+))*/(?:backend|frontend/src)/[^\s'\"|;<>&]+|"
-    r"(?:backend|frontend/src)/[^\s'\"|;<>&]+)"
-)
-DESIGN_IN_CMD_RE = re.compile(
-    r"((?:/(?:[\w.-]+))*/(?:openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+|"
-    r"(?:openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+)"
-)
+_FALLBACK_PRODUCT_PREFIXES = ("backend/", "frontend/src/")
+_FALLBACK_DESIGN_PREFIXES = ("openspec/changes/", "frontend/public/prototypes/")
 
 StatusProvider = Callable[[str | None], str | None]
 EvaluateFn = Callable[[dict[str, Any], EvalContext], EvalResult]
@@ -81,32 +84,37 @@ def _prefixes(globs: list[Any]) -> tuple[str, ...]:
     return tuple(out)
 
 
-def glob_kind(rel: str, fsm: Mapping[str, Any]) -> str:
+def _glob_prefix_lists(overlay: Mapping[str, Any] | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    product, design = glob_lists(overlay)
+    product_prefixes = _prefixes(list(product)) if product else _prefixes(list(_FALLBACK_PRODUCT_PREFIXES))
+    design_prefixes = _prefixes(list(design)) if design else _prefixes(list(_FALLBACK_DESIGN_PREFIXES))
+    return product_prefixes, design_prefixes
+
+
+def glob_kind(rel: str, overlay: Mapping[str, Any] | None) -> str:
     posix = rel.replace("\\", "/")
     if posix.startswith("./"):
         posix = posix[2:]
-    for prefix in _prefixes(list(fsm.get("product_globs") or [])):
+    product_prefixes, design_prefixes = _glob_prefix_lists(overlay)
+    for prefix in product_prefixes:
         if posix == prefix[:-1] or posix.startswith(prefix):
             return "product"
-    for prefix in _prefixes(list(fsm.get("design_globs") or [])):
+    for prefix in design_prefixes:
         if posix == prefix[:-1] or posix.startswith(prefix):
             return "design"
     return "other"
 
 
-def repo_relative(cwd: Path, path: str) -> str:
+def repo_relative(cwd: Path, path: str, overlay: Mapping[str, Any] | None = None) -> str:
     candidate = Path(path)
     resolved = candidate if candidate.is_absolute() else (cwd / candidate)
     try:
         return resolved.resolve().relative_to(cwd.resolve()).as_posix()
     except ValueError:
         text = resolved.as_posix()
-        for marker in (
-            "/backend/",
-            "/frontend/src/",
-            "/openspec/changes/",
-            "/frontend/public/prototypes/",
-        ):
+        product_prefixes, design_prefixes = _glob_prefix_lists(overlay)
+        markers = tuple("/" + p for p in (product_prefixes + design_prefixes) if p)
+        for marker in markers:
             idx = text.find(marker)
             if idx != -1:
                 return text[idx + 1 :]
@@ -238,7 +246,9 @@ def _redirect_file_targets(command: str) -> list[str]:
     return targets
 
 
-def _path_from_command(command: str, cwd: Path | None = None) -> str | None:
+def _path_from_command(
+    command: str, cwd: Path | None = None, overlay: Mapping[str, Any] | None = None
+) -> str | None:
     if not MUTATION_RE.search(command):
         return None
 
@@ -252,27 +262,30 @@ def _path_from_command(command: str, cwd: Path | None = None) -> str | None:
     if not targets and not has_non_redirect:
         return None
 
+    product_prefixes, design_prefixes = _glob_prefix_lists(overlay)
+    all_prefixes = product_prefixes + design_prefixes
+
+    def _matches(target: str) -> bool:
+        posix = target.replace("\\", "/").lstrip("./")
+        return any(posix.startswith(prefix) or f"/{prefix}" in f"/{posix}" for prefix in all_prefixes)
+
     for target in targets:
         if _is_allowlisted_sink(target, cwd):
             continue
-        if target.startswith("backend/") or target.startswith("frontend/src/"):
+        if _matches(target):
             return target
-        if target.startswith("openspec/changes/") or target.startswith(
-            "frontend/public/prototypes/"
-        ):
-            return target
-        product = PRODUCT_IN_CMD_RE.search(target)
-        design = DESIGN_IN_CMD_RE.search(target)
-        if product:
-            return product.group(1)
-        if design:
-            return design.group(1)
-        if "/backend/" in target or "/frontend/src/" in target:
-            return target
-        if "/openspec/changes/" in target or "/frontend/public/prototypes/" in target:
-            return target
+        for prefix in all_prefixes:
+            token = prefix.rstrip("/")
+            if f"/{token}/" in target or target.startswith(token + "/"):
+                return target
 
-    match = PRODUCT_IN_CMD_RE.search(command) or DESIGN_IN_CMD_RE.search(command)
+    joined = "|".join(re.escape(p.rstrip("/")) for p in all_prefixes if p)
+    if not joined:
+        return None
+    pattern = re.compile(
+        rf"((?:/(?:[\w.-]+))*/(?:{joined})/[^\s'\"|;<>&]+|(?:{joined})/[^\s'\"|;<>&]+)"
+    )
+    match = pattern.search(command)
     if match is None:
         return None
     found = match.group(1)
@@ -325,7 +338,9 @@ def _paths_from_patch_text(text: str) -> list[str]:
     return out
 
 
-def extract_paths(payload: Mapping[str, Any]) -> list[str]:
+def extract_paths(
+    payload: Mapping[str, Any], overlay: Mapping[str, Any] | None = None
+) -> list[str]:
     """Every write path in envelope order (filePath then patchText markers)."""
     canonical = normalize(payload)
     tool = str(canonical.get("tool_name") or "")
@@ -349,18 +364,18 @@ def extract_paths(payload: Mapping[str, Any]) -> list[str]:
             return found
     command = canonical.get("command")
     if isinstance(command, str) and command.strip():
-        one = _path_from_command(command, cwd)
+        one = _path_from_command(command, cwd, overlay)
         if one:
             return [one]
     if tool in SHELL_TOOLS:
-        one = _path_from_command(str(command or ""), cwd)
+        one = _path_from_command(str(command or ""), cwd, overlay)
         if one:
             return [one]
     return []
 
 
-def extract_path(payload: Mapping[str, Any]) -> str | None:
-    paths = extract_paths(payload)
+def extract_path(payload: Mapping[str, Any], overlay: Mapping[str, Any] | None = None) -> str | None:
+    paths = extract_paths(payload, overlay)
     return paths[0] if paths else None
 
 
@@ -372,10 +387,15 @@ def github_status_provider(bound_card: str | None) -> str | None:
         number = int(str(bound_card))
     except (TypeError, ValueError):
         return None
+    overlay = try_load_overlay(Path.cwd())
+    owner, repo_name = repo_owner_name(overlay)
+    board_owner, board_number = board_owner_number(overlay)
+    if not owner or not repo_name or not board_owner or board_number is None:
+        return None
     env = os.environ.copy()
     try:
         query = (
-            'query($n:Int!){repository(owner:"oalansilva",name:"crypto")'
+            f'query($n:Int!){{repository(owner:"{owner}",name:"{repo_name}")'
             "{issue(number:$n){projectItems(first:20){nodes{"
             "project{number owner{...on User{login}}}"
             'fieldValueByName(name:"Status")'
@@ -411,8 +431,8 @@ def github_status_provider(bound_card: str | None) -> str | None:
     ).get("nodes") or []
     for node in nodes:
         project = (node or {}).get("project") or {}
-        owner = (project.get("owner") or {}).get("login")
-        if project.get("number") != 1 or owner not in (None, "oalansilva"):
+        login = (project.get("owner") or {}).get("login")
+        if project.get("number") != board_number or login not in (None, board_owner):
             continue
         field = (node or {}).get("fieldValueByName") or {}
         name = field.get("name")
@@ -456,34 +476,49 @@ def decide(
     status_provider: StatusProvider | None = None,
     evaluate_fn: EvaluateFn = evaluate,
     load_fsm_fn: Callable[..., dict[str, Any]] = load_fsm,
+    overlay: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
     canonical = normalize(payload)
     cwd_raw = canonical.get("cwd") or os.getcwd()
     cwd = Path(str(cwd_raw))
-    paths = extract_paths(canonical)
+    if overlay is None:
+        try:
+            overlay = load_overlay(cwd, require_filled=True)
+            overlay_ok = True
+        except OverlayError:
+            overlay = None
+            overlay_ok = False
+    else:
+        overlay_ok = True
+    paths = extract_paths(canonical, overlay)
     command = _command(canonical)
     tool = str(canonical.get("tool_name") or "")
     if any(is_sidecar_path(item) for item in paths) or sidecar_in_command(command):
         return _sidecar_deny()
-    if is_status_edit_command(command):
+    if is_status_edit_command(command, overlay):
         return _status_edit_deny()
     if not paths:
         if tool in OPENCODE_WRITE_TOOLS:
             return _empty_path_deny()
         return _allow()
 
+    write_like = tool in WRITE_TOOLS or tool in SHELL_TOOLS or bool(command)
     table = fsm if fsm is not None else load_fsm_fn()
     classified: list[tuple[str, str, str]] = []
     for item in paths:
-        rel = repo_relative(cwd, item)
-        classified.append((item, rel, glob_kind(rel, table)))
+        rel = repo_relative(cwd, item, overlay)
+        classified.append((item, rel, glob_kind(rel, overlay)))
     product = [(orig, rel) for orig, rel, kind in classified if kind == "product"]
     design = [(orig, rel) for orig, rel, kind in classified if kind == "design"]
     kind = "product" if product else ("design" if design else "other")
     anchor = product[0][0] if product else (design[0][0] if design else paths[0])
     rel = product[0][1] if product else (design[0][1] if design else classified[0][1])
+    if not overlay_ok:
+        if kind == "product" and write_like:
+            return _deny("overlay", None, None, None)
+        return _allow()
     injected = payload.get("status")
-    status = injected if isinstance(injected, str) and injected.strip() else None
+    status = injected.strip() if isinstance(injected, str) and injected.strip() else None
 
     resolved = resolve_fn(cwd, git_anchor(cwd, anchor), status=status)
     q_git = resolved.get("q_git")
@@ -499,6 +534,9 @@ def decide(
 
     if q is None:
         return _deny("fail_closed", q, q_git, bound)
+
+    if q_git in integration_branches(overlay):
+        return _deny("I1", q, q_git, bound)
 
     ctx = EvalContext(
         state=q,

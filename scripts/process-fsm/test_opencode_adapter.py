@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from opencode_stubs import stub_errors  # noqa: E402
 from paging import page  # noqa: E402
+from test_overlay_fixtures import write_overlay  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
@@ -54,6 +55,7 @@ def _init_repo(path: Path, branch: str, filename: str) -> None:
     tracked.write_text("fixture\n", encoding="utf-8")
     _run_git(path, "add", filename)
     _run_git(path, "commit", "-m", "init")
+    write_overlay(path)
 
 
 def _node(code: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -210,10 +212,10 @@ def test_g16_opencode_tree_has_no_opsx_or_second_law():
 def test_opencode_stubs_match_cursor_skills():
     errors = stub_errors()
     assert errors == []
-    stub = (REPO / ".opencode" / "skills" / "alan-workflow" / "SKILL.md").read_text(
+    stub = (REPO / ".opencode" / "skills" / "covenant-flow" / "SKILL.md").read_text(
         encoding="utf-8"
     )
-    assert ".cursor/skills/alan-workflow/SKILL.md" in stub
+    assert ".cursor/skills/covenant-flow/SKILL.md" in stub
     assert "MUST Read" in stub
     body = stub.split("---", 2)[2]
     assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8

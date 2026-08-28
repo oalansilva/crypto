@@ -25,7 +25,7 @@ Conduzir a entrega de design sem substituir a aprovação humana de Alan.
 
 ## Preflight
 
-1. Confirmar o card/change e, na sessão orquestradora, ler `AGENTS.md`, `rules.md`, a folha `.agents/skills/impeccable/references/cripto-farol-token-sheet.md` (quando UI) e `DESIGN.md` como autoridade visual (não reescrever). Não despejar o YAML inteiro no chat.
+1. Confirmar o card/change e, na sessão orquestradora, ler `AGENTS.md`, `rules.md` e o `DESIGN.md` do consumidor (path em overlay `impeccable.design_md` quando preenchido) como autoridade visual (não reescrever). Não despejar o YAML inteiro no chat.
 2. Confirmar `Status=Design`. Declarar `UI impact: affected` ou `UI impact: none` com justificativa não vazia.
 3. O **pai** spawna um filho Design-autor (mesmo modelo, prompt autocontido, sem transcript) para criar o scaffold OpenSpec e os artifacts. O pai **não** escreve `design.md`/protótipo, salvo depois de A/B: **somente** `## Design Critique`. Não editar código de produção enquanto `Status=Design`.
 4. A crítica usa `Task` / `spawn_subagent` isolada com inherit de **modelo**, prompt autocontido, **sem inherit de transcript**, disparada pelo **pai** após os artefatos (não nested no filho autor). Critics MAY escrever **apenas** `.impeccable/critique/**`. MUST NOT editar `design.md`, HTML de protótipo ou produto. P0/P1 abertos → pai re-despacha o filho autor com os achados no prompt; o pai não faz polish. `process_event submeter_design` é só o pai.
@@ -65,7 +65,7 @@ Estas etapas são do **filho autor**. O pai não as executa.
    - Remoção de UI existente: mostrar a tela/shell atual **sem** o elemento removido (delta negativo), não um mock abstrato.
 4. **HTML nunca fica no Gist, no chat, nem no `design.md`.** Design/critics usam URL + screenshot + digest. Apply continua lendo o arquivo do disco (`frontend/public/prototypes/<slug>/`) como spec de layout (#530). Para protótipo HTML neste repo:
    - publicar em `frontend/public/prototypes/<change-or-card-slug>/` (entrada preferencial `index.html`);
-   - servir na URL DEV navegável `https://dev.criptofarol.com.br/prototypes/<change-or-card-slug>/`. No host Cripto, `/prototypes*` não passa pelo preview SPA: o unit `criptofarol-dev-prototypes` serve o HTML do worktree/`public`/`dist`. Não copiar para `source` nem rebuild do frontend DEV só para o link público;
+   - servir na URL DEV navegável do consumidor (overlay `environments.dev.url` + path de protótipos). Não copiar para o source canónico nem rebuild só para o link público;
    - no comentário do card: bloco OpenSpec = só Markdown do Gist; bloco **Protótipo navegável** = link HTTP; bloco **Snapshot Impeccable** = path (e blob URL da branch quando existir);
    - usar `publish-openspec-card-artifacts.sh --prototype-url <url> --snapshot-path <path>` (o script não envia `prototype/**` nem `.impeccable/critique/` ao Gist).
 5. Registrar em `## Prototype`: URL HTTP, caminho versionado, digest, desktop/mobile, base usada, fluxos/estados, delta. Sem fonte HTML.

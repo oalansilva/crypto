@@ -22,13 +22,6 @@ terminal_states:
   - Pronto
   - Cancelado
 
-product_globs:
-  - backend/**
-  - frontend/src/**
-design_globs:
-  - openspec/changes/**
-  - frontend/public/prototypes/**
-
 illegal_events:
   - request_implement
   - pular_coluna
