@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bell, Link2, MessageCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/Button'
@@ -32,31 +32,59 @@ export function TelegramAlertsForm({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [linkCommand, setLinkCommand] = useState<string | null>(null)
+  const hasLoadedRef = useRef(false)
+  const onSettingsChangeRef = useRef(onSettingsChange)
 
-  const loadSettings = useCallback(async () => {
+  useEffect(() => {
+    onSettingsChangeRef.current = onSettingsChange
+  }, [onSettingsChange])
+
+  const loadSettings = useCallback(async (signal?: AbortSignal) => {
+    if (signal?.aborted) return
     setLoading(true)
     try {
-      const res = await authFetch(`${API_BASE_URL}/users/me/telegram-settings`)
+      const res = await authFetch(
+        `${API_BASE_URL}/users/me/telegram-settings`,
+        signal ? { signal } : {},
+      )
+      if (signal?.aborted) return
       const payload = await res.json() as TelegramSettings
       if (!res.ok) throw new Error(String((payload as { detail?: string })?.detail || res.status))
+      if (signal?.aborted) return
       setSettings(payload)
+      hasLoadedRef.current = true
       setUsername(payload.telegramUsername ?? '')
-      onSettingsChange?.(payload)
+      onSettingsChangeRef.current?.(payload)
     } catch (error: unknown) {
+      if (signal?.aborted) return
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      const isRealLogout = (() => {
+        try {
+          return !localStorage.getItem('auth_access_token') && !localStorage.getItem('auth_refresh_token')
+        } catch {
+          return false
+        }
+      })()
+      if (hasLoadedRef.current && !isRealLogout) {
+        return
+      }
       setSettings(null)
-      onSettingsChange?.(null)
+      hasLoadedRef.current = false
+      onSettingsChangeRef.current?.(null)
       toast({
         variant: 'destructive',
         title: 'Erro ao carregar alertas Telegram',
         description: error instanceof Error ? error.message : 'Erro inesperado',
       })
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
-  }, [onSettingsChange, toast])
+  }, [toast])
 
   useEffect(() => {
-    void loadSettings()
+    const controller = new AbortController()
+    void loadSettings(controller.signal)
+    return () => controller.abort()
   }, [loadSettings])
 
   const saveSettings = async (patch: Partial<{ telegramUsername: string; telegramAlertsEnabled: boolean }>) => {

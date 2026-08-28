@@ -27,7 +27,7 @@ function formatDateTime(value: string | null) {
 
 export default function ProfilePage() {
   const { toast } = useToast()
-  const { updateUser } = useAuth()
+  const { updateUser, isLoading: authLoading } = useAuth()
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
   const [name, setName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -205,7 +205,11 @@ export default function ProfilePage() {
           </section>
 
           <section className="p-6 sm:p-7">
-            <TelegramAlertsForm variant="profile" />
+            {authLoading ? (
+              <div className="py-4 text-sm text-[var(--text-secondary)]">Carregando alertas Telegram...</div>
+            ) : (
+              <TelegramAlertsForm variant="profile" />
+            )}
           </section>
         </CardContent>
       </Card>

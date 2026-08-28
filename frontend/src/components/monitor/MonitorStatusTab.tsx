@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     getOpportunityAssetType,
     getOpportunityBaseAsset,
@@ -224,6 +224,7 @@ export const MonitorStatusTab: React.FC = () => {
     const [walletSyncMessage, setWalletSyncMessage] = useState<string | null>(null);
     const [telegramAlertsEnabled, setTelegramAlertsEnabled] = useState(false);
     const [telegramAlertsSaving, setTelegramAlertsSaving] = useState(false);
+    const telegramHasLoadedRef = useRef(false);
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
     const [sparklineByKey, setSparklineByKey] = useState<Record<string, number[]>>({});
     const [sparklineLoadingByKey, setSparklineLoadingByKey] = useState<Record<string, boolean>>({});
@@ -342,9 +343,10 @@ export const MonitorStatusTab: React.FC = () => {
         }
     };
 
-    const fetchMonitorContext = async () => {
+    const fetchMonitorContext = async (signal?: AbortSignal) => {
+        if (signal?.aborted) return
         try {
-            const preferencesResponse = await authFetch(`${API_BASE_URL}/monitor/preferences`);
+            const preferencesResponse = await authFetch(`${API_BASE_URL}/monitor/preferences`, signal ? { signal } : {});
             if (!preferencesResponse.ok) {
                 throw new Error(`Falha ao carregar preferências do monitor (${preferencesResponse.status})`);
             }
@@ -367,6 +369,8 @@ export const MonitorStatusTab: React.FC = () => {
                 setPreferences({});
             }
         } catch (error) {
+            if (signal?.aborted) return
+            if (error instanceof DOMException && error.name === 'AbortError') return
             console.error(error);
             toast({
                 title: 'Erro',
@@ -377,28 +381,47 @@ export const MonitorStatusTab: React.FC = () => {
 
         let configured = false;
         try {
-            const credentialsResponse = await authFetch(`${API_BASE_URL}/user/binance-credentials`);
+            const credentialsResponse = await authFetch(`${API_BASE_URL}/user/binance-credentials`, signal ? { signal } : {});
+            if (signal?.aborted) return
             const payload = await credentialsResponse.json();
             if (!credentialsResponse.ok) {
                 throw new Error(String(payload?.detail || `Falha ao carregar status das credenciais Binance (${credentialsResponse.status})`));
             }
             configured = Boolean(payload?.configured);
+            if (signal?.aborted) return
             setBinanceConfigured(configured);
         } catch (error) {
+            if (signal?.aborted) return
+            if (error instanceof DOMException && error.name === 'AbortError') return
             console.error(error);
             setBinanceConfigured(false);
             configured = false;
         }
 
+        if (signal?.aborted) return
         await fetchWalletPortfolio(configured);
 
         try {
-            const telegramResponse = await authFetch(`${API_BASE_URL}/users/me/telegram-settings`);
+            const telegramResponse = await authFetch(`${API_BASE_URL}/users/me/telegram-settings`, signal ? { signal } : {});
+            if (signal?.aborted) return
             if (telegramResponse.ok) {
                 const telegramPayload = await telegramResponse.json() as { telegramAlertsEnabled?: boolean };
+                if (signal?.aborted) return
                 setTelegramAlertsEnabled(Boolean(telegramPayload.telegramAlertsEnabled));
+                telegramHasLoadedRef.current = true
             }
         } catch (error) {
+            if (signal?.aborted) return
+            if (error instanceof DOMException && error.name === 'AbortError') return
+            const isRealLogout = (() => {
+              try {
+                return !localStorage.getItem('auth_access_token') && !localStorage.getItem('auth_refresh_token')
+              } catch {
+                return false
+              }
+            })()
+            if (telegramHasLoadedRef.current && !isRealLogout) return
+            telegramHasLoadedRef.current = false
             console.error(error);
         }
     };
@@ -614,7 +637,9 @@ export const MonitorStatusTab: React.FC = () => {
     };
 
     useEffect(() => {
-        void fetchMonitorContext();
+        const controller = new AbortController()
+        void fetchMonitorContext(controller.signal);
+        return () => controller.abort()
     }, []);
 
     useEffect(() => {
