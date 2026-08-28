@@ -58,23 +58,25 @@ While `Status=Design`, the **parent** session SHALL spawn an isolated Design-aut
 - **THEN** the flow MUST NOT require `design_spawn_stage`, `design_artifact_write`, lease evidence or OpenCode 1.18.18 attestation
 
 ### Requirement: Cursor loads the current environments skill
-The Cursor harness SHALL treat `alan-workflow-ambientes` as the environment map and SHALL NOT treat OpenClaw Gateway as the active runtime in that skill.
+The Cursor harness SHALL treat `covenant-flow-environments` as the environment map and SHALL NOT treat OpenClaw Gateway as the active runtime in that skill. Environment **values** SHALL come from the consumer overlay, not from the packaged skill.
 
 #### Scenario: Skill available in Cursor
 - **WHEN** a Cursor session starts a task that can affect DEV or PROD
-- **THEN** the environments skill is loaded with Hermes as the active agent runtime map
-- **AND** the skill file is `.cursor/skills/alan-workflow-ambientes/SKILL.md` in this repo (regular file, not a hermes symlink)
+- **THEN** the skill file is `.cursor/skills/covenant-flow-environments/SKILL.md` (regular file, not a hermes symlink)
+- **AND** DEV/PROD URLs, db, and services are read from overlay `environments.*`
+- **AND** OpenClaw is not an active runtime
+- **AND** Hermes is not required as the only map (first consumer Cripto supplies its own overlay values)
 
 ### Requirement: Workflow skills are versioned files in the GitHub repo
-The Cursor harness SHALL load `alan-workflow`, `alan-workflow-ambientes` and `github-project-board` from `.cursor/skills/<name>/SKILL.md` as regular files in `oalansilva/crypto`. Agents MUST NOT treat `~/.codex/skills/` or `/srv/knowledge/hermes-second-brain/skills/` as the canonical load path for these three skills. Git file mode SHALL NOT be symlink (`120000`).
+The Cursor harness SHALL load `covenant-flow`, `covenant-flow-environments` and `github-project-board` from `.cursor/skills/<name>/SKILL.md` as regular files in the consumer git (first consumer: `oalansilva/crypto` after pin). Agents MUST NOT treat `~/.codex/skills/` or `/srv/knowledge/hermes-second-brain/skills/` as the canonical load path for these skills. Git file mode SHALL NOT be symlink (`120000`). After unique pin, `alan-workflow*` MUST NOT remain the canonical names in consumer git.
 
 #### Scenario: Fresh clone
-- **WHEN** a Cursor session starts from a GitHub checkout of the repo
-- **THEN** the three `SKILL.md` files exist in `.cursor/skills/` without resolving a symlink to hermes
+- **WHEN** a Cursor session starts from a GitHub checkout of a uniquely pinned consumer
+- **THEN** the `SKILL.md` files exist in `.cursor/skills/covenant-flow/` and `.cursor/skills/covenant-flow-environments/` without resolving a symlink to hermes
 - **AND** docs instruct preferring the repo path over Codex compatibility discovery
 
 ### Requirement: Column gate is always-on; full workflow is a skill
-The always-on layer SHALL be the short root `AGENTS.md` plus the client paging (Cursor: `sessionStart` Moore page; Grok: generated `.grok/rules/` page). It MUST state that `Em Refinamento` is the entry column, Todo is not implementation, and Design columns must not be skipped. The detailed 12-column runbook SHALL live in the `alan-workflow` skill (on-demand). Chat requests such as `implemente` SHALL NOT authorize `/opsx:apply` or product code while `Status=Todo`. The always-on layer MUST NOT include the `AGENTS.md` overlay body (`docs/crypto-overlay.md`).
+The always-on layer SHALL be the short root `AGENTS.md` plus the client paging (Cursor: `sessionStart` Moore page; Grok: generated `.grok/rules/` page). It MUST state that `Em Refinamento` is the entry column, Todo is not implementation, and Design columns must not be skipped. The detailed 12-column runbook SHALL live in the `covenant-flow` skill (on-demand). Chat requests such as `implemente` SHALL NOT authorize `/opsx:apply` or product code while `Status=Todo`. The always-on layer MUST NOT include the overlay body (`overlay_doc`, Cripto: `docs/crypto-overlay.md`).
 
 #### Scenario: Chat says implement all Todo cards
 - **WHEN** the user asks to implement cards in `Status=Todo`
@@ -105,16 +107,16 @@ The GitHub issue MAY originate the work. OpenSpec artifacts SHALL be a superset 
 - **AND** SHALL NOT treat a richer issue body as authorization to skip a task missing from `tasks.md`
 
 ### Requirement: Code Review happy path MUST inherit the chat model
-The versioned `diff-reviewer` and `code-reviewer` Tasks MUST use `inherit` unless Alan selects another model in chat. `/review-bugbot` and `/review-security` MAY use the Cursor-managed product model only when Alan explicitly requests those skills.
+The versioned `diff-reviewer` and `code-reviewer` Tasks MUST use `inherit` unless Alan selects another model in chat. Cursor Bugbot (`/review-bugbot`) MUST NOT be part of the product or the Code Review happy path. `/review-security` MAY run when Alan explicitly asks; it MUST NOT replace the local reviewers as the gate. Review constraints SHALL live in the two agent files (and optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`.
 
 #### Scenario: Local reviewers inherit
 - **WHEN** Code Review spawns `.cursor/agents/diff-reviewer.md` or `.cursor/agents/code-reviewer.md`
 - **THEN** the child MUST use `inherit` (same chat model)
 
-#### Scenario: Optional Bugbot uses the product model
-- **WHEN** Alan asks for `/review-bugbot` or `/review-security`
-- **THEN** that optional run MAY use the Cursor-managed reviewer model
-- **AND** that MUST NOT be treated as a silent swap of the session LLM for implementation or the local reviewers
+#### Scenario: Bugbot is not a product path
+- **WHEN** Code Review runs on a pinned consumer
+- **THEN** `/review-bugbot` MUST NOT run as the gate
+- **AND** `BUGBOT.md` MUST NOT be required
 
 ### Requirement: Agent moves Status only via process_event
 While this change is active, the Cursor Agent MUST NOT invoke `gh project item-edit` (or GraphQL `updateProjectV2ItemFieldValue`) to change Project 1 `Status`. Named transitions SHALL go through `scripts/process-fsm/process_event.py`. Chat utterances such as `implemente`, `autorizo`, or `arrastei` MUST NOT be treated as `aprovar_design` / T7.
@@ -152,14 +154,14 @@ While this change is active, the Cursor Agent MUST NOT invoke `gh project item-e
 - **AND** `failClosed` is not true on that shell hook
 
 ### Requirement: Root AGENTS.md is a stub; overlay is on-demand
-The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines that points to `docs/crypto-overlay.md` for ports/URLs, Drive, PostgreSQL, and release-guard/lote/PROD, MUST include the board URL `github.com/users/oalansilva/projects/1`, and MUST carry the short always-on δ (resolve the tuple, chat ≠ δ, Todo ≠ código, Alan-only T1/T7/T15, clients Cursor, Grok Build, and OpenCode). The long overlay body SHALL live in `docs/crypto-overlay.md` (not always-injected). Agents MUST `Read` that overlay only when the task needs those topics. The stub MUST NOT contain the 12-column runbook, `release-guard pre`/`post` snippets, or deploy PROD procedure. The stub MUST NOT claim Auto OpenCode or Auto Grok.
+The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines that points to the consumer `overlay_doc` (Cripto: `docs/crypto-overlay.md`) for ports/URLs, Drive, PostgreSQL, and release-guard/lote/PROD, MUST include the board URL generated from overlay `board.owner` and `board.number` (Cripto: `github.com/users/oalansilva/projects/1`), and MUST carry the short always-on δ (resolve the tuple, chat ≠ δ, Todo ≠ código, Alan-only T1/T7/T15, clients Cursor, Grok Build, and OpenCode). The long overlay body SHALL live at `overlay_doc` (not always-injected). Agents MUST `Read` that overlay only when the task needs those topics. The stub MUST NOT contain the 12-column runbook, `release-guard pre`/`post` snippets, or deploy PROD procedure. The stub MUST NOT claim Auto OpenCode or Auto Grok.
 
 #### Scenario: Fresh session does not ingest the overlay body from AGENTS.md
 - **WHEN** the root `AGENTS.md` is read as the always-on workspace file
 - **THEN** it has at most 40 non-empty lines
 - **AND** it does not contain `scripts/release-guard pre` or the 12-column path as a procedure
-- **AND** it names `docs/crypto-overlay.md` as the on-demand overlay
-- **AND** it contains `github.com/users/oalansilva/projects/1`
+- **AND** it names the consumer `overlay_doc` as the on-demand overlay
+- **AND** it contains a board URL derived from overlay board fields (Cripto: `github.com/users/oalansilva/projects/1`)
 
 #### Scenario: Stub names three clients and the tuple
 - **WHEN** the root `AGENTS.md` is read
@@ -179,10 +181,10 @@ The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines th
 - **AND** the body does not claim Grok Auto
 
 ### Requirement: alan-workflow skill priority is delta and Guard first
-`.cursor/skills/alan-workflow/SKILL.md` SHALL declare priority order **δ and Guard > overlay > skill > wording**. Chat utterances such as `implemente` MUST be classified as wording (lowest). Overlay (`docs/crypto-overlay.md`) MUST be loaded only when ports, Drive, PostgreSQL, or release are in scope.
+`.cursor/skills/covenant-flow/SKILL.md` SHALL declare priority order **δ and Guard > overlay > skill > wording**. Chat utterances such as `implemente` MUST be classified as wording (lowest). Overlay (`overlay_doc`, Cripto: `docs/crypto-overlay.md`) MUST be loaded only when ports, Drive, PostgreSQL, or release are in scope.
 
 #### Scenario: Skill lists inverted priority
-- **WHEN** `.cursor/skills/alan-workflow/SKILL.md` is opened
+- **WHEN** `.cursor/skills/covenant-flow/SKILL.md` is opened
 - **THEN** the priority list places δ/Guard before overlay, overlay before the skill runbook, and wording last
 - **AND** it no longer lists “Instrução direta de Alan no chat” as item 1 ahead of δ
 
@@ -204,13 +206,12 @@ After an explicit release request, the Agent SHALL publish (`main`, deploy PROD,
 - **AND** `harness.mdc` does not contain the string `T1/T7/T15` as the always-on law
 
 ### Requirement: Em Refinamento story sharpening uses grill-card
-
-The Cursor harness SHALL load `.cursor/skills/grill-card/SKILL.md` and `.cursor/skills/grilling/SKILL.md` as regular files in `oalansilva/crypto`. `alan-workflow` SHALL describe Em Refinamento as intake **and** story grilling (issue body ledger, T1 Alan-only). `github-project-board` SHALL state the same for the Em Refinamento column. Agents MUST NOT treat `grill-with-docs` or `to-spec` as the project entry skill.
+The Cursor harness SHALL load `.cursor/skills/grill-card/SKILL.md` and `.cursor/skills/grilling/SKILL.md` as regular files in the consumer git. `covenant-flow` SHALL describe Em Refinamento as intake **and** story grilling (issue body ledger, T1 Alan-only). `github-project-board` SHALL state the same for the Em Refinamento column. Agents MUST NOT treat `grill-with-docs` or `to-spec` as the project entry skill.
 
 #### Scenario: Fresh clone has adapter and primitive
-- **WHEN** a Cursor session starts from a GitHub checkout
+- **WHEN** a Cursor session starts from a GitHub checkout of a uniquely pinned consumer
 - **THEN** `.cursor/skills/grill-card/SKILL.md` and `.cursor/skills/grilling/SKILL.md` exist and are not mode `120000`
-- **AND** `alan-workflow` names `grill-card` for Em Refinamento
+- **AND** `covenant-flow` names `grill-card` for Em Refinamento
 
 #### Scenario: Design synthesizes a grilled issue
 - **WHEN** `Status=Design` and the bound issue body contains the grill-card DoD sections
@@ -228,17 +229,17 @@ The Cursor harness SHALL load `.cursor/skills/grill-card/SKILL.md` and `.cursor/
 - **THEN** `context_file[Em Refinamento]` instructs issue clarification / grill-card and that chat is not T1
 
 ### Requirement: Parent grill relay presents all host options
-`.cursor/skills/alan-workflow/SKILL.md` SHALL include, in the Grill-card section, a line that the **parent** calls the host tool with **all** `options[]` of each closed question and MUST NOT collapse the card to the recommended option. The parent SHALL map the child's listed alternatives 1:1 into `options[]` in the same order, recommended first (Cursor `AskUserQuestion`, Grok `ask_user_question`). The isolated grill child MUST NOT call the host tool. This requirement MUST NOT add a FSM state, event, hook, or `enabled_tools` entry, MUST NOT edit `.cursor/process-fsm.yaml`, and MUST NOT name the host tool in `.grok/skills/*` stubs.
+`.cursor/skills/covenant-flow/SKILL.md` SHALL include, in the Grill-card section, a line that the **parent** calls the host tool with **all** `options[]` of each closed question and MUST NOT collapse the card to the recommended option. The parent SHALL map the child's listed alternatives 1:1 into `options[]` in the same order, recommended first (Cursor `AskUserQuestion`, Grok `ask_user_question`). The isolated grill child MUST NOT call the host tool. This requirement MUST NOT add a FSM state, event, hook, or `enabled_tools` entry, MUST NOT edit `process-fsm.yaml` as a side effect of this relay line, and MUST NOT name the host tool in `.grok/skills/*` stubs.
 
 #### Scenario: Parent relays every closed-question option
 - **WHEN** the grill child returns closed questions with listed options on Grok or Cursor
 - **THEN** the parent SHALL call the host tool and re-present all of those options
 - **AND** MUST NOT present only the `➡️` / recommended option
-- **AND** `alan-workflow` SHALL contain that relay line in the Grill-card section
+- **AND** `covenant-flow` SHALL contain that relay line in the Grill-card section
 
 #### Scenario: No FSM change for host-option relay
 - **WHEN** this change is applied
-- **THEN** `.cursor/process-fsm.yaml` is unchanged
+- **THEN** `process-fsm.yaml` law table is unchanged by the relay line
 - **AND** `AGENTS.md` always-on does not grow with this rule
 
 ### Requirement: One chat per column on both clients
@@ -251,9 +252,9 @@ The Cursor and Grok runbooks SHALL require one chat per card titled `#<id>` from
 - **AND** it states Apply waits for `Pronto para Dev` (T7 Alan)
 
 #### Scenario: Both clients carry the same refusal
-- **WHEN** `alan-workflow` is followed in Cursor or via the Grok stub
+- **WHEN** `covenant-flow` is followed in Cursor or via the Grok stub
 - **THEN** both clients document `#id` per card, activity children, and same-chat refusal
-- **AND** `.cursor/process-fsm.yaml` has no new event for this rule
+- **AND** `process-fsm.yaml` has no new event for this rule
 
 ### Requirement: Activity children do not inherit parent transcript
 Grill, Design-author, Apply-column, QA, Assessment A/B, `diff-reviewer`, and `code-reviewer` SHALL receive a self-contained prompt and MUST NOT inherit the parent transcript. Apply-column SHALL keep per-task sliced reads **inside** that child. Grill MUST bind on `Status=Em Refinamento` plus issue id in the prompt, not on git branch `card-<id>-*`. Nested spawn is forbidden (Design child MUST NOT spawn A/B; Apply child MUST NOT spawn reviewers).
