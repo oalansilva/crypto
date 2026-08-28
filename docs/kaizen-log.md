@@ -55,7 +55,6 @@
 | #769 — kaizen: tasks.md deve ir a [x] antes de Done (release 2026-08-28) | P2 | F-1 | Em Refinamento |
 | (não criado) archive pendente 749/752 → coberto por #659 — Kaizen: pre em release exige archive ou dedupe | — | F-2 | coberto por #659 (ainda Em Refinamento) |
 | (não criado) dirty worktrees / card-720 → coberto por #759 — release-guard branch_merged cego a origin/main | — | F-4 | coberto por #759 (ainda Em Refinamento) |
-| (não criado) homologation timing → coberto por #658 | — | F-5 | coberto por #658 (ainda Em Refinamento) |
 
 ## 2026-08-27 — Kaizen release
 
