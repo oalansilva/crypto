@@ -526,6 +526,23 @@ cd frontend
 nohup npm run dev -- --host 0.0.0.0 --port 5173 > /tmp/vite-5173.log 2>&1 &
 ```
 
+### dsh (DeepSeek Harness)
+
+Quarto cliente de processo (pele `.dsh/`). Cooperativo até o ensaio deny PASS; **não** reivindique Auto dsh.
+
+Boot no canonical DEV (`canonical_paths.dev` = `/srv/apps/dev/criptofarol/source`):
+
+```bash
+scripts/process-fsm/dsh_boot.sh
+```
+
+O helper materializa `.dsh/cordis.patch.yml` com `name` **absoluto** dos plugins (`.dsh/plugin/process-fsm-guard.js` e `.dsh/plugin/impeccable-hook.js`) e lança `dsh web --patch <tmp>`. `dsh plugin add` **não** é o canal de pin.
+
+- URL local: `http://127.0.0.1:3080` (sessão autenticada; 401 sem auth).
+- **Não** ligar `:3080` em `environments.dev.services`.
+- **Não** systemd para dsh.
+- **Não** implantar Clara/Hermes neste pin.
+
 ## Testes / checks
 
 - Todo teste, build, lint, `openspec validate` ou CI iniciado precisa terminar antes de virar evidência. Se ainda estiver rodando, informe como status parcial e continue acompanhando até sucesso, falha corrigida ou bloqueio real.
