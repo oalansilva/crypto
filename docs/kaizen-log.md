@@ -49,7 +49,7 @@
 - Dirty worktrees bloqueiam `pre` | recidiva | #759
 - Board title divergence | recidiva | #687
 
-#### Cards kaizen criados (máx. 3/release)
+### Cards kaizen criados (máx. 3/release)
 | Card | Prioridade | Origem | Status |
 | --- | --- | --- | --- |
 | #769 — kaizen: tasks.md deve ir a [x] antes de Done (release 2026-08-28) | P2 | F-1 | Em Refinamento |
