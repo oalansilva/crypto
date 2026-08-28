@@ -76,18 +76,34 @@ command = payload.get("command") if isinstance(payload.get("command"), str) else
 if not command:
     nested = data.get("command")
     command = nested if isinstance(nested, str) else ""
+def _overlay_board(root):
+    path = os.path.join(root, ".covenant-flow", "overlay.yaml")
+    if not os.path.isfile(path):
+        return "", [], [], []
+    text = open(path, encoding="utf-8").read()
+    field = ""
+    m = re.search(r"status_field_id:\s*[\"']?([^\"'\s]+)", text)
+    if m:
+        field = m.group(1)
+    options = re.findall(r":\s*[\"']?([0-9a-f]{8})[\"']?\s*$", text, re.M)
+    def _globs(key):
+        block = re.search(rf"{key}:\n((?:\s+-\s+.+\n)*)", text)
+        if not block:
+            return []
+        return [ln.split("-", 1)[1].strip().rstrip("*").rstrip("/") + "/" for ln in block.group(1).splitlines() if ln.strip()]
+    return field, options, _globs("product_globs"), _globs("design_globs")
+
+ov_field, ov_options, ov_product, ov_design = _overlay_board(os.environ.get("PROCESS_FSM_ROOT") or cwd)
 if "item-edit" in command and (
-    "PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM" in command
+    (ov_field and ov_field in command)
     or "updateProjectV2ItemFieldValue" in command
-    or any(x in command for x in (
-        "fed46e78", "4c26ac72", "bd47fbe8", "b45bf4aa", "0257f58c", "fe1ad960",
-        "b1858de0", "9220bf8c", "e02597eb", "dfcb47b5", "8ca47888", "ce5cd459",
-    ))
+    or "--single-select-option-id" in command
+    or any(x in command for x in ov_options)
 ):
     msg = "process-fsm-guard deny reason=status_item_edit. Use process_event."
     print(json.dumps({"permission": "deny", "decision": "deny", "agent_message": msg, "user_message": msg, "reason": msg}))
     sys.exit(0)
-if "updateProjectV2ItemFieldValue" in command and "PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM" in command:
+if "updateProjectV2ItemFieldValue" in command:
     msg = "process-fsm-guard deny reason=status_item_edit. Use process_event."
     print(json.dumps({"permission": "deny", "decision": "deny", "agent_message": msg, "user_message": msg, "reason": msg}))
     sys.exit(0)
@@ -133,24 +149,17 @@ if path is None and command:
         for t in targets:
             if allowlisted(t):
                 continue
-            if (
-                t.startswith("backend/")
-                or t.startswith("frontend/src/")
-                or t.startswith("openspec/changes/")
-                or t.startswith("frontend/public/prototypes/")
-                or "/backend/" in t
-                or "/frontend/src/" in t
-                or "/openspec/changes/" in t
-                or "/frontend/public/prototypes/" in t
-            ):
+            prefixes = tuple(ov_product + ov_design)
+            if any(t.startswith(p) or f"/{p}" in f"/{t}" for p in prefixes):
                 product_hit = t
                 break
         if product_hit:
             path = product_hit
         elif non_redir or any(not allowlisted(t) for t in targets):
+            joined = "|".join(re.escape(p.rstrip("/")) for p in (ov_product + ov_design) if p) or "never-match"
             match = re.search(
-                r"((?:/(?:[\w.-]+))*/(?:backend|frontend/src|openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+|"
-                r"(?:backend|frontend/src|openspec/changes|frontend/public/prototypes)/[^\s'\"|;<>&]+)",
+                rf"((?:/(?:[\w.-]+))*/(?:{joined})/[^\s'\"|;<>&]+|"
+                rf"(?:{joined})/[^\s'\"|;<>&]+)",
                 command,
             )
             if match:
@@ -171,7 +180,8 @@ def _posix(p):
     text = p.replace("\\", "/")
     if text.startswith("./"):
         text = text[2:]
-    for marker in ("/backend/", "/frontend/src/", "/openspec/changes/", "/frontend/public/prototypes/"):
+    for prefix in ov_product + ov_design:
+        marker = "/" + prefix
         idx = text.find(marker)
         if idx != -1:
             text = text[idx + 1 :]
@@ -183,13 +193,14 @@ if any(item.endswith(".design-digest") for item in normalized):
     msg = "process-fsm-guard deny reason=sidecar"
     print(json.dumps({"permission": "deny", "decision": "deny", "agent_message": msg, "user_message": msg, "reason": msg}))
     sys.exit(0)
-is_product = any(item.startswith("backend/") or item.startswith("frontend/src/") for item in normalized)
-is_design = any(
-    item.startswith("openspec/changes/") or item.startswith("frontend/public/prototypes/")
-    for item in normalized
-)
+if not ov_product and not ov_design:
+    msg = "process-fsm-guard deny reason=overlay"
+    print(json.dumps({"permission": "deny", "decision": "deny", "agent_message": msg, "user_message": msg, "reason": msg}))
+    sys.exit(0)
+is_product = any(any(item.startswith(p) for p in ov_product) for item in normalized)
+is_design = any(any(item.startswith(p) for p in ov_design) for item in normalized)
 anchor = next(
-    (p for p, item in zip(paths, normalized) if item.startswith("backend/") or item.startswith("frontend/src/")),
+    (p for p, item in zip(paths, normalized) if any(item.startswith(pref) for pref in ov_product)),
     paths[0],
 )
 target = anchor if os.path.isabs(anchor) else os.path.join(cwd, anchor)

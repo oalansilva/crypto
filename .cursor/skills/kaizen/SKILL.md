@@ -9,13 +9,12 @@ You are the Kaizen audit skill. Observe how the process is executed, find fricti
 
 ## Sources (read-only)
 
-1. Board: `gh project view 1 --owner oalansilva --format json` and `gh project item-list 1 --owner oalansilva --format json --limit 200`.
+1. Board: overlay `board.owner` / `board.number` via `gh project view` / `item-list` (do not hardcode a Project).
 2. Git: `git fetch --prune origin` then status, worktrees, stash, branches; `scripts/release-guard audit`.
 3. OpenSpec: `openspec validate --all` and active changes under `openspec/changes/`.
 4. CI: recent PR checks (`qa-gate`, visual, cancelled/failed).
 5. Cursor sessions: read agent transcripts for this workspace. Canonical search order:
    - `$CURSOR_TRANSCRIPTS_DIR` if set
-   - `/home/ubuntu/.cursor/projects/srv-apps-dev-criptofarol-source/agent-transcripts`
    - sibling `agent-transcripts` under the current Cursor project folder
    Correlate with cards via `#<id>` / `card-<id>` in titles or user messages.
    Do **not** query `~/.local/share/opencode/opencode.db` as an active source.

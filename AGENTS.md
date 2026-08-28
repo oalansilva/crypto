@@ -8,13 +8,12 @@ Chat é wording, não autorização. NLU ≠ δ. `implemente` ∉ δ.
 `Todo` não é código; próxima = `iniciar_design` via `process_event`.
 Código / `/opsx:apply` só após `Status=Pronto para Dev` (T8).
 Alan único em T1/T7/T15. Agent não arrasta essas colunas. T16 = `process_event fechar_release`.
-Clientes: Cursor Agent (Auto permitido); Grok Build e OpenCode (cooperativos até ensaio deny na `develop`).
-Skills canônicas: `.cursor/skills/` neste repo. Overlay on-demand; runbook = skill `alan-workflow`; lei = `rules.md`.
+Clientes: Cursor Agent (Auto permitido); Grok Build e OpenCode (cooperativos até ensaio deny na branch de integração).
+Não reivindique modo Auto no Grok nem no OpenCode.
+Skills canônicas: `.cursor/skills/` neste repo. Overlay on-demand; runbook = skill `covenant-flow`.
 
-Quando a tarefa precisar de portas/URLs, Drive, PostgreSQL ou release/lote/PROD:
+Quando a tarefa precisar de portas/URLs, Drive, banco ou release/lote/PROD:
 
 `Read docs/crypto-overlay.md`
 
 Fora desses tópicos, não carregue o overlay.
-
-PostgreSQL obrigatório (`DATABASE_URL`). Não usar SQLite em runtime/QA.

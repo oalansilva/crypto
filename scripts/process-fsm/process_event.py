@@ -15,7 +15,14 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from board_status import STATUS_FIELD_ID, STATUS_OPTIONS  # noqa: E402
+from overlay import (  # noqa: E402
+    board_owner_number,
+    board_project_id,
+    load_overlay,
+    repo_owner_name,
+    status_field_id,
+    status_options,
+)
 from fsm import (  # noqa: E402
     CARD_GIT_RE,
     EvalContext,
@@ -37,7 +44,7 @@ from t16 import (  # noqa: E402
 )
 
 REPO_ROOT = ROOT.parents[1]
-AMBIENTES = "alan-workflow-ambientes"
+AMBIENTES = "covenant-flow-environments"
 RELEASE_GUARD = "release-guard"
 HUMAN_EVENTS = frozenset({"priorizar", "aprovar_design", "homologar", "devolver_design", "cancelar"})
 I4_EVENTS = frozenset({"iniciar_apply", "pedir_review"})
@@ -63,14 +70,17 @@ class FakeMover:
 
 
 class GhBoardMover:
-    """Live Project 1 Status edit. Tests MUST inject FakeMover instead."""
+    """Live Project Status edit from overlay board ids. Tests MUST inject FakeMover instead."""
 
     def set_status(self, issue_number: int, to: str) -> None:
         import subprocess
 
-        option = STATUS_OPTIONS.get(to)
-        if option is None:
-            raise ValueError(f"unknown Status {to!r}")
+        overlay = load_overlay(REPO_ROOT)
+        option = status_options(overlay).get(to)
+        field = status_field_id(overlay)
+        project_id = board_project_id(overlay)
+        if option is None or not field or not project_id:
+            raise ValueError(f"unknown Status {to!r} or overlay board ids missing")
         item_id = _item_id_for_issue(issue_number)
         try:
             proc = subprocess.run(
@@ -81,9 +91,9 @@ class GhBoardMover:
                     "--id",
                     item_id,
                     "--project-id",
-                    "PVT_kwHOAAHtBM4BV8b2",
+                    project_id,
                     "--field-id",
-                    STATUS_FIELD_ID,
+                    field,
                     "--single-select-option-id",
                     option,
                 ],
@@ -102,8 +112,13 @@ def _item_id_for_issue(issue_number: int) -> str:
     import json as json_mod
     import subprocess
 
+    overlay = load_overlay(REPO_ROOT)
+    owner, repo_name = repo_owner_name(overlay)
+    board_owner, board_number = board_owner_number(overlay)
+    if not owner or not repo_name or not board_owner or board_number is None:
+        raise RuntimeError("overlay board/repo missing")
     query = (
-        "query($n:Int!){repository(owner:\"oalansilva\",name:\"crypto\")"
+        f"query($n:Int!){{repository(owner:\"{owner}\",name:\"{repo_name}\")"
         "{issue(number:$n){projectItems(first:20){nodes{id project{number owner{...on User{login}}}}}}}}"
     )
     try:
@@ -127,12 +142,12 @@ def _item_id_for_issue(issue_number: int) -> str:
     ).get("nodes") or []
     for node in nodes:
         project = (node or {}).get("project") or {}
-        owner = (project.get("owner") or {}).get("login")
-        if project.get("number") == 1 and owner in (None, "oalansilva"):
+        login = (project.get("owner") or {}).get("login")
+        if project.get("number") == board_number and login in (None, board_owner):
             item_id = node.get("id")
             if isinstance(item_id, str) and item_id:
                 return item_id
-    raise RuntimeError(f"issue {issue_number} not on Project 1")
+    raise RuntimeError(f"issue {issue_number} not on Project {board_number}")
 
 
 def _unbound(bound: Any) -> bool:

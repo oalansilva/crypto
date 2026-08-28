@@ -15,7 +15,7 @@ from paging import page  # noqa: E402
 TODO_STUB = "Próximo evento = iniciar_design. Não apply. Não /opsx:new ainda."
 GRILL_CARD = REPO / ".cursor" / "skills" / "grill-card" / "SKILL.md"
 GRILLING = REPO / ".cursor" / "skills" / "grilling" / "SKILL.md"
-ALAN_WORKFLOW = REPO / ".cursor" / "skills" / "alan-workflow" / "SKILL.md"
+ALAN_WORKFLOW = REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md"
 GROK_GRILL_CARD = REPO / ".grok" / "skills" / "grill-card" / "SKILL.md"
 GROK_GRILLING = REPO / ".grok" / "skills" / "grilling" / "SKILL.md"
 HERMES = Path("/srv/knowledge/hermes-second-brain/skills")

@@ -5,16 +5,19 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Callable, Protocol
 
-CANONICAL_DEV_SOURCE = Path("/srv/apps/dev/criptofarol/source")
-CANONICAL_RESTART = CANONICAL_DEV_SOURCE / "restart"
-DEV_PUBLIC_HEALTH = "https://dev.criptofarol.com.br/api/health"
-GH_REPO = "oalansilva/crypto"
+ROOT = Path(__file__).resolve().parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from overlay import repo_slug, try_load_overlay  # noqa: E402
+REPO_ROOT = ROOT.parents[1]
 QA_GATE = "qa-gate"
 HEALTH_ATTEMPTS = 15
 HEALTH_SLEEP_S = 1
@@ -26,6 +29,41 @@ _GIT_OVERRIDE_VARS = (
     "GIT_OBJECT_DIRECTORY",
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
 )
+
+
+def _overlay_repo() -> str:
+    data = try_load_overlay(REPO_ROOT)
+    return repo_slug(data) if data else ""
+
+
+def _overlay_dev_source() -> Path | None:
+    data = try_load_overlay(REPO_ROOT)
+    if not data:
+        return None
+    env = ((data.get("environments") or {}).get("dev") or {})
+    source = str(env.get("source") or "").strip()
+    return Path(source) if source else None
+
+
+def _overlay_restart(source: Path) -> Path:
+    data = try_load_overlay(REPO_ROOT)
+    rel = ""
+    if data:
+        rel = str(((data.get("release") or {}).get("restart")) or "").strip()
+    if not rel:
+        return source / "restart"
+    candidate = Path(rel)
+    return candidate if candidate.is_absolute() else (source / rel)
+
+
+def _overlay_health_url() -> str:
+    """T14 public health is DEV. `release.health_url` is T16/PROD evidence."""
+    data = try_load_overlay(REPO_ROOT)
+    if not data:
+        return ""
+    env = (data.get("environments") or {}).get("dev") or {}
+    url = str(env.get("url") or "").rstrip("/")
+    return f"{url}/api/health" if url else ""
 
 
 class T14Error(RuntimeError):
@@ -103,7 +141,7 @@ def _pr_list_json(
             "pr",
             "list",
             "--repo",
-            GH_REPO,
+            _overlay_repo(),
             "--head",
             str(q_git),
             "--base",
@@ -145,7 +183,7 @@ def measure_checks_green(
             [
                 "gh",
                 "api",
-                f"repos/{GH_REPO}/commits/{head}/check-runs",
+                f"repos/{_overlay_repo()}/commits/{head}/check-runs",
                 "--paginate",
                 "--jq",
                 ".check_runs[] | {name,status,conclusion}",
@@ -180,18 +218,23 @@ class LiveT14Runner:
     def __init__(
         self,
         *,
-        source: Path = CANONICAL_DEV_SOURCE,
-        restart_path: Path = CANONICAL_RESTART,
-        health_url: str = DEV_PUBLIC_HEALTH,
+        source: Path | None = None,
+        restart_path: Path | None = None,
+        health_url: str | None = None,
         comment_script: Path | None = None,
+        canonical_restart: Path | None = None,
         runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         health_get: Callable[[str], bool] | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        self.source = source
-        self.restart_path = restart_path
-        self.health_url = health_url
-        self.comment_script = comment_script or (CANONICAL_DEV_SOURCE / "scripts" / "post-card-evidence-comment.sh")
+        overlay_source = _overlay_dev_source()
+        self.source = source if source is not None else (overlay_source or REPO_ROOT)
+        self.canonical_restart = canonical_restart
+        if self.canonical_restart is None and overlay_source is not None and source in (None, overlay_source):
+            self.canonical_restart = _overlay_restart(self.source)
+        self.restart_path = restart_path if restart_path is not None else _overlay_restart(self.source)
+        self.health_url = health_url if health_url is not None else _overlay_health_url()
+        self.comment_script = comment_script or (self.source / "scripts" / "post-card-evidence-comment.sh")
         self._run = runner
         self._health_get = health_get or _http_health
         self._sleep = sleep
@@ -223,7 +266,7 @@ class LiveT14Runner:
                 "merge",
                 str(number),
                 "--repo",
-                GH_REPO,
+                _overlay_repo(),
                 "--squash",
             ],
             timeout=120,
@@ -272,7 +315,7 @@ class LiveT14Runner:
 
     def restart(self) -> None:
         restart = Path(self.restart_path)
-        if self.source == CANONICAL_DEV_SOURCE and restart != CANONICAL_RESTART:
+        if self.canonical_restart is not None and restart.resolve() != Path(self.canonical_restart).resolve():
             raise T14Error("restart: path")
         proc = _run([str(restart)], timeout=600, runner=self._run)
         if proc.returncode != 0:
