@@ -25,7 +25,7 @@ design_globs:
 - frontend/public/prototypes/**
 integration_branch: develop
 production_branch: main
-pin: v1.1.0
+pin: v1.1.1
 canonical_paths:
   dev: /srv/apps/dev/criptofarol/source
   prod: /srv/apps/prod/criptofarol/source
