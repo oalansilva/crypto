@@ -94,8 +94,41 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const showFunctionalDetails = isAdmin || !strategyProtected || Boolean(opportunity.strategy_transparency);
     const showManagementControls = isAdmin || !strategyProtected;
     const effectiveTimeframe: MonitorPriceTimeframe = '1d';
-    const distance = distance_to_next_status;
-    const distanceStr = distance !== null && distance !== undefined ? `${distance.toFixed(2)}%` : '-';
+    const UNAVAILABLE = 'indisponível — dado não confiável';
+    const TIMEFRAME_TO_MS: Record<string, number> = {
+        '15m': 15 * 60 * 1000,
+        '1h': 60 * 60 * 1000,
+        '4h': 4 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000,
+    };
+    const isRiskStale = React.useMemo(() => {
+        const ref = opportunity.indicator_values_candle_time;
+        if (!ref) return false;
+        const ms = Date.parse(ref);
+        if (Number.isNaN(ms)) return false;
+        const tf = String(opportunity.timeframe || '1d').trim().toLowerCase();
+        const maxAge = (TIMEFRAME_TO_MS[tf] ?? TIMEFRAME_TO_MS['1d']) * 3;
+        return Date.now() - ms > maxAge;
+    }, [opportunity.indicator_values_candle_time, opportunity.timeframe]);
+    const hasRiskValue = (value: unknown): boolean => value !== null && value !== undefined && !isRiskStale;
+    const formatUsd = (value: number): string => new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 8,
+    }).format(value);
+    const formatPct = (value: number): string => `${toDisplayValue(value, 2)}%`;
+    const distanceStrUnavailable = !hasRiskValue(distance_to_next_status) ? UNAVAILABLE : formatPct(distance_to_next_status as number);
+    const distanceStopStr = !hasRiskValue(opportunity.distance_to_stop_pct) ? UNAVAILABLE : formatPct(opportunity.distance_to_stop_pct as number);
+    const stopStr = !hasRiskValue(opportunity.stop_price) ? UNAVAILABLE : formatUsd(opportunity.stop_price as number);
+    const entryStr = !hasRiskValue(opportunity.entry_price) ? UNAVAILABLE : formatUsd(opportunity.entry_price as number);
+    const alvoPrice: number | null = React.useMemo(() => {
+        if (!hasRiskValue(distance_to_next_status) || last_price === null || last_price === undefined || isRiskStale) return null;
+        const dist = distance_to_next_status as number;
+        if (!Number.isFinite(dist) || !Number.isFinite(last_price)) return null;
+        return isShort ? last_price * (1 - dist / 100) : last_price * (1 + dist / 100);
+    }, [distance_to_next_status, last_price, isShort, isRiskStale]);
+    const alvoStr = alvoPrice === null ? UNAVAILABLE : formatUsd(alvoPrice);
 
     const [isEditingNotes, setIsEditingNotes] = React.useState(false);
     const [notesValue, setNotesValue] = React.useState(opportunity.notes || '');
@@ -128,8 +161,20 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const batchInfo = opportunity.timestamp ? new Date(opportunity.timestamp).toLocaleString('en-US') : '-';
     const symbolTestKey = symbolKey(symbol);
     const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
-    const entryStopHeading = showEntryStopRows ? (isShort ? 'Venda/Short / Stop' : 'Compra / Stop') : 'Execução';
-    const entryPriceLabel = isShort ? 'venda/short' : 'compra';
+    const entryStopHeading = showEntryStopRows ? (isShort ? 'Venda/Short / Stop' : 'Compra / Stop') : 'Risco residual';
+    const hasSignalHistory = (opportunity.signal_history?.length ?? 0) > 0;
+    const lastExitItem = React.useMemo(() => {
+        if (!hasSignalHistory) return null;
+        const sorted = [...(opportunity.signal_history || [])].sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+        return sorted.find((i) => i.type === 'exit') ?? sorted[0] ?? null;
+    }, [opportunity.signal_history, hasSignalHistory]);
+    const residualText = !hasSignalHistory
+        ? 'posição encerrada segundo a estratégia — sem risco residual mapeado'
+        : lastExitItem?.price !== null && lastExitItem?.price !== undefined
+            ? `último EXIT em ${formatUsd(lastExitItem.price as number)} · exposição residual ${hasRiskValue(opportunity.distance_to_stop_pct) ? formatPct(opportunity.distance_to_stop_pct as number) : UNAVAILABLE} até o stop histórico — não operável.`
+            : 'risco residual a partir do histórico — não operável.';
+    const showScenario = showEntryStopRows && hasRiskValue(opportunity.stop_price);
+    const scenarioStopText = hasRiskValue(opportunity.stop_price) ? formatUsd(opportunity.stop_price as number) : '';
     const portfolioStatusClass = portfolioStatusTone === 'success'
         ? 'text-emerald-300'
         : portfolioStatusTone === 'warning'
@@ -377,34 +422,38 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <span className="swatch" />
                         {entryStopHeading}
                     </h5>
-                    <dl className="kv">
-                        {showEntryStopRows ? (
-                            <React.Fragment>
-                                <dt>{entryPriceLabel}</dt>
-                                <dd>
-                                    {opportunity.entry_price !== null && opportunity.entry_price !== undefined
-                                        ? `$${toDisplayValue(opportunity.entry_price, 8)}`
-                                        : '-'}
-                                </dd>
+                    {showEntryStopRows ? (
+                        <>
+                            <dl className="kv" data-testid={`monitor-risk-block-${symbolTestKey}`} data-risk-kv={symbolTestKey}>
+                                <dt>distância até saída</dt>
+                                <dd className={!hasRiskValue(distance_to_next_status) ? 'risk-unavailable' : undefined} title={!hasRiskValue(distance_to_next_status) ? 'dado não confiável ≠ erro de rede' : undefined}>{distanceStrUnavailable}</dd>
+                                <dt>distância até stop</dt>
+                                <dd className={!hasRiskValue(opportunity.distance_to_stop_pct) ? 'risk-unavailable' : undefined} title={!hasRiskValue(opportunity.distance_to_stop_pct) ? 'dado não confiável ≠ erro de rede' : undefined}>{distanceStopStr}</dd>
                                 <dt>stop</dt>
-                                <dd>
-                                    {opportunity.stop_price !== null && opportunity.stop_price !== undefined
-                                        ? `$${toDisplayValue(opportunity.stop_price, 8)}`
-                                        : '-'}
-                                </dd>
-                            </React.Fragment>
-                        ) : null}
-                        <dt>preço atual</dt>
-                        <dd>{priceString}</dd>
-                        <dt>distância stop</dt>
-                        <dd>
-                            {opportunity.distance_to_stop_pct !== null && opportunity.distance_to_stop_pct !== undefined
-                                ? `${toDisplayValue(opportunity.distance_to_stop_pct, 2)}%`
-                                : '-'}
-                        </dd>
-                        <dt>distância objetivo</dt>
-                        <dd>{distanceStr}</dd>
-                    </dl>
+                                <dd className={!hasRiskValue(opportunity.stop_price) ? 'risk-unavailable' : undefined} title={!hasRiskValue(opportunity.stop_price) ? 'dado não confiável ≠ erro de rede' : undefined}>{stopStr}</dd>
+                                <dt>alvo</dt>
+                                <dd className={alvoPrice === null ? 'risk-unavailable' : undefined} title={alvoPrice === null ? 'dado não confiável ≠ erro de rede' : undefined}>{alvoStr}</dd>
+                                <dt>entrada</dt>
+                                <dd className={!hasRiskValue(opportunity.entry_price) ? 'risk-unavailable' : undefined} title={!hasRiskValue(opportunity.entry_price) ? 'dado não confiável ≠ erro de rede' : undefined}>{entryStr}</dd>
+                                <dt>preço atual</dt>
+                                <dd>{priceString}</dd>
+                            </dl>
+                            {showScenario ? (
+                                <p className="scenario-risk" data-scenario={symbolTestKey} aria-live="polite">Se o preço cruzar {scenarioStopText}, a leitura de posição deixa de valer segundo a estratégia (stop).</p>
+                            ) : null}
+                        </>
+                    ) : (
+                        <>
+                            <dl className="kv" data-testid={`monitor-risk-block-${symbolTestKey}`} data-risk-kv={symbolTestKey}>
+                                <dt>preço atual</dt>
+                                <dd>{priceString}</dd>
+                            </dl>
+                            <div className="residual-block" data-residual={symbolTestKey} data-testid={hasSignalHistory ? undefined : 'monitor-risk-fallback'}>
+                                <span className="label">Risco residual</span>
+                                <span>{residualText}</span>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
