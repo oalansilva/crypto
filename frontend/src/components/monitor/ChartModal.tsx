@@ -476,6 +476,46 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     );
     const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
     const signalLabel = resolvedSignal.visual.markerLabel;
+    const CHART_UNAVAILABLE = 'indisponível — dado não confiável';
+    const CHART_TIMEFRAME_MS: Record<string, number> = {
+        '15m': 15 * 60 * 1000,
+        '1h': 60 * 60 * 1000,
+        '4h': 4 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000,
+    };
+    const chartRiskStale = React.useMemo(() => {
+        const ref = opportunity.indicator_values_candle_time;
+        if (!ref) return false;
+        const ms = Date.parse(ref);
+        if (Number.isNaN(ms)) return false;
+        const tf = String(opportunity.timeframe || '1d').trim().toLowerCase();
+        const maxAge = (CHART_TIMEFRAME_MS[tf] ?? CHART_TIMEFRAME_MS['1d']) * 3;
+        return Date.now() - ms > maxAge;
+    }, [opportunity.indicator_values_candle_time, opportunity.timeframe]);
+    const chartHasRiskValue = (value: unknown): boolean => value !== null && value !== undefined && !chartRiskStale;
+    const chartFormatUsd = (value: number): string => new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 8,
+    }).format(value);
+    const chartFormatPct = (value: number): string => `${value.toFixed(2)}%`;
+    const chartAlvoPrice: number | null = React.useMemo(() => {
+        if (!chartHasRiskValue(opportunity.distance_to_next_status) || opportunity.last_price === null || opportunity.last_price === undefined || chartRiskStale) return null;
+        const dist = opportunity.distance_to_next_status as number;
+        if (!Number.isFinite(dist) || !Number.isFinite(opportunity.last_price)) return null;
+        const isShortDir = opportunityDirection === 'short';
+        return isShortDir ? opportunity.last_price * (1 - dist / 100) : opportunity.last_price * (1 + dist / 100);
+    }, [opportunity.distance_to_next_status, opportunity.last_price, opportunityDirection, chartRiskStale]);
+    const chartShowScenario = showEntryStopRows && chartHasRiskValue(opportunity.stop_price);
+    const chartHasHistory = (opportunity.signal_history?.length ?? 0) > 0;
+    const chartLastExit = React.useMemo(() => {
+        if (!chartHasHistory) return null;
+        const sorted = [...(opportunity.signal_history || [])].sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+        return sorted.find((i) => i.type === 'exit') ?? sorted[0] ?? null;
+    }, [opportunity.signal_history, chartHasHistory]);
+    const chartResidualText = !chartHasHistory
+        ? 'posição encerrada segundo a estratégia — sem risco residual mapeado'
+        : chartLastExit?.price !== null && chartLastExit?.price !== undefined
+            ? `último EXIT em ${chartFormatUsd(chartLastExit.price as number)} · exposição residual ${chartHasRiskValue(opportunity.distance_to_stop_pct) ? chartFormatPct(opportunity.distance_to_stop_pct as number) : CHART_UNAVAILABLE} até o stop histórico — não operável.`
+            : 'risco residual a partir do histórico — não operável.';
 
     React.useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -731,24 +771,50 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             </section>
 
             <section>
-                <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Risco / Stop</p>
-                <div className="mt-2 space-y-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">{showEntryStopRows ? 'Risco / Stop' : 'Risco residual'}</p>
+                <div className="mt-2 space-y-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] p-3" data-testid={`monitor-risk-block-${String(symbol).replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase()}`}>
                     {showEntryStopRows ? (
                         <>
                             <div className="flex justify-between gap-3">
-                                <span className="text-[#929aa5]">Compra</span>
-                                <span className="font-mono text-[#eaecef]">{formatPrice(opportunity.entry_price)}</span>
+                                <span className="text-[#929aa5]">distância até saída</span>
+                                <span className="font-mono text-[#eaecef]">{chartHasRiskValue(opportunity.distance_to_next_status) ? chartFormatPct(opportunity.distance_to_next_status as number) : CHART_UNAVAILABLE}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-[#929aa5]">distância até stop</span>
+                                <span className="font-mono text-[#f6465d]">{chartHasRiskValue(opportunity.distance_to_stop_pct) ? chartFormatPct(opportunity.distance_to_stop_pct as number) : CHART_UNAVAILABLE}</span>
                             </div>
                             <div className="flex justify-between gap-3">
                                 <span className="text-[#929aa5]">Stop</span>
-                                <span className="font-mono text-[#f6465d]">{formatPrice(opportunity.stop_price)}</span>
+                                <span className="font-mono text-[#f6465d]">{chartHasRiskValue(opportunity.stop_price) ? chartFormatUsd(opportunity.stop_price as number) : CHART_UNAVAILABLE}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-[#929aa5]">Alvo</span>
+                                <span className="font-mono text-[#eaecef]">{chartAlvoPrice !== null ? chartFormatUsd(chartAlvoPrice) : CHART_UNAVAILABLE}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-[#929aa5]">Entrada</span>
+                                <span className="font-mono text-[#eaecef]">{chartHasRiskValue(opportunity.entry_price) ? chartFormatUsd(opportunity.entry_price as number) : CHART_UNAVAILABLE}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-[#929aa5]">Preço atual</span>
+                                <span className="font-mono text-[#eaecef]">{formatPrice(opportunity.last_price)}</span>
+                            </div>
+                            {chartShowScenario ? (
+                                <p className="scenario-risk rounded-md border border-[#2b3139] bg-[#1e2329] px-2 py-1 text-xs text-[#eaecef]" aria-live="polite">Se o preço cruzar {chartHasRiskValue(opportunity.stop_price) ? chartFormatUsd(opportunity.stop_price as number) : ''}, a leitura de posição deixa de valer segundo a estratégia (stop).</p>
+                            ) : null}
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-[#929aa5]">Preço atual</span>
+                                <span className="font-mono text-[#eaecef]">{formatPrice(opportunity.last_price)}</span>
+                            </div>
+                            <div className="residual-block rounded-md border border-[#2b3139] bg-[#1e2329] px-2 py-1 text-xs text-[#eaecef]" data-testid={chartHasHistory ? undefined : 'monitor-risk-fallback'}>
+                                <span className="label font-semibold">Risco residual</span>
+                                <span className="ml-1">{chartResidualText}</span>
                             </div>
                         </>
-                    ) : null}
-                    <div className="flex justify-between gap-3">
-                        <span className="text-[#929aa5]">Risco</span>
-                        <span className="font-mono text-[#f6465d]">{formatPercent(opportunity.distance_to_stop_pct)}</span>
-                    </div>
+                    )}
                 </div>
             </section>
 
