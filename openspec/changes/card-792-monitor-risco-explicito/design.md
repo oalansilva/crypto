@@ -12,7 +12,7 @@ Hipótese: mostrar hierarquia explícita no card (estado → distância → stop
 
 Resultado esperado: tester percorre só o card e aponta onde dói se a leitura falhar (critério #4), sem inventar placeholder nem vazar segredo de estratégia protegida.
 
-**UI impact: affected** — card + coerência com modal do gráfico. Tela já existe: `/monitor` → `OpportunityCard.tsx` + `signalResolution.ts`. Protótipo MUST partir da UI real (shell, tokens, densidade) e redesenhar só o delta (clone+delta). Remoção em EXIT mostra shell atual sem Entry/Stop operáveis.
+**UI impact: affected** — card + coerência com modal do gráfico. Tela já existe: rota `/monitor` (`MonitorStatusTab.tsx` tabela admin + `OpportunityCard.tsx` no expand + `signalResolution.ts`). Protótipo MUST clonar a **página** `/monitor` (KPIs, filterbar, `table.signals`, status-row HOLD/EXIT, mobile-cards) e redesenhar só o delta no card expandido / kv. Remoção em EXIT mostra shell atual sem Entry/Stop operáveis. Proibido layout paralelo (galeria 2×2 de cards).
 
 Vocabulário congelado do issue (não usar sinônimos):
 - `Distância` = % até próximo gatilho relevante para o estado atual (HOLD = até saída; EXIT = sem distância operável)._Avoid gap/delta/spread_
@@ -90,50 +90,51 @@ Nenhuma bloqueante. Fronteira 2026-08-29 fechada.
 
 - URL: `https://dev.criptofarol.com.br/prototypes/card-792-monitor-risco-explicito/`
 - Caminho versionado: `frontend/public/prototypes/card-792-monitor-risco-explicito/index.html`
-- Digest: `068581d6b9b2171b7534cb1250575bf4a61ea9b0e428047ffff387e98341efd7` (sha256 do HTML, 21275 bytes) · compute_digest `47414b653d7c7d96c6390ea10ddb43fc3a77996da72a61119cbcc816d7cb8604` (design + prototype)
+- Digest: `1a1ff265162784ca5708a76de22e6565ae85fb2832b90daec73cc40ac12f90c3` (sha256 do HTML, 95314 bytes)
+- Copied vs generated: copied 82460 bytes (tokens + `.monitor-theme` de `index.css` + shell AppNav + markup KPIs/filterbar/`table.signals`/status-row/OpportunityCard chrome); generated 12854 bytes (review-bar, kv #792, frase cenário, residual EXIT, copy `indisponível`, JS Antes/Depois + expand)
 - Viewports: desktop 1280×800, mobile 390×844
-- Base: clone+delta da UI real em DEV — shell sidebar 224px, header workspace, tokens `--bg-*`/`--accent-primary`/`--text-*`/`--border-default`, Inter, `OpportunityCard` real com `monitor.css` (não landing genérica)
-- Fluxos/estados: HOLD com risco completo · HOLD com dado não confiável · EXIT vazio (sem risco residual) · EXIT com risco residual · badge Compra/Venda + distância
-- Delta: extensão do `<dl class="kv">` + bloco "Risco residual / posição encerrada" em EXIT; frase cenário condicionada; "indisponível — dado não confiável" explícito
+- Base: clone da **página** `/monitor` (vista admin `showTechnicalColumns=true`) — sidebar 224px, nav autenticada com Monitor active, header workspace, tokens `--bg-*`/`--accent-primary`/`--text-*`/`--border-default` e `--bg-1`/`--t-1` do `monitor-theme`. CSS copiado de `frontend/src/index.css` (~3007–4269). Markup alinhado a `MonitorStatusTab.tsx` (thead, pair-cell, risk-bar, row-actions) + `OpportunityCard.tsx` no expand. Topologia de tabela: `card-637` só como referência; delta USDC não copiado. `DESIGN.md` não reescrito.
+- Fluxos/estados: 4 **linhas** na mesma tabela — SOL HOLD completo (expandida no Depois) · ETH HOLD indisponível · ADA EXIT vazio · LINK EXIT com residual. SOL é HOLD Compra ($105.39 / 13.38% / 35.21% stop), nunca EXIT.
+- Delta: só o kv do card expandido + frase "Se o preço cruzar $X…" + bloco "Risco residual" em EXIT + literal `indisponível — dado não confiável`. Toggle Antes/Depois troca o kv no mesmo sítio (Antes = kv atual do produto). Sem galeria 2×2.
 
 ## Prototype Validation
 
-- URL: `https://dev.criptofarol.com.br/prototypes/card-792-monitor-risco-explicito/`
-- Viewports: 1280×800 e 390×844 em navegador real (Playwright)
-- Ações/asserts:
-  - Estado padrão renderiza 4 cards (HOLD completo, HOLD indisponível, EXIT vazio, EXIT com residual) sem erro de console.
-  - Badge HOLD = "Compra", EXIT = "Venda" (via `resolveOpportunitySignal`).
-  - HOLD completo mostra distância, stop e alvo formatados USD 2–8 casas e % 2 casas; frase "se o preço cruzar $X" presente.
-  - HOLD indisponível mostra literal `indisponível — dado não confiável` — não `-` nem `N/A`.
-  - EXIT vazio não mostra Entry/Stop operáveis; mostra `posição encerrada segundo a estratégia — sem risco residual mapeado`.
-  - EXIT com residual mostra risco residual e não ressuscita Entry/Stop.
-  - Mobile: `kv` não estoura; controles e badge permanecem acessíveis.
-- Resultado: PASS — 4 cards renderizados, asserts críticos verdes, 0 erro de console/página com impacto, snapshot não vazio (ver `.impeccable/critique/`).
+- URL: `https://dev.criptofarol.com.br/prototypes/card-792-monitor-risco-explicito/` (servido também em `http://127.0.0.1/prototypes/card-792-monitor-risco-explicito/`)
+- Viewports: 1280×800 e 390×844 em navegador real (Playwright / Chromium + xvfb)
+- Ações/asserts (obrigatórios):
+  - (a) thead visível no desktop contém `Status`, `Preço`, `Distância`, `7d`, `Risco até stop`, `Tags` — PASS
+  - (b) `table.signals` e botão `Operar` — PASS
+  - (c) linha SOL mostra Compra, `$105.39`, `35.21%`, `Médias Móveis` — PASS
+  - (d) Depois: ETH com `indisponível — dado não confiável`; ADA EXIT com `posição encerrada segundo a estratégia — sem risco residual mapeado`; SOL com "cruzar" — PASS
+  - (e) clicar Antes altera o kv (labels `compra`/`distância stop` vs `distância até saída`/`distância até stop`); `aria-pressed` coerente — PASS
+  - (f) mobile 390: `.table-wrap` escondido, `.mobile-cards` visíveis, delta de risco legível — PASS
+  - (g) 0 erros de console com impacto — PASS
+- Resultado: asserts a–g verdes. Evidência: `output/playwright/card-792-desktop-1280.png`, `card-792-mobile-390.png`. Crítica A/B e `## Design Critique` ficam com o pai.
 
 ## Impeccable pipeline (esta coluna Design)
 
-- `node .agents/skills/impeccable/scripts/context.mjs --target frontend/src/components/monitor/OpportunityCard.tsx` → PRODUCT.md/DESIGN.md como autoridade.
-- Shape → brief (audience/outcome/direction/scope) antes do protótipo; brief integral no snapshot, recorte abaixo.
-- Prototype → polish (patch, não reemitir HTML) → audit (`harden`/`adapt`/`clarify` se achado) → browser gate desktop+mobile + asserts.
-
-## Design Critique
-
-- **P0:** nenhum.
-- **P1:** nenhum.
-- **P2 (accepted-residual):** alvo derivado quando confiável → quando ausente mostra "indisponível — dado não confiável" (não estimar); stale 3× timeframe cai em "indisponível"; EXIT residual usa último `signal_history` real (protótipo ilustrativo com $0.8420).
-- **P3 (accepted-residual):** kv com 6 linhas em HOLD no limite em mobile 390px mas com `word-break`; frase cenário poderia ter `aria-live="polite"` como polish opcional.
-- Prototype: `https://dev.criptofarol.com.br/prototypes/card-792-monitor-risco-explicito/` — `frontend/public/prototypes/card-792-monitor-risco-explicito/index.html` (21275 bytes, sha256 `068581d6…`)
-- Snapshot: `.impeccable/critique/792-card-792-monitor-risco-explicito-A.md` e `…-B.md` (r1 PASS). Apply e Code Review não lêem essa pasta. Gist OpenSpec não é a crítica.
-- **Design Agent verdict: PASS**
+- `node .agents/skills/impeccable/scripts/context.mjs --target frontend/src/components/monitor/OpportunityCard.tsx` → PRODUCT.md/DESIGN.md como autoridade (não reescritos).
+- Shape mental: audience/outcome/direction/scope (recorte abaixo); brief integral não neste arquivo.
+- Prototype (rewrite da topologia inválida) → polish por patch (overflow da tabela / `Operar` visível a 1280) → browser gate desktop+mobile + asserts a–g.
 
 ## Audience / Outcome / Direction / Scope (recorte do brief)
 
-- **Audience:** investidor do beta que já vê Compra/Venda e preço no `/monitor` mas não vê onde dói.
-- **Outcome:** calibrar tamanho de posição e decidir se abre o gráfico sem achar que o Farol executa ordem; apontar risco sem operador (roteiro #75).
-- **Direction:** Binance dark (tokens `--bg-*`/`--accent-primary`, Inter), clone+delta do `OpportunityCard` real — estender `kv`, não inventar layout paralelo.
-- **Scope:** card + coerência com modal do gráfico; 4 estados (HOLD completo/indisponível, EXIT vazio/com residual); badge Compra/Venda via `resolveOpportunitySignal`.
+- **Audience:** investidor do beta (e Alan em T7) que já usa a tabela `/monitor` e precisa reconhecer a mesma tela no protótipo.
+- **Outcome:** calibrar tamanho de posição no card expandido e decidir se abre o gráfico sem achar que o Farol executa ordem; apontar risco sem operador (roteiro #75).
+- **Direction:** clone da página `/monitor` (não galeria de cards). Binance dark, tokens da folha + `monitor-theme`, tabela admin com Distância/7d/Tags. Delta só no kv do OpportunityCard.
+- **Scope:** 4 linhas (SOL HOLD completo, ETH HOLD indisponível, ADA EXIT vazio, LINK EXIT residual); badge Compra/Venda; Antes/Depois no mesmo sítio. Fora: Kelly, stop na Binance, backtest no card, Telegram, backfill.
 
 ## Apply contract (resumo para o Gist)
 
 Ordem frontend-only (6 tarefas em `tasks.md`): 1) `OpportunityCard.tsx` kv HOLD + frase cenário condicionada, 2) EXIT sem Entry/Stop + mensagem residual, 3) coerência `ChartModal.tsx`, 4) segredo protegido só top-level, 5) Playwright 5 cenários. Sem backend, sem migration.
+
+## Design Critique
+
+- **P0:** nenhum. Topologia r1 (galeria 2×2) fechada: `table.signals`, thead Status/Preço/Distância/7d/Risco até stop/Tags, ações incluindo Operar, linha SOL HOLD (Compra, $105.39, 13.38%, 35.21% stop, Médias Móveis). Toggle Antes/Depois altera o kv.
+- **P1:** nenhum.
+- **P2 (accepted-residual):** 4 linhas expandem no load; dt `entrada` no Depois vs `compra` no vivo (Apply usa labels do produto); cenário acrescenta “segundo a estratégia (stop)”; ChartModal fora do HTML estático; fixtures ETH/LINK ilustrativos.
+- **P3 (accepted-residual):** 7d = `-`; última `th` “ações” (produto deixa vazia); testids duplicados mobile+tabela; mobile 390 começa nos KPIs.
+- Prototype: `https://dev.criptofarol.com.br/prototypes/card-792-monitor-risco-explicito/` — `frontend/public/prototypes/card-792-monitor-risco-explicito/index.html` (95314 bytes, sha256 `1a1ff265…`; copied 82460 / generated 12854).
+- Snapshot: `.impeccable/critique/792-card-792-monitor-risco-explicito-r2-A.md` e `…-r2-B.md` (r2 PASS). Apply e Code Review não lêem essa pasta. Gist OpenSpec não é a crítica.
+- **Design Agent verdict: PASS**
 
