@@ -1,5 +1,47 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-08-29 — Kaizen release
+
+### Lote 787+792+798 (Homologado → Pronto após deploy PROD `3791b6f7`)
+
+- **Release/card**: 2026-08-29 — Homologado `#792` (P0 risco explícito Monitor, `card-792-monitor-risco-explicito`  `80166268`) + `#798` (P0 overlay_doc retarget `b4b0cf6c`) + `#787` (P2 README covenant-flow `5e2db7fb`) → `develop` → `main` PR #804 merged `3791b6f7`.
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --format json` (289 items, `status=Homologado` 3), git `fetch --prune` + `status -sb` + `worktree list` + `branch -a` + `log origin/main..origin/develop` + `release-guard pre` PASS (`RELEASE_CARDS=787,792,798` + `PRESERVED_BRANCHES` 12), `openspec validate --all` 166/164, `gh pr checks 804 --watch` (e2e 5m10s, backend-tests 1m58s), `gh issue view 787/792/798 --json comments`, PROD health `https://criptofarol.com.br/api/health` 200, frontend bundle `index-CIK38obo.js`.
+- **Sessões analisadas**: pai dsh `#792` (Apply HOLD/EXIT após Pronto para Dev, `post-card-evidence-comment.sh --transition homologado` retroativo) + pai Cursor `#798` (docs-only) + `#787` (produto README fora do consumidor mas pin v1.1.2); pedido explícito `suba a release` nesta sessão (overlay T16).
+- **Custo/eficácia**: 3 Homologados no pacote; homologation comments postados neste turno antes do `pre` (vs recidiva #658 corrigida); `release-guard pre` PASS após `PRESERVED_BRANCHES` 12 (7 in-flight + 4 harness Done + `card-469`); `tasks.md` #792 0/6 [ ] antes do docs-release (corrigido para 6/6 [x] neste branch); `develop` continha harness Done (`782`/`784`/`786`) já mergeados — publicados como dependência via `develop->main` (sem `release-*`).
+
+#### Métricas
+
+- **Board**: 3 Homologado (`#792 Clara P0 Produto`, `#798 — P0 Operacao`, `#787 Alan P2 Produto`). Fora: `Done` 3 (`782`/`784`/`786` harness), `Aprovação de Design` 3, `Em Refinamento` 4 (`799`/`795`/`801`/`799`), `Pronto` 130+. Homologation comments canônicos agora presentes (helper `homologado`).
+- **Git**: `origin/develop 80166268` + 5 harness commits (`0a0f27e1` `e99999e0` `5e2db7fb` `aa5dc3b6` `e71e6402` `b4b0cf6c`); `origin/main 3791b6f7` merge PR #804; `log origin/main..origin/develop =0` pós-merge; `status -sb` clean; 11 worktrees extra (4 harness Done + 3 pacote + 4 in-flight).
+- **CI**: PR #804 `develop→main` 13 checks `pass` (e2e 5m10s, backend-tests 1m58s, openspec-validate 17s, process-fsm 26s) + `qa-gate`/`deploy-staging` `skipping` (base `main`); `gh pr checks --watch` com 2 runs (33276721086 e 33277125650) ambos verdes.
+- **OpenSpec**: 3 active `card-787/792/798` antes do archive; após `openspec archive -y` 3 specs (`covenant-flow` +5, `consumer-load-docs` +3, `opportunity-monitor` +5); `validate --all` 166→164.
+- **PROD**: commit `3791b6f7` não auditado antes do deploy (auditoria ainda com Homologado); deploy PROD neste turno: `alembic upgrade head` já head, `VITE_APP_ENV=production npm run build` bundle `index-CIK38obo.js` (1,779 kB), services `backend`+`frontend`+`leads`+`runtime-worker` restart, health 200.
+
+#### Achados
+
+- **F-1 [minor] comentário Homologado canônico ausente até o `pre` do lote** — `release-guard pre` BLOCKER `card #787/792/798 without canonical homologation comment`; helper postado neste turno (`5e2db7fb`/`b4b0cf6c`/`80166268`) antes do PR #804. Recidiva #658 corrigida neste lote. Esforço S | P2.
+- **F-2 [minor] `tasks.md` 0/6 [ ] em #792 apesar de merged em `develop` e Homologado** — `grep "^- \[ \]" openspec/changes/card-792/tasks.md` = 6 unchecked até docs-release; corrigido para 6/6 [x] neste branch antes do archive (recidiva #769). Esforço S.
+- **F-3 [minor] `develop` continha harness Done não Homologado (`782`/`784`/`786`) já mergeados** — `log origin/main..origin/develop` = 7 commits mas só 3 Homologado; publicados via `develop->main` sem `release-*` (sem bloqueio do `pre`). Recidiva implícita do pacote com dependências. Esforço S.
+- **F-4 [minor] dirty worktrees + extra worktrees bloquearam `pre`** — `pre` WARN `dirty worktree` `card-606` + `extra worktree on merged branch` (`787`/`792`/`798`) + `local branch not merged: card-720`; contornado via `PRESERVED_BRANCHES` 12. Recidiva #759. Esforço S.
+- **F-5 [info] `release-guard pre` com `BOARD_JSON` body em 289 items** — sem rate-limit neste lote (audit 40 warns, pre 10 warns); #509 fix (item-list + pr list) ok.
+
+#### Padrões recorrentes
+
+- Homologado sem comentário canônico no turno do arraste | corrigido neste lote (F-1) | #658
+- `tasks.md` desatado após Done/merge | recidiva | #769
+- Dirty worktrees / PRESERVED no `pre` | recidiva | #759
+- Archive active change depois do merge de código (só no docs-release) | recidiva | #659
+
+### Cards kaizen criados (máx. 3/release)
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) Homologado sem comentário no turno do arraste → coberto por #658 — Kaizen: comentário Homologado no mesmo turno do arraste (recidiva) | — | F-1 | coberto por #658 (ainda Em Refinamento) |
+| (não criado) tasks.md desatado após Done → coberto por #769 — kaizen: tasks.md deve ir a [x] antes de Done (release 2026-08-28) | — | F-2 | coberto por #769 (ainda Em Refinamento) |
+| (não criado) dirty worktrees / PRESERVED → coberto por #759 — release-guard branch_merged cego a origin/main | — | F-4 | coberto por #759 (ainda Em Refinamento) |
+
+---
+
 > **Princípio:** quanto mais o processo é usado, melhor ele fica. Cada execução gera
 > evidência; o Kaizen audita; correções aprovadas viram regras/skills/scripts; o próximo
 > ciclo valida se a fricção foi eliminada (métricas de recorrência caem).
