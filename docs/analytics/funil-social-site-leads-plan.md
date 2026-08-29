@@ -1,6 +1,6 @@
 # Funil Social → Site → Leads Implementation Plan
 
-> **For Hermes:** Use `alan-workflow` + `alan-workflow-ambientes`. Ambiente padrão: **DEV**. Não alterar PROD sem pedido explícito do Alan.
+> **For Hermes:** Use `covenant-flow` + `covenant-flow-environments`. Ambiente padrão: **DEV**. Não alterar PROD sem pedido explícito do Alan.
 
 **Goal:** Criar rastreamento confiável do funil Cripto Farol desde posts no Buffer até navegação no site e cadastro/lead.
 

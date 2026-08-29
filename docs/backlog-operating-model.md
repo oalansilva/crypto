@@ -99,7 +99,7 @@ curl -X POST "$BACKEND_URL/api/workflow/projects/crypto/changes/card-340-design-
 
 Para mover `Homologado -> Pronto`, o backend procura em `origin/main` um commit cuja mensagem referencie exatamente o `change_id` ou o número do card. O checkout do servidor pode continuar em `develop`; SHA informado pelo cliente não é aceito como prova de publicação.
 
-Fluxo rápido (ver `AGENTS.md` / `alan-workflow` Visual QA): em mudança de UI intencional, atualizar baselines no DEV Linux com `npm --prefix frontend run test:e2e:visual -- --update-snapshots`, revisar só o `diff.png` dos cenários alterados, commit dos `*-snapshots/` e deixar o CI revalidar. Não usar loop de vision em todos os artifacts do CI para “passar” o teste — o Playwright já compara pixels.
+Fluxo rápido (ver `AGENTS.md` / `covenant-flow` Visual QA): em mudança de UI intencional, atualizar baselines no DEV Linux com `npm --prefix frontend run test:e2e:visual -- --update-snapshots`, revisar só o `diff.png` dos cenários alterados, commit dos `*-snapshots/` e deixar o CI revalidar. Não usar loop de vision em todos os artifacts do CI para “passar” o teste — o Playwright já compara pixels.
 
 ## Regra de Release
 
