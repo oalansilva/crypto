@@ -1,0 +1,564 @@
+{
+  "diskSha": "1a1ff265162784ca5708a76de22e6565ae85fb2832b90daec73cc40ac12f90c3",
+  "diskBytes": 95314,
+  "expected": "1a1ff265162784ca5708a76de22e6565ae85fb2832b90daec73cc40ac12f90c3",
+  "diskMatchesExpected": true,
+  "httpStatus": 200,
+  "servedSha": "1a1ff265162784ca5708a76de22e6565ae85fb2832b90daec73cc40ac12f90c3",
+  "servedBytes": 95314,
+  "servedMatchesDisk": true,
+  "contentType": "text/html; charset=utf-8",
+  "antesCount": 1,
+  "antes": {
+    "kvBefore": "<dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>alvo</dt><dd>$119.48</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd>",
+    "kvAfter": "<dt>compra</dt><dd>$91.40</dd><dt>stop</dt><dd>$68.28</dd><dt>preço atual</dt><dd>$105.39</dd><dt>distância stop</dt><dd>35.21%</dd><dt>distância objetivo</dt><dd>13.38%</dd>",
+    "changed": true,
+    "variantAfter": "before",
+    "beforeHasCompraDt": true,
+    "afterHadDistancia": true
+  },
+  "desktop": {
+    "title": "Protótipo #792 — Monitor: risco explícito (clone /monitor)",
+    "viewport": {
+      "w": 1280,
+      "h": 800
+    },
+    "tableCount": 2,
+    "theads": [
+      [
+        "",
+        "Par / Estratégia",
+        "Status",
+        "Preço",
+        "Distância",
+        "7d",
+        "Risco até stop",
+        "Tags",
+        "ações"
+      ],
+      [
+        "",
+        "Par / Estratégia",
+        "Status",
+        "Preço",
+        "Distância",
+        "7d",
+        "Risco até stop",
+        "Tags",
+        "ações"
+      ]
+    ],
+    "firstThead": {
+      "exists": true,
+      "display": "table-header-group",
+      "visibility": "visible",
+      "w": 1002,
+      "h": 34,
+      "top": 569,
+      "left": 251,
+      "visible": true
+    },
+    "firstTable": {
+      "exists": true,
+      "display": "table",
+      "visibility": "visible",
+      "w": 1002,
+      "h": 1226,
+      "top": 569,
+      "left": 251,
+      "visible": true
+    },
+    "tableWraps": [
+      {
+        "exists": true,
+        "display": "block",
+        "visibility": "visible",
+        "w": 1004,
+        "h": 1228,
+        "top": 568,
+        "left": 250,
+        "visible": true
+      },
+      {
+        "exists": true,
+        "display": "block",
+        "visibility": "visible",
+        "w": 1004,
+        "h": 1032,
+        "top": 1865,
+        "left": 250,
+        "visible": true
+      }
+    ],
+    "mobileCards": [
+      {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "w": 0,
+        "h": 0,
+        "top": 0,
+        "left": 0,
+        "visible": false
+      },
+      {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "w": 0,
+        "h": 0,
+        "top": 0,
+        "left": 0,
+        "visible": false
+      }
+    ],
+    "sidebar": {
+      "exists": true,
+      "display": "flex",
+      "visibility": "visible",
+      "w": 224,
+      "h": 748,
+      "top": 52,
+      "left": 0,
+      "visible": true
+    },
+    "sidebarWidth": 224,
+    "header": {
+      "exists": true,
+      "display": "block",
+      "visibility": "visible",
+      "w": 1056,
+      "h": 80,
+      "top": 52,
+      "left": 224,
+      "visible": true
+    },
+    "headerHeight": 80,
+    "solText": "SOL SOL/USDT 1d Médias Móveis: Tendência Confirmada Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída. COMPRA $105.39 13.38% - 35.21% stop ● Carteira ★★★ ▲ Strategy Abrir Gráfico Ver Trades Operar",
+    "solHasCompra": false,
+    "solHasPrice": true,
+    "solHasDist": true,
+    "solHasStrat": true,
+    "operateCount": 12,
+    "operateVisible": 8,
+    "kvSol": [
+      "distância até saída13.38%distância até stop35.21%stop$68.28alvo$119.48entrada$91.40preço atual$105.39",
+      "distância até saída 13.38% distância até stop 35.21% stop $68.28 alvo $119.48 entrada $91.40 preço atual $105.39"
+    ],
+    "kvSolHtml": [
+      "<dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>alvo</dt><dd>$119.48</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd>",
+      "<dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>alvo</dt><dd>$119.48</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd>"
+    ],
+    "ethUnavailable": [
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável"
+    ],
+    "residualAda": [
+      {
+        "hidden": false,
+        "text": "Risco residual posição encerrada segundo a estratégia — sem risco residual mapeado"
+      },
+      {
+        "hidden": false,
+        "text": "RISCO RESIDUAL posição encerrada segundo a estratégia — sem risco residual mapeado"
+      }
+    ],
+    "scenarioSol": [
+      {
+        "hidden": false,
+        "text": "Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop)."
+      },
+      {
+        "hidden": false,
+        "text": "Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop)."
+      }
+    ],
+    "galleryExists": false,
+    "monitorCardCount": 0,
+    "hasUnavailableCopy": true,
+    "hasExitEmptyCopy": true,
+    "hasCruzar": true,
+    "bodyVariant": "after"
+  },
+  "desktopAsserts": {
+    "pass": [
+      "table.signals present",
+      "table.signals visible",
+      "thead visible",
+      "thead Status",
+      "thead Preço",
+      "thead Distância",
+      "thead 7d",
+      "thead Risco até stop",
+      "thead Tags",
+      "Operar visible",
+      "SOL 105.39",
+      "SOL 35.21%",
+      "SOL Médias Móveis",
+      "table-wrap visible desktop",
+      "mobile-cards hidden desktop",
+      "sidebar 224px",
+      "copy indisponível literal",
+      "copy EXIT residual vazio",
+      "frase cruzar HOLD SOL",
+      "ETH indisponível literal",
+      "EXIT vazio copy residual",
+      "HOLD frase cruzar"
+    ],
+    "fails": [
+      {
+        "name": "SOL Compra",
+        "extra": "SOL SOL/USDT 1d Médias Móveis: Tendência Confirmada Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída. COMPRA $105.39 13.38% - 35.21% stop ● Carteira ★★★ ▲ Strategy Abrir Gráfico Ver Trades Operar"
+      }
+    ]
+  },
+  "antesAssert": {
+    "name": "Clique Antes muda o kv (não no-op)",
+    "pass": true,
+    "extra": {
+      "changed": true,
+      "variantAfter": "before"
+    }
+  },
+  "overlay": {
+    "mutation": true,
+    "injected": false,
+    "messages": []
+  },
+  "mobileHttp": 200,
+  "mobile": {
+    "title": "Protótipo #792 — Monitor: risco explícito (clone /monitor)",
+    "viewport": {
+      "w": 390,
+      "h": 844
+    },
+    "tableCount": 2,
+    "theads": [
+      [
+        "",
+        "Par / Estratégia",
+        "Status",
+        "Preço",
+        "Distância",
+        "7d",
+        "Risco até stop",
+        "Tags",
+        "ações"
+      ],
+      [
+        "",
+        "Par / Estratégia",
+        "Status",
+        "Preço",
+        "Distância",
+        "7d",
+        "Risco até stop",
+        "Tags",
+        "ações"
+      ]
+    ],
+    "firstThead": {
+      "exists": true,
+      "display": "table-header-group",
+      "visibility": "visible",
+      "w": 0,
+      "h": 0,
+      "top": 0,
+      "left": 0,
+      "visible": false
+    },
+    "firstTable": {
+      "exists": true,
+      "display": "table",
+      "visibility": "visible",
+      "w": 0,
+      "h": 0,
+      "top": 0,
+      "left": 0,
+      "visible": false
+    },
+    "tableWraps": [
+      {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "w": 0,
+        "h": 0,
+        "top": 0,
+        "left": 0,
+        "visible": false
+      },
+      {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "w": 0,
+        "h": 0,
+        "top": 0,
+        "left": 0,
+        "visible": false
+      }
+    ],
+    "mobileCards": [
+      {
+        "exists": true,
+        "display": "grid",
+        "visibility": "visible",
+        "w": 362,
+        "h": 1583,
+        "top": 990,
+        "left": 14,
+        "visible": true
+      },
+      {
+        "exists": true,
+        "display": "grid",
+        "visibility": "visible",
+        "w": 362,
+        "h": 1401,
+        "top": 2667,
+        "left": 14,
+        "visible": true
+      }
+    ],
+    "sidebar": {
+      "exists": true,
+      "display": "none",
+      "visibility": "visible",
+      "w": 0,
+      "h": 0,
+      "top": 0,
+      "left": 0,
+      "visible": false
+    },
+    "sidebarWidth": 0,
+    "header": {
+      "exists": true,
+      "display": "block",
+      "visibility": "visible",
+      "w": 390,
+      "h": 43,
+      "top": 100,
+      "left": 0,
+      "visible": true
+    },
+    "headerHeight": 43,
+    "solText": "SOL SOL/USDT 1d Médias Móveis: Tendência Confirmada Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída. Compra $105.39 13.38% - 35.21%stop ● Carteira★★★▲ Strategy Abrir Gráfico Ver Trades Operar",
+    "solHasCompra": true,
+    "solHasPrice": true,
+    "solHasDist": true,
+    "solHasStrat": true,
+    "operateCount": 12,
+    "operateVisible": 4,
+    "kvSol": [
+      "distância até saída 13.38% distância até stop 35.21% stop $68.28 alvo $119.48 entrada $91.40 preço atual $105.39",
+      "distância até saída13.38%distância até stop35.21%stop$68.28alvo$119.48entrada$91.40preço atual$105.39"
+    ],
+    "kvSolHtml": [
+      "<dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>alvo</dt><dd>$119.48</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd>",
+      "<dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>alvo</dt><dd>$119.48</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd>"
+    ],
+    "ethUnavailable": [
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável",
+      "indisponível — dado não confiável"
+    ],
+    "residualAda": [
+      {
+        "hidden": false,
+        "text": "RISCO RESIDUAL posição encerrada segundo a estratégia — sem risco residual mapeado"
+      },
+      {
+        "hidden": false,
+        "text": "Risco residual posição encerrada segundo a estratégia — sem risco residual mapeado"
+      }
+    ],
+    "scenarioSol": [
+      {
+        "hidden": false,
+        "text": "Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop)."
+      },
+      {
+        "hidden": false,
+        "text": "Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop)."
+      }
+    ],
+    "galleryExists": false,
+    "monitorCardCount": 0,
+    "hasUnavailableCopy": true,
+    "hasExitEmptyCopy": true,
+    "hasCruzar": true,
+    "bodyVariant": "after"
+  },
+  "mobileAsserts": {
+    "pass": [
+      "table hidden mobile",
+      "mobile-cards visible",
+      "risco legível mobile kv",
+      "table.signals not visible mobile",
+      "copy indisponível literal",
+      "copy EXIT residual vazio",
+      "frase cruzar HOLD SOL",
+      "ETH indisponível literal",
+      "EXIT vazio copy residual",
+      "HOLD frase cruzar"
+    ],
+    "fails": []
+  },
+  "mobileRisk": [
+    {
+      "symbol": "SOL/USDT",
+      "kv": {
+        "text": "distância até saída 13.38% distância até stop 35.21% stop $68.28 alvo $119.48 entrada $91.40 preço atual $105.39",
+        "w": 332,
+        "h": 114,
+        "overflow": "visible",
+        "fontSize": "11.5px",
+        "color": "rgb(255, 255, 255)",
+        "visible": true
+      },
+      "residual": {
+        "text": "",
+        "w": 0,
+        "h": 0,
+        "overflow": "visible",
+        "fontSize": "12px",
+        "color": "rgb(234, 236, 239)",
+        "visible": false
+      },
+      "scenario": {
+        "text": "Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop).",
+        "w": 332,
+        "h": 52,
+        "overflow": "visible",
+        "fontSize": "12px",
+        "color": "rgb(234, 236, 239)",
+        "visible": true
+      },
+      "cardW": 362
+    },
+    {
+      "symbol": "ETH/USDT",
+      "kv": {
+        "text": "distância até saída indisponível — dado não confiável distância até stop indisponível — dado não confiável stop indisponível — dado não confiável alvo indisponível — dado não confi",
+        "w": 332,
+        "h": 184,
+        "overflow": "visible",
+        "fontSize": "11.5px",
+        "color": "rgb(255, 255, 255)",
+        "visible": true
+      },
+      "residual": {
+        "text": "",
+        "w": 0,
+        "h": 0,
+        "overflow": "visible",
+        "fontSize": "12px",
+        "color": "rgb(234, 236, 239)",
+        "visible": false
+      },
+      "scenario": {
+        "text": "",
+        "w": 0,
+        "h": 0,
+        "overflow": "visible",
+        "fontSize": "12px",
+        "color": "rgb(234, 236, 239)",
+        "visible": false
+      },
+      "cardW": 362
+    },
+    {
+      "symbol": "ADA/USDT",
+      "kv": {
+        "text": "preço atual $0.8420",
+        "w": 332,
+        "h": 14,
+        "overflow": "visible",
+        "fontSize": "11.5px",
+        "color": "rgb(255, 255, 255)",
+        "visible": true
+      },
+      "residual": {
+        "text": "RISCO RESIDUAL posição encerrada segundo a estratégia — sem risco residual mapeado",
+        "w": 332,
+        "h": 77,
+        "overflow": "visible",
+        "fontSize": "12px",
+        "color": "rgb(234, 236, 239)",
+        "visible": true
+      },
+      "scenario": {
+        "text": "",
+        "w": 0,
+        "h": 0,
+        "overflow": "visible",
+        "fontSize": "12px",
+        "color": "rgb(234, 236, 239)",
+        "visible": false
+      },
+      "cardW": 362
+    },
+    {
+      "symbol": "LINK/USDT",
+      "kv": {
+        "text": "preço atual $14.82",
+        "w": 332,
+        "h": 14,
+        "overflow": "visible",
+        "fontSize": "11.5px",
+        "color": "rgb(255, 255, 255)",
+        "visible": true
+      },
+      "residual": {
+        "text": "RISCO RESIDUAL último EXIT em $14.82 · exposição residual 4.10% até o stop histórico — não operável.",
+        "w": 332,
+        "h": 77,
+        "overflow": "visible",
+        "fontSize": "12px",
+        "color": "rgb(234, 236, 239)",
+        "visible": true
+      },
+      "scenario": {
+        "text": "",
+        "w": 0,
+        "h": 0,
+        "overflow": "visible",
+        "fontSize": "12px",
+        "color": "rgb(234, 236, 239)",
+        "visible": false
+      },
+      "cardW": 362
+    }
+  ],
+  "console": {
+    "all": [],
+    "errors": [],
+    "pageErrors": [],
+    "errorCount": 0
+  },
+  "failCount": 1,
+  "fails": [
+    {
+      "vp": "desktop",
+      "name": "SOL Compra",
+      "extra": "SOL SOL/USDT 1d Médias Móveis: Tendência Confirmada Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída. COMPRA $105.39 13.38% - 35.21% stop ● Carteira ★★★ ▲ Strategy Abrir Gráfico Ver Trades Operar"
+    }
+  ],
+  "passCount": 33
+}

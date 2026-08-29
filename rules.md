@@ -7,15 +7,15 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 - `rules.md`: politica normativa, curta e obrigatoria. Use para decidir o que nunca pode ser pulado.
 - `AGENTS.md`: manual operacional detalhado. Use para comandos, ordem de execucao, mapeamento OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
 - Em caso de duvida ou conflito, siga a regra mais restritiva. Se ainda houver ambiguidade, pare e registre o conflito antes de alterar codigo, card ou Git.
-- Regras gerais do modo de trabalho do Alan ficam em `.cursor/skills/alan-workflow/` neste repo. O Cursor Agent aplica os overlays deste arquivo e de `AGENTS.md`. Não depender de `~/.codex/skills/` nem de disco hermes para essas skills.
+- Regras gerais do modo de trabalho do Alan ficam em `.cursor/skills/covenant-flow/` neste repo. O Cursor Agent aplica os overlays deste arquivo e de `AGENTS.md`. Não depender de `~/.codex/skills/` nem de disco hermes para essas skills.
 
 ## Regras obrigatorias
 
-1. Siga `alan-workflow` para o ciclo global de card, OpenSpec, evidencias, status, release, higiene Git/worktree/stash e fechamento.
+1. Siga `covenant-flow` para o ciclo global de card, OpenSpec, evidencias, status, release, higiene Git/worktree/stash e fechamento.
    - No cripto, OpenSpec e obrigatorio para qualquer alteracao de codigo, independente de tamanho ou complexidade.
    - Toda mudanca de codigo deve ter trilha em `openspec/changes/<change>/` antes da implementacao e evidencia de validacao antes do fechamento.
 
-2. Quando Alan pedir implementacao por card (`#99`, por exemplo), aplique `alan-workflow` com os overlays do cripto.
+2. Quando Alan pedir implementacao por card (`#99`, por exemplo), aplique `covenant-flow` com os overlays do cripto.
    - Board: GitHub Project `MVP Cripto - Beta Fechado` / Project 1.
    - Branch base de implementacao: `develop`.
    - Branch padrao: `change-<id>-<slug>` ou `card-<id>-<slug>`.
@@ -60,20 +60,20 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Depois de qualquer alteração no protótipo ou rebuild/restart, repetir a validação no navegador; evidência anterior fica inválida.
    - O agente pode mover somente `Design -> Aprovação de Design` quando a evidência estiver completa; nunca pode executar a aprovação humana.
 
-5. Homologacao e release seguem `alan-workflow`.
+5. Homologacao e release seguem `covenant-flow`.
    - No cripto, homologacao e aprovacao funcional em `develop`.
    - So comandos explicitos de lote/release autorizam qualquer acao em `main`.
 
-6. Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, execute `alan-workflow` + `alan-workflow-ambientes` com fechamento de producao dos cards `Homologado`.
+6. Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, execute `covenant-flow` + `covenant-flow-environments` com fechamento de producao dos cards `Homologado`.
    - Nao usar auto-merge.
    - Se `develop` contiver mudanca nao homologada, nao fazer merge direto `develop -> main`; usar branch `release-*` com somente conteudo aprovado ou pedir decisao de Alan.
    - Usar `scripts/release-guard pre` antes de abrir/mesclar PR e `scripts/release-guard post` depois da publicacao.
    - **Deploy em PROD e obrigatorio antes de mover qualquer card para `Pronto`:** em `/srv/apps/prod/criptofarol/source`, atualizar para o commit publicado (`git fetch origin && git reset --hard origin/main`), aplicar migrations (`alembic upgrade head`), buildar o frontend (`VITE_APP_ENV=production`) e reiniciar os services PROD afetados, validando o endpoint publico `https://criptofarol.com.br`. Merge em `main` sem deploy e validacao em PROD nao autoriza `Pronto`.
 
-7. Branches e testes seguem `alan-workflow`; no cripto, evitar commit direto em `develop` enquanto a implementacao estiver parcial.
+7. Branches e testes seguem `covenant-flow`; no cripto, evitar commit direto em `develop` enquanto a implementacao estiver parcial.
    - Integrar em `develop` somente quando a change estiver pronta para teste integrado/homologacao, preferencialmente com commit claro ou squash referenciando o card.
 
-8. Siga `alan-workflow` para higiene Git/worktree/stash; no cripto, stash nao e armazenamento principal de entrega.
+8. Siga `covenant-flow` para higiene Git/worktree/stash; no cripto, stash nao e armazenamento principal de entrega.
    - Antes de iniciar segunda change, rode `git status --short` e isole o trabalho em branch/worktree propria.
    - Use stash apenas como protecao temporaria, sempre com nome, hash, arquivos incluidos, motivo e comando de recuperacao.
    - Branches de change devem ser apagadas no fechamento final, depois que o conteudo entrar em `main`/`Pronto`, e somente se nao houver commits exclusivos pendentes.
@@ -89,7 +89,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 10. PostgreSQL e obrigatorio em runtime, QA, homologacao e scripts operacionais.
    - Nao usar SQLite como banco de operacao.
 
-11. Apos validacao e evidencia, o agente tem autonomia para executar o fluxo manual de fechamento previsto no `AGENTS.md` e em `alan-workflow`, sem solicitar nova autorizacao para cada etapa.
+11. Apos validacao e evidencia, o agente tem autonomia para executar o fluxo manual de fechamento previsto no `AGENTS.md` e em `covenant-flow`, sem solicitar nova autorizacao para cada etapa.
    - Essa autonomia nao autoriza pular teste, OpenSpec, homologacao, isolamento por branch, pedido explicito de lote/release ou merge manual.
 
 12. Toda tela, componente visual ou funcionalidade com impacto de UI/UX deve seguir obrigatoriamente o `DESIGN.md`.

@@ -1,0 +1,2066 @@
+{
+  "mut": true,
+  "scan": {
+    "mut": true,
+    "title": "impeccable-preflight-792",
+    "hasScan": true,
+    "keys": [
+      "__impeccable_mut",
+      "impeccableDetect",
+      "impeccableDetectAsync",
+      "impeccableScan",
+      "impeccableScanAsync",
+      "impeccableMeasureHiddenText",
+      "impeccableCollectVisualContrastCandidates",
+      "impeccableAnalyzeVisualContrast",
+      "impeccableGetLastVisualContrastAnalyses"
+    ],
+    "findings": [
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "line-length",
+            "detail": "~88 chars/line (aim for <80)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "3.6:1 (need 4.5:1) — text #707a8a on #1e2329"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #171a1f"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #171a1f"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #171a1f"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #171a1f"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"⌘K\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "9.5px functional text \"Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "9.5px functional text \"Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"4 resultados\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "dark-glow",
+            "detail": "Zero-offset box-shadow glow (#3dd68c)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11"
+          },
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Sinal · Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Mensagem\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Médias Móveis: Tendência Confirmada\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Exige alinhamento entre médias curta, in\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"tf\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"candle\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"2026-08-29 00:00:00\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Notas operacionais\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Compra / Stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"protegida\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Sinal · Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Mensagem\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Rompimento de Canal\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Estratégia protegida: o card não vaza pa\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"tf\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"candle\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"stale\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Notas operacionais\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Compra / Stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "cramped-padding",
+            "detail": "<div> \"table-wrap\": children flush against border+bg on top/right (no inset)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Par / Estratégia\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Status\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Preço\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Distância\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"7d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Risco até stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Tags\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"ações\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "1.5:1 (need 4.5:1) — text #ffffff on #14f195"
+          },
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet gradient background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"SOL\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tight-leading",
+            "detail": "line-height 1.25x (need >=1.3)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"35.21%\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"● Carteira\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"★★★\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"▲ Strategy\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Sinal · Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "side-tab",
+            "detail": "border-left: 2px + border-radius: 6px"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Mensagem\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Médias Móveis: Tendência Confirmada\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Exige alinhamento entre médias curta, in\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"tf\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"candle\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"2026-08-29 00:00:00\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Notas operacionais\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "3.7:1 (need 4.5:1) — text #fcd535 on #6b6b6b"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Compra / Stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "3.7:1 (need 4.5:1) — text #ffffff on #627eea"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"ETH\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tight-leading",
+            "detail": "line-height 1.25x (need >=1.3)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"● Carteira\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"★★\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"▲ Strategy\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"protegida\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Sinal · Compra\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "side-tab",
+            "detail": "border-left: 2px + border-radius: 6px"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Mensagem\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Rompimento de Canal\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Estratégia protegida: o card não vaza pa\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"tf\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"candle\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"stale\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Notas operacionais\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "3.7:1 (need 4.5:1) — text #fcd535 on #6b6b6b"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Compra / Stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "dark-glow",
+            "detail": "Zero-offset box-shadow glow (#f26e7e)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11"
+          },
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Sinal · Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Mensagem\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Média de 200 períodos\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Saída acionada quando o preço perde a mé\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"tf\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"candle\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"2026-08-28 00:00:00\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Notas operacionais\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Risco residual\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Risco residual\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Sinal · Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Mensagem\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Cruzamento MACD\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"EXIT com histórico: o residual vem do si\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"tf\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"candle\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"2026-08-27 00:00:00\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Notas operacionais\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Risco residual\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Risco residual\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "cramped-padding",
+            "detail": "<div> \"table-wrap\": children flush against border+bg on top/right (no inset)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Par / Estratégia\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Status\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Preço\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Distância\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"7d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Risco até stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Tags\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"ações\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"ADA\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tight-leading",
+            "detail": "line-height 1.25x (need >=1.3)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"○ Carteira\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"▲ Strategy\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Sinal · Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "side-tab",
+            "detail": "border-left: 2px + border-radius: 6px"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Mensagem\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Média de 200 períodos\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Saída acionada quando o preço perde a mé\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"tf\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"candle\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"2026-08-28 00:00:00\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Notas operacionais\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "3.7:1 (need 4.5:1) — text #fcd535 on #6b6b6b"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Risco residual\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Risco residual\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"LIN\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tight-leading",
+            "detail": "line-height 1.25x (need >=1.3)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"stop\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"○ Carteira\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"★★\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "ai-color-palette",
+            "detail": "Purple/violet neon text on dark background"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"▲ Strategy\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Sinal · Venda\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "side-tab",
+            "detail": "border-left: 2px + border-radius: 6px"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Mensagem\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"Cruzamento MACD\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"EXIT com histórico: o residual vem do si\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"tf\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"1d\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"candle\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10.5px functional text \"2026-08-27 00:00:00\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Notas operacionais\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "tiny-text",
+            "detail": "11.5px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "3.7:1 (need 4.5:1) — text #fcd535 on #6b6b6b"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Risco residual\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "undersized-ui-text",
+            "detail": "10px functional text \"Risco residual\" (below 11px floor)"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "low-contrast",
+            "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20"
+          },
+          {
+            "type": "tiny-text",
+            "detail": "11px body text"
+          }
+        ]
+      },
+      {
+        "el": "ref: <Node>",
+        "findings": [
+          {
+            "type": "overused-font",
+            "detail": "Primary font: inter (62% of text)"
+          },
+          {
+            "type": "skipped-heading",
+            "detail": "<h1> \"Monitor de sinais\" followed by <h3> \"Em posição (2)\" (missing h2)"
+          },
+          {
+            "type": "skipped-heading",
+            "detail": "<h3> \"Em posição (2)\" followed by <h5> \"Sinal · Compra\" (missing h4)"
+          },
+          {
+            "type": "skipped-heading",
+            "detail": "<h3> \"Saída / cobertura (2)\" followed by <h5> \"Sinal · Venda\" (missing h4)"
+          },
+          {
+            "type": "gradient-text",
+            "detail": "background-clip: text + gradient"
+          },
+          {
+            "type": "marquee",
+            "detail": "<marquee> element"
+          },
+          {
+            "type": "dark-glow",
+            "detail": "Zero-offset box-shadow glow (#3dd68c)"
+          }
+        ]
+      }
+    ]
+  },
+  "logs": [
+    {
+      "type": "startGroup",
+      "text": "%c[impeccable] 203 anti-patterns found color: oklch(84% 0.19 80.46); font-weight: bold"
+    },
+    {
+      "type": "startGroup",
+      "text": "%c[impeccable] 203 anti-patterns found color: oklch(84% 0.19 80.46); font-weight: bold"
+    }
+  ]
+}
