@@ -16,3 +16,12 @@ After #784's always-on pin `v1.1.1`, this change SHALL ship in product `oalansil
 - **AND** it is not `v2.0.0`
 - **AND** `deepseek-ai/deepseek-harness` is still not vendored
 - **AND** `process-fsm.yaml` is unchanged by this pin
+
+### Requirement: Homologation residual pin v1.1.4 drops duplicate host-prompt recommendation
+After origin `v1.1.3` (grill-root deny), this change SHALL ship product tag **`v1.1.4`** (patch; MUST NOT move `v1.1.3`). Canonical `grill-card` SHALL instruct that a live host prompt is title + conflict only; the recommendation SHALL appear only as the first option labelled `(Recommended)`. Apply SHALL `implantar --pin v1.1.4` on Cripto. Overlay SHALL record `pin: v1.1.4` and keep `clients.dsh.auto: false`. `SCHEMA_MAJOR` SHALL remain 1.
+
+#### Scenario: Pin v1.1.4 refreshes grill-card host prompt copy on Cripto
+- **WHEN** overlay is valid and `implantar --pin v1.1.4` completes on Cripto
+- **THEN** overlay contains `pin: v1.1.4`
+- **AND** `.cursor/skills/grill-card/SKILL.md` `## Cliente: dsh` after `_plain` contains `recomendação vive só` and `não copie`
+- **AND** `clients.dsh.auto` remains `false`

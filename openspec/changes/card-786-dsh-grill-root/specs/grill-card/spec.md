@@ -76,6 +76,13 @@ The repository SHALL contain `.cursor/skills/grill-card/SKILL.md` as a regular f
 - **WHEN** the operator looks at the host-tool card for a closed question on either client
 - **THEN** the card MUST NOT show only 1 option (plus Other)
 
+#### Scenario: Host prompt does not duplicate the recommendation
+- **WHEN** Cursor `AskUserQuestion` or Grok `ask_user_question` presents a closed grill question
+- **THEN** the question prompt SHALL be title + conflict
+- **AND** MUST NOT include the `➡️` line or `Recomendada:` plus the winning option text
+- **AND** the recommended alternative SHALL be the first option with `(Recommended)` in the label
+- **AND** the Matt `➡️` line remains only for host-unavailable fallback
+
 #### Scenario: Child dump lists options for parent mapping
 - **WHEN** the isolated grill child on Cursor or Grok returns a closed question
 - **THEN** the return SHALL list all N real alternatives plus the recommendation (recommended first)
@@ -97,7 +104,7 @@ The repository SHALL contain `.cursor/skills/grill-card/SKILL.md` as a regular f
 ## ADDED Requirements
 
 ### Requirement: dsh grill runs on the runtime root
-When the client is dsh, the **runtime root** SHALL execute skill `grill-card` plus vendored `grilling`, SHALL update issue N via `gh issue edit`, and SHALL call `ask_user_question` for closed frontier questions. The canonical skill MUST instruct that dsh actor to call `ask_user_question` and MUST NOT tell that actor it MUST NOT call the host tool. Closed questions on dsh SHALL use the same N≥2 contract: recommended first with `(Recommended)` in the label; the automatic Other line MUST NOT count toward N. The dsh root MUST NOT call `subagent` or `subagent_fork` whose work is grill — including when `run_in_background` is `false`. There is no child→parent D5 dump on dsh. The canonical comment `grill-card: fronteira vazia; história no body; à espera de T1 (Alan).` MUST NOT be posted as a **new** copy while a closed round is still unanswered; it MAY be posted after answers land or when the frontier is fact-only. On Cursor and Grok, the isolated child MUST NOT call the host tool (unchanged #755).
+When the client is dsh, the **runtime root** SHALL execute skill `grill-card` plus vendored `grilling`, SHALL update issue N via `gh issue edit`, and SHALL call `ask_user_question` for closed frontier questions. The canonical skill MUST instruct that dsh actor to call `ask_user_question` and MUST NOT tell that actor it MUST NOT call the host tool. Closed questions on dsh SHALL use the same N≥2 contract: recommended first with `(Recommended)` in the label; the automatic Other line MUST NOT count toward N. When `ask_user_question` is available, the question **prompt** SHALL be title + conflict only: it MUST NOT copy the `➡️` line nor `Recomendada:` plus the winning option text into the prompt; the recommendation SHALL appear only as the first option labelled `(Recommended)`. The `➡️` line in the question body remains the Matt fallback when the host tool is unavailable. The dsh root MUST NOT call `subagent` or `subagent_fork` whose work is grill — including when `run_in_background` is `false`. There is no child→parent D5 dump on dsh. The canonical comment `grill-card: fronteira vazia; história no body; à espera de T1 (Alan).` MUST NOT be posted as a **new** copy while a closed round is still unanswered; it MAY be posted after answers land or when the frontier is fact-only. On Cursor and Grok, the isolated child MUST NOT call the host tool (unchanged #755).
 
 #### Scenario: dsh root asks before canonical T1
 - **WHEN** a dsh web session (preset `standard`, plugin loaded) is asked to refine/grelha issue N in `Em Refinamento` with a frontier that has a decision
@@ -105,6 +112,13 @@ When the client is dsh, the **runtime root** SHALL execute skill `grill-card` pl
 - **AND** that call MUST occur before any new canonical T1 comment
 - **AND** the root SHALL edit the issue body toward the DoD
 - **AND** the canonical skill MUST NOT tell that dsh actor it MUST NOT call the host tool
+- **AND** the `ask_user_question` prompt SHALL be title + conflict only (MUST NOT include `➡️` or `Recomendada:` + the option text; recommendation is the first `(Recommended)` option)
+
+#### Scenario: dsh host prompt does not duplicate the recommendation
+- **WHEN** the dsh root calls `ask_user_question` for a closed frontier question
+- **THEN** the prompt SHALL be the question title and conflict
+- **AND** MUST NOT include a `➡️` line or `Recomendada:` plus the winning option text
+- **AND** the recommended alternative SHALL be the first option with `(Recommended)` in the label
 
 #### Scenario: dsh MUST NOT spawn grill-shaped subagent
 - **WHEN** a dsh root would otherwise delegate grill-card via `subagent` or `subagent_fork`
