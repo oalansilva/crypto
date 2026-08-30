@@ -32,7 +32,15 @@ from fsm import (  # noqa: E402
 )
 from guard import github_status_provider  # noqa: E402
 from resolve import UNBOUND, resolve  # noqa: E402
-from t14 import LiveT14Runner, T14Error, T14Runner, measure_checks_green, run_t14  # noqa: E402
+from t14 import (  # noqa: E402
+    LiveT14Runner,
+    T14Error,
+    T14Runner,
+    _pr_list_json,
+    classify_qa_gate,
+    measure_checks_green,
+    run_t14,
+)
 from t16 import (  # noqa: E402
     LiveT16Closer,
     T16Closer,
@@ -247,6 +255,8 @@ def process_event(
     m_lote_measurer: Callable[[], bool] | None = None,
     checks_green: bool | None = None,
     checks_green_measurer: Callable[..., bool] | None = None,
+    checks_green_classifier: Callable[..., dict[str, Any]] | None = None,
+    pr_lister: Callable[..., list] | None = None,
     t14_runner: T14Runner | None = None,
     t16_closer: T16Closer | None = None,
     status_provider: Callable[[str | None], str | None] | None = None,
@@ -333,8 +343,30 @@ def process_event(
                 m_lote = False
     elif m_lote is None:
         m_lote = False
+    classified_reason: str | None = None
+    if event == "aceitar_sha":
+        rows: list = []
+        if pr_lister is not None:
+            try:
+                rows = list(pr_lister(git) or [])
+            except (OSError, RuntimeError, TypeError, ValueError, json.JSONDecodeError):
+                rows = []
+        if not rows:
+            return _payload(result="reject", state=q, to=None, reason="no_pr")
     if event == "integrar_develop" and checks_green is None:
-        if checks_green_measurer is None:
+        if checks_green_classifier is not None:
+            try:
+                classified = checks_green_classifier(bound, git)
+            except (OSError, RuntimeError, TypeError, ValueError, json.JSONDecodeError):
+                classified = {"ok": False, "reason": "qa-gate failed"}
+            if isinstance(classified, dict):
+                checks_green = bool(classified.get("ok"))
+                token = classified.get("reason")
+                classified_reason = str(token) if token else None
+            else:
+                checks_green = False
+                classified_reason = "qa-gate failed"
+        elif checks_green_measurer is None:
             checks_green = False
         else:
             try:
@@ -407,11 +439,14 @@ def process_event(
         } else None
         if event == "request_implement":
             extra = enabled
+        reason = result.reason
+        if event == "integrar_develop" and reason == "guard:checks_green" and classified_reason:
+            reason = classified_reason
         return _payload(
             result="reject",
             state=q,
             to=None,
-            reason=result.reason,
+            reason=reason,
             enabled=extra,
             message=message,
         )
@@ -422,8 +457,13 @@ def process_event(
             return _payload(result="reject", state=q, to=None, reason="I8")
         try:
             run_t14(t14_runner, q_git=str(git), bound_card=str(bound))
-        except T14Error:
-            return _payload(result="reject", state=q, to=None, reason="I8")
+        except T14Error as exc:
+            text = str(exc)
+            if "sync: dirty" in text:
+                return _payload(result="reject", state=q, to=None, reason="sync: dirty", message=text)
+            if "squash: no PR" in text:
+                return _payload(result="reject", state=q, to=None, reason="no_pr", message=text)
+            return _payload(result="reject", state=q, to=None, reason="I8", message=text)
         if mover is None or issue_number is None:
             return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
         failed = _safe_move(mover, issue_number, result.to or "")
@@ -481,6 +521,8 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         mover=None if args.dry_run else GhBoardMover(),
         checks_green_measurer=measure_checks_green,
+        checks_green_classifier=classify_qa_gate,
+        pr_lister=lambda q_git: _pr_list_json(str(q_git or ""), fields="number,headRefOid"),
         t14_runner=None if args.dry_run else LiveT14Runner(),
         m_lote_measurer=measure_m_lote,
         t16_closer=None if args.dry_run else LiveT16Closer(),

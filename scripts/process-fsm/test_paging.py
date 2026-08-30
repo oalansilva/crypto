@@ -21,6 +21,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 TODO_STUB = "Próximo evento = iniciar_design. Não apply. Não /opsx:new ainda."
 HOMOLOGADO_STUB = "T16 = process_event fechar_release com M_lote live. Chat ≠ δ."
+QA_STUB = "MUST NOT process_event"
 PLAYBOOK = ("release-guard", "subir lote", "deploy PROD")
 
 
@@ -107,6 +108,26 @@ def test_page_uses_yaml_stubs():
     assert HOMOLOGADO_STUB in str(fsm["context_file"]["Homologado"])
     assert "grill-card" in str(fsm["context_file"]["Em Refinamento"])
     assert "sintetizar" in str(fsm["context_file"]["Design"])
+    qa = str(fsm["context_file"]["QA"])
+    assert QA_STUB in qa
+    assert "T14" in qa
+    assert "no_pr" in qa
+    assert "sync: dirty" in qa
+
+
+def test_qa_page_has_closeout_stub():
+    result = page(
+        cwd=".",
+        resolve_fn=_resolve("613", "card-613-process-fsm-paging"),
+        status_provider=_provider("QA"),
+    )
+    ctx = result["additional_context"]
+    assert QA_STUB in ctx
+    assert "T14" in ctx
+    assert "no_pr" in ctx
+    assert "sync: dirty" in ctx
+    assert "pending" in ctx
+    assert _line_count(ctx) <= 20
 
 
 def _harness_body_lines() -> list[str]:
@@ -172,6 +193,26 @@ def test_skill_priority_anchor():
     text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
     assert "δ e Guard > overlay > skill > wording" in text
     assert "1. Instrução direta de Alan no chat." not in text
+
+
+def test_qa_closeout_skill_is_client_labeled():
+    text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Cursor" in text
+    assert "dsh" in text
+    assert "MUST NOT" in text and "process_event" in text
+    assert "mesmo turno" in text
+    assert "qa-gate" in text
+    assert "no_pr" in text
+    assert "sync: dirty" in text
+    dsh = (REPO / ".dsh" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    grok = (REPO / ".grok" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    for stub in (dsh, grok):
+        body = stub.split("---", 2)[2]
+        assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8
+        assert "Em Refinamento → Todo → Design" not in stub
+    plugin = (REPO / ".dsh" / "plugin" / "process-fsm-guard.js").read_text(encoding="utf-8")
+    assert "covenant-flow:moore" in plugin
+    assert "T0–T17" not in plugin and "T0-T17" not in plugin
 
 
 def test_hooks_json_session_start():
