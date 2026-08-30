@@ -1,6 +1,51 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-08-30 — Kaizen release
+
+### Lote 787+795+799+801+809 (Homologado → Pronto após deploy PROD `ee4a3e3f`)
+
+- **Release/card**: 2026-08-30 — Homologado `#795` (P0 quatro clientes cooperativos `98ef22ab`) + `#799` (P0 clone-rota T5 `d9ff31ed`) + `#801` (P0 T11/T14 closeout `be8776c4`) + `#809` (P0 tecto grill-card pin `v1.1.6` `8a088d0c`) + leftover `#787` (P2 README, já em `main` `3791b6f7`) → `develop` → `main` PR #811 merged `ee4a3e3ffe3f875b1c4ff0feae8f1ecc2c58d12c`.
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --format json` (Homologado 5, Done 3, Aprovação de Design 3, Em Refinamento 26, Pronto 231), git `fetch --prune` + `status -sb` + `worktree list` + `branch -a` + `log origin/main..origin/develop` (4 commits) + `release-guard pre` PASS (`RELEASE_CARDS=787,795,799,801,809` + `PRESERVED_BRANCHES` 16) + `release-guard audit` PASS (24 warns, 0 blockers), `openspec validate --all` 168→165, `gh pr checks 811 --watch` (e2e 5m12s, backend-tests 2m2s), `gh issue view 787/795/799/801/809 --json comments`, PROD health `https://criptofarol.com.br/api/health` 200, frontend bundle `index-CIK38obo.js`.
+- **Sessões analisadas**: pai Cursor desta sessão (`suba a release`, transcript `e642b4c7`); grill/design `#809` em `b35adcef` (tecto vs Matt grilling; card criado no board); Apply `#795`/`#799`/`#801`/`#809` em worktrees próprias com T14. Sem `opencode.db`.
+- **Custo/eficácia**: 5 Homologados no pacote (4 novos + leftover `#787`); homologation comments `#795`/`#799`/`#801`/`#809` postados neste turno antes do `pre`; `pre` PASS com 7 warns dirty/PRESERVED; archive `#801` exigiu `--skip-specs` após abort CLI (header MODIFIED); Guard recusou StrReplace em `openspec/changes/**` na branch `docs-release-*` (kind=design, unbound).
+
+#### Métricas
+
+- **Board**: 5 Homologado (`#795` `#799` `#801` `#809` Alan P0 Operacao; `#787` Alan P2 Produto leftover). Fora: `Done` 3 (`782`/`784`/`786`), `Aprovação de Design` 3 (`600`/`614`/`728`), `#812` criado neste closeout em Em Refinamento.
+- **Git**: `origin/develop 8a088d0c`; `origin/main ee4a3e3f` merge PR #811; `status -sb` na docs-release após archive; stash 0; 15 worktrees extra.
+- **CI**: PR #811 `develop→main` checks `pass` (e2e 5m12s, backend-tests 2m2s, openspec-validate 14s, process-fsm 32s) + `qa-gate`/`deploy-staging` `skipping` (base `main`); `mergeable=MERGEABLE`.
+- **OpenSpec**: 4 active `card-795/799/801/809` antes do archive; após archive 4 dirs `2026-08-30-card-*`; `#801` `--skip-specs` com sync agentic em `openspec/specs/**`; `validate --all` 168→165.
+- **PROD**: source `ee4a3e3ffe3f875b1c4ff0feae8f1ecc2c58d12c`; alembic já head; `VITE_APP_ENV=production npm run build` bundle `index-CIK38obo.js` (1,779 kB, hashes iguais ao lote 29 — harness-only); services `backend`+`frontend`+`leads`+`runtime-worker` restart; health 200.
+
+#### Achados
+
+- **F-1 [major] T16 não fechou o pacote inteiro no lote 2026-08-29** — `#792` e `#798` Pronto; `#787` ficou Homologado com código já em `origin/main` `3791b6f7`. `process_event fechar_release` + `post` não bloquearam o leftover. Esforço M | P1 | Card novo: #812.
+- **F-2 [minor] `tasks.md` 1× `[ ]` em #809 (5.2 tag produto) apesar de pin `v1.1.6` e Homologado** — `gh api repos/oalansilva/covenant-flow/git/refs/tags/v1.1.6` existe (`53f9c90f`); Guard recusou StrReplace em `openspec/changes/**` na `docs-release-*`. Recidiva #769. Esforço S.
+- **F-3 [minor] `openspec archive -y` #801 abortou MODIFIED header** — `T10-T13 events imply exclusive-group guards` (nome pós-RENAME) não estava no main spec; CLI `Aborted. No files were changed.` Sync agentic + `--skip-specs`. Recidiva #659. Esforço S.
+- **F-4 [minor] dirty worktrees + extra worktrees no `pre`** — 7 WARN dirty (`472`/`600`/`604`/`606`/`614`/`728`) + `card-720` local not merged; PASS só com `PRESERVED_BRANCHES` 16. Recidiva #759. Esforço S.
+- **F-5 [minor] comentário Homologado canónico ausente até o `pre` deste lote** — `#795`/`#799`/`#801`/`#809` só tinham Done; helper postado neste turno antes do PR #811. Recidiva #658. Esforço S.
+- **F-6 [info] harness Done `#782`/`#784`/`#786` ainda não Homologado** — OpenSpec ainda active; já em `main` desde o lote 29. Sem card novo (dependência, não regressão deste closeout).
+
+#### Padrões recorrentes
+
+- T16 leftover Homologado após merge/PROD | **novo** | #812
+- Homologado sem comentário no turno do arraste | recidiva | #658
+- `tasks.md` desatado após Done | recidiva | #769
+- Archive CLI `--skip-specs` / header MODIFIED | recidiva | #659
+- Dirty worktrees / PRESERVED no `pre` | recidiva | #759
+
+### Cards kaizen criados (máx. 3/release)
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #812 — kaizen: T16 deve fechar todos os Homologado do RELEASE_CARDS (leftover #787 pós-2026-08-29) | P1 | F-1 | Em Refinamento |
+| (não criado) tasks.md 5.2 #809 → coberto por #769 — kaizen: tasks.md deve ir a [x] antes de Done (release 2026-08-28) | — | F-2 | coberto por #769 (ainda Em Refinamento) |
+| (não criado) archive CLI skip-specs / header MODIFIED → coberto por #659 — kaizen: openspec archive não pode depender de --skip-specs com headers MODIFIED divergentes | — | F-3 | coberto por #659 (ainda Em Refinamento) |
+
+---
+
 ## 2026-08-29 — Kaizen release
+
 
 ### Lote 787+792+798 (Homologado → Pronto após deploy PROD `3791b6f7`)
 

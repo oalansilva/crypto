@@ -35,17 +35,23 @@ Grok SHALL discover process skills via `.grok/skills/<name>/SKILL.md` stubs for 
 - **THEN** the stub generator check in `pytest scripts/process-fsm` fails
 
 ### Requirement: Always-on delta lives in AGENTS.md
-The short always-on law (resolve `(q, bound_card, q_git)`, chat wording is not authorization, NLU is not δ, `Em Refinamento` is the entry column, `Todo` is not implementation, Design columns must not be skipped, overlay is on-demand, Alan-only T1/T7/T15, T16 is `process_event fechar_release`) SHALL live in the root `AGENTS.md` stub so Cursor, Grok Build, and OpenCode ingest it. `AGENTS.md` MUST remain at most 40 non-empty lines and MUST point to the consumer `overlay_doc` path (Cripto: `docs/crypto-overlay.md`) for ports/Drive/PostgreSQL/release. It MUST name Cursor Agent, Grok Build, and OpenCode as clients. It MUST state that Cursor Auto is allowed and that Grok Build and OpenCode remain cooperative until their deny essays PASS. It MUST NOT claim Auto OpenCode or Auto Grok. It MUST NOT include the 12-column runbook or `release-guard pre`/`post` snippets. The file header MUST NOT say the stub is “não always-on” after this change.
+The short always-on law (resolve `(q, bound_card, q_git)`, chat wording is not authorization, NLU is not δ, `Em Refinamento` is the entry column, `Todo` is not implementation, Design columns must not be skipped, overlay is on-demand, Alan-only T1/T7/T15, T16 is `process_event fechar_release`) SHALL live in the root `AGENTS.md` stub so Cursor, Grok Build, OpenCode, and dsh ingest it. `AGENTS.md` MUST remain at most 40 non-empty lines and MUST point to the consumer `overlay_doc` path (Cripto: `docs/crypto-overlay.md`) for ports/Drive/PostgreSQL/release. It MUST name Cursor Agent, Grok Build, OpenCode, and dsh as clients. It MUST state that the four clients are cooperative. It MUST NOT state that Cursor Auto is allowed. It MUST NOT contain `Auto permitido`. It MUST state that Grok Build, OpenCode, and dsh remain cooperative until their deny essays PASS. The deny-essay clause MUST NOT apply to Cursor (Cursor is cooperative by contract). It MUST NOT claim Auto OpenCode, Auto Grok, Auto dsh, or Auto Cursor. It MUST NOT include the 12-column runbook or `release-guard pre`/`post` snippets. The file header MUST NOT say the stub is “não always-on” after this change. Naming dsh in the stub MUST NOT depend on overlay key `clients.dsh`. Overlay `clients.*.auto` MUST NOT interpolate the stub text.
 
-#### Scenario: Three clients read the same always-on stub
-- **WHEN** a Cursor session, a Grok session, and an OpenCode session start in the repo
-- **THEN** all three load root `AGENTS.md`
+#### Scenario: Four clients read the same always-on stub
+- **WHEN** a Cursor session, a Grok session, an OpenCode session, and a dsh session start in the repo
+- **THEN** all four load root `AGENTS.md`
 - **AND** that file states that chat wording is not δ and that `Todo` is not implementation
 - **AND** it states Alan-only T1/T7/T15
-- **AND** it names Cursor Agent, Grok Build, and OpenCode
-- **AND** it does not claim Grok Auto or OpenCode Auto is active
+- **AND** it names Cursor Agent, Grok Build, OpenCode, and dsh
+- **AND** it does not claim Cursor Auto, Grok Auto, OpenCode Auto, or dsh Auto is active
+- **AND** it does not contain `Auto permitido`
 - **AND** it does not contain `scripts/release-guard pre`
 - **AND** it names the consumer `overlay_doc` path (Cripto: `docs/crypto-overlay.md`)
+
+#### Scenario: Yaml auto does not drive the stub
+- **WHEN** overlay `clients.cursor.auto` is `true` or `false`
+- **THEN** `render_agents()` emits the same hardcoded cooperative client lines
+- **AND** the stub still does not contain `Auto permitido`
 
 ### Requirement: Grok Auto is gated on the deny essay
 Until a human essay on the same worktree shows that an illegal product Write with `q_git=develop` is denied in **both** Cursor and Grok Build, Grok Build MUST be treated as cooperative, not Auto. `process_event` remains the only Agent Status mover in both clients. Agent MUST NOT `item-edit` Status.
@@ -154,4 +160,16 @@ Until a human essay on the same worktree shows that an illegal product Write wit
 - **WHEN** overlay is absent and a product-path Write is attempted
 - **THEN** Guard denies the write
 - **AND** `sessionStart`/`page()` still emits an unbound page without dumping `overlay_doc`
+
+### Requirement: dsh closeout reaches the root through Moore
+A change of `context_file[QA]` MUST be made once in `.cursor/process-fsm.yaml`. The dsh plugin SHALL keep injecting that page via its existing Moore section (`runPage` / `covenant-flow:moore`) so the dsh runtime root receives the same-turn T14 / no-QA-child closeout without a second copy of the law in `.dsh/plugin/` or a long stub. Skill text MAY explain the dsh loop; it MUST NOT be the only carrier. Adapters MUST NOT dual-write T0–T17. This requirement MUST NOT add a `decide()` matcher that would deny Cursor `Task` or OpenCode `task`.
+
+#### Scenario: dsh Moore page carries the QA stub
+- **WHEN** the dsh plugin builds `covenant-flow:moore` for a bound card with `q=QA`
+- **THEN** the injected text contains the yaml `context_file[QA]` stub
+- **AND** the plugin source does not contain a second T0–T17 table
+
+#### Scenario: no new decide matcher for QA spawn
+- **WHEN** `guard.py` `decide()` is invoked with a Cursor `Task` whose prompt mentions QA or T14
+- **THEN** this change MUST NOT add a deny for that tool name
 
