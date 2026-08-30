@@ -196,13 +196,15 @@ The product repository `oalansilva/covenant-flow` SHALL ship a single root `READ
 - **AND** the README does not require `/home/ubuntu/backups/covenant-flow-pre-773-*` or SHA `94f8ed41` to install
 
 ### Requirement: Product README lists four clients and Auto versus cooperative
-The stranger block of the product README SHALL name Cursor, Grok, OpenCode, and dsh. It SHALL state that Auto is Cursor overlay `clients.cursor.auto: true` (the client MAY run without a per-tool permission prompt) and that Auto does **not** authorize crossing columns. It SHALL state that Grok, OpenCode, and dsh are cooperative (`clients.*.auto: false`) until a deny essay PASS on the integration branch. The README MUST NOT claim Auto on Grok, OpenCode, or dsh.
+The stranger block of the product README SHALL name Cursor, Grok, OpenCode, and dsh. It SHALL state that the four clients are cooperative. It SHALL state that Cursor is cooperative by contract and that Grok, OpenCode, and dsh remain cooperative until a deny essay PASS on the integration branch. It SHALL state that overlay `clients.*.auto` is a machine claim and does **not** drive the `AGENTS.md` stub. It SHALL state that Auto does **not** authorize crossing columns. The README MUST NOT claim that Auto is Cursor overlay `clients.cursor.auto: true`. The README MUST NOT claim Auto on Grok, OpenCode, or dsh. The README MUST NOT mention IDE/CLI `approvalMode` or Run Everything.
 
-#### Scenario: Stranger block names clients and Auto versus cooperative
+#### Scenario: Stranger block names four cooperative clients
 - **WHEN** a visitor reads the client portion of the product README
 - **THEN** Cursor, Grok, OpenCode, and dsh appear by name
-- **AND** Auto (Cursor) is distinguished from cooperative (the other three, until deny essay PASS)
+- **AND** the text states that the four are cooperative
+- **AND** the text does not state that Auto is Cursor `clients.cursor.auto: true`
 - **AND** the text states that Auto does not authorize crossing columns
+- **AND** the text does not claim Auto on Grok, OpenCode, or dsh
 
 ### Requirement: Product README walkthrough is one line per column plus one human-gates sentence
 The product README SHALL walk through all twelve `process-fsm.yaml` column names in PT-BR, including `Cancelado` as terminal, at **one line per column** (name + meaning). It SHALL include **exactly one** sentence for the three human gates: Alan prioritizes Em Refinamento→Todo; only Alan Aprovação de Design→Pronto para Dev; Alan homologates Done→Homologado. That sentence MUST NOT contain T0–T17 identifiers. The README MUST NOT include a T0–T17 / I1–I9 table, a paragraph per column, or hooks / OpenSpec order / release playbook. Skill `covenant-flow` remains the operator runbook.
@@ -222,15 +224,83 @@ The GitHub repository `oalansilva/covenant-flow` description SHALL be exactly `C
 - **AND** it replaces the English description `Covenant Flow — portable 12-column process (nucleus + adapters)`
 
 ### Requirement: Pin example is the deliverable tag and pin does not copy README
-The operator section of the product README SHALL document `--init` / `--pin` / Layout in PT-BR **after** the stranger and walkthrough blocks. The `--pin` example MUST be the semver tag of the commit that ships that README (this deliverable: `v1.1.2`; a later tagged README MUST update the example to that new tag). The example MUST NOT be `latest` or an unnumbered placeholder. `install.sh --pin` MUST NOT copy product `README.md` into the consumer. Overlay schema, `install.sh` copy list, skills, hooks, yaml, generated `AGENTS.md`, and adapters MUST NOT be rewritten as part of this documentation change.
+The operator section of the product README SHALL document `--init` / `--pin` / Layout in PT-BR **after** the stranger and walkthrough blocks. The `--pin` example MUST be the semver tag of the commit that ships that README (this deliverable: `v1.1.5`; a later tagged README MUST update the example to that new tag). The example MUST NOT be `latest` or an unnumbered placeholder. `install.sh --pin` MUST NOT copy product `README.md` into the consumer. This change SHALL rewrite `render_agents()` and therefore the generated `AGENTS.md`. Overlay schema, `install.sh` copy list, skills, hooks, yaml law, Guard, and adapters MUST NOT be rewritten as part of this change. #787 MUST NOT be reopened as Apply.
 
 #### Scenario: Operator section follows the stranger and uses the deliverable tag
 - **WHEN** a visitor who already understood the product scrolls to Install / Pin / Layout
 - **THEN** those sections are in PT-BR
-- **AND** the `--pin` example is the deliverable tag (`v1.1.2` for this change)
+- **AND** the `--pin` example is the deliverable tag (`v1.1.5` for this change)
 
 #### Scenario: Pin still does not copy README into the consumer
 - **WHEN** overlay is valid and `implantar --pin` completes on a consumer
 - **THEN** the consumer tree does not receive a copy of the product `README.md` as a pin payload file
-- **AND** #773 and #784 remain closed as a consequence of this change
+- **AND** #773, #784, and #787 are not reopened as Apply as a consequence of this change
+
+### Requirement: render_agents hardcodes four cooperative clients
+`render_agents()` SHALL hardcode four cooperative clients. The generated stub MUST contain exactly these two client lines, in this order: `Clientes: Cursor Agent (cooperativo); Grok Build, OpenCode e dsh (cooperativos até ensaio deny na branch de integração).` and `Não reivindique modo Auto no Cursor, no Grok, no OpenCode nem no dsh.` The function MUST NOT interpolate overlay `clients.*.auto`. The stub MUST NOT contain `Auto permitido`. The stub MUST NOT claim Auto Grok, Auto OpenCode, or Auto dsh. The deny-essay clause MUST apply only to Grok, OpenCode, and dsh. Cursor is cooperative by contract, not by a pending essay. The stub MUST remain at most 40 non-empty lines. `SCHEMA_MAJOR` SHALL remain `1`. `CLIENT_KEYS` SHALL remain `("cursor", "grok", "opencode")`.
+
+#### Scenario: Generated stub is four cooperative clients
+- **WHEN** `render_agents()` runs after this change
+- **THEN** the text names Cursor Agent, Grok Build, OpenCode, and dsh
+- **AND** it does not contain `Auto permitido`
+- **AND** it does not contain Auto Grok, Auto OpenCode, or Auto dsh
+- **AND** the deny-essay phrase applies only to Grok, OpenCode, and dsh
+- **AND** overlay `clients.cursor.auto: true` in a fixture does not change the stub text
+
+#### Scenario: Pin regenerates AGENTS.md from the new hardcode
+- **WHEN** `implantar --pin` of this change's product tag completes on Cripto
+- **THEN** consumer `AGENTS.md` matches the new `render_agents()` output
+- **AND** `Auto permitido` is absent
+- **AND** the stub was not hand-edited as the success path
+
+### Requirement: Cripto overlay cooperative claim is false without schema break
+Cripto overlay SHALL record `clients.cursor.auto: false` (grok, opencode, and dsh remain `false`). `validate_overlay` SHALL still accept that overlay (`SCHEMA_MAJOR` 1, `CLIENT_KEYS` three, extra `dsh` allowed) and MUST NOT start reading the `auto` boolean as a stub or Guard switch. This change's product tag SHALL be a patch (expected `v1.1.5`; Apply confirms origin has no newer tag, else the next unused patch). Apply MUST NOT change Guard, T0–T17, local Cursor IDE/CLI config, or Cripto `backend/**` / `frontend/src/**`.
+
+#### Scenario: Overlay with four auto false validates
+- **WHEN** `validate_overlay` runs on Cripto overlay with `clients.cursor.auto: false` and the other three `false`
+- **THEN** validation passes
+- **AND** `SCHEMA_MAJOR` is 1
+- **AND** `CLIENT_KEYS` remains three names
+- **AND** extra `clients.dsh.auto: false` is still accepted
+
+### Requirement: Grill-card section names the operator language ceiling
+`.cursor/skills/covenant-flow/SKILL.md` SHALL include, in the `## Grill-card` section, this exact sentence in addition to the existing host-options relay line:
+
+`Tecto: Qs e options em português de operador em todo card em Em Refinamento; identificador do git é facto no body ou *como* no Design, não option no host; Other vazio, silêncio e «não percebi» / «isto é técnico» reclassificam e nunca aceitam a recomendada.`
+
+The existing offer-grill trigger (body lacks the six DoD sections) and the parent relay of **all** `options[]` (MUST NOT collapse to the recommended) SHALL remain in that section. This requirement MUST NOT add a FSM state, event, hook, or `enabled_tools` entry, MUST NOT edit `process-fsm.yaml` as a side effect of this sentence, and MUST NOT name the host tool in `.grok/skills/*` stubs.
+
+#### Scenario: Grill-card block names the ceiling besides relay
+- **WHEN** a contributor reads the `## Grill-card` section of `.cursor/skills/covenant-flow/SKILL.md`
+- **THEN** that section SHALL contain the exact ceiling sentence (Other vazio, silêncio, «não percebi»)
+- **AND** it SHALL still contain the parent relay of all options (`todas as options` / `não colapsa`)
+- **AND** the offer-grill trigger SHALL still be body without the six DoD sections
+
+#### Scenario: No FSM change for the ceiling line
+- **WHEN** this change is applied
+- **THEN** `process-fsm.yaml` law table is unchanged by the ceiling sentence
+- **AND** `AGENTS.md` always-on does not grow with this rule
+
+### Requirement: Operator ceiling ships as product patch pin
+This change SHALL ship in product `oalansilva/covenant-flow` as tag **`v1.1.6`** (patch; not a schema major), unless that tag is already taken on origin — in which case Apply SHALL use the next unused patch tag and MUST NOT bump major. `SCHEMA_MAJOR` SHALL remain 1. Apply SHALL commit the canonical `grill-card` ceiling, the exact Grill-card sentence in `covenant-flow`, and goldens in `scripts/process-fsm/test_grill_card.py` in the product first, then `implantar --pin` of that tag on Cripto. Overlay SHALL record `pin` as that tag. Client skins under `.grok/` `.dsh/` `.opencode/` for `grill-card` MUST stay at most 8 non-empty body lines.
+
+#### Scenario: Pin materializes the ceiling on Cripto
+- **WHEN** overlay is valid and `implantar --pin` of this card's tag completes on Cripto
+- **THEN** `.cursor/skills/grill-card/SKILL.md` contains the operator-language ceiling
+- **AND** the `## Grill-card` section of `covenant-flow` contains the exact ceiling sentence
+- **AND** overlay contains `pin: v1.1.6` or the next unused patch tag Apply confirmed on origin
+- **AND** grill-card stubs under `.grok/` `.dsh/` `.opencode/` remain at most 8 non-empty body lines
+
+### Requirement: QA closeout runbook is client-labeled
+`.cursor/skills/covenant-flow/SKILL.md` SHALL document QA closeout without adding a FSM state or event. Under the Cursor/Grok path it SHALL say: one isolated QA child reads checks and MUST NOT call `process_event`; the parent calls `aceitar_sha` only after a PR `q_git`→develop exists, then calls `integrar_develop` in the same turn as a green child, waits and retries on `qa-gate pending`, and treats `no_pr` / `sync: dirty` as visible causes. Under a dsh-labeled path it SHALL say: the runtime root MUST NOT spawn a QA child; the same turn MUST open the PR before T11, wait for `qa-gate`, and call T14 (Moore/plugin, not skill text alone). Stubs under `.dsh/skills/` and `.grok/skills/` MUST remain thin and MUST NOT copy the 12-column runbook. `AGENTS.md` MUST NOT grow for this rule.
+
+#### Scenario: Cursor path keeps the QA child off process_event
+- **WHEN** `covenant-flow` is read for the Cursor client
+- **THEN** it says the QA child reads checks and MUST NOT call `process_event`
+- **AND** it says the parent calls T14 in the same turn as a green child
+
+#### Scenario: dsh path does not spawn a QA child
+- **WHEN** `covenant-flow` is read for the dsh client
+- **THEN** it says the root MUST NOT spawn a QA child
+- **AND** it says the same turn opens the PR before T11, waits for `qa-gate`, and calls T14
 
