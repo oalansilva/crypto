@@ -18,7 +18,7 @@ from process_event import (  # noqa: E402
     process_event,
     sidecar_path,
 )
-from t14 import RecordingT14Runner  # noqa: E402
+from t14 import RecordingT14Runner, T14Error  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -337,9 +337,50 @@ def test_aceitar_sha_moves_qa():
         bound_card="612",
         mover=mover,
         digest_changed=False,
+        pr_lister=lambda q_git: [{"number": 99, "headRefOid": "abc"}],
     )
     assert out["to"] == "QA"
     assert mover.calls == [(612, "QA")]
+
+
+def test_aceitar_sha_without_pr_is_no_pr():
+    """#792: push sem PR MUST reject no_pr; Status stays Code Review; no PR created."""
+    mover = FakeMover()
+    created: list[str] = []
+
+    def empty_lister(q_git):
+        assert q_git == "card-792-x"
+        return []
+
+    out = process_event(
+        "aceitar_sha",
+        status="Code Review",
+        q_git="card-792-x",
+        bound_card="792",
+        mover=mover,
+        digest_changed=False,
+        pr_lister=empty_lister,
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "no_pr"
+    assert out["state"] == "Code Review"
+    assert mover.calls == []
+    assert created == []
+
+
+def test_aceitar_sha_omitted_lister_is_no_pr():
+    mover = FakeMover()
+    out = process_event(
+        "aceitar_sha",
+        status="Code Review",
+        q_git="card-792-x",
+        bound_card="792",
+        mover=mover,
+        digest_changed=False,
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "no_pr"
+    assert mover.calls == []
 
 
 def test_integrar_develop_rejects_without_checks_green():
@@ -566,6 +607,7 @@ def test_integrar_develop_sync_failure_is_i8():
     )
     assert out["result"] == "reject"
     assert out["reason"] == "I8"
+    assert out.get("message")
     assert mover.calls == []
     assert runner.calls == ["squash", "sync_dev_source"]
 
@@ -581,6 +623,7 @@ def test_integrar_develop_restart_failure_is_i8():
     )
     assert out["result"] == "reject"
     assert out["reason"] == "I8"
+    assert out.get("message")
     assert mover.calls == []
     assert runner.calls == ["squash", "sync_dev_source", "restart"]
 
@@ -596,9 +639,99 @@ def test_integrar_develop_comment_done_failure_is_i8():
     )
     assert out["result"] == "reject"
     assert out["reason"] == "I8"
+    assert out.get("message")
     assert mover.calls == []
     assert "comment_done" in runner.calls
     assert mover.calls == []
+
+
+def test_integrar_develop_classifier_no_pr():
+    mover = FakeMover()
+    runner = RecordingT14Runner()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        checks_green=None,
+        checks_green_classifier=lambda *a, **k: {"ok": False, "reason": "no_pr"},
+        **{k: v for k, v in _t14_kwargs().items() if k != "checks_green"},
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "no_pr"
+    assert mover.calls == []
+    assert runner.calls == []
+
+
+def test_integrar_develop_classifier_pending():
+    mover = FakeMover()
+    runner = RecordingT14Runner()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        checks_green=None,
+        checks_green_classifier=lambda *a, **k: {"ok": False, "reason": "qa-gate pending"},
+        **{k: v for k, v in _t14_kwargs().items() if k != "checks_green"},
+    )
+    assert out["reason"] == "qa-gate pending"
+    assert mover.calls == []
+    assert runner.calls == []
+
+
+def test_integrar_develop_classifier_failed():
+    mover = FakeMover()
+    runner = RecordingT14Runner()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        checks_green=None,
+        checks_green_classifier=lambda *a, **k: {"ok": False, "reason": "qa-gate failed"},
+        **{k: v for k, v in _t14_kwargs().items() if k != "checks_green"},
+    )
+    assert out["reason"] == "qa-gate failed"
+    assert mover.calls == []
+    assert runner.calls == []
+
+
+def test_integrar_develop_classifier_ok_moves_done():
+    mover = FakeMover()
+    runner = RecordingT14Runner()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        checks_green=None,
+        checks_green_classifier=lambda *a, **k: {"ok": True, "reason": None},
+        **{k: v for k, v in _t14_kwargs().items() if k != "checks_green"},
+    )
+    assert out["result"] == "transition"
+    assert out["to"] == "Done"
+    assert runner.calls == ["squash", "sync_dev_source", "restart", "comment_done"]
+    assert mover.calls == [(612, "Done")]
+
+
+def test_integrar_develop_dirty_is_visible():
+    """#798: dirty ⇒ reason=sync: dirty + path + porcelain; no move."""
+    class Dirty(RecordingT14Runner):
+        def sync_dev_source(self) -> None:
+            self.calls.append("sync_dev_source")
+            raise T14Error("sync: dirty /tmp/canonical-dev\n?? dirt.txt")
+
+    mover = FakeMover()
+    runner = Dirty()
+    out = process_event(
+        "integrar_develop",
+        mover=mover,
+        t14_runner=runner,
+        **_t14_kwargs(),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "sync: dirty"
+    assert "/tmp/canonical-dev" in (out.get("message") or "")
+    assert "dirt.txt" in (out.get("message") or "")
+    assert mover.calls == []
+    assert runner.calls == ["squash", "sync_dev_source"]
 
 
 def test_integrar_develop_missing_runner_never_moves():
@@ -644,6 +777,7 @@ def test_integrar_develop_oserror_is_i8():
     )
     assert out["result"] == "reject"
     assert out["reason"] == "I8"
+    assert out.get("message")
     assert mover.calls == []
 
 

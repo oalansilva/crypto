@@ -102,7 +102,7 @@ context_file:
   Code Review: |
     Reviewers inherit readonly. Patch pequeno allow na card-<id>.
   QA: |
-    Não mexer fonte. CI. T13 volta a Em desenvolvimento.
+    Não mexer fonte. Filho QA lê checks; MUST NOT process_event. Pai T14 no mesmo turno do verde. Primeiro reject ≠ fim: pending espera e repete T14; no_pr e sync: dirty visíveis. T13 volta a Em desenvolvimento.
   Done: |
     Done técnico. Espere T15. Write produto deny.
   Homologado: |

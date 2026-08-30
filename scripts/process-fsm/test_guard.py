@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 from fsm import load_fsm  # noqa: E402
 from guard import decide, emit, extract_path, extract_paths, normalize  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
-from test_overlay_fixtures import FIELD_ID, write_overlay  # noqa: E402
+from test_overlay_fixtures import FIELD_ID, filled_overlay_dict, write_overlay  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
@@ -714,3 +714,193 @@ def test_normalize_opencode_native_keys():
     assert native["tool_input"]["filePath"] == "backend/a.py"
     assert native["cwd"] == "/tmp/ws"
     assert extract_path({"tool": "write", "args": {"filePath": "backend/a.py"}}) == "backend/a.py"
+
+
+def _canonical_overlay() -> dict:
+    return filled_overlay_dict()
+
+
+def test_checkout_b_card_on_canonical_denied():
+    overlay = _canonical_overlay()
+    source = overlay["environments"]["dev"]["source"]
+    result = decide(
+        {"command": "git checkout -b card-801-t14-qa-closeout", "cwd": source},
+        overlay=overlay,
+        status_provider=SILENT,
+    )
+    _assert_dual_deny(result)
+    assert "canonical_card_branch" in result["agent_message"]
+
+
+def test_switch_c_card_on_canonical_denied():
+    overlay = _canonical_overlay()
+    source = overlay["environments"]["dev"]["source"]
+    result = decide(
+        {"command": "git switch -c card-792-x", "cwd": source},
+        overlay=overlay,
+        status_provider=SILENT,
+    )
+    _assert_dual_deny(result)
+    assert "canonical_card_branch" in result["agent_message"]
+
+
+def test_checkout_track_b_card_on_canonical_denied():
+    overlay = _canonical_overlay()
+    source = overlay["environments"]["dev"]["source"]
+    result = decide(
+        {"command": "git checkout --track -b card-801-x", "cwd": source},
+        overlay=overlay,
+        status_provider=SILENT,
+    )
+    _assert_dual_deny(result)
+    assert "canonical_card_branch" in result["agent_message"]
+
+
+def test_git_c_canonical_from_other_cwd_denied():
+    """Assessment B: git -C <canonical> checkout -b card-* from another cwd MUST deny."""
+    overlay = _canonical_overlay()
+    source = overlay["environments"]["dev"]["source"]
+    result = decide(
+        {
+            "command": f"git -C {source} checkout -b card-801-t14-qa-closeout",
+            "cwd": "/tmp/card-801-worktree",
+        },
+        overlay=overlay,
+        status_provider=SILENT,
+    )
+    _assert_dual_deny(result)
+    assert "canonical_card_branch" in result["agent_message"]
+
+
+def test_checkout_b_card_in_worktree_allowed():
+    overlay = _canonical_overlay()
+    result = decide(
+        {
+            "command": "git checkout -b card-801-t14-qa-closeout",
+            "cwd": "/tmp/card-801-worktree",
+        },
+        overlay=overlay,
+        status_provider=SILENT,
+    )
+    _assert_dual_allow(result)
+
+
+def test_git_c_worktree_from_canonical_cwd_allowed():
+    overlay = _canonical_overlay()
+    source = overlay["environments"]["dev"]["source"]
+    result = decide(
+        {
+            "command": "git -C /tmp/card-801-worktree checkout -b card-801-t14-qa-closeout",
+            "cwd": source,
+        },
+        overlay=overlay,
+        status_provider=SILENT,
+    )
+    _assert_dual_allow(result)
+
+
+def test_checkout_existing_branch_on_canonical_allowed():
+    overlay = _canonical_overlay()
+    source = overlay["environments"]["dev"]["source"]
+    result = decide(
+        {"command": "git checkout develop", "cwd": source},
+        overlay=overlay,
+        status_provider=SILENT,
+    )
+    _assert_dual_allow(result)
+
+
+def test_worktree_add_on_canonical_allowed():
+    overlay = _canonical_overlay()
+    source = overlay["environments"]["dev"]["source"]
+    result = decide(
+        {"command": "git worktree add /tmp/wt card-801-x", "cwd": source},
+        overlay=overlay,
+        status_provider=SILENT,
+    )
+    _assert_dual_allow(result)
+
+
+def test_decide_does_not_deny_qa_task_spawn():
+    result = decide(
+        {"tool": "Task", "args": {"prompt": "QA child read checks; T14 integrar_develop"}},
+        status_provider=SILENT,
+        overlay=_canonical_overlay(),
+    )
+    _assert_dual_allow(result)
+    result2 = decide(
+        {"tool": "task", "args": {"prompt": "QA T14"}},
+        status_provider=SILENT,
+        overlay=_canonical_overlay(),
+    )
+    _assert_dual_allow(result2)
+
+
+def _run_guard_fallback(repo: Path, payload: dict) -> dict:
+    hooks = repo / ".cursor" / "hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    src = (REPO / ".cursor" / "hooks" / "process-fsm-guard.sh").read_text(encoding="utf-8")
+    script = hooks / "process-fsm-guard.sh"
+    script.write_text(src, encoding="utf-8")
+    script.chmod(0o755)
+    proc = subprocess.run(
+        [str(script)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(repo),
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return json.loads(proc.stdout)
+
+
+def test_bash_fallback_denies_canonical_card_branch(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-801-t14-qa-closeout", "backend/app/main.py")
+    overlay = filled_overlay_dict()
+    source = overlay["environments"]["dev"]["source"]
+    data = _run_guard_fallback(
+        repo,
+        {"command": "git checkout -b card-801-t14-qa-closeout", "cwd": source},
+    )
+    _assert_dual_deny(data)
+    assert "canonical_card_branch" in data["agent_message"]
+
+
+def test_bash_fallback_denies_git_c_canonical_from_other_cwd(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-801-t14-qa-closeout", "backend/app/main.py")
+    overlay = filled_overlay_dict()
+    source = overlay["environments"]["dev"]["source"]
+    data = _run_guard_fallback(
+        repo,
+        {
+            "command": f"git -C {source} checkout -b card-801-t14-qa-closeout",
+            "cwd": str(repo),
+        },
+    )
+    _assert_dual_deny(data)
+    assert "canonical_card_branch" in data["agent_message"]
+
+
+def test_bash_fallback_allows_checkout_b_in_worktree(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-801-t14-qa-closeout", "backend/app/main.py")
+    data = _run_guard_fallback(
+        repo,
+        {"command": "git checkout -b card-801-t14-qa-closeout", "cwd": str(repo)},
+    )
+    _assert_dual_allow(data)
+
+
+def test_bash_fallback_allows_existing_checkout_on_canonical(tmp_path: Path):
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-801-t14-qa-closeout", "backend/app/main.py")
+    overlay = filled_overlay_dict()
+    source = overlay["environments"]["dev"]["source"]
+    data = _run_guard_fallback(
+        repo,
+        {"command": "git checkout develop", "cwd": source},
+    )
+    _assert_dual_allow(data)
