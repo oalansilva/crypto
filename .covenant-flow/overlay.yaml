@@ -25,7 +25,7 @@ design_globs:
 - frontend/public/prototypes/**
 integration_branch: develop
 production_branch: main
-pin: v1.1.4
+pin: v1.1.6
 canonical_paths:
   dev: /srv/apps/dev/criptofarol/source
   prod: /srv/apps/prod/criptofarol/source
@@ -34,7 +34,7 @@ forbidden_worktrees:
 overlay_doc: docs/crypto-overlay.md
 clients:
   cursor:
-    auto: true
+    auto: false
   grok:
     auto: false
   opencode:

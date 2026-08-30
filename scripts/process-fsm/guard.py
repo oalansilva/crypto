@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -473,6 +474,103 @@ def _card_branch(q_git: str | None) -> bool:
     return bool(q_git) and CARD_GIT_RE.match(str(q_git)) is not None
 
 
+def environment_dev_source(overlay: Mapping[str, Any] | None) -> str:
+    """Read overlay environments.dev.source — not a hardcoded production path."""
+    if not overlay:
+        return ""
+    env = overlay.get("environments")
+    if not isinstance(env, Mapping):
+        return ""
+    dev = env.get("dev")
+    if not isinstance(dev, Mapping):
+        return ""
+    return str(dev.get("source") or "").strip()
+
+
+_CARD_CREATE_RE = re.compile(
+    r"\bgit(?:\s+-C\s+(\S+))?\s+(?:checkout(?:\s+--track)?\s+-b|switch\s+-c)\s+"
+    r"(card-\d+\S*)"
+)
+
+
+def _same_fs_path(left: str | Path, right: str | Path) -> bool:
+    try:
+        return Path(left).resolve() == Path(right).resolve()
+    except OSError:
+        return os.path.normpath(str(left)) == os.path.normpath(str(right))
+
+
+def _effective_git_path(command: str, cwd: Path | str) -> str | None:
+    """cwd, or git -C target when the command creates a card-* branch."""
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        tokens = command.split()
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token == "git" or token.endswith("/git"):
+            c_path = None
+            sub = None
+            create = False
+            branch = None
+            j = i + 1
+            while j < len(tokens):
+                item = tokens[j]
+                if item in {"&&", "||", ";", "|"}:
+                    break
+                if item == "-C" and j + 1 < len(tokens):
+                    c_path = tokens[j + 1]
+                    j += 2
+                    continue
+                if item == "--":
+                    j += 1
+                    continue
+                if item in {"checkout", "switch"} and sub is None:
+                    sub = item
+                    j += 1
+                    continue
+                if sub == "checkout" and item in {"-b", "--track"}:
+                    create = True
+                    j += 1
+                    continue
+                if sub == "switch" and item == "-c":
+                    create = True
+                    j += 1
+                    continue
+                if create and branch is None and not item.startswith("-"):
+                    branch = item
+                    break
+                j += 1
+            if create and branch and CARD_GIT_RE.match(branch):
+                raw = c_path if c_path else str(cwd)
+                raw = raw.strip().strip("'\"")
+                target = Path(raw) if Path(raw).is_absolute() else Path(cwd) / raw
+                return str(target)
+            i = j if j > i else i + 1
+            continue
+        i += 1
+    match = _CARD_CREATE_RE.search(command)
+    if match is None:
+        return None
+    branch = (match.group(2) or "").strip().strip("'\"")
+    if CARD_GIT_RE.match(branch) is None:
+        return None
+    raw = (match.group(1) or str(cwd)).strip().strip("'\"")
+    target = Path(raw) if Path(raw).is_absolute() else Path(cwd) / raw
+    return str(target)
+
+
+def is_canonical_card_branch_create(command: str, cwd: Path | str, source: str) -> bool:
+    """True when checkout -b / switch -c / --track -b card-* targets overlay DEV source."""
+    if not command or not source:
+        return False
+    target = _effective_git_path(command, cwd)
+    if target is None:
+        return False
+    return _same_fs_path(target, source)
+
+
 def _reason_message(reason: str, state: str | None, q_git: str | None, bound: str | None) -> str:
     return (
         f"process-fsm-guard deny reason={reason} q={state!s} q_git={q_git!s} "
@@ -527,6 +625,13 @@ def decide(
         return _sidecar_deny()
     if is_status_edit_command(command, overlay):
         return _status_edit_deny()
+    source = environment_dev_source(overlay)
+    if source and is_canonical_card_branch_create(command, cwd, source):
+        message = (
+            "process-fsm-guard deny reason=canonical_card_branch. "
+            "Do not git checkout -b / switch -c card-* on environments.dev.source."
+        )
+        return emit("deny", message)
     if not paths:
         if tool in OPENCODE_WRITE_TOOLS or is_dsh_editor_mutate(canonical):
             return _empty_path_deny()

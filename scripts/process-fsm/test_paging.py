@@ -14,13 +14,16 @@ sys.path.insert(0, str(ROOT))
 
 from fsm import load_fsm  # noqa: E402
 from grok_stubs import stub_errors  # noqa: E402
+from overlay import render_agents  # noqa: E402
 from paging import UNBOUND_PAGE, page, write_grok_page  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
+from test_overlay_fixtures import filled_overlay_dict  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 TODO_STUB = "Próximo evento = iniciar_design. Não apply. Não /opsx:new ainda."
 HOMOLOGADO_STUB = "T16 = process_event fechar_release com M_lote live. Chat ≠ δ."
+QA_STUB = "MUST NOT process_event"
 PLAYBOOK = ("release-guard", "subir lote", "deploy PROD")
 
 
@@ -107,6 +110,26 @@ def test_page_uses_yaml_stubs():
     assert HOMOLOGADO_STUB in str(fsm["context_file"]["Homologado"])
     assert "grill-card" in str(fsm["context_file"]["Em Refinamento"])
     assert "sintetizar" in str(fsm["context_file"]["Design"])
+    qa = str(fsm["context_file"]["QA"])
+    assert QA_STUB in qa
+    assert "T14" in qa
+    assert "no_pr" in qa
+    assert "sync: dirty" in qa
+
+
+def test_qa_page_has_closeout_stub():
+    result = page(
+        cwd=".",
+        resolve_fn=_resolve("613", "card-613-process-fsm-paging"),
+        status_provider=_provider("QA"),
+    )
+    ctx = result["additional_context"]
+    assert QA_STUB in ctx
+    assert "T14" in ctx
+    assert "no_pr" in ctx
+    assert "sync: dirty" in ctx
+    assert "pending" in ctx
+    assert _line_count(ctx) <= 20
 
 
 def _harness_body_lines() -> list[str]:
@@ -166,12 +189,46 @@ def test_agents_md_is_stub():
     assert "dsh Auto" not in text
     assert "cooperativo" in text
     assert "T0–T17" not in text and "T0-T17" not in text
+    generated = render_agents(filled_overlay_dict())
+    assert filled_overlay_dict()["clients"]["cursor"]["auto"] is True
+    assert (
+        "Clientes: Cursor Agent (cooperativo); Grok Build, OpenCode e dsh "
+        "(cooperativos até ensaio deny na branch de integração)."
+    ) in generated
+    assert (
+        "Não reivindique modo Auto no Cursor, no Grok, no OpenCode nem no dsh."
+    ) in generated
+    assert "Auto permitido" not in generated
+    assert "Auto Grok" not in generated
+    assert "Auto OpenCode" not in generated
+    assert "Auto dsh" not in generated
+    assert len([ln for ln in generated.splitlines() if ln.strip()]) <= 40
 
 
 def test_skill_priority_anchor():
     text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
     assert "δ e Guard > overlay > skill > wording" in text
     assert "1. Instrução direta de Alan no chat." not in text
+
+
+def test_qa_closeout_skill_is_client_labeled():
+    text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Cursor" in text
+    assert "dsh" in text
+    assert "MUST NOT" in text and "process_event" in text
+    assert "mesmo turno" in text
+    assert "qa-gate" in text
+    assert "no_pr" in text
+    assert "sync: dirty" in text
+    dsh = (REPO / ".dsh" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    grok = (REPO / ".grok" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    for stub in (dsh, grok):
+        body = stub.split("---", 2)[2]
+        assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8
+        assert "Em Refinamento → Todo → Design" not in stub
+    plugin = (REPO / ".dsh" / "plugin" / "process-fsm-guard.js").read_text(encoding="utf-8")
+    assert "covenant-flow:moore" in plugin
+    assert "T0–T17" not in plugin and "T0-T17" not in plugin
 
 
 def test_hooks_json_session_start():

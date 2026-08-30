@@ -83,6 +83,7 @@ Skill de entrada: `.cursor/skills/grill-card/` (adapter). Primitivo vendorado: `
 Disparar quando Alan pede para grelhar/afiar **ou** Status da issue N é Em Refinamento **e** o body não tem as 6 seções do DoD (N no prompt, mesmo em `develop`). Não em todo T0 (cards nítidos podem T1 direto). Não em Todo/Design.
 
 O **pai** spawna o filho `grill-card` (id no prompt, mesmo em `develop`). O filho reescreve o **body do issue N** e, com fronteira vazia, comenta o handoff T1. Pai só relaying das rodadas. Nas Qs fechadas, o pai chama a ferramenta do host com **todas as options** que o filho listou e não colapsa à recomendada. Com o host no ar, o prompt da Q é título + conflito; a recomendação é só a primeira option `(Recommended)`. Não arrasta Status. Não grava `CONTEXT.md` / `docs/adr/`. Não chama `/opsx:*`.
+Tecto: Qs e options em português de operador em todo card em Em Refinamento; identificador do git é facto no body ou *como* no Design, não option no host; Other vazio, silêncio e «não percebi» / «isto é técnico» reclassificam e nunca aceitam a recomendada.
 Cliente dsh: dsh não spawna filho grill.
 
 ## Card primeiro, OpenSpec mais completo
@@ -111,7 +112,13 @@ Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto
 
 Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`. O **filho** Apply edita o código (loop fatiado); **não** `process_event`, **não** commit/push, **não** spawna reviewers; devolve status ao pai.
 
-Pai: `pedir_review` (Code Review), `diff-reviewer` + `code-reviewer` no diff **não commitado** vs HEAD, commit, `diff-reviewer` vs a branch de integração, push, `aceitar_sha` (QA), filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
+Pai: `pedir_review` (Code Review), `diff-reviewer` + `code-reviewer` no diff **não commitado** vs HEAD, commit, `diff-reviewer` vs a branch de integração, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
+
+## QA closeout
+
+**Cursor / Grok:** um filho QA isolado lê checks e MUST NOT chamar `process_event`. O pai chama `integrar_develop` no mesmo turno do filho verde (ou quando o próprio pai vê `qa-gate` success). `qa-gate pending` ⇒ espera e repete T14 no turno. `no_pr` e `sync: dirty` são causas visíveis; o primeiro reject não encerra o turno.
+
+**dsh:** o root MUST NOT spawnar filho QA. O mesmo turno abre o PR antes de T11, espera `qa-gate` e chama T14 (Moore/plugin `covenant-flow:moore`, não só o texto desta skill).
 
 Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evidence-comment.sh --transition homologado` (mesmo sem lote).
 
