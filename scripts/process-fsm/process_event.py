@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from design_clone_gate import clone_gate_ok  # noqa: E402
 from overlay import (  # noqa: E402
     board_owner_number,
     board_project_id,
@@ -170,12 +171,18 @@ def _safe_move(mover: BoardMover, issue_number: int, to: str) -> dict[str, Any] 
     return None
 
 
-def files_g_design(change_dir: Path) -> bool:
+def files_g_design(
+    change_dir: Path,
+    prototype_dir: Path | None = None,
+    repo: Path | None = None,
+) -> bool:
     needed = [change_dir / "proposal.md", change_dir / "design.md", change_dir / "tasks.md"]
     if not all(path.is_file() for path in needed):
         return False
     specs = change_dir / "specs"
-    return bool(specs.is_dir() and any(specs.rglob("*.md")))
+    if not (specs.is_dir() and any(specs.rglob("*.md"))):
+        return False
+    return clone_gate_ok(change_dir, prototype_dir, repo or REPO_ROOT)
 
 
 def compute_digest(change_dir: Path, prototype_dir: Path | None) -> str:
@@ -330,7 +337,11 @@ def process_event(
         resolved_proto = proto if proto.is_dir() else None
 
     if g_design is None:
-        g_design = files_g_design(resolved_change_dir) if resolved_change_dir else False
+        g_design = (
+            files_g_design(resolved_change_dir, resolved_proto)
+            if resolved_change_dir
+            else False
+        )
     if digest_changed is None:
         digest_changed = measure_digest_changed(resolved_change_dir, resolved_proto, q)
     if event == "fechar_release" and m_lote is None:

@@ -248,6 +248,52 @@ def test_card_mismatch_rejects():
     assert out["reason"] == "card_mismatch"
 
 
+R1_GALLERY = ROOT / "fixtures" / "792-r1-gallery.html"
+
+
+def test_t5_default_g_design_refuses_r1_gallery_monitor(tmp_path: Path):
+    change = _change_tree(tmp_path)
+    (change / "design.md").write_text(
+        "UI impact: affected\nlive_route: /monitor\n",
+        encoding="utf-8",
+    )
+    proto = tmp_path / "proto"
+    proto.mkdir()
+    (proto / "index.html").write_bytes(R1_GALLERY.read_bytes())
+    mover = FakeMover()
+    out = process_event(
+        "submeter_design",
+        status="Design",
+        q_git="card-799-prototype-clone-rota",
+        bound_card="799",
+        mover=mover,
+        change_dir=change,
+        prototype_dir=proto,
+        digest_changed=False,
+    )
+    assert out["result"] == "reject"
+    assert str(out["reason"]).startswith("guard:")
+    assert mover.calls == []
+
+
+def test_t5_default_g_design_ui_none_transitions(tmp_path: Path):
+    change = _change_tree(tmp_path)
+    (change / "design.md").write_text("UI impact: none\n", encoding="utf-8")
+    mover = FakeMover()
+    out = process_event(
+        "submeter_design",
+        status="Design",
+        q_git="card-612-process-event",
+        bound_card="612",
+        mover=mover,
+        change_dir=change,
+        digest_changed=False,
+    )
+    assert out["result"] == "transition"
+    assert out["to"] == "Aprovação de Design"
+    assert mover.calls == [(612, "Aprovação de Design")]
+
+
 def test_t5_writes_sidecar_dry_run_does_not(tmp_path: Path):
     change = _change_tree(tmp_path)
     assert files_g_design(change)
