@@ -309,8 +309,16 @@ def test_hooks_json_composes_impeccable():
     shell = hooks["hooks"]["beforeShellExecution"]
     assert shell[0]["command"] == ".cursor/hooks/process-fsm-guard.sh"
     assert shell[0].get("failClosed") is not True
-    assert hooks["hooks"]["afterFileEdit"][0]["command"].endswith("impeccable.sh afterFileEdit")
-    assert hooks["hooks"]["stop"][0]["command"].endswith("impeccable.sh stop")
+    after = hooks["hooks"]["afterFileEdit"][0]["command"]
+    stop = hooks["hooks"]["stop"][0]["command"]
+    assert ".cursor/hooks/impeccable.sh" in after and "afterFileEdit" in after
+    assert ".cursor/hooks/impeccable.sh" in stop and " stop" in f" {stop}"
+    for command in (after, stop):
+        assert "test -f .cursor/hooks/impeccable.sh" in command
+        assert "./hooks/impeccable.sh" in command
+        assert "./impeccable.sh" in command
+        assert "git rev-parse --show-toplevel" in command
+        assert "exit 127" in command
     assert (REPO / ".cursor" / "hooks" / "impeccable.sh").is_file()
 
 
@@ -483,19 +491,91 @@ def test_grok_hooks_json_registers_guard():
     assert "write" in matchers and "search_replace" in matchers
     assert "Write" in matchers and "Edit" in matchers
     assert "run_terminal_command" in matchers and "run_terminal_cmd" in matchers
+    raw = (REPO / ".grok" / "hooks" / "process-fsm.json").read_text(encoding="utf-8")
+    assert "| T0" not in raw
+    assert "T0–T17" not in raw and "T0-T17" not in raw
     for item in pre:
         handler = item["hooks"][0]
         assert handler["timeout"] >= 30
-        assert handler["command"] == "./process-fsm-guard.sh"
+        assert ".grok/hooks/process-fsm-guard.sh" in handler["command"]
+        assert "test -f .grok/hooks/process-fsm-guard.sh" in handler["command"]
+        assert "./process-fsm-guard.sh" in handler["command"]
+        assert "git rev-parse --show-toplevel" in handler["command"]
+        assert "exit 127" in handler["command"]
     start = hooks["hooks"]["SessionStart"][0]["hooks"][0]
     assert "process-fsm-session-start.sh" in start["command"]
+    assert "test -f .grok/hooks/process-fsm-session-start.sh" in start["command"]
+    assert "./process-fsm-session-start.sh" in start["command"]
+    assert "git rev-parse --show-toplevel" in start["command"]
     post = hooks["hooks"]["PostToolUse"][0]["hooks"][0]
-    assert post["command"] == "./impeccable.sh PostToolUse"
+    assert ".grok/hooks/impeccable.sh" in post["command"]
+    assert "PostToolUse" in post["command"]
+    assert "test -f .grok/hooks/impeccable.sh" in post["command"]
+    assert "./impeccable.sh" in post["command"]
+    assert "git rev-parse --show-toplevel" in post["command"]
     assert post["timeout"] >= 30
     stop = hooks["hooks"]["Stop"][0]["hooks"][0]
-    assert stop["command"] == "./impeccable.sh Stop"
+    assert ".grok/hooks/impeccable.sh" in stop["command"]
+    assert "Stop" in stop["command"]
+    assert "test -f .grok/hooks/impeccable.sh" in stop["command"]
+    assert "./impeccable.sh" in stop["command"]
+    assert "git rev-parse --show-toplevel" in stop["command"]
     assert stop["timeout"] >= 30
     assert (REPO / ".grok" / "hooks" / "impeccable.sh").is_file()
+
+
+def _sh_hook(command: str, cwd: Path) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        ["sh", "-c", command],
+        cwd=str(cwd),
+        input=b"{}",
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+
+
+def test_grok_impeccable_command_resolves_from_workspace_and_hooks_dir():
+    hooks = json.loads((REPO / ".grok" / "hooks" / "process-fsm.json").read_text(encoding="utf-8"))
+    commands = [
+        hooks["hooks"]["PostToolUse"][0]["hooks"][0]["command"],
+        hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
+        hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"],
+        hooks["hooks"]["PreToolUse"][1]["hooks"][0]["command"],
+        hooks["hooks"]["SessionStart"][0]["hooks"][0]["command"],
+    ]
+    cwds = [REPO, REPO / ".grok" / "hooks", REPO / "frontend"]
+    for command in commands:
+        for cwd in cwds:
+            proc = _sh_hook(command, cwd)
+            assert proc.returncode == 0, (cwd, command[:120], proc.stderr)
+
+
+def test_cursor_impeccable_command_resolves_from_workspace_and_cursor_dir():
+    hooks = json.loads((REPO / ".cursor" / "hooks.json").read_text(encoding="utf-8"))
+    commands = [
+        hooks["hooks"]["afterFileEdit"][0]["command"],
+        hooks["hooks"]["stop"][0]["command"],
+    ]
+    cwds = [REPO, REPO / ".cursor", REPO / ".cursor" / "hooks"]
+    for command in commands:
+        for cwd in cwds:
+            proc = _sh_hook(command, cwd)
+            assert proc.returncode == 0, (cwd, command[:120], proc.stderr)
+
+
+def test_impeccable_wrappers_stay_fail_open():
+    grok = (REPO / ".grok" / "hooks" / "impeccable.sh").read_text(encoding="utf-8")
+    cursor = (REPO / ".cursor" / "hooks" / "impeccable.sh").read_text(encoding="utf-8")
+    for text in (grok, cursor):
+        assert "sys.exit(0)" in text
+        assert "except Exception" in text
+    dsh = (REPO / ".dsh" / "plugin" / "impeccable-hook.js").read_text(encoding="utf-8")
+    oc = (REPO / ".opencode" / "plugin" / "impeccable-hook.js").read_text(encoding="utf-8")
+    assert "return next()" in dsh
+    assert "fail-open" in dsh
+    assert "never throw" in oc
+    assert "kind: 'block'" not in dsh and 'kind: "block"' not in dsh
 
 
 def _oc_payload(cwd: Path, tool: str, args: dict, status: str | None = None) -> dict:
