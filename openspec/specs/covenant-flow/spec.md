@@ -4,13 +4,14 @@
 TBD - created by archiving change card-773-covenant-flow. Update Purpose after archive.
 ## Requirements
 ### Requirement: Product repository is oalansilva/covenant-flow
-The portable process product SHALL live in the private GitHub repository `oalansilva/covenant-flow` (display name Covenant Flow). The nucleus SHALL be `process-fsm.yaml`, `scripts/process-fsm/` (`guard`, `resolve`, `process_event`, `paging`, goldens), and the canonical skill files. Product and skill names MUST NOT contain `alan`. The product MUST NOT ship Funil Cripto copy, `PRODUCT.md` / `DESIGN.md` / token-sheet content, or PostgreSQL as an always-on of the package.
+The portable process product SHALL live in the private GitHub repository `oalansilva/covenant-flow` (display name Covenant Flow). The nucleus SHALL be `process-fsm.yaml`, `scripts/process-fsm/` (`guard`, `resolve`, `process_event`, `paging`, goldens), and the canonical skill files. Product and skill names MUST NOT contain `alan`. The product MUST NOT ship Funil Cripto copy, `PRODUCT.md` / `DESIGN.md` / token-sheet content, or PostgreSQL as an always-on of the package. The product SHALL ship four client adapters (`.cursor/`, `.grok/`, `.opencode/`, `.dsh/`). The product MUST NOT vendor `deepseek-ai/deepseek-harness`.
 
 #### Scenario: Fresh clone of the product repo
-- **WHEN** a machine clones `oalansilva/covenant-flow`
-- **THEN** the tree contains the nucleus, the 20 canonical skills, three client adapters, `install.sh`, and the overlay template
+- **WHEN** a machine clones `oalansilva/covenant-flow` at tag `v1.1.0`
+- **THEN** the tree contains the nucleus, the 20 canonical skills, four client adapters including `.dsh/`, `install.sh`, and the overlay template
 - **AND** no skill directory or product name contains `alan`
 - **AND** no Funil Cripto or token-sheet brand content is in the package
+- **AND** the DeepSeek Harness monorepo is not vendored
 
 #### Scenario: Host trial folder is not a product artifact
 - **WHEN** a reviewer inspects the product repository and this OpenSpec change
@@ -71,11 +72,11 @@ Overlay `board.status_options` SHALL map each of the 12 column **names** from `p
 - **AND** Guard product writes deny
 
 ### Requirement: implantar copies nucleus adapters agents skills helpers and the consumer commits them
-Skill `implantar` (Portuguese) plus `install.sh --pin` SHALL copy into the consumer: the nucleus (`process-fsm.yaml` and `scripts/process-fsm/`), the three adapters (`.cursor/`, `.grok/`, `.opencode/`), `.agents/skills/` (`impeccable`, `design-critic`, `playwright-cli`), helpers (`publish-openspec-card-artifacts.sh`, generic `release-guard`), and the template `AGENTS.md`. The consumer git SHALL commit those trees (not gitignore, not submodule pointers). On Cripto, which already has `scripts/process-fsm/`, pin SHALL update them to the overlay-reading Guard. The overlay SHALL record `pin` as a semver tag `vMAJOR.MINOR.PATCH`. Updating SHALL mean re-implantar plus commit of the diff. Bump MUST preserve project overlay keys (board, environments, globs, `overlay_doc`) and refresh nucleus/skins/helpers + `pin`. v1 MUST NOT use submodule, native marketplace, or template-clone as the primary channel.
+Skill `implantar` (Portuguese) plus `install.sh --pin` SHALL copy into the consumer: the nucleus (`process-fsm.yaml` and `scripts/process-fsm/`), the four adapters (`.cursor/`, `.grok/`, `.opencode/`, `.dsh/`), `.agents/skills/` (`impeccable`, `design-critic`, `playwright-cli`), helpers (`publish-openspec-card-artifacts.sh`, generic `release-guard`, dsh boot helper), and the template `AGENTS.md`. `install.sh --pin` SHALL copy `.dsh/` **always**, including when overlay omits `clients.dsh`. The consumer git SHALL commit those trees (not gitignore, not submodule pointers). On Cripto, which already has `scripts/process-fsm/`, pin SHALL update them to the overlay-reading Guard. The overlay SHALL record `pin` as a semver tag `vMAJOR.MINOR.PATCH`. Updating SHALL mean re-implantar plus commit of the diff. Bump MUST preserve project overlay keys (board, environments, globs, `overlay_doc`) and refresh nucleus/skins/helpers + `pin`. v1 MUST NOT use submodule, native marketplace, or template-clone as the primary channel.
 
 #### Scenario: Pin materializes nucleus skins helpers in consumer git
 - **WHEN** overlay is valid and `implantar --pin v1.2.3` completes
-- **THEN** `.cursor/`, `.grok/`, and `.opencode/` exist in the consumer
+- **THEN** `.cursor/`, `.grok/`, `.opencode/`, and `.dsh/` exist in the consumer
 - **AND** `scripts/process-fsm/` (overlay-reading Guard) exists in the consumer
 - **AND** `.agents/skills/` for impeccable, design-critic, and playwright-cli exist
 - **AND** helpers and generated `AGENTS.md` exist
@@ -109,18 +110,19 @@ The product SHALL ship exactly these operational skills: `covenant-flow` (former
 - **THEN** operational runbooks load `covenant-flow` and `covenant-flow-environments`
 - **AND** `alan-workflow*` remain only if still in the alias window before unique pin, then only the new names
 
-### Requirement: Three adapters ship in every consumer
-Every implanted consumer SHALL receive the Cursor adapter (`.cursor/hooks.json` `sessionStart`, `preToolUse` failClosed, `beforeShellExecution`, `afterFileEdit`/`stop` Impeccable, `harness.mdc`, `/opsx-*` commands), the Grok adapter (`.grok/hooks/` `SessionStart`, `PreToolUse`, `PostToolUse`, `Stop`), and the OpenCode 1.18.18 adapter (`.opencode/plugin/` `tool.execute.before` throw on deny, `experimental.chat.system.transform`, `tool.execute.after` + `session.idle` fail-open). Adapters SHALL translate only. Dual-write of T0–T17 / I1–I9 into `.grok/` or `.opencode/` remains forbidden. Lock machine and `opencode.json` as model/MCP/permission contract remain forbidden. A fourth harness MUST NOT be a source of law.
+### Requirement: Four adapters ship in every consumer
+Every implanted consumer SHALL receive the Cursor adapter (`.cursor/hooks.json` `sessionStart`, `preToolUse` failClosed, `beforeShellExecution`, `afterFileEdit`/`stop` Impeccable, `harness.mdc`, `/opsx-*` commands), the Grok adapter (`.grok/hooks/` `SessionStart`, `PreToolUse`, `PostToolUse`, `Stop`), the OpenCode 1.18.18 adapter (`.opencode/plugin/` `tool.execute.before` throw on deny, `experimental.chat.system.transform`, `tool.execute.after` + `session.idle` fail-open), and the dsh adapter (`.dsh/plugin/` `tools/pre-execute` `{ kind: 'deny' }` fail-closed, `systemPrompt.section` Moore, `tools/post-execute` + `agent/turn-stopping` fail-open). Adapters SHALL translate only. Dual-write of T0–T17 / I1–I9 into `.grok/`, `.opencode/`, or `.dsh/` remains forbidden. Lock machine and `opencode.json` as model/MCP/permission contract remain forbidden. The fourth harness (dsh) MUST NOT be a source of law.
 
-#### Scenario: Write product on integration branch denies on three clients
+#### Scenario: Write product on integration branch denies on four clients
 - **WHEN** Cripto is pinned in the card worktree and `q_git` is the integration branch
-- **THEN** an illegal product Write is denied on Cursor, Grok Build, and OpenCode 1.18.18
+- **THEN** an illegal product Write is denied on Cursor, Grok Build, OpenCode 1.18.18, and dsh (plugin loaded)
 - **AND** no adapter copy of T0–T17 exists
 
 #### Scenario: Current Cripto skins stay until pin
 - **WHEN** Apply has not yet committed the pin in consumer git
 - **THEN** existing Cripto `.cursor/` `.grok/` `.opencode/` skins MUST NOT be deleted as a prelude
 - **AND** they are replaced by implantar at pin, not deleted earlier
+- **AND** `.dsh/` appears at pin, not before Pronto para Dev
 
 ### Requirement: Apply pins Cripto in the worktree and does not live-switch the host
 Creating the GitHub product repository and pinning Cripto SHALL happen only while card #773 has `Status=Pronto para Dev`. Apply SHALL (a) build the product tree out of band, (b) fill Cripto `.covenant-flow/overlay.yaml` while this worktree still uses the current yaml-globs Guard, (c) then `implantar --pin` **and** switch Guard/`page()` to overlay in the **same** pin commit. Empty overlay mid-Apply is not a success path; `--init` on Cripto MUST be followed immediately by filling required keys before enabling fail-closed overlay Guard. The pin commit SHALL include `.cursor/`, `.grok/`, `.opencode/`, overlay, `scripts/process-fsm/`, `.agents/skills/` (`impeccable`, `design-critic`, `playwright-cli`), and generated `AGENTS.md`. Apply MUST NOT switch this machine's day-to-day Cursor/Grok/OpenCode from `alan-workflow*` to `covenant-flow*`. Live host rename SHALL happen only after #773 `Status=Pronto` (T16 / published lote). Until Pronto, live host stays `alan-workflow` and new names exist only in sandbox or in the pinned worktree git.
@@ -303,4 +305,60 @@ This change SHALL ship in product `oalansilva/covenant-flow` as tag **`v1.1.6`**
 - **WHEN** `covenant-flow` is read for the dsh client
 - **THEN** it says the root MUST NOT spawn a QA child
 - **AND** it says the same turn opens the PR before T11, waits for `qa-gate`, and calls T14
+
+### Requirement: Follow-up pin v1.1.1 copies the cwd-independent dsh Guard
+After #782's four-adapter pin `v1.1.0`, this change SHALL ship in product `oalansilva/covenant-flow` as tag **`v1.1.1`** (patch; not a schema major). Apply SHALL commit the updated Guard plugin, `dsh_plugin_lib.js`, `dsh_boot.sh`, and goldens in the product first, then `implantar --pin v1.1.1` on Cripto. `install.sh --pin` SHALL still copy `.dsh/` always. `CLIENT_KEYS` SHALL remain three names. `SCHEMA_MAJOR` SHALL remain 1. Cripto overlay SHALL keep `clients.dsh.auto: false` and record `pin: v1.1.1`. The fourth harness remains a skin, not yaml law. Dual-write of T0–T17 into `.dsh/` remains forbidden. Stubs under `.dsh/skills/` MUST stay at most 8 non-empty body lines.
+
+#### Scenario: Pin v1.1.1 refreshes the dsh plugin on Cripto
+- **WHEN** overlay is valid and `implantar --pin v1.1.1` completes on Cripto
+- **THEN** `.dsh/plugin/process-fsm-guard.js` in the consumer injects the `AGENTS.md` section and registers the process skill provider
+- **AND** overlay contains `pin: v1.1.1`
+- **AND** `clients.dsh.auto` remains `false`
+- **AND** `SCHEMA_MAJOR` remains 1
+
+#### Scenario: Product tag is patch not major
+- **WHEN** the product repository is tagged for this change
+- **THEN** the tag is `v1.1.1`
+- **AND** it is not `v2.0.0`
+- **AND** `deepseek-ai/deepseek-harness` is still not vendored
+
+### Requirement: Follow-up pin v1.1.3 copies dsh grill-root Guard and canonical client branch
+After #784's always-on pin `v1.1.1`, this change SHALL ship in product `oalansilva/covenant-flow` as tag **`v1.1.3`** (patch; not a schema major). Origin already published `v1.1.2` on the README PT-BR commit; Apply SHALL not move that tag. Apply SHALL commit the updated Guard plugin, `dsh_plugin_lib.js` grill-shaped helper, canonical `grill-card` client-labelled branch, the `Cliente dsh:` line in `covenant-flow` Grill-card, and goldens in the product first, then `implantar --pin v1.1.3` on Cripto. `install.sh --pin` SHALL still copy `.dsh/` always. `CLIENT_KEYS` SHALL remain three names. `SCHEMA_MAJOR` SHALL remain 1. Cripto overlay SHALL keep `clients.dsh.auto: false` and record `pin: v1.1.3`. The fourth harness remains a skin, not yaml law. Dual-write of T0–T17 into `.dsh/` remains forbidden. Stubs under `.dsh/skills/` MUST stay at most 8 non-empty body lines. `AGENTS.md` MUST NOT gain a dsh-grill line.
+
+#### Scenario: Pin v1.1.3 refreshes the dsh grill deny on Cripto
+- **WHEN** overlay is valid and `implantar --pin v1.1.3` completes on Cripto
+- **THEN** `.dsh/plugin/process-fsm-guard.js` in the consumer denies grill-shaped `subagent` / `subagent_fork`
+- **AND** overlay contains `pin: v1.1.3`
+- **AND** `clients.dsh.auto` remains `false`
+- **AND** `SCHEMA_MAJOR` remains 1
+
+#### Scenario: Product tag is patch not major
+- **WHEN** the product repository is tagged for this change
+- **THEN** the tag is `v1.1.3`
+- **AND** it is not `v2.0.0`
+- **AND** `deepseek-ai/deepseek-harness` is still not vendored
+- **AND** `process-fsm.yaml` is unchanged by this pin
+
+### Requirement: Homologation residual pin v1.1.4 drops duplicate host-prompt recommendation
+After origin `v1.1.3` (grill-root deny), this change SHALL ship product tag **`v1.1.4`** (patch; MUST NOT move `v1.1.3`). Canonical `grill-card` SHALL instruct that a live host prompt is title + conflict only; the recommendation SHALL appear only as the first option labelled `(Recommended)`. Apply SHALL `implantar --pin v1.1.4` on Cripto. Overlay SHALL record `pin: v1.1.4` and keep `clients.dsh.auto: false`. `SCHEMA_MAJOR` SHALL remain 1.
+
+#### Scenario: Pin v1.1.4 refreshes grill-card host prompt copy on Cripto
+- **WHEN** overlay is valid and `implantar --pin v1.1.4` completes on Cripto
+- **THEN** overlay contains `pin: v1.1.4`
+- **AND** `.cursor/skills/grill-card/SKILL.md` `## Cliente: dsh` after `_plain` contains `recomendação vive só` and `não copie`
+- **AND** `clients.dsh.auto` remains `false`
+
+### Requirement: clients.dsh is an optional extra not a schema break
+Overlay schema major SHALL remain `1`. `CLIENT_KEYS` SHALL remain `("cursor", "grok", "opencode")`. Missing a `CLIENT_KEYS` entry SHALL remain `OverlayInvalid`. Extra keys under `clients` (including `dsh`) SHALL be accepted. `clients.dsh` SHALL NOT be required. `empty_template` / `install.sh --init` MUST NOT emit `clients.dsh`. `install.sh --pin` MUST NOT inject `clients.dsh` into an overlay that omits the key. Absence of `clients.dsh` MUST NOT disable the copied `.dsh/` Guard.
+
+#### Scenario: Overlay without clients.dsh validates
+- **WHEN** `validate_overlay` runs on a filled overlay that has `clients.cursor`, `clients.grok`, and `clients.opencode` and omits `clients.dsh`
+- **THEN** validation passes
+- **AND** it does not raise `OverlayInvalid`
+
+#### Scenario: Overlay with extra clients.dsh auto false validates
+- **WHEN** `validate_overlay` runs on a filled overlay that has extra `clients.dsh.auto: false`
+- **THEN** validation passes
+- **AND** `SCHEMA_MAJOR` remains 1
+- **AND** `CLIENT_KEYS` is still three names
 

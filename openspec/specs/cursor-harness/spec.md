@@ -4,7 +4,7 @@
 Contrato do adapter Cursor sobre o núcleo do processo (yaml + `scripts/process-fsm/` + `AGENTS.md`). Grok Build é o adapter irmão em `.grok/`; OpenCode 1.18.18 em `.opencode/plugin/`.
 ## Requirements
 ### Requirement: Cursor is the versioned development harness
-The repository SHALL contain a versioned Cursor **adapter** under `.cursor/` (rules, skills, commands, hooks) that compiles the process nucleus (`.cursor/process-fsm.yaml` + `scripts/process-fsm/` + root `AGENTS.md`). Cursor is not the only versioned client: Grok Build has a sibling adapter under `.grok/`, and OpenCode 1.18.18 has a sibling adapter under `.opencode/plugin/` (auto-load; no `opencode.json`). The repo MUST NOT restore the lock machine (`design_spawn_stage`, `design_artifact_write`, lease, packet, attestation, `opencode.db` as kaizen contract). `opencode.json` MUST NOT be an active contract of model, MCP, or permission. `.cursor/rules/harness.mdc` SHALL identify the Cursor client (hooks + Task `inherit`) and MUST NOT repeat the δ table or the 12-column runbook.
+The repository SHALL contain a versioned Cursor **adapter** under `.cursor/` (rules, skills, commands, hooks) that compiles the process nucleus (`.cursor/process-fsm.yaml` + `scripts/process-fsm/` + root `AGENTS.md`). Cursor is not the only versioned client: Grok Build has a sibling adapter under `.grok/`, OpenCode 1.18.18 has a sibling adapter under `.opencode/plugin/` (auto-load; no `opencode.json`), and dsh has a sibling adapter under `.dsh/plugin/` (Cordis native; no Claude `hooks.json` Guard). The repo MUST NOT restore the lock machine (`design_spawn_stage`, `design_artifact_write`, lease, packet, attestation, `opencode.db` as kaizen contract). `opencode.json` MUST NOT be an active contract of model, MCP, or permission. `.cursor/rules/harness.mdc` SHALL identify the Cursor client (hooks + Task `inherit`) and MUST NOT repeat the δ table or the 12-column runbook. The fourth harness (dsh) MUST NOT be a source of law.
 
 #### Scenario: Fresh checkout loads Cursor config
 - **WHEN** a Cursor Agent session starts in the repo
@@ -306,4 +306,23 @@ While `Status=Code Review` or `Status=QA` and the card is bound to `card-<id>-*`
 - **WHEN** `integrar_develop` returns `reason=qa-gate pending`
 - **THEN** the parent waits for the check and retries `integrar_develop` in the same turn
 - **AND** it does not treat the first reject as the end of the turn
+
+### Requirement: Cursor Impeccable afterFileEdit and stop are cwd-independent
+`.cursor/hooks.json` SHALL keep `afterFileEdit` and `stop` as distinct Impeccable entries that invoke `.cursor/hooks/impeccable.sh` (event names `afterFileEdit` and `stop`). Those command strings MUST locate the script with the same class as the Grok JSON locator: repo-relative `.cursor/hooks/impeccable.sh`, sibling `./hooks/impeccable.sh` or `./impeccable.sh`, then `git rev-parse --show-toplevel` + `.cursor/hooks/impeccable.sh`. Running each command with cwd at the repo root, at `.cursor/`, or at `.cursor/hooks/` MUST exit 0. Cursor `preToolUse` (failClosed Write-family), `beforeShellExecution`, and `sessionStart` MUST remain the existing Guard / paging commands and MUST NOT be rewritten by this requirement. The adapter MUST still emit fail-open for the detector (a finding or crash of `hook.mjs` MUST NOT abort the turn). Dual-write of T0–T17 into `.cursor/rules/` remains forbidden.
+
+#### Scenario: afterFileEdit resolves from three Cursor cwds
+- **WHEN** the `afterFileEdit` command in `.cursor/hooks.json` runs via `sh -c` with cwd at the repo root, at `.cursor/`, and at `.cursor/hooks/`
+- **THEN** each invocation exits 0
+- **AND** `.cursor/hooks/impeccable.sh` is the script that runs
+
+#### Scenario: stop resolves from three Cursor cwds
+- **WHEN** the `stop` command in `.cursor/hooks.json` runs via `sh -c` with those same three cwds
+- **THEN** each invocation exits 0
+
+#### Scenario: Guard and sessionStart stay composed not replaced
+- **WHEN** `.cursor/hooks.json` is loaded after this change
+- **THEN** `preToolUse` command is still `.cursor/hooks/process-fsm-guard.sh` with `failClosed` true
+- **AND** `beforeShellExecution` command is still `.cursor/hooks/process-fsm-guard.sh` without `failClosed` true
+- **AND** `sessionStart` command is still `.cursor/hooks/process-fsm-session-start.sh`
+- **AND** `afterFileEdit` and `stop` remain distinct from the Guard entries
 
