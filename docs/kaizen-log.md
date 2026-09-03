@@ -1,5 +1,50 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-03 — Kaizen release
+
+### Lote 782+784+786+790+822 (Homologado → Pronto após deploy PROD `5fe8b173`)
+
+- **Release/card**: 2026-09-03 — Homologado `#790` (P0 copy Spot landing/Ajuda/Perfil `9f2bfe97`) + `#822` (P1 Impeccable cwd-independente `136437d9`) + leftover `#782` (P1 dsh adapter, já em `main` `0a0f27e1`) + leftover `#784` (P1 dsh always-on `e99999e0`) + leftover `#786` (P1 dsh grill-root `aa5dc3b6`) → `develop` → `main` PR #824 merged `5fe8b173369f1414593bcd8bdf5de88ff179f4c3`.
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --format json` (Homologado 5, Done 0, Aprovação de Design 3, Em Refinamento 26+, Pronto 236), git `fetch --prune` + `status -sb` + `worktree list` + `branch -a` + `log origin/main..origin/develop` (2 commits) + `release-guard pre` PASS (`RELEASE_CARDS=782,784,786,790,822` + `PRESERVED_BRANCHES` 13) + `openspec validate --all` 167→162, `gh pr checks 824 --watch` (e2e 5m16s, backend-tests 1m50s), `gh issue view 782/784/786/790/822 --json comments`, PROD health `https://criptofarol.com.br/api/health` 200, frontend bundle `index-jZpK-fWS.js`, landing pública com copy Spot.
+- **Sessões analisadas**: pai Cursor desta sessão (`suba a release`, transcript `5c622220`); Done `#822` em `a422dd83` (T14 após restore leftover dirty na `develop`); filho QA `#822` `2155a4b8`. Leftovers dsh `#782`/`#784`/`#786` Done desde o lote 29, Homologado neste pacote. Sem `opencode.db`.
+- **Custo/eficácia**: 5 Homologados no pacote (2 novos + 3 leftovers dsh); homologation comments dos cinco postados neste turno antes do `pre`; `pre` PASS com 8 warns dirty/PRESERVED; archive `#782` exigiu `--skip-specs` após abort CLI (header RENAME); Drive falhou de novo, agora com copy de produto em PROD.
+
+#### Métricas
+
+- **Board**: 5 Homologado (`#790` Clara P0 Produto; `#822` Clara P1 Operacao kaizen; `#782` `#784` `#786` Alan P1 Operacao leftover). Fora: `Done` 0, `Aprovação de Design` 3 (`600`/`614`/`728`), `#825` criado neste closeout em Em Refinamento.
+- **Git**: `origin/develop 136437d9`; `origin/main 5fe8b173` merge PR #824; stash 0; 13 worktrees extra.
+- **CI**: PR #824 `develop→main` checks `pass` (e2e 5m16s, backend-tests 1m50s, openspec-validate 18s, process-fsm 32s) + `qa-gate`/`deploy-staging` `skipping` (base `main`); `mergeable=MERGEABLE`.
+- **OpenSpec**: 5 active `card-782/784/786/790/822` antes do archive; após archive 5 dirs `2026-09-03-card-*`; `#782` `--skip-specs` com sync agentic em `openspec/specs/**`; `validate --all` 167→162.
+- **PROD**: source `5fe8b173369f1414593bcd8bdf5de88ff179f4c3`; alembic já head; `VITE_APP_ENV=production npm run build` bundle `index-jZpK-fWS.js` (1,779 kB, hash novo vs lote 30); services `backend`+`frontend`+`leads`+`runtime-worker` restart; health 200 após retry; landing Spot visível.
+
+#### Achados
+
+- **F-1 [major] Drive/gog sem credencial com copy de produto em PROD** — `gog` `OAuth client credentials missing`; `bws secret list` `Missing access token`. Lote 2026-08-30 já documentou a mesma falha (harness, sem landing). Este lote publica copy Spot (#790) e o DoD Drive não fecha. Esforço M | P1 | Card novo: #825.
+- **F-2 [minor] comentário Homologado canónico ausente até o `pre` deste lote** — `#782`/`#784`/`#786`/`#790`/`#822` só tinham Done; helper postado neste turno antes do PR #824. Recidiva #658. Esforço S.
+- **F-3 [minor] `tasks.md` 1× `[ ]` em #782/#784/#786/#790 apesar de Homologado** — residual 8.1 (ensaio/publicar). Recidiva #769. Esforço S.
+- **F-4 [minor] dirty worktrees + extra worktrees no `pre`** — 7 WARN dirty + `card-720` local not merged; PASS só com `PRESERVED_BRANCHES` 13. Recidiva #759. Esforço S.
+- **F-5 [minor] `openspec archive -y` #782 abortou MODIFIED/RENAME header** — `Four adapters ship in every consumer` / `Process law has one nucleus and four adapters` não estavam no main spec; CLI `Aborted. No files were changed.` Sync agentic + `--skip-specs`. Recidiva #659. Esforço S.
+- **F-6 [info] leftovers dsh `#782`/`#784`/`#786` fecharam neste T16** — estavam Done no lote 30 (F-6); agora Homologado e no `RELEASE_CARDS`. Cobertura #812 (T16 leftover). Sem card novo.
+
+#### Padrões recorrentes
+
+- Drive/gog sem credencial no closeout | **novo com copy de produto** | #825
+- Homologado sem comentário no turno do arraste | recidiva | #658
+- `tasks.md` desatado após Done | recidiva | #769
+- Archive CLI `--skip-specs` / header MODIFIED | recidiva | #659
+- Dirty worktrees / PRESERVED no `pre` | recidiva | #759
+- T16 leftover Homologado após merge/PROD | recidiva | #812
+
+### Cards kaizen criados (máx. 3/release)
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #825 — kaizen: release com copy de produto não pode fechar Drive pendente (gog/bws sem credencial) | P1 | F-1 | Em Refinamento |
+| (não criado) Homologado sem comentário no turno do arraste → coberto por #658 — P1: kaizen: Homologado exige comentário canônico no mesmo turno | — | F-2 | coberto por #658 (ainda Em Refinamento) |
+| (não criado) tasks.md residual 8.1 → coberto por #769 — kaizen: tasks.md deve ir a [x] antes de Done | — | F-3 | coberto por #769 (ainda Em Refinamento) |
+
+---
+
 ## 2026-08-30 — Kaizen release
 
 ### Lote 787+795+799+801+809 (Homologado → Pronto após deploy PROD `ee4a3e3f`)
