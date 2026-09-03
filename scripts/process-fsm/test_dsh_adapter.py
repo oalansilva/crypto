@@ -234,6 +234,24 @@ process.stdout.write(JSON.stringify({{ after, idle, status, oc }}));
     assert "patchText" not in lib
 
 
+def test_dsh_impeccable_resolves_cwd_when_session_is_homedir():
+    hook = PLUGIN_HOOK.read_text(encoding="utf-8")
+    assert "resolveRepoCwd" in hook
+    assert "process.cwd() || REPO_ROOT" not in hook
+    code = f"""
+import {{ resolveRepoCwd, REPO_ROOT }} from {json.dumps(str(PLUGIN_LIB))};
+import {{ homedir }} from "node:os";
+const home = resolveRepoCwd(homedir());
+const repo = resolveRepoCwd({json.dumps(str(REPO))});
+process.stdout.write(JSON.stringify({{ home, repo, root: REPO_ROOT }}));
+"""
+    proc = _node(code, cwd=Path.home())
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout)
+    assert data["home"] == data["root"]
+    assert data["repo"] == data["root"]
+
+
 def test_d13_plugin_restricts_cordis_without_next():
     code = f"""
 {_mock_ctx_prelude()}
