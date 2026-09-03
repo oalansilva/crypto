@@ -46,7 +46,8 @@ export default function HelpPage() {
         <article>
           <h2>Carteira Binance opcional</h2>
           <p>
-            Configure a carteira apenas se quiser complementar o acompanhamento com saldos read-only. Ela nao e
+            Configure a carteira apenas se quiser complementar o acompanhamento com saldos (leitura) e, se quiser,
+            comprar / stop / vender Spot no Farol apos confirmacao — opcional, nunca saque, nao e bot. Ela nao e
             pre-requisito para usar Favoritos ou Monitor.
           </p>
         </article>

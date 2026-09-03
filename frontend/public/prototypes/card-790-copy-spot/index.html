@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo 790 — Copy alinhada ao Spot</title>
+<style>
+:root{--bg:#0b1622;--card:#101c2a;--line:rgba(255,255,255,.1);--txt:#e8eef5;--mut:#93a3b5;--ok:#34d399;--warn:#fbbf24}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 system-ui,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:28px 18px 80px}
+.eyebrow{color:var(--warn);text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:700}
+h1{margin:.3em 0}h2{margin:1.6em 0 .4em;font-size:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:14px 0}
+.before{color:var(--mut)}.before s{text-decoration-color:#f87171}.after{border-left:3px solid var(--ok);padding-left:12px;margin-top:10px}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mut);margin-right:6px}
+.tag.depois{color:var(--ok);border-color:rgba(52,211,153,.4)}.tag.antes{color:var(--warn);border-color:rgba(251,191,36,.4)}
+code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:6px;font-size:12.5px}
+footer{color:var(--mut);font-size:13px;margin-top:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="eyebrow">Card 790 · Design · protótipo de copy (antes → depois)</p>
+<h1>Copy alinhada ao Spot — telas alteradas</h1>
+<p>Proposta Q3=A / Q6=A / Q7=B. <b>DEPOIS</b> é o texto proposto. Sem backend, sem flag, sem saque, não é bot 24/7.</p>
+<p style="margin:14px 0;padding:12px;border:1px solid rgba(52,211,153,.4);border-radius:10px">Landing de verdade com a copy nova: <a href="./landing.html" style="color:#34d399;font-weight:700">abrir cópia fiel da landing v4 →</a></p>
+
+<h2>1 · Landing v4 — benefício carteira 04 (<code>index.html:175</code>)</h2>
+<div class="card">
+<p><span class="tag antes">ANTES</span></p>
+<p class="before"><s>Conecte sua Binance com segurança. O Cripto Farol vê seus saldos e resultados, mas nunca movimenta dinheiro, nunca envia ordem e nunca faz saque.</s></p>
+<p><span class="tag depois">DEPOIS</span></p>
+<p class="after">Conecte sua Binance com segurança. O Cripto Farol vê seus saldos e resultados; com permissão Spot Trade (sem saque) você pode enviar <b>comprar / stop / vender Spot no Farol</b> após confirmar — opcional, nunca saque, não é bot 24/7.</p>
+</div>
+
+<h2>2 · Landing v4 — confiança (<code>index.html:215</code>)</h2>
+<div class="card">
+<p><span class="tag antes">ANTES</span></p>
+<p class="before"><s>A conexão com a Binance usa uma API apenas para consulta. O Cripto Farol nunca pede sua senha, nunca movimenta seu dinheiro e nunca envia ordem.</s></p>
+<p><span class="tag depois">DEPOIS</span></p>
+<p class="after">A conexão usa API de leitura para acompanhar carteira e Home. Com permissão Spot Trade (sem saque, opcional) você pode enviar ordens Spot <b>no Farol</b> após confirmação. O Cripto Farol nunca pede sua senha e nunca faz saque.</p>
+</div>
+
+<h2>3 · Landing v4 — FAQ (<code>index.html:232 / 236</code>)</h2>
+<div class="card">
+<p><span class="tag">É um robô que opera por mim?</span></p>
+<p class="before"><s>Não. O Cripto Farol consulta dados e mostra a leitura. Quem aperta o botão de compra ou venda é sempre você, na sua Binance.</s></p>
+<p class="after">Não, não é bot 24/7. O Farol consulta dados e mostra a leitura. Sem permissão Spot você só acompanha sinais; com Spot Trade habilitado, você confirma <b>comprar / stop / vender no Farol</b>.</p>
+<p style="margin-top:14px"><span class="tag">Vocês têm acesso ao meu dinheiro?</span></p>
+<p class="before"><s>Não. A conexão usa API apenas para consulta. Nunca pedimos senha, nunca movimentamos seu saldo, nunca enviamos ordem.</s></p>
+<p class="after">Não. Leitura para acompanhar; Spot opcional para operar no Farol. Nunca pedimos senha, nunca movimentamos saldo sem sua confirmação e nunca sacamos.</p>
+</div>
+
+<h2>4 · /help — grelha Carteira (<code>HelpPage.tsx:49</code>, fora do OnboardingGuide)</h2>
+<div class="card">
+<p><span class="tag antes">ANTES</span></p>
+<p class="before"><s>Configure a carteira apenas se quiser complementar o acompanhamento com saldos read-only. Ela não é pré-requisito para usar Favoritos ou Monitor.</s></p>
+<p><span class="tag depois">DEPOIS</span></p>
+<p class="after">Configure a carteira apenas se quiser complementar o acompanhamento com saldos (leitura) e, se quiser, <b>comprar / stop / vender Spot no Farol</b> após confirmação — opcional, nunca saque, não é bot. Ela não é pré-requisito para Favoritos ou Monitor.</p>
+</div>
+
+<h2>5 · Perfil — chrome + credenciais (<code>ProfilePage.tsx:113 · BinanceCredentialsForm.tsx:72,355</code>)</h2>
+<div class="card">
+<p><span class="tag antes">ANTES</span></p>
+<p class="before"><s>Dados da conta e integração Binance read-only em um só lugar.</s> / <s>Crie uma chave API read-only na Binance…</s> / placeholder <s>API Secret da chave read-only</s></p>
+<p><span class="tag depois">DEPOIS</span></p>
+<p class="after">Credenciais Binance: leitura para Home/Carteira; Spot Trade (sem saque) opcional para Operar no Monitor.</p>
+<p class="after">Toast: “Crie uma chave API na Binance e cole a API Key aqui.” Placeholder: “API Secret da mesma chave”. Mantidos: sem withdraw, whitelist IP, sem pedir senha.</p>
+</div>
+
+<h2>6 · OnboardingGuide — check negativo Q7=B (sem alteração)</h2>
+<div class="card">
+<p>Jornada mantida: Favoritos → Selecionar estratégias → Monitor → Carteira opcional. Sem passo/frase Operar. Verificação: não contém “nunca envia ordem”, “só consulta”, nem nomes comprar/stop/vender.</p>
+</div>
+
+<footer>Prints da landing seguem sinais (lista Compra/Venda + gráfico); troca por print do painel Operar é residual pós-beta. Fatia ensaio (Q4=A) fora deste card.</footer>
+</div>
+</body>
+</html>

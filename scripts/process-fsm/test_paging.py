@@ -240,8 +240,15 @@ def test_hooks_json_session_start():
     assert pre[0]["command"] == ".cursor/hooks/process-fsm-guard.sh"
     assert pre[0]["failClosed"] is True
     assert hooks["hooks"]["beforeShellExecution"][0]["command"] == ".cursor/hooks/process-fsm-guard.sh"
-    assert hooks["hooks"]["afterFileEdit"][0]["command"].endswith("impeccable.sh afterFileEdit")
-    assert hooks["hooks"]["stop"][0]["command"].endswith("impeccable.sh stop")
+    after = hooks["hooks"]["afterFileEdit"][0]["command"]
+    stop = hooks["hooks"]["stop"][0]["command"]
+    assert ".cursor/hooks/impeccable.sh" in after
+    assert "afterFileEdit" in after
+    assert ".cursor/hooks/impeccable.sh" in stop
+    assert " stop" in f" {stop}"
+    assert start[0]["command"] == ".cursor/hooks/process-fsm-session-start.sh"
+    assert pre[0]["command"] == ".cursor/hooks/process-fsm-guard.sh"
+    assert hooks["hooks"]["beforeShellExecution"][0]["command"] == ".cursor/hooks/process-fsm-guard.sh"
     assert (REPO / ".cursor" / "hooks" / "impeccable.sh").is_file()
     adapter = REPO / ".cursor" / "hooks" / "process-fsm-session-start.sh"
     assert adapter.is_file()

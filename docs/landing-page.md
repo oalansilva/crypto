@@ -35,7 +35,7 @@ Link ancora: **Como funciona ↓**
 - Apoio acima da dobra:
   - 6 meses gratuitos no beta;
   - histórico de mercado da Binance;
-  - carteira read-only para acompanhamento.
+  - carteira com leitura para acompanhamento (e Spot Trade opcional, sem saque, para operar no Farol).
 
 ### Melhores Ativos Para Olhar Hoje
 
@@ -60,7 +60,7 @@ Link ancora: **Como funciona ↓**
 - Backtest dos ativos usando todo o periodo disponivel na Binance.
 - Beta gratuito nos primeiros 6 meses para os participantes iniciais.
 - Comparacao de estrategias com metricas: Sharpe, Trades, Win%, Return, Max DD, PF, SQN, Max L e ATR.
-- Conexao read-only com carteira Binance para acompanhar saldos e resultados sem ordens ou saques.
+- Conexao com carteira Binance para acompanhar saldos e resultados (leitura); com permissao Spot Trade (sem saque, opcional) permite enviar comprar / stop / vender Spot no Farol apos confirmacao — nunca saque, nao e bot 24/7.
 - As metricas devem ter explicacao via hover/tooltips quando exibidas como chips.
 
 ### Dois Sinais
@@ -72,7 +72,7 @@ Link ancora: **Como funciona ↓**
 
 - Leitura objetiva em linguagem simples.
 - Menos complexidade para nao depender de interpretacao de grafico ou indicador tecnico.
-- API Binance somente leitura; o Cripto Farol nunca movimenta dinheiro, envia ordem ou faz saque.
+- API Binance com leitura para acompanhar carteira e Home; com permissao Spot Trade (sem saque, opcional) e possivel enviar ordens Spot no Farol apos confirmacao. O Cripto Farol nunca pede sua senha e nunca faz saque.
 
 ### Prova Social E FAQ
 
