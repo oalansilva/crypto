@@ -3,23 +3,28 @@
 ## Purpose
 Contrato multi-cliente do processo: núcleo = verdade; adapters Cursor, Grok e OpenCode = tradução. Proíbe dual-write da lei.
 ## Requirements
-### Requirement: Process law has one nucleus and two adapters
-The process SHALL have a single nucleus and three client adapters. The nucleus is `.cursor/process-fsm.yaml` (T0–T17, I1–I9, 12 column names, events, `context_file`, `enabled_tools` — **not** `product_globs`/`design_globs`), `scripts/process-fsm/`, the canonical skill files, and the short root `AGENTS.md`. Consumer parameters (`product_globs`, `design_globs`, board ids) live in `.covenant-flow/overlay.yaml` and are NOT a second law table. The Cursor adapter is `.cursor/hooks.json`, `.cursor/hooks/*`, `.cursor/rules/harness.mdc`, and `.cursor/commands/`. The Grok adapter is `.grok/hooks/`, generated Moore paging under `.grok/rules/`, and skill stubs under `.grok/skills/`. The OpenCode adapter is `.opencode/plugin/` (auto-loaded `*.js` / `*.ts`), Moore inject via `experimental.chat.system.transform`, and skill stubs under `.opencode/skills/` only for skills the OpenCode 1.18.18 binary does not discover. A change of column, invariant, or Moore `context_file` text MUST be made once in the yaml (and in a skill only when the change is *how* to work). A change of product glob, design glob, or board ids MUST be made once in the overlay. Adapters SHALL compile law from the yaml and globs/board ids from the overlay. Missing or invalid overlay SHALL fail closed for **product writes**; paging/`sessionStart` remains fail-open (unbound page) and MUST NOT dump the overlay body. Adapters MUST NOT copy T0–T17, I1–I9, or the 12-column runbook. Codex home skills and Hermes skill symlinks MUST NOT be an active contract. The lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` as kaizen contract) MUST remain forbidden. `opencode.json` MUST NOT be an active contract of model, MCP, or permission.
+### Requirement: Process law has one nucleus and four adapters
+The process SHALL have a single nucleus and four client adapters. The nucleus is `.cursor/process-fsm.yaml` (T0–T17, I1–I9, 12 column names, events, `context_file`, `enabled_tools` — **not** `product_globs`/`design_globs`), `scripts/process-fsm/`, the canonical skill files, and the short root `AGENTS.md`. Consumer parameters (`product_globs`, `design_globs`, board ids) live in `.covenant-flow/overlay.yaml` and are NOT a second law table. The Cursor adapter is `.cursor/hooks.json`, `.cursor/hooks/*`, `.cursor/rules/harness.mdc`, and `.cursor/commands/`. The Grok adapter is `.grok/hooks/`, generated Moore paging under `.grok/rules/`, and skill stubs under `.grok/skills/`. The OpenCode adapter is `.opencode/plugin/` (auto-loaded `*.js` / `*.ts`), Moore inject via `experimental.chat.system.transform`, and skill stubs under `.opencode/skills/` only for skills the OpenCode 1.18.18 binary does not discover. The dsh adapter is `.dsh/plugin/` (Cordis `apply(ctx)`), Moore inject via `ctx.systemPrompt.section`, and skill stubs under `.dsh/skills/` only for skills dsh does not discover (it discovers `.dsh/skills` and `.agents/skills`, not `.cursor/skills`). A change of column, invariant, or Moore `context_file` text MUST be made once in the yaml (and in a skill only when the change is *how* to work). A change of product glob, design glob, or board ids MUST be made once in the overlay. Adapters SHALL compile law from the yaml and globs/board ids from the overlay. Missing or invalid overlay SHALL fail closed for **product writes**; paging/`sessionStart` remains fail-open (unbound page) and MUST NOT dump the overlay body. Adapters MUST NOT copy T0–T17, I1–I9, or the 12-column runbook. Codex home skills and Hermes skill symlinks MUST NOT be an active contract. The lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` as kaizen contract) MUST remain forbidden. `opencode.json` MUST NOT be an active contract of model, MCP, or permission. The fourth harness (dsh) MUST NOT be a source of law: it is a skin, not a second yaml.
 
-#### Scenario: One yaml change reaches three adapters
+#### Scenario: One yaml change reaches four adapters
 - **WHEN** a column, invariant, or `context_file` stub is changed in `.cursor/process-fsm.yaml`
-- **THEN** the Cursor, Grok, and OpenCode Guard/paging paths compile that law from the yaml
-- **AND** no second copy of the table exists in `.grok/rules/`, `.cursor/rules/`, or `.opencode/`
+- **THEN** the Cursor, Grok, OpenCode, and dsh Guard/paging paths compile that law from the yaml
+- **AND** no second copy of the table exists in `.grok/rules/`, `.cursor/rules/`, `.opencode/`, or `.dsh/`
 
 #### Scenario: Dual-write of the law is forbidden
-- **WHEN** a reviewer inspects `.cursor/rules/`, `.grok/rules/`, and `.opencode/`
+- **WHEN** a reviewer inspects `.cursor/rules/`, `.grok/rules/`, `.opencode/`, and `.dsh/`
 - **THEN** none of those directories contains a T0–T17 table, I1–I9 list, or 12-column procedure
-- **AND** a Grok or OpenCode skill stub MUST NOT contain the runbook copied from `.cursor/skills/`
+- **AND** a Grok, OpenCode, or dsh skill stub MUST NOT contain the runbook copied from `.cursor/skills/`
 
-#### Scenario: Glob change in overlay reaches three Guards
+#### Scenario: Glob change in overlay reaches four Guards
 - **WHEN** a product glob is changed in `.covenant-flow/overlay.yaml`
-- **THEN** Cursor, Grok, and OpenCode Guards classify writes using that overlay glob
+- **THEN** Cursor, Grok, OpenCode, and dsh Guards classify writes using that overlay glob
 - **AND** the glob MUST NOT be re-declared as yaml law in packaged `process-fsm.yaml`
+
+#### Scenario: Fourth harness is not the law
+- **WHEN** a reviewer inspects `.dsh/` and `scripts/process-fsm/`
+- **THEN** `.dsh/` contains only translation (plugin, stubs, patch ids)
+- **AND** T0–T17 / I1–I9 remain only in `.cursor/process-fsm.yaml`
 
 ### Requirement: Skill stubs are a bridge not a second runbook
 Grok SHALL discover process skills via `.grok/skills/<name>/SKILL.md` stubs for every `SKILL.md` directory under `.cursor/skills/` (including `covenant-flow`, `covenant-flow-environments`, `implantar`, `github-project-board`, `kaizen`, and `openspec-*`). Each stub MUST keep the same skill `name`, MUST instruct the agent to Read the canonical `.cursor/skills/<name>/SKILL.md` and follow it (client is Grok Build; map Cursor `Task inherit` to `spawn_subagent` inherit), and MUST NOT copy the runbook body. Stub body (non-empty lines after frontmatter) MUST be at most 8 lines. Stubs MUST be generated from canonical frontmatter plus a fixed body template so description drift is caught in CI. Git mode of canonical skills remains a regular file (not a Hermes symlink). Cursor compatibility scanning `.cursor/skills/` MAY remain enabled; the stub is still the versioned Grok skin because `.grok/skills/` wins name dedup.
@@ -104,11 +109,11 @@ OpenCode 1.18.18 SHALL be an active client adapter. The versioned skin SHALL aut
 - **AND** its body tells the agent to Read `.cursor/skills/covenant-flow/SKILL.md`
 - **AND** the stub body does not contain the 12-column path as a procedure
 
-### Requirement: Impeccable detector is on all three clients
-The Impeccable **detector** SHALL be the same `.agents/skills/impeccable/scripts/hook.mjs` on Cursor, Grok Build, and OpenCode. Adapters SHALL only translate native events. Cursor remains `.cursor/hooks.json` `afterFileEdit` / `stop` via `.cursor/hooks/impeccable.sh`. Grok SHALL register `PostToolUse` and `Stop` under `.grok/hooks/` mapping to that `hook.mjs` (`afterFileEdit` Cursor maps to `PostToolUse`). OpenCode SHALL register `tool.execute.after` and `session.idle` in the 1.18.18 plugin mapping to the same `hook.mjs`. The detector MUST be fail-open: a finding or a crash of `hook.mjs` MUST NOT abort the turn. This requirement MUST NOT introduce a second detector, MUST NOT restore the lock machine, and MUST NOT reopen #668 Guard/paging.
+### Requirement: Impeccable detector is on all four clients
+The Impeccable **detector** SHALL be the same `.agents/skills/impeccable/scripts/hook.mjs` on Cursor, Grok Build, OpenCode, and dsh. Adapters SHALL only translate native events. Cursor remains `.cursor/hooks.json` `afterFileEdit` / `stop` via `.cursor/hooks/impeccable.sh`. Grok SHALL register `PostToolUse` and `Stop` under `.grok/hooks/` mapping to that `hook.mjs` (`afterFileEdit` Cursor maps to `PostToolUse`). OpenCode SHALL register `tool.execute.after` and `session.idle` in the 1.18.18 plugin mapping to the same `hook.mjs`. dsh SHALL register `tools/post-execute` and `agent/turn-stopping` in the Cordis plugin mapping to the same `hook.mjs`. The dsh mapper lives in `dsh_plugin_lib.js` `mapAfterPayload` and MUST read `file_path` first (native envelope), then `path` (`str_replace_editor`); it MUST NOT reuse OpenCode `mapAfterPayload` (that mapper only reads `filePath` / `path` / `patchText` and would leave hook.mjs empty on every dsh UI `write`/`edit`). The detector MUST be fail-open: a finding or a crash of `hook.mjs` MUST NOT abort the turn (dsh MUST NOT return `{ kind: 'block' }` and MUST NOT `steer`). This requirement MUST NOT introduce a second detector, MUST NOT restore the lock machine, and MUST NOT reopen #668 Guard/paging.
 
 #### Scenario: UI edit on any client runs hook.mjs
-- **WHEN** a UI file (`frontend/src/**` or equivalent screen file) is edited in Cursor, Grok, or OpenCode 1.18.18
+- **WHEN** a UI file (`frontend/src/**` or equivalent screen file) is edited in Cursor, Grok, OpenCode 1.18.18, or dsh
 - **THEN** the same `hook.mjs` runs
 - **AND** a detector finding does not abort the turn
 
@@ -172,4 +177,157 @@ A change of `context_file[QA]` MUST be made once in `.cursor/process-fsm.yaml`. 
 #### Scenario: no new decide matcher for QA spawn
 - **WHEN** `guard.py` `decide()` is invoked with a Cursor `Task` whose prompt mentions QA or T14
 - **THEN** this change MUST NOT add a deny for that tool name
+
+### Requirement: Adapter locators for Impeccable and Grok Guard are cwd-independent
+The four client adapters SHALL locate the Impeccable skin without requiring the session working directory to equal the JSON or plugin directory. Grok `.grok/hooks/process-fsm.json` command strings for `PostToolUse`, `Stop`, `PreToolUse`, and `SessionStart` MUST try, in order: (1) the repo-relative path `.grok/hooks/<script>`, (2) the sibling `./<script>` in the current directory, (3) `git rev-parse --show-toplevel` joined with `.grok/hooks/<script>`. Cursor `.cursor/hooks.json` `afterFileEdit` and `stop` MUST use the same class for `.cursor/hooks/impeccable.sh` (repo-relative `.cursor/hooks/`, sibling `./hooks/` or `./`, then git toplevel). The dsh Impeccable plugin MUST call `resolveRepoCwd` (git toplevel of the given cwd, else `REPO_ROOT`) and MUST NOT use `process.cwd() || REPO_ROOT`. The OpenCode Impeccable plugin MUST resolve `input.directory || input.worktree` through git toplevel or `REPO_ROOT` so a session cwd of `$HOME` still invokes `.agents/skills/impeccable/scripts/hook.mjs`. Adapters SHALL only translate native events. The detector remains the same `hook.mjs`. Dual-write of T0–T17 / I1–I9 into `.grok/`, `.dsh/`, or `.opencode/` remains forbidden. The detector MUST stay fail-open: a finding or a crash of `hook.mjs` MUST NOT abort the turn. This requirement MUST NOT reopen #668 / #720 / #782 / #784 / #821, MUST NOT change Guard dsh, and MUST NOT change Cursor `preToolUse` / `beforeShellExecution` / `sessionStart`.
+
+#### Scenario: Grok PostToolUse finds impeccable.sh from three cwds
+- **WHEN** the Grok `PostToolUse` command from `.grok/hooks/process-fsm.json` runs via `sh -c` with cwd at the repo root, at `.grok/hooks/`, and at `frontend/`
+- **THEN** each invocation exits 0
+- **AND** none exits 127 with `./impeccable.sh: not found`
+
+#### Scenario: Grok Stop uses the same locator class
+- **WHEN** the Grok `Stop` command from `.grok/hooks/process-fsm.json` runs via `sh -c` with those same three cwds
+- **THEN** each invocation exits 0
+
+#### Scenario: Grok Guard and SessionStart do not go mute when cwd is the repo root
+- **WHEN** the Grok `PreToolUse` command and the Grok `SessionStart` command run via `sh -c` with cwd at the repo root, at `.grok/hooks/`, and at `frontend/`
+- **THEN** each invocation exits 0
+- **AND** none exits 127 because `./process-fsm-guard.sh` or `./process-fsm-session-start.sh` was not in the cwd
+
+#### Scenario: Cursor afterFileEdit and stop find impeccable.sh off the JSON directory
+- **WHEN** the Cursor `afterFileEdit` and `stop` commands from `.cursor/hooks.json` run via `sh -c` with cwd at the repo root, at `.cursor/`, and at `.cursor/hooks/`
+- **THEN** each invocation exits 0
+
+#### Scenario: dsh Impeccable does not treat $HOME as the detector root
+- **WHEN** the dsh Impeccable plugin runs with `process.cwd()` equal to `$HOME` (not the consumer git)
+- **THEN** `resolveRepoCwd` returns the consumer git toplevel or `REPO_ROOT`
+- **AND** the plugin source does not contain `process.cwd() || REPO_ROOT`
+- **AND** `hook.mjs` is not invoked with cwd `$HOME`
+
+#### Scenario: OpenCode session directory $HOME still reaches hook.mjs
+- **WHEN** the OpenCode Impeccable plugin loads with `input.directory` equal to `$HOME` (and `input.worktree` absent or also `$HOME`)
+- **THEN** the detector cwd is the consumer git toplevel or `REPO_ROOT`
+- **AND** `.agents/skills/impeccable/scripts/hook.mjs` is the invoked script
+- **AND** the turn is not aborted
+
+#### Scenario: Detector remains fail-open
+- **WHEN** `hook.mjs` crashes or times out after a tool has already run
+- **THEN** the adapter does not abort the turn
+- **AND** dsh MUST NOT return `{ kind: 'block' }` and MUST NOT `steer`
+
+#### Scenario: Dual-write of the law stays forbidden
+- **WHEN** a reviewer inspects `.grok/hooks/process-fsm.json`, `.dsh/plugin/impeccable-hook.js`, and `.opencode/plugin/impeccable-hook.js` after this change
+- **THEN** none contains a T0–T17 table, I1–I9 list, or 12-column procedure
+- **AND** `hook.mjs` is still the only detector
+
+### Requirement: dsh always-on stub is ingested when session cwd is not the consumer git root
+The short always-on law SHALL remain the consumer root `AGENTS.md` file (compile the file; adapters MUST NOT copy T0–T17 into `.dsh/` or `cordis.yml`). The dsh Guard plugin SHALL inject that file's text through Cordis `ctx.systemPrompt.section` even when the session cwd is not the consumer git root (homologation replay: session `306d48f7-d893-471e-ba4c-8fe7a5153fda`, cwd `/home/ubuntu`). The plugin SHALL resolve the file from adapter `REPO_ROOT` (the git tree that contains `.dsh/plugin/process-fsm-guard.js`), not from `process.cwd()` or `session.header.cwd`. Native `agent-instructions` MAY still load `AGENTS.md` when cwd *is* the repo; that duplication MUST be accepted. The native loader MUST NOT be disabled. Missing or unreadable `AGENTS.md` MUST yield empty section text (fail-open), matching Moore's empty page body. The Guard deny path MUST remain fail-closed. `AGENTS.md` MUST still name Cursor Agent, Grok Build, OpenCode, and dsh, MUST NOT claim Auto dsh, and MUST remain at most 40 non-empty lines. Auto dsh MUST stay gated on a deny essay; this requirement's human essay is the first-request dump containing stub text, not a `skill` tool call.
+
+#### Scenario: Four-client always-on with dsh session cwd not the consumer git
+- **WHEN** a Cursor session, a Grok session, and an OpenCode session start in the consumer repo **and** a dsh session starts with session cwd ≠ the consumer git root, plugin loaded via the versioned `--patch` helper, preset `standard`
+- **THEN** Cursor, Grok, and OpenCode still ingest root `AGENTS.md` by their existing loaders
+- **AND** the dsh first-request system/prompt dump contains the consumer `AGENTS.md` stub text (always-on δ: chat wording is not δ, `Todo` is not implementation)
+- **AND** that dump does not contain a T0–T17 table copied into `.dsh/`
+- **AND** docs still MUST NOT claim dsh Auto is active
+
+#### Scenario: Replay 306d48f7 injects the stub
+- **WHEN** dsh starts as in session `306d48f7-d893-471e-ba4c-8fe7a5153fda` (cwd is not the consumer git, preset `standard`, Guard plugin loaded)
+- **THEN** the first-request dump contains the stub file text
+- **AND** Moore paging from `covenant-flow:moore` remains present
+- **AND** Guard deny of illegal product writes still holds
+
+#### Scenario: Missing AGENTS.md does not fail-open the Guard
+- **WHEN** `AGENTS.md` is missing at `REPO_ROOT` and a dsh `write` targets `backend/` with `q_git=develop`
+- **THEN** the agents section text is empty
+- **AND** if the Guard plugin is loaded it still returns `{ kind: 'deny' }`
+
+### Requirement: dsh process skill catalog is published from the Guard plugin provider
+The dsh Guard plugin SHALL publish the process skill catalog from `REPO_ROOT/.dsh/skills` through `ctx.skills.registerProvider` so `dsh-tool-skill` can render `<available_skills>` even when session cwd is not the consumer git root. The provider MUST scan that directory (one level, `<name>/SKILL.md`) regardless of lookup `cwd`. `list(options)` and `get(candidate, options)` MUST return a Promise (thenable). `get` MUST accept the `SkillCandidate` returned by `list`, not a skill name string. Every candidate MUST set `provider` to the provider's `name` (`covenant-flow-process`), plus kebab `name`, non-empty `description`, string `source`, finite `rank`, and boolean `invocation.modelInvocable` / `userInvocable`. A missing skills directory MUST resolve to an empty list (not throw). Invalid frontmatter MUST be skipped in `list`, not thrown. Skill paths MUST NOT appear in `.dsh/cordis.patch.yml`. The host composition row `id: skill-filesystem` that is `disabled: true` MUST NOT be edited by this change. The preset-mounted native `skill-filesystem` MUST remain enabled. Duplicate catalog entries when cwd=repo MUST be accepted. Stubs under `.dsh/skills/` remain bridges (body at most 8 non-empty lines after frontmatter, MUST Read canonical `.cursor/skills/<name>/SKILL.md`, no T0–T17). Human essay for this catalog is first-request `<available_skills>` containing `covenant-flow`; invoking the `skill` tool is not the DoD. Preset `minimal` is out of scope. Unit goldens MUST exercise `list`/`get` through a thenable+`signal` path equivalent to live `waitWithAbort` and `validateCandidate` (not only a synchronous `list()` without `signal`).
+
+#### Scenario: available_skills lists covenant-flow when cwd is not the repo
+- **WHEN** a dsh session uses preset `standard`, plugin loaded, session cwd ≠ consumer git root
+- **THEN** the first-request dump contains an `<available_skills>` block
+- **AND** that block includes `covenant-flow`
+- **AND** `.dsh/cordis.patch.yml` does not list `.dsh/skills` or `customSkillDirs`
+
+#### Scenario: Plugin provider lists from REPO_ROOT not session cwd
+- **WHEN** the plugin skill provider `list()` runs with lookup `cwd` equal to the user home directory
+- **THEN** candidates include `covenant-flow` whose path is under the consumer `REPO_ROOT/.dsh/skills`
+- **AND** the provider name is not `filesystem` and is not `runtime`
+
+#### Scenario: Provider thenables survive signal and validateCandidate
+- **WHEN** a unit golden calls `list({ cwd, signal })` and `get(candidate, { signal })` with a non-aborted `AbortSignal`
+- **THEN** both calls return thenables that fulfill (they MUST NOT return a bare array)
+- **AND** each listed candidate has `provider` equal to `"covenant-flow-process"`
+- **AND** `validateCandidate` equivalent checks do not throw
+- **AND** `get` returns a definition whose `content` is a string and whose `name` matches the candidate
+
+#### Scenario: Native filesystem loader stays
+- **WHEN** a reviewer inspects the dsh adapter and the host patch this change ships
+- **THEN** the adapter does not disable native project skill discovery
+- **AND** it does not change host row `skill-filesystem` from `disabled: true`
+
+### Requirement: dsh Guard denies grill-shaped subagent spawn
+The grill-shaped deny SHALL exist **only** as `isGrillShapedSpawn` in `scripts/process-fsm/dsh_plugin_lib.js`, called from `.dsh/plugin/process-fsm-guard.js` in Cordis `tools/pre-execute` **before** `runGuard` / `decide()`. `scripts/process-fsm/guard.py` MUST remain unchanged: its source MUST NOT contain `grill-card`, `dsh_grill_spawn`, or `isGrillShapedSpawn`. The plugin SHALL deny tool names `subagent` and `subagent_fork` when `arguments.description` or `arguments.prompt` contains the substring `grill-card` (case-insensitive, `String.includes` after `toLowerCase()`, not a regex). If `arguments` is a JSON string, the plugin SHALL parse it and apply the same fields; parse failure SHALL scan the raw string. Nested copies of the needle SHALL also deny (`JSON.stringify` of the parsed object). A matching call MUST return `{ kind: "deny", reason }` containing `dsh_grill_spawn` and MUST NOT call `next()`. `run_in_background` MUST NOT affect the match. Unrelated `subagent` / `subagent_fork` (no needle) MUST call `next()` (fail-open). Tools that are not `subagent` or `subagent_fork` MUST NOT be denied by this heuristic (including Cursor `Task`, Grok `spawn_subagent`, and OpenCode `task` if they appear). Pytest goldens G1–G9 MUST `import { apply }` from `.dsh/plugin/process-fsm-guard.js` and invoke `tools/pre-execute` (same pattern as existing dsh adapter goldens); they MUST NOT pass solely by unit-testing a Python helper inside `decide()`. This deny SHALL be **in addition to** write-like deny and `isCordisRestricted`. `isCordisRestricted` MUST remain `cordis_*` only. The heuristic MUST NOT be a Cursor `preToolUse` matcher and MUST NOT be a Grok hook. The `tools/pre-execute` listener MUST remain registered before `ctx.skills.registerProvider`; a throw from the provider MUST NOT skip deny. Write-deny goldens of the dsh adapter MUST still pass. OpenCode `runGuard` on every `tool.execute.before` remains out of scope for this Task-shaped deny.
+
+#### Scenario: G1-G9 go through plugin apply
+- **WHEN** pytest goldens G1–G9 run
+- **THEN** they `import { apply }` from `.dsh/plugin/process-fsm-guard.js` and call `tools/pre-execute`
+- **AND** they MUST NOT pass solely by unit-testing a Python helper inside `decide()`
+
+#### Scenario: grill-card description on subagent is denied
+- **WHEN** `apply(ctx)` then `tools/pre-execute` runs for `subagent` with `arguments.description` equal to `grill-card 701`
+- **THEN** the listener returns `{ kind: "deny" }` with reason `dsh_grill_spawn`
+- **AND** `next()` is not called
+- **AND** the deny is returned before `runGuard`
+
+#### Scenario: needle in prompt or mixed case still denies
+- **WHEN** `apply(ctx)` then `tools/pre-execute` runs for `subagent_fork` and only `arguments.prompt` contains `Grill-Card`
+- **THEN** the call is denied
+- **AND** the same deny holds if `run_in_background` is `false`
+
+#### Scenario: unrelated subagent is fail-open
+- **WHEN** `apply(ctx)` then `tools/pre-execute` runs for `subagent` whose description and prompt do not contain `grill-card`
+- **THEN** `next()` is called
+- **AND** the grill heuristic does not deny
+
+#### Scenario: Cursor-shaped and OpenCode task tools call next
+- **WHEN** `apply(ctx)` then `tools/pre-execute` runs for `Task`, `spawn_subagent`, or OpenCode `task` with `prompt` containing `grill-card`
+- **THEN** `next()` is called for each of those tool names
+- **AND** the result is not `{ kind: "deny" }` whose reason contains `dsh_grill_spawn`
+
+#### Scenario: write deny still works if registerProvider throws
+- **WHEN** `apply(ctx)` throws from `registerProvider` and a later `tools/pre-execute` is an illegal product `edit` or a grill-shaped `subagent`
+- **THEN** `apply` itself does not throw
+- **AND** both calls return `{ kind: "deny" }`
+- **AND** `next()` is not called
+
+#### Scenario: shared decide() does not gain the spawn rule
+- **WHEN** a reviewer inspects `scripts/process-fsm/guard.py` and `.cursor/hooks.json` after this change
+- **THEN** the source of `guard.py` does not contain `grill-card`, `dsh_grill_spawn`, or `isGrillShapedSpawn`
+- **AND** Cursor `preToolUse` matcher is still `Write|StrReplace|Delete|EditNotebook`
+- **AND** `isCordisRestricted` still matches only `cordis_*` names
+
+#### Scenario: decide() allows Task with grill-card prompt
+- **WHEN** Python `decide()` receives a no-path payload with `tool`/`tool_name` `Task` and `args.prompt` containing `grill-card`
+- **THEN** it returns `permission: allow`
+- **AND** it MUST NOT invent a new FSM event for this payload
+
+### Requirement: dsh adapter is plugin skin not a second law
+dsh (DeepSeek Harness, Cordis) SHALL be an active client adapter. The versioned skin SHALL live under `.dsh/plugin/` as ESM `apply(ctx)` modules plus `.dsh/cordis.patch.yml` insert ids. The adapter MUST load via a repo helper that passes `dsh web --patch` with **absolute** module `name`s. `dsh plugin add` into `$DSH_HOME` MUST NOT be the v1 pin channel. The Claude Code hooks bridge MUST NOT be the Guard. Stubs under `.dsh/skills/<name>/SKILL.md` SHALL exist only for process skills dsh does not discover. Each stub MUST keep the canonical skill `name`, MUST instruct MUST Read of the canonical `SKILL.md`, MUST keep body at most 8 lines, and MUST NOT copy T0–T17.
+
+#### Scenario: Plugin loads without Claude hooks.json Guard
+- **WHEN** dsh starts in the canonical DEV cwd with the versioned helper `--patch`
+- **THEN** `.dsh/plugin/process-fsm-guard.js` and `.dsh/plugin/impeccable-hook.js` load
+- **AND** Guard deny uses `tools/pre-execute` `{ kind: 'deny' }`
+- **AND** no Claude `hooks.json` is the Guard path
+
+### Requirement: dsh Auto is gated on the deny essay
+Until a human essay on the same worktree shows that an illegal product Write with `q_git=develop` is denied in the dsh session (plugin loaded), dsh MUST be treated as cooperative, not Auto. `process_event` remains the only Agent Status mover in all four clients. Agent MUST NOT `item-edit` Status.
+
+#### Scenario: Essay not yet green
+- **WHEN** the dsh deny essay has not been recorded as PASS
+- **THEN** docs and always-on text MUST NOT claim dsh Auto is active
+- **AND** the compiled Guard for dsh MUST still deny illegal product writes
 
