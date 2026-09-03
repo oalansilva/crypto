@@ -69,7 +69,7 @@ export function BinanceCredentialsForm({
     if (apiKey.includes('@')) {
       toast({
         title: 'Use uma API Key da Binance',
-        description: 'Este campo não aceita e-mail. Crie uma chave API read-only na Binance e cole a API Key aqui.',
+        description: 'Este campo não aceita e-mail. Crie uma chave API na Binance e cole a API Key aqui.',
         variant: 'destructive',
       })
       return
@@ -352,7 +352,7 @@ export function BinanceCredentialsForm({
             data-1p-ignore="true"
             spellCheck={false}
             className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
-            placeholder="API Secret da chave read-only"
+            placeholder="API Secret da mesma chave"
             value={apiSecretInput}
             onChange={(e) => setApiSecretInput(e.target.value)}
           />
