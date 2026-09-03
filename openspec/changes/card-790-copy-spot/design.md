@@ -75,11 +75,11 @@ Cada critério gera um ou mais cenários WHEN/THEN nos delta specs e checklist e
 | Landing v4 — FAQ acesso dinheiro | `index.html:236` | “API apenas para consulta...nunca enviamos ordem.” | “Leitura para acompanhar; Spot opcional para operar no Farol; nunca pedimos senha, nunca sacamos.” | `index.html:236` |
 | Docs | `docs/landing-page.md` (Benefícios, Confiança, Hero apoio) | “read-only / nunca envia ordem” | Mesmo texto da v4 (espelho). | `docs/landing-page.md` |
 | Help (fora do guia) | `frontend/src/pages/HelpPage.tsx:49` | “saldos read-only. Ela não é pré-requisito” | “saldos (leitura) e, se quiser, comprar/stop/vender Spot no Farol após confirmação (opcional, nunca saque, não é bot)” | `HelpPage.tsx:49` |
-| Perfil chrome | `frontend/src/pages/ProfilePage.tsx:113` | “integração Binance read-only em um só lugar.” | “Credenciais Binance: leitura para Home/Carteira; Spot Trade (sem saque) opcional para Operar no Monitor.” | `ProfilePage.tsx:113` |
+| Perfil chrome | `frontend/src/pages/ProfilePage.tsx:113` | “integração Binance read-only em um só lugar.” | “Dados da conta e acesso à API da Binance em um só lugar: leitura para Home/Carteira; Spot Trade (sem saque) opcional para Operar no Monitor.” (redação sem o bloco contíguo “Credenciais Binance” para não duplicar o match do e2e `user-preferences-binance.spec.ts:134`; sentido Q-spec preservado) | `ProfilePage.tsx:113` |
 | Form toast/placeholder | `frontend/src/components/binance/BinanceCredentialsForm.tsx:72,355` | “Crie uma chave API read-only” / “API Secret da chave read-only” | “Crie uma chave API na Binance” / “API Secret da mesma chave” (helper já distingue). | `BinanceCredentialsForm.tsx:72,355` |
 | OnboardingGuide | `frontend/src/components/onboarding/OnboardingGuide.tsx` | (já não mente) | **Sem alteração** — verifica não conter “nunca envia ordem”/“só consulta”/nomes Operar. | `OnboardingGuide.tsx` |
 
-Rascunho opcional permitido em `frontend/public/prototypes/card-790-copy-spot/**` (não altera v4 vigente). Prints continuam Monitor de sinais; troca por print do painel Operar é residual documentado, não obrigatório. Responsivo e guardrail “apoio à decisão” preservados.
+Rascunho opcional permitido em `frontend/public/prototypes/card-790-copy-spot/**` (não altera v4 vigente). **Cópia fiel da landing:** `landing.html` (clone exato da v4 com só os 4 trechos de copy trocados + banner de protótipo; CSS/JS/imagens reutilizados da v4 via `../cripto-farol-landing-v4/`). homologável em `https://dev.criptofarol.com.br/prototypes/card-790-copy-spot/landing.html`. Prints continuam Monitor de sinais; troca por print do painel Operar é residual documentado, não obrigatório. Responsivo e guardrail “apoio à decisão” preservados.
 
 ## Design Critique
 
@@ -103,6 +103,7 @@ Rascunho opcional permitido em `frontend/public/prototypes/card-790-copy-spot/**
 - Comando: `playwright-core` chromium headless via `NODE_PATH=source/frontend/node_modules`, `page.goto` + asserts + `screenshot` em desktop 1280×800 e mobile 390×844 (evidência `/tmp/card790-desktop.png`, `/tmp/card790-mobile.png`).
 - Asserts: `title="Protótipo 790 — Copy alinhada ao Spot"`, `h1` presente, `h2count=6` (6 superfícies), `DEPOIS=6` blocos, zero `pageerror`/`console.error` nos dois viewports.
 - Resultado: PASS desktop + mobile, `ERRORS:[]`. Qualquer alteração posterior em HTML/CSS invalida esta validação.
+- Cópia fiel (2ª rodada, pedido do Alan): `landing.html` — clone exato da v4 (mesmo CSS/JS/imagens via `../cripto-farol-landing-v4/`, só 4 trechos de copy + banner de protótipo). URL `https://dev.criptofarol.com.br/prototypes/card-790-copy-spot/landing.html`. Gate: h1 real, FAQ presente, `Spot Trade`×3, `nunca envia ordem`×0, zero erros, desktop 1280×800 + mobile 390×844 (`/tmp/card790-landing-desktop.png`, `/tmp/card790-landing-mobile.png`). PASS.
 
 ## Risks / Trade-offs
 
