@@ -1,0 +1,2603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Protótipo #803 — Monitor: remover alvo (clone /monitor)</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+/* COPIED:start tokens + monitor-theme from frontend/src/index.css */
+:root {
+  /* Colors - Background */
+  --bg-primary: #0b0e11;
+  --bg-secondary: #181a20;
+  --bg-elevated: #1e2329;
+  --bg-input: #2b3139;
+  --bg-overlay: rgba(11, 14, 17, 0.92);
+
+  /* Colors - Accent */
+  --accent-primary: #fcd535;
+  --accent-primary-hover: #f0b90b;
+  --accent-primary-disabled: #3a3a1f;
+  --accent-secondary: #2dbdb6;
+  --accent-success: #0ecb81;
+  --accent-warning: #f59e0b;
+  --accent-danger: #f6465d;
+
+  /* Additional accent colors */
+  --accent-cyan: #3b82f6;
+  --accent-pink: #f6465d;
+  --accent-orange: #f0b90b;
+
+  /* Colors - Text */
+  --text-primary: #ffffff;
+  --text-secondary: #eaecef;
+  --text-tertiary: #929aa5;
+  --text-muted: #707a8a;
+  --text-on-primary: #181a20;
+  --text-on-light: #181a20;
+
+  /* Colors - Border */
+  --border-subtle: rgba(43, 49, 57, 0.72);
+  --border-default: #2b3139;
+  --border-strong: #cdd1d6;
+  --bg-transactional: #ffffff;
+  --bg-transactional-muted: #f5f5f5;
+  --border-transactional: #eaecef;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-number: 'IBM Plex Sans', 'JetBrains Mono', var(--font-family);
+
+  /* Font Sizes */
+  --text-xs: 10px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --text-4xl: 40px;
+
+  /* Typography Scale */
+  --text-display: 2.5rem;
+  --text-h1: 2rem;
+  --text-h2: 1.5rem;
+  --text-h3: 1.25rem;
+  --text-h4: 1.125rem;
+
+  /* Font Weights */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows - Binance-style flat surfaces */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --shadow-card: none;
+  --shadow-elevated: none;
+  --shadow-hover: none;
+  --shadow-glow-emerald: 0 0 0 2px rgba(14, 203, 129, 0.22);
+  --shadow-glow-violet: 0 0 0 2px rgba(252, 213, 53, 0.24);
+  --shadow-glow-cyan: 0 0 0 2px rgba(59, 130, 246, 0.24);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-Index */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-modal: 1200;
+  --z-popover: 1300;
+  --z-tooltip: 1400;
+
+  /* App shell */
+  --app-header-mobile: 72px;
+  --app-header-desktop: 80px;
+  --app-offset-mobile: var(--app-header-mobile);
+  --app-offset-desktop: var(--app-header-desktop);
+  --app-sidebar-width: 224px;
+}
+
+.monitor-theme .spot-trade-trigger {
+  border-color: var(--accent-primary-hover);
+  color: var(--accent-primary);
+  font-weight: 650;
+}
+
+.monitor-theme .spot-trade-trigger:hover:not(:disabled) {
+  background: rgba(252, 213, 53, 0.1);
+}
+
+.monitor-theme .spot-trade-unavailable {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+
+.monitor-theme {
+  --bg-0: #0b0e11;
+  --bg-1: #181a20;
+  --bg-2: #1e2329;
+  --bg-3: #2b3139;
+  --bg-hover: rgba(255, 255, 255, 0.04);
+  --line: #2b3139;
+  --line-soft: rgba(43, 49, 57, 0.72);
+
+  --t-1: #ffffff;
+  --t-2: #eaecef;
+  --t-3: #929aa5;
+  --t-4: #707a8a;
+
+  --accent: #fcd535;
+  --accent-soft: rgba(252, 213, 53, 0.1);
+  --accent-line: rgba(252, 213, 53, 0.32);
+
+  --hold: #0ecb81;
+  --hold-soft: rgba(14, 203, 129, 0.1);
+  --hold-line: rgba(14, 203, 129, 0.32);
+  --wait: #e5b057;
+  --wait-soft: rgba(229, 176, 87, 0.1);
+  --wait-line: rgba(229, 176, 87, 0.28);
+  --exit: #f6465d;
+  --exit-soft: rgba(246, 70, 93, 0.1);
+  --exit-line: rgba(246, 70, 93, 0.32);
+
+  --r-sm: 4px;
+  --r: 8px;
+  --r-lg: 12px;
+  --shadow: var(--shadow-card);
+  font-family: 'Inter', var(--font-family), sans-serif;
+
+  color: var(--t-1);
+  background: var(--bg-0);
+}
+
+.monitor-theme--dark-green {
+  --accent: #3dd68c;
+  --accent-soft: rgba(61, 214, 140, 0.12);
+  --accent-line: rgba(61, 214, 140, 0.32);
+}
+
+.monitor-theme--black {
+  --accent: #fcd535;
+  --accent-soft: rgba(252, 213, 53, 0.1);
+  --accent-line: rgba(252, 213, 53, 0.32);
+}
+
+.monitor-theme .monitor-page-shell {
+  width: min(100%, 1520px);
+  margin: 0 auto;
+  padding: 0;
+}
+
+.monitor-theme .monitor-main {
+  min-height: 100%;
+}
+
+.monitor-theme .topbar {
+  height: 56px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-1);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.monitor-theme .crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--t-3);
+  font-size: 12px;
+}
+
+.monitor-theme .crumbs .sep {
+  color: var(--t-4);
+}
+
+.monitor-theme .crumbs .now {
+  color: var(--t-1);
+  font-weight: 500;
+}
+
+.monitor-theme .topbar-spacer {
+  flex: 1;
+}
+
+.monitor-theme .search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 6px 10px;
+  width: min(280px, 38vw);
+  color: var(--t-3);
+}
+
+.monitor-theme .search:focus-within {
+  border-color: var(--accent-line);
+  background: var(--bg-2);
+}
+
+.monitor-theme .search input {
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--t-1);
+  font: inherit;
+  width: 100%;
+}
+
+.monitor-theme .search input::placeholder {
+  color: var(--t-4);
+}
+
+.monitor-theme .search svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+}
+
+.monitor-theme .kbd {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--t-4);
+  border: 1px solid var(--line);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.monitor-theme .topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--t-2);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.monitor-theme .topbar-btn:hover {
+  border-color: var(--line);
+  background: var(--bg-3);
+  color: var(--t-1);
+}
+
+.monitor-theme .topbar-btn svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+}
+
+.monitor-theme .topbar-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent-line);
+  color: #181a20;
+}
+
+.monitor-theme .topbar-btn.primary:hover {
+  background: var(--accent-primary-hover);
+}
+
+.monitor-theme .conn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  color: var(--t-2);
+  font-size: 11.5px;
+}
+
+.monitor-theme .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.monitor-theme .dot.green {
+  background: var(--hold);
+  box-shadow: 0 0 8px rgba(61, 214, 140, 0.6);
+}
+
+.monitor-theme .dot.amber {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.45);
+}
+
+.monitor-theme .dot.muted {
+  background: #64748b;
+}
+
+.monitor-theme .page {
+  padding: 22px 26px 60px;
+}
+
+.monitor-theme .page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.monitor-theme .page-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
+.monitor-theme .page-sub {
+  color: var(--t-3);
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+.monitor-theme .updated {
+  color: var(--t-4);
+  font-size: 11.5px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.monitor-theme .updated .mono {
+  color: var(--t-2);
+}
+
+.monitor-theme .kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.monitor-theme .kpi {
+  background: var(--bg-1);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.monitor-theme .kpi-label {
+  font-size: 11px;
+  color: var(--t-3);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monitor-theme .kpi-label .tag {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  color: var(--t-2);
+}
+
+.monitor-theme .kpi-val {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.monitor-theme .kpi-foot {
+  font-size: 11px;
+  color: var(--t-3);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.monitor-theme .kpi-foot.up {
+  color: var(--hold);
+}
+
+.monitor-theme .kpi-foot.down {
+  color: var(--exit);
+}
+
+.monitor-theme .filterbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.monitor-theme .seg {
+  display: inline-flex;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 2px;
+}
+
+.monitor-theme .seg button {
+  background: transparent;
+  border: 0;
+  color: var(--t-3);
+  font: inherit;
+  padding: 5px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 12px;
+  transition: all 0.12s;
+}
+
+.monitor-theme .seg button:hover {
+  color: var(--t-1);
+}
+
+.monitor-theme .seg button.on {
+  background: var(--bg-3);
+  color: var(--t-1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.monitor-theme .select {
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  color: var(--t-2);
+  padding: 6px 26px 6px 10px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23A6B0CC' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.monitor-theme .select:hover {
+  border-color: var(--line);
+  color: var(--t-1);
+}
+
+.monitor-theme .filter-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--line-soft);
+  margin: 0 4px;
+}
+
+.monitor-theme .filter-spacer {
+  flex: 1;
+}
+
+.monitor-theme .chip-count {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--t-3);
+  padding: 1px 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 99px;
+}
+
+.monitor-theme .monitor-board {
+  margin-top: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.monitor-theme .status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 0 10px;
+}
+
+.monitor-theme .status-row:first-of-type {
+  margin-top: 6px;
+}
+
+.monitor-theme .status-row h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--t-2);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monitor-theme .status-section-label {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.monitor-theme .status-row .pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.monitor-theme .status-row .pip.hold {
+  background: var(--hold);
+  box-shadow: 0 0 8px rgba(61, 214, 140, 0.6);
+}
+
+.monitor-theme .status-row .pip.wait {
+  background: var(--wait);
+  box-shadow: 0 0 8px rgba(229, 176, 87, 0.55);
+}
+
+.monitor-theme .status-row .pip.exit {
+  background: var(--exit);
+  box-shadow: 0 0 8px rgba(242, 110, 126, 0.55);
+}
+
+.monitor-theme .status-row .meta {
+  color: var(--t-3);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+
+.monitor-theme .status-row .desc {
+  color: var(--t-4);
+  font-size: 11.5px;
+  margin-left: auto;
+  font-style: normal;
+}
+
+.monitor-theme .table-wrap {
+  background: var(--bg-1);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.monitor-theme .mobile-cards {
+  display: none;
+}
+
+.monitor-theme .mobile-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.monitor-theme table.signals {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.monitor-theme .signals thead th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--t-4);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-1);
+  position: sticky;
+  top: 0;
+}
+
+.monitor-theme .signals tbody tr {
+  border-bottom: 1px solid var(--line-soft);
+  transition: background 0.1s;
+}
+
+.monitor-theme .signals tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.monitor-theme .signals tbody tr:hover {
+  background: var(--bg-2);
+}
+
+.monitor-theme .signals tbody tr.expanded {
+  background: var(--bg-2);
+}
+
+.monitor-theme .signals tbody tr.expanded > td {
+  border-bottom-color: transparent;
+}
+
+.monitor-theme .signals td {
+  padding: 11px 14px;
+  vertical-align: middle;
+  font-size: 12.5px;
+}
+
+.monitor-theme .pair-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+}
+
+.monitor-theme .pair-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-3);
+  display: grid;
+  place-items: center;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t-1);
+  flex: 0 0 26px;
+}
+
+.monitor-theme .pair-icon.btc {
+  background: linear-gradient(135deg, #f7931a 0%, #8b5108 100%);
+  color: #fff;
+}
+
+.monitor-theme .pair-icon.eth {
+  background: linear-gradient(135deg, #627eea 0%, #2a3d8b 100%);
+  color: #fff;
+}
+
+.monitor-theme .pair-icon.sol {
+  background: linear-gradient(135deg, #9945ff 0%, #14f195 100%);
+  color: #fff;
+}
+
+.monitor-theme .pair-icon.ada {
+  background: linear-gradient(135deg, #0033ad 0%, #001e63 100%);
+  color: #fff;
+}
+
+.monitor-theme .pair-icon.xrp {
+  background: linear-gradient(135deg, #23292f 0%, #0e1114 100%);
+  color: #fff;
+  border: 1px solid #3a4148;
+}
+
+.monitor-theme .pair-icon.link {
+  background: linear-gradient(135deg, #2a5ada 0%, #0f2a75 100%);
+  color: #fff;
+}
+
+.monitor-theme .pair-meta {
+  min-width: 0;
+}
+
+.monitor-theme .pair-name {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.monitor-theme .pair-tf {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--t-3);
+  background: var(--bg-3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.monitor-theme .pair-strat {
+  font-size: 11px;
+  color: var(--t-3);
+  margin-top: 2px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.monitor-theme .pair-strat-desc {
+  margin-top: 2px;
+  color: var(--t-2);
+  font-size: 11px;
+  line-height: 1.25;
+  max-width: 320px;
+}
+
+.monitor-theme .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.monitor-theme .status-pill.hold {
+  background: var(--hold-soft);
+  color: var(--hold);
+  border: 1px solid var(--hold-line);
+}
+
+.monitor-theme .status-pill.wait {
+  background: var(--wait-soft);
+  color: var(--wait);
+  border: 1px solid var(--wait-line);
+}
+
+.monitor-theme .status-pill.exit {
+  background: var(--exit-soft);
+  color: var(--exit);
+  border: 1px solid var(--exit-line);
+}
+
+.monitor-theme .num {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.monitor-theme .num.lg {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.monitor-theme .risk-bar {
+  width: 120px;
+  height: 6px;
+  background: var(--bg-3);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.monitor-theme .risk-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #3dd68c 0%, #e5b057 60%, #f26e7e 100%);
+}
+
+.monitor-theme .risk-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--t-3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.monitor-theme .tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.monitor-theme .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: var(--bg-3);
+  color: var(--t-2);
+  border: 1px solid var(--line-soft);
+}
+
+.monitor-theme .tag.portfolio {
+  background: rgba(94, 169, 255, 0.1);
+  color: #9dc4ff;
+  border-color: rgba(94, 169, 255, 0.22);
+}
+
+.monitor-theme .tag.strategy {
+  background: rgba(180, 124, 255, 0.08);
+  color: #c7aaff;
+  border-color: rgba(180, 124, 255, 0.22);
+}
+
+.monitor-theme .actions-cell {
+  text-align: right;
+}
+
+.monitor-theme .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 210px;
+}
+
+.monitor-theme .row-action {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--t-3);
+  min-height: 30px;
+  min-width: 96px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background 0.12s, color 0.12s;
+}
+
+.monitor-theme .row-action.row-action-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #181a20;
+}
+
+.monitor-theme .row-action.is-favorite {
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.16);
+}
+
+.monitor-theme .row-action:hover {
+  background: var(--bg-3);
+  color: var(--t-1);
+}
+
+.monitor-theme .row-action.row-action-primary:hover {
+  background: var(--accent-primary-hover);
+  color: #181a20;
+}
+
+.monitor-theme .row-action svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  fill: none;
+}
+
+.monitor-theme .row-toggle {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--t-3);
+  transition: transform 0.15s, color 0.12s;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.monitor-theme .row-toggle.open {
+  transform: rotate(90deg);
+  color: var(--t-1);
+}
+
+.monitor-theme .row-toggle svg {
+  width: 11px;
+  height: 11px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+.monitor-theme .spark {
+  display: block;
+  width: 80px;
+  height: 22px;
+}
+
+.monitor-theme .detail-row td {
+  padding: 0;
+  background: var(--bg-1);
+}
+
+.monitor-theme .detail-control-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px 12px 56px;
+  border-top: 1px dashed var(--line);
+}
+
+.monitor-theme .detail-pair-summary,
+.monitor-theme .detail-controls,
+.monitor-theme .timeframe-toggle-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.monitor-theme .detail-symbol {
+  color: var(--t-1);
+  font-family: var(--font-number);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.monitor-theme .detail-timeframe {
+  color: var(--t-3);
+  font-family: var(--font-number);
+  font-size: 11px;
+}
+
+.monitor-theme .detail-controls .btn,
+.monitor-theme .timeframe-toggle-group .btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  color: var(--t-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 9px;
+}
+
+.monitor-theme .detail-controls .btn:hover:not(:disabled),
+.monitor-theme .timeframe-toggle-group .btn:hover:not(:disabled),
+.monitor-theme .timeframe-toggle-group .btn.active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.monitor-theme .detail-controls .btn:disabled,
+.monitor-theme .timeframe-toggle-group .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.monitor-theme .detail {
+  border-top: 1px solid var(--line-soft);
+  padding: 18px 22px 22px 56px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.monitor-theme .detail h5 {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--t-4);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.monitor-theme .detail h5 .swatch {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.monitor-theme .h5-params .swatch {
+  background: #C7AAFF;
+}
+
+.monitor-theme .h5-indicators .swatch {
+  background: #5EA9FF;
+}
+
+.monitor-theme .h5-exit .swatch {
+  background: var(--exit);
+}
+
+.monitor-theme .h5-notes .swatch {
+  background: var(--t-3);
+}
+
+.monitor-theme .kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  font-size: 11.5px;
+}
+
+.monitor-theme .kv dt {
+  color: var(--t-3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.monitor-theme .kv dd {
+  margin: 0;
+  color: var(--t-1);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.monitor-theme .exit-msg {
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-left: 2px solid var(--exit);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--t-1);
+}
+
+.monitor-theme .exit-msg.hold-msg {
+  border-left-color: var(--hold);
+}
+
+.monitor-theme .exit-msg.wait-msg {
+  border-left-color: var(--wait);
+}
+
+.monitor-theme .exit-msg .label {
+  color: var(--t-3);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.monitor-theme .notes-block {
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  color: var(--t-2);
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.monitor-theme .notes-block .empty {
+  color: var(--t-4);
+  font-style: italic;
+}
+
+.monitor-theme .notes-edit {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 500;
+  flex: 0 0 auto;
+}
+
+.monitor-theme .notes-edit:hover {
+  text-decoration: underline;
+}
+
+.monitor-theme .notes-edit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monitor-theme .note-textarea {
+  width: 100%;
+  min-height: 62px;
+  resize: vertical;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-3);
+  color: var(--t-1);
+  font-family: var(--font-family);
+  padding: 8px 10px;
+  font-size: 11.5px;
+}
+
+.monitor-theme .detail-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.monitor-theme .candle-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: var(--t-3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.monitor-theme .candle-meta span b {
+  color: var(--t-1);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.monitor-theme .candle-meta .strategy-description {
+  flex-basis: 100%;
+}
+
+.monitor-theme .detail-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 22px 16px 56px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.monitor-theme .detail-foot .hint {
+  font-size: 11px;
+  color: var(--t-4);
+}
+
+.monitor-theme .detail-foot .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.monitor-theme .detail-foot .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--t-1);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.monitor-theme .detail-foot .btn:hover {
+  background: var(--bg-3);
+}
+
+.monitor-theme .detail-foot .btn.ghost {
+  background: transparent;
+}
+
+.monitor-theme .detail-foot .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #181a20;
+  font-weight: 600;
+}
+
+.monitor-theme .detail-foot .btn.primary:hover {
+  background: var(--accent-primary-hover);
+}
+
+.monitor-theme .detail-foot .btn svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+}
+
+.monitor-theme .monitor-empty-card,
+.monitor-theme .monitor-empty-row,
+.monitor-theme .status-empty {
+  margin: 0.7rem 0 0;
+  border: 1px dashed var(--line-soft);
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--bg-2) 88%, transparent 12%);
+  padding: 1rem;
+  color: var(--t-3);
+}
+
+.monitor-theme .monitor-empty-text {
+  margin: 0;
+  text-align: center;
+}
+
+.monitor-theme .col-spark,
+.monitor-theme .col-tags {
+  min-width: 90px;
+}
+
+@media (max-width: 1100px) {
+  .monitor-theme .col-tags,
+  .monitor-theme .col-spark {
+    display: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .monitor-theme .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 740px) {
+  .monitor-theme .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    align-items: stretch;
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .monitor-theme .topbar-spacer,
+  .monitor-theme .filter-spacer {
+    display: none;
+  }
+
+  .monitor-theme .page {
+    padding: 16px 14px 40px;
+  }
+
+  .monitor-theme .page-head {
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .monitor-theme .filterbar {
+    gap: 10px;
+  }
+
+  .monitor-theme .kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .monitor-theme .status-row {
+    flex-wrap: wrap;
+  }
+
+  .monitor-theme .status-row .desc {
+    margin-left: 0;
+  }
+
+  .monitor-theme .mobile-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .monitor-theme .table-wrap {
+    display: none;
+  }
+
+  .monitor-theme .signals {
+    min-width: 0;
+  }
+
+  .monitor-theme .pair-name {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .monitor-theme .detail-control-strip,
+  .monitor-theme .detail,
+  .monitor-theme .detail-foot {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .monitor-theme .detail-control-strip {
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+
+  .monitor-theme .detail-pair-summary,
+  .monitor-theme .detail-controls,
+  .monitor-theme .timeframe-toggle-group,
+  .monitor-theme .detail-foot .actions {
+    width: 100%;
+  }
+
+  .monitor-theme .detail-controls,
+  .monitor-theme .timeframe-toggle-group,
+  .monitor-theme .detail-foot .actions {
+    gap: 8px;
+  }
+
+  .monitor-theme .detail-controls .btn,
+  .monitor-theme .timeframe-toggle-group .btn,
+  .monitor-theme .detail-foot .btn {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+  }
+
+  .monitor-theme .detail {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding-top: 14px;
+    padding-bottom: 16px;
+  }
+
+  .monitor-theme .notes-block,
+  .monitor-theme .detail-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .monitor-theme .notes-edit {
+    align-self: flex-end;
+  }
+
+  .monitor-theme .risk-bar {
+    width: 100%;
+    max-width: 180px;
+  }
+
+  .monitor-theme .detail-foot {
+    gap: 12px;
+    padding-top: 12px;
+    padding-bottom: 14px;
+  }
+
+  .monitor-theme .detail-foot .hint {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* COPIED:end */
+
+/* GENERATED: shell AppNav clone + review-bar + delta #803 (remove alvo) */
+html { color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+.review-bar {
+  position: sticky; top: 0; z-index: 80;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-default);
+  background: rgba(11,14,17,.96);
+}
+.review-bar p { margin: 0; color: var(--text-tertiary); font-size: 12px; max-width: 72ch; line-height: 1.45; }
+.review-bar strong { color: var(--accent-primary); }
+.toggle { display: inline-flex; border: 1px solid var(--border-default); border-radius: 8px; overflow: hidden; background: var(--bg-elevated); }
+.toggle button { border: 0; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 600; padding: 8px 12px; }
+.toggle button[aria-pressed="true"] { background: rgba(252,213,53,.12); color: var(--accent-primary); }
+.app-sidebar {
+  position: fixed; top: 52px; left: 0; bottom: 0; z-index: 40;
+  width: 224px;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border-subtle);
+  background: rgba(24,26,32,.96);
+  padding: 12px 10px;
+}
+.brand-wrap { display: flex; align-items: center; padding: 0 8px 16px; }
+.brand-wrap img { height: 48px; width: 172px; object-fit: contain; object-position: left; }
+.panel-chip { margin: 0 4px 16px; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-elevated); }
+.panel-chip .k { font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted); }
+.panel-chip .v { margin-top: 4px; font-size: 13px; font-weight: 600; }
+.env { display: inline-flex; margin-top: 10px; height: 28px; align-items: center; gap: 8px; border-radius: 8px; border: 1px solid rgba(252,213,53,.46); background: rgba(252,213,53,.12); color: var(--accent-primary); padding: 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.env i { width: 8px; height: 8px; border-radius: 99px; background: var(--accent-primary); display: inline-block; }
+.nav-section-title { padding: 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted); margin: 12px 0 8px; }
+.nav-link {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  border-radius: 8px; border: 1px solid transparent; padding: 10px 12px;
+  font-size: 13px; font-weight: 500; color: var(--text-secondary); text-decoration: none;
+}
+.nav-link.active { border-color: rgba(252,213,53,.36); background: rgba(252,213,53,.10); color: var(--text-primary); }
+.nav-link.active::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 99px; background: var(--accent-primary); }
+.nav-ico { width: 18px; height: 18px; flex: 0 0 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.nav-link.active .nav-ico { color: var(--accent-primary); }
+.app-header {
+  position: fixed; top: 52px; right: 0; left: 224px; z-index: 30; height: 80px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(11,14,17,.88);
+}
+.app-header-inner { height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+.workspace-label { font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted); }
+.workspace-title { font-size: 18px; font-weight: 600; }
+.account { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border-default); background: var(--bg-elevated); border-radius: 8px; padding: 6px 10px; }
+.avatar { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; background: rgba(252,213,53,.12); color: var(--accent-primary); font-size: 12px; font-weight: 700; }
+.workspace { margin-left: 224px; padding-top: 132px; width: calc(100% - 224px); max-width: calc(100vw - 224px); min-width: 0; overflow-x: auto; }
+.monitor-theme .table-wrap { overflow-x: auto; }
+.monitor-theme .row-actions { min-width: 0; }
+.monitor-theme .row-action { min-width: 0; }
+.canvas-wash {
+  pointer-events: none; position: fixed; inset: 0; z-index: 0;
+  background: linear-gradient(180deg, rgba(252,213,53,.16) 0%, rgba(11,14,17,0) 220px);
+}
+.workspace > .monitor-theme { position: relative; z-index: 1; }
+.monitor-theme .kv dd { word-break: break-word; overflow-wrap: anywhere; }
+.risk-unavailable { color: var(--t-3); font-weight: 500; font-style: italic; }
+.scenario-risk {
+  margin: 10px 0 0;
+  border-left: 2px solid var(--accent-primary);
+  padding: 8px 10px;
+  background: var(--accent-soft);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--t-2);
+}
+.residual-block {
+  margin-top: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--t-2);
+}
+.residual-block .label {
+  display: block; margin-bottom: 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--t-4);
+}
+.row-toggle svg, .row-action svg, .detail-foot .btn svg, .search svg, .topbar-btn svg {
+  width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.8; fill: none;
+}
+.row-action svg { width: 14px; height: 14px; }
+@media (max-width: 1024px) {
+  .app-sidebar { display: none; }
+  .app-header { left: 0; }
+  .workspace { margin-left: 0; width: 100%; max-width: 100%; }
+}
+@media (max-width: 740px) {
+  .app-header { height: auto; position: static; }
+  .workspace { padding-top: 0; }
+  .review-bar { position: sticky; }
+}
+.chart-modal-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 70;
+  background: rgba(0,0,0,.64);
+  align-items: flex-start; justify-content: center;
+  padding: 72px 12px 24px;
+}
+.chart-modal-overlay.is-open { display: flex; }
+.chart-modal {
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  border: 1px solid #2b3139;
+  border-radius: 12px;
+  background: #0b0e11;
+  color: #eaecef;
+  padding: 0;
+}
+.chart-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border-bottom: 1px solid #2b3139;
+}
+.chart-modal-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.chart-modal-head button {
+  border: 1px solid #2b3139; background: #1e2329; color: #eaecef;
+  border-radius: 8px; padding: 6px 10px; font-size: 12px;
+}
+.chart-modal-body { padding: 14px; }
+.chart-placeholder {
+  height: 88px; margin-bottom: 12px; border: 1px dashed #2b3139; border-radius: 8px;
+  display: grid; place-items: center; color: #929aa5; font-size: 12px;
+}
+.chart-risk-label {
+  margin: 0 0 8px; font-size: 10px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: #929aa5;
+}
+.chart-risk {
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid #2b3139; border-radius: 8px; background: #0b0e11; padding: 12px;
+}
+.chart-kv-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.chart-kv-row[hidden], [data-alvo-row][hidden] { display: none !important; }
+.chart-kv-row .muted { color: #929aa5; }
+.chart-kv-row .mono { font-family: var(--font-mono, ui-monospace, monospace); color: #eaecef; }
+.chart-kv-row .stop { color: #f6465d; }
+
+  </style>
+</head>
+<body data-prototype-variant="after">
+  <!-- GENERATED:start review-bar -->
+  <div class="review-bar">
+    <p><strong>#803</strong> clone da rota <code>/monitor</code> (vista admin, base #792). Delta: HOLD sem o campo derivado no kv e no modal do gráfico. Default = Depois.</p>
+    <div class="toggle" role="group" aria-label="Variante do protótipo">
+      <button type="button" data-variant="before" aria-pressed="false">Antes</button>
+      <button type="button" data-variant="after" aria-pressed="true">Depois</button>
+    </div>
+  </div>
+  <!-- GENERATED:end review-bar -->
+
+  <div class="canvas-wash" aria-hidden="true"></div>
+
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px, Monitor active, header workspace) -->
+  <aside class="app-sidebar" aria-label="Navegacao principal">
+    <div class="brand-wrap">
+      <img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol" />
+    </div>
+    <div class="panel-chip">
+      <div class="k">Painel</div>
+      <div class="v">Monitor de sinais</div>
+      <span class="env"><i></i> DEV</span>
+    </div>
+    <div class="nav-section-title">Principal</div>
+    <a class="nav-link" href="#"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> Favoritos</a>
+    <a class="nav-link active" href="#" aria-current="page"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Monitor</a>
+    <div class="nav-section-title">Estratégias</div>
+    <a class="nav-link" href="#"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg> Descoberta</a>
+    <a class="nav-link" href="#"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg> Combo</a>
+    <div class="nav-section-title">Carteira</div>
+    <a class="nav-link" href="#"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M16 12h.01"/><path d="M2 10h20"/></svg> Carteira</a>
+    <a class="nav-link" href="#"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> Ajuda</a>
+    <div class="nav-section-title">Admin</div>
+    <a class="nav-link" href="#"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.7 1 1.2 1.8 1.2H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg> Preferências do sistema</a>
+    <a class="nav-link" href="#"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Usuários</a>
+  </aside>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div>
+        <div class="workspace-label">Workspace</div>
+        <div class="workspace-title">Monitor de sinais</div>
+      </div>
+      <div class="account">
+        <span class="env" style="margin:0"><i></i> DEV</span>
+        <span class="avatar" aria-hidden="true">A</span>
+        <span>Alan</span>
+      </div>
+    </div>
+  </header>
+  <!-- COPIED:end shell -->
+
+  <div class="workspace">
+    <!-- COPIED:start markup MonitorStatusTab + OpportunityCard chrome -->
+    <div class="monitor-page-shell monitor-theme monitor-theme--black" data-testid="monitor-status-tab">
+      <div class="monitor-main">
+        <header class="topbar">
+          <div class="topbar-spacer"></div>
+          <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <input placeholder="Buscar par, estratégia, tag..." />
+            <span class="kbd">⌘K</span>
+          </label>
+          <button type="button" class="topbar-btn">Telegram: off</button>
+          <button type="button" class="topbar-btn">Tema</button>
+          <button type="button" class="topbar-btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Atualizar</button>
+        </header>
+
+        <section class="page">
+          <header class="page-head">
+            <div>
+              <h1 class="sr-only">Monitor de sinais</h1>
+              <p class="page-sub">Operações ativas e saídas acionáveis. Atualização contínua a cada 30s.</p>
+              <div class="updated">
+                <span>Última leitura</span>
+                <span class="mono"> 17:02:11 </span>
+                <span>· BRT</span>
+              </div>
+            </div>
+          </header>
+
+          <div class="kpis">
+            <div class="kpi">
+              <div class="kpi-label">Em posição <span class="tag">Compra</span></div>
+              <div class="kpi-val">2</div>
+              <div class="kpi-foot up">média risco 35.21%</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Em saída <span class="tag">Venda</span></div>
+              <div class="kpi-val">2</div>
+              <div class="kpi-foot">média risco —</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Total</div>
+              <div class="kpi-val">4</div>
+              <div class="kpi-foot">sinais filtrados</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Em carteira</div>
+              <div class="kpi-val">2</div>
+              <div class="kpi-foot">ativos rastreados</div>
+            </div>
+          </div>
+
+          <section class="filterbar" aria-label="Filtros do monitor">
+            <div class="seg" data-seg="list">
+              <button type="button" data-testid="monitor-filter-in-portfolio">Em portfólio</button>
+              <button type="button" class="on" data-testid="monitor-filter-all">Todos</button>
+            </div>
+            <div class="filter-divider"></div>
+            <select class="select">
+              <option value="all">Timeframe: Todos</option>
+              <option value="1d" selected>1d</option>
+            </select>
+            <select class="select" data-testid="monitor-filter-stars">
+              <option value="all">Estrelas: Todas</option>
+              <option value="3">★★★ 3 estrelas</option>
+              <option value="2">★★ 2 estrelas</option>
+              <option value="1">★ 1 estrela</option>
+            </select>
+            <select class="select">
+              <option value="all">Estratégia: Todas</option>
+              <option>Médias Móveis: Tendência Confirmada</option>
+              <option>Rompimento de Canal</option>
+              <option>Média de 200 períodos</option>
+              <option>Cruzamento MACD</option>
+            </select>
+            <div class="filter-spacer"></div>
+            <span class="chip-count">4 resultados</span>
+          </section>
+
+          <main class="monitor-board">
+            <section data-testid="monitor-section-hold">
+              <div class="status-row">
+                <span class="status-section-label">Estado Compra</span>
+                <h3><span class="pip hold"></span> Em posição <span class="meta">(2)</span></h3>
+                <p class="desc">Posição ativa com gestão em acompanhamento contínuo.</p>
+              </div>
+              <div class="mobile-cards">
+                <article class="mobile-card">
+<div data-testid="monitor-card-sol-usdt" data-portfolio-derived="false">
+  <div class="detail-control-strip">
+    <div class="detail-pair-summary">
+      <span class="detail-symbol">SOL/USDT</span>
+      <span class="status-pill hold" data-testid="monitor-card-signal-sol-usdt">Compra</span>
+      <span title="Timeframe da estratégia" class="detail-timeframe">1d</span>
+      <span title="Timeframe do gráfico de preço" class="detail-timeframe">Gráfico 1d</span>
+      
+    </div>
+    <div class="detail-controls">
+      <button type="button" class="btn ghost" data-testid="portfolio-toggle-sol-usdt" aria-pressed="true">No portfólio</button>
+      <button type="button" class="btn ghost" data-testid="mode-toggle-sol-usdt"><span data-testid="mode-label-sol-usdt">Estratégia</span></button>
+      <div class="timeframe-toggle-group" aria-label="Timeframe SOL/USDT">
+        <button type="button" class="btn ghost active" data-testid="timeframe-toggle-sol-usdt-1d" aria-pressed="true">1d</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail">
+    <div>
+      <h5 class="h5-exit"><span class="swatch"></span> Sinal · Compra</h5>
+      <div class="exit-msg hold-msg">
+        <span class="label">Mensagem</span>
+        <span>Posição ativa. Distância até a saída 13.38%.</span>
+      </div>
+      <div class="candle-meta" data-testid="monitor-detail-strategy-identity-sol-usdt">
+        <strong class="block text-sm font-semibold" data-testid="monitor-detail-strategy-title">Médias Móveis: Tendência Confirmada</strong>
+        <span class="strategy-description" data-testid="monitor-detail-strategy-description">Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída.</span>
+        <span>tf <b>1d</b></span>
+        <span>candle <b>2026-08-29 00:00:00</b></span>
+      </div>
+    </div>
+    <div>
+      <h5 class="h5-notes"><span class="swatch"></span> Notas operacionais</h5>
+      <div class="notes-block">
+        <span><span class="empty">Sem notas para esta posição.</span></span>
+        <button type="button" class="notes-edit">Editar</button>
+      </div>
+      <div style="height:14px"></div>
+      <h5 class="h5-notes js-risk-heading" data-risk-heading="sol"><span class="swatch"></span> Compra / Stop</h5>
+      <dl class="kv" data-testid="monitor-risk-block-sol-usdt" data-risk-kv="sol"><dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd></dl>
+      <p class="scenario-risk" data-scenario="sol" aria-live="polite">Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop).</p>
+      <div class="residual-block" data-residual="sol" hidden></div>
+    </div>
+  </div>
+  <div class="detail-foot">
+    <div class="hint">Lote 29/08/2026, 17:02:11 · ref -</div>
+    <div class="actions">
+      <button type="button" class="btn ghost"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg> Exportar</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Reavaliar</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 7v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V7z"></path><path d="m9 12 2 2 4-4"></path></svg> Confirmar gestão</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg> Abrir Gráfico</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg> Ver Trades</button>
+      <button type="button" class="btn spot-trade-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg> Operar</button>
+    </div>
+  </div>
+</div></article>
+                <article class="mobile-card">
+<div data-testid="monitor-card-eth-usdt" data-portfolio-derived="false">
+  <div class="detail-control-strip">
+    <div class="detail-pair-summary">
+      <span class="detail-symbol">ETH/USDT</span>
+      <span class="status-pill hold" data-testid="monitor-card-signal-eth-usdt">Compra</span>
+      <span title="Timeframe da estratégia" class="detail-timeframe">1d</span>
+      <span title="Timeframe do gráfico de preço" class="detail-timeframe">Gráfico 1d</span>
+      <span class="tag strategy" title="risco só lê stop_price/entry_price top-level">protegida</span>
+    </div>
+    <div class="detail-controls">
+      <button type="button" class="btn ghost" data-testid="portfolio-toggle-eth-usdt" aria-pressed="true">No portfólio</button>
+      <button type="button" class="btn ghost" data-testid="mode-toggle-eth-usdt"><span data-testid="mode-label-eth-usdt">Estratégia</span></button>
+      <div class="timeframe-toggle-group" aria-label="Timeframe ETH/USDT">
+        <button type="button" class="btn ghost active" data-testid="timeframe-toggle-eth-usdt-1d" aria-pressed="true">1d</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail">
+    <div>
+      <h5 class="h5-exit"><span class="swatch"></span> Sinal · Compra</h5>
+      <div class="exit-msg hold-msg">
+        <span class="label">Mensagem</span>
+        <span>Posição ativa. Dados de stop não confiáveis nesta leitura.</span>
+      </div>
+      <div class="candle-meta" data-testid="monitor-detail-strategy-identity-eth-usdt">
+        <strong class="block text-sm font-semibold" data-testid="monitor-detail-strategy-title">Rompimento de Canal</strong>
+        <span class="strategy-description" data-testid="monitor-detail-strategy-description">Estratégia protegida: o card não vaza parameters nem indicator_values; risco lê só campos top-level.</span>
+        <span>tf <b>1d</b></span>
+        <span>candle <b>stale</b></span>
+      </div>
+    </div>
+    <div>
+      <h5 class="h5-notes"><span class="swatch"></span> Notas operacionais</h5>
+      <div class="notes-block">
+        <span><span class="empty">Sem notas para esta posição.</span></span>
+        <button type="button" class="notes-edit">Editar</button>
+      </div>
+      <div style="height:14px"></div>
+      <h5 class="h5-notes js-risk-heading" data-risk-heading="eth"><span class="swatch"></span> Compra / Stop</h5>
+      <dl class="kv" data-testid="monitor-risk-block-eth-usdt" data-risk-kv="eth"><dt>distância até saída</dt><dd class="risk-unavailable" title="dado não confiável ≠ erro de rede">indisponível — dado não confiável</dd><dt>distância até stop</dt><dd class="risk-unavailable" title="dado não confiável ≠ erro de rede">indisponível — dado não confiável</dd><dt>stop</dt><dd class="risk-unavailable" title="dado não confiável ≠ erro de rede">indisponível — dado não confiável</dd><dt>entrada</dt><dd class="risk-unavailable" title="dado não confiável ≠ erro de rede">indisponível — dado não confiável</dd><dt>preço atual</dt><dd>$3,482.10</dd></dl>
+      <p class="scenario-risk" data-scenario="eth" hidden></p>
+      <div class="residual-block" data-residual="eth" hidden></div>
+    </div>
+  </div>
+  <div class="detail-foot">
+    <div class="hint">Lote 29/08/2026, 17:02:11 · ref -</div>
+    <div class="actions">
+      <button type="button" class="btn ghost"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg> Exportar</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Reavaliar</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 7v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V7z"></path><path d="m9 12 2 2 4-4"></path></svg> Confirmar gestão</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg> Abrir Gráfico</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg> Ver Trades</button>
+      <button type="button" class="btn spot-trade-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg> Operar</button>
+    </div>
+  </div>
+</div></article>
+              </div>
+              <div class="table-wrap">
+                <table class="signals">
+                  
+<thead>
+  <tr>
+    <th style="width:32px"></th>
+    <th>Par / Estratégia</th>
+    <th>Status</th>
+    <th>Preço</th>
+    <th>Distância</th>
+    <th class="col-spark">7d</th>
+    <th>Risco até stop</th>
+    <th class="col-tags">Tags</th>
+    <th class="actions-cell">ações</th>
+  </tr>
+</thead>
+
+                  <tbody>
+                    
+<tr class="head-row expanded" data-idx="hold-sol" aria-expanded="true" data-testid="monitor-row-sol-usdt" data-expand="sol">
+  <td>
+    <button type="button" class="row-toggle open" aria-expanded="true" aria-label="Expandir"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+  </td>
+  <td>
+    <div class="pair-cell">
+      <div class="pair-icon sol">SOL</div>
+      <div class="pair-meta">
+        <div class="pair-name">SOL/USDT <span class="pair-tf">1d</span></div>
+        <div class="pair-strat">Médias Móveis: Tendência Confirmada</div>
+        <div class="pair-strat-desc">Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída.</div>
+      </div>
+    </div>
+  </td>
+  <td><span class="status-pill hold" data-testid="monitor-row-signal-sol-usdt">Compra</span></td>
+  <td class="num lg">$105.39</td>
+  <td>13.38%</td>
+  <td class="col-spark">-</td>
+  <td>
+    <div class="risk-bar"><div class="risk-fill" style="width:100%"></div></div>
+    <div class="risk-meta"><span>35.21%</span><span>stop</span></div>
+  </td>
+  <td class="col-tags"><div class="tags"><span class="tag portfolio">● Carteira</span><span class="tag strategy" data-testid="tier-stars-sol-usdt">★★★</span><span class="tag strategy">▲ Strategy</span></div></td>
+  <td class="actions-cell"><div class="row-actions" aria-label="Ações SOL/USDT">
+  <button type="button" class="row-action" title="Abrir Gráfico" aria-label="Abrir Gráfico SOL/USDT"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg><span>Abrir Gráfico</span></button>
+  <button type="button" class="row-action row-action-primary" title="Ver Trades" aria-label="Ver Trades SOL/USDT"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg><span>Ver Trades</span></button>
+  <button type="button" class="row-action spot-trade-trigger" title="Comprar ou vender na Binance" aria-label="Operar SOL/USDT" data-testid="open-spot-trade-sol-usdt"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg><span>Operar</span></button>
+</div></td>
+</tr>
+<tr class="detail-row" data-detail="hold-sol" data-expanded="true" aria-hidden="false" >
+  <td colspan="9">
+<div data-testid="monitor-card-sol-usdt" data-portfolio-derived="false">
+  <div class="detail-control-strip">
+    <div class="detail-pair-summary">
+      <span class="detail-symbol">SOL/USDT</span>
+      <span class="status-pill hold" data-testid="monitor-card-signal-sol-usdt">Compra</span>
+      <span title="Timeframe da estratégia" class="detail-timeframe">1d</span>
+      <span title="Timeframe do gráfico de preço" class="detail-timeframe">Gráfico 1d</span>
+      
+    </div>
+    <div class="detail-controls">
+      <button type="button" class="btn ghost" data-testid="portfolio-toggle-sol-usdt" aria-pressed="true">No portfólio</button>
+      <button type="button" class="btn ghost" data-testid="mode-toggle-sol-usdt"><span data-testid="mode-label-sol-usdt">Estratégia</span></button>
+      <div class="timeframe-toggle-group" aria-label="Timeframe SOL/USDT">
+        <button type="button" class="btn ghost active" data-testid="timeframe-toggle-sol-usdt-1d" aria-pressed="true">1d</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail">
+    <div>
+      <h5 class="h5-exit"><span class="swatch"></span> Sinal · Compra</h5>
+      <div class="exit-msg hold-msg">
+        <span class="label">Mensagem</span>
+        <span>Posição ativa. Distância até a saída 13.38%.</span>
+      </div>
+      <div class="candle-meta" data-testid="monitor-detail-strategy-identity-sol-usdt">
+        <strong class="block text-sm font-semibold" data-testid="monitor-detail-strategy-title">Médias Móveis: Tendência Confirmada</strong>
+        <span class="strategy-description" data-testid="monitor-detail-strategy-description">Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída.</span>
+        <span>tf <b>1d</b></span>
+        <span>candle <b>2026-08-29 00:00:00</b></span>
+      </div>
+    </div>
+    <div>
+      <h5 class="h5-notes"><span class="swatch"></span> Notas operacionais</h5>
+      <div class="notes-block">
+        <span><span class="empty">Sem notas para esta posição.</span></span>
+        <button type="button" class="notes-edit">Editar</button>
+      </div>
+      <div style="height:14px"></div>
+      <h5 class="h5-notes js-risk-heading" data-risk-heading="sol"><span class="swatch"></span> Compra / Stop</h5>
+      <dl class="kv" data-testid="monitor-risk-block-sol-usdt" data-risk-kv="sol"><dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd></dl>
+      <p class="scenario-risk" data-scenario="sol" aria-live="polite">Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop).</p>
+      <div class="residual-block" data-residual="sol" hidden></div>
+    </div>
+  </div>
+  <div class="detail-foot">
+    <div class="hint">Lote 29/08/2026, 17:02:11 · ref -</div>
+    <div class="actions">
+      <button type="button" class="btn ghost"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg> Exportar</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Reavaliar</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 7v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V7z"></path><path d="m9 12 2 2 4-4"></path></svg> Confirmar gestão</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg> Abrir Gráfico</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg> Ver Trades</button>
+      <button type="button" class="btn spot-trade-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg> Operar</button>
+    </div>
+  </div>
+</div></td>
+</tr>
+
+                    
+<tr class="head-row expanded" data-idx="hold-eth" aria-expanded="true" data-testid="monitor-row-eth-usdt" data-expand="eth">
+  <td>
+    <button type="button" class="row-toggle open" aria-expanded="true" aria-label="Expandir"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+  </td>
+  <td>
+    <div class="pair-cell">
+      <div class="pair-icon eth">ETH</div>
+      <div class="pair-meta">
+        <div class="pair-name">ETH/USDT <span class="pair-tf">1d</span></div>
+        <div class="pair-strat">Rompimento de Canal</div>
+        <div class="pair-strat-desc">Estratégia protegida: risco só com campos top-level públicos.</div>
+      </div>
+    </div>
+  </td>
+  <td><span class="status-pill hold" data-testid="monitor-row-signal-eth-usdt">Compra</span></td>
+  <td class="num lg">$3,482.10</td>
+  <td>-</td>
+  <td class="col-spark">-</td>
+  <td>
+    <div class="risk-bar"><div class="risk-fill" style="width:0%"></div></div>
+    <div class="risk-meta"><span>-</span><span>stop</span></div>
+  </td>
+  <td class="col-tags"><div class="tags"><span class="tag portfolio">● Carteira</span><span class="tag strategy" data-testid="tier-stars-eth-usdt">★★</span><span class="tag strategy">▲ Strategy</span></div></td>
+  <td class="actions-cell"><div class="row-actions" aria-label="Ações ETH/USDT">
+  <button type="button" class="row-action" title="Abrir Gráfico" aria-label="Abrir Gráfico ETH/USDT"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg><span>Abrir Gráfico</span></button>
+  <button type="button" class="row-action row-action-primary" title="Ver Trades" aria-label="Ver Trades ETH/USDT"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg><span>Ver Trades</span></button>
+  <button type="button" class="row-action spot-trade-trigger" title="Comprar ou vender na Binance" aria-label="Operar ETH/USDT" data-testid="open-spot-trade-eth-usdt"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg><span>Operar</span></button>
+</div></td>
+</tr>
+<tr class="detail-row" data-detail="hold-eth" data-expanded="true" aria-hidden="false" >
+  <td colspan="9">
+<div data-testid="monitor-card-eth-usdt" data-portfolio-derived="false">
+  <div class="detail-control-strip">
+    <div class="detail-pair-summary">
+      <span class="detail-symbol">ETH/USDT</span>
+      <span class="status-pill hold" data-testid="monitor-card-signal-eth-usdt">Compra</span>
+      <span title="Timeframe da estratégia" class="detail-timeframe">1d</span>
+      <span title="Timeframe do gráfico de preço" class="detail-timeframe">Gráfico 1d</span>
+      <span class="tag strategy" title="risco só lê stop_price/entry_price top-level">protegida</span>
+    </div>
+    <div class="detail-controls">
+      <button type="button" class="btn ghost" data-testid="portfolio-toggle-eth-usdt" aria-pressed="true">No portfólio</button>
+      <button type="button" class="btn ghost" data-testid="mode-toggle-eth-usdt"><span data-testid="mode-label-eth-usdt">Estratégia</span></button>
+      <div class="timeframe-toggle-group" aria-label="Timeframe ETH/USDT">
+        <button type="button" class="btn ghost active" data-testid="timeframe-toggle-eth-usdt-1d" aria-pressed="true">1d</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail">
+    <div>
+      <h5 class="h5-exit"><span class="swatch"></span> Sinal · Compra</h5>
+      <div class="exit-msg hold-msg">
+        <span class="label">Mensagem</span>
+        <span>Posição ativa. Dados de stop não confiáveis nesta leitura.</span>
+      </div>
+      <div class="candle-meta" data-testid="monitor-detail-strategy-identity-eth-usdt">
+        <strong class="block text-sm font-semibold" data-testid="monitor-detail-strategy-title">Rompimento de Canal</strong>
+        <span class="strategy-description" data-testid="monitor-detail-strategy-description">Estratégia protegida: o card não vaza parameters nem indicator_values; risco lê só campos top-level.</span>
+        <span>tf <b>1d</b></span>
+        <span>candle <b>stale</b></span>
+      </div>
+    </div>
+    <div>
+      <h5 class="h5-notes"><span class="swatch"></span> Notas operacionais</h5>
+      <div class="notes-block">
+        <span><span class="empty">Sem notas para esta posição.</span></span>
+        <button type="button" class="notes-edit">Editar</button>
+      </div>
+      <div style="height:14px"></div>
+      <h5 class="h5-notes js-risk-heading" data-risk-heading="eth"><span class="swatch"></span> Compra / Stop</h5>
+      <dl class="kv" data-testid="monitor-risk-block-eth-usdt" data-risk-kv="eth"><dt>distância até saída</dt><dd class="risk-unavailable" title="dado não confiável ≠ erro de rede">indisponível — dado não confiável</dd><dt>distância até stop</dt><dd class="risk-unavailable" title="dado não confiável ≠ erro de rede">indisponível — dado não confiável</dd><dt>stop</dt><dd class="risk-unavailable" title="dado não confiável ≠ erro de rede">indisponível — dado não confiável</dd><dt>entrada</dt><dd class="risk-unavailable" title="dado não confiável ≠ erro de rede">indisponível — dado não confiável</dd><dt>preço atual</dt><dd>$3,482.10</dd></dl>
+      <p class="scenario-risk" data-scenario="eth" hidden></p>
+      <div class="residual-block" data-residual="eth" hidden></div>
+    </div>
+  </div>
+  <div class="detail-foot">
+    <div class="hint">Lote 29/08/2026, 17:02:11 · ref -</div>
+    <div class="actions">
+      <button type="button" class="btn ghost"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg> Exportar</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Reavaliar</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 7v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V7z"></path><path d="m9 12 2 2 4-4"></path></svg> Confirmar gestão</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg> Abrir Gráfico</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg> Ver Trades</button>
+      <button type="button" class="btn spot-trade-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg> Operar</button>
+    </div>
+  </div>
+</div></td>
+</tr>
+
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section data-testid="monitor-section-exit">
+              <div class="status-row">
+                <span class="status-section-label">Estado Venda</span>
+                <h3><span class="pip exit"></span> Saída / cobertura <span class="meta">(2)</span></h3>
+                <p class="desc">Saída ou cobertura acionável para nova análise.</p>
+              </div>
+              <div class="mobile-cards">
+                <article class="mobile-card">
+<div data-testid="monitor-card-ada-usdt" data-portfolio-derived="false">
+  <div class="detail-control-strip">
+    <div class="detail-pair-summary">
+      <span class="detail-symbol">ADA/USDT</span>
+      <span class="status-pill exit" data-testid="monitor-card-signal-ada-usdt">Venda</span>
+      <span title="Timeframe da estratégia" class="detail-timeframe">1d</span>
+      <span title="Timeframe do gráfico de preço" class="detail-timeframe">Gráfico 1d</span>
+      
+    </div>
+    <div class="detail-controls">
+      <button type="button" class="btn ghost" data-testid="portfolio-toggle-ada-usdt" aria-pressed="true">No portfólio</button>
+      <button type="button" class="btn ghost" data-testid="mode-toggle-ada-usdt"><span data-testid="mode-label-ada-usdt">Estratégia</span></button>
+      <div class="timeframe-toggle-group" aria-label="Timeframe ADA/USDT">
+        <button type="button" class="btn ghost active" data-testid="timeframe-toggle-ada-usdt-1d" aria-pressed="true">1d</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail">
+    <div>
+      <h5 class="h5-exit"><span class="swatch"></span> Sinal · Venda</h5>
+      <div class="exit-msg ">
+        <span class="label">Mensagem</span>
+        <span>Saída confirmada. Sem risco residual mapeado.</span>
+      </div>
+      <div class="candle-meta" data-testid="monitor-detail-strategy-identity-ada-usdt">
+        <strong class="block text-sm font-semibold" data-testid="monitor-detail-strategy-title">Média de 200 períodos</strong>
+        <span class="strategy-description" data-testid="monitor-detail-strategy-description">Saída acionada quando o preço perde a média longa; sem posição aberta segundo a estratégia.</span>
+        <span>tf <b>1d</b></span>
+        <span>candle <b>2026-08-28 00:00:00</b></span>
+      </div>
+    </div>
+    <div>
+      <h5 class="h5-notes"><span class="swatch"></span> Notas operacionais</h5>
+      <div class="notes-block">
+        <span><span class="empty">Sem notas para esta posição.</span></span>
+        <button type="button" class="notes-edit">Editar</button>
+      </div>
+      <div style="height:14px"></div>
+      <h5 class="h5-notes js-risk-heading" data-risk-heading="ada"><span class="swatch"></span> Risco residual</h5>
+      <dl class="kv" data-testid="monitor-risk-block-ada-usdt" data-risk-kv="ada"><dt>preço atual</dt><dd>$0.8420</dd></dl>
+      <p class="scenario-risk" data-scenario="ada" hidden></p>
+      <div class="residual-block" data-residual="ada" data-testid="monitor-risk-fallback">
+          <span class="label">Risco residual</span>
+          <span>posição encerrada segundo a estratégia — sem risco residual mapeado</span>
+        </div>
+    </div>
+  </div>
+  <div class="detail-foot">
+    <div class="hint">Lote 29/08/2026, 17:02:11 · ref -</div>
+    <div class="actions">
+      <button type="button" class="btn ghost"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg> Exportar</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Reavaliar</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 7v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V7z"></path><path d="m9 12 2 2 4-4"></path></svg> Confirmar gestão</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg> Abrir Gráfico</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg> Ver Trades</button>
+      <button type="button" class="btn spot-trade-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg> Operar</button>
+    </div>
+  </div>
+</div></article>
+                <article class="mobile-card">
+<div data-testid="monitor-card-link-usdt" data-portfolio-derived="false">
+  <div class="detail-control-strip">
+    <div class="detail-pair-summary">
+      <span class="detail-symbol">LINK/USDT</span>
+      <span class="status-pill exit" data-testid="monitor-card-signal-link-usdt">Venda</span>
+      <span title="Timeframe da estratégia" class="detail-timeframe">1d</span>
+      <span title="Timeframe do gráfico de preço" class="detail-timeframe">Gráfico 1d</span>
+      
+    </div>
+    <div class="detail-controls">
+      <button type="button" class="btn ghost" data-testid="portfolio-toggle-link-usdt" aria-pressed="true">No portfólio</button>
+      <button type="button" class="btn ghost" data-testid="mode-toggle-link-usdt"><span data-testid="mode-label-link-usdt">Estratégia</span></button>
+      <div class="timeframe-toggle-group" aria-label="Timeframe LINK/USDT">
+        <button type="button" class="btn ghost active" data-testid="timeframe-toggle-link-usdt-1d" aria-pressed="true">1d</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail">
+    <div>
+      <h5 class="h5-exit"><span class="swatch"></span> Sinal · Venda</h5>
+      <div class="exit-msg ">
+        <span class="label">Mensagem</span>
+        <span>Saída confirmada. Residual ilustrativo a partir de signal_history.</span>
+      </div>
+      <div class="candle-meta" data-testid="monitor-detail-strategy-identity-link-usdt">
+        <strong class="block text-sm font-semibold" data-testid="monitor-detail-strategy-title">Cruzamento MACD</strong>
+        <span class="strategy-description" data-testid="monitor-detail-strategy-description">EXIT com histórico: o residual vem do signal_history, sem ressuscitar Entry/Stop.</span>
+        <span>tf <b>1d</b></span>
+        <span>candle <b>2026-08-27 00:00:00</b></span>
+      </div>
+    </div>
+    <div>
+      <h5 class="h5-notes"><span class="swatch"></span> Notas operacionais</h5>
+      <div class="notes-block">
+        <span><span class="empty">Sem notas para esta posição.</span></span>
+        <button type="button" class="notes-edit">Editar</button>
+      </div>
+      <div style="height:14px"></div>
+      <h5 class="h5-notes js-risk-heading" data-risk-heading="link"><span class="swatch"></span> Risco residual</h5>
+      <dl class="kv" data-testid="monitor-risk-block-link-usdt" data-risk-kv="link"><dt>preço atual</dt><dd>$14.82</dd></dl>
+      <p class="scenario-risk" data-scenario="link" hidden></p>
+      <div class="residual-block" data-residual="link">
+          <span class="label">Risco residual</span>
+          <span>último EXIT em $14.82 · exposição residual 4.10% até o stop histórico — não operável.</span>
+        </div>
+    </div>
+  </div>
+  <div class="detail-foot">
+    <div class="hint">Lote 29/08/2026, 17:02:11 · ref -</div>
+    <div class="actions">
+      <button type="button" class="btn ghost"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg> Exportar</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Reavaliar</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 7v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V7z"></path><path d="m9 12 2 2 4-4"></path></svg> Confirmar gestão</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg> Abrir Gráfico</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg> Ver Trades</button>
+      <button type="button" class="btn spot-trade-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg> Operar</button>
+    </div>
+  </div>
+</div></article>
+              </div>
+              <div class="table-wrap">
+                <table class="signals">
+                  
+<thead>
+  <tr>
+    <th style="width:32px"></th>
+    <th>Par / Estratégia</th>
+    <th>Status</th>
+    <th>Preço</th>
+    <th>Distância</th>
+    <th class="col-spark">7d</th>
+    <th>Risco até stop</th>
+    <th class="col-tags">Tags</th>
+    <th class="actions-cell">ações</th>
+  </tr>
+</thead>
+
+                  <tbody>
+                    
+<tr class="head-row expanded" data-idx="exit-ada" aria-expanded="true" data-testid="monitor-row-ada-usdt" data-expand="ada">
+  <td>
+    <button type="button" class="row-toggle open" aria-expanded="true" aria-label="Expandir"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+  </td>
+  <td>
+    <div class="pair-cell">
+      <div class="pair-icon ada">ADA</div>
+      <div class="pair-meta">
+        <div class="pair-name">ADA/USDT <span class="pair-tf">1d</span></div>
+        <div class="pair-strat">Média de 200 períodos</div>
+        <div class="pair-strat-desc">Saída acionada; sem posição aberta segundo a estratégia.</div>
+      </div>
+    </div>
+  </td>
+  <td><span class="status-pill exit" data-testid="monitor-row-signal-ada-usdt">Venda</span></td>
+  <td class="num lg">$0.8420</td>
+  <td>-</td>
+  <td class="col-spark">-</td>
+  <td>
+    <div class="risk-bar"><div class="risk-fill" style="width:0%"></div></div>
+    <div class="risk-meta"><span>-</span><span>stop</span></div>
+  </td>
+  <td class="col-tags"><div class="tags"><span class="tag portfolio">○ Carteira</span><span class="tag strategy" data-testid="tier-stars-ada-usdt">★</span><span class="tag strategy">▲ Strategy</span></div></td>
+  <td class="actions-cell"><div class="row-actions" aria-label="Ações ADA/USDT">
+  <button type="button" class="row-action" title="Abrir Gráfico" aria-label="Abrir Gráfico ADA/USDT"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg><span>Abrir Gráfico</span></button>
+  <button type="button" class="row-action row-action-primary" title="Ver Trades" aria-label="Ver Trades ADA/USDT"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg><span>Ver Trades</span></button>
+  <button type="button" class="row-action spot-trade-trigger" title="Comprar ou vender na Binance" aria-label="Operar ADA/USDT" data-testid="open-spot-trade-ada-usdt"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg><span>Operar</span></button>
+</div></td>
+</tr>
+<tr class="detail-row" data-detail="exit-ada" data-expanded="true" aria-hidden="false" >
+  <td colspan="9">
+<div data-testid="monitor-card-ada-usdt" data-portfolio-derived="false">
+  <div class="detail-control-strip">
+    <div class="detail-pair-summary">
+      <span class="detail-symbol">ADA/USDT</span>
+      <span class="status-pill exit" data-testid="monitor-card-signal-ada-usdt">Venda</span>
+      <span title="Timeframe da estratégia" class="detail-timeframe">1d</span>
+      <span title="Timeframe do gráfico de preço" class="detail-timeframe">Gráfico 1d</span>
+      
+    </div>
+    <div class="detail-controls">
+      <button type="button" class="btn ghost" data-testid="portfolio-toggle-ada-usdt" aria-pressed="true">No portfólio</button>
+      <button type="button" class="btn ghost" data-testid="mode-toggle-ada-usdt"><span data-testid="mode-label-ada-usdt">Estratégia</span></button>
+      <div class="timeframe-toggle-group" aria-label="Timeframe ADA/USDT">
+        <button type="button" class="btn ghost active" data-testid="timeframe-toggle-ada-usdt-1d" aria-pressed="true">1d</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail">
+    <div>
+      <h5 class="h5-exit"><span class="swatch"></span> Sinal · Venda</h5>
+      <div class="exit-msg ">
+        <span class="label">Mensagem</span>
+        <span>Saída confirmada. Sem risco residual mapeado.</span>
+      </div>
+      <div class="candle-meta" data-testid="monitor-detail-strategy-identity-ada-usdt">
+        <strong class="block text-sm font-semibold" data-testid="monitor-detail-strategy-title">Média de 200 períodos</strong>
+        <span class="strategy-description" data-testid="monitor-detail-strategy-description">Saída acionada quando o preço perde a média longa; sem posição aberta segundo a estratégia.</span>
+        <span>tf <b>1d</b></span>
+        <span>candle <b>2026-08-28 00:00:00</b></span>
+      </div>
+    </div>
+    <div>
+      <h5 class="h5-notes"><span class="swatch"></span> Notas operacionais</h5>
+      <div class="notes-block">
+        <span><span class="empty">Sem notas para esta posição.</span></span>
+        <button type="button" class="notes-edit">Editar</button>
+      </div>
+      <div style="height:14px"></div>
+      <h5 class="h5-notes js-risk-heading" data-risk-heading="ada"><span class="swatch"></span> Risco residual</h5>
+      <dl class="kv" data-testid="monitor-risk-block-ada-usdt" data-risk-kv="ada"><dt>preço atual</dt><dd>$0.8420</dd></dl>
+      <p class="scenario-risk" data-scenario="ada" hidden></p>
+      <div class="residual-block" data-residual="ada" data-testid="monitor-risk-fallback">
+          <span class="label">Risco residual</span>
+          <span>posição encerrada segundo a estratégia — sem risco residual mapeado</span>
+        </div>
+    </div>
+  </div>
+  <div class="detail-foot">
+    <div class="hint">Lote 29/08/2026, 17:02:11 · ref -</div>
+    <div class="actions">
+      <button type="button" class="btn ghost"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg> Exportar</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Reavaliar</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 7v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V7z"></path><path d="m9 12 2 2 4-4"></path></svg> Confirmar gestão</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg> Abrir Gráfico</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg> Ver Trades</button>
+      <button type="button" class="btn spot-trade-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg> Operar</button>
+    </div>
+  </div>
+</div></td>
+</tr>
+
+                    
+<tr class="head-row expanded" data-idx="exit-link" aria-expanded="true" data-testid="monitor-row-link-usdt" data-expand="link">
+  <td>
+    <button type="button" class="row-toggle open" aria-expanded="true" aria-label="Expandir"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+  </td>
+  <td>
+    <div class="pair-cell">
+      <div class="pair-icon link">LIN</div>
+      <div class="pair-meta">
+        <div class="pair-name">LINK/USDT <span class="pair-tf">1d</span></div>
+        <div class="pair-strat">Cruzamento MACD</div>
+        <div class="pair-strat-desc">EXIT com residual de signal_history; Entry/Stop não operáveis.</div>
+      </div>
+    </div>
+  </td>
+  <td><span class="status-pill exit" data-testid="monitor-row-signal-link-usdt">Venda</span></td>
+  <td class="num lg">$14.82</td>
+  <td>-</td>
+  <td class="col-spark">-</td>
+  <td>
+    <div class="risk-bar"><div class="risk-fill" style="width:0%"></div></div>
+    <div class="risk-meta"><span>-</span><span>stop</span></div>
+  </td>
+  <td class="col-tags"><div class="tags"><span class="tag portfolio">○ Carteira</span><span class="tag strategy" data-testid="tier-stars-link-usdt">★★</span><span class="tag strategy">▲ Strategy</span></div></td>
+  <td class="actions-cell"><div class="row-actions" aria-label="Ações LINK/USDT">
+  <button type="button" class="row-action" title="Abrir Gráfico" aria-label="Abrir Gráfico LINK/USDT"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg><span>Abrir Gráfico</span></button>
+  <button type="button" class="row-action row-action-primary" title="Ver Trades" aria-label="Ver Trades LINK/USDT"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg><span>Ver Trades</span></button>
+  <button type="button" class="row-action spot-trade-trigger" title="Comprar ou vender na Binance" aria-label="Operar LINK/USDT" data-testid="open-spot-trade-link-usdt"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg><span>Operar</span></button>
+</div></td>
+</tr>
+<tr class="detail-row" data-detail="exit-link" data-expanded="true" aria-hidden="false" >
+  <td colspan="9">
+<div data-testid="monitor-card-link-usdt" data-portfolio-derived="false">
+  <div class="detail-control-strip">
+    <div class="detail-pair-summary">
+      <span class="detail-symbol">LINK/USDT</span>
+      <span class="status-pill exit" data-testid="monitor-card-signal-link-usdt">Venda</span>
+      <span title="Timeframe da estratégia" class="detail-timeframe">1d</span>
+      <span title="Timeframe do gráfico de preço" class="detail-timeframe">Gráfico 1d</span>
+      
+    </div>
+    <div class="detail-controls">
+      <button type="button" class="btn ghost" data-testid="portfolio-toggle-link-usdt" aria-pressed="true">No portfólio</button>
+      <button type="button" class="btn ghost" data-testid="mode-toggle-link-usdt"><span data-testid="mode-label-link-usdt">Estratégia</span></button>
+      <div class="timeframe-toggle-group" aria-label="Timeframe LINK/USDT">
+        <button type="button" class="btn ghost active" data-testid="timeframe-toggle-link-usdt-1d" aria-pressed="true">1d</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail">
+    <div>
+      <h5 class="h5-exit"><span class="swatch"></span> Sinal · Venda</h5>
+      <div class="exit-msg ">
+        <span class="label">Mensagem</span>
+        <span>Saída confirmada. Residual ilustrativo a partir de signal_history.</span>
+      </div>
+      <div class="candle-meta" data-testid="monitor-detail-strategy-identity-link-usdt">
+        <strong class="block text-sm font-semibold" data-testid="monitor-detail-strategy-title">Cruzamento MACD</strong>
+        <span class="strategy-description" data-testid="monitor-detail-strategy-description">EXIT com histórico: o residual vem do signal_history, sem ressuscitar Entry/Stop.</span>
+        <span>tf <b>1d</b></span>
+        <span>candle <b>2026-08-27 00:00:00</b></span>
+      </div>
+    </div>
+    <div>
+      <h5 class="h5-notes"><span class="swatch"></span> Notas operacionais</h5>
+      <div class="notes-block">
+        <span><span class="empty">Sem notas para esta posição.</span></span>
+        <button type="button" class="notes-edit">Editar</button>
+      </div>
+      <div style="height:14px"></div>
+      <h5 class="h5-notes js-risk-heading" data-risk-heading="link"><span class="swatch"></span> Risco residual</h5>
+      <dl class="kv" data-testid="monitor-risk-block-link-usdt" data-risk-kv="link"><dt>preço atual</dt><dd>$14.82</dd></dl>
+      <p class="scenario-risk" data-scenario="link" hidden></p>
+      <div class="residual-block" data-residual="link">
+          <span class="label">Risco residual</span>
+          <span>último EXIT em $14.82 · exposição residual 4.10% até o stop histórico — não operável.</span>
+        </div>
+    </div>
+  </div>
+  <div class="detail-foot">
+    <div class="hint">Lote 29/08/2026, 17:02:11 · ref -</div>
+    <div class="actions">
+      <button type="button" class="btn ghost"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg> Exportar</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Reavaliar</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 7v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V7z"></path><path d="m9 12 2 2 4-4"></path></svg> Confirmar gestão</button>
+      <button type="button" class="btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg> Abrir Gráfico</button>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg> Ver Trades</button>
+      <button type="button" class="btn spot-trade-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12"></path><path d="M15 9.5c0-1.4-1.3-2-3-2s-3 .6-3 2 1.3 2 3 2 3 .6 3 2-1.3 2-3 2-3-.6-3-2"></path></svg> Operar</button>
+    </div>
+  </div>
+</div></td>
+</tr>
+
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </main>
+        </section>
+      </div>
+    </div>
+    <!-- COPIED:end markup -->
+  </div>
+
+  <!-- GENERATED:start chart-modal risk panel (clone ChartModal recorte) -->
+  <div id="proto-chart-overlay" class="chart-modal-overlay">
+  <div id="proto-chart-modal" class="chart-modal" data-testid="proto-chart-modal" role="dialog" aria-modal="true" aria-labelledby="chart-modal-title">
+    <div class="chart-modal-head">
+      <h2 id="chart-modal-title">Gráfico · SOL/USDT</h2>
+      <button type="button" data-chart-close>Fechar</button>
+    </div>
+    <div class="chart-modal-body">
+      <div class="chart-placeholder">Painel do gráfico (recorte de risco)</div>
+      <p class="chart-risk-label" data-chart-section-label>Risco / Stop</p>
+      <div class="chart-risk" data-testid="chart-modal-risk" data-chart-risk>
+        <div data-chart-hold>
+          <div class="chart-kv-row"><span class="muted">distância até saída</span><span class="mono" data-chart-exit-dist>13.38%</span></div>
+          <div class="chart-kv-row"><span class="muted">distância até stop</span><span class="mono stop" data-chart-stop-dist>35.21%</span></div>
+          <div class="chart-kv-row"><span class="muted">Stop</span><span class="mono stop" data-chart-stop>$68.28</span></div>
+          <div class="chart-kv-row" data-alvo-row hidden><span class="muted">Alvo</span><span class="mono" data-chart-alvo>$119.48</span></div>
+          <div class="chart-kv-row"><span class="muted">Entrada</span><span class="mono" data-chart-entry>$91.40</span></div>
+          <div class="chart-kv-row"><span class="muted">Preço atual</span><span class="mono" data-chart-price>$105.39</span></div>
+          <p class="scenario-risk" data-chart-scenario aria-live="polite">Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop).</p>
+        </div>
+        <div data-chart-exit hidden>
+          <div class="chart-kv-row"><span class="muted">Preço atual</span><span class="mono" data-chart-exit-price>$0.8420</span></div>
+          <div class="residual-block" data-chart-residual>
+            <span class="label">Risco residual</span>
+            <span data-chart-residual-text>posição encerrada segundo a estratégia — sem risco residual mapeado</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <!-- GENERATED:end chart-modal -->
+
+  <!-- GENERATED:start js Antes/Depois + expand -->
+  <script>
+
+(function () {
+  var UNAVAILABLE = "indisponível — dado não confiável";
+  var EXIT_EMPTY = "posição encerrada segundo a estratégia — sem risco residual mapeado";
+  var SCENARIO = "Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop).";
+  var RESIDUAL_LINK = "último EXIT em $14.82 · exposição residual 4.10% até o stop histórico — não operável.";
+  var KV = {
+    sol: {
+      before: "<dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>alvo</dt><dd>$119.48</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd>",
+      after: "<dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd>",
+      headingBefore: "Compra / Stop",
+      headingAfter: "Compra / Stop"
+    },
+    eth: {
+      before: "<dt>distância até saída</dt><dd class=\"risk-unavailable\" title=\"dado não confiável ≠ erro de rede\">" + UNAVAILABLE + "</dd><dt>distância até stop</dt><dd class=\"risk-unavailable\">" + UNAVAILABLE + "</dd><dt>stop</dt><dd class=\"risk-unavailable\">" + UNAVAILABLE + "</dd><dt>alvo</dt><dd class=\"risk-unavailable\">" + UNAVAILABLE + "</dd><dt>entrada</dt><dd class=\"risk-unavailable\">" + UNAVAILABLE + "</dd><dt>preço atual</dt><dd>$3,482.10</dd>",
+      after: "<dt>distância até saída</dt><dd class=\"risk-unavailable\" title=\"dado não confiável ≠ erro de rede\">" + UNAVAILABLE + "</dd><dt>distância até stop</dt><dd class=\"risk-unavailable\">" + UNAVAILABLE + "</dd><dt>stop</dt><dd class=\"risk-unavailable\">" + UNAVAILABLE + "</dd><dt>entrada</dt><dd class=\"risk-unavailable\">" + UNAVAILABLE + "</dd><dt>preço atual</dt><dd>$3,482.10</dd>",
+      headingBefore: "Compra / Stop",
+      headingAfter: "Compra / Stop"
+    },
+    ada: {
+      before: "<dt>preço atual</dt><dd>$0.8420</dd>",
+      after: "<dt>preço atual</dt><dd>$0.8420</dd>",
+      headingBefore: "Risco residual",
+      headingAfter: "Risco residual"
+    },
+    link: {
+      before: "<dt>preço atual</dt><dd>$14.82</dd>",
+      after: "<dt>preço atual</dt><dd>$14.82</dd>",
+      headingBefore: "Risco residual",
+      headingAfter: "Risco residual"
+    }
+  };
+
+  var variant = "after";
+
+  function applyVariant(next) {
+    variant = next;
+    document.querySelectorAll("[data-variant]").forEach(function (btn) {
+      btn.setAttribute("aria-pressed", btn.getAttribute("data-variant") === next ? "true" : "false");
+    });
+    Object.keys(KV).forEach(function (key) {
+      var pack = KV[key];
+      var html = next === "before" ? pack.before : pack.after;
+      var heading = next === "before" ? pack.headingBefore : pack.headingAfter;
+      document.querySelectorAll('[data-risk-kv="' + key + '"]').forEach(function (dl) {
+        dl.innerHTML = html;
+      });
+      document.querySelectorAll('[data-risk-heading="' + key + '"]').forEach(function (h) {
+        h.innerHTML = '<span class="swatch"></span> ' + heading;
+      });
+    });
+    document.querySelectorAll("[data-scenario]").forEach(function (el) {
+      var key = el.getAttribute("data-scenario");
+      var show = key === "sol";
+      el.hidden = !show;
+      el.textContent = show ? SCENARIO : "";
+    });
+    document.querySelectorAll("[data-residual]").forEach(function (el) {
+      var key = el.getAttribute("data-residual");
+      var show = key === "ada" || key === "link";
+      el.hidden = !show;
+      if (!show) return;
+      var label = el.querySelector(".label");
+      var body = label ? label.nextElementSibling : null;
+      if (body) body.textContent = key === "ada" ? EXIT_EMPTY : RESIDUAL_LINK;
+    });
+    document.body.setAttribute("data-prototype-variant", next);
+    document.querySelectorAll("[data-alvo-row]").forEach(function (row) {
+      if (next === "before") row.removeAttribute("hidden");
+      else row.setAttribute("hidden", "");
+    });
+  }
+
+  function toggleRow(key) {
+    document.querySelectorAll('[data-expand="' + key + '"]').forEach(function (row) {
+      var expanded = row.getAttribute("aria-expanded") === "true";
+      var next = !expanded;
+      row.classList.toggle("expanded", next);
+      row.setAttribute("aria-expanded", next ? "true" : "false");
+      var btn = row.querySelector(".row-toggle");
+      if (btn) {
+        btn.classList.toggle("open", next);
+        btn.setAttribute("aria-expanded", next ? "true" : "false");
+      }
+      var idx = row.getAttribute("data-idx");
+      document.querySelectorAll('[data-detail="' + idx + '"]').forEach(function (detail) {
+        detail.hidden = !next;
+        detail.setAttribute("aria-hidden", next ? "false" : "true");
+        detail.setAttribute("data-expanded", next ? "true" : "false");
+      });
+    });
+  }
+
+  document.querySelectorAll("[data-variant]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      applyVariant(btn.getAttribute("data-variant"));
+    });
+  });
+  document.querySelectorAll("[data-expand]").forEach(function (row) {
+    row.addEventListener("click", function (event) {
+      if (event.target.closest("button, a, input, textarea, select")) {
+        if (event.target.closest(".row-toggle")) {
+          event.stopPropagation();
+          toggleRow(row.getAttribute("data-expand"));
+        }
+        return;
+      }
+      toggleRow(row.getAttribute("data-expand"));
+    });
+  });
+
+  var CHART = {
+    sol: { title: "Gráfico · SOL/USDT", hold: true, exitDist: "13.38%", stopDist: "35.21%", stop: "$68.28", alvo: "$119.48", entry: "$91.40", price: "$105.39", scenario: true },
+    eth: { title: "Gráfico · ETH/USDT", hold: true, exitDist: UNAVAILABLE, stopDist: UNAVAILABLE, stop: UNAVAILABLE, alvo: UNAVAILABLE, entry: UNAVAILABLE, price: "$3,482.10", scenario: false },
+    ada: { title: "Gráfico · ADA/USDT", hold: false, price: "$0.8420", residual: EXIT_EMPTY },
+    link: { title: "Gráfico · LINK/USDT", hold: false, price: "$14.82", residual: RESIDUAL_LINK }
+  };
+
+  function fillChart(key) {
+    var pack = CHART[key] || CHART.sol;
+    var modal = document.getElementById("proto-chart-modal");
+    document.getElementById("chart-modal-title").textContent = pack.title;
+    var holdEl = modal.querySelector("[data-chart-hold]");
+    var exitEl = modal.querySelector("[data-chart-exit]");
+    var section = modal.querySelector("[data-chart-section-label]");
+    holdEl.hidden = !pack.hold;
+    exitEl.hidden = pack.hold;
+    section.textContent = pack.hold ? "Risco / Stop" : "Risco residual";
+    if (pack.hold) {
+      modal.querySelector("[data-chart-exit-dist]").textContent = pack.exitDist;
+      modal.querySelector("[data-chart-stop-dist]").textContent = pack.stopDist;
+      modal.querySelector("[data-chart-stop]").textContent = pack.stop;
+      modal.querySelector("[data-chart-alvo]").textContent = pack.alvo;
+      modal.querySelector("[data-chart-entry]").textContent = pack.entry;
+      modal.querySelector("[data-chart-price]").textContent = pack.price;
+      var scen = modal.querySelector("[data-chart-scenario]");
+      scen.hidden = !pack.scenario;
+      holdEl.querySelectorAll(".risk-unavailable").forEach(function (el) { el.classList.remove("risk-unavailable"); });
+      if (key === "eth") {
+        modal.querySelector("[data-chart-exit-dist]").classList.add("risk-unavailable");
+        modal.querySelector("[data-chart-stop-dist]").classList.add("risk-unavailable");
+        modal.querySelector("[data-chart-stop]").classList.add("risk-unavailable");
+        modal.querySelector("[data-chart-alvo]").classList.add("risk-unavailable");
+        modal.querySelector("[data-chart-entry]").classList.add("risk-unavailable");
+      }
+    } else {
+      modal.querySelector("[data-chart-exit-price]").textContent = pack.price;
+      modal.querySelector("[data-chart-residual-text]").textContent = pack.residual;
+    }
+    modal.setAttribute("data-chart-symbol", key);
+    applyVariant(variant);
+  }
+
+  function openChart(key) {
+    fillChart(key);
+    document.getElementById("proto-chart-overlay").classList.add("is-open");
+  }
+
+  function closeChart() {
+    document.getElementById("proto-chart-overlay").classList.remove("is-open");
+  }
+
+  function symbolFromNode(node) {
+    var host = node.closest("[data-testid^='monitor-card-'], [data-testid^='monitor-row-'], [data-expand], article, tr");
+    var id = (host && (host.getAttribute("data-testid") || host.getAttribute("data-expand"))) || "";
+    if (/eth/i.test(id)) return "eth";
+    if (/ada/i.test(id)) return "ada";
+    if (/link/i.test(id)) return "link";
+    return "sol";
+  }
+
+  document.querySelectorAll("[data-chart-close]").forEach(function (btn) {
+    btn.addEventListener("click", closeChart);
+  });
+  document.getElementById("proto-chart-overlay").addEventListener("click", function (event) {
+    if (event.target === event.currentTarget) closeChart();
+  });
+  document.querySelectorAll("button").forEach(function (btn) {
+    var label = ((btn.getAttribute("aria-label") || "") + " " + (btn.textContent || "")).toLowerCase();
+    if (label.indexOf("abrir gráfico") === -1) return;
+    btn.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      openChart(symbolFromNode(btn));
+    });
+  });
+
+  applyVariant("after");
+})();
+
+  </script>
+  <!-- GENERATED:end js -->
+</body>
+</html>
