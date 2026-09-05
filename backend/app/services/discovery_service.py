@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -60,6 +60,18 @@ SWEEP_STATES = {
 }
 TERMINAL_STATES = {"cancelled", "failed", "partial_failure", "completed"}
 NON_TERMINAL_STATES = {"pending", "running", "paused", "cancelling"}
+
+# Mensagens operacionais do início de varredura (card #837): o `detail` da
+# criação é exibido na tela na íntegra, então nenhum `detail` deste caminho
+# pode conter JSON ou jargão — só instrução de operação (o que fazer).
+# Cópia alinhada ao protótipo aprovado do card.
+LIVE_SWEEP_GUIDANCE = (
+    "Há uma varredura em execução. Cancele a atual antes de iniciar outra seleção."
+)
+INVALID_SELECTION_GUIDANCE = (
+    "A seleção não é válida para iniciar. "
+    "Ajuste a seleção, refaça o preflight e inicie de novo."
+)
 
 STRUCTURE_VERSION = "discovery-structure-v1"
 QUANTUM_VERSION = "discovery-quantum-v1"
@@ -206,6 +218,39 @@ def build_evidence_fingerprint(
 
 def _canonical_templates(templates: list[str]) -> list[str]:
     return sorted({t.strip() for t in templates if t and t.strip()})
+
+
+def _followup_idempotency_key(idempotency_key: str) -> str:
+    """Deriva uma chave única para o começo novo pós-terminal (card #837).
+
+    A restrição única é (actor, idempotency_key), então a varredura nova não
+    pode reutilizar a chave da run morta; a chave efetiva volta na resposta
+    para o cliente adotar no rascunho.
+    """
+    return f"{idempotency_key[:46]}-r{uuid.uuid4().hex[:16]}"
+
+
+def _acquire_actor_create_lock(db: Session, actor: str) -> None:
+    """Serializa criações concorrentes do mesmo actor (card #837, follow-up).
+
+    A guarda live é SELECT-antes-INSERT sem lock: duas criações com chaves
+    DISTINTAS e seleções distintas podem passar lado a lado e persistir 2
+    lives. O advisory lock transacional por actor fecha essa janela no
+    PostgreSQL sem nenhuma migração (sem índice novo, sem backfill): o
+    segundo create_sweep espera o primeiro commitar e então enxerga a live.
+    Fora do PostgreSQL (ex.: SQLite em testes) é no-op deliberado.
+    """
+    try:
+        bind = db.bind
+        dialect = getattr(getattr(bind, "dialect", None), "name", "") or ""
+    except Exception:
+        return
+    if dialect != "postgresql":
+        return
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:key))"),
+        {"key": f"discovery-sweep-create:{actor}"},
+    )
 
 
 class DiscoveryService:
@@ -393,6 +438,10 @@ class DiscoveryService:
         idem_payload = {k: v for k, v in payload.items() if k != "snapshot_hash"}
         payload_hash = _payload_hash(idem_payload)
 
+        # Fecha a janela SELECT-antes-INSERT entre chaves distintas do mesmo
+        # actor (advisory lock transacional; no-op fora do PostgreSQL).
+        _acquire_actor_create_lock(db, actor)
+
         existing = (
             db.query(DiscoverySweep)
             .filter(
@@ -401,12 +450,18 @@ class DiscoveryService:
             )
             .first()
         )
-        if existing:
+        if existing is not None and existing.state in TERMINAL_STATES:
+            # Pós-terminal, a seleção da tela é um começo novo (card #837):
+            # cria uma varredura nova mesmo com seleção igual, nunca reabre a
+            # run morta e nunca devolve o conflito de rascunho no caminho feliz.
+            idempotency_key = _followup_idempotency_key(idempotency_key)
+            existing = None
+        if existing is not None:
             if existing.payload_hash != payload_hash:
                 return (
                     {
                         "error": "idempotency conflict",
-                        "detail": "mesma chave com payload divergente",
+                        "detail": LIVE_SWEEP_GUIDANCE,
                     },
                     409,
                 )
@@ -414,7 +469,37 @@ class DiscoveryService:
                 "sweep_id": existing.id,
                 "state": existing.state,
                 "idempotent_retry": True,
+                "idempotency_key": existing.idempotency_key,
             }, 200
+
+        live = (
+            db.query(DiscoverySweep)
+            .filter(
+                DiscoverySweep.actor == actor,
+                DiscoverySweep.state.in_(tuple(NON_TERMINAL_STATES)),
+            )
+            .order_by(desc(DiscoverySweep.created_at), desc(DiscoverySweep.id))
+            .first()
+        )
+        if live is not None:
+            if live.payload_hash == payload_hash:
+                # Repetição da mesma seleção (mesmo com outra chave, ex.:
+                # rascunho refeito): mostra a existente, sem duplicata.
+                return {
+                    "sweep_id": live.id,
+                    "state": live.state,
+                    "idempotent_retry": True,
+                    "idempotency_key": live.idempotency_key,
+                }, 200
+            # Outra seleção com varredura em curso: não cria segunda nem
+            # substitui a ativa; orienta a cancelar antes.
+            return (
+                {
+                    "error": "live sweep in progress",
+                    "detail": LIVE_SWEEP_GUIDANCE,
+                },
+                409,
+            )
 
         # Revalida o token do snapshot atomicamente (spec discovery-sweep).
         preflight_result = self.preflight(
@@ -428,7 +513,7 @@ class DiscoveryService:
         )
         if preflight_result["errors"]:
             return (
-                {"error": "invalid snapshot", "detail": preflight_result["errors"]},
+                {"error": "invalid snapshot", "detail": INVALID_SELECTION_GUIDANCE},
                 400,
             )
         if preflight_result["snapshot_hash"] != payload.get("snapshot_hash"):
@@ -479,9 +564,11 @@ class DiscoveryService:
         db.add(DiscoveryOutbox(sweep_id=sweep_id, generation=1, state="pending"))
         try:
             db.commit()
-        except Exception:
+        except IntegrityError:
             db.rollback()
-            # Corrida concorrente com a mesma chave: o vencedor já persistiu.
+            # Corrida concorrente na unicidade (actor, idempotency_key): o
+            # vencedor já persistiu. Só a violação de integridade cai aqui;
+            # qualquer outro erro de commit propaga abaixo sem mascarar.
             existing = (
                 db.query(DiscoverySweep)
                 .filter(
@@ -495,7 +582,7 @@ class DiscoveryService:
                     return (
                         {
                             "error": "idempotency conflict",
-                            "detail": "mesma chave com payload divergente",
+                            "detail": LIVE_SWEEP_GUIDANCE,
                         },
                         409,
                     )
@@ -503,12 +590,50 @@ class DiscoveryService:
                     "sweep_id": existing.id,
                     "state": existing.state,
                     "idempotent_retry": True,
+                    "idempotency_key": existing.idempotency_key,
                 }, 200
+            # A chave derivada pós-terminal é única por construção; se a
+            # corrida foi entre duas criações frescas com a mesma chave, o
+            # vencedor já persiste como varredura em curso.
+            live = (
+                db.query(DiscoverySweep)
+                .filter(
+                    DiscoverySweep.actor == actor,
+                    DiscoverySweep.state.in_(tuple(NON_TERMINAL_STATES)),
+                )
+                .order_by(desc(DiscoverySweep.created_at), desc(DiscoverySweep.id))
+                .first()
+            )
+            if live is not None:
+                if live.payload_hash == payload_hash:
+                    return {
+                        "sweep_id": live.id,
+                        "state": live.state,
+                        "idempotent_retry": True,
+                        "idempotency_key": live.idempotency_key,
+                    }, 200
+                return (
+                    {
+                        "error": "live sweep in progress",
+                        "detail": LIVE_SWEEP_GUIDANCE,
+                    },
+                    409,
+                )
+            raise
+        except Exception:
+            # Qualquer outro erro de commit (conexão, timeout, check, ...) não
+            # é corrida de idempotência: desfaz e propaga sem mascarar.
+            db.rollback()
             raise
 
         # Dispatcher: transiciona pending -> running e publica o wake-up.
         self._start_sweep(db, sweep_id)
-        return {"sweep_id": sweep_id, "state": "running", "total": total}, 201
+        return {
+            "sweep_id": sweep_id,
+            "state": "running",
+            "total": total,
+            "idempotency_key": idempotency_key,
+        }, 201
 
     def _start_sweep(self, db: Session, sweep_id: str) -> None:
         """Dispatcher: pending -> running e entrega o intent do outbox

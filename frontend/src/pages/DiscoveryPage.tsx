@@ -196,12 +196,31 @@ function catalogFromSymbols(list: string[]): CatalogItem[] {
 }
 
 function errorDetail(data: unknown, fallback: string): string {
+  // O detalhe de erro da API chega embrulhado ({ detail: {...} }); a tela
+  // exibe só instrução de operação (card #837, aceite 7) — nunca JSON técnico.
   if (data && typeof data === 'object') {
     const d = (data as Record<string, unknown>).detail
     if (typeof d === 'string') return d
-    if (d && typeof d === 'object') return JSON.stringify(d)
+    if (d && typeof d === 'object') {
+      const nested = (d as Record<string, unknown>).detail
+      if (typeof nested === 'string') return nested
+    }
   }
   return fallback
+}
+
+// Cópias operacionais do início de varredura (card #837), alinhadas ao
+// protótipo aprovado: o que fazer, sem JSON nem jargão.
+const START_FAILURE_FALLBACK =
+  'Não foi possível iniciar a varredura. Confira a seleção e tente de novo — nada foi criado.'
+const LIVE_BLOCK_COPY =
+  'Há uma varredura em execução. Cancele a atual antes de iniciar outra seleção.'
+
+function sameStringSet(a: string[], b: string[] | undefined): boolean {
+  if (!b) return a.length === 0
+  if (a.length !== b.length) return false
+  const setB = new Set(b)
+  return a.every((x) => setB.has(x))
 }
 
 export function DiscoveryPage() {
@@ -231,6 +250,7 @@ export function DiscoveryPage() {
   const [snapshotStale, setSnapshotStale] = useState(false)
   const [draftFrozen, setDraftFrozen] = useState(false)
   const [draftKey, setDraftKey] = useState(() => readStoredDraftKey() || newDraftKey())
+  const [startError, setStartError] = useState<string | null>(null)
   const [recoveryStatus, setRecoveryStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [reconnected, setReconnected] = useState(false)
   // Sweep ativo e run histórico exibido permanecem separados, como no protótipo.
@@ -418,6 +438,7 @@ export function DiscoveryPage() {
   // ---------- Preflight (auto, com debounce) ----------
   const runPreflight = useCallback(async () => {
     if (recoveryStatus !== 'ready' || draftFrozen) return
+    setStartError(null)
     if (selectedTemplates.length === 0 || selectedSymbols.length === 0 || timeframes.length === 0 || directions.length === 0) {
       setPreflight(null)
       setSnapshotStale(false)
@@ -472,9 +493,34 @@ export function DiscoveryPage() {
       : [...committedSelection.symbols.selected].filter((id) => symbolsCatalog.some((i) => i.id === id))),
   ].length * timeframes.length * directions.length
   const overLimit = Boolean(preflight?.errors?.total)
+  // Com varredura em curso, Iniciar de outra seleção fica bloqueado com aviso
+  // para cancelar antes (card #837, aceite 4); a repetição da mesma seleção
+  // continua valendo como retry idempotente que mostra a existente.
+  const liveSweep = activeSweep && NON_TERMINAL.has(activeSweep.state) ? activeSweep : null
+  const liveAxes = liveSweep?.snapshot?.axes ?? null
+  // A janela do snapshot também ancora o bloqueio: período igual com datas
+  // divergentes (ex.: catálogo/janela re-resolvida) é outra seleção.
+  const liveStartDate = liveSweep?.snapshot?.start_date ?? null
+  const liveEndDate = liveSweep?.snapshot?.end_date ?? null
+  const draftStartDate = preflight?.start_date ?? null
+  const draftEndDate = preflight?.end_date ?? null
+  const blockedOtherSelection = Boolean(
+    liveSweep &&
+      liveAxes &&
+      (!sameStringSet(selectedTemplates, liveAxes.templates) ||
+        !sameStringSet(
+          selectedSymbols.map((s) => s.toUpperCase()),
+          (liveAxes.symbols ?? []).map((s) => s.toUpperCase()),
+        ) ||
+        !sameStringSet(timeframes, liveAxes.timeframes) ||
+        !sameStringSet(directions, liveAxes.directions) ||
+        (liveSweep.snapshot?.period_type ?? null) !== period ||
+        (preflight != null && (draftStartDate !== liveStartDate || draftEndDate !== liveEndDate))),
+  )
   const canStart =
     recoveryStatus === 'ready' &&
     !draftFrozen &&
+    !blockedOtherSelection &&
     preflight !== null &&
     Object.keys(preflight.errors || {}).length === 0 &&
     !snapshotStale
@@ -483,10 +529,19 @@ export function DiscoveryPage() {
     setList(list.includes(value) ? list.filter((x) => x !== value) : [...list, value])
 
   // ---------- Sweep ----------
+  const rotateDraftKey = useCallback(() => {
+    // A chave do rascunho aposenta com a run morta (card #837): o próximo
+    // Iniciar sempre começa uma varredura nova, mesmo com seleção igual.
+    const next = newDraftKey()
+    setDraftKey(next)
+    persistDraftKey(next)
+  }, [])
+
   const startSweep = useCallback(async () => {
     if (!preflight) return
     setBusy(true)
     setSnapshotStale(false)
+    setStartError(null)
     try {
       const res = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps`, {
         method: 'POST',
@@ -508,13 +563,38 @@ export function DiscoveryPage() {
           setPermissionDenied(true)
           return
         }
-        const detail = errorDetail(data, 'Falha ao iniciar varredura')
-        if (res.status === 409 && /mudaram|expirado|inválido/i.test(detail)) {
+        const detail = errorDetail(data, START_FAILURE_FALLBACK)
+        // Roteamento do 409 pelo código de máquina `error`; `detail` segue
+        // só como texto de exibição (card #837, P1 code-reviewer).
+        const startErrorCode =
+          data && typeof data === 'object' && typeof (data as Record<string, unknown>).error === 'string'
+            ? String((data as Record<string, unknown>).error).toLowerCase()
+            : ''
+        if (res.status === 409 && startErrorCode.includes('stale')) {
           setSnapshotStale(true)
+        } else if (res.status === 409 && (startErrorCode.includes('live sweep') || startErrorCode.includes('idempotency'))) {
+          showToast('Há uma varredura em execução', `${detail} Nada foi criado.`)
+          return
+        } else {
+          setStartError(detail)
         }
-        showToast('Falha ao iniciar', detail)
+        showToast('Não foi possível iniciar', detail)
         return
       }
+      // Pós-terminal, o servidor deriva a chave efetiva da varredura nova; o
+      // rascunho adota para que a repetição vire retry idempotente.
+      const effectiveKey =
+        data && typeof data === 'object'
+          ? (data as Record<string, unknown>).idempotency_key
+          : null
+      if (typeof effectiveKey === 'string' && effectiveKey.length >= 8) {
+        setDraftKey(effectiveKey)
+        persistDraftKey(effectiveKey)
+      }
+      const isRetry =
+        data && typeof data === 'object'
+          ? (data as Record<string, unknown>).idempotent_retry === true
+          : false
       const detailRes = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps/${data.sweep_id}`)
       const fullSweep: Sweep = detailRes.ok
         ? await detailRes.json()
@@ -543,7 +623,12 @@ export function DiscoveryPage() {
         setTotalMatched(0)
         setTotalAvailable(0)
       }
-      showToast('Varredura iniciada', 'Sweep criado; progresso atualiza automaticamente.')
+      showToast(
+        isRetry ? 'Varredura já em andamento' : 'Varredura iniciada',
+        isRetry
+          ? 'Mostrando a existente — nenhuma duplicata foi criada.'
+          : 'Nova varredura da seleção da tela; o progresso aparece acima.',
+      )
       void loadHistory()
     } finally {
       setBusy(false)
@@ -637,6 +722,7 @@ export function DiscoveryPage() {
         setActiveSweep(null)
         setViewSweep(newest)
         viewOriginRef.current = 'auto'
+        rotateDraftKey()
         setRecoveryStatus('ready')
         setPage(1)
         setFSymbol('all')
@@ -671,7 +757,7 @@ export function DiscoveryPage() {
     } catch {
       setRecoveryStatus('error')
     }
-  }, [hydrateFromSweep, loadHistory, loadLeaderboard])
+  }, [hydrateFromSweep, loadHistory, loadLeaderboard, rotateDraftKey])
 
   useEffect(() => {
     void restoreSession()
@@ -710,6 +796,7 @@ export function DiscoveryPage() {
         setActiveSweep(data)
         setViewSweep(data)
         setDraftFrozen(false)
+        rotateDraftKey()
         setFSymbol('all')
         setFTimeframe('all')
         setFDirection('all')
@@ -725,7 +812,7 @@ export function DiscoveryPage() {
     } finally {
       if (rev === pollRevRef.current) pollInFlightRef.current = false
     }
-  }, [metric, loadLeaderboard, loadHistory])
+  }, [metric, loadLeaderboard, loadHistory, rotateDraftKey])
 
   useEffect(() => {
     if (!activeSweep || TERMINAL.has(activeSweep.state) || sessionExpired) {
@@ -1642,6 +1729,26 @@ export function DiscoveryPage() {
                 )}
               </button>
 
+              {blockedOtherSelection ? (
+                <p
+                  className="mt-3 rounded-md border border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.06)] p-2.5 text-[11px] text-[#fbbf24]"
+                  role="alert"
+                  data-testid="live-block-note"
+                >
+                  {LIVE_BLOCK_COPY}
+                </p>
+              ) : null}
+
+              {startError && !snapshotStale ? (
+                <p
+                  className="mt-3 rounded-md border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-2.5 text-[11px] text-[var(--text-secondary)]"
+                  role="alert"
+                  data-testid="start-error"
+                >
+                  {startError}
+                </p>
+              ) : null}
+
               {overLimit ? (
                 <p className="mt-3 text-xs text-[var(--text-muted)]" data-testid="over-limit-note">
                   {preflight?.errors?.total} Reduza templates, símbolos, timeframes ou direções; o preflight e a ação de início usam o mesmo total.
@@ -1797,7 +1904,7 @@ export function DiscoveryPage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto" tabIndex={0} aria-label="Tabela rolável de candidatos">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela rolável de candidatos">
               {rows.length === 0 && !lbLoading && !lbError ? (
                 <div className="p-8 text-center" data-testid="empty-state">
                   <strong className="block text-[var(--text-secondary)]">Nenhum candidato neste recorte.</strong>
