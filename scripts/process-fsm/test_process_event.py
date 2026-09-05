@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from test_overlay_fixtures import FIELD_ID, filled_overlay_dict, write_overlay  # noqa: E402
+import design_clone_gate  # noqa: E402
 from fsm import load_fsm  # noqa: E402
 from guard import decide  # noqa: E402
 from process_event import (  # noqa: E402
@@ -278,7 +279,10 @@ def test_t5_default_g_design_refuses_r1_gallery_monitor(tmp_path: Path):
 
 def test_t5_default_g_design_ui_none_transitions(tmp_path: Path):
     change = _change_tree(tmp_path)
-    (change / "design.md").write_text("UI impact: none\n", encoding="utf-8")
+    (change / "design.md").write_text(
+        "UI impact: none\nlive_route: N/A harness-only; no product route\nsurface: new\n",
+        encoding="utf-8",
+    )
     mover = FakeMover()
     out = process_event(
         "submeter_design",
@@ -292,6 +296,67 @@ def test_t5_default_g_design_ui_none_transitions(tmp_path: Path):
     assert out["result"] == "transition"
     assert out["to"] == "Aprovação de Design"
     assert mover.calls == [(612, "Aprovação de Design")]
+
+
+def _seeded_head_catalog(_repo: Path) -> dict:
+    return design_clone_gate.parse_catalog(
+        design_clone_gate.default_catalog_path().read_text(encoding="utf-8")
+    )
+
+
+def test_t5_refuses_panel_plus_sibling_landing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(design_clone_gate, "load_head_catalog", _seeded_head_catalog)
+    change = _change_tree(tmp_path)
+    (change / "design.md").write_text(
+        "UI impact: affected\nlive_route: landing\nsurface: existing\n",
+        encoding="utf-8",
+    )
+    proto = tmp_path / "proto"
+    proto.mkdir()
+    (proto / "index.html").write_text(
+        (ROOT / "fixtures" / "790-panel-index.html").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (proto / "landing.html").write_text(
+        (ROOT / "fixtures" / "790-sibling-landing-clone.html").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    mover = FakeMover()
+    out = process_event(
+        "submeter_design",
+        status="Design",
+        q_git="card-819-clone-pagina-viva",
+        bound_card="819",
+        mover=mover,
+        change_dir=change,
+        prototype_dir=proto,
+        digest_changed=False,
+    )
+    assert out["result"] == "reject"
+    assert str(out["reason"]).startswith("guard:")
+    assert mover.calls == []
+
+
+def test_t5_refuses_existing_without_proto(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(design_clone_gate, "load_head_catalog", _seeded_head_catalog)
+    change = _change_tree(tmp_path)
+    (change / "design.md").write_text(
+        "UI impact: none\nlive_route: landing\nsurface: existing\n",
+        encoding="utf-8",
+    )
+    mover = FakeMover()
+    out = process_event(
+        "submeter_design",
+        status="Design",
+        q_git="card-819-clone-pagina-viva",
+        bound_card="819",
+        mover=mover,
+        change_dir=change,
+        digest_changed=False,
+    )
+    assert out["result"] == "reject"
+    assert str(out["reason"]).startswith("guard:")
+    assert mover.calls == []
 
 
 def test_t5_writes_sidecar_dry_run_does_not(tmp_path: Path):
