@@ -612,6 +612,10 @@ export function DiscoveryPage() {
           }
       focusStartedSweepRef.current = true
       pollRevRef.current += 1
+      // A live recém-criada é a fonte da verdade (card #837): o rascunho adota
+      // a seleção efetiva do servidor para que draft==live e a nota de bloqueio
+      // não persista sobre o próprio rascunho congelado.
+      if (fullSweep.snapshot?.axes) hydrateFromSweep(fullSweep)
       activeSweepRef.current = fullSweep
       setActiveSweep(fullSweep)
       if (!viewSweep) setViewSweep(fullSweep)
@@ -633,7 +637,7 @@ export function DiscoveryPage() {
     } finally {
       setBusy(false)
     }
-  }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, draftKey, loadHistory, showToast, viewSweep])
+  }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, draftKey, hydrateFromSweep, loadHistory, showToast, viewSweep])
 
   useEffect(() => {
     if (!activeSweep || !focusStartedSweepRef.current) return

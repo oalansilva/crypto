@@ -511,7 +511,9 @@ class TestStartAfterTerminal:
         def _fail_first_commit():
             calls["n"] += 1
             if calls["n"] == 1:
-                raise IntegrityError("INSERT INTO discovery_sweep", {}, Exception("duplicate key value"))
+                raise IntegrityError(
+                    "INSERT INTO discovery_sweep", {}, Exception("duplicate key value")
+                )
             return real_commit()
 
         monkeypatch.setattr(db, "commit", _fail_first_commit)
@@ -560,13 +562,32 @@ class TestStartAfterTerminal:
         db.close()
 
     def test_advisory_lock_is_noop_off_postgres(self, engine_factory):
-        """O lock por actor não quebra dialetos sem pg_advisory (card #837)."""
+        """O lock por actor não quebra dialetos sem pg_advisory (card #837).
+
+        A chave do lock é única por teste: no CI o banco é PostgreSQL e o
+        ramo PG executa de verdade, então reutilizar `admin-1` (chave
+        compartilhada com os demais testes) contendia o advisory lock até o
+        Timeout. Com actor único ninguém mais detém a chave.
+        """
+        import time
+
         from app.services.discovery_service import _acquire_actor_create_lock
 
         engine = engine_factory()
         db = _session_factory(engine)()
+        unique_actor = f"admin-1-lock-{uuid.uuid4().hex[:12]}"
         try:
-            _acquire_actor_create_lock(db, "admin-1")  # não deve levantar
+            dialect = getattr(getattr(db.bind, "dialect", None), "name", "") or ""
+            if dialect == "postgresql":
+                started = time.monotonic()
+                _acquire_actor_create_lock(db, unique_actor)  # não deve levantar
+                elapsed = time.monotonic() - started
+                # Chave única: a aquisição real retorna rápido; o limite é
+                # folgado e só acusa contenção/regressão, nunca o caminho feliz.
+                assert elapsed < 10
+            else:
+                _acquire_actor_create_lock(db, unique_actor)  # no-op: não deve levantar
+            db.rollback()
         finally:
             db.close()
 

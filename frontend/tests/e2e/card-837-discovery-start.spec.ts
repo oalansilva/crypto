@@ -209,10 +209,29 @@ test('card 837 — outra seleção com live em curso mostra orientação sem dup
   await page.goto('/combo/discovery')
 
   await expect(page.getByTestId('sweep-progress')).toBeVisible()
+  // Rascunho hidratado da live: draft==live, sem nota de bloqueio.
+  await expect(page.getByTestId('live-block-note')).toHaveCount(0)
+
+  // Com live em curso o rascunho nasce congelado (chips do fieldset ficam
+  // disabled), então clicar chip direto é impossível na UI. Reload semeando
+  // sessionStorage com chave de rascunho divergente: a recuperação realinha o
+  // rascunho à live (draft==live) em vez de prender a divergência.
+  await page.evaluate(() =>
+    sessionStorage.setItem('discovery-draft-idempotency-key', 'draft-divergente-semeado'),
+  )
+  await page.reload()
+  await expect(page.getByTestId('sweep-progress')).toBeVisible()
+  await expect(page.getByTestId('live-block-note')).toHaveCount(0)
+
+  // A divergência passa por "Novo rascunho": libera o rascunho preservando a
+  // live; só então os chips habilitam e a seleção pode divergir.
+  await page.getByTestId('new-draft').click()
   // Seleção da tela diverge da live (mock tem 4h+1d; desmarca 1d): bloqueio
   // orientado aparece e nenhum erro técnico é exposto.
   await page.getByText('1 dia').click()
   await expect(page.getByTestId('live-block-note')).toBeVisible()
   await expect(page.getByTestId('live-block-note')).toContainText('Cancele')
+  // Iniciar bloqueado: nenhuma segunda varredura pode nascer daqui.
+  await expect(page.getByTestId('start-sweep')).toBeDisabled()
   await expect(page.getByTestId('start-error')).toHaveCount(0)
 })

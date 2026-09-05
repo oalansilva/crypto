@@ -69,8 +69,7 @@ LIVE_SWEEP_GUIDANCE = (
     "Há uma varredura em execução. Cancele a atual antes de iniciar outra seleção."
 )
 INVALID_SELECTION_GUIDANCE = (
-    "A seleção não é válida para iniciar. "
-    "Ajuste a seleção, refaça o preflight e inicie de novo."
+    "A seleção não é válida para iniciar. " "Ajuste a seleção, refaça o preflight e inicie de novo."
 )
 
 STRUCTURE_VERSION = "discovery-structure-v1"
