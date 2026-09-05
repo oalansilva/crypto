@@ -33,6 +33,13 @@ from overlay import (  # noqa: E402
     repo_owner_name,
     try_load_overlay,
 )
+from graphql_quota import (  # noqa: E402
+    GraphQLQuotaError,
+    enforce_graphql_quota,
+    parse_include_output,
+    raise_if_cached_exhausted,
+    write_cache,
+)
 from resolve import UNBOUND, resolve  # noqa: E402
 
 REPO_ROOT = ROOT.parents[1]
@@ -409,13 +416,14 @@ def extract_path(payload: Mapping[str, Any], overlay: Mapping[str, Any] | None =
 
 
 def github_status_provider(bound_card: str | None) -> str | None:
-    """Pontual issue→Status. Never used by pytest (tests inject status_provider)."""
+    """Pontual issue→Status. RATE_LIMIT / remaining=0 raises GraphQLQuotaError (not None)."""
     if bound_card in (None, "", UNBOUND):
         return None
     try:
         number = int(str(bound_card))
     except (TypeError, ValueError):
         return None
+    raise_if_cached_exhausted()
     overlay = try_load_overlay(Path.cwd())
     owner, repo_name = repo_owner_name(overlay)
     board_owner, board_number = board_owner_number(overlay)
@@ -435,6 +443,7 @@ def github_status_provider(bound_card: str | None) -> str | None:
                 "gh",
                 "api",
                 "graphql",
+                "--include",
                 "-f",
                 f"query={query}",
                 "-F",
@@ -448,11 +457,12 @@ def github_status_provider(bound_card: str | None) -> str | None:
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
-    if proc.returncode != 0 or not (proc.stdout or "").strip():
-        return None
-    try:
-        data = json.loads(proc.stdout)
-    except json.JSONDecodeError:
+    captured = f"{proc.stdout or ''}\n{proc.stderr or ''}"
+    quota = parse_include_output(captured)
+    write_cache(quota)
+    enforce_graphql_quota(quota)
+    data = quota.body
+    if not isinstance(data, dict):
         return None
     nodes = (
         (((data.get("data") or {}).get("repository") or {}).get("issue") or {}).get("projectItems")
@@ -586,6 +596,21 @@ def _deny(reason: str, state: str | None, q_git: str | None, bound: str | None) 
     return emit("deny", _reason_message(reason, state, q_git, bound))
 
 
+def _deny_quota(
+    reason: str,
+    state: str | None,
+    q_git: str | None,
+    bound: str | None,
+    quota_err: GraphQLQuotaError | None,
+) -> dict[str, str]:
+    denied = _deny(reason, state, q_git, bound)
+    if quota_err is None:
+        return denied
+    extra = f" GraphQL quota remaining={quota_err.remaining} reset_at={quota_err.reset_at}"
+    denied["agent_message"] = (denied.get("agent_message") or "") + extra
+    return denied
+
+
 def _empty_path_deny() -> dict[str, str]:
     message = (
         "process-fsm-guard deny reason=empty_path. "
@@ -664,16 +689,21 @@ def decide(
     q_git = resolved.get("q_git")
     bound = resolved.get("bound_card")
     q: str | None = status if status is not None else resolved.get("q")
+    quota_err: GraphQLQuotaError | None = None
     if q is None and status_provider is not None:
-        q = status_provider(None if bound in (None, UNBOUND) else str(bound))
+        try:
+            q = status_provider(None if bound in (None, UNBOUND) else str(bound))
+        except GraphQLQuotaError as exc:
+            quota_err = exc
+            q = None
 
     if kind != "product":
         if q is None and kind == "design" and not _card_branch(q_git):
-            return _deny("fail_closed", q, q_git, bound)
+            return _deny_quota("fail_closed", q, q_git, bound, quota_err)
         return _allow()
 
     if q is None:
-        return _deny("fail_closed", q, q_git, bound)
+        return _deny_quota("fail_closed", q, q_git, bound, quota_err)
 
     if q_git in integration_branches(overlay):
         return _deny("I1", q, q_git, bound)

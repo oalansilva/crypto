@@ -122,13 +122,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const distanceStopStr = !hasRiskValue(opportunity.distance_to_stop_pct) ? UNAVAILABLE : formatPct(opportunity.distance_to_stop_pct as number);
     const stopStr = !hasRiskValue(opportunity.stop_price) ? UNAVAILABLE : formatUsd(opportunity.stop_price as number);
     const entryStr = !hasRiskValue(opportunity.entry_price) ? UNAVAILABLE : formatUsd(opportunity.entry_price as number);
-    const alvoPrice: number | null = React.useMemo(() => {
-        if (!hasRiskValue(distance_to_next_status) || last_price === null || last_price === undefined || isRiskStale) return null;
-        const dist = distance_to_next_status as number;
-        if (!Number.isFinite(dist) || !Number.isFinite(last_price)) return null;
-        return isShort ? last_price * (1 - dist / 100) : last_price * (1 + dist / 100);
-    }, [distance_to_next_status, last_price, isShort, isRiskStale]);
-    const alvoStr = alvoPrice === null ? UNAVAILABLE : formatUsd(alvoPrice);
 
     const [isEditingNotes, setIsEditingNotes] = React.useState(false);
     const [notesValue, setNotesValue] = React.useState(opportunity.notes || '');
@@ -431,8 +424,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                                 <dd className={!hasRiskValue(opportunity.distance_to_stop_pct) ? 'risk-unavailable' : undefined} title={!hasRiskValue(opportunity.distance_to_stop_pct) ? 'dado não confiável ≠ erro de rede' : undefined}>{distanceStopStr}</dd>
                                 <dt>stop</dt>
                                 <dd className={!hasRiskValue(opportunity.stop_price) ? 'risk-unavailable' : undefined} title={!hasRiskValue(opportunity.stop_price) ? 'dado não confiável ≠ erro de rede' : undefined}>{stopStr}</dd>
-                                <dt>alvo</dt>
-                                <dd className={alvoPrice === null ? 'risk-unavailable' : undefined} title={alvoPrice === null ? 'dado não confiável ≠ erro de rede' : undefined}>{alvoStr}</dd>
                                 <dt>entrada</dt>
                                 <dd className={!hasRiskValue(opportunity.entry_price) ? 'risk-unavailable' : undefined} title={!hasRiskValue(opportunity.entry_price) ? 'dado não confiável ≠ erro de rede' : undefined}>{entryStr}</dd>
                                 <dt>preço atual</dt>
