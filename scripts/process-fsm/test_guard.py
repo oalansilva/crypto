@@ -984,3 +984,102 @@ def test_bash_fallback_allows_existing_checkout_on_canonical(tmp_path: Path):
         {"command": "git checkout develop", "cwd": source},
     )
     _assert_dual_allow(data)
+
+
+G1_INCLUDE = """HTTP/2 200
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 2026-09-03T02:55:52Z
+X-RateLimit-Resource: graphql
+
+{"data":null,"errors":[{"type":"RATE_LIMIT","message":"API rate limit exceeded"}]}
+"""
+
+
+def test_g5_github_status_provider_rate_limit_is_not_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from graphql_quota import GraphQLQuotaError
+    from guard import github_status_provider
+
+    cache = tmp_path / "quota.json"
+    monkeypatch.setenv("PROCESS_FSM_GRAPHQL_QUOTA_CACHE", str(cache))
+    monkeypatch.setattr("guard.try_load_overlay", lambda *a, **k: {"ok": True})
+    monkeypatch.setattr("guard.repo_owner_name", lambda o: ("oalansilva", "crypto"))
+    monkeypatch.setattr("guard.board_owner_number", lambda o: ("oalansilva", 1))
+    calls: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        calls.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, stdout=G1_INCLUDE, stderr="")
+
+    monkeypatch.setattr("guard.subprocess.run", fake_run)
+    with pytest.raises(GraphQLQuotaError) as excinfo:
+        github_status_provider("820")
+    assert excinfo.value.remaining == 0
+    assert excinfo.value.reset_at == "2026-09-03T02:55:52Z"
+    assert calls
+    assert "item-list" not in " ".join(calls[0])
+    assert "graphql" in calls[0]
+    assert "--include" in calls[0]
+
+    calls.clear()
+
+    def fake_run_nonzero(argv, **kwargs):
+        calls.append(list(argv))
+        return subprocess.CompletedProcess(argv, 1, stdout=G1_INCLUDE, stderr="graphql error")
+
+    monkeypatch.setattr("guard.subprocess.run", fake_run_nonzero)
+    with pytest.raises(GraphQLQuotaError) as excinfo:
+        github_status_provider("820")
+    assert excinfo.value.remaining == 0
+
+
+def test_g9_g10_status_provider_cache_skip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from graphql_quota import GraphQLQuotaError, parse_include_output, write_cache
+    from guard import github_status_provider
+
+    cache = tmp_path / "quota.json"
+    monkeypatch.setenv("PROCESS_FSM_GRAPHQL_QUOTA_CACHE", str(cache))
+    write_cache(parse_include_output(G1_INCLUDE))
+    monkeypatch.setenv("PROCESS_FSM_GRAPHQL_QUOTA_NOW", "2026-09-03T01:00:00Z")
+
+    def boom(*a, **k):
+        raise AssertionError("graphql called")
+
+    monkeypatch.setattr("guard.subprocess.run", boom)
+    with pytest.raises(GraphQLQuotaError):
+        github_status_provider("820")
+
+    monkeypatch.setenv("PROCESS_FSM_GRAPHQL_QUOTA_NOW", "2026-09-03T03:00:00Z")
+    monkeypatch.setattr("guard.try_load_overlay", lambda *a, **k: {"ok": True})
+    monkeypatch.setattr("guard.repo_owner_name", lambda o: ("oalansilva", "crypto"))
+    monkeypatch.setattr("guard.board_owner_number", lambda o: ("oalansilva", 1))
+    called: list[int] = []
+
+    def once(argv, **kwargs):
+        called.append(1)
+        return subprocess.CompletedProcess(argv, 0, stdout=G1_INCLUDE, stderr="")
+
+    monkeypatch.setattr("guard.subprocess.run", once)
+    with pytest.raises(GraphQLQuotaError):
+        github_status_provider("820")
+    assert called == [1]
+
+
+def test_decide_quota_error_includes_reset(tmp_path: Path) -> None:
+    from graphql_quota import GraphQLQuotaError
+
+    repo = tmp_path / "card"
+    _init_repo(repo, "card-820-graphql-quota-rest", "backend/app/main.py")
+    payload = _write_payload(repo, "backend/app/main.py")
+
+    def quota(_bound: str | None) -> str | None:
+        raise GraphQLQuotaError(0, "2026-09-03T02:55:52Z")
+
+    result = decide(payload, status_provider=quota)
+    assert result["permission"] == "deny"
+    assert "fail_closed" in result["agent_message"]
+    assert "2026-09-03T02:55:52Z" in result["agent_message"]
+    assert "remaining=0" in result["agent_message"]

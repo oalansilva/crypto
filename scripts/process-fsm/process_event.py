@@ -31,6 +31,13 @@ from fsm import (  # noqa: E402
     evaluate,
     load_fsm,
 )
+from graphql_quota import (  # noqa: E402
+    GraphQLQuotaError,
+    enforce_graphql_quota,
+    parse_include_output,
+    raise_if_cached_exhausted,
+    write_cache,
+)
 from guard import github_status_provider  # noqa: E402
 from resolve import UNBOUND, resolve  # noqa: E402
 from t14 import (  # noqa: E402
@@ -84,6 +91,7 @@ class GhBoardMover:
     def set_status(self, issue_number: int, to: str) -> None:
         import subprocess
 
+        raise_if_cached_exhausted()
         overlay = load_overlay(REPO_ROOT)
         option = status_options(overlay).get(to)
         field = status_field_id(overlay)
@@ -91,6 +99,8 @@ class GhBoardMover:
         if option is None or not field or not project_id:
             raise ValueError(f"unknown Status {to!r} or overlay board ids missing")
         item_id = _item_id_for_issue(issue_number)
+        env = os.environ.copy()
+        env["GH_DEBUG"] = "api"
         try:
             proc = subprocess.run(
                 [
@@ -110,17 +120,22 @@ class GhBoardMover:
                 text=True,
                 check=False,
                 timeout=20,
+                env=env,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise RuntimeError(str(exc)) from exc
+        captured = f"{proc.stdout or ''}\n{proc.stderr or ''}"
+        quota = parse_include_output(captured)
+        write_cache(quota)
+        enforce_graphql_quota(quota)
         if proc.returncode != 0:
             raise RuntimeError((proc.stderr or proc.stdout or "item-edit failed").strip())
 
 
 def _item_id_for_issue(issue_number: int) -> str:
-    import json as json_mod
     import subprocess
 
+    raise_if_cached_exhausted()
     overlay = load_overlay(REPO_ROOT)
     owner, repo_name = repo_owner_name(overlay)
     board_owner, board_number = board_owner_number(overlay)
@@ -132,7 +147,16 @@ def _item_id_for_issue(issue_number: int) -> str:
     )
     try:
         proc = subprocess.run(
-            ["gh", "api", "graphql", "-f", f"query={query}", "-F", f"n={issue_number}"],
+            [
+                "gh",
+                "api",
+                "graphql",
+                "--include",
+                "-f",
+                f"query={query}",
+                "-F",
+                f"n={issue_number}",
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -140,12 +164,11 @@ def _item_id_for_issue(issue_number: int) -> str:
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise RuntimeError(str(exc)) from exc
-    if proc.returncode != 0:
-        raise RuntimeError((proc.stderr or "graphql failed").strip())
-    try:
-        data = json_mod.loads(proc.stdout or "{}")
-    except json_mod.JSONDecodeError as exc:
-        raise RuntimeError("graphql json") from exc
+    captured = f"{proc.stdout or ''}\n{proc.stderr or ''}"
+    quota = parse_include_output(captured)
+    write_cache(quota)
+    enforce_graphql_quota(quota)
+    data = quota.body or {}
     nodes = (
         (((data.get("data") or {}).get("repository") or {}).get("issue") or {}).get("projectItems") or {}
     ).get("nodes") or []
@@ -156,6 +179,8 @@ def _item_id_for_issue(issue_number: int) -> str:
             item_id = node.get("id")
             if isinstance(item_id, str) and item_id:
                 return item_id
+    if proc.returncode != 0:
+        raise RuntimeError((proc.stderr or "graphql failed").strip())
     raise RuntimeError(f"issue {issue_number} not on Project {board_number}")
 
 
@@ -163,9 +188,21 @@ def _unbound(bound: Any) -> bool:
     return bound in (None, "", UNBOUND)
 
 
+def _quota_reject(exc: GraphQLQuotaError, state: str | None = None) -> dict[str, Any]:
+    return _payload(
+        result="reject",
+        state=state,
+        to=None,
+        reason="graphql_quota",
+        message=str(exc),
+    )
+
+
 def _safe_move(mover: BoardMover, issue_number: int, to: str) -> dict[str, Any] | None:
     try:
         mover.set_status(issue_number, to)
+    except GraphQLQuotaError as exc:
+        return _quota_reject(exc)
     except (RuntimeError, ValueError, OSError) as exc:
         return _payload(result="reject", state=None, to=None, reason="move_failed", message=str(exc))
     return None
@@ -291,8 +328,12 @@ def process_event(
     q = status if status is not None else resolved.get("q")
     git = q_git if q_git is not None else resolved.get("q_git")
     bound = bound_card if bound_card is not None else resolved.get("bound_card")
+    provider = status_provider if status_provider is not None else github_status_provider
     if q is None:
-        q = github_status_provider(None if _unbound(bound) else str(bound))
+        try:
+            q = provider(None if _unbound(bound) else str(bound))
+        except GraphQLQuotaError as exc:
+            return _quota_reject(exc)
     match = CARD_GIT_RE.match(str(git or ""))
     parsed_package: list[int] | None
     if package_cards is not None:
@@ -390,6 +431,8 @@ def process_event(
         provider = status_provider if status_provider is not None else github_status_provider
         try:
             homologado_ids, _pronto_ids = classify_package(parsed_package or [], provider)
+        except GraphQLQuotaError as exc:
+            return _quota_reject(exc, state=q)
         except T16Error:
             return _payload(result="reject", state=q, to=None, reason="I9")
 
