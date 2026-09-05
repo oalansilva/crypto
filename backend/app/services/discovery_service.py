@@ -436,11 +436,13 @@ class DiscoveryService:
         # o payload hash (idempotência) não inclui o campo de validação.
         idem_payload = {k: v for k, v in payload.items() if k != "snapshot_hash"}
         payload_hash = _payload_hash(idem_payload)
+        # Chave original para o double-check dentro da seção crítica: o
+        # pre-check abaixo pode derivar a chave pós-terminal sem persistir.
+        original_idempotency_key = idempotency_key
 
-        # Fecha a janela SELECT-antes-INSERT entre chaves distintas do mesmo
-        # actor (advisory lock transacional; no-op fora do PostgreSQL).
-        _acquire_actor_create_lock(db, actor)
-
+        # Pre-checks rápidos SEM lock (fora da seção crítica): evitam o
+        # preflight lento no caminho 200/409 óbvio e não precisam de
+        # serialização — a decisão final é revalidada sob o lock abaixo.
         existing = (
             db.query(DiscoverySweep)
             .filter(
@@ -528,6 +530,69 @@ class DiscoveryService:
                 {
                     "error": "stale snapshot token",
                     "detail": "token expirado ou inválido; rode preflight novamente",
+                },
+                409,
+            )
+
+        # --- Seção crítica estreita (só DB, ms) ---
+        # Fecha a janela SELECT-antes-INSERT entre chaves distintas do mesmo
+        # actor (advisory lock transacional; no-op fora do PostgreSQL). O
+        # lock ficava no início do create_sweep e era segurado durante todo
+        # o preflight lento (exchange/templates) enquanto os testes
+        # compartilham o mesmo actor — a fila na mesma advisory key estourava
+        # o pytest-timeout no CI-PG. Agora cobre só: re-check → insert →
+        # flush/commit. Double-check obrigatório: outra sessão pode ter
+        # criado entre o pre-check e o lock.
+        _acquire_actor_create_lock(db, actor)
+        idempotency_key = original_idempotency_key
+        existing = (
+            db.query(DiscoverySweep)
+            .filter(
+                DiscoverySweep.actor == actor,
+                DiscoverySweep.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing is not None and existing.state in TERMINAL_STATES:
+            idempotency_key = _followup_idempotency_key(idempotency_key)
+            existing = None
+        if existing is not None:
+            if existing.payload_hash != payload_hash:
+                return (
+                    {
+                        "error": "idempotency conflict",
+                        "detail": LIVE_SWEEP_GUIDANCE,
+                    },
+                    409,
+                )
+            return {
+                "sweep_id": existing.id,
+                "state": existing.state,
+                "idempotent_retry": True,
+                "idempotency_key": existing.idempotency_key,
+            }, 200
+
+        live = (
+            db.query(DiscoverySweep)
+            .filter(
+                DiscoverySweep.actor == actor,
+                DiscoverySweep.state.in_(tuple(NON_TERMINAL_STATES)),
+            )
+            .order_by(desc(DiscoverySweep.created_at), desc(DiscoverySweep.id))
+            .first()
+        )
+        if live is not None:
+            if live.payload_hash == payload_hash:
+                return {
+                    "sweep_id": live.id,
+                    "state": live.state,
+                    "idempotent_retry": True,
+                    "idempotency_key": live.idempotency_key,
+                }, 200
+            return (
+                {
+                    "error": "live sweep in progress",
+                    "detail": LIVE_SWEEP_GUIDANCE,
                 },
                 409,
             )
