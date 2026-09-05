@@ -536,24 +536,18 @@ class TestStartAfterTerminal:
         engine = engine_factory()
         db = _session_factory(engine)()
         service = DiscoveryService()
-        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
-        _, status = service.create_sweep(
-            actor="admin-1",
-            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
-            snapshot_token=preflight["snapshot_token"],
-            payload=payload,
-            db=db,
-        )
-        assert status == 201
 
         def _boom():
             raise RuntimeError("connection lost")
 
         monkeypatch.setattr(db, "commit", _boom)
+        # Actor fresco e único, sem live prévia: o fluxo passa pelos checks
+        # (seção crítica estreita não barra) e chega ao insert/commit mockado.
+        fresh_actor = f"admin-1-boom-{uuid.uuid4().hex[:12]}"
         payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
         with pytest.raises(RuntimeError, match="connection lost"):
             service.create_sweep(
-                actor="admin-1",
+                actor=fresh_actor,
                 idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
                 snapshot_token=preflight2["snapshot_token"],
                 payload=payload2,
