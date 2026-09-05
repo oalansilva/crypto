@@ -126,10 +126,15 @@ transition_marker() {
 marker="$(transition_marker)"
 
 comments_json=""
-if ! comments_json="$(gh api --paginate "repos/${repo}/issues/${card}/comments" 2>/dev/null)"; then
+comments_raw=""
+if ! comments_raw="$(gh api --paginate "repos/${repo}/issues/${card}/comments" 2>/dev/null)"; then
   error "could not fetch comments for card $card (REST GET /issues/${card}/comments failed); refusing to post (fail-closed)"
 fi
-if [[ -z "$comments_json" ]] || ! printf '%s' "$comments_json" | jq -e '
+# --paginate may emit one JSON array per page concatenated; slurp+add merges them.
+if [[ -z "$comments_raw" ]] || ! comments_json="$(printf '%s' "$comments_raw" | jq -se 'if length == 0 then empty elif all(.[]; type == "array") then add else empty end' 2>/dev/null)" || [[ -z "$comments_json" ]]; then
+  error "could not fetch comments for card $card (REST comments failed or returned invalid JSON); refusing to post (fail-closed)"
+fi
+if ! printf '%s' "$comments_json" | jq -e '
   (type == "array") and
   (all(.[]; type == "object" and (.body | type == "string") and (.url | type == "string")))
 ' >/dev/null 2>&1; then
