@@ -497,13 +497,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 8,
     }).format(value);
     const chartFormatPct = (value: number): string => `${value.toFixed(2)}%`;
-    const chartAlvoPrice: number | null = React.useMemo(() => {
-        if (!chartHasRiskValue(opportunity.distance_to_next_status) || opportunity.last_price === null || opportunity.last_price === undefined || chartRiskStale) return null;
-        const dist = opportunity.distance_to_next_status as number;
-        if (!Number.isFinite(dist) || !Number.isFinite(opportunity.last_price)) return null;
-        const isShortDir = opportunityDirection === 'short';
-        return isShortDir ? opportunity.last_price * (1 - dist / 100) : opportunity.last_price * (1 + dist / 100);
-    }, [opportunity.distance_to_next_status, opportunity.last_price, opportunityDirection, chartRiskStale]);
     const chartShowScenario = showEntryStopRows && chartHasRiskValue(opportunity.stop_price);
     const chartHasHistory = (opportunity.signal_history?.length ?? 0) > 0;
     const chartLastExit = React.useMemo(() => {
@@ -786,10 +779,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             <div className="flex justify-between gap-3">
                                 <span className="text-[#929aa5]">Stop</span>
                                 <span className="font-mono text-[#f6465d]">{chartHasRiskValue(opportunity.stop_price) ? chartFormatUsd(opportunity.stop_price as number) : CHART_UNAVAILABLE}</span>
-                            </div>
-                            <div className="flex justify-between gap-3">
-                                <span className="text-[#929aa5]">Alvo</span>
-                                <span className="font-mono text-[#eaecef]">{chartAlvoPrice !== null ? chartFormatUsd(chartAlvoPrice) : CHART_UNAVAILABLE}</span>
                             </div>
                             <div className="flex justify-between gap-3">
                                 <span className="text-[#929aa5]">Entrada</span>

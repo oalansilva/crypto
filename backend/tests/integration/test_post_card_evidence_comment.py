@@ -14,7 +14,7 @@ def _fake_gh(tmp_path: Path) -> Path:
     script.write_text(
         """#!/usr/bin/env bash
 set -u
-if [[ "${1:-} ${2:-}" == "issue view" ]]; then
+if [[ "${1:-}" == "api" ]]; then
   printf '%s\\n' "${FAKE_COMMENTS_JSON:?}"
   [[ "${FAKE_FAIL_VIEW:-}" == "1" ]] && exit 1
   exit 0
@@ -64,7 +64,7 @@ def _run(
 
 
 def test_homologado_dry_run_previews_without_posting(tmp_path: Path):
-    result = _run(tmp_path, '{"comments":[]}', "--dry-run")
+    result = _run(tmp_path, "[]", "--dry-run")
 
     assert result.returncode == 0
     assert "Homologado por Alan na develop." in result.stdout
@@ -74,8 +74,8 @@ def test_homologado_dry_run_previews_without_posting(tmp_path: Path):
 
 def test_homologado_deduplicates_ref_less_comment(tmp_path: Path):
     comments = (
-        '{"comments":[{"body":"Homologado por Alan na develop.\\n'
-        'Apto para próximo pacote de release.","url":"https://example.test/comment"}]}'
+        '[{"body":"Homologado por Alan na develop.\\n'
+        'Apto para próximo pacote de release.","url":"https://example.test/comment"}]'
     )
 
     result = _run(tmp_path, comments, "--dry-run")
@@ -86,7 +86,7 @@ def test_homologado_deduplicates_ref_less_comment(tmp_path: Path):
 
 
 def test_homologado_fails_closed_when_gh_view_fails(tmp_path: Path):
-    result = _run(tmp_path, '{"comments":[]}', fail_view=True)
+    result = _run(tmp_path, "[]", fail_view=True)
 
     assert result.returncode == 1
     assert "refusing to post (fail-closed)" in result.stderr
@@ -110,7 +110,7 @@ def test_homologado_fails_closed_for_invalid_json(tmp_path: Path):
 
 
 def test_homologado_fails_closed_for_malformed_comment_item(tmp_path: Path):
-    result = _run(tmp_path, '{"comments":[null]}')
+    result = _run(tmp_path, "[null]")
 
     assert result.returncode == 1
     assert "returned invalid JSON" in result.stderr

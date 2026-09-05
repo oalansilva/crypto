@@ -15,7 +15,8 @@ sys.path.insert(0, str(ROOT))
 from fsm import load_fsm  # noqa: E402
 from grok_stubs import stub_errors  # noqa: E402
 from overlay import render_agents  # noqa: E402
-from paging import UNBOUND_PAGE, page, write_grok_page  # noqa: E402
+from graphql_quota import GraphQLQuotaError  # noqa: E402
+from paging import UNBOUND_PAGE, page, unread_page, write_grok_page  # noqa: E402
 from resolve import UNBOUND  # noqa: E402
 from test_overlay_fixtures import filled_overlay_dict  # noqa: E402
 
@@ -100,8 +101,40 @@ def test_missing_status_is_unbound_stub():
         status_provider=_provider(None),
     )
     ctx = result["additional_context"]
-    assert UNBOUND_PAGE in ctx
+    assert UNBOUND_PAGE not in ctx
+    assert "bound_card=⊥" not in ctx
+    assert "bound_card=613" in ctx
+    assert "Status unread" in ctx
     assert HOMOLOGADO_STUB not in ctx
+    for needle in PLAYBOOK:
+        assert needle not in ctx
+    assert _line_count(ctx) <= 20
+    assert result["bound_card"] == "613"
+
+
+def test_bound_graphql_quota_zero_is_not_unbound():
+    reset = "2026-09-03T02:55:52Z"
+
+    def quota(_bound: str | None) -> str | None:
+        raise GraphQLQuotaError(0, reset)
+
+    result = page(
+        cwd=".",
+        resolve_fn=_resolve("820", "card-820-graphql-quota-rest"),
+        status_provider=quota,
+    )
+    ctx = result["additional_context"]
+    assert UNBOUND_PAGE not in ctx
+    assert "bound_card=⊥" not in ctx
+    assert "bound_card=820" in ctx
+    assert "Status unread" in ctx
+    assert reset in ctx
+    assert HOMOLOGADO_STUB not in ctx
+    for needle in PLAYBOOK:
+        assert needle not in ctx
+    assert _line_count(ctx) <= 20
+    assert result["bound_card"] == "820"
+    assert unread_page("820", reset) in ctx
 
 
 def test_page_uses_yaml_stubs():
