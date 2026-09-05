@@ -1034,3 +1034,143 @@ def test_cli_has_no_m_lote_flag():
     with pytest.raises(SystemExit) as exc:
         main(["fechar_release", "--m-lote"])
     assert exc.value.code != 0
+
+
+G1_INCLUDE = """HTTP/2 200
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 2026-09-03T02:55:52Z
+X-RateLimit-Resource: graphql
+
+{"data":null,"errors":[{"type":"RATE_LIMIT","message":"API rate limit exceeded"}]}
+"""
+
+
+def test_g11_item_id_rate_limit_is_not_not_on_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess as sp
+
+    from graphql_quota import GraphQLQuotaError
+    from process_event import _item_id_for_issue
+
+    cache = tmp_path / "quota.json"
+    monkeypatch.setenv("PROCESS_FSM_GRAPHQL_QUOTA_CACHE", str(cache))
+    monkeypatch.setattr("process_event.load_overlay", lambda *a, **k: {"ok": True})
+    monkeypatch.setattr("process_event.repo_owner_name", lambda o: ("oalansilva", "crypto"))
+    monkeypatch.setattr("process_event.board_owner_number", lambda o: ("oalansilva", 1))
+
+    def fake_run(argv, **kwargs):
+        return sp.CompletedProcess(argv, 0, stdout=G1_INCLUDE, stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    with pytest.raises(GraphQLQuotaError) as excinfo:
+        _item_id_for_issue(820)
+    assert excinfo.value.remaining == 0
+    assert "not on Project" not in str(excinfo.value)
+
+
+def test_g11_process_event_quota_is_not_unbound(tmp_path: Path) -> None:
+    from graphql_quota import GraphQLQuotaError
+
+    mover = FakeMover()
+
+    def quota(_bound: str | None) -> str | None:
+        raise GraphQLQuotaError(0, "2026-09-03T02:55:52Z")
+
+    out = process_event(
+        "aceitar_sha",
+        card="820",
+        q_git="card-820-graphql-quota-rest",
+        bound_card="820",
+        mover=mover,
+        status_provider=quota,
+        pr_lister=lambda q_git: [{"number": 1, "headRefOid": "abc"}],
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "graphql_quota"
+    assert out["reason"] != "unbound"
+    assert "not on Project" not in (out.get("message") or "")
+    assert "2026-09-03T02:55:52Z" in (out.get("message") or "")
+    assert mover.calls == []
+
+
+def test_g12_aceitar_sha_second_invocation_skips_graphql(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from graphql_quota import parse_include_output, write_cache
+
+    import subprocess as sp
+
+    cache = tmp_path / "quota.json"
+    monkeypatch.setenv("PROCESS_FSM_GRAPHQL_QUOTA_CACHE", str(cache))
+    write_cache(parse_include_output(G1_INCLUDE))
+    monkeypatch.setenv("PROCESS_FSM_GRAPHQL_QUOTA_NOW", "2026-09-03T01:00:00Z")
+    real_run = sp.run
+
+    def wrapped(argv, *args, **kwargs):
+        cmd0 = str(argv[0]) if argv else ""
+        if cmd0 == "gh" or cmd0.endswith("/gh"):
+            raise AssertionError(f"graphql called: {argv}")
+        return real_run(argv, *args, **kwargs)
+
+    monkeypatch.setattr("subprocess.run", wrapped)
+    mover = FakeMover()
+    first = process_event(
+        "aceitar_sha",
+        card="820",
+        q_git="card-820-graphql-quota-rest",
+        bound_card="820",
+        mover=mover,
+        pr_lister=lambda q_git: [{"number": 1, "headRefOid": "abc"}],
+    )
+    second = process_event(
+        "aceitar_sha",
+        card="820",
+        q_git="card-820-graphql-quota-rest",
+        bound_card="820",
+        mover=mover,
+        pr_lister=lambda q_git: [{"number": 1, "headRefOid": "abc"}],
+    )
+    assert first["reason"] == "graphql_quota"
+    assert second["reason"] == "graphql_quota"
+    assert mover.calls == []
+
+
+def test_item_edit_rate_limit_updates_cache_not_move_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess as sp
+
+    from graphql_quota import GraphQLQuotaError, load_cache
+    from process_event import GhBoardMover
+
+    cache = tmp_path / "quota.json"
+    monkeypatch.setenv("PROCESS_FSM_GRAPHQL_QUOTA_CACHE", str(cache))
+    monkeypatch.setattr("process_event.load_overlay", lambda *a, **k: {"ok": True})
+    monkeypatch.setattr("process_event.repo_owner_name", lambda o: ("oalansilva", "crypto"))
+    monkeypatch.setattr("process_event.board_owner_number", lambda o: ("oalansilva", 1))
+    monkeypatch.setattr("process_event.status_options", lambda o: {"QA": "opt"})
+    monkeypatch.setattr("process_event.status_field_id", lambda o: "field")
+    monkeypatch.setattr("process_event.board_project_id", lambda o: "proj")
+    monkeypatch.setattr("process_event._item_id_for_issue", lambda n: "ITEM")
+
+    debug = (
+        "* Response from https://api.github.com/graphql\n"
+        "< HTTP/2.0 200 OK\n"
+        "< X-RateLimit-Remaining: 0\n"
+        "< X-RateLimit-Reset: 2026-09-03T02:55:52Z\n"
+        "< X-RateLimit-Resource: graphql\n"
+    )
+
+    def fake_run(argv, **kwargs):
+        return sp.CompletedProcess(argv, 1, stdout="", stderr=debug)
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    mover = GhBoardMover()
+    with pytest.raises(GraphQLQuotaError) as excinfo:
+        mover.set_status(820, "QA")
+    assert excinfo.value.remaining == 0
+    stored = load_cache()
+    assert stored is not None
+    assert stored["remaining"] == 0
+    assert stored["source"] == "graphql-headers"

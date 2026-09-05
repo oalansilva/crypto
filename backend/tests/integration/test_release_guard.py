@@ -177,6 +177,14 @@ LOG="${GH_CALL_LOG:-}"
 case "${1:-} ${2:-}" in
   "auth status") exit 0 ;;
   "project item-list")
+    if [[ "${FAKE_FAIL_PROJECT:-}" == "1" ]]; then
+      printf '%s\\n' "* Response from https://api.github.com/graphql
+< HTTP/2.0 200 OK
+< X-RateLimit-Remaining: 0
+< X-RateLimit-Reset: 2026-09-03T02:55:52Z
+< X-RateLimit-Resource: graphql
+" >&2
+    fi
     printf '%s\\n' "${FAKE_BOARD_JSON:?}"
     [[ "${FAKE_FAIL_PROJECT:-}" == "1" ]] && exit 1
     exit 0
@@ -184,7 +192,7 @@ case "${1:-} ${2:-}" in
   "pr list") printf '%s\\n' "${FAKE_PR_JSON:-[]}" ;;
   "api rate_limit")
     [[ "${FAKE_FAIL_RATE_LIMIT:-}" == "1" ]] && exit 1
-    printf '%s\\n' '{"resources":{"graphql":{"limit":5000,"used":123,"remaining":4877,"reset":1786673805}}}'
+    printf '%s\\n' '{"resources":{"graphql":{"limit":5000,"used":0,"remaining":5000,"reset":1786673805}}}'
     ;;
   "api graphql")
     count="$(grep -c 'CALL api graphql' "$LOG" 2>/dev/null || true)"
@@ -760,6 +768,7 @@ def test_rate_limit_diagnostic_absent_on_success_and_once_on_failure(tmp_path: P
     )
     assert ok.returncode == 0
     assert _call_count(call_log, "CALL api rate_limit") == 0
+    assert "graphql quota diagnostic" not in ok.stdout
 
     monkeypatch.setenv("FAKE_FAIL_PROJECT", "1")
     failed = _run_guard(
@@ -770,8 +779,10 @@ def test_rate_limit_diagnostic_absent_on_success_and_once_on_failure(tmp_path: P
         fake_gh=fake_gh,
     )
     assert failed.returncode == 1
-    assert _call_count(call_log, "CALL api rate_limit") == 1
-    assert "rate-limit diagnostic" in failed.stdout
+    assert _call_count(call_log, "CALL api rate_limit") == 0
+    assert "remaining=0" in failed.stdout
+    assert "2026-09-03T02:55:52Z" in failed.stdout
+    assert "remaining=5000" not in failed.stdout
 
 
 def test_pr_open_yes_positive_match(tmp_path: Path, monkeypatch):
