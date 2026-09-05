@@ -11,3 +11,12 @@ version: 1
 /combo/select:
   selectors: [".combo-page"]
   texts: ["Available Templates"]
+landing:
+  kind: public
+  live_url: https://criptofarol.com.br/
+  source: frontend/public/prototypes/cripto-farol-landing-v4/index.html
+  selectors: [".faq-section", ".button-primary"]
+  texts:
+    - "Comprar ou vender cripto? O Cripto Farol responde."
+    - "FAQ"
+    - "Quero meus 6 meses grátis"
