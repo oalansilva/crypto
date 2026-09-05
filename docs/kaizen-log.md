@@ -1,5 +1,49 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-05 — Kaizen release
+
+### Lote 803+817+818+819+820 (Homologado → Pronto após deploy PROD `f32785a6`)
+
+- **Release/card**: 2026-09-05 — Homologado `#803` (P0 Monitor HOLD sem alvo `4a8f7d4e`) + `#817` (P0 dsh reasoning effort `518f2ca1`) + `#818` (P0 dsh grill spawn `e693a631`) + `#819` (P0 clone página viva `de1e08f2`) + `#820` (P0 GraphQL quota REST `0100198f`) → `develop` → `main` PR #838 merged `f32785a6930610a76ceb391c4a106b914624af24`.
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --format json` (Homologado 5, Done 0, Design 1 `#837`, Aprovação de Design 3, Em Refinamento 28, Pronto 241), git `fetch --prune` + `status -sb` + `worktree list` + `branch -a` + `log origin/main..origin/develop` (5 commits) + `release-guard pre` PASS (`RELEASE_CARDS=803,817,818,819,820` + `PRESERVED_BRANCHES` 13) + `openspec validate --all` 167→162, `gh pr checks 838 --watch` (e2e 4m59s, backend-tests 2m5s), REST comments 803/817/818/819/820, PROD health `https://criptofarol.com.br/api/health` 200, frontend bundle `index-DNi9d2DD.js`.
+- **Sessões analisadas**: pai Grok Build desta sessão (`suba a release`); FSM page unbound `q_git=develop` (T16 lote_git permite `fechar_release`). Sem transcript Cursor neste turno. Sem `opencode.db`.
+- **Custo/eficácia**: 5 Homologados no pacote; homologation comments e campos Responsável/Tipo preenchidos neste turno antes do `pre`; `pre` PASS com 11 warns dirty/PRESERVED; Drive falhou de novo (coberto #825); `mvp-scope` item 5 ainda pedia «alvo» até este PR documental.
+
+#### Métricas
+
+- **Board**: 5 Homologado (`#803` Clara P0 Produto Monitor; `#817` `#818` `#819` `#820` Alan P0 Operacao kaizen). Fora: `Done` 0, `Design` 1 (`#837`), `Aprovação de Design` 3 (`600`/`614`/`728`), `#840` criado neste closeout em Em Refinamento.
+- **Git**: `origin/develop de1e08f2`; `origin/main f32785a6` merge PR #838; stash 0; 13 worktrees extra.
+- **CI**: PR #838 `develop→main` checks `pass` (e2e 4m59s, backend-tests 2m5s, openspec-validate 21s, process-fsm 30s) + `qa-gate`/`deploy-staging` `skipping` (base `main`); `mergeable=MERGEABLE`.
+- **OpenSpec**: 5 active `card-803/817/818/819/820` antes do archive; após archive 5 dirs `2026-09-05-card-*`; `validate --all` 167→162.
+- **PROD**: source `f32785a6930610a76ceb391c4a106b914624af24`; alembic já head; `VITE_APP_ENV=production npm run build` bundle `index-DNi9d2DD.js` (1,778 kB, hash novo vs lote 03); services `backend`+`frontend`+`leads`+`runtime-worker` restart; health 200 após retry; `/help` e `/monitor` servem o bundle novo.
+
+#### Achados
+
+- **F-1 [major] card de produto Homologado com mvp-scope/decision-log defasados** — `#803` em PROD sem `alvo`; `docs/mvp-scope.md` item 5 ainda pedia «alvo» até o T16. Apply do card não tocou a doc de produto. Esforço M | P1 | Card novo: #840.
+- **F-2 [minor] comentário Homologado canónico ausente até o `pre` deste lote** — `#803`/`#817`/`#818`/`#819`/`#820` só tinham Done; helper postado neste turno antes do PR #838. Recidiva #658. Esforço S.
+- **F-3 [minor] `tasks.md` 1× `[ ]` em #817 (8.1 dump GUI dsh) apesar de Homologado** — residual DoD humano. Recidiva #769. Esforço S.
+- **F-4 [minor] dirty worktrees + extra worktrees no `pre`** — 7 WARN dirty + extras mergeadas; PASS só com `PRESERVED_BRANCHES` 13. Recidiva #759. Esforço S.
+- **F-5 [minor] Drive/gog sem credencial** — `gog` `OAuth client credentials missing`; `bws` `Missing access token`. Recidiva #825 (ainda Em Refinamento). Esforço S.
+- **F-6 [info] campos Responsável/Tipo dos cinco Homologado vazios até este turno** — preenchidos antes do `post`; `release-guard post` já valida o pacote (#438). Sem card novo.
+
+#### Padrões recorrentes
+
+- Doc de produto defasada no card (mvp-scope vs Monitor) | **novo** | #840
+- Homologado sem comentário no turno do arraste | recidiva | #658
+- `tasks.md` desatado após Done | recidiva | #769
+- Dirty worktrees / PRESERVED no `pre` | recidiva | #759
+- Drive/gog sem credencial no closeout | recidiva | #825
+
+### Cards kaizen criados (máx. 3/release)
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #840 — kaizen: card de produto não pode chegar a Homologado com mvp-scope/decision-log defasados | P1 | F-1 | Em Refinamento |
+| (não criado) Homologado sem comentário no turno do arraste → coberto por #658 — P1: kaizen: Homologado exige comentário canônico no mesmo turno | — | F-2 | coberto por #658 (ainda Em Refinamento) |
+| (não criado) tasks.md residual 8.1 → coberto por #769 — kaizen: tasks.md deve ir a [x] antes de Done | — | F-3 | coberto por #769 (ainda Em Refinamento) |
+
+---
+
 ## 2026-09-03 — Kaizen release
 
 ### Lote 782+784+786+790+822 (Homologado → Pronto após deploy PROD `5fe8b173`)
