@@ -328,6 +328,318 @@ class TestCreateSweepIdempotency:
         db.close()
 
 
+def _start_payload_for(service: DiscoveryService, symbols: list[str]) -> tuple[dict, dict]:
+    preflight = service.preflight(
+        templates=["multi_ma_crossover"],
+        symbols=symbols,
+        timeframes=["1d"],
+        directions=["long"],
+        start_date="2024-01-01",
+        end_date="2024-12-31",
+        period_type="all",
+    )
+    assert preflight["valid_total"] >= 1, preflight.get("errors")
+    payload = {
+        "templates": ["multi_ma_crossover"],
+        "symbols": symbols,
+        "timeframes": ["1d"],
+        "directions": ["long"],
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "period_type": "all",
+        "snapshot_hash": preflight["snapshot_hash"],
+    }
+    return payload, preflight
+
+
+def _terminate_sweep(service: DiscoveryService, db, sweep_id: str) -> None:
+    from app.tasks.discovery_tasks import reconcile_sweep
+
+    service.command(sweep_id, "cancel", db)
+    summary = reconcile_sweep(sweep_id, db)
+    assert summary["state"] == "cancelled", summary
+
+
+class TestStartAfterTerminal:
+    """Iniciar começa a varredura da seleção atual (card #837)."""
+
+    def test_post_terminal_same_selection_same_key_creates_new_sweep(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        key = f"k-{uuid.uuid4().hex[:12]}"
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+        assert first["idempotency_key"] == key
+        _terminate_sweep(service, db, first["sweep_id"])
+
+        payload2, preflight2 = _start_payload_for(service, ["BTCUSDT"])
+        second, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 201, second
+        assert second["sweep_id"] != first["sweep_id"]
+        assert second["idempotency_key"] != key
+        dead = db.query(DiscoverySweep).filter(DiscoverySweep.id == first["sweep_id"]).first()
+        assert dead.state == "cancelled"
+        db.close()
+
+    def test_post_terminal_changed_selection_same_key_creates_new_sweep(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        key = f"k-{uuid.uuid4().hex[:12]}"
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+        assert first["idempotency_key"] == key
+        _terminate_sweep(service, db, first["sweep_id"])
+
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        second, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 201, second
+        assert second["sweep_id"] != first["sweep_id"]
+        db.close()
+
+    def test_live_other_selection_new_key_blocked_with_guidance(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        body, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 409, body
+        assert "cancele" in body["detail"].lower()
+        assert "{" not in body["detail"]
+        count = db.query(DiscoverySweep).filter(DiscoverySweep.actor == "admin-1").count()
+        assert count == 1
+        db.close()
+
+    def test_live_same_selection_new_key_returns_existing(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+
+        payload2, preflight2 = _start_payload_for(service, ["BTCUSDT"])
+        second, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 200, second
+        assert second["sweep_id"] == first["sweep_id"]
+        assert second["idempotent_retry"] is True
+        assert second["idempotency_key"] == first["idempotency_key"]
+        count = db.query(DiscoverySweep).filter(DiscoverySweep.actor == "admin-1").count()
+        assert count == 1
+        db.close()
+
+    def test_commit_integrity_error_resolves_to_live_guidance(self, engine_factory, monkeypatch):
+        """IntegrityError no commit cai no caminho de reconciliação (card #837).
+
+        Simula a corrida de unicidade (actor, key): o commit falha, o handler
+        reencontra a live com hash divergente e devolve 409 operacional.
+        """
+        from sqlalchemy.exc import IntegrityError
+
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        real_commit = db.commit
+        calls = {"n": 0}
+
+        def _fail_first_commit():
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise IntegrityError(
+                    "INSERT INTO discovery_sweep", {}, Exception("duplicate key value")
+                )
+            return real_commit()
+
+        monkeypatch.setattr(db, "commit", _fail_first_commit)
+        body, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 409, body
+        assert body["error"] == "live sweep in progress"
+        assert "cancele" in body["detail"].lower()
+        count = db.query(DiscoverySweep).filter(DiscoverySweep.actor == "admin-1").count()
+        assert count == 1
+        db.close()
+
+    def test_commit_unexpected_error_propagates(self, engine_factory, monkeypatch):
+        """Erro de commit que não é IntegrityError faz raise (card #837)."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+
+        def _boom():
+            raise RuntimeError("connection lost")
+
+        monkeypatch.setattr(db, "commit", _boom)
+        # Actor fresco e único, sem live prévia: o fluxo passa pelos checks
+        # (seção crítica estreita não barra) e chega ao insert/commit mockado.
+        fresh_actor = f"admin-1-boom-{uuid.uuid4().hex[:12]}"
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        with pytest.raises(RuntimeError, match="connection lost"):
+            service.create_sweep(
+                actor=fresh_actor,
+                idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+                snapshot_token=preflight2["snapshot_token"],
+                payload=payload2,
+                db=db,
+            )
+        db.close()
+
+    def test_advisory_lock_is_noop_off_postgres(self, engine_factory):
+        """O lock por actor não quebra dialetos sem pg_advisory (card #837).
+
+        A chave do lock é única por teste: no CI o banco é PostgreSQL e o
+        ramo PG executa de verdade, então reutilizar `admin-1` (chave
+        compartilhada com os demais testes) contendia o advisory lock até o
+        Timeout. Com actor único ninguém mais detém a chave.
+        """
+        import time
+
+        from app.services.discovery_service import _acquire_actor_create_lock
+
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        unique_actor = f"admin-1-lock-{uuid.uuid4().hex[:12]}"
+        try:
+            dialect = getattr(getattr(db.bind, "dialect", None), "name", "") or ""
+            if dialect == "postgresql":
+                started = time.monotonic()
+                _acquire_actor_create_lock(db, unique_actor)  # não deve levantar
+                elapsed = time.monotonic() - started
+                # Chave única: a aquisição real retorna rápido; o limite é
+                # folgado e só acusa contenção/regressão, nunca o caminho feliz.
+                assert elapsed < 10
+            else:
+                _acquire_actor_create_lock(db, unique_actor)  # no-op: não deve levantar
+            db.rollback()
+        finally:
+            db.close()
+
+    def test_live_same_key_divergent_guides_cancel(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        key = f"k-{uuid.uuid4().hex[:12]}"
+        _, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        body, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 409
+        assert "idempotency conflict" in body["error"]
+        assert "cancele" in body["detail"].lower()
+        assert "{" not in body["detail"]
+        assert "divergente" not in body["detail"].lower()
+        db.close()
+
+    def test_invalid_selection_failure_is_operational(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload = {
+            "templates": ["multi_ma_crossover"],
+            "symbols": ["BTCUSDT"],
+            "timeframes": ["15m"],
+            "directions": ["long"],
+            "period_type": "all",
+            "snapshot_hash": "deadbeef",
+        }
+        body, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token="tok",
+            payload=payload,
+            db=db,
+        )
+        assert status == 400
+        assert isinstance(body["detail"], str)
+        assert "{" not in body["detail"]
+        db.close()
+
+
 class TestLifecycle:
     def test_transition_matrix_and_cancelling_prevails(self, engine_factory):
         engine = engine_factory()
