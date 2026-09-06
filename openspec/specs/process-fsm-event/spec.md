@@ -186,7 +186,7 @@ If `evaluate()` accepts, `process_event()` SHALL require a non-`None` T16 closer
 - **AND** `process_event.py` does not contain the Cripto `PVTSSF_*` constant
 
 ### Requirement: T5 G_design measures the clone gate
-When `process_event()` measures `g_design` (argument omitted), it SHALL set the predicate from `files_g_design` composed with the design-route-clone-gate: OpenSpec files present **and** clone-gate pass. `submeter_design` from Design with actor Agent MUST `reject` with `reason` starting with `guard:` when that predicate is false. The YAML transition T5 (`guard: G_design`) MUST stay unchanged. T5 MUST remain offline: no authenticated Playwright and no production credentials inside `process_event`.
+When `process_event()` measures `g_design` (argument omitted), it SHALL set the predicate from `files_g_design` composed with the design-route-clone-gate: OpenSpec files present **and** clone-gate pass. `submeter_design` from Design with actor Agent MUST `reject` with `reason` starting with `guard:` when that predicate is false. The YAML transition T5 (`guard: G_design`) MUST stay unchanged. T5 MUST remain offline: no authenticated Playwright and no production credentials inside `process_event`. UI none harness (no proto, `live_route: N/A`, `surface: new`) SHALL still pass. UI none MUST NOT skip the clone gate when `surface: existing` or `live_route` is a catalog key. T5 SHALL measure the canonical `index.html` only.
 
 #### Scenario: T5 refuses a gallery proto for an existing route
 - **WHEN** `process_event submeter_design` runs with `g_design` unset, `q=Design`, valid card binding, `design.md` declaring `UI impact: affected` and `live_route: /monitor`, and the prototype HTML is the r1 gallery fixture (no `table.signals`, `copied` 0)
@@ -195,7 +195,37 @@ When `process_event()` measures `g_design` (argument omitted), it SHALL set the 
 - **AND** `reason` starts with `guard:`
 
 #### Scenario: T5 still accepts UI none OpenSpec package
-- **WHEN** `process_event submeter_design` runs with `g_design` unset, `q=Design`, valid card binding, and `design.md` declaring `UI impact: none` plus the three Markdown files and a spec
+- **WHEN** `process_event submeter_design` runs with `g_design` unset, `q=Design`, valid card binding, and `design.md` declaring `UI impact: none`, `live_route: N/A` with a non-empty justification, and `surface: new`, plus the three Markdown files and a spec, and no prototype directory
 - **THEN** the result is `transition` to Aprovação de Design when other T5 preconditions hold
 - **AND** catalog/`copied` are not required
+
+#### Scenario: T5 refuses panel index plus sibling clone for landing
+- **WHEN** `process_event submeter_design` runs with `g_design` unset, `q=Design`, valid card binding, `design.md` declaring `live_route: landing` (or `surface: existing` with that key), and the prototype directory has a BEFORE/AFTER panel `index.html` plus a sibling v4 clone `landing.html`
+- **THEN** the result is `reject`
+- **AND** `reason` starts with `guard:`
+
+#### Scenario: T5 refuses existing surface without proto
+- **WHEN** `process_event submeter_design` runs with `g_design` unset, `q=Design`, valid card binding, `design.md` declaring `surface: existing` or `live_route: landing`, and no prototype HTML exists
+- **THEN** the result is `reject`
+- **AND** `UI impact: none` does not change that result
+
+### Requirement: GraphQL quota exhaustion fails immediately and is not unbound
+When `process_event` needs Project item id or Status via GraphQL (`_item_id_for_issue`, live mover, or `github_status_provider`) and GraphQL remaining is 0 or the body is RATE_LIMIT (including HTTP 200), it MUST fail immediately with the reset time from GraphQL headers (Q1=A). It MUST NOT sleep until reset in the same command, MUST NOT retry GraphQL in a loop, MUST NOT reject as `unbound` / card off the board, and MUST NOT call `item-edit`. Before GraphQL, it MUST honor the GraphQL quota cache: remaining=0 and `now < reset_at` skips the network. After a GraphQL response, it MUST update that cache from headers. REST `GET /rate_limit` remaining=5000 MUST NOT authorize the call. Unit tests MUST inject quota errors and the cache path and MUST NOT call GitHub.
+
+#### Scenario: item-id RATE_LIMIT is not not-on-project
+- **WHEN** `_item_id_for_issue` receives HTTP 200 with `errors[0].type=RATE_LIMIT` and headers remaining=0
+- **THEN** `process_event` rejects with the reset time
+- **AND** the mover is not called
+- **AND** the reason MUST NOT be unbound or issue-not-on-Project
+
+#### Scenario: Periodic aceitar_sha does not storm GraphQL at 0
+- **WHEN** the cache has remaining=0 and `now < reset_at` and `process_event` is invoked with `aceitar_sha`
+- **THEN** it fails immediately with that reset time
+- **AND** it MUST NOT call GraphQL
+- **AND** it MUST NOT sleep until reset
+
+#### Scenario: REST remaining 5000 does not authorize mover GraphQL
+- **WHEN** REST `resources.graphql.remaining=5000` and GraphQL headers remaining=0
+- **THEN** `_item_id_for_issue` / Status read refuse GraphQL
+- **AND** issue body/comments MAY still use REST
 

@@ -19,7 +19,7 @@ UI_IMPACT_RE = re.compile(
     re.MULTILINE,
 )
 LIVE_ROUTE_RE = re.compile(
-    r"^\s*(?:\*{0,2})live_route:(?:\*{0,2})\s+(\/\S+|N/A)((?:\s+\S.*)?)?\s*$",
+    r"^\s*(?:\*{0,2})live_route:(?:\*{0,2})\s+(\/\S+|landing|N/A)((?:\s+\S.*)?)?\s*$",
     re.MULTILINE,
 )
 SURFACE_RE = re.compile(
@@ -84,11 +84,16 @@ def copied_utf8_sum(html: str) -> int:
     return total if pairs else 0
 
 
-def concatenate_proto_html(proto_dir: Path | None) -> str:
+def canonical_proto_html(proto_dir: Path | None) -> str:
     if proto_dir is None or not proto_dir.is_dir():
         return ""
-    parts = [path.read_text(encoding="utf-8") for path in sorted(proto_dir.glob("*.html"))]
-    return "".join(parts)
+    index = proto_dir / "index.html"
+    if index.is_file():
+        return index.read_text(encoding="utf-8")
+    htmls = sorted(path for path in proto_dir.glob("*.html") if path.is_file())
+    if len(htmls) == 1:
+        return htmls[0].read_text(encoding="utf-8")
+    return ""
 
 
 def proto_has_html(proto_dir: Path | None) -> bool:
@@ -120,7 +125,17 @@ def landmarks_match(entry: Mapping[str, Any], html: str) -> bool:
 def routes_from_catalog(data: dict[str, Any] | None) -> dict[str, Any]:
     if not data:
         return {}
-    return {key: value for key, value in data.items() if str(key).startswith("/") and isinstance(value, dict)}
+    routes: dict[str, Any] = {}
+    for key, value in data.items():
+        if not isinstance(value, dict):
+            continue
+        key_s = str(key)
+        entry = dict(value)
+        if "kind" not in entry and key_s.startswith("/"):
+            entry["kind"] = "authenticated"
+        if key_s.startswith("/") or entry.get("kind") == "public":
+            routes[key_s] = entry
+    return routes
 
 
 def parse_catalog(text: str) -> dict[str, Any]:
@@ -168,14 +183,18 @@ def load_head_catalog(repo: Path) -> dict[str, Any]:
     return load_catalog_file(worktree)
 
 
+def _catalog_live_route(live_route: str | None) -> bool:
+    return bool(live_route and (live_route.startswith("/") or live_route == "landing"))
+
+
 def requires_existing_clone(live_route: str | None, surface: str | None) -> bool:
-    if live_route and live_route.startswith("/"):
+    if _catalog_live_route(live_route):
         return True
     return surface == "existing"
 
 
 def is_new_exempt(live_route: str | None, surface: str | None, justification: str) -> bool:
-    if live_route and live_route.startswith("/"):
+    if _catalog_live_route(live_route):
         return False
     if surface == "new":
         return True
@@ -204,9 +223,23 @@ def evaluate_clone_gate(
     live_route, justification = parse_live_route(design_text)
     surface = parse_surface(design_text)
     has_proto = proto_has_html(proto_dir)
+    existing = requires_existing_clone(live_route, surface)
 
-    if ui == "none":
+    if ui == "none" and not existing:
         return True
+    if existing:
+        data = catalog if catalog is not None else load_head_catalog(repo)
+        routes = routes_from_catalog(data)
+        route = live_route if live_route and live_route in routes else None
+        if route is None:
+            return False
+        entry = routes.get(route)
+        if entry is None:
+            return False
+        html = canonical_proto_html(proto_dir)
+        if not landmarks_match(entry, html):
+            return False
+        return copied_utf8_sum(html) > 0
     if ui is None and not has_proto:
         return True
     if ui is None and has_proto:
@@ -217,19 +250,7 @@ def evaluate_clone_gate(
         return False
     if is_new_exempt(live_route, surface, justification):
         return True
-    if not requires_existing_clone(live_route, surface):
-        return False
-    route = live_route if live_route and live_route.startswith("/") else None
-    if not route:
-        return False
-    data = catalog if catalog is not None else load_head_catalog(repo)
-    entry = routes_from_catalog(data).get(route)
-    if entry is None:
-        return False
-    html = concatenate_proto_html(proto_dir)
-    if not landmarks_match(entry, html):
-        return False
-    return copied_utf8_sum(html) > 0
+    return False
 
 
 def clone_gate_ok(change_dir: Path, proto_dir: Path | None, repo: Path) -> bool:

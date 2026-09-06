@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-09-05 - HOLD do Monitor sem alvo derivado (card #803)
+
+**Decisão:** o card HOLD no Monitor e no modal do gráfico não mostra rótulo nem valor `alvo`. O número era estimativa de frontend (`preço atual × (1 ± distância até a saída)`), não take-profit operável. Ordem visível: `distância até saída` → `distância até stop` → `stop` → `entrada` → `preço atual`. EXIT continua sem `alvo`. Spec `opportunity-monitor`; `docs/mvp-scope.md` item 5 alinhado neste lote.
+
+**Motivo:** o campo competia com stop e distâncias (risco real) e quebrava confiança no beta. O #792 pediu risco explícito e a implementação mostrou alvo derivado.
+
+**Onde:** `frontend/src/components/monitor/OpportunityCard.tsx`, `ChartModal.tsx`, spec `opportunity-monitor`, `docs/mvp-scope.md`. Card #803.
+
 ## 2026-08-27 - Terceiro adapter OpenCode; unicidade #562 revogada; lock machine continua morto (card #720)
 
 **Decisão:** o núcleo (`process-fsm.yaml` + `scripts/process-fsm/` + skills canônicas + stub `AGENTS.md`) ganha um terceiro adapter: OpenCode 1.18.18 (`.opencode/plugin/` auto-load, throw no deny, paging via `experimental.chat.system.transform`, stubs só para `.cursor/skills/`). Cursor e Grok #668 permanecem. A unicidade operacional do Cursor (#562) é **revogada**; a morte do lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` no kaizen) **não** é revogada. Detector Impeccable (`hook.mjs`) passa a existir nos três clientes (Cursor `afterFileEdit`/`stop`; Grok `PostToolUse`/`Stop`; OpenCode `tool.execute.after`/`session.idle`), fail-open. Sem `opencode.json`, sem `/opsx-*` no OpenCode, sem Auto OpenCode/Grok até ensaio.
