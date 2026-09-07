@@ -454,6 +454,233 @@ export function createReasoningEffortRequestErrorHandler(state) {
   };
 }
 
+const DEAD_TURN_CODES = new Set([
+  "EMPTY_RESPONSE",
+  "QUOTA",
+  "QUOTA_EXCEEDED",
+  "SESSION_NOT_FOUND",
+]);
+const EMPTY_RESPONSE_RE = /\bEMPTY_RESPONSE\b|empty response/i;
+const QUOTA_WORDING_RE =
+  /usage[\s_-]?limit|insufficient[\s_-]+(?:quota|balance|credits?)|(?:quota|usage[\s_-]+limit)[\s_-]+(?:exceeded|exhausted|reached)|exceed(?:ed|s)?[\s_-]+(?:(?:your|the)[\s_-]+)?(?:current[\s_-]+)?quota|(?:balance|credits?)[\s_-]+(?:exhausted|depleted)|out[\s_-]+of[\s_-]+(?:credits?|budget)/i;
+const SESSION_MISSING_RE = /\bSESSION_NOT_FOUND\b|session (?:not found|missing)/i;
+const PENDING_JOB_STATUSES = new Set(["running", "stopping"]);
+const TERMINAL_JOB_STATUSES = new Set(["completed", "killed", "failed"]);
+const JOB_STATUS_LINE_RE =
+  /\[status:\s*(running|stopping|completed|killed|failed)\b[^\]]*\]/i;
+
+export const JOB_OUTPUT_WAIT_CAP_MS = 2_400_000;
+export const JOB_WAIT_LOOP_CEILING_MS = 45 * 60 * 1000;
+
+function isEmptyContentFailure(failure) {
+  if (!failure || typeof failure !== "object") return false;
+  if (Array.isArray(failure.content) && failure.content.length === 0) return true;
+  if (failure.content === "") return true;
+  if (Array.isArray(failure.blocks) && failure.blocks.length === 0) return true;
+  return false;
+}
+
+export function isDeadTurnFailure(failure) {
+  if (failure == null || failure === false) return false;
+  if (isGuardDenyFailure(failure)) return false;
+  if (isReasoningEffortRejection(failure)) return false;
+  const code = failureCodeOf(failure).toUpperCase();
+  if (DEAD_TURN_CODES.has(code)) return true;
+  if (isEmptyContentFailure(failure)) return true;
+  const parts = [];
+  collectFailureFacts(failure, parts);
+  const text = parts.join(" ");
+  if (EMPTY_RESPONSE_RE.test(text)) return true;
+  if (SESSION_MISSING_RE.test(text)) return true;
+  if (QUOTA_WORDING_RE.test(text)) return true;
+  return false;
+}
+
+export function createDeadTurnRequestErrorHandler(state) {
+  const retried =
+    state && state.deadTurnRetried instanceof Set ? state.deadTurnRetried : new Set();
+  return async (payload, next) => {
+    if (!isDeadTurnFailure(payload && payload.failure)) {
+      return next();
+    }
+    const sessionId = agentSessionId(payload && payload.agent);
+    const retryKey = sessionId || "__missing_session__";
+    if (retried.has(retryKey)) {
+      return next();
+    }
+    retried.add(retryKey);
+    return { kind: "retry" };
+  };
+}
+
+export function isJobOutputWaitExec(exec) {
+  if (!exec || exec.name !== "job_output") return false;
+  const args = exec.arguments;
+  return !!(args && args.wait === true);
+}
+
+export function capJobOutputWaitTimeout(exec) {
+  try {
+    const args = exec && exec.arguments;
+    if (!args || typeof args !== "object") return exec;
+    const timeout = args.timeout_ms;
+    if (timeout != null && timeout !== "" && Number(timeout) <= JOB_OUTPUT_WAIT_CAP_MS) return exec;
+    exec.arguments = { ...args, timeout_ms: JOB_OUTPUT_WAIT_CAP_MS };
+  } catch {
+    // frozen exec: fail-open; loop still uses JOB_OUTPUT_WAIT_CAP_MS
+  }
+  return exec;
+}
+
+function resultBlobText(result) {
+  if (result == null) return "";
+  const raw = result.content;
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw)) {
+    return raw
+      .map((block) => (block && typeof block.text === "string" ? block.text : ""))
+      .join(" ");
+  }
+  if (typeof result.text === "string") return result.text;
+  return "";
+}
+
+export function jobStatusFromOutputResult(result) {
+  if (!result || typeof result !== "object") return "";
+  const value = result.value;
+  if (value && value.job && typeof value.job.status === "string") {
+    return value.job.status;
+  }
+  if (result.job && typeof result.job.status === "string") return result.job.status;
+  const match = JOB_STATUS_LINE_RE.exec(resultBlobText(result));
+  return match ? match[1].toLowerCase() : "";
+}
+
+function jobStatusLine(snapshot) {
+  const status = snapshot && snapshot.status ? String(snapshot.status) : "";
+  if (!status) return "";
+  return snapshot.detail !== undefined
+    ? `[status: ${status}, ${snapshot.detail}]`
+    : `[status: ${status}]`;
+}
+
+function mergeBlobWithExtra(blob, extra, line) {
+  const raw = typeof blob === "string" ? blob : "";
+  const stripped = JOB_STATUS_LINE_RE.test(raw)
+    ? raw.replace(JOB_STATUS_LINE_RE, "")
+    : raw;
+  const extraStr = typeof extra === "string" ? extra : "";
+  const body = `${stripped}${extraStr}`;
+  if (!line) return body;
+  if (!body) return line;
+  return `${body}${body.endsWith("\n") ? "" : "\n"}${line}`;
+}
+
+function publicJobView(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") return {};
+  const out = {
+    id: snapshot.id,
+    kind: snapshot.kind,
+    label: snapshot.label,
+    status: String(snapshot.status),
+    startedAt: snapshot.startedAt,
+  };
+  if (snapshot.detail !== undefined) out.detail = snapshot.detail;
+  if (snapshot.finishedAt !== undefined) out.finishedAt = snapshot.finishedAt;
+  return out;
+}
+
+function applyJobSnapshotToResult(result, snapshot, extraText) {
+  const status = snapshot && snapshot.status ? String(snapshot.status) : "";
+  if (!status || !result || typeof result !== "object") return result;
+  const extra = typeof extraText === "string" ? extraText : "";
+  const line = jobStatusLine(snapshot);
+  const out = { ...result };
+  if (out.value && typeof out.value === "object") {
+    const prevJob =
+      out.value.job && typeof out.value.job === "object" ? out.value.job : {};
+    const prevText = typeof out.value.text === "string" ? out.value.text : "";
+    out.value = {
+      ...out.value,
+      text: `${prevText}${extra}`,
+      job: publicJobView({ ...prevJob, ...snapshot, status }),
+    };
+  }
+  if (typeof out.content === "string") {
+    out.content = mergeBlobWithExtra(out.content, extra, line);
+  } else if (Array.isArray(out.content)) {
+    let extraLeft = extra;
+    let lastTextIdx = -1;
+    for (let i = 0; i < out.content.length; i++) {
+      if (out.content[i] && typeof out.content[i].text === "string") {
+        lastTextIdx = i;
+      }
+    }
+    out.content = out.content.map((block, i) => {
+      if (!block || typeof block.text !== "string") return block;
+      const piece = i === lastTextIdx ? extraLeft : "";
+      if (i === lastTextIdx) extraLeft = "";
+      return { ...block, text: mergeBlobWithExtra(block.text, piece, line) };
+    });
+  }
+  return out;
+}
+
+export async function waitJobOutputUntilSettled(ctx, exec, initialResult, options = {}) {
+  if (!isJobOutputWaitExec(exec)) return initialResult;
+  if (!ctx || typeof ctx.jobs?.wait !== "function") return initialResult;
+  const args = exec.arguments || {};
+  const id = args.job_id;
+  if (typeof id !== "string" || !id) return initialResult;
+  let status = jobStatusFromOutputResult(initialResult);
+  if (!PENDING_JOB_STATUSES.has(status)) return initialResult;
+  const startedAt =
+    typeof options.startedAt === "number" && Number.isFinite(options.startedAt)
+      ? options.startedAt
+      : Date.now();
+  const caller = exec.agent;
+  const signal = exec.signal;
+  let lastSnapshot = null;
+  while (PENDING_JOB_STATUSES.has(status)) {
+    const remaining = JOB_WAIT_LOOP_CEILING_MS - (Date.now() - startedAt);
+    if (remaining <= 0) break;
+    const requested = Number(args.timeout_ms);
+    const capped =
+      Number.isFinite(requested) && requested > 0 && requested <= JOB_OUTPUT_WAIT_CAP_MS
+        ? requested
+        : JOB_OUTPUT_WAIT_CAP_MS;
+    const timeoutMs = Math.min(capped, remaining);
+    if (timeoutMs <= 0) break;
+    try {
+      lastSnapshot = await ctx.jobs.wait(id, timeoutMs, caller, signal);
+    } catch {
+      return initialResult;
+    }
+    status =
+      lastSnapshot && typeof lastSnapshot.status === "string"
+        ? lastSnapshot.status
+        : "";
+    if (TERMINAL_JOB_STATUSES.has(status)) {
+      let extra = "";
+      let snap = lastSnapshot;
+      if (typeof ctx.jobs.read === "function") {
+        try {
+          const read = ctx.jobs.read(id, caller);
+          extra = read && typeof read.text === "string" ? read.text : "";
+          if (read && read.snapshot && typeof read.snapshot === "object") {
+            snap = { ...lastSnapshot, ...read.snapshot };
+          }
+        } catch {
+          // fail-open: keep wait snapshot + detail; drop extra stream text
+        }
+      }
+      return applyJobSnapshotToResult(initialResult, snap, extra);
+    }
+  }
+  if (lastSnapshot) return applyJobSnapshotToResult(initialResult, lastSnapshot);
+  return initialResult;
+}
+
 export function attachAgentEffortGuards(agentCtx, state) {
   try {
     if (!agentCtx || typeof agentCtx.on !== "function") return;
@@ -461,6 +688,8 @@ export function attachAgentEffortGuards(agentCtx, state) {
     const retriedAgents = shared.retriedAgents instanceof Set ? shared.retriedAgents : new Set();
     const spawnBlockedParents =
       shared.spawnBlockedParents instanceof Set ? shared.spawnBlockedParents : new Set();
+    const deadTurnRetried =
+      shared.deadTurnRetried instanceof Set ? shared.deadTurnRetried : new Set();
     agentCtx.on(
       "agent/request",
       async (_payload, next) => sanitizeReasoningEffort(await next()),
@@ -469,6 +698,11 @@ export function attachAgentEffortGuards(agentCtx, state) {
     agentCtx.on(
       "agent/request-error",
       createReasoningEffortRequestErrorHandler({ retriedAgents, spawnBlockedParents }),
+      { prepend: true },
+    );
+    agentCtx.on(
+      "agent/request-error",
+      createDeadTurnRequestErrorHandler({ deadTurnRetried }),
       { prepend: true },
     );
   } catch {

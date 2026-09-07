@@ -14,6 +14,7 @@ import design_clone_gate  # noqa: E402
 from fsm import load_fsm  # noqa: E402
 from guard import decide  # noqa: E402
 from process_event import (  # noqa: E402
+    HUMAN_EVENTS,
     FakeMover,
     files_g_design,
     process_event,
@@ -63,9 +64,14 @@ def test_aprovar_design_rejected():
     assert out["state"] == "Aprovação de Design"
 
 
-@pytest.mark.parametrize("event", ["priorizar", "homologar", "fechar_release"])
+@pytest.mark.parametrize("event", ["priorizar", "homologar", "nao_homologar", "fechar_release"])
 def test_human_gates_rejected(event: str):
-    state = {"priorizar": "Em Refinamento", "homologar": "Done", "fechar_release": "Homologado"}[event]
+    state = {
+        "priorizar": "Em Refinamento",
+        "homologar": "Done",
+        "nao_homologar": "Done",
+        "fechar_release": "Homologado",
+    }[event]
     mover = FakeMover()
     out = process_event(
         event,
@@ -74,6 +80,7 @@ def test_human_gates_rejected(event: str):
         bound_card="612",
         mover=mover,
         m_lote=False,
+        status_provider=SILENT,
     )
     assert out["result"] == "reject"
     assert mover.calls == []
@@ -1065,8 +1072,26 @@ def test_homologar_still_rejected():
         q_git="card-612-process-event",
         bound_card="612",
         mover=mover,
+        status_provider=SILENT,
     )
     assert out["result"] == "reject"
+    assert mover.calls == []
+
+
+def test_nao_homologar_rejected_mover_empty():
+    assert "nao_homologar" in HUMAN_EVENTS
+    mover = FakeMover()
+    out = process_event(
+        "nao_homologar",
+        status="Done",
+        q_git="card-859-devolver-homologacao",
+        bound_card="859",
+        mover=mover,
+        status_provider=SILENT,
+    )
+    assert out["result"] == "reject"
+    assert out["state"] == "Done"
+    assert out.get("to") is None
     assert mover.calls == []
 
 
