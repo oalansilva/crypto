@@ -368,8 +368,8 @@ def test_agents_extra_grok_stubs_point_at_agents_skills():
     errors = stub_errors()
     assert errors == []
     critic = (REPO / ".grok" / "skills" / "design-critic" / "SKILL.md").read_text(encoding="utf-8")
-    assert ".agents/skills/design-critic/SKILL.md" in critic
-    assert ".cursor/skills/design-critic" not in critic
+    assert ".cursor/skills/design-critic/SKILL.md" in critic
+    assert ".agents/skills/design-critic" not in critic
     body = critic.split("---", 2)[2]
     assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8
     assert "Em Refinamento → Todo → Design" not in critic
