@@ -262,7 +262,10 @@ def test_opencode_stubs_match_cursor_skills():
     body = stub.split("---", 2)[2]
     assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8
     assert not (REPO / ".opencode" / "skills" / "impeccable" / "SKILL.md").exists()
-    assert not (REPO / ".opencode" / "skills" / "design-critic" / "SKILL.md").exists()
+    critic = (REPO / ".opencode" / "skills" / "design-critic" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    assert ".cursor/skills/design-critic/SKILL.md" in critic
 
 
 def test_grok_impeccable_adapter_is_executable():
