@@ -43,15 +43,15 @@ OUTBOX_BATCH_SIZE = 20
 OUTBOX_MAX_GLOBAL = 8
 OUTBOX_MAX_PER_SWEEP = 1
 CLAIM_BATCH = 20
+
+
 # Teto de sweeps `cancelled` com resíduo varridos por dispatch (card #853,
 # P2): o restante fica para os dispatches seguintes, sem mudar a semântica.
 # Clamp >= 1 (card #853, P3): valor inválido ou <= 0 vira 1 em vez de
 # desligar silenciosamente o repair. Default 100 inalterado.
 def _repair_cancelled_batch() -> int:
     try:
-        return max(
-            1, int(__import__("os").getenv("DISCOVERY_REPAIR_CANCELLED_BATCH", "100"))
-        )
+        return max(1, int(__import__("os").getenv("DISCOVERY_REPAIR_CANCELLED_BATCH", "100")))
     except (TypeError, ValueError):
         return 1
 
@@ -1160,9 +1160,7 @@ class DiscoveryService:
             return body, 200
         return {"sweep_id": sweep.id, "state": sweep.state}, 200
 
-    def _command_cancel(
-        self, db: Session, sweep: DiscoverySweep
-    ) -> tuple[dict[str, Any], int]:
+    def _command_cancel(self, db: Session, sweep: DiscoverySweep) -> tuple[dict[str, Any], int]:
         """`cancel` com auto-finalização (card #853, contrato 1/2/4).
 
         Ordem num único commit: lock (já adquirido pelo `command`) →

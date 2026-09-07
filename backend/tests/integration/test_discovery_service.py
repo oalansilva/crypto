@@ -1562,7 +1562,9 @@ class TestCancelReconcile:
             .count()
             == 0
         )
-        assert db.query(DiscoveryResult).filter(DiscoveryResult.sweep_id == "sw-prod-41").count() == 0
+        assert (
+            db.query(DiscoveryResult).filter(DiscoveryResult.sweep_id == "sw-prod-41").count() == 0
+        )
         db.close()
 
     def test_41_repeat_cancel_command_closes_stuck_sweep(self, engine_factory):
@@ -1717,9 +1719,7 @@ class TestCancelReconcile:
         assert sweep.processed == sweep.total == 1
         db.close()
 
-    def test_46_stale_redelivery_and_double_finalizer_idempotent(
-        self, engine_factory, monkeypatch
-    ):
+    def test_46_stale_redelivery_and_double_finalizer_idempotent(self, engine_factory, monkeypatch):
         """4.6: redelivery (`delivered` stale → `pending`) não gera segundo
         finalizador; orquestrador 2× para o mesmo (`sweep_id`, `generation`)
         não reexecuta combinação com resultado e dá `ack` uma vez."""
@@ -1769,9 +1769,7 @@ class TestCancelReconcile:
             )
         )
         db.commit()
-        monkeypatch.setattr(
-            discovery_celery_tasks, "SessionLocal", _session_factory(engine)
-        )
+        monkeypatch.setattr(discovery_celery_tasks, "SessionLocal", _session_factory(engine))
         first = discovery_celery_tasks.run_sweep_orchestrator("sw-redel-46", 1)
         assert first["state"] == "cancelled"
         assert first["processed"] == first["total"] == 2
