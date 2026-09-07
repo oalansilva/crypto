@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<!-- Prototype card-852-descoberta-tres-modos — CLONE+DELTA (static mock, no backend).
+  Clone base: live route /combo/discovery in this worktree (branch card-852-descoberta-tres-modos).
+  Landmarks cloned (scripts/process-fsm/route-landmarks.yaml → /combo/discovery):
+    "Descoberta de estratégias swing" / "Preflight" / "Rascunho de varredura".
+  Structure cloned from frontend/src/pages/DiscoveryPage.tsx (read-only): breadcrumb
+  Combo/Varreduras, h1 + subcopy, recovery banner slot, sweep progress card, draft grid
+  (templates/symbols/timeframes/direction/period/ranking), preflight aside, leaderboard
+  (sort/filter/evidence/rank-stable note), promote + discard modals, history selector.
+  DELTA of card 852 only: 3 modes 1-visible-at-a-time, human 3-line preflight +
+  impediments, 1 sort + 3 risk cols + row expansion + 12/page, inline selection +
+  advanced-edit modal, stable start CTA + named block, promote risk summary + Tier 3 +
+  where-to-see-later. Visual system: DESIGN.md Binance tokens. No source HTML copied. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0e11'/%3E%3Crect x='3' y='3' width='10' height='10' fill='%23fcd535'/%3E%3C/svg%3E">
+<title>Descoberta — 3 modos (protótipo card 852)</title>
+<style>
+:root{
+  --canvas:#0b0e11; --card:#1e2329; --elev:#2b3139; --hair:#2b3139;
+  --ink:#181a20; --body:#eaecef; --muted:#707a8a; --muted2:#929aa5;
+  --yellow:#fcd535; --yellow-h:#f0b90b; --yellow-d:#3a3a1f;
+  --up:#0ecb81; --down:#f6465d; --info:#3b82f6; --amber:#fbbf24;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--canvas);color:var(--body);font:14px/1.5 "Inter",-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:1480px;margin:0 auto;padding:24px 16px 64px}
+@media(min-width:768px){.wrap{padding:32px 32px 64px}}
+.crumb{display:flex;gap:8px;font-size:13px;color:var(--muted);margin-bottom:12px}
+.crumb strong{color:var(--muted2)}
+h1{font-size:26px;font-weight:600;letter-spacing:-.3px}
+@media(min-width:768px){h1{font-size:30px}}
+.sub{margin-top:8px;max-width:72ch;font-size:13px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px}
+.modes{display:flex;gap:0;margin:20px 0 16px;border:1px solid var(--hair);border-radius:8px;overflow:hidden;max-width:640px}
+.modes button{flex:1;background:var(--card);color:var(--muted);border:0;padding:12px 8px;font-size:13px;font-weight:600;line-height:1.2;font-family:inherit;cursor:pointer;min-height:48px}
+.modes button[aria-selected="true"]{background:rgba(252,213,53,.12);color:var(--yellow);box-shadow:inset 0 -2px 0 var(--yellow)}
+.modes button:focus-visible{outline:2px solid var(--info);outline-offset:-2px}
+.modepanel{display:none}
+.modepanel.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:1024px){.grid2{grid-template-columns:minmax(0,1fr) 330px;align-items:start}}
+.pad{padding:20px}
+.h2{font-size:18px;font-weight:600}
+.eyebrow{font-size:12px;color:var(--muted);margin-top:4px}
+.chip{display:inline-flex;align-items:center;min-height:28px;border:1px solid rgba(59,130,246,.42);color:#93c5fd;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700}
+.search{width:100%;background:#12161c;border:1px solid var(--hair);border-radius:8px;color:var(--body);padding:10px 12px;font-size:13px;min-height:44px}
+.opts{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:190px;overflow:auto}
+.opts label{display:flex;gap:10px;align-items:center;background:#181a20;border:1px solid var(--hair);border-radius:6px;padding:9px 10px;font-size:13px;cursor:pointer;min-height:44px}
+.opts input{width:18px;height:18px;accent-color:var(--yellow)}
+.count{font-size:12px;color:var(--muted);margin-top:6px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{background:var(--elev);color:var(--muted);border:1px solid var(--hair);border-radius:6px;padding:10px;font-size:13px;font-weight:600;font-family:inherit;min-height:44px;cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:rgba(252,213,53,.5);background:rgba(252,213,53,.1);color:var(--yellow)}
+.seg button:disabled{opacity:.55;cursor:not-allowed}
+select,input[type=text]{width:100%;background:#12161c;border:1px solid var(--hair);border-radius:6px;color:var(--body);padding:10px 12px;font-size:14px;min-height:44px}
+.flabel{display:block;font-size:13px;font-weight:600;color:var(--muted2);margin-bottom:8px}
+.big{font-size:34px;font-weight:700;color:var(--yellow);line-height:1.1}
+.imp{margin-top:12px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.06);border-radius:6px;padding:10px;font-size:12px;color:var(--amber)}
+.imp ul{margin:6px 0 0 18px;color:var(--body)}
+.ok3{font-size:13px;color:var(--body);margin-top:8px}
+.ok3 b{color:var(--yellow)}
+details.tech{margin-top:12px;font-size:11px;color:var(--muted)}
+details.tech summary{cursor:pointer;min-height:44px;display:flex;align-items:center}
+.cta{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:48px;margin-top:14px;background:var(--yellow);color:var(--ink);border:1px solid var(--yellow);border-radius:6px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.cta:disabled{background:var(--yellow-d);border-color:var(--yellow-d);color:var(--muted);cursor:not-allowed}
+.cta:not(:disabled):hover{background:var(--yellow-h)}
+.block{margin-top:12px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.06);border-radius:6px;padding:10px;font-size:12px;color:var(--amber)}
+.block a{color:var(--yellow);font-weight:700}
+.progress-track{height:8px;background:#12161c;border-radius:99px;overflow:hidden;margin-top:10px}
+.progress-fill{height:100%;background:var(--yellow);width:0%}
+.rowbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.btn{background:var(--elev);color:var(--body);border:1px solid var(--hair);border-radius:6px;padding:10px 14px;font-size:13px;font-weight:600;font-family:inherit;min-height:44px;cursor:pointer}
+.btn.warn{border-color:rgba(245,158,11,.42);color:var(--amber);background:rgba(245,158,11,.08)}
+table.lb{width:100%;border-collapse:collapse;font-size:13px}
+table.lb th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--hair)}
+table.lb td{padding:12px;border-bottom:1px solid var(--hair);vertical-align:top}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos{color:var(--up)} .neg{color:var(--down)}
+.tag{display:inline-block;background:var(--elev);border:1px solid var(--hair);border-radius:4px;padding:2px 6px;font-size:11px}
+.exp{background:none;border:0;color:var(--yellow);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;min-height:44px;padding:8px 0}
+.detail{background:#14181e;border-radius:6px;padding:10px;margin-top:8px;font-size:12px;color:var(--muted2);display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}
+.pager{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--hair)}
+.note{padding:12px 20px;border-top:1px solid var(--hair);font-size:11px;color:var(--muted)}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media(min-width:768px){.filters{grid-template-columns:repeat(4,minmax(140px,1fr)) auto;align-items:end}}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px;z-index:80}
+.modal-bg.open{display:flex}
+.modal{width:100%;max-width:520px;background:var(--card);border:1px solid var(--hair);border-radius:12px;max-height:90vh;overflow:auto}
+.modal header{display:flex;justify-content:space-between;gap:16px;padding:20px;border-bottom:1px solid var(--hair)}
+.modal .body{padding:20px}
+.risk{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.risk div{background:var(--elev);border:1px solid var(--hair);border-radius:6px;padding:10px}
+.risk small{display:block;color:var(--muted);font-size:11px}
+.risk b{font-size:15px;font-variant-numeric:tabular-nums}
+.dest{border:1px solid var(--hair);border-radius:6px;padding:10px;background:var(--elev);font-size:13px}
+.dest strong{color:var(--yellow)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.collapsed{background:#14181e;border:1px solid var(--hair);border-radius:6px;padding:10px 12px;font-size:12px;color:var(--muted2)}
+.simrow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.simrow .btn[aria-pressed="true"]{border-color:var(--yellow);color:var(--yellow)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- COPIED:start -->
+  <nav class="crumb" aria-label="Localização"><span>Combo</span><span aria-hidden="true">/</span><strong>Varreduras</strong></nav>
+  <h1>Descoberta de estratégias swing</h1>
+  <p class="sub">Compare templates em 4h e 1d. Preflight, ranking e promoção usam evidência histórica; nenhum candidato é salvo sem revisão.</p>
+  <!-- COPIED:end -->
+
+  <div class="simrow" aria-label="Simulador de estado (só protótipo)">
+    <span style="font-size:12px;color:var(--muted);align-self:center">Estado simulado:</span>
+    <button class="btn" data-sim="montar" aria-pressed="true">Sem varredura</button>
+    <button class="btn" data-sim="acomp" aria-pressed="false">Com varredura em curso</button>
+    <button class="btn" data-sim="decidir" aria-pressed="false">Varredura concluída</button>
+  </div>
+
+  <div class="modes" role="tablist" aria-label="Modos da Descoberta">
+    <button role="tab" id="tab-montar" aria-selected="true" aria-controls="panel-montar" data-mode="montar">Montar</button>
+    <button role="tab" id="tab-acomp" aria-selected="false" aria-controls="panel-acomp" data-mode="acomp" tabindex="-1">Acompanhando <span id="acomp-n">#—</span></button>
+    <button role="tab" id="tab-decidir" aria-selected="false" aria-controls="panel-decidir" data-mode="decidir" tabindex="-1">Decidir</button>
+  </div>
+
+  <!-- ============ MONTAR ============ -->
+  <section class="modepanel active" id="panel-montar" role="tabpanel" aria-labelledby="tab-montar" data-testid="mode-montar">
+    <div class="grid2">
+      <article class="card pad" aria-label="Rascunho de varredura">
+        <div style="display:flex;justify-content:space-between;gap:12px">
+          <div><!-- COPIED:start --><h2 class="h2">Rascunho de varredura</h2><!-- COPIED:end --><p class="eyebrow">Editável · o servidor confere antes de iniciar</p></div>
+          <!-- COPIED:start --><span class="chip">RASCUNHO</span><!-- COPIED:end -->
+        </div>
+        <div style="display:grid;gap:16px;margin-top:16px">
+          <div>
+            <label class="flabel" for="q-tpl">Templates <span id="c-tpl" class="count">3 selecionados</span></label>
+            <input class="search" id="q-tpl" type="text" placeholder="Buscar template…" autocomplete="off">
+            <div class="opts" id="opts-tpl" role="group" aria-label="Templates"></div>
+            <button class="exp" id="adv-tpl">Edição avançada de templates →</button>
+          </div>
+          <div>
+            <label class="flabel" for="q-sym">Símbolos <span id="c-sym" class="count">4 selecionados</span></label>
+            <input class="search" id="q-sym" type="text" placeholder="Buscar símbolo…" autocomplete="off">
+            <div class="opts" id="opts-sym" role="group" aria-label="Símbolos"></div>
+            <button class="exp" id="adv-sym">Edição avançada de símbolos →</button>
+          </div>
+          <!-- COPIED:start -->
+          <div>
+            <span class="flabel">Timeframes swing</span>
+            <div class="seg" id="seg-tf">
+              <button aria-pressed="true" data-tf="4h">4 horas</button>
+              <button aria-pressed="true" data-tf="1d">1 dia</button>
+            </div>
+          </div>
+          <!-- COPIED:end -->
+          <!-- COPIED:start -->
+          <div>
+            <span class="flabel">Período histórico</span>
+            <select id="sel-period" aria-label="Período histórico">
+              <option value="all" selected>Todo o histórico</option>
+              <option value="2y">Últimos 2 anos</option>
+              <option value="6m">Últimos 6 meses</option>
+            </select>
+          <!-- COPIED:end -->
+            <p class="eyebrow" style="margin-top:8px">Direção: apenas Long nesta etapa. Short volta quando houver dados.</p>
+          </div>
+        </div>
+      </article>
+      <aside class="card pad" aria-label="Preflight da varredura">
+        <h2 class="h2">Preflight</h2>
+        <p class="eyebrow" id="pf-state">Pronto para iniciar</p>
+        <div class="ok3" id="pf-3line" aria-live="polite" data-testid="preflight-3line"></div>
+        <div class="imp" id="pf-imp" hidden>
+          <strong>Falta fazer:</strong>
+          <ul id="pf-imp-list"></ul>
+        </div>
+        <details class="tech"><summary>Detalhe técnico (fora do caminho feliz)</summary>
+          <p id="pf-tech">fórmula bruta 3 × 4 × 2 × 1 · 0 incompatíveis · limite 500 · estimativa ~2h 24min · janela todo o histórico [01 jan 2017, 01 jan 2026) · snapshot válido</p>
+        </details>
+        <button class="cta" id="btn-start" data-testid="start-sweep">Iniciar varredura — 24, ~2h 24min</button>
+        <div class="block" id="start-block" hidden role="alert" data-testid="live-block-note"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ ACOMPANHANDO ============ -->
+  <section class="modepanel" id="panel-acomp" role="tabpanel" aria-labelledby="tab-acomp" data-testid="mode-acomp">
+    <div class="card pad" aria-labelledby="prog-h">
+      <div style="display:flex;justify-content:space-between;gap:12px">
+        <div><h2 class="h2" id="prog-h" tabindex="-1">Varredura em execução</h2>
+        <p class="eyebrow">Varredura <b class="num" id="acomp-id">#A8421</b> · separada do histórico exibido</p></div>
+        <span class="chip">EM CURSO</span>
+      </div>
+      <div class="collapsed" style="margin-top:12px" id="draft-collapsed">Rascunho congelado: <span id="draft-frozen">3 templates · 4 símbolos · 4h + 1d · Long · todo o histórico</span> — <button class="exp" id="btn-newdraft" style="display:inline;min-height:0;padding:0">novo rascunho</button></div>
+      <div style="display:flex;justify-content:space-between;margin-top:14px;font-weight:600"><span>Progresso</span><strong class="num" id="prog-count">14 de 24</strong></div>
+      <div class="progress-track" role="progressbar" aria-label="Progresso da varredura ativa" aria-valuemin="0" aria-valuemax="24" aria-valuenow="14"><div class="progress-fill" id="prog-fill" style="width:58%"></div></div>
+      <p class="eyebrow" style="margin-top:8px">14 processadas = 12 sucesso + 1 falha + 1 ignorada · limites: 8 global · 1 por varredura · fila justa</p>
+      <div class="rowbtns">
+        <button class="btn warn" id="btn-pause">Pausar</button>
+        <button class="btn" id="btn-cancel">Cancelar</button>
+      </div>
+      <p class="eyebrow" style="margin-top:14px">Ranking travado na varredura <b class="num">#A8421</b> — parciais abaixo, sem re-perguntar o rascunho.</p>
+    </div>
+    <div class="card" style="margin-top:16px" aria-label="Leaderboard travado">
+      <div class="pad" style="border-bottom:1px solid var(--hair)">
+        <h2 class="h2">Leaderboard · Calmar</h2>
+        <p class="eyebrow">Varredura <b class="num">#A8421</b> · em execução · janela UTC [01 jan 2024, 01 jan 2026) · 730/730 candles binance v3 · fees 0,1% · slippage 0,05%</p>
+      </div>
+      <div id="lb-acomp"></div>
+      <p class="eyebrow pad" style="padding:0 20px 16px">Parciais travadas: top-5 do sweep em curso (mock estático, sem paginação).</p>
+    </div>
+  </section>
+
+  <!-- ============ DECIDIR ============ -->
+  <section class="modepanel" id="panel-decidir" role="tabpanel" aria-labelledby="tab-decidir" data-testid="mode-decidir">
+    <div class="card" aria-labelledby="lb-title">
+      <div class="pad" style="border-bottom:1px solid var(--hair)">
+        <!-- COPIED:start -->
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><h2 class="h2" id="lb-title">Leaderboard · <span id="lb-metric-name">Calmar</span></h2>
+          <p class="eyebrow">Varredura <b class="num">#A8390</b> · concluída · janela UTC [01 jan 2024, 01 jan 2026) · 730/730 candles binance v3 · fees 0,1% · slippage 0,05%</p></div>
+          <span class="eyebrow" id="pg-info" aria-live="polite">24 de 24 candidatos · página 1 de 2</span>
+        </div>
+        <!-- COPIED:end -->
+        <div class="filters">
+          <label><span class="flabel">Ordenar por</span><select id="f-sort"><option value="calmar">Calmar</option><option value="cagr">CAGR vs B&amp;H</option></select></label>
+          <label><span class="flabel">Símbolo</span><select id="f-sym"><option value="all">Todos</option><option>BTC/USDT</option><option>ETH/USDT</option><option>SOL/USDT</option></select></label>
+          <label><span class="flabel">Timeframe</span><select id="f-tf"><option value="all">Todos</option><option>4h</option><option>1d</option></select></label>
+          <button class="btn" id="f-clear">Limpar filtros</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto" role="region" aria-label="Tabela rolável de candidatos" tabindex="0">
+        <table class="lb">
+          <caption class="sr">Candidatos da varredura; ranks globais não renumeram sob filtro e paginação</caption>
+          <thead><tr><th scope="col">Rank</th><th scope="col">Candidato</th><th scope="col">Calmar</th><th scope="col">Max DD</th><th scope="col">Trades/cobertura</th><th scope="col">Ação</th></tr></thead>
+          <tbody id="lb-body"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button class="btn" id="pg-prev">← Anterior</button>
+        <span class="eyebrow" id="pg-label">Página 1 de 2</span>
+        <button class="btn" id="pg-next">Próxima →</button>
+      </div>
+      <!-- COPIED:start --><p class="note">Conteúdo educacional. Rank global usa resultados elegíveis (≥30 trades, ≥90% cobertura); filtros não renumeram posições.<!-- COPIED:end --> Dados históricos não garantem retornos futuros.</p>
+    </div>
+  </section>
+</div>
+
+<!-- Promote modal -->
+<div class="modal-bg" id="m-promote-bg">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-promote-t" id="m-promote">
+    <header><div><h2 class="h2" id="m-promote-t">Promover a favorito tier 3</h2><p class="eyebrow">Revise o risco antes de confirmar.</p></div>
+      <button class="btn" data-close aria-label="Fechar">✕</button></header>
+    <div class="body">
+      <strong id="m-promote-name">—</strong>
+      <p class="eyebrow" id="m-promote-market">—</p>
+      <div class="risk">
+        <div><small>Retorno (CAGR)</small><b class="pos" id="m-r-cagr">—</b></div>
+        <div><small>Queda máxima</small><b class="neg" id="m-r-dd">—</b></div>
+        <div><small>Trades</small><b class="num" id="m-r-trades">—</b></div>
+        <div><small>Cobertura · janela</small><b class="num" id="m-r-cov">—</b></div>
+      </div>
+      <div class="dest"><small style="color:var(--muted)">Destino obrigatório</small><br><strong>Tier 3 · observação</strong><br><span style="font-size:12px;color:var(--muted2)">Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica.</span></div>
+      <div class="rowbtns" style="justify-content:flex-end">
+        <button class="btn" data-close>Voltar</button>
+        <button class="cta" style="width:auto;margin:0;padding:10px 18px" id="m-promote-ok">Promover como tier 3</button>
+      </div>
+      <p class="eyebrow" id="m-promote-done" role="status"></p>
+    </div>
+  </div>
+</div>
+
+<!-- Advanced edit modal -->
+<div class="modal-bg" id="m-adv-bg">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-adv-t" id="m-adv">
+    <header><div><h2 class="h2" id="m-adv-t">Edição avançada</h2><p class="eyebrow" id="m-adv-sub">Para quem já sabe o que filtrar.</p></div>
+      <button class="btn" data-close aria-label="Fechar">✕</button></header>
+    <div class="body">
+      <input type="text" id="m-adv-q" placeholder="Filtrar…" aria-label="Filtrar itens">
+      <div class="opts" id="m-adv-list" style="max-height:240px"></div>
+      <p class="count" id="m-adv-count" aria-live="polite"></p>
+      <div class="rowbtns">
+        <button class="btn" id="m-adv-select-all">Selecionar todos</button>
+        <button class="btn" id="m-adv-clear-all">Limpar seleção</button>
+        <button class="cta" style="width:auto;margin:0 0 0 auto;padding:10px 18px" id="m-adv-ok">Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TPLS=["multi_trend_v1","bollinger_reversao_v2","ema_pullback_v1","macd_momentum_v3","rsi_reversao_v2","supertrend_seg_v1","donchian_breakout_v2","vwap_desvio_v1"];
+const SYMS=["BTC/USDT","ETH/USDT","SOL/USDT","BNB/USDT","XRP/USDT","ADA/USDT"];
+const sel={tpl:new Set(TPLS.slice(0,3)),sym:new Set(SYMS.slice(0,4)),tf:new Set(["4h","1d"])};
+const state={mode:"montar",sim:"montar",page:1,perPage:12,sort:"calmar",fSym:"all",fTf:"all",advAxis:"tpl",advSel:new Set()};
+const ROWS=[];
+(function(){const n=["Tendência","Reversão","Momentum","Volatilidade"];for(let i=0;i<24;i++){const g=i<20;ROWS.push({rank:i+1,name:TPLS[i%8].replace(/_/g," "),sym:SYMS[i%6],tf:i%2?"1d":"4h",calmar:+(2.4-i*0.09).toFixed(2),dd:-(8+(i%5)*1.7).toFixed(1),trades:g?120-i*3:12+i,cov:g?96-(i%4):61+i%9,cagr:+(38-i*1.4).toFixed(1),elig:g});}})();
+const $=id=>document.getElementById(id);
+function counts(){return{t:sel.tpl.size,s:sel.sym.size,f:sel.tf.size,d:1}}
+const PERIODS={
+  "all":{label:"todo o histórico",window:"[01 jan 2017, 01 jan 2026)",factor:6},
+  "2y":{label:"últimos 2 anos",window:"[01 jan 2024, 01 jan 2026)",factor:2},
+  "6m":{label:"últimos 6 meses",window:"[01 jul 2025, 01 jan 2026)",factor:1}};
+function period(){return PERIODS[$("sel-period").value]||PERIODS.all}
+function estimate(n){const m=n*period().factor;return m>=60?`~${Math.floor(m/60)}h ${m%60}min`:`~${m}min`}
+function renderOpts(){
+  const mk=(list,set,q,box,c)=>{const el=$(box);el.innerHTML="";const qq=$(q).value.toLowerCase();
+    list.filter(x=>x.toLowerCase().includes(qq)).forEach(x=>{const l=document.createElement("label");
+      l.innerHTML=`<input type="checkbox" ${set.has(x)?"checked":""} aria-label="${x}"> <span>${x}</span>`;
+      l.querySelector("input").addEventListener("change",e=>{e.target.checked?set.add(x):set.delete(x);sync();});el.appendChild(l);});
+    $(c).textContent=`${set.size} selecionados`;};
+  mk(TPLS,sel.tpl,"q-tpl","opts-tpl","c-tpl");mk(SYMS,sel.sym,"q-sym","opts-sym","c-sym");
+}
+function impediments(){const{t,s,f}=counts();const out=[];
+  if(!t)out.push("Escolha ao menos 1 template.");
+  if(!s)out.push("Escolha ao menos 1 símbolo.");
+  if(!f)out.push("Escolha 1 timeframe (4h ou 1d).");
+  const n=t*s*f;if(n>500)out.push(`Reduza o escopo: ${n} combinações passam do limite de 500.`);
+  return out;}
+function sync(){
+  renderOpts();
+  const{t,s,f}=counts();const n=t*s*f;const imp=impediments();
+  const line=$("pf-3line");const p=period();
+  if(!t||!s||!f){line.innerHTML=`<b>${n} combinações</b> · — · ${p.label} ${p.window}`;}
+  else{line.innerHTML=`<b>${n} combinações</b> · ${estimate(n)} estimado · ${p.label} ${p.window}`;}
+  $("pf-imp").hidden=!imp.length;$("pf-imp-list").innerHTML=imp.map(x=>`<li>${x}</li>`).join("");
+  $("pf-state").textContent=imp.length?"Bloqueado — veja o que falta":"Pronto para iniciar";
+  $("pf-tech").textContent=`fórmula bruta ${t} × ${s} × ${f} × 1 · 0 incompatíveis · limite 500 · estimativa ${estimate(n)} · janela ${p.label} ${p.window} · snapshot válido`;
+  $("draft-frozen").textContent=`${t} templates · ${s} símbolos · ${[...sel.tf].join(" + ")||"—"} · Long · ${p.label}`;
+  const btn=$("btn-start");btn.textContent=`Iniciar varredura — ${n}, ${estimate(n)}`;
+  const live=state.sim==="acomp";
+  const sameScope=(t===3&&s===4&&f===2);
+  const blk=$("start-block");
+  if(live){btn.disabled=true;
+    blk.hidden=false;
+    blk.innerHTML=sameScope
+      ?`Existe varredura igual em curso — <a href="#" id="lnk-prog">ver progresso</a>. Nada foi criado.`
+      :`Há outra varredura em curso — conclua ou cancele antes de iniciar esta. <a href="#" id="lnk-prog">ver progresso</a>.`;
+    const l=$("lnk-prog");if(l)l.addEventListener("click",e=>{e.preventDefault();setMode("acomp");});
+  }else{btn.disabled=!!imp.length;blk.hidden=true;}
+  renderLb();
+}
+function setMode(m){state.mode=m;
+  document.querySelectorAll(".modes [role=tab]").forEach(b=>{const on=b.dataset.mode===m;
+    b.setAttribute("aria-selected",on);b.tabIndex=on?0:-1;});
+  document.querySelectorAll(".modepanel").forEach(p=>p.classList.toggle("active",p.id==="panel-"+(m==="acomp"?"acomp":m)));
+  if(m==="decidir")renderLb();
+}
+document.querySelectorAll(".modes [role=tab]").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+document.querySelector(".modes").addEventListener("keydown",e=>{
+  if(e.key!=="ArrowRight"&&e.key!=="ArrowLeft")return;
+  const tabs=[...document.querySelectorAll(".modes [role=tab]")];
+  let i=tabs.findIndex(t=>t.getAttribute("aria-selected")==="true");
+  i=(i+(e.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;
+  setMode(tabs[i].dataset.mode);tabs[i].focus();e.preventDefault();});
+document.querySelectorAll("[data-sim]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("[data-sim]").forEach(x=>x.setAttribute("aria-pressed","false"));
+  b.setAttribute("aria-pressed","true");state.sim=b.dataset.sim;
+  $("acomp-n").textContent=state.sim==="montar"?"#—":"#A8421";sync();
+  setMode(state.sim==="montar"?"montar":state.sim==="acomp"?"acomp":"decidir");}));
+$("q-tpl").addEventListener("input",renderOpts);$("q-sym").addEventListener("input",renderOpts);
+document.querySelectorAll("#seg-tf button").forEach(b=>b.addEventListener("click",()=>{
+  const v=b.dataset.tf;sel.tf.has(v)?sel.tf.delete(v):sel.tf.add(v);
+  b.setAttribute("aria-pressed",sel.tf.has(v));sync();}));
+$("sel-period").addEventListener("change",sync);
+$("btn-start").addEventListener("click",()=>{if($("btn-start").disabled)return;
+  state.sim="acomp";document.querySelectorAll("[data-sim]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.sim==="acomp"));
+  $("acomp-n").textContent="#A8421";sync();setMode("acomp");$("prog-h").focus();});
+function filtered(){let r=ROWS.filter(x=>(state.fSym==="all"||x.sym===state.fSym)&&(state.fTf==="all"||x.tf===state.fTf));
+  r=[...r].sort((a,b)=>state.sort==="calmar"?b.calmar-a.calmar:b.cagr-a.cagr);return r;}
+function renderLb(){
+  const r=filtered();const pages=Math.max(1,Math.ceil(r.length/state.perPage));
+  state.page=Math.min(state.page,pages);
+  const slice=r.slice((state.page-1)*state.perPage,state.page*state.perPage);
+  $("lb-body").innerHTML=r.length?slice.map(x=>`<tr>
+    <td class="num"><b>#${x.rank}</b>${x.elig?"":'<br><span class="tag">Baixa amostra</span>'}</td>
+    <td><b>${x.name}</b><br><span class="tag">${x.sym} · ${x.tf} · Long</span></td>
+    <td class="num">${x.calmar.toFixed(2)}</td>
+    <td class="num neg">−${Math.abs(x.dd).toFixed(1)}%</td>
+    <td class="num">${x.trades} · ${x.cov}%</td>
+    <td><button class="btn" style="min-height:40px" data-promote="${x.rank}" ${x.elig?"":"disabled"}>${x.elig?"Promover":"Baixa amostra"}</button>
+    <br><button class="exp" data-expand="${x.rank}" aria-expanded="false">+ detalhes</button>
+    <div class="detail" id="det-${x.rank}" hidden><span>CAGR ${x.cagr}%</span><span>B&amp;H ${(x.cagr-6).toFixed(1)}%</span><span>Sharpe ${(1.1+x.rank*0.01).toFixed(2)}</span><span>PF ${(1.6-x.rank*0.01).toFixed(2)}</span><span>Win ${(52-x.rank)%18+40}%</span><span>Candles 730/730</span></div></td></tr>`).join(""):`<tr><td colspan="6" style="text-align:center;padding:20px">Nenhum candidato neste filtro. <button class="exp" id="lb-empty-clear" style="display:inline;min-height:0;padding:0">Limpar filtros</button></td></tr>`;
+  const ec=$("lb-empty-clear");if(ec)ec.addEventListener("click",()=>{state.fSym="all";state.fTf="all";$("f-sym").value="all";$("f-tf").value="all";state.page=1;renderLb();});
+  $("pg-label").textContent=`Página ${state.page} de ${pages}`;
+  $("pg-info").textContent=`${r.length} de 24 candidatos · página ${state.page} de ${pages}`;
+  $("lb-metric-name").textContent=state.sort==="calmar"?"Calmar":"CAGR vs B&H";
+  $("lb-acomp").innerHTML=`<div style="overflow-x:auto" role="region" aria-label="Parciais travadas" tabindex="0"><table class="lb"><thead><tr><th>Rank</th><th>Candidato</th><th>Calmar</th><th>Max DD</th><th>Trades/cobertura</th></tr></thead><tbody>`
+    +ROWS.slice(0,5).map(x=>`<tr><td class="num"><b>#${x.rank}</b></td><td><b>${x.name}</b><br><span class="tag">${x.sym} · ${x.tf}</span></td><td class="num">${x.calmar.toFixed(2)}</td><td class="num neg">−${Math.abs(x.dd).toFixed(1)}%</td><td class="num">${x.trades} · ${x.cov}%</td></tr>`).join("")+`</tbody></table></div>`;
+  document.querySelectorAll("[data-promote]").forEach(b=>b.addEventListener("click",()=>openPromote(+b.dataset.promote,b)));
+  document.querySelectorAll("[data-expand]").forEach(b=>b.addEventListener("click",()=>{
+    const d=$("det-"+b.dataset.expand);const open=d.hidden;d.hidden=!open;
+    b.setAttribute("aria-expanded",open);b.textContent=open?"− detalhes":"+ detalhes";}));
+}
+$("f-sort").addEventListener("change",e=>{state.sort=e.target.value;state.page=1;renderLb();});
+$("f-sym").addEventListener("change",e=>{state.fSym=e.target.value;state.page=1;renderLb();});
+$("f-tf").addEventListener("change",e=>{state.fTf=e.target.value;state.page=1;renderLb();});
+$("f-clear").addEventListener("click",()=>{state.fSym="all";state.fTf="all";$("f-sym").value="all";$("f-tf").value="all";state.page=1;renderLb();});
+$("pg-prev").addEventListener("click",()=>{if(state.page>1){state.page--;renderLb();}});
+$("pg-next").addEventListener("click",()=>{const p=Math.ceil(filtered().length/state.perPage);if(state.page<p){state.page++;renderLb();}});
+let lastFocus=null;
+function openModal(bg){lastFocus=document.activeElement;$(bg).classList.add("open");
+  const f=$(bg).querySelector("button,input,select");if(f)f.focus();}
+function closeModals(){document.querySelectorAll(".modal-bg").forEach(m=>m.classList.remove("open"));
+  if(lastFocus&&lastFocus.focus)lastFocus.focus();}
+document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeModals));
+document.querySelectorAll(".modal-bg").forEach(m=>{m.addEventListener("click",e=>{if(e.target===m)closeModals();});
+  m.addEventListener("keydown",e=>{if(e.key==="Escape")closeModals();
+    if(e.key==="Tab"){const f=[...m.querySelectorAll("button:not(:disabled),input,select")];const i=f.indexOf(document.activeElement);
+      if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus();}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus();}}});});
+function openPromote(rank,btn){const x=ROWS.find(r=>r.rank===rank);if(!x)return;lastFocus=btn;
+  $("m-promote-name").textContent=x.name;$("m-promote-market").textContent=`${x.sym} · ${x.tf} · Long · varredura #A8390`;
+  $("m-r-cagr").textContent=`+${x.cagr}%`;$("m-r-dd").textContent=`−${Math.abs(x.dd).toFixed(1)}%`;
+  $("m-r-trades").textContent=String(x.trades);$("m-r-cov").textContent=`${x.cov}% · 2 anos`;
+  $("m-promote-done").textContent="";openModal("m-promote-bg");}
+$("m-promote-ok").addEventListener("click",()=>{$("m-promote-done").textContent="Candidato promovido a favorito tier 3. Veja em Favoritos → Tier 3.";});
+function openAdv(axis){state.advAxis=axis;state.advSel=new Set(axis==="tpl"?sel.tpl:sel.sym);
+  $("m-adv-sub").textContent=axis==="tpl"?"Templates — selecionar todos ou limpar seleção.":"Símbolos — selecionar todos ou limpar seleção.";
+  $("m-adv-q").value="";renderAdv();openModal("m-adv-bg");}
+function renderAdv(){const list=state.advAxis==="tpl"?TPLS:SYMS;const q=$("m-adv-q").value.toLowerCase();
+  const el=$("m-adv-list");el.innerHTML="";
+  list.filter(x=>x.toLowerCase().includes(q)).forEach(x=>{const l=document.createElement("label");
+    l.innerHTML=`<input type="checkbox" ${state.advSel.has(x)?"checked":""} aria-label="${x}"> <span>${x}</span>`;
+    l.querySelector("input").addEventListener("change",e=>{e.target.checked?state.advSel.add(x):state.advSel.delete(x);$("m-adv-count").textContent=`${state.advSel.size} de ${list.length} selecionados`;});el.appendChild(l);});
+  $("m-adv-count").textContent=`${state.advSel.size} de ${list.length} selecionados`;}
+$("adv-tpl").addEventListener("click",()=>openAdv("tpl"));$("adv-sym").addEventListener("click",()=>openAdv("sym"));
+$("m-adv-q").addEventListener("input",renderAdv);
+$("m-adv-select-all").addEventListener("click",()=>{(state.advAxis==="tpl"?TPLS:SYMS).forEach(x=>state.advSel.add(x));renderAdv();});
+$("m-adv-clear-all").addEventListener("click",()=>{state.advSel.clear();renderAdv();});
+$("m-adv-ok").addEventListener("click",()=>{if(state.advAxis==="tpl")sel.tpl=new Set(state.advSel);else sel.sym=new Set(state.advSel);closeModals();sync();});
+$("btn-pause").addEventListener("click",e=>{const b=e.currentTarget;b.textContent=b.textContent==="Pausar"?"Retomar":"Pausar";});
+$("btn-cancel").addEventListener("click",()=>{state.sim="decidir";document.querySelectorAll("[data-sim]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.sim==="decidir"));$("acomp-n").textContent="#—";sync();setMode("decidir");});
+$("btn-newdraft").addEventListener("click",()=>setMode("montar"));
+sync();
+</script>
+</body>
+</html>

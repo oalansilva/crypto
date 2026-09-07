@@ -137,14 +137,19 @@ test('card 664 — reload reconstitui o sweep ativo e não o terminal', async ({
   await page.goto('/combo/discovery')
   await expect(page.getByTestId('sweep-progress')).toBeVisible()
   await expect(page.getByTestId('progress-count')).toContainText('21 de 28')
-  await expect(page.getByTestId('active-state-chip')).toHaveText('RUNNING')
-  await expect(page.getByTestId('start-sweep')).toBeDisabled()
+  await expect(page.getByTestId('active-state-chip')).toHaveText('EM CURSO')
+  // Card 852: no modo Acompanhar o Montar desmonta — sem botão Iniciar na tela.
+  await expect(page.getByTestId('start-sweep')).toHaveCount(0)
+  await expect(page.getByTestId('mode-acomp')).toBeVisible()
   await expect(page.getByTestId('recovery-banner')).toBeVisible()
 
   await page.reload()
   await expect(page.getByTestId('sweep-progress')).toBeVisible()
   await expect(page.getByTestId('progress-count')).toContainText('21 de 28')
-  await expect(page.locator('#draft-status')).toContainText('Congelado')
+  // Card 852: #draft-status mora no panel Montar (oculto com live em curso);
+  // no Acompanhar o rascunho congelado aparece colapsado.
+  await expect(page.getByTestId('mode-acomp')).toBeVisible()
+  await expect(page.getByTestId('draft-collapsed')).toContainText('Rascunho congelado')
 
   await installRestoreMocks(page, { ...ACTIVE, state: 'completed', processed: 28, succeeded: 28 })
   await page.reload()
@@ -162,7 +167,7 @@ test('card 664 — pausar, recarregar e retomar avança processed', async ({ pag
   await page.reload()
   await expect(page.getByTestId('active-state-chip')).toHaveText('PAUSED')
   await page.getByRole('button', { name: 'Retomar' }).click()
-  await expect(page.getByTestId('active-state-chip')).toHaveText('RUNNING')
+  await expect(page.getByTestId('active-state-chip')).toHaveText('EM CURSO')
   await expect(page.getByTestId('progress-count')).toContainText('22 de 28')
 })
 

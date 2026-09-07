@@ -196,20 +196,6 @@ export function SelectionWorkbench({
     [activeAxis, items, announce],
   )
 
-  const addMany = useCallback(
-    (ids: string[]) => {
-      setWorking((prev) => {
-        const a = copyAxis(prev[activeAxis])
-        if (a.mode === 'all') ids.forEach((id) => a.excluded.delete(id))
-        else ids.forEach((id) => a.selected.add(id))
-        a.catalogState = 'ready'
-        announce(`${ids.length} resultados adicionados. ${selectedCount(a, items)} ${axisName(activeAxis)} selecionados.`)
-        return { ...prev, [activeAxis]: a }
-      })
-    },
-    [activeAxis, items, announce],
-  )
-
   const selectAllAxis = useCallback(() => {
     setWorking((prev) => {
       const a = copyAxis(prev[activeAxis])
@@ -305,8 +291,8 @@ export function SelectionWorkbench({
         {/* Header */}
         <header className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] px-5 py-3.5">
           <div>
-            <h1 id="workbench-title" className="text-xl font-semibold text-[var(--text-primary)]">Montar escopo da varredura</h1>
-            <p id="workbench-desc" className="mt-1 text-xs text-[var(--text-tertiary)]">Busque, revise e aplique a seleção sem rolar o catálogo inteiro.</p>
+            <h1 id="workbench-title" className="text-xl font-semibold text-[var(--text-primary)]">Edição avançada</h1>
+            <p id="workbench-desc" className="mt-1 text-xs text-[var(--text-tertiary)]">Eixo inteiro: selecionar todos ou limpar seleção. O filtrado resolve inline.</p>
           </div>
           <button
             type="button"
@@ -334,7 +320,7 @@ export function SelectionWorkbench({
             >
               {ax === 'templates' ? 'Templates' : 'Símbolos'}{' '}
               <span className={`ml-2 text-[11px] font-normal ${activeAxis === ax ? 'text-[var(--accent-primary)]' : ''}`}>
-                {selectedCount(working[ax], ax === 'templates' ? templates : symbols)}/{totalCount(ax === 'templates' ? templates : symbols)}
+                {selectedCount(working[ax], ax === 'templates' ? templates : symbols)} de {totalCount(ax === 'templates' ? templates : symbols)}
               </span>
               {activeAxis === ax && <span className="absolute inset-x-5 bottom-0 h-0.5 bg-[var(--accent-primary)]" />}
             </button>
@@ -372,18 +358,12 @@ export function SelectionWorkbench({
 
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-[var(--text-tertiary)]">{filtered.length} resultados · {PAGE_SIZE} por página</span>
-                <div className="flex gap-1.5 max-md:grid max-md:w-full max-md:grid-cols-4">
-                  <button data-testid="select-page" type="button" onClick={() => addMany(slice.map((i) => i.id))} disabled={axis.catalogState === 'loading' || axis.catalogState === 'frozen' || slice.length === 0} className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-2.5 text-xs font-semibold text-[var(--text-secondary)] disabled:opacity-40">
-                    <span className="max-md:hidden">Adicionar página</span><span className="md:hidden">Página</span>
-                  </button>
-                  <button data-testid="select-filtered" type="button" onClick={() => addMany(filtered.map((i) => i.id))} disabled={axis.catalogState === 'loading' || axis.catalogState === 'frozen' || filtered.length === 0} className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-2.5 text-xs font-semibold text-[var(--text-secondary)] disabled:opacity-40">
-                    <span className="max-md:hidden">Adicionar filtrados</span><span className="md:hidden">Filtrados</span>
-                  </button>
+                <div className="flex gap-1.5">
                   <button data-testid="select-all" type="button" onClick={selectAllAxis} disabled={axis.mode === 'all' || axis.catalogState === 'loading' || axis.catalogState === 'frozen'} className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-2.5 text-xs font-semibold text-[var(--text-secondary)] disabled:opacity-40">
-                    <span className="max-md:hidden">Catálogo inteiro</span><span className="md:hidden">Catálogo</span>
+                    Selecionar todos
                   </button>
                   <button data-testid="clear-axis" type="button" onClick={clearAxis} disabled={axis.catalogState === 'loading' || axis.catalogState === 'frozen' || sc === 0} className="min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-2.5 text-xs font-semibold text-[var(--text-secondary)] disabled:opacity-40">
-                    <span className="max-md:hidden">Limpar seleção</span><span className="md:hidden">Limpar</span>
+                    Limpar seleção
                   </button>
                 </div>
               </div>

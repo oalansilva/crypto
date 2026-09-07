@@ -2,6 +2,8 @@
    Tabela vira cards em mobile, com rótulos via data-label (acessível). */
 
 .discovery-table { width: 100%; min-width: 1080px; border-collapse: collapse; }
+/* Card 852 — leaderboard decidível: 6 colunas cabem sem rolagem larga. */
+.discovery-table.decidable { min-width: 640px; }
 .discovery-table th {
   padding: 10px 7px; border-bottom: 1px solid var(--border-default);
   background: var(--bg-secondary); color: var(--text-muted);

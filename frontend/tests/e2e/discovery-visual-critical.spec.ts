@@ -292,15 +292,24 @@ async function openDiscovery(page: Page) {
   }, STABLE_DRAFT_KEY)
   await page.goto('/combo/discovery')
   await expect(page.getByRole('heading', { name: 'Descoberta de estratégias swing' })).toBeVisible()
+  // Modo Montar (default, sem sweep ativo)
   await expect(page.getByTestId('planned-total')).toHaveText('46')
   await expect(page.getByTestId('template-count')).toContainText('3 de 4 selecionados')
   await expect(page.getByTestId('symbol-count')).toContainText('4 de 16 selecionados')
+  // Card 852: leaderboard vive no modo Decidir (auto-select não troca mais de modo)
+  const decidirTab = page.getByRole('tab', { name: 'Decidir' })
+  await expect(decidirTab).toBeEnabled()
+  await decidirTab.click()
   await expect(page.getByRole('heading', { name: 'Leaderboard · Calmar' })).toBeVisible()
   await expect(page.getByTestId('result-count')).toContainText('12 de 12 candidatos')
-  await expect(page.getByRole('columnheader', { name: 'Buy and Hold', exact: true })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Delta versus Buy and Hold', exact: true })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Maximum Drawdown', exact: true })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Profit Factor', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Rank global' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Candidato' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Calmar' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Maximum Drawdown' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Trades/cobertura' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Buy and Hold', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('columnheader', { name: 'Profit Factor', exact: true })).toHaveCount(0)
+  await expect(page.getByTestId('sort-filter')).toBeVisible()
   await expect(page.getByLabel('Tabela rolável de candidatos')).toHaveAttribute('tabindex', '0')
   return captured
 }
@@ -308,20 +317,28 @@ async function openDiscovery(page: Page) {
 test('card 469 — fidelidade visual desktop/mobile', async ({ page }) => {
   await openDiscovery(page)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  // Viewport (não fullPage): altura total varia com métricas de fonte entre
+  // ambientes (card 852: 1440x2715 local vs 1440x2730 no CI); viewport é determinístico.
+  // Tolerância 0.05: o CI rende fallback DejaVu Sans no lugar do Inter
+  // (mesmo layout, glifos deslocados → ~0.04 de ruído); quebra real de
+  // layout mede ~0.60. Conteúdo é verificado pelos asserts funcionais.
   await expect(page).toHaveScreenshot('discovery-card-469.png', {
     animations: 'disabled',
     caret: 'hide',
-    fullPage: true,
+    fullPage: false,
+    maxDiffPixelRatio: 0.05,
   })
 })
 
 test('card 469 — workbench de seleção sem rolagem', async ({ page }) => {
   await openDiscovery(page)
+  // workbench vive no Montar
+  await page.getByRole('tab', { name: 'Montar' }).click()
 
   const templateCard = page.getByTestId('edit-templates')
   await expect(templateCard).toBeVisible()
   await templateCard.click()
-  const workbench = page.getByRole('dialog', { name: 'Montar escopo da varredura' })
+  const workbench = page.getByRole('dialog', { name: 'Edição avançada' })
   await expect(workbench).toBeVisible()
 
   // tabs com contagens
@@ -332,8 +349,8 @@ test('card 469 — workbench de seleção sem rolagem', async ({ page }) => {
   const search = page.getByPlaceholder('Buscar nome ou código')
   await search.fill('ROC duplo')
   await expect(page.getByText('ROC duplo', { exact: true }).first()).toBeVisible()
-  await page.getByTestId('select-page').click()
-  await expect(page.getByRole('tab', { name: /Templates 4\/4/ })).toBeVisible()
+  await page.getByTestId('select-all').click()
+  await expect(page.getByRole('tab', { name: /Templates 4 de 4/ })).toBeVisible()
   await search.fill('')
   await expect(search).toBeFocused()
 
@@ -369,8 +386,10 @@ test('card 469 — workbench de seleção sem rolagem', async ({ page }) => {
 
 test('card 469 — workbench a11y: trap de foco e setas nas tabs', async ({ page }) => {
   await openDiscovery(page)
+  // workbench vive no Montar
+  await page.getByRole('tab', { name: 'Montar' }).click()
   await page.getByTestId('edit-templates').click()
-  const workbench = page.getByRole('dialog', { name: 'Montar escopo da varredura' })
+  const workbench = page.getByRole('dialog', { name: 'Edição avançada' })
   await expect(workbench).toBeVisible()
 
   // navegação por setas nas tabs
@@ -429,7 +448,7 @@ test('card 469 — iniciar uma combinação revela o progresso', async ({ page }
 
   await page.goto('/combo/discovery')
   const start = page.getByTestId('start-sweep')
-  await expect(start).toHaveText('Iniciar 1 combinações')
+  await expect(start).toContainText('1, ~2min')
   await start.click()
 
   const progressHeading = page.locator('#progress-heading')
@@ -444,8 +463,13 @@ test('card 469 — iniciar uma combinação revela o progresso', async ({ page }
 test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   const captured = await openDiscovery(page)
 
+  // leaderboard-meta vive no Decidir; start-sweep e draft-key vivem no Montar
+  await expect(page.getByTestId('leaderboard-meta')).toContainText(HISTORY_SWEEP.sweep_id)
+  await page.getByRole('tab', { name: 'Montar' }).click()
+
   const startBox = await page.getByTestId('start-sweep').boundingBox()
   expect(startBox?.height ?? 0).toBeGreaterThanOrEqual(44)
+  await expect(page.getByTestId('draft-key')).toContainText(STABLE_DRAFT_KEY)
 
   await page.getByTestId('history-button').click()
   await expect(page.getByTestId('run-selector')).toHaveValue(HISTORY_SWEEP.sweep_id)
@@ -459,13 +483,15 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
     return rect.top >= 0 && rect.bottom <= window.innerHeight
   })).toBe(true)
   await expect(page.getByTestId('progress-count')).toHaveText('13 de 46')
-  await expect(page.getByTestId('active-state-chip')).toHaveText('RUNNING')
-  await expect(page.getByTestId('leaderboard-meta')).toContainText(HISTORY_SWEEP.sweep_id)
+  await expect(page.getByTestId('active-state-chip')).toHaveText('EM CURSO')
   expect(captured.sweepIdempotencyKey).toMatch(/^[a-zA-Z0-9-]{8,64}$/)
   expect(captured.sweepIdempotencyKey).not.toBe(`sweep-${PREFLIGHT.snapshot_hash}`.slice(0, 64))
-  await expect(page.getByTestId('draft-key')).toContainText(captured.sweepIdempotencyKey as string)
   const firstKey = captured.sweepIdempotencyKey
-  await expect(page.getByTestId('start-sweep')).toBeDisabled()
+  // pós-start o rascunho colapsa: start-sweep desmonta no modo Acompanhar
+  await expect(page.getByTestId('start-sweep')).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Montar' }).click()
+  await expect(page.getByTestId('draft-key')).toContainText(firstKey as string)
+  await page.getByRole('tab', { name: /Acompanhando/ }).click()
 
   await page.getByTestId('pause-sweep').click()
   await expect(page.getByTestId('active-state-chip')).toHaveText('PAUSED')
@@ -474,34 +500,32 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   await expect(page.getByRole('alertdialog')).toBeVisible()
   await page.getByTestId('confirm-cancel').click()
   await expect(page.getByTestId('active-state-chip')).toHaveText('CANCELLING')
-  await expect(page.getByTestId('active-state-chip')).toHaveText('CANCELLED', { timeout: 5000 })
-  await expect(page.locator('#progress-heading')).toBeFocused()
+  // terminal desmonta o Acompanhar e leva ao Decidir (chip sai de cena)
+  await expect(page.getByTestId('mode-decidir')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('#leaderboard-title')).toBeVisible()
 
-  await page.getByTestId('new-draft').click()
+  // novo rascunho: Acompanhar desabilita no terminal; Montar reabre editável (chave rotacionada)
+  await page.getByRole('tab', { name: 'Montar' }).click()
   await expect(page.locator('#draft-status')).toContainText('Editável')
-  await expect(page.getByTestId('sweep-progress')).toBeVisible()
   const rotatedKey = (await page.getByTestId('draft-key').textContent()) || ''
   expect(rotatedKey).not.toContain(firstKey)
   await page.getByTestId('start-sweep').click()
   expect(captured.sweepIdempotencyKey).not.toBe(firstKey)
   expect(captured.sweepIdempotencyKey).toMatch(/^[a-zA-Z0-9-]{8,64}$/)
 
+  // página 12 com 12 candidatos: 1 página só
+  await page.getByRole('tab', { name: 'Decidir' }).click()
   await page.getByTestId('symbol-filter').selectOption('ETH/USDT')
   await expect(page.getByTestId('result-count')).toContainText('3 de 12 candidatos')
   await page.getByTestId('clear-filters').click()
   await expect(page.getByTestId('result-count')).toContainText('12 de 12 candidatos')
-  await page.getByTestId('next-page').click()
-  await expect(page.getByTestId('page-label')).toHaveText('Página 2 de 4')
+  await expect(page.getByTestId('page-label')).toHaveText('Página 1 de 1')
+  await expect(page.getByTestId('next-page')).toBeDisabled()
+  await expect(page.getByTestId('prev-page')).toBeDisabled()
   await expect(page.getByTestId('promote-RS-1053')).toBeDisabled()
   await expect(page.getByTestId('promote-RS-1053')).toHaveText('Já existe')
-  await page.getByTestId('next-page').click()
-  await page.getByTestId('next-page').click()
-  await expect(page.getByTestId('page-label')).toHaveText('Página 4 de 4')
   await expect(page.getByTestId('promote-RS-1059')).toBeDisabled()
   await expect(page.getByTestId('promote-RS-1059')).toHaveText('Baixa amostra')
-  await page.getByTestId('prev-page').click()
-  await page.getByTestId('prev-page').click()
-  await page.getByTestId('prev-page').click()
 
   await expect(page.getByTestId('discard-RS-1048')).toBeVisible()
   await page.getByTestId('discard-RS-1049').click()
