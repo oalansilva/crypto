@@ -31,7 +31,7 @@ Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd
 | Atividade | Spawn |
 | --- | --- |
 | Em Refinamento | 1 filho `grill-card` (bind Status da issue N + N no prompt = `#<id>`) |
-| Design | 1 filho autor; depois onda A/B do pai |
+| Design | 1 filho autor; depois 1 crítico (sem-tela) ou onda A/B (com-tela) |
 | Em desenvolvimento | pai `iniciar_apply`, depois 1 filho apply (loop fatiado interno) |
 | Code Review | onda `diff-reviewer` + `code-reviewer` |
 | QA | 1 filho checks/evidência; T14 no pai |
@@ -70,6 +70,12 @@ Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de
 ### Design — clone da página viva
 
 > **Clone da página viva:** em superfície já existente — rota autenticada no catálogo (`/monitor`, `/favorites`, `/combo/discovery`, `/combo/select`) **ou** HTML público vigente (chave `landing` = landing v4 em `https://criptofarol.com.br/`) — o URL canónico do proto (`…/prototypes/<slug>/` → `index.html`) MUST clonar essa página viva e aplicar só o delta do card. Nunca «6 estados» / painel ANTES/DEPOIS como URL canónico, mesmo com clone noutro ficheiro da pasta. Copy visível (landing / Ajuda / Perfil) = a página mudou; Prototype N/A é recusado. N superfícies existentes: URL principal = página primária clonada; as outras com copy visível têm URLs extra de clone — nunca um painel das N no index.
+
+> **Design fecha em 1+1+1 (teto):** sem-tela = 1 autor + 1 crítico + 1 rework; com-tela = autor + dupla + 1 rework. Segundo rework só com P0 novo de produto justificado no prompt; fora disso o pai publica a seção de crítica com os P3 aceitos e submete. **Classificação:** só produto/escopo/contrato visível (tela, estados, acessibilidade, escopo furado) gera P0/P1; detalhe de implementação é P3 "detalhe de Apply", aceito em `design.md` e resolvido no Apply — nunca reaberto como P0/P1. **Gate no autor:** o primeiro autor já entrega `UI impact` / `live_route` / `surface` em linha própria parseável; sem-tela declara ausência + justificativa curta (nunca rota de catálogo emprestada); com-tela marca só as regiões clonadas. O crítico/dupla verifica esses tokens como item da rubrica.
+
+### Design — teto e validação
+
+Validação do segundo rework: o pai justifica o P0 novo de produto no prompt; sem justificativa, o segundo rework não é spawnado. "Dupla" = "onda A/B" da tabela de filhos.
 
 ## Preflight
 

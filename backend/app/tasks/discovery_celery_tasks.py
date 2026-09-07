@@ -9,6 +9,7 @@ from celery import Task
 
 from app.celery_app import celery_app
 from app.database import SessionLocal
+from app.models_discovery import DiscoverySweep
 from app.services.discovery_service import DiscoveryService
 
 logger = logging.getLogger(__name__)
@@ -24,12 +25,43 @@ class DiscoveryOrchestratorTask(Task):
 
 def run_sweep_orchestrator(sweep_id: str, generation: int) -> dict[str, Any]:
     """Orquestrador de um sweep: reclama combinações em lote, executa e
-    reconcilia. Idempotente: combinações já com resultado não reexecutam."""
-    from app.tasks.discovery_tasks import reconcile_sweep, run_combination
+    reconcilia. Idempotente: combinações já com resultado não reexecutam.
+
+    Caminho do intent com sweep `cancelling` (card #853, P1): claim vazio →
+    lock + refresh → release escopado ao sweep (flush-only) → `reconcile_sweep`
+    sob lock (flush) → ack flush-only como última mutação — tudo no mesmo
+    commit único do sweep. SOMENTE o helper escopado é usado aqui; o
+    `release_expired_leases` global com commit próprio foi removido deste
+    caminho (ressuscitaria `running` expirado em `pending` de `cancelled` de
+    OUTRO sweep sem reconcile acoplado).
+    """
+    from app.tasks.discovery_tasks import _reconcile_locked, reconcile_sweep, run_combination
 
     service = DiscoveryService()
     db = SessionLocal()
     try:
+        probe = db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).first()
+        if probe is not None and probe.state == "cancelling":
+            locked = service._lock_sweep(db, sweep_id)
+            if locked is not None:
+                db.refresh(locked)
+                if locked.state == "cancelling":
+                    service._release_expired_leases_for_sweep(db, sweep_id)
+                    summary = _reconcile_locked(locked, db)
+                    service._ack_locked(sweep_id, generation, db=db)
+                    db.commit()
+                    logger.info(
+                        "Discovery cancel finalizer ack recorded: sweep=%s generation=%s state=%s running=%s pending=%s",
+                        sweep_id,
+                        generation,
+                        summary.get("state"),
+                        summary.get("running"),
+                        summary.get("pending"),
+                    )
+                    return summary
+            # Caiu para terminal entre probe e lock: rollback e segue o caminho
+            # normal, que re-finaliza resíduo sem sobrescrever o terminal.
+            db.rollback()
         claimed = service.claim_combinations(sweep_id, owner=f"orchestrator-{generation}", db=db)
         logger.info(
             "Discovery orchestrator started: sweep=%s generation=%s claimed=%s",

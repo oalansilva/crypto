@@ -505,7 +505,8 @@ def test_dsh_stubs_match_cursor_skills():
     body = stub.split("---", 2)[2]
     assert len([ln for ln in body.splitlines() if ln.strip()]) <= 8
     assert not (REPO / ".dsh" / "skills" / "impeccable" / "SKILL.md").exists()
-    assert not (REPO / ".dsh" / "skills" / "design-critic" / "SKILL.md").exists()
+    critic = (REPO / ".dsh" / "skills" / "design-critic" / "SKILL.md").read_text(encoding="utf-8")
+    assert ".cursor/skills/design-critic/SKILL.md" in critic
     assert not (REPO / ".dsh" / "skills" / "playwright-cli" / "SKILL.md").exists()
 
 
