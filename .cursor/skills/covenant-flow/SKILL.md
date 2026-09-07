@@ -32,7 +32,7 @@ Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd
 | --- | --- |
 | Em Refinamento | 1 filho `grill-card` (bind Status da issue N + N no prompt = `#<id>`) |
 | Design | 1 filho autor; depois 1 crítico (sem-tela) ou onda A/B (com-tela) |
-| Em desenvolvimento | pai `iniciar_apply`, depois 1 filho apply (loop fatiado interno) |
+| Em desenvolvimento | 1ª entrada: pai `iniciar_apply` (T8), depois 1 filho apply (loop fatiado interno). Pós-T18: já em Em desenvolvimento; **não** T8 |
 | Code Review | onda `diff-reviewer` + `code-reviewer` |
 | QA | 1 filho checks/evidência; T14 no pai |
 
@@ -48,7 +48,7 @@ Caminho obrigatório:
 
 `Cancelado` é terminal a qualquer momento, inclusive Em Refinamento.
 
-Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de Design→Pronto para Dev (só Alan); (2) Done→Homologado. Homologado→Pronto é T16: `process_event fechar_release` após `release-guard post` PASS.
+Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de Design→Pronto para Dev (só Alan); (2) em Done, o par `homologar` → Homologado (T15) e `nao_homologar` → Em desenvolvimento (T18, só Alan, motivo visível `Não homologar:` + texto no issue). Homologado→Pronto é T16: `process_event fechar_release` após `release-guard post` PASS. Homologado sem aresta inversa. Arraste GitHub Done→Em desenvolvimento sem esse comentário é fora-de-δ: restaurar Done e exigir o motivo; não inventar UI no board.
 
 | Status | Significado |
 | --- | --- |
@@ -121,6 +121,8 @@ Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto
 ## Implementação
 
 Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`. O **filho** Apply edita o código (loop fatiado); **não** `process_event`, **não** commit/push, **não** spawna reviewers; devolve status ao pai.
+
+Pós-T18 (`nao_homologar`): q já é Em desenvolvimento no mesmo card. Reabrir ou criar `card-<id>-*` a partir do `develop` actual (squash T14 já está lá). Write só com I1 (não develop/main). **Não** chamar `iniciar_apply` (T8 é de Pronto para Dev). Segue `pedir_review` → … → T14 → Done; o par homologar / não homologar reaparece.
 
 Pai: `pedir_review` (Code Review), `diff-reviewer` + `code-reviewer` no diff **não commitado** vs HEAD, commit, `diff-reviewer` vs a branch de integração, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
 **dsh:** após 400 desta classe (reasoning effort off/none) num filho, MUST NOT spawnar mais o mesmo preset (incl. retry 1/1 #518); registar `ERROR: subagent spawn failed/empty` e continuar no root com residual explícito.
