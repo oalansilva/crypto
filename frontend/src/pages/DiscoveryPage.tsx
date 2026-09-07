@@ -96,7 +96,7 @@ type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
 
 const TERMINAL = new Set<SweepState>(['cancelled', 'failed', 'partial_failure', 'completed'])
 const NON_TERMINAL = new Set<SweepState>(['pending', 'running', 'paused', 'cancelling'])
-const PAGE_SIZE = 3
+const PAGE_SIZE = 12
 const DRAFT_KEY_STORAGE = 'discovery-draft-idempotency-key'
 const idempotencyKey = (prefix: string, value: string) => `${prefix}-${value}`.slice(0, 64)
 const newDraftKey = () =>
@@ -214,7 +214,7 @@ function errorDetail(data: unknown, fallback: string): string {
 const START_FAILURE_FALLBACK =
   'Não foi possível iniciar a varredura. Confira a seleção e tente de novo — nada foi criado.'
 const LIVE_BLOCK_COPY =
-  'Há uma varredura em execução. Cancele a atual antes de iniciar outra seleção.'
+  'Há outra varredura em curso — conclua ou cancele antes de iniciar esta.'
 
 function sameStringSet(a: string[], b: string[] | undefined): boolean {
   if (!b) return a.length === 0
@@ -233,7 +233,7 @@ export function DiscoveryPage() {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
   const [timeframes, setTimeframes] = useState<string[]>(['4h', '1d'])
   const [directions, setDirections] = useState<string[]>(['long'])
-  const [period, setPeriod] = useState<'6m' | '2y' | 'all'>('2y')
+  const [period, setPeriod] = useState<'6m' | '2y' | 'all'>('all')
   const [draftMetric, setDraftMetric] = useState<Metric>('calmar_ratio')
   const [metric, setMetric] = useState<Metric>('calmar_ratio')
   // Workbench
@@ -260,6 +260,9 @@ export function DiscoveryPage() {
   const [busy, setBusy] = useState(false)
   // Leaderboard
   const [rows, setRows] = useState<LeaderboardRow[]>([])
+  // Card 852: parciais do Acompanhar vivem separadas do leaderboard do
+  // Decidir (top-5 travadas do sweep em curso, sem paginação).
+  const [partials, setPartials] = useState<LeaderboardRow[]>([])
   const [totalMatched, setTotalMatched] = useState(0)
   const [totalAvailable, setTotalAvailable] = useState(0)
   const [lbLoading, setLbLoading] = useState(false)
@@ -280,6 +283,12 @@ export function DiscoveryPage() {
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  // Card 852 — 1 modo visível por vez: Montar (rascunho editável + preflight),
+  // Acompanhando (progresso da live + parciais travadas), Decidir (leaderboard
+  // do sweep escolhido). Eventos movem o modo; tabs permitem revisitar.
+  const [mode, setMode] = useState<'montar' | 'acomp' | 'decidir'>('montar')
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [inlineQuery, setInlineQuery] = useState({ templates: '', symbols: '' })
 
   const pollRef = useRef<number | null>(null)
   const preflightTimer = useRef<number | null>(null)
@@ -297,6 +306,7 @@ export function DiscoveryPage() {
   const promotionTriggerRef = useRef<HTMLButtonElement | null>(null)
   const discardTriggerRef = useRef<HTMLButtonElement | null>(null)
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
+  const leaderboardTitleRef = useRef<HTMLHeadingElement | null>(null)
   const previousActiveStateRef = useRef<SweepState | null>(null)
 
   useEffect(() => {
@@ -504,19 +514,22 @@ export function DiscoveryPage() {
   const liveEndDate = liveSweep?.snapshot?.end_date ?? null
   const draftStartDate = preflight?.start_date ?? null
   const draftEndDate = preflight?.end_date ?? null
-  const blockedOtherSelection = Boolean(
+  // A igualdade de escopo ancora o bloqueio: mesmo período com datas
+  // divergentes (ex.: catálogo/janela re-resolvida) é outra seleção.
+  const sameScopeAsLive = Boolean(
     liveSweep &&
       liveAxes &&
-      (!sameStringSet(selectedTemplates, liveAxes.templates) ||
-        !sameStringSet(
-          selectedSymbols.map((s) => s.toUpperCase()),
-          (liveAxes.symbols ?? []).map((s) => s.toUpperCase()),
-        ) ||
-        !sameStringSet(timeframes, liveAxes.timeframes) ||
-        !sameStringSet(directions, liveAxes.directions) ||
-        (liveSweep.snapshot?.period_type ?? null) !== period ||
-        (preflight != null && (draftStartDate !== liveStartDate || draftEndDate !== liveEndDate))),
+      sameStringSet(selectedTemplates, liveAxes.templates) &&
+      sameStringSet(
+        selectedSymbols.map((s) => s.toUpperCase()),
+        (liveAxes.symbols ?? []).map((s) => s.toUpperCase()),
+      ) &&
+      sameStringSet(timeframes, liveAxes.timeframes) &&
+      sameStringSet(directions, liveAxes.directions) &&
+      (liveSweep.snapshot?.period_type ?? null) === period &&
+      !(preflight != null && (draftStartDate !== liveStartDate || draftEndDate !== liveEndDate)),
   )
+  const blockedOtherSelection = Boolean(liveSweep && liveAxes && !sameScopeAsLive)
   const canStart =
     recoveryStatus === 'ready' &&
     !draftFrozen &&
@@ -524,9 +537,66 @@ export function DiscoveryPage() {
     preflight !== null &&
     Object.keys(preflight.errors || {}).length === 0 &&
     !snapshotStale
+  // Card 852: mesmo escopo com live em curso nomeia a igualdade (ver
+  // progresso) em vez do bloqueio genérico; só aparece com início fechado
+  // para não contradizer o retry idempotente permitido.
+  const sameScopeBlocked = Boolean(liveSweep && sameScopeAsLive && !canStart)
+  // Card 852: preflight humano — impedimentos acionáveis em linguagem de
+  // operação (nunca JSON técnico no caminho feliz).
+  const impediments: string[] = []
+  if (selectedTemplates.length === 0) impediments.push('Escolha ao menos 1 template.')
+  if (selectedSymbols.length === 0) impediments.push('Escolha ao menos 1 símbolo.')
+  if (timeframes.length === 0) impediments.push('Escolha 1 timeframe (4h ou 1d).')
+  if (directions.length === 0) impediments.push('Escolha a direção Long.')
+  if (overLimit) {
+    impediments.push(
+      `Reduza o escopo: ${axisCount} combinações passam do limite de ${preflight?.limits.max_total ?? '—'}.`,
+    )
+  }
+  const preflightWindow =
+    preflight?.start_date || preflight?.end_date
+      ? ` [${fmtDate(preflight?.start_date ?? null)}, ${fmtDate(preflight?.end_date ?? null)})`
+      : ''
+  const ctaTotal = preflight?.valid_total ?? (draftFrozen && activeSweep ? activeSweep.total : axisCount)
+  const goToProgress = useCallback(() => {
+    setMode('acomp')
+    window.setTimeout(() => progressHeadingRef.current?.focus(), 0)
+  }, [])
 
   const toggleList = (list: string[], setList: (v: string[]) => void, value: string) =>
     setList(list.includes(value) ? list.filter((x) => x !== value) : [...list, value])
+
+  // Card 852: seleção inline (busca + marcar/desmarcar, sem modal). Espelha
+  // o eixo no snapshot aplicado para que o contador inline reflita na hora.
+  const isInlineSelected = (axis: 'templates' | 'symbols', id: string): boolean => {
+    const a = committedSelection[axis]
+    return a.mode === 'all' ? !a.excluded.has(id) : a.selected.has(id)
+  }
+  const toggleInline = (axis: 'templates' | 'symbols', id: string) => {
+    const catalog = axis === 'templates' ? templatesCatalog : symbolsCatalog
+    const ids = catalog.map((i) => i.id)
+    const prevAxis = committedSelection[axis]
+    const selected = isInlineSelected(axis, id)
+    const nextAxis = {
+      ...prevAxis,
+      selected: new Set(prevAxis.selected),
+      excluded: new Set(prevAxis.excluded),
+      catalogState: prevAxis.catalogState,
+    }
+    let nextSelected: string[]
+    if (prevAxis.mode === 'all') {
+      if (selected) nextAxis.excluded.add(id)
+      else nextAxis.excluded.delete(id)
+      nextSelected = ids.filter((x) => !nextAxis.excluded.has(x))
+    } else {
+      if (selected) nextAxis.selected.delete(id)
+      else nextAxis.selected.add(id)
+      nextSelected = [...nextAxis.selected]
+    }
+    if (axis === 'templates') setSelectedTemplates(nextSelected)
+    else setSelectedSymbols(nextSelected)
+    setCommittedSelection((prev) => ({ ...prev, [axis]: nextAxis }))
+  }
 
   // ---------- Sweep ----------
   const rotateDraftKey = useCallback(() => {
@@ -535,6 +605,23 @@ export function DiscoveryPage() {
     const next = newDraftKey()
     setDraftKey(next)
     persistDraftKey(next)
+  }, [])
+
+  // Card 852: top-5 travadas do sweep em curso para o modo Acompanhar.
+  // Separadas de `rows` para não corromper o leaderboard do Decidir.
+  // Definido antes de startSweep/restoreSession para satisfazer dependências.
+  const loadPartials = useCallback(async (sweepId: string, m: Metric) => {
+    try {
+      const params = new URLSearchParams({ metric: m, offset: '0', limit: '5' })
+      const res = await authFetch(
+        `${API_BASE_URL}/combos/discovery/sweeps/${sweepId}/leaderboard?${params.toString()}`,
+      )
+      if (!res.ok) return
+      const data = await res.json()
+      setPartials(data.results || [])
+    } catch {
+      /* parciais são auxiliares; o progresso segue */
+    }
   }, [])
 
   const startSweep = useCallback(async () => {
@@ -622,6 +709,11 @@ export function DiscoveryPage() {
       setMetric(draftMetric)
       setDraftFrozen(true)
       setPage(1)
+      // Card 852: iniciar colapsa o rascunho e trava no sweep em curso —
+      // o modo vira Acompanhando e as parciais (top-5) vêm do leaderboard.
+      setMode('acomp')
+      setExpandedRows(new Set())
+      void loadPartials(fullSweep.sweep_id, draftMetric)
       if (!viewSweep) {
         setRows([])
         setTotalMatched(0)
@@ -637,7 +729,7 @@ export function DiscoveryPage() {
     } finally {
       setBusy(false)
     }
-  }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, draftKey, hydrateFromSweep, loadHistory, showToast, viewSweep])
+  }, [preflight, selectedTemplates, selectedSymbols, timeframes, directions, period, draftMetric, draftKey, hydrateFromSweep, loadHistory, loadPartials, showToast, viewSweep])
 
   useEffect(() => {
     if (!activeSweep || !focusStartedSweepRef.current) return
@@ -696,8 +788,7 @@ export function DiscoveryPage() {
     [],
   )
 
-  const restoreSession = useCallback(async (opts?: { focus?: boolean }) => {
-    setRecoveryStatus('loading')
+  const restoreSession = useCallback(async (opts?: { focus?: boolean }) => {    setRecoveryStatus('loading')
     try {
       const [activeRes] = await Promise.all([
         authFetch(`${API_BASE_URL}/combos/discovery/sweeps/active`),
@@ -753,6 +844,9 @@ export function DiscoveryPage() {
         setFDirection('all')
         await loadLeaderboard(newest.sweep_id, 'calmar_ratio', 'all', 'all', 'all', 1)
       }
+      // Card 852: recuperação com live em curso abre no modo Acompanhar.
+      setMode('acomp')
+      void loadPartials(newest.sweep_id, 'calmar_ratio')
       setReconnected(true)
       setRecoveryStatus('ready')
       if (opts?.focus) {
@@ -761,7 +855,7 @@ export function DiscoveryPage() {
     } catch {
       setRecoveryStatus('error')
     }
-  }, [hydrateFromSweep, loadHistory, loadLeaderboard, rotateDraftKey])
+  }, [hydrateFromSweep, loadHistory, loadLeaderboard, loadPartials, rotateDraftKey])
 
   useEffect(() => {
     void restoreSession()
@@ -857,7 +951,7 @@ export function DiscoveryPage() {
   )
 
   const selectHistory = useCallback(
-    async (sweepId: string) => {
+    async (sweepId: string, origin: 'user' | 'auto' = 'user') => {
       setBusy(true)
       setPromoteTarget(null)
       setCancelConfirmOpen(false)
@@ -868,8 +962,13 @@ export function DiscoveryPage() {
           return
         }
         const data = await res.json()
-        viewOriginRef.current = 'user'
+        viewOriginRef.current = origin
         setViewSweep(data)
+        // Card 852: escolha do usuário abre o Decidir; o auto-carregamento
+        // inicial não arranca o operador do Montar (sem sweep ativo) — só
+        // vai ao Acompanhar se o sweep auto-carregado estiver em curso.
+        if (origin === 'user') setMode('decidir')
+        else if (NON_TERMINAL.has(data.state)) setMode('acomp')
         if (NON_TERMINAL.has(data.state)) {
           pollRevRef.current += 1
           activeSweepRef.current = data
@@ -893,13 +992,15 @@ export function DiscoveryPage() {
     persistDraftKey(nextKey)
     setDraftFrozen(false)
     setCancelConfirmOpen(false)
+    // Card 852: novo rascunho volta ao modo Montar (live preservada).
+    setMode('montar')
     showToast('Novo rascunho', 'Sweep ativo preservado no histórico; configurador liberado.')
   }, [showToast])
 
   useEffect(() => {
     if (recoveryStatus !== 'ready') return
     if (!viewSweep && history.length > 0) {
-      void selectHistory(history[0].sweep_id)
+      void selectHistory(history[0].sweep_id, 'auto')
     }
   }, [history, viewSweep, selectHistory, recoveryStatus])
 
@@ -907,6 +1008,7 @@ export function DiscoveryPage() {
   const applyFilters = useCallback(
     (m: Metric, symbol: string, timeframe: string, direction: string, pg: number) => {
       if (!viewSweep) return
+      setExpandedRows(new Set())
       void loadLeaderboard(viewSweep.sweep_id, m, symbol, timeframe, direction, pg)
     },
     [viewSweep, loadLeaderboard],
@@ -1108,7 +1210,10 @@ export function DiscoveryPage() {
   useEffect(() => {
     const previous = previousActiveStateRef.current
     if (activeSweep && previous && !TERMINAL.has(previous) && TERMINAL.has(activeSweep.state)) {
-      window.setTimeout(() => progressHeadingRef.current?.focus(), 0)
+      // Card 852: o terminal leva ao modo Decidir; o foco vai ao título do
+      // leaderboard (o progresso sai de cena com o modo Acompanhar).
+      setMode('decidir')
+      window.setTimeout(() => leaderboardTitleRef.current?.focus(), 0)
     }
     previousActiveStateRef.current = activeSweep?.state ?? null
   }, [activeSweep])
@@ -1138,6 +1243,63 @@ export function DiscoveryPage() {
   }, [preflight, viewSweep, rows, symbols])
   const activeSnapshotHash = activeSweep?.snapshot?.snapshot_hash ?? preflight?.snapshot_hash ?? null
   const periodLabel = { '6m': '6 meses', '2y': '2 anos', all: 'Todo histórico' }[period]
+
+  // Card 852: bloco inline por eixo (busca + marcar/desmarcar, sem modal).
+  const renderInlineAxis = (axis: 'templates' | 'symbols') => {
+    const catalog = axis === 'templates' ? templatesCatalog : symbolsCatalog
+    const query = inlineQuery[axis].toLowerCase()
+    const filtered = query
+      ? catalog.filter(
+          (item) => item.label.toLowerCase().includes(query) || item.id.toLowerCase().includes(query),
+        )
+      : catalog
+    const shown = filtered.slice(0, 30)
+    const searchLabel = axis === 'templates' ? 'Buscar templates' : 'Buscar símbolos'
+    return (
+      <div className="mt-3">
+        <input
+          type="search"
+          value={inlineQuery[axis]}
+          disabled={draftFrozen}
+          onChange={(e) => setInlineQuery((prev) => ({ ...prev, [axis]: e.target.value }))}
+          placeholder={searchLabel}
+          aria-label={searchLabel}
+          data-testid={axis === 'templates' ? 'inline-templates-search' : 'inline-symbols-search'}
+          className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+        />
+        {catalog.length === 0 ? (
+          <p className="mt-2 text-xs text-[var(--text-tertiary)]">Carregando catálogo…</p>
+        ) : (
+          <div
+            role="group"
+            aria-label={`${axis === 'templates' ? 'Templates' : 'Símbolos'} (seleção inline)`}
+            className="mt-2 flex max-h-[190px] flex-col gap-1.5 overflow-auto"
+          >
+            {shown.map((item) => (
+              <label
+                key={item.id}
+                className="flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-[13px] text-[var(--text-secondary)]"
+              >
+                <input
+                  type="checkbox"
+                  checked={isInlineSelected(axis, item.id)}
+                  disabled={draftFrozen}
+                  onChange={() => toggleInline(axis, item.id)}
+                  className="h-[18px] w-[18px] shrink-0 accent-[#fcd535]"
+                />
+                <span className="min-w-0 truncate">{item.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        {filtered.length > shown.length ? (
+          <p className="mt-1.5 text-[11px] text-[var(--text-tertiary)]">
+            Mostrando {shown.length} de {filtered.length} — refine a busca.
+          </p>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen text-[var(--text-primary)]">
@@ -1169,6 +1331,63 @@ export function DiscoveryPage() {
             <History className="h-4 w-4" />
             Histórico de varreduras
           </button>
+        </div>
+
+        {/* Card 852 — 1 modo visível por vez */}
+        <div
+          role="tablist"
+          aria-label="Modos da Descoberta"
+          data-testid="discovery-modes"
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+            e.preventDefault()
+            const order: Array<'montar' | 'acomp' | 'decidir'> = ['montar', 'acomp', 'decidir']
+            const enabled = order.filter((m) =>
+              m === 'montar' ? true : m === 'acomp' ? liveSweep != null : viewSweep != null,
+            )
+            const current = enabled.indexOf(mode)
+            const next = enabled[(current + (e.key === 'ArrowRight' ? 1 : -1) + enabled.length) % enabled.length]
+            if (next) {
+              setMode(next)
+              window.setTimeout(
+                () => document.querySelector<HTMLElement>(`[data-mode-tab="${next}"]`)?.focus(),
+                0,
+              )
+            }
+          }}
+          className="mb-5 grid grid-cols-3 overflow-hidden rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)]"
+        >
+          {(
+            [
+              { id: 'montar', label: 'Montar', enabled: true },
+              {
+                id: 'acomp',
+                label: `Acompanhando #${liveSweep ? liveSweep.sweep_id.slice(0, 8) : '—'}`,
+                enabled: liveSweep != null,
+              },
+              { id: 'decidir', label: 'Decidir', enabled: viewSweep != null },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`tab-${tab.id}`}
+              aria-selected={mode === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              tabIndex={mode === tab.id ? 0 : -1}
+              disabled={!tab.enabled}
+              data-mode-tab={tab.id}
+              onClick={() => setMode(tab.id)}
+              className={`min-h-[48px] border-0 px-2 py-3 text-[13px] font-semibold leading-tight ${
+                mode === tab.id
+                  ? 'bg-[rgba(252,213,53,0.12)] text-[var(--accent-primary)] shadow-[inset_0_-2px_0_var(--accent-primary)]'
+                  : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)]'
+              } disabled:cursor-not-allowed disabled:opacity-40`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* History panel */}
@@ -1282,8 +1501,33 @@ export function DiscoveryPage() {
           </div>
         ) : null}
 
-        {/* Progress card */}
-        {activeSweep ? (
+        {/* Sessão expirada — fora do switch de modos (card 852: vale em
+            Montar/Acompanhar/Decidir; o poll pode expirar fora do Decidir) */}
+        {sessionExpired ? (
+          <div className="mb-4 rounded-lg border border-[rgba(245,158,11,0.4)] bg-[rgba(245,158,11,0.07)] p-3.5" data-testid="session-expired">
+            <p className="text-sm font-semibold text-[var(--text-secondary)]">Sessão expirada</p>
+            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+              Seu acesso expirou enquanto a página estava aberta. O sweep continua no servidor; recarregue para retomar.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-2.5 inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 text-xs font-semibold text-[var(--text-secondary)]"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Recarregar página
+            </button>
+          </div>
+        ) : null}
+
+        {/* Progress card — modo Acompanhar (1 visível por vez) */}
+        {activeSweep && mode === 'acomp' ? (
+          <section
+            role="tabpanel"
+            id="panel-acomp"
+            aria-labelledby="tab-acomp"
+            data-testid="mode-acomp"
+          >
           <section
             className="mb-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)]"
             aria-labelledby="progress-heading"
@@ -1309,7 +1553,7 @@ export function DiscoveryPage() {
                 }`}
                 data-testid="active-state-chip"
               >
-                {activeSweep.state.toUpperCase()}
+                {activeSweep.state === 'running' ? 'EM CURSO' : activeSweep.state.toUpperCase()}
               </span>
             </div>
 
@@ -1433,10 +1677,82 @@ export function DiscoveryPage() {
               </div>
             </div>
           </section>
+
+          {/* Rascunho colapsado + parciais travadas (fora do switch: sem paginação, sem re-perguntar) */}
+          <div
+            className="mb-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3.5 text-xs text-[var(--text-tertiary)]"
+            data-testid="draft-collapsed"
+          >
+            Rascunho congelado:{' '}
+            {(() => {
+              const axes = activeSweep.snapshot?.axes
+              const t = axes ? axes.templates.length : selectedTemplates.length
+              const s = axes ? axes.symbols.length : selectedSymbols.length
+              const tf = axes && axes.timeframes.length ? axes.timeframes.join(' + ') : timeframes.join(' + ')
+              return `${t} templates · ${s} símbolos · ${tf || '—'} · Long · ${periodLabel}`
+            })()}{' '}
+            —{' '}
+            <button
+              type="button"
+              onClick={newDraft}
+              className="font-semibold text-[var(--accent-primary)] underline"
+            >
+              novo rascunho
+            </button>
+          </div>
+
+          <section
+            className="mb-4 overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)]"
+            aria-label="Parciais travadas do sweep em curso"
+          >
+            <div className="border-b border-[var(--border-default)] p-5">
+              <h2 className="text-lg font-semibold">Parciais · top-5 travadas</h2>
+              <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                Ranking travado na varredura <span className="font-mono">#{activeSweep.sweep_id}</span> — parciais abaixo, sem re-perguntar o rascunho.
+              </p>
+            </div>
+            {partials.length > 0 ? (
+              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela rolável de parciais">
+                <table className="discovery-table" data-testid="partials-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Rank</th>
+                      <th scope="col">Candidato</th>
+                      <th scope="col">Calmar</th>
+                      <th scope="col">Max DD</th>
+                      <th scope="col">Trades/cobertura</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {partials.slice(0, 5).map((row) => (
+                      <tr key={row.result_id} className="result-row">
+                        <td className="rank-cell" data-label="Rank">
+                          <span className="rank-cell-value">{row.rank ?? '—'}</span>
+                        </td>
+                        <td className="candidate-cell" data-label="Candidato">
+                          <strong className="candidate-name">{row.display_name || row.template_id}</strong>
+                          <span className="candidate-meta">{row.symbol} · {row.timeframe} · {row.direction === 'long' ? 'Long' : 'Short'}</span>
+                        </td>
+                        <td className="number" data-label="Calmar">{fmtNum(row.calmar_ratio)}</td>
+                        <td className="number negative" data-label="Maximum Drawdown">{fmtDrawdown(row.max_drawdown)}</td>
+                        <td className="number" data-label="Trades/cobertura">{row.trades_count ?? 'N/A'} · {fmtPct(row.coverage)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="p-5 text-sm text-[var(--text-tertiary)]" data-testid="partials-empty">
+                Parciais ainda carregando — o progresso acima já acompanha a varredura.
+              </p>
+            )}
+          </section>
+          </section>
         ) : null}
 
-        {/* Config layout */}
-        <section className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_330px]" aria-label="Novo rascunho de varredura">
+        {/* Config layout — modo Montar (1 visível por vez) */}
+        {mode === 'montar' ? (
+        <section role="tabpanel" id="panel-montar" aria-labelledby="tab-montar" data-testid="mode-montar" className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_330px]" aria-label="Novo rascunho de varredura">
           <article className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)]">
             <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] px-5 py-4">
               <div>
@@ -1469,7 +1785,7 @@ export function DiscoveryPage() {
                     aria-controls="selection-workbench"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
-                    Editar
+                    Edição avançada
                   </button>
                 </div>
                 <div className="mt-2.5 flex min-h-[32px] gap-1.5 overflow-hidden">
@@ -1478,6 +1794,7 @@ export function DiscoveryPage() {
                   ))}
                   {selectionSummary('templates').extra ? <span className="inline-flex min-h-[28px] items-center rounded border border-dashed border-[var(--border-default)] px-2 py-1 text-[11px] text-[var(--text-tertiary)]">{selectionSummary('templates').extra}</span> : null}
                 </div>
+                {renderInlineAxis('templates')}
               </section>
 
               {/* Symbols — summary card */}
@@ -1498,7 +1815,7 @@ export function DiscoveryPage() {
                     aria-controls="selection-workbench"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
-                    Editar
+                    Edição avançada
                   </button>
                 </div>
                 <div className="mt-2.5 flex min-h-[32px] gap-1.5 overflow-hidden">
@@ -1507,6 +1824,7 @@ export function DiscoveryPage() {
                   ))}
                   {selectionSummary('symbols').extra ? <span className="inline-flex min-h-[28px] items-center rounded border border-dashed border-[var(--border-default)] px-2 py-1 text-[11px] text-[var(--text-tertiary)]">{selectionSummary('symbols').extra}</span> : null}
                 </div>
+                {renderInlineAxis('symbols')}
               </section>
 
               {/* Timeframes */}
@@ -1538,39 +1856,30 @@ export function DiscoveryPage() {
                 </p>
               </fieldset>
 
-              {/* Direção */}
+              {/* Direção — card 852: short fora do caminho feliz até haver dados */}
               <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
                 <legend className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Direção</legend>
                 <div className="grid grid-cols-2 gap-2">
-                  {(['long', 'short'] as const).map((d) => {
-                    const disabled = d === 'short'
-                    return (
-                    <label key={d} className={`relative ${disabled ? 'cursor-not-allowed' : ''}`}>
-                      <input
-                        type="checkbox"
-                        className="absolute h-0 w-0 opacity-0"
-                        checked={directions.includes(d)}
-                        onChange={() => toggleList(directions, setDirections, d)}
-                        disabled={disabled}
-                      />
-                      <span
-                        className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold ${
-                          directions.includes(d)
-                            ? 'border-[rgba(252,213,53,0.5)] bg-[rgba(252,213,53,0.1)] text-[var(--accent-primary)]'
-                            : disabled
-                              ? 'border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-muted)] opacity-60'
-                              : 'border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)]'
-                        }`}
-                      >
-                        {d === 'long' ? 'Long' : 'Short'}
-                        {disabled ? <small className="text-[10px] font-medium">em breve</small> : null}
-                      </span>
-                    </label>
-                    )
-                  })}
+                  <label className="relative">
+                    <input
+                      type="checkbox"
+                      className="absolute h-0 w-0 opacity-0"
+                      checked={directions.includes('long')}
+                      onChange={() => toggleList(directions, setDirections, 'long')}
+                    />
+                    <span
+                      className={`flex min-h-[44px] items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold ${
+                        directions.includes('long')
+                          ? 'border-[rgba(252,213,53,0.5)] bg-[rgba(252,213,53,0.1)] text-[var(--accent-primary)]'
+                          : 'border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)]'
+                      }`}
+                    >
+                      Long
+                    </span>
+                  </label>
                 </div>
-                <p className={`mt-2 min-h-[18px] text-[11px] ${directions.length ? 'text-[#93c5fd]' : 'text-[#fbbf24]'}`}>
-                  {directions.length ? 'Short desabilitado por enquanto; apenas Long roda nesta etapa.' : 'Selecione ao menos uma direção.'}
+                <p className="mt-2 min-h-[18px] text-[11px] text-[var(--text-tertiary)]">
+                  Direção: apenas Long nesta etapa. Short volta quando houver dados.
                 </p>
               </fieldset>
 
@@ -1583,9 +1892,9 @@ export function DiscoveryPage() {
                   onChange={(e) => setPeriod(e.target.value as '6m' | '2y' | 'all')}
                   className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
                 >
+                  <option value="all">Todo o histórico</option>
                   <option value="2y">Últimos 2 anos</option>
                   <option value="6m">Últimos 6 meses</option>
-                  <option value="all">Todo o histórico</option>
                 </select>
               </label>
               <label className="block">
@@ -1603,21 +1912,23 @@ export function DiscoveryPage() {
             </div>
           </article>
 
-          {/* Preflight do servidor */}
+          {/* Preflight humano (card 852): 3 linhas + impedimentos; técnico em details */}
           <aside className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] lg:sticky lg:top-24" aria-label="Preflight da varredura">
             <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold">Preflight do servidor</h2>
-                <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                <h2 className="text-lg font-semibold">Preflight</h2>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]" data-testid="preflight-state">
                   {preflightLoading
                     ? 'Calculando…'
-                    : overLimit
-                      ? 'Limite excedido'
+                    : draftFrozen
+                      ? 'Rascunho congelado'
                       : snapshotStale
                         ? 'Snapshot expirado'
-                        : preflight
-                          ? 'Snapshot válido'
-                          : 'Aguardando escopo'}
+                        : impediments.length > 0
+                          ? 'Bloqueado — veja o que falta'
+                          : preflight
+                            ? 'Pronto para iniciar'
+                            : 'Aguardando escopo'}
                 </p>
               </div>
             </div>
@@ -1630,13 +1941,64 @@ export function DiscoveryPage() {
                   {overLimit ? (preflight?.errors?.total ?? '').match(/\d+/)?.[0] ?? '—' : preflight?.valid_total ?? '—'}
                 </strong>
                 <span className="text-sm text-[var(--text-tertiary)]">combinações válidas</span>
-                <div className="mt-2 font-mono text-xs text-[var(--text-muted)]" data-testid="planned-formula">
-                  {overLimit
-                    ? `${axisCount} combinações brutas`
-                    : preflight
-                      ? `${selectedTemplates.length} × ${selectedSymbols.length} × ${timeframes.length} × ${directions.length}${preflight.excluded_count ? ` − ${preflight.excluded_count} incompatíveis` : ''}`
-                      : '—'}
-                </div>
+                <p className="mt-2 text-[13px] text-[var(--text-secondary)]" aria-live="polite" data-testid="preflight-3line">
+                  {preflight ? (
+                    <>
+                      <b>{preflight.valid_total} combinações</b> · {fmtEstimate(preflight.valid_total)} estimado · {periodLabel}
+                      {preflightWindow}
+                    </>
+                  ) : preflightLoading ? (
+                    <>Calculando combinações…</>
+                  ) : (
+                    <>
+                      <b>{axisCount} combinações</b> · — · {periodLabel}
+                    </>
+                  )}
+                </p>
+                {impediments.length > 0 && !preflightLoading ? (
+                  <div
+                    className="mt-3 rounded-md border border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.06)] p-2.5 text-[11px] text-[#fbbf24]"
+                    data-testid="preflight-impediments"
+                  >
+                    <strong className="block">Falta fazer:</strong>
+                    <ul className="mt-1 list-disc pl-5 text-[var(--text-secondary)]">
+                      {impediments.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <details className="mt-3 text-[11px] text-[var(--text-muted)]">
+                  <summary className="cursor-pointer rounded py-2">Detalhe técnico (fora do caminho feliz)</summary>
+                  <div className="mt-1 font-mono" data-testid="planned-formula">
+                    {overLimit
+                      ? `${axisCount} combinações brutas`
+                      : preflight
+                        ? `${selectedTemplates.length} × ${selectedSymbols.length} × ${timeframes.length} × ${directions.length}${preflight.excluded_count ? ` − ${preflight.excluded_count} incompatíveis` : ''}`
+                        : '—'}
+                  </div>
+                  {preflight && !overLimit ? (
+                    <div className="mt-1" data-testid="preflight-breakdown">
+                      <b className="text-[var(--text-secondary)]">{preflight.raw_total} brutas</b> · {preflight.excluded_count} excluídas ·{' '}
+                      {preflight.valid_total} válidas · limite {preflight.limits.max_total}
+                      <br />
+                      snapshot{' '}
+                      <span className="font-mono">
+                        {snapshotLabel(preflight.snapshot_hash, preflight.valid_total)}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="mt-1 flex justify-between gap-3">
+                    <span>Chave do rascunho</span>
+                    <b
+                      className="max-w-[22ch] break-all text-right font-mono text-[var(--text-secondary)]"
+                      data-testid="draft-key"
+                      aria-live="polite"
+                    >
+                      {draftKey}
+                    </b>
+                  </div>
+                </details>
               </div>
 
               {snapshotStale ? (
@@ -1651,25 +2013,6 @@ export function DiscoveryPage() {
                     Refazer preflight
                   </button>
                 </div>
-              ) : preflight ? (
-                <div
-                  className={`mt-3 rounded-md border p-2.5 text-[11px] ${
-                    overLimit
-                      ? 'border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.06)] text-[#fbbf24]'
-                      : 'border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.07)] text-[#bfdbfe]'
-                  }`}
-                  role="status"
-                  aria-live="polite"
-                  data-testid="preflight-breakdown"
-                >
-                  <b className="text-[var(--text-secondary)]">{preflight.raw_total} brutas</b> · {preflight.excluded_count} excluídas ·{' '}
-                  {preflight.valid_total} válidas · limite {preflight.limits.max_total}
-                  <br />
-                  snapshot{' '}
-                  <span className="font-mono">
-                    {overLimit ? 'não emitido · escopo acima do limite' : snapshotLabel(preflight.snapshot_hash, preflight.valid_total)}
-                  </span>
-                </div>
               ) : null}
 
               {preflightError ? (
@@ -1679,16 +2022,6 @@ export function DiscoveryPage() {
               ) : null}
 
               <div className="my-3.5">
-                <div className="flex justify-between gap-3 py-1.5 text-sm text-[var(--text-tertiary)]">
-                  <span>Chave do rascunho</span>
-                  <b
-                    className="max-w-[22ch] break-all text-right font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
-                    data-testid="draft-key"
-                    aria-live="polite"
-                  >
-                    {draftKey}
-                  </b>
-                </div>
                 <div className="flex justify-between gap-3 py-1.5 text-sm text-[var(--text-tertiary)]">
                   <span>Período</span>
                   <b className="font-semibold text-[var(--text-secondary)]">{periodLabel}</b>
@@ -1720,17 +2053,8 @@ export function DiscoveryPage() {
                     : 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-[#181a20] hover:bg-[var(--accent-primary-hover)]'
                 }`}
               >
-                {draftFrozen && activeSweep ? (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    Retry do mesmo rascunho
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4" />
-                    Iniciar {preflight?.valid_total ?? 0} combinações
-                  </>
-                )}
+                <Play className="h-4 w-4" />
+                Iniciar varredura — {ctaTotal}, {fmtEstimate(ctaTotal)}
               </button>
 
               {blockedOtherSelection ? (
@@ -1739,7 +2063,32 @@ export function DiscoveryPage() {
                   role="alert"
                   data-testid="live-block-note"
                 >
-                  {LIVE_BLOCK_COPY}
+                  {LIVE_BLOCK_COPY}{' '}
+                  <button
+                    type="button"
+                    onClick={goToProgress}
+                    data-testid="live-block-progress"
+                    className="font-bold text-[var(--accent-primary)] underline"
+                  >
+                    ver progresso
+                  </button>
+                </p>
+              ) : sameScopeBlocked ? (
+                <p
+                  className="mt-3 rounded-md border border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.06)] p-2.5 text-[11px] text-[#fbbf24]"
+                  role="alert"
+                  data-testid="live-block-note"
+                >
+                  Existe varredura igual em curso —{' '}
+                  <button
+                    type="button"
+                    onClick={goToProgress}
+                    data-testid="live-block-progress"
+                    className="font-bold text-[var(--accent-primary)] underline"
+                  >
+                    ver progresso
+                  </button>
+                  . Nada foi criado.
                 </p>
               ) : null}
 
@@ -1760,12 +2109,13 @@ export function DiscoveryPage() {
               ) : (
                 <p className="mt-3 flex gap-2 text-xs text-[var(--text-muted)]">
                   <Shield className="h-4 w-4 shrink-0 text-[var(--accent-cyan)]" />
-                  <span>O token será revalidado atomicamente; o rascunho congela após o start.</span>
+                  <span>O rascunho congela após o início; nada é criado sem o preflight válido.</span>
                 </p>
               )}
             </div>
           </aside>
         </section>
+        ) : null}
 
         {/* Workbench */}
         <SelectionWorkbench
@@ -1782,17 +2132,20 @@ export function DiscoveryPage() {
           }}
         />
 
-        {/* Leaderboard */}
-        {viewSweep ? (
+        {/* Leaderboard — modo Decidir (1 visível por vez) */}
+        {viewSweep && mode === 'decidir' ? (
           <section
+            role="tabpanel"
+            id="panel-decidir"
+            aria-labelledby="tab-decidir"
+            data-testid="mode-decidir"
             className="mt-5 overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)]"
-            aria-labelledby="leaderboard-title"
             aria-busy={lbLoading}
           >
             <div className="border-b border-[var(--border-default)] p-5">
               <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <h2 id="leaderboard-title" className="text-xl font-semibold">
+                  <h2 id="leaderboard-title" ref={leaderboardTitleRef} tabIndex={-1} className="text-xl font-semibold">
                     Leaderboard · {metric === 'calmar_ratio' ? 'Calmar' : 'CAGR vs Buy &amp; Hold'}
                   </h2>
                   <p className="mt-1 text-xs text-[var(--text-tertiary)]" data-testid="leaderboard-meta">
@@ -1811,22 +2164,7 @@ export function DiscoveryPage() {
                 </span>
               </div>
 
-              {sessionExpired ? (
-                <div className="mt-4 rounded-lg border border-[rgba(245,158,11,0.4)] bg-[rgba(245,158,11,0.07)] p-3.5" data-testid="session-expired">
-                  <p className="text-sm font-semibold text-[var(--text-secondary)]">Sessão expirada</p>
-                  <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                    Seu acesso expirou enquanto a página estava aberta. O sweep continua no servidor; recarregue para retomar.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="mt-2.5 inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 text-xs font-semibold text-[var(--text-secondary)]"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Recarregar página
-                  </button>
-                </div>
-              ) : lbError ? (
+              {lbError ? (
                 <div className="mt-4 rounded-lg border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-3.5">
                   <p className="text-sm font-semibold text-[var(--text-secondary)]">Falha ao carregar leaderboard</p>
                   <p className="mt-1 text-xs text-[var(--text-tertiary)]">
@@ -1843,7 +2181,7 @@ export function DiscoveryPage() {
                 </div>
               ) : null}
 
-              <div className="mt-4 grid grid-cols-2 items-end gap-2.5 md:grid-cols-[repeat(4,minmax(140px,1fr))_auto]">
+              <div className="mt-4 grid grid-cols-2 items-end gap-2.5 md:grid-cols-[repeat(3,minmax(140px,1fr))_auto]">
                 <label className="block">
                   <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Ordenar por</span>
                   <select
@@ -1883,19 +2221,6 @@ export function DiscoveryPage() {
                     <option value="1d">1d</option>
                   </select>
                 </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Direção</span>
-                  <select
-                    value={fDirection}
-                    onChange={(e) => handleFilterChange('direction', e.target.value)}
-                    data-testid="direction-filter"
-                    className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
-                  >
-                    <option value="all">Todas</option>
-                    <option value="long">Long</option>
-                    <option value="short">Short</option>
-                  </select>
-                </label>
                 <button
                   type="button"
                   onClick={clearFilters}
@@ -1922,7 +2247,7 @@ export function DiscoveryPage() {
                   </button>
                 </div>
               ) : null}
-              <table className="discovery-table" aria-describedby="leaderboard-note">
+              <table className="discovery-table decidable" aria-describedby="leaderboard-note">
                 <caption className="sr-only">
                   Candidatos da varredura selecionada; ranks são globais e permanecem sob filtro e paginação
                 </caption>
@@ -1930,16 +2255,9 @@ export function DiscoveryPage() {
                   <tr>
                     <th scope="col">Rank global</th>
                     <th scope="col">Candidato</th>
-                    <th scope="col">Mercado</th>
-                    <th scope="col">CAGR</th>
-                    <th scope="col" aria-label="Buy and Hold">B&amp;H</th>
-                    <th scope="col" aria-label="Delta versus Buy and Hold">Δ B&amp;H</th>
                     <th scope="col">Calmar</th>
                     <th scope="col" aria-label="Maximum Drawdown">Max DD</th>
-                    <th scope="col">Sharpe</th>
-                    <th scope="col" aria-label="Profit Factor">PF</th>
-                    <th scope="col">Win rate</th>
-                    <th scope="col">Trades</th>
+                    <th scope="col">Trades/cobertura</th>
                     <th scope="col">Ação</th>
                   </tr>
                 </thead>
@@ -1949,6 +2267,7 @@ export function DiscoveryPage() {
                     const duplicate = row.dedup_state === 'duplicate_favorite'
                     const promoted = row.dedup_state === 'already_promoted'
                     const promoteDisabled = busy || promoting || lowSample || duplicate || promoted
+                    const expanded = expandedRows.has(row.result_id)
                     return (
                       <tr key={row.result_id} className="result-row">
                         <td className="rank-cell" data-label="Rank global">
@@ -1976,27 +2295,37 @@ export function DiscoveryPage() {
                                 Equivale ao favorito ativo {row.dedup_reference ?? '—'}
                               </span>
                             ) : null}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedRows((prev) => {
+                                  const next = new Set(prev)
+                                  if (next.has(row.result_id)) next.delete(row.result_id)
+                                  else next.add(row.result_id)
+                                  return next
+                                })
+                              }
+                              aria-expanded={expanded}
+                              data-testid={`expand-${row.result_id}`}
+                              className="mt-1 inline-flex min-h-[44px] items-center px-1 text-xs font-semibold text-[var(--accent-primary)]"
+                            >
+                              {expanded ? '− detalhes' : '+ detalhes'}
+                            </button>
+                            {expanded ? (
+                              <span className="candidate-meta" data-testid={`details-${row.result_id}`}>
+                                CAGR {fmtPct(row.cagr)} · B&amp;H {fmtPct(row.benchmark_cagr)} · Δ {fmtPp(row.delta_cagr_vs_bh)} ·
+                                Sharpe {fmtNum(row.sharpe_ratio)} · PF {fmtNum(row.profit_factor)} · Win {fmtPct(row.win_rate)} ·
+                                mercado {row.symbol} · {row.timeframe} · {row.direction === 'long' ? 'Long' : 'Short'}
+                                {row.start_at || row.end_at ? ` · janela [${fmtDate(row.start_at)}, ${fmtDate(row.end_at)})` : ''}
+                              </span>
+                            ) : null}
                           </div>
-                        </td>
-                        <td data-label="Mercado">
-                          <span className="discovery-tag">{row.symbol} · {row.timeframe}</span>{' '}
-                          <span className={`discovery-tag ${row.direction}`}>{row.direction === 'long' ? 'Long' : 'Short'}</span>
-                        </td>
-                        <td className={`number ${row.cagr != null && row.cagr >= 0 ? 'positive' : 'negative'}`} data-label="CAGR">
-                          {fmtPct(row.cagr)}
-                        </td>
-                        <td className="number" data-label="Buy and Hold">{fmtPct(row.benchmark_cagr)}</td>
-                        <td className={`number ${row.delta_cagr_vs_bh != null && row.delta_cagr_vs_bh >= 0 ? 'positive' : 'negative'}`} data-label="Delta versus Buy and Hold">
-                          {fmtPp(row.delta_cagr_vs_bh)}
                         </td>
                         <td className={`number ${row.calmar_ratio != null && row.calmar_ratio < 0 ? 'negative' : ''}`} data-label="Calmar">
                           {fmtNum(row.calmar_ratio)}
                         </td>
                         <td className="number negative" data-label="Maximum Drawdown">{fmtDrawdown(row.max_drawdown)}</td>
-                        <td className="number" data-label="Sharpe">{fmtNum(row.sharpe_ratio)}</td>
-                        <td className="number" data-label="Profit Factor">{fmtNum(row.profit_factor)}</td>
-                        <td className="number" data-label="Win rate">{fmtPct(row.win_rate)}</td>
-                        <td className="number" data-label="Trades">{row.trades_count ?? 'N/A'}</td>
+                        <td className="number" data-label="Trades/cobertura">{row.trades_count ?? 'N/A'} · {fmtPct(row.coverage)}</td>
                         <td className="action-cell" data-label="Ação">
                           {promoted ? (
                             <span
@@ -2149,6 +2478,24 @@ export function DiscoveryPage() {
                   {promoteTarget.symbol} · {promoteTarget.timeframe} · {promoteTarget.direction === 'long' ? 'Long' : 'Short'}
                 </span>
               </div>
+              <div className="my-4 grid grid-cols-2 gap-2.5" data-testid="modal-risk-grid">
+                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+                  <small className="block text-[var(--text-muted)]">Retorno (CAGR)</small>
+                  <b className="text-[15px] tabular-nums" data-testid="modal-risk-cagr">{fmtPct(promoteTarget.cagr)}</b>
+                </div>
+                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+                  <small className="block text-[var(--text-muted)]">Queda máxima</small>
+                  <b className="text-[15px] tabular-nums text-[#ff8294]" data-testid="modal-risk-dd">{fmtDrawdown(promoteTarget.max_drawdown)}</b>
+                </div>
+                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+                  <small className="block text-[var(--text-muted)]">Trades</small>
+                  <b className="text-[15px] tabular-nums" data-testid="modal-risk-trades">{promoteTarget.trades_count ?? '—'}</b>
+                </div>
+                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+                  <small className="block text-[var(--text-muted)]">Cobertura · janela</small>
+                  <b className="text-[15px] tabular-nums" data-testid="modal-risk-cov">{fmtPct(promoteTarget.coverage)} · {fmtDate(promoteTarget.start_at)} – {fmtDate(promoteTarget.end_at)}</b>
+                </div>
+              </div>
               <div className="my-4 grid grid-cols-2 gap-2.5">
                 <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
                   <small className="block text-[var(--text-muted)]">Varredura de origem</small>
@@ -2162,6 +2509,7 @@ export function DiscoveryPage() {
               <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
                 <small className="block text-[var(--text-muted)]">Destino obrigatório</small>
                 <strong className="text-[var(--accent-primary)]">Tier 3 · observação</strong>
+                <span className="mt-1 block text-[11px] text-[var(--text-tertiary)]">Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica.</span>
               </div>
               {promoteConflict ? (
                 <div className="mt-3.5 rounded-lg border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-3 text-xs text-[var(--text-secondary)]" data-testid="promote-conflict">

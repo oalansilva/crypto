@@ -184,8 +184,8 @@ test('card 837 — reload após cancelar não prende à run morta; Iniciar cria 
 
   await expect(page.getByTestId('sweep-progress')).toBeVisible()
   await expect(page.getByTestId('sweep-progress')).toContainText(NEW_ID)
-  // Sem segundo botão de início e sem erro operacional na tela.
-  await expect(page.getByTestId('start-sweep')).toHaveCount(1)
+  // Modo virou Acompanhar e o Montar desmontou: sem botão de início e sem erro operacional na tela.
+  await expect(page.getByTestId('start-sweep')).toHaveCount(0)
   await expect(page.getByTestId('live-block-note')).toHaveCount(0)
   await expect(page.getByTestId('start-error')).toHaveCount(0)
 
@@ -230,7 +230,7 @@ test('card 837 — outra seleção com live em curso mostra orientação sem dup
   // orientado aparece e nenhum erro técnico é exposto.
   await page.getByText('1 dia').click()
   await expect(page.getByTestId('live-block-note')).toBeVisible()
-  await expect(page.getByTestId('live-block-note')).toContainText('Cancele')
+  await expect(page.getByTestId('live-block-note')).toContainText('cancele')
   // Iniciar bloqueado: nenhuma segunda varredura pode nascer daqui.
   await expect(page.getByTestId('start-sweep')).toBeDisabled()
   await expect(page.getByTestId('start-error')).toHaveCount(0)
