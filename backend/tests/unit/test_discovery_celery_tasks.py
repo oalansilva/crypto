@@ -50,6 +50,17 @@ def test_orchestrator_reconciles_progress_after_each_combination(monkeypatch):
             return {}
 
     class FakeDb:
+        def query(self, *args, **kwargs):
+            # Probe de estado do sweep (card #853): sem sweep → caminho normal.
+            class _EmptyQuery:
+                def filter(self, *args, **kwargs):
+                    return self
+
+                def first(self):
+                    return None
+
+            return _EmptyQuery()
+
         def close(self):
             events.append("close")
 
@@ -104,6 +115,17 @@ def test_orchestrator_rotates_wakeup_before_ack(monkeypatch):
             return 1
 
     class FakeDb:
+        def query(self, *args, **kwargs):
+            # Probe de estado do sweep (card #853): sem sweep → caminho normal.
+            class _EmptyQuery:
+                def filter(self, *args, **kwargs):
+                    return self
+
+                def first(self):
+                    return None
+
+            return _EmptyQuery()
+
         def close(self):
             events.append("close")
 
