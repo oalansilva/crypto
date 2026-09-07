@@ -97,6 +97,8 @@ gh project item-edit \
 
 - Siga o `AGENTS.md` do repo atual.
 - `Done` costuma significar tarefa concluida tecnicamente.
-- `Homologado` exige validacao/aprovacao do Alan.
+- Em Done o par humano e `homologar` → Homologado e `nao_homologar` → Em desenvolvimento (T18). Destino de T18 e Em desenvolvimento, nao Homologado.
+- Arraste GitHub Done→Em desenvolvimento sem comentario `Não homologar:` + texto: restaurar Done e exigir o motivo. Nao inventar UI no board.
+- `Homologado` exige validacao/aprovacao do Alan. Sem aresta inversa neste recorte.
 - Nao descreva `Done` como card fechado/finalizado; use `Done tecnico` ou `aguardando homologacao`. Card fechado de verdade e `Pronto`.
 - Nos projetos do Alan, `Status` e a fonte principal das colunas e do workflow quando existir. Se houver `Fluxo`, trate como substatus/legado e sincronize valores equivalentes quando aplicavel. Se nao houver equivalente, `Status` prevalece.

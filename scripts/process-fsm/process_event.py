@@ -62,7 +62,9 @@ from t16 import (  # noqa: E402
 REPO_ROOT = ROOT.parents[1]
 AMBIENTES = "covenant-flow-environments"
 RELEASE_GUARD = "release-guard"
-HUMAN_EVENTS = frozenset({"priorizar", "aprovar_design", "homologar", "devolver_design", "cancelar"})
+HUMAN_EVENTS = frozenset(
+    {"priorizar", "aprovar_design", "homologar", "nao_homologar", "devolver_design", "cancelar"}
+)
 I4_EVENTS = frozenset({"iniciar_apply", "pedir_review"})
 CHANGE_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 EVENT_GUARDS = {
@@ -328,6 +330,8 @@ def process_event(
     q = status if status is not None else resolved.get("q")
     git = q_git if q_git is not None else resolved.get("q_git")
     bound = bound_card if bound_card is not None else resolved.get("bound_card")
+    if event in HUMAN_EVENTS:
+        return _payload(result="reject", state=q, to=None, reason="actor")
     provider = status_provider if status_provider is not None else github_status_provider
     if q is None:
         try:

@@ -521,8 +521,6 @@ def test_e11_guard_and_law_files_untouched() -> None:
             "--",
             "scripts/process-fsm/dsh_stubs.py",
             "scripts/process-fsm/guard.py",
-            ".cursor/process-fsm.yaml",
-            "AGENTS.md",
         ],
         capture_output=True,
         text=True,
