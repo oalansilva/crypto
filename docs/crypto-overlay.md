@@ -536,7 +536,7 @@ Boot no canonical DEV (`canonical_paths.dev` = `/srv/apps/dev/criptofarol/source
 scripts/process-fsm/dsh_boot.sh
 ```
 
-O helper materializa `.dsh/cordis.patch.yml` com `name` **absoluto** dos plugins (`.dsh/plugin/process-fsm-guard.js` e `.dsh/plugin/impeccable-hook.js`) e lança `dsh web --patch <tmp>`. `dsh plugin add` **não** é o canal de pin.
+O helper materializa `.dsh/cordis.patch.yml` com `name` **absoluto** dos plugins (`.dsh/plugin/process-fsm-guard.js` e `.dsh/plugin/impeccable-hook.js`) e lança `dsh web --patch <tmp>`. `dsh plugin add` **não** é o canal de pin. Após pin ou merge de `.dsh/plugin` ou `scripts/process-fsm/dsh_plugin_lib.js`, faça bounce do isolate com `scripts/process-fsm/dsh_boot.sh`. A porta `127.0.0.1:3080` não é unidade systemd nem o `./restart` de produto.
 
 - URL local: `http://127.0.0.1:3080` (sessão autenticada; 401 sem auth).
 - **Não** ligar `:3080` em `environments.dev.services`.
