@@ -129,9 +129,9 @@ Pai: `pedir_review` (Code Review), `diff-reviewer` + `code-reviewer` no diff **n
 
 ## QA closeout
 
-**Cursor / Grok:** um filho QA isolado lê checks e MUST NOT chamar `process_event`. O pai chama `integrar_develop` no mesmo turno do filho verde (ou quando o próprio pai vê `qa-gate` success). `qa-gate pending` ⇒ espera e repete T14 no turno. `no_pr` e `sync: dirty` são causas visíveis; o primeiro reject não encerra o turno.
+**Cursor / Grok:** um filho QA isolado lê checks e MUST NOT `process_event`. O pai chama `integrar_develop` no mesmo turno do filho verde (ou quando o próprio pai vê `qa-gate` success). `qa-gate pending` ⇒ espera e repete T14 no turno. `no_pr` e `sync: dirty` são causas visíveis; o primeiro reject não encerra o turno.
 
-**dsh:** o root MUST NOT spawnar filho QA. O mesmo turno abre o PR antes de T11, espera `qa-gate` e chama T14 (Moore/plugin `covenant-flow:moore`, não só o texto desta skill).
+**dsh:** o root MUST NOT spawnar filho QA. O mesmo turno abre o PR antes de T11, espera `qa-gate` no turno (`job_output wait`, sem `continue`) e chama T14 (Moore/plugin `covenant-flow:moore`, não só o texto desta skill).
 
 Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evidence-comment.sh --transition homologado` (mesmo sem lote).
 
