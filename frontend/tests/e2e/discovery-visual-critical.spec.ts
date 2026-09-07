@@ -330,9 +330,9 @@ test('card 469 — fidelidade visual desktop/mobile', async ({ page }) => {
   })
 })
 
-test('card 469 — workbench de seleção sem rolagem', async ({ page }) => {
+test('card 469 — edição avançada fiel ao protótipo (sem tabs, sem pager)', async ({ page }) => {
   await openDiscovery(page)
-  // workbench vive no Montar
+  // edição avançada vive no Montar
   await page.getByRole('tab', { name: 'Montar' }).click()
 
   const templateCard = page.getByTestId('edit-templates')
@@ -341,26 +341,40 @@ test('card 469 — workbench de seleção sem rolagem', async ({ page }) => {
   const workbench = page.getByRole('dialog', { name: 'Edição avançada' })
   await expect(workbench).toBeVisible()
 
-  // tabs com contagens
-  await expect(page.getByRole('tab', { name: /Templates/ })).toBeVisible()
-  await expect(page.getByRole('tab', { name: /Símbolos/ })).toBeVisible()
+  // protótipo #m-adv: sem tabs, sem pager, sem "Projeção local"
+  await expect(workbench.getByRole('tab')).toHaveCount(0)
+  await expect(workbench.getByText('Projeção local')).toHaveCount(0)
+  await expect(workbench.getByText(/por página/)).toHaveCount(0)
+  await expect(workbench.getByText('Adicionar à seleção')).toHaveCount(0)
+  await expect(page.getByTestId('adv-count')).toHaveText('3 de 4 selecionados')
 
-  // busca alcança template sem rolagem
-  const search = page.getByPlaceholder('Buscar nome ou código')
+  // filtro + lista corrida única com checkboxes (sem paginação: mostra todos)
+  const search = page.getByLabel('Filtrar itens')
   await search.fill('ROC duplo')
-  await expect(page.getByText('ROC duplo', { exact: true }).first()).toBeVisible()
-  await page.getByTestId('select-all').click()
-  await expect(page.getByRole('tab', { name: /Templates 4 de 4/ })).toBeVisible()
+  await expect(workbench.getByRole('checkbox', { name: 'ROC duplo' })).toBeVisible()
+  await expect(workbench.getByRole('checkbox', { name: 'Médias: tendência' })).toHaveCount(0)
   await search.fill('')
+  await expect(workbench.getByRole('checkbox', { name: 'Médias: tendência' })).toBeVisible()
   await expect(search).toBeFocused()
 
-  // tab símbolos preserva estado da aba templates
-  await page.getByRole('tab', { name: /Símbolos/ }).click()
-  await expect(page.getByPlaceholder('Buscar ticker ou par')).toBeFocused()
+  // exatamente 2 ações de eixo inteiro + Aplicar
   await page.getByTestId('select-all').click()
-  await expect(page.getByRole('heading', { name: '16 símbolos selecionados' })).toBeVisible()
-  await page.getByRole('button', { name: /Excluir da seleção/ }).first().click()
-  await expect(page.getByRole('heading', { name: '15 símbolos selecionados' })).toBeVisible()
+  await expect(page.getByTestId('adv-count')).toHaveText('4 de 4 selecionados')
+
+  // aplicar atualiza o resumo do shell (inline reflete o total do eixo)
+  await page.getByRole('button', { name: 'Aplicar seleção' }).click()
+  await expect(workbench).toBeHidden()
+  await expect(page.getByTestId('template-count')).toContainText('4 de 4 selecionados')
+
+  // eixo símbolos: modal de eixo único, sem tabs
+  await page.getByTestId('edit-symbols').click()
+  await expect(workbench).toBeVisible()
+  await expect(workbench.getByRole('tab')).toHaveCount(0)
+  await expect(page.getByTestId('adv-count')).toHaveText('4 de 16 selecionados')
+  await page.getByTestId('select-all').click()
+  await expect(page.getByTestId('adv-count')).toHaveText('16 de 16 selecionados')
+  await workbench.getByRole('checkbox', { name: 'AVAX/USDT' }).click()
+  await expect(page.getByTestId('adv-count')).toHaveText('15 de 16 selecionados')
 
   // aplicar atualiza o resumo do shell
   await page.getByRole('button', { name: 'Aplicar seleção' }).click()
@@ -372,7 +386,8 @@ test('card 469 — workbench de seleção sem rolagem', async ({ page }) => {
   await page.getByTestId('edit-symbols').click()
   await expect(workbench).toBeVisible()
   await page.getByTestId('clear-axis').click()
-  await page.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(page.getByTestId('adv-count')).toHaveText('0 de 16 selecionados')
+  await page.getByRole('button', { name: 'Fechar editor de seleção' }).click()
   await expect(page.getByRole('alertdialog', { name: /Descartar alterações não aplicadas/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Continuar editando' })).toBeFocused()
   await page.getByRole('button', { name: 'Continuar editando' }).click()
@@ -384,21 +399,17 @@ test('card 469 — workbench de seleção sem rolagem', async ({ page }) => {
   await expect(page.getByTestId('edit-symbols')).toBeFocused()
 })
 
-test('card 469 — workbench a11y: trap de foco e setas nas tabs', async ({ page }) => {
+test('card 469 — edição avançada a11y: trap de foco e Escape', async ({ page }) => {
   await openDiscovery(page)
-  // workbench vive no Montar
+  // edição avançada vive no Montar
   await page.getByRole('tab', { name: 'Montar' }).click()
   await page.getByTestId('edit-templates').click()
   const workbench = page.getByRole('dialog', { name: 'Edição avançada' })
   await expect(workbench).toBeVisible()
 
-  // navegação por setas nas tabs
-  await page.getByRole('tab', { name: /Templates/ }).focus()
-  await expect(page.getByRole('tab', { name: /Templates/ })).toBeFocused()
-  await page.keyboard.press('ArrowRight')
-  await expect(page.getByRole('tab', { name: /Símbolos/ })).toBeFocused()
-  await page.keyboard.press('ArrowLeft')
-  await expect(page.getByRole('tab', { name: /Templates/ })).toBeFocused()
+  // foco inicial vai ao filtro; sem tabs no modal de eixo único
+  await expect(page.getByLabel('Filtrar itens')).toBeFocused()
+  await expect(workbench.getByRole('tab')).toHaveCount(0)
 
   // trap de foco: Tab do último elemento volta ao primeiro dentro do dialog
   for (let i = 0; i < 30; i++) {
