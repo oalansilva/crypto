@@ -59,6 +59,11 @@ export function SpotProtectStopPanel({
   const [acting, setActing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [confirmPlace, setConfirmPlace] = React.useState(false)
+  const [confirmRemove, setConfirmRemove] = React.useState(false)
+  const [removedMessage, setRemovedMessage] = React.useState<string | null>(null)
+  const removeTriggerRef = React.useRef<HTMLButtonElement | null>(null)
+  const removeConfirmRef = React.useRef<HTMLDivElement | null>(null)
+  const removeDoneRef = React.useRef<HTMLParagraphElement | null>(null)
 
   const opportunityId = String(opportunity.id)
   const symbol = String(opportunity.symbol || '').toUpperCase()
@@ -140,10 +145,14 @@ export function SpotProtectStopPanel({
       })
       const payload = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(errorMessage(payload, 'Falha ao remover stop-limit'))
+        const removeError = errorMessage(payload, 'Falha ao remover stop-limit')
+        await refresh()
+        setError(removeError)
         return
       }
+      setConfirmRemove(false)
       await refresh()
+      setRemovedMessage('Stop removida via Farol. Saldo destravado — nada foi vendido.')
     } catch {
       setError('Falha de rede ao remover stop-limit')
     } finally {
@@ -152,6 +161,37 @@ export function SpotProtectStopPanel({
   }
 
   const protectedOrder = status?.protected ? status.order : null
+  const isAppManagedStop = status?.source !== 'external'
+  const originLabel = isAppManagedStop ? 'criada no app (Farol)' : 'criada só na exchange'
+
+  const openRemoveConfirm = () => {
+    setRemovedMessage(null)
+    setConfirmRemove(true)
+  }
+
+  const closeRemoveConfirm = () => {
+    setConfirmRemove(false)
+  }
+
+  React.useEffect(() => {
+    if (confirmRemove) {
+      removeConfirmRef.current?.focus()
+    }
+  }, [confirmRemove])
+
+  React.useEffect(() => {
+    if (!confirmRemove && removedMessage) {
+      removeDoneRef.current?.focus()
+    }
+  }, [confirmRemove, removedMessage])
+
+  const wasConfirmRemoveOpen = React.useRef(false)
+  React.useEffect(() => {
+    if (wasConfirmRemoveOpen.current && !confirmRemove && !removedMessage) {
+      removeTriggerRef.current?.focus()
+    }
+    wasConfirmRemoveOpen.current = confirmRemove
+  }, [confirmRemove, removedMessage])
 
   return (
     <section
@@ -180,7 +220,11 @@ export function SpotProtectStopPanel({
                 <p className="text-xs text-[#f0b90b]" data-testid="spot-protect-external-note">
                   Stop já aberto na Binance (fora do app). Remova aqui ou na exchange antes de criar outro.
                 </p>
-              ) : null}
+              ) : (
+                <p className="text-xs text-[#929aa5]" data-testid="spot-protect-app-note">
+                  Stop criada no app (Farol).
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-xs text-[#929aa5]">
@@ -203,13 +247,16 @@ export function SpotProtectStopPanel({
           ) : null}
           {!disabledReason && protectedOrder ? (
             <button
+              ref={removeTriggerRef}
               type="button"
               className="min-h-10 rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 py-2 text-sm font-medium text-[#eaecef] transition hover:border-[#fcd535] disabled:opacity-50"
               disabled={acting || loading}
-              onClick={() => void remove()}
+              onClick={openRemoveConfirm}
               data-testid="spot-protect-remove"
+              aria-expanded={confirmRemove}
+              aria-controls="spot-protect-remove-confirm"
             >
-              {acting ? 'Removendo…' : 'Remover stop'}
+              Remover stop
             </button>
           ) : null}
         </div>
@@ -252,6 +299,56 @@ export function SpotProtectStopPanel({
       {error ? (
         <p className="mt-2 text-xs text-[#f6465d]" data-testid="spot-protect-error" role="alert">
           {error}
+        </p>
+      ) : null}
+
+      {confirmRemove && !disabledReason && protectedOrder ? (
+        <div
+          ref={removeConfirmRef}
+          id="spot-protect-remove-confirm"
+          className="mt-3 rounded-md border border-[#f6465d]/40 bg-[#0b0e11] p-3"
+          data-testid="spot-protect-remove-confirm"
+          tabIndex={-1}
+          role="group"
+          aria-label="Confirmar remoção da stop"
+        >
+          <p className="text-sm text-[#eaecef]">
+            Remover a stop qty {protectedOrder.quantity ?? '-'} (stop{' '}
+            {formatPrice(protectedOrder.stop_price)}, limit {formatPrice(protectedOrder.limit_price)},{' '}
+            {originLabel}) via Farol? O saldo destrava, mas nada será vendido.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="min-h-10 rounded-md border border-[#f6465d] bg-[#f6465d]/20 px-3 py-2 text-sm font-medium text-[#eaecef] disabled:opacity-50"
+              disabled={acting}
+              onClick={() => void remove()}
+              data-testid="spot-protect-remove-confirm-yes"
+            >
+              {acting ? 'Removendo…' : 'Confirmar remoção'}
+            </button>
+            <button
+              type="button"
+              className="min-h-10 rounded-md border border-[#2b3139] px-3 py-2 text-sm text-[#929aa5]"
+              disabled={acting}
+              onClick={closeRemoveConfirm}
+              data-testid="spot-protect-remove-confirm-no"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {removedMessage && !protectedOrder && !disabledReason ? (
+        <p
+          ref={removeDoneRef}
+          className="mt-2 text-xs text-[#0ecb81]"
+          data-testid="spot-protect-remove-done"
+          role="status"
+          tabIndex={-1}
+        >
+          {removedMessage}
         </p>
       ) : null}
     </section>
