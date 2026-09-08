@@ -122,7 +122,8 @@ When cancellation is requested and no combination is `running`, the command SHAL
 
 #### Scenario: Cancel with zero running closes inline
 
-- **WHEN** the operator cancels a sweep with `pending` combinations and zero `running`
+- **WHEN** the operator cancels a sweep with `pending` combinations and zero
+  `running`
 - **THEN** the command response is `cancelled`
 - **AND** every `pending` became `skipped` and `processed = total`
 
@@ -133,27 +134,67 @@ When cancellation is requested while combinations are `running`, the sweep SHALL
 #### Scenario: In-flight evaluations settle then the sweep closes
 
 - **WHEN** the operator cancels with `running` combinations
-- **THEN** the sweep stays `cancelling` and in-flight work is not forced to `skipped`
+- **THEN** the sweep stays `cancelling` and in-flight work is not forced to
+  `skipped`
 - **AND** exactly one finalizer is scheduled
-- **AND** after the in-flight work settles the sweep becomes `cancelled` with `processed = total`
+- **AND** after the in-flight work settles the sweep becomes `cancelled`
+  with `processed = total`
 
 ### Requirement: Claims are fenced and terminal close is re-finalizable
 
-Claiming SHALL be fenced by the sweep row lock: a claim SHALL lock the sweep, execute an explicit re-read after the lock (without it the identity map still carries pre-lock values), proceed only when the post-refresh sweep state is `running`, and commit the lock check and the row claims atomically — a claim racing an inline cancel SHALL observe `cancelling`/`cancelled` post-refresh and claim nothing. Reconciliation SHALL lock the sweep row and execute an explicit re-read after the lock, re-reading state and counters; it SHALL NEVER use pre-lock reads for any terminal transition or fence guard — every decision uses post-refresh values. It SHALL NEVER move a `cancelled` (or any terminal) sweep to another terminal nor rewrite `state`/`completed_at` — over a `cancelled` sweep it SHALL only re-mark any residual `pending` as `skipped` and recount so that `processed = total` holds; the run pre-check SHALL return a combination to `pending` under `cancelling` but SHALL mark it `skipped` directly under a terminal state. Scoped lease release MAY transiently move an expired `running` row back to `pending` even under a terminal sweep (including `cancelled`), but the repair converts it in the same per-sweep commit (`pending → skipped` under `cancelling`/`cancelled`), so no `pending` survives the commit; a settle that commits after the close is absorbed by recount in the next repair.
+Claiming SHALL be fenced by the sweep row lock: a claim SHALL lock the sweep,
+execute an explicit re-read after the lock (`db.refresh(locked)` or expire +
+reload — without it the identity map still carries pre-lock values), proceed
+only when the post-refresh sweep state is `running`, and commit the lock check
+and the row claims atomically — a claim racing an inline cancel SHALL observe
+`cancelling`/`cancelled` post-refresh and claim nothing. Reconciliation SHALL
+lock the sweep row and execute an explicit re-read after the lock, re-reading
+state and counters; it SHALL NEVER use pre-lock reads for any terminal
+transition or fence guard — every decision uses post-refresh values. It SHALL
+NEVER move a `cancelled` (or any terminal) sweep to another terminal nor
+rewrite `state`/`completed_at` — over a `cancelled` sweep it SHALL only re-mark any
+residual `pending` as `skipped` and recount so that
+`processed = total` holds; the run pre-check SHALL return a combination to
+`pending` under `cancelling` but SHALL mark it `skipped` directly under a
+terminal state. Scoped lease release MAY transiently move an expired `running`
+row back to `pending` even under a terminal sweep (including `cancelled`),
+but the repair converts it in the same per-sweep commit (`pending → skipped`
+under `cancelling`/`cancelled`), so no `pending` survives the commit; a
+settle that commits after the close is absorbed by recount in the next
+repair.
 
 #### Scenario: Late claim after inline close claims nothing
 
 - **WHEN** a claim and an inline cancel race and the cancel commits first
-- **THEN** the claim observes the terminal state post-refresh under the lock and claims zero combinations
+- **THEN** the claim observes the terminal state post-refresh under the lock
+  and claims zero combinations
 - **AND** the sweep stays `cancelled` with `processed = total`
 
 ### Requirement: Repair heals orphaned cancelling sweeps
 
-The periodic repair inside outbox dispatch SHALL also cover `cancelling` sweeps: it SHALL run scoped lease release for that sweep, then reconcile them, and SHALL ensure a finalizer while `running` remains. A `cancelling` sweep with an `acked` outbox and zero `running` SHALL become `cancelled` with `processed = total` on the next dispatch, without backfill and without reprocessing skipped combinations. The repair SHALL additionally cover `cancelled` sweeps with residue (`pending > 0 OR running > 0 OR processed != total`): under the sweep lock with explicit post-lock re-read, in the sweep's own transaction, it SHALL run scoped lease release for that sweep, then re-mark residual `pending` as `skipped` and recount — without changing `state`/`completed_at` and without scheduling a new wake-up. A `cancelled` sweep holding `running` rows on expired leases of a dead worker therefore converges at lease TTL: the scoped release returns them to `pending` transiently and the same-commit reconcile marks them `skipped`. Each sweep SHALL be repaired in its own transaction (commit; on failure rollback, expire/cleanup and continue — failure in one sweep SHALL NOT block the others); no single transaction spans the sweep loop and no nested savepoint is the default pattern.
+The periodic repair inside outbox dispatch SHALL also cover `cancelling`
+sweeps: it SHALL run scoped lease release for that sweep, then reconcile
+them, and SHALL ensure a finalizer while `running` remains. A `cancelling` sweep with an `acked` outbox and zero
+`running` SHALL become `cancelled` with `processed = total` on the next
+dispatch, without backfill and without reprocessing skipped combinations.
+The repair SHALL additionally cover `cancelled` sweeps with residue
+(`pending > 0 OR running > 0 OR processed != total`): under the sweep lock
+with explicit post-lock re-read, in the sweep's own transaction, it SHALL run
+scoped lease release for that sweep, then re-mark residual `pending` as
+`skipped` and recount — without
+changing `state`/`completed_at` and without scheduling a new wake-up. A
+`cancelled` sweep holding `running` rows on expired leases of a dead worker
+therefore converges at lease TTL: the scoped release returns them to
+`pending` transiently and the same-commit reconcile marks them `skipped`.
+Each sweep SHALL be repaired in its own transaction (commit; on failure
+rollback, expire/cleanup and continue — failure in one sweep SHALL NOT block
+the others); no single transaction spans the sweep loop and no nested
+savepoint is the default pattern.
 
 #### Scenario: Stuck cancelling with acked outbox heals on dispatch
 
-- **WHEN** a sweep is stuck in `cancelling` with an `acked` outbox, remaining `pending` and zero `running`
+- **WHEN** a sweep is stuck in `cancelling` with an `acked` outbox,
+  remaining `pending` and zero `running`
 - **THEN** the next dispatch reconciles it to `cancelled`
 - **AND** `processed = total` with no reprocessing of skipped combinations
 
@@ -244,22 +285,24 @@ After a successful sweep creation, the UI SHALL immediately expose the active sw
 - **AND** its heading receives focus and identifies the newly created sweep lifecycle
 - **AND** the historical leaderboard remains a separate selected run
 
-
 ### Requirement: Start begins a new sweep from the on-screen draft
 
 After a terminal sweep (cancelled, failed, partial_failure, completed), creation SHALL treat the on-screen selection (templates, symbols, timeframes, directions, period) as a new start: it SHALL persist a new sweep for the submitted selection even when that selection equals the dead run's, SHALL never reopen the dead run, and SHALL NOT return the draft-conflict rejection for this path. The happy path SHALL NOT require "Novo rascunho".
 
 #### Scenario: Post-terminal start with changed selection
+
 - **WHEN** the previous sweep is terminal and the operator changes the selection and clicks Iniciar
 - **THEN** a new sweep with that selection is created and progress appears
 - **AND** no draft-conflict failure is returned
 
 #### Scenario: Post-terminal start with identical selection
+
 - **WHEN** the previous sweep is terminal and the selection is unchanged and the operator clicks Iniciar
 - **THEN** a new sweep is created
 - **AND** the dead run is not reopened
 
 #### Scenario: Reload after cancel does not pin to the old run
+
 - **WHEN** the operator reloads after cancel, builds another selection and clicks Iniciar
 - **THEN** a new sweep starts with no second button and no browser-data clearing
 
@@ -268,11 +311,13 @@ After a terminal sweep (cancelled, failed, partial_failure, completed), creation
 While a sweep is non-terminal (pending, running, paused, cancelling), creation with a different selection SHALL create no second sweep and SHALL NOT replace the live one; the response and the UI SHALL direct the operator to cancel first. A repeat start for the same selection while its sweep is being created or is live SHALL return the existing sweep without duplication, and the screen SHALL show it.
 
 #### Scenario: Other selection while live is blocked with guidance
+
 - **WHEN** a sweep is live and the operator picks another selection and clicks Iniciar
 - **THEN** no second sweep is created
 - **AND** the screen directs the operator to cancel before starting another
 
 #### Scenario: Repeat start on the same live selection shows the existing sweep
+
 - **WHEN** Iniciar just fired (or that selection's sweep is still live) and the operator clicks again on the same selection
 - **THEN** no duplicate is born
 - **AND** the screen shows the existing sweep
@@ -282,6 +327,7 @@ While a sweep is non-terminal (pending, running, paused, cancelling), creation w
 Any start failure surfaced in the UI SHALL be an operations sentence (what to do next) and SHALL NOT expose JSON or jargon.
 
 #### Scenario: Failure text is operational
+
 - **WHEN** starting fails and the screen shows an error
 - **THEN** the text is an operations instruction
 - **AND** no JSON or jargon is shown
@@ -310,3 +356,4 @@ When a Discovery worker runs a claimed combination, it SHALL invoke `ComboOptimi
 - **THEN** the worker requested walk-forward 70/30 rather than omitting `split_train_ratio`
 - **AND** the persisted metrics snapshot records `split_train_ratio` of `0.7`
 - **AND** `split_applied` is true when holdout metrics/verdict exist, false if the optimizer skipped the split
+
