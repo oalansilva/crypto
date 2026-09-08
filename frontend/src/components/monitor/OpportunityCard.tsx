@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
 import { StrategyTransparencyPanel } from '../trades/StrategyTransparencyPanel';
-import { hasExitedOpportunity, resolveOpportunitySignal, type ResolvedMonitorSignal } from './signalResolution';
+import { boardStateLabel, hasExitedOpportunity, resolveOpportunitySignal, type ResolvedMonitorSignal } from './signalResolution';
 import {
     getStrategyDisplayName,
     isProtectedStrategy,
@@ -256,7 +256,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         className={`status-pill ${resolvedSignal.section}`}
                         data-testid={`monitor-card-signal-${symbolTestKey}`}
                     >
-                        {resolvedSignal.visual.badgeText}
+                        {boardStateLabel(resolvedSignal.section)}
                     </span>
                     <span title="Timeframe da estratégia" className="detail-timeframe">{timeframe || '-'}</span>
                     <span title="Timeframe do gráfico de preço" className="detail-timeframe">Gráfico {effectiveTimeframe}</span>
@@ -309,7 +309,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 <div>
                     <h5 className="h5-exit">
                         <span className="swatch" />
-                        Sinal · {resolvedSignal.visual.badgeText}
+                        Sinal · {boardStateLabel(resolvedSignal.section)}
                     </h5>
                     <div className={`exit-msg ${exitClassName}`}>
                         <span className="label">Mensagem</span>

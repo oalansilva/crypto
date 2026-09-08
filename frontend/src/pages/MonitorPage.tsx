@@ -6,7 +6,7 @@ export function MonitorPage() {
   return (
     <div className="app-page monitor-page">
       <ScreenHelpPanel title="Como usar o Monitor">
-        Acompanhe as estrategias que voce selecionou em Favoritos. Use Compra, Venda, contexto, Abrir Grafico e Ver Trades sempre como apoio a decisao.
+        Acompanhe as estrategias que voce selecionou em Favoritos. Use Em posição, Saída / cobertura, contexto, Abrir Grafico e Ver Trades sempre como apoio a decisao.
       </ScreenHelpPanel>
       <MonitorDisclaimer />
       <MonitorStatusTab />

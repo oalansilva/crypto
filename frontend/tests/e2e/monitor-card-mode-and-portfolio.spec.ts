@@ -496,7 +496,7 @@ test('monitor keeps an exit signal when price timeframe preference differs from 
 
   const row = page.getByTestId('monitor-row-eth-usdt')
   await expect(row).toBeVisible()
-  await expect(row.getByText('Venda')).toBeVisible()
+  await expect(row.getByText('Saída / cobertura')).toBeVisible()
   await expect(page.getByRole('heading', { name: /Em posição/ })).toContainText('(0)')
   await expect(page.getByRole('heading', { name: /Saída \/ cobertura/ })).toContainText('(1)')
 })
@@ -552,7 +552,7 @@ test('monitor routes non-actionable WAIT and neutral opportunities to the exit b
   await expect(page.getByTestId('monitor-section-exit')).toContainText('NEUTRAL/USDT')
 })
 
-test('monitor resolves EXIT_NEAR as Venda when price timeframe differs from strategy timeframe', async ({ page }) => {
+test('monitor resolves EXIT_NEAR as Saída / cobertura when price timeframe differs from strategy timeframe', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
       {
@@ -572,7 +572,7 @@ test('monitor resolves EXIT_NEAR as Venda when price timeframe differs from stra
 
   const row = page.getByTestId('monitor-row-eth-usdt')
   await expect(row).toBeVisible()
-  await expect(row.getByText('Venda')).toBeVisible()
+  await expect(row.getByText('Saída / cobertura')).toBeVisible()
   await expect(page.getByRole('heading', { name: /Em posição/ })).toContainText('(0)')
   await expect(page.getByRole('heading', { name: /Saída \/ cobertura/ })).toContainText('(1)')
 })
