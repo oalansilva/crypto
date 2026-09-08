@@ -1,5 +1,48 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-08 — Kaizen release (lote 821/837/850/852/853/854/858/859)
+
+- **Release/card**: 2026-09-08 — Homologado `#821` (P1 unbound T16 `e2f72f49`) + `#837` (P0 Descoberta Iniciar `b65f6649`) + `#850` (P0 isolate reload `07ed8667`) + `#852` (P0 3 modos `935db1e8` + T18 `4a003481`) + `#853` (P0 cancel reconcile `3552c923`) + `#854` (P1 design teto `267e75de`) + `#858` (P0 idle closeout `8d431f62`) + `#859` (P1 devolver homologação `2cb33342`) → `develop` → `main` PR #867 merged `505e3b0dbfb1b6f23ba09599cb569dd19294e443`.
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --limit 500 --format json` (Homologado 8, Aprovação de Design 3 `600/614/728`, Em Refinamento 31), git `fetch --prune` + `status -sb` + `worktree list` + `log origin/main..origin/develop` (9 commits) + `release-guard pre` PASS (`RELEASE_CARDS=821,837,850,852,853,854,858,859` + `PRESERVED_BRANCHES` 10) + `openspec validate --all` 170→163, `gh pr checks 867 --watch` (e2e 5m5s, backend-tests 2m5s), REST comments 8 Homologado, PROD health `https://criptofarol.com.br/api/health` 200, frontend bundle `index-BV0bshgg.js` (hash novo).
+- **Sessões analisadas**: pai dsh desta sessão (`suba a release` unbound `q=None, bound_card=⊥, q_git=develop`; overlay + `covenant-flow-environments` carregados, T16 iniciado — DoD do #821). Sem `opencode.db`.
+- **Custo/eficácia**: 8 Homologados no pacote; homologation comments e campos Responsável/Prioridade/Tipo preenchidos neste turno antes do `pre` (`#850` Alan; `#852`/`#853` Clara/P0/Produto); `pre` PASS com 15 warns dirty/PRESERVED; Drive não aplicável (sem doc de produto alterada, coberto #825); archives com `openspec archive -y` sem `--skip-specs`.
+
+#### Métricas
+
+- **Board**: 8 Homologado (`#821` Clara P1 Operacao; `#837` Clara P0 Produto; `#850` Alan P0 Operacao; `#852` Clara P0 Produto; `#853` Clara P0 Produto; `#854` Alan P1 Operacao; `#858` Alan P0 Operacao; `#859` Alan P1 Operacao). Fora: `Done` 0, `Aprovação de Design` 3, `#868` criado neste closeout em Em Refinamento.
+- **Git**: `origin/develop e2f72f49`; `origin/main 505e3b0d` merge PR #867; stash 0; 14 worktrees extra (7 do pacote + 7 in-flight).
+- **CI**: PR #867 `develop→main` checks `pass` (e2e 5m5s, backend-tests 2m5s, backend-unit-tests 1m55s, openspec-validate 17s, process-fsm 45s, frontend-build 38s) + `qa-gate`/`deploy-staging` `skipping` (base `main`); `mergeable=MERGEABLE`.
+- **OpenSpec**: 8 active antes do archive; após archive 8 dirs `2026-09-08-card-*`; specs sincronizadas (`covenant-flow`, `process-fsm-paging`, `discovery-sweep` 2×, `developer-tooling`, `process-harness` 2×, `discovery-three-modes` nova, `design-route-clone-gate`, `llm-flow-emission`, `process-fsm`, `process-fsm-event`); `validate --all` 170→163.
+- **PROD**: source `505e3b0dbfb1b6f23ba09599cb569dd19294e443` (sudo, root-owned); alembic já head; `VITE_APP_ENV=production npm run build` bundle `index-BV0bshgg.js` (hash novo vs `index-DNi9d2DD.js`); services `backend`+`frontend`+`leads`+`runtime-worker` restart; health 200; `/` 200.
+
+#### Achados
+
+- **F-1 [minor] comentário Homologado canónico ausente até o `pre` deste lote** — 8/8 só tinham Done; helper postado neste turno antes do PR #867. Recidiva #658. Esforço S.
+- **F-2 [minor] `tasks.md` com `[ ]` apesar de Homologado** — `#821` 7.1 (dump `:3080` DoD), `#850` 7.2 (dumps), `#858` 8.1 (dump closeout), `#852` 10×, `#854` 6×, `#837` 13× (sync feito no archive); `#853`/`#859` zero. Recidiva #769. Esforço S.
+- **F-3 [minor] dirty/extra worktrees + local not merged no `pre`** — 7 dirty + `720/837/854/858` unmerged; PASS só com `PRESERVED_BRANCHES` 10 (inclui 3 do pacote). Recidiva #759. Esforço S.
+- **F-4 [minor] board fields vazios até o closeout** — `#850` sem Responsável; `#852`/`#853` sem Responsável/Prioridade/Tipo; preenchidos neste turno (Clara/P0/Produto nos Descoberta). Info; `post` já valida o pacote (#438). Esforço S.
+- **F-5 [minor] source PROD root-owned exige sudo + `dist/` root-owned bloqueia build local** — `fetch`/`reset`/`alembic`/`build`/`restart` com `sudo`; `npm run build` no DEV falha `EACCES frontend/dist/assets` (CI `frontend-build` pass vira única evidência). **Novo** | Esforço S | P2 | Card novo: #868.
+- **F-6 [minor] Drive/gog não aplicável com produto no pacote** — sem `mvp-scope`/`decision-log`/landing alterados; specs no git cobrem Descoberta. Recidiva #825 (credencial) como guarda. Esforço S.
+
+#### Padrões recorrentes
+
+- Homologado sem comentário no turno do arraste | recidiva | #658
+- `tasks.md` desatado após Done | recidiva | #769
+- Dirty worktrees / PRESERVED no `pre` | recidiva | #759
+- Drive/gog sem credencial no closeout | recidiva | #825
+- PROD root-owned / `dist` root-owned | **novo** | #868
+
+### Cards kaizen criados (máx. 3/release) — lote 2026-09-08
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #868 — kaizen: source PROD root-owned exige sudo e dist root-owned bloqueia build local | P2 | F-5 | Em Refinamento |
+| (não criado) Homologado sem comentário no turno do arraste → coberto por #658 | — | F-1 | coberto por #658 (ainda Em Refinamento) |
+| (não criado) tasks.md residual → coberto por #769 | — | F-2 | coberto por #769 (ainda Em Refinamento) |
+| (não criado) dirty/PRESERVED → coberto por #759; Drive → coberto por #825 | — | F-3/F-6 | coberto por #759/#825 (ainda Em Refinamento) |
+
+---
+
 ## 2026-09-05 — Kaizen release
 
 ### Lote 839 (Homologado → Pronto após deploy PROD `80288684`)
