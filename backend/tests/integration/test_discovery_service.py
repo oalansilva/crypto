@@ -328,6 +328,318 @@ class TestCreateSweepIdempotency:
         db.close()
 
 
+def _start_payload_for(service: DiscoveryService, symbols: list[str]) -> tuple[dict, dict]:
+    preflight = service.preflight(
+        templates=["multi_ma_crossover"],
+        symbols=symbols,
+        timeframes=["1d"],
+        directions=["long"],
+        start_date="2024-01-01",
+        end_date="2024-12-31",
+        period_type="all",
+    )
+    assert preflight["valid_total"] >= 1, preflight.get("errors")
+    payload = {
+        "templates": ["multi_ma_crossover"],
+        "symbols": symbols,
+        "timeframes": ["1d"],
+        "directions": ["long"],
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "period_type": "all",
+        "snapshot_hash": preflight["snapshot_hash"],
+    }
+    return payload, preflight
+
+
+def _terminate_sweep(service: DiscoveryService, db, sweep_id: str) -> None:
+    from app.tasks.discovery_tasks import reconcile_sweep
+
+    service.command(sweep_id, "cancel", db)
+    summary = reconcile_sweep(sweep_id, db)
+    assert summary["state"] == "cancelled", summary
+
+
+class TestStartAfterTerminal:
+    """Iniciar começa a varredura da seleção atual (card #837)."""
+
+    def test_post_terminal_same_selection_same_key_creates_new_sweep(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        key = f"k-{uuid.uuid4().hex[:12]}"
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+        assert first["idempotency_key"] == key
+        _terminate_sweep(service, db, first["sweep_id"])
+
+        payload2, preflight2 = _start_payload_for(service, ["BTCUSDT"])
+        second, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 201, second
+        assert second["sweep_id"] != first["sweep_id"]
+        assert second["idempotency_key"] != key
+        dead = db.query(DiscoverySweep).filter(DiscoverySweep.id == first["sweep_id"]).first()
+        assert dead.state == "cancelled"
+        db.close()
+
+    def test_post_terminal_changed_selection_same_key_creates_new_sweep(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        key = f"k-{uuid.uuid4().hex[:12]}"
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+        assert first["idempotency_key"] == key
+        _terminate_sweep(service, db, first["sweep_id"])
+
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        second, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 201, second
+        assert second["sweep_id"] != first["sweep_id"]
+        db.close()
+
+    def test_live_other_selection_new_key_blocked_with_guidance(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        body, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 409, body
+        assert "cancele" in body["detail"].lower()
+        assert "{" not in body["detail"]
+        count = db.query(DiscoverySweep).filter(DiscoverySweep.actor == "admin-1").count()
+        assert count == 1
+        db.close()
+
+    def test_live_same_selection_new_key_returns_existing(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+
+        payload2, preflight2 = _start_payload_for(service, ["BTCUSDT"])
+        second, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 200, second
+        assert second["sweep_id"] == first["sweep_id"]
+        assert second["idempotent_retry"] is True
+        assert second["idempotency_key"] == first["idempotency_key"]
+        count = db.query(DiscoverySweep).filter(DiscoverySweep.actor == "admin-1").count()
+        assert count == 1
+        db.close()
+
+    def test_commit_integrity_error_resolves_to_live_guidance(self, engine_factory, monkeypatch):
+        """IntegrityError no commit cai no caminho de reconciliação (card #837).
+
+        Simula a corrida de unicidade (actor, key): o commit falha, o handler
+        reencontra a live com hash divergente e devolve 409 operacional.
+        """
+        from sqlalchemy.exc import IntegrityError
+
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        first, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        real_commit = db.commit
+        calls = {"n": 0}
+
+        def _fail_first_commit():
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise IntegrityError(
+                    "INSERT INTO discovery_sweep", {}, Exception("duplicate key value")
+                )
+            return real_commit()
+
+        monkeypatch.setattr(db, "commit", _fail_first_commit)
+        body, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 409, body
+        assert body["error"] == "live sweep in progress"
+        assert "cancele" in body["detail"].lower()
+        count = db.query(DiscoverySweep).filter(DiscoverySweep.actor == "admin-1").count()
+        assert count == 1
+        db.close()
+
+    def test_commit_unexpected_error_propagates(self, engine_factory, monkeypatch):
+        """Erro de commit que não é IntegrityError faz raise (card #837)."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+
+        def _boom():
+            raise RuntimeError("connection lost")
+
+        monkeypatch.setattr(db, "commit", _boom)
+        # Actor fresco e único, sem live prévia: o fluxo passa pelos checks
+        # (seção crítica estreita não barra) e chega ao insert/commit mockado.
+        fresh_actor = f"admin-1-boom-{uuid.uuid4().hex[:12]}"
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        with pytest.raises(RuntimeError, match="connection lost"):
+            service.create_sweep(
+                actor=fresh_actor,
+                idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+                snapshot_token=preflight2["snapshot_token"],
+                payload=payload2,
+                db=db,
+            )
+        db.close()
+
+    def test_advisory_lock_is_noop_off_postgres(self, engine_factory):
+        """O lock por actor não quebra dialetos sem pg_advisory (card #837).
+
+        A chave do lock é única por teste: no CI o banco é PostgreSQL e o
+        ramo PG executa de verdade, então reutilizar `admin-1` (chave
+        compartilhada com os demais testes) contendia o advisory lock até o
+        Timeout. Com actor único ninguém mais detém a chave.
+        """
+        import time
+
+        from app.services.discovery_service import _acquire_actor_create_lock
+
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        unique_actor = f"admin-1-lock-{uuid.uuid4().hex[:12]}"
+        try:
+            dialect = getattr(getattr(db.bind, "dialect", None), "name", "") or ""
+            if dialect == "postgresql":
+                started = time.monotonic()
+                _acquire_actor_create_lock(db, unique_actor)  # não deve levantar
+                elapsed = time.monotonic() - started
+                # Chave única: a aquisição real retorna rápido; o limite é
+                # folgado e só acusa contenção/regressão, nunca o caminho feliz.
+                assert elapsed < 10
+            else:
+                _acquire_actor_create_lock(db, unique_actor)  # no-op: não deve levantar
+            db.rollback()
+        finally:
+            db.close()
+
+    def test_live_same_key_divergent_guides_cancel(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload, preflight = _start_payload_for(service, ["BTCUSDT"])
+        key = f"k-{uuid.uuid4().hex[:12]}"
+        _, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201
+
+        payload2, preflight2 = _start_payload_for(service, ["ETHUSDT"])
+        body, status2 = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=key,
+            snapshot_token=preflight2["snapshot_token"],
+            payload=payload2,
+            db=db,
+        )
+        assert status2 == 409
+        assert "idempotency conflict" in body["error"]
+        assert "cancele" in body["detail"].lower()
+        assert "{" not in body["detail"]
+        assert "divergente" not in body["detail"].lower()
+        db.close()
+
+    def test_invalid_selection_failure_is_operational(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        payload = {
+            "templates": ["multi_ma_crossover"],
+            "symbols": ["BTCUSDT"],
+            "timeframes": ["15m"],
+            "directions": ["long"],
+            "period_type": "all",
+            "snapshot_hash": "deadbeef",
+        }
+        body, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token="tok",
+            payload=payload,
+            db=db,
+        )
+        assert status == 400
+        assert isinstance(body["detail"], str)
+        assert "{" not in body["detail"]
+        db.close()
+
+
 class TestLifecycle:
     def test_transition_matrix_and_cancelling_prevails(self, engine_factory):
         engine = engine_factory()
@@ -361,9 +673,39 @@ class TestLifecycle:
         service.command(sweep_id, "resume", db)
         db.refresh(sweep)
         assert sweep.state == "running"
-        service.command(sweep_id, "cancel", db)
+        # Com voo em curso o cancel permanece `cancelling` (Q1): o inline
+        # reconcile não força `running` a `skipped` (card #853).
+        claimed = service.claim_combinations(sweep_id, owner="w1", db=db)
+        assert len(claimed) == 1
+        body_c, status_c = service.command(sweep_id, "cancel", db)
+        assert status_c == 200
+        assert body_c["state"] == "cancelling"
         db.refresh(sweep)
         assert sweep.state == "cancelling"
+        db.refresh(claimed[0])
+        assert claimed[0].state == "running"
+        # Repeat-cancel passa pelo ensure sem duplicar o finalizador em aberto.
+        outstanding_before = (
+            db.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == sweep_id,
+                DiscoveryOutbox.state.in_(("pending", "delivered")),
+            )
+            .count()
+        )
+        assert outstanding_before == 1
+        body_r, status_r = service.command(sweep_id, "cancel", db)
+        assert status_r == 200
+        assert body_r["state"] == "cancelling"
+        outstanding_after = (
+            db.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == sweep_id,
+                DiscoveryOutbox.state.in_(("pending", "delivered")),
+            )
+            .count()
+        )
+        assert outstanding_after == 1
         body2, status = service.command(sweep_id, "pause", db)
         assert status == 409
         assert "cancelling prevails" in body2["error"]
@@ -392,11 +734,32 @@ class TestLifecycle:
             db=db,
         )
         sweep_id = body["sweep_id"]
-        service.command(sweep_id, "cancel", db)
-        service.command(sweep_id, "resume", db)
+        # Com voo em curso o cancel fica `cancelling` (sem voo fecharia inline
+        # a `cancelled` — card #853); resume segue rejeitado e o estado fica.
+        claimed = service.claim_combinations(sweep_id, owner="w1", db=db)
+        assert len(claimed) == 1
+        body_c, status_c = service.command(sweep_id, "cancel", db)
+        assert status_c == 200
+        assert body_c["state"] == "cancelling"
+        body_r, status_r = service.command(sweep_id, "resume", db)
+        assert status_r == 409
         db.refresh(db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).first())
         sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).first()
         assert sweep.state == "cancelling"  # resume rejeitado, permanece cancelling
+        # Settle do voo + reconcile fecha a `cancelled`; comando em terminal
+        # é no-op idempotente (rascunho libera via estado terminal).
+        for combo in claimed:
+            db.refresh(combo)
+            combo.state = "succeeded"
+            combo.result_id = "RS-TERM-1"
+        db.commit()
+        from app.tasks.discovery_tasks import reconcile_sweep as _reconcile
+
+        summary = _reconcile(sweep_id, db)
+        assert summary["state"] == "cancelled"
+        body_t, status_t = service.command(sweep_id, "resume", db)
+        assert status_t == 200
+        assert body_t["state"] == "cancelled"
         db.close()
 
 
@@ -1102,6 +1465,466 @@ class TestReconcileTerminal:
         assert summary["state"] == "cancelled"
         assert summary["processed"] == summary["total"]
         assert summary["skipped"] == summary["total"]
+        db.close()
+
+
+class TestCancelReconcile:
+    """Cancelamento auto-finaliza (card #853): regressão do caso PROD,
+    finalizador único, guards anti-corrida e re-finalização terminal."""
+
+    @staticmethod
+    def _seed(db, sweep_id, *, sweep_state, combos, outbox, processed=0, total=None):
+        """Semeia um sweep com combinações e intents.
+
+        combos: lista de estados ("pending"/"running"/"succeeded"/"skipped").
+        outbox: lista de (generation, state). `running` ganha lease válido,
+        salvo sufixo ":expired".
+        """
+        now = datetime.now(timezone.utc)
+        states = [c.split(":")[0] for c in combos]
+        # A chave única (sweep, template, symbol, timeframe, direction) exige
+        # eixos distintos por combinação: roda símbolos por índice.
+        symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]
+        db.add(
+            DiscoverySweep(
+                id=sweep_id,
+                actor="admin-1",
+                state=sweep_state,
+                idempotency_key=f"k-{sweep_id}",
+                payload_hash="h" * 64,
+                snapshot_token="tok",
+                snapshot_hash="y" * 64,
+                snapshot={},
+                total=total if total is not None else len(states),
+                processed=processed,
+                completed_at=now if sweep_state == "cancelled" else None,
+                created_at=now,
+            )
+        )
+        for index, raw in enumerate(combos):
+            state, _, modifier = raw.partition(":")
+            kwargs = {
+                "sweep_id": sweep_id,
+                "template_id": "multi_ma_crossover",
+                "symbol": symbols[index % len(symbols)],
+                "timeframe": "1d",
+                "direction": "long",
+                "state": state,
+            }
+            if state == "running":
+                kwargs["lease_owner"] = "w1"
+                delta = timedelta(seconds=-10) if modifier == "expired" else timedelta(seconds=300)
+                kwargs["lease_expires_at"] = now + delta
+            if state == "succeeded":
+                kwargs["result_id"] = f"RS-{sweep_id}"
+            db.add(DiscoveryCombination(**kwargs))
+        for generation, ostate in outbox:
+            db.add(DiscoveryOutbox(sweep_id=sweep_id, generation=generation, state=ostate))
+        db.commit()
+
+    @staticmethod
+    def _outstanding(db, sweep_id):
+        return (
+            db.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == sweep_id,
+                DiscoveryOutbox.state.in_(("pending", "delivered")),
+            )
+            .all()
+        )
+
+    def test_41_prod_stuck_cancelling_heals_on_dispatch(self, engine_factory):
+        """4.1: `cancelling` + outbox `acked` + `pending > 0` + `running == 0`
+        vira `cancelled` com `processed = total` no próximo dispatch, sem
+        reprocessar ignoradas."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-prod-41",
+            sweep_state="cancelling",
+            combos=["pending", "pending", "pending", "succeeded"],
+            outbox=[(1, "acked")],
+        )
+        published = service.dispatch_outbox(db=db)
+        assert published == 0
+        sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == "sw-prod-41").first()
+        assert sweep.state == "cancelled"
+        assert sweep.processed == sweep.total == 4
+        assert sweep.skipped == 3
+        assert (
+            db.query(DiscoveryCombination)
+            .filter(
+                DiscoveryCombination.sweep_id == "sw-prod-41",
+                DiscoveryCombination.state.notin_(("skipped", "succeeded")),
+            )
+            .count()
+            == 0
+        )
+        assert (
+            db.query(DiscoveryResult).filter(DiscoveryResult.sweep_id == "sw-prod-41").count() == 0
+        )
+        db.close()
+
+    def test_41_repeat_cancel_command_closes_stuck_sweep(self, engine_factory):
+        """4.1 (comando): repeat-cancel sobre `cancelling` órfão fecha inline."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-prod-41b",
+            sweep_state="cancelling",
+            combos=["pending", "pending", "succeeded"],
+            outbox=[(1, "acked")],
+        )
+        body, status = service.command("sw-prod-41b", "cancel", db)
+        assert status == 200
+        assert body["state"] == "cancelled"
+        snap = service.get_sweep("sw-prod-41b", db)
+        assert snap["processed"] == snap["total"] == 3
+        db.close()
+
+    def test_42_cancel_with_flight_waits_single_finalizer_then_closes(self, engine_factory):
+        """4.2: com `running` em voo permanece `cancelling` (sem forçar
+        `skipped`), repeat-cancel não duplica o finalizador e o settle fecha
+        a `cancelled`."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-flight-42",
+            sweep_state="running",
+            combos=["running", "pending"],
+            outbox=[(1, "delivered")],
+        )
+        body, status = service.command("sw-flight-42", "cancel", db)
+        assert status == 200
+        assert body["state"] == "cancelling"
+        states = {
+            c.state
+            for c in db.query(DiscoveryCombination)
+            .filter(DiscoveryCombination.sweep_id == "sw-flight-42")
+            .all()
+        }
+        assert states == {"running", "skipped"}
+        assert len(self._outstanding(db, "sw-flight-42")) == 1
+        # Repetido sob `cancelling` passa pelo ensure com dedup: não duplica.
+        body_r, status_r = service.command("sw-flight-42", "cancel", db)
+        assert (status_r, body_r["state"]) == (200, "cancelling")
+        assert len(self._outstanding(db, "sw-flight-42")) == 1
+        # Repetido sob `cancelled` é no-op sem wake-up (após o settle).
+        combo = (
+            db.query(DiscoveryCombination)
+            .filter(
+                DiscoveryCombination.sweep_id == "sw-flight-42",
+                DiscoveryCombination.state == "running",
+            )
+            .first()
+        )
+        combo.state = "succeeded"
+        combo.result_id = "RS-sw-flight-42"
+        db.commit()
+        body_s, _ = service.command("sw-flight-42", "cancel", db)
+        assert body_s["state"] == "cancelled"
+        snap = service.get_sweep("sw-flight-42", db)
+        assert snap["processed"] == snap["total"] == 2
+        outbox_rows = db.query(DiscoveryOutbox).filter_by(sweep_id="sw-flight-42").count()
+        assert outbox_rows == 1
+        db.close()
+
+    def test_43_cancel_without_flight_closes_inline(self, engine_factory):
+        """4.3: cancel sem voo fecha na hora no próprio comando."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-inline-43",
+            sweep_state="running",
+            combos=["pending", "pending"],
+            outbox=[(1, "acked")],
+        )
+        body, status = service.command("sw-inline-43", "cancel", db)
+        assert status == 200
+        assert body["state"] == "cancelled"
+        snap = service.get_sweep("sw-inline-43", db)
+        assert snap["processed"] == snap["total"] == 2
+        assert snap["skipped"] == 2
+        assert snap["completed_at"] is not None
+        assert db.query(DiscoveryOutbox).filter_by(sweep_id="sw-inline-43").count() == 1
+        db.close()
+
+    def test_44_pause_resume_rejected_while_cancelling(self, engine_factory):
+        """4.4: `pause`/`resume` em `cancelling` continuam rejeitados."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-prevail-44",
+            sweep_state="cancelling",
+            combos=["running"],
+            outbox=[(1, "delivered")],
+        )
+        body_p, status_p = service.command("sw-prevail-44", "pause", db)
+        assert status_p == 409
+        assert "cancelling prevails" in body_p["error"]
+        body_r, status_r = service.command("sw-prevail-44", "resume", db)
+        assert status_r == 409
+        sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == "sw-prevail-44").first()
+        assert sweep.state == "cancelling"
+        db.close()
+
+    def test_45_repair_with_running_schedules_single_finalizer(self, engine_factory):
+        """4.5: `cancelling` com `running > 0` e sem intent em aberto gera
+        exatamente um finalizador (repair repetido não duplica); após o
+        settle vira `cancelled`."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-repair-45",
+            sweep_state="cancelling",
+            combos=["running"],
+            outbox=[(1, "acked")],
+        )
+        service.dispatch_outbox(db=db)
+        intents = (
+            db.query(DiscoveryOutbox)
+            .filter_by(sweep_id="sw-repair-45")
+            .order_by(DiscoveryOutbox.generation)
+            .all()
+        )
+        assert [(i.generation, i.state) for i in intents] == [(1, "acked"), (2, "delivered")]
+        sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == "sw-repair-45").first()
+        assert sweep.state == "cancelling"
+        service.dispatch_outbox(db=db)
+        assert db.query(DiscoveryOutbox).filter_by(sweep_id="sw-repair-45").count() == 2
+        assert len(self._outstanding(db, "sw-repair-45")) == 1
+        combo = (
+            db.query(DiscoveryCombination)
+            .filter(DiscoveryCombination.sweep_id == "sw-repair-45")
+            .first()
+        )
+        combo.state = "succeeded"
+        combo.result_id = "RS-sw-repair-45"
+        db.commit()
+        service.dispatch_outbox(db=db)
+        db.refresh(sweep)
+        assert sweep.state == "cancelled"
+        assert sweep.processed == sweep.total == 1
+        db.close()
+
+    def test_46_stale_redelivery_and_double_finalizer_idempotent(self, engine_factory, monkeypatch):
+        """4.6: redelivery (`delivered` stale → `pending`) não gera segundo
+        finalizador; orquestrador 2× para o mesmo (`sweep_id`, `generation`)
+        não reexecuta combinação com resultado e dá `ack` uma vez."""
+        from app.tasks import discovery_celery_tasks
+
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-redel-46",
+            sweep_state="cancelling",
+            combos=["pending", "succeeded"],
+            outbox=[(1, "delivered")],
+        )
+        # Envelhece o intent para o TTL de redelivery cobri-lo.
+        intent = db.query(DiscoveryOutbox).filter_by(sweep_id="sw-redel-46").first()
+        intent.updated_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        db.commit()
+        # Resultado commitado da combinação `succeeded` (idempotência).
+        combo_ok = (
+            db.query(DiscoveryCombination)
+            .filter(
+                DiscoveryCombination.sweep_id == "sw-redel-46",
+                DiscoveryCombination.state == "succeeded",
+            )
+            .first()
+        )
+        now = datetime.now(timezone.utc)
+        db.add(
+            DiscoveryResult(
+                id="RS-sw-redel-46",
+                sweep_id="sw-redel-46",
+                combination_id=combo_ok.id,
+                template_id="multi_ma_crossover",
+                symbol="BTCUSDT",
+                timeframe="1d",
+                direction="long",
+                parameters={},
+                start_at=now,
+                end_at=now + timedelta(days=30),
+                metrics={},
+                strategy_identity_key="id-46",
+                evidence_fingerprint="fp-46",
+                eligibility="eligible",
+                dedup_state="unique",
+            )
+        )
+        db.commit()
+        monkeypatch.setattr(discovery_celery_tasks, "SessionLocal", _session_factory(engine))
+        first = discovery_celery_tasks.run_sweep_orchestrator("sw-redel-46", 1)
+        assert first["state"] == "cancelled"
+        assert first["processed"] == first["total"] == 2
+        second = discovery_celery_tasks.run_sweep_orchestrator("sw-redel-46", 1)
+        assert second["state"] == "cancelled"
+        assert db.query(DiscoveryOutbox).filter_by(sweep_id="sw-redel-46").count() == 1
+        assert db.query(DiscoveryResult).filter_by(sweep_id="sw-redel-46").count() == 1
+        assert service.get_sweep("sw-redel-46", db)["processed"] == 2
+        db.close()
+
+    def test_47_run_precheck_returns_pending_under_cancelling_skipped_under_terminal(
+        self, engine_factory
+    ):
+        """4.7: combinação reclamada antes do cancel, cujo `run_combination`
+        roda já sob `cancelling`, volta a `pending` (reconcile marca
+        `skipped`); sob `cancelled` vai direto a `skipped`."""
+        from app.tasks.discovery_tasks import reconcile_sweep, run_combination
+
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-race-47",
+            sweep_state="running",
+            combos=["pending"],
+            outbox=[(1, "delivered")],
+        )
+        claimed = service.claim_combinations("sw-race-47", owner="w1", db=db)
+        assert len(claimed) == 1
+        db.query(DiscoverySweep).filter(DiscoverySweep.id == "sw-race-47").update(
+            {DiscoverySweep.state: "cancelling"}, synchronize_session=False
+        )
+        db.commit()
+        run_combination(db, claimed[0], owner="w1")
+        db.refresh(claimed[0])
+        assert claimed[0].state == "pending"
+        summary = reconcile_sweep("sw-race-47", db)
+        assert summary["state"] == "cancelled"
+        db.refresh(claimed[0])
+        assert claimed[0].state == "skipped"
+        # Sob terminal não se cria `pending`: direto a `skipped`.
+        self._seed(
+            db,
+            "sw-term-47",
+            sweep_state="cancelled",
+            combos=["running"],
+            outbox=[(1, "acked")],
+            processed=0,
+        )
+        combo = (
+            db.query(DiscoveryCombination)
+            .filter(DiscoveryCombination.sweep_id == "sw-term-47")
+            .first()
+        )
+        run_combination(db, combo, owner="w1")
+        db.refresh(combo)
+        assert combo.state == "skipped"
+        assert (
+            db.query(DiscoveryCombination)
+            .filter(
+                DiscoveryCombination.sweep_id == "sw-term-47",
+                DiscoveryCombination.state == "pending",
+            )
+            .count()
+            == 0
+        )
+        db.close()
+
+    def test_48_concurrent_claim_after_inline_close_claims_nothing(self, engine_factory):
+        """4.8: com o cancel já commitado a `cancelled`, `claim_combinations`
+        concorrente observa o terminal sob lock e devolve `[]` sem tocar em
+        linha alguma."""
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-claim-48",
+            sweep_state="running",
+            combos=["pending"],
+            outbox=[(1, "acked")],
+        )
+        body, _ = service.command("sw-claim-48", "cancel", db)
+        assert body["state"] == "cancelled"
+        before = {
+            (c.id, c.state, c.attempts)
+            for c in db.query(DiscoveryCombination)
+            .filter(DiscoveryCombination.sweep_id == "sw-claim-48")
+            .all()
+        }
+        assert service.claim_combinations("sw-claim-48", owner="late", db=db) == []
+        after = {
+            (c.id, c.state, c.attempts)
+            for c in db.query(DiscoveryCombination)
+            .filter(DiscoveryCombination.sweep_id == "sw-claim-48")
+            .all()
+        }
+        assert before == after
+        sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == "sw-claim-48").first()
+        assert sweep.state == "cancelled"
+        assert sweep.processed == sweep.total == 1
+        db.close()
+
+    def test_49_reconcile_under_cancelled_refinalizes_without_rewriting_terminal(
+        self, engine_factory
+    ):
+        """4.9: `reconcile`/`repair` sob `cancelled` com resíduo converte
+        `pending → skipped` + recount (inclusive `running` expirado via
+        release escopado no mesmo commit), mantém `state`/`completed_at` e
+        restaura `processed = total` sem wake-up novo."""
+        from app.tasks.discovery_tasks import reconcile_sweep
+
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        self._seed(
+            db,
+            "sw-resid-49",
+            sweep_state="cancelled",
+            combos=["succeeded", "succeeded", "pending"],
+            outbox=[(1, "acked")],
+            processed=2,
+        )
+        sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == "sw-resid-49").first()
+        completed_at = sweep.completed_at
+        assert completed_at is not None
+        summary = reconcile_sweep("sw-resid-49", db)
+        assert summary["state"] == "cancelled"
+        db.refresh(sweep)
+        assert sweep.state == "cancelled"
+        assert sweep.completed_at == completed_at
+        assert sweep.processed == sweep.total == 3
+        assert db.query(DiscoveryOutbox).filter_by(sweep_id="sw-resid-49").count() == 1
+        # `running` de lease expirado sob `cancelled` converge no repair do
+        # próximo dispatch (release escopado + `skipped` no mesmo commit).
+        self._seed(
+            db,
+            "sw-exp-49",
+            sweep_state="cancelled",
+            combos=["running:expired"],
+            outbox=[(1, "acked")],
+            processed=1,
+        )
+        service.dispatch_outbox(db=db)
+        sweep2 = db.query(DiscoverySweep).filter(DiscoverySweep.id == "sw-exp-49").first()
+        assert sweep2.state == "cancelled"
+        assert sweep2.processed == sweep2.total == 1
+        combo2 = (
+            db.query(DiscoveryCombination)
+            .filter(DiscoveryCombination.sweep_id == "sw-exp-49")
+            .first()
+        )
+        assert combo2.state == "skipped"
+        assert db.query(DiscoveryOutbox).filter_by(sweep_id="sw-exp-49").count() == 1
         db.close()
 
 

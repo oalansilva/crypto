@@ -192,6 +192,15 @@
       "evidence": "filesystem/script contract assertions"
     },
     {
+      "file": "backend/tests/unit/test_discovery_actor_create_lock.py",
+      "protected_behavior": "discovery actor create-lock no-op branches",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "SimpleNamespace and Mock fakes assert bind-raise and non-postgres dialect no-op without real DB"
+    },
+    {
       "file": "backend/tests/unit/test_discovery_celery_tasks.py",
       "protected_behavior": "discovery orchestrator progress and outbox acknowledgement",
       "production_reachability": "reachable",

@@ -24,6 +24,7 @@ from app.models_discovery import (
     DiscoverySweep,
 )
 from app.services.discovery_service import (
+    TERMINAL_STATES,
     DiscoveryService,
     MIN_ELIGIBLE_COVERAGE,
     MIN_ELIGIBLE_TRADES,
@@ -72,24 +73,28 @@ def enqueue_sweep_orchestrator(sweep_id: str, generation: int) -> None:
         raise
 
 
-def reconcile_sweep(sweep_id: str, db: Session) -> dict[str, Any]:
-    """Reconcilia contadores e estado terminal a partir das combinações.
+def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
+    """Núcleo da reconciliação, flush-only sem commit próprio (card #853).
 
-    Em caminhos terminais (cancelled/failed), toda combinação ainda não
-    terminal vira skipped: processed = succeeded + failed + skipped = total
-    em qualquer terminal (spec discovery-sweep).
+    O chamador já detém o lock da linha do sweep (`SELECT … FOR UPDATE`) e
+    executou a releitura pós-lock (`db.refresh`) — TODA decisão de transição
+    usa valores pós-refresh. Regra transacional: terminal de cancelamento
+    nunca é sobrescrito por reconcile tardio — sob `cancelled` (ou qualquer
+    outro terminal) só há re-finalização residual (`pending → skipped` +
+    recount), sem reescrever `state`/`completed_at`; o caminho
+    `running → completed` exige `state == running` relido sob lock.
     """
-    sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).first()
-    if not sweep:
-        return {}
-    rows = db.query(DiscoveryCombination).filter(DiscoveryCombination.sweep_id == sweep_id).all()
+    rows = db.query(DiscoveryCombination).filter(DiscoveryCombination.sweep_id == sweep.id).all()
     now = datetime.now(timezone.utc)
 
-    if sweep.state == "cancelling":
-        # Cancelamento prevalece: pendentes viram skipped imediatamente.
+    if sweep.state == "cancelling" or sweep.state in TERMINAL_STATES:
+        # Cancelamento prevalece / re-finalizador terminal: pendentes viram
+        # skipped imediatamente (limpeza de lease best-effort).
         for r in rows:
             if r.state == "pending":
                 r.state = "skipped"
+                r.lease_owner = None
+                r.lease_expires_at = None
                 r.updated_at = now
 
     succeeded = sum(1 for r in rows if r.state == "succeeded")
@@ -126,15 +131,37 @@ def reconcile_sweep(sweep_id: str, db: Session) -> dict[str, Any]:
     elif sweep.state == "paused":
         # Sem transição automática; contadores atualizados apenas.
         pass
-    db.commit()
+    db.flush()
     return {
         "state": sweep.state,
         "succeeded": succeeded,
         "failed": failed,
         "skipped": skipped,
+        "pending": pending,
+        "running": running,
         "processed": succeeded + failed + skipped,
         "total": sweep.total,
     }
+
+
+def reconcile_sweep(sweep_id: str, db: Session) -> dict[str, Any]:
+    """Reconcilia contadores e estado terminal a partir das combinações.
+
+    Adquire o lock da linha do sweep com releitura explícita pós-lock e
+    delega ao núcleo flush-only (`_reconcile_locked`); mantém o commit para
+    os chamadores atuais. O comando `cancel` usa o núcleo diretamente no seu
+    commit único. Em caminhos terminais (cancelled/failed), toda combinação
+    ainda não terminal vira skipped: processed = succeeded + failed + skipped
+    = total em qualquer terminal (spec discovery-sweep).
+    """
+    service = DiscoveryService()
+    locked = service._lock_sweep(db, sweep_id)
+    if not locked:
+        return {}
+    db.refresh(locked)
+    summary = _reconcile_locked(locked, db)
+    db.commit()
+    return summary
 
 
 def run_combination(
@@ -159,8 +186,14 @@ def run_combination(
         db.commit()
         return
     # Recheck transacional do estado: pause/cancel não podem iniciar otimização.
+    # Sob `cancelling` a combinação volta a `pending` (o reconcile a marca
+    # `skipped`); sob terminal (`cancelled`/outros) vai direto a `skipped` —
+    # o pré-check nunca cria `pending` sobre terminal (card #853).
     if sweep.state != "running":
-        combination.state = "pending"
+        if sweep.state in TERMINAL_STATES:
+            combination.state = "skipped"
+        else:
+            combination.state = "pending"
         combination.lease_owner = None
         combination.lease_expires_at = None
         combination.updated_at = datetime.now(timezone.utc)

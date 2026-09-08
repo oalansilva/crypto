@@ -31,8 +31,8 @@ Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd
 | Atividade | Spawn |
 | --- | --- |
 | Em Refinamento | 1 filho `grill-card` (bind Status da issue N + N no prompt = `#<id>`) |
-| Design | 1 filho autor; depois onda A/B do pai |
-| Em desenvolvimento | pai `iniciar_apply`, depois 1 filho apply (loop fatiado interno) |
+| Design | 1 filho autor; depois 1 crítico (sem-tela) ou onda A/B (com-tela) |
+| Em desenvolvimento | 1ª entrada: pai `iniciar_apply` (T8), depois 1 filho apply (loop fatiado interno). Pós-T18: já em Em desenvolvimento; **não** T8 |
 | Code Review | onda `diff-reviewer` + `code-reviewer` |
 | QA | 1 filho checks/evidência; T14 no pai |
 
@@ -48,7 +48,7 @@ Caminho obrigatório:
 
 `Cancelado` é terminal a qualquer momento, inclusive Em Refinamento.
 
-Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de Design→Pronto para Dev (só Alan); (2) Done→Homologado. Homologado→Pronto é T16: `process_event fechar_release` após `release-guard post` PASS.
+Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de Design→Pronto para Dev (só Alan); (2) em Done, o par `homologar` → Homologado (T15) e `nao_homologar` → Em desenvolvimento (T18, só Alan, motivo visível `Não homologar:` + texto no issue). Homologado→Pronto é T16: `process_event fechar_release` após `release-guard post` PASS. Homologado sem aresta inversa. Arraste GitHub Done→Em desenvolvimento sem esse comentário é fora-de-δ: restaurar Done e exigir o motivo; não inventar UI no board.
 
 | Status | Significado |
 | --- | --- |
@@ -70,6 +70,12 @@ Gates humanos (agente não cruza): (0) Em Refinamento→Todo; (1) Aprovação de
 ### Design — clone da página viva
 
 > **Clone da página viva:** em superfície já existente — rota autenticada no catálogo (`/monitor`, `/favorites`, `/combo/discovery`, `/combo/select`) **ou** HTML público vigente (chave `landing` = landing v4 em `https://criptofarol.com.br/`) — o URL canónico do proto (`…/prototypes/<slug>/` → `index.html`) MUST clonar essa página viva e aplicar só o delta do card. Nunca «6 estados» / painel ANTES/DEPOIS como URL canónico, mesmo com clone noutro ficheiro da pasta. Copy visível (landing / Ajuda / Perfil) = a página mudou; Prototype N/A é recusado. N superfícies existentes: URL principal = página primária clonada; as outras com copy visível têm URLs extra de clone — nunca um painel das N no index.
+
+> **Design fecha em 1+1+1 (teto):** sem-tela = 1 autor + 1 crítico + 1 rework; com-tela = autor + dupla + 1 rework. Segundo rework só com P0 novo de produto justificado no prompt; fora disso o pai publica a seção de crítica com os P3 aceitos e submete. **Classificação:** só produto/escopo/contrato visível (tela, estados, acessibilidade, escopo furado) gera P0/P1; detalhe de implementação é P3 "detalhe de Apply", aceito em `design.md` e resolvido no Apply — nunca reaberto como P0/P1. **Gate no autor:** o primeiro autor já entrega `UI impact` / `live_route` / `surface` em linha própria parseável; sem-tela declara ausência + justificativa curta (nunca rota de catálogo emprestada); com-tela marca só as regiões clonadas. O crítico/dupla verifica esses tokens como item da rubrica.
+
+### Design — teto e validação
+
+Validação do segundo rework: o pai justifica o P0 novo de produto no prompt; sem justificativa, o segundo rework não é spawnado. "Dupla" = "onda A/B" da tabela de filhos.
 
 ## Preflight
 
@@ -116,20 +122,22 @@ Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto
 
 Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`. O **filho** Apply edita o código (loop fatiado); **não** `process_event`, **não** commit/push, **não** spawna reviewers; devolve status ao pai.
 
+Pós-T18 (`nao_homologar`): q já é Em desenvolvimento no mesmo card. Reabrir ou criar `card-<id>-*` a partir do `develop` actual (squash T14 já está lá). Write só com I1 (não develop/main). **Não** chamar `iniciar_apply` (T8 é de Pronto para Dev). Segue `pedir_review` → … → T14 → Done; o par homologar / não homologar reaparece.
+
 Pai: `pedir_review` (Code Review), `diff-reviewer` + `code-reviewer` no diff **não commitado** vs HEAD, commit, `diff-reviewer` vs a branch de integração, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
 **dsh:** após 400 desta classe (reasoning effort off/none) num filho, MUST NOT spawnar mais o mesmo preset (incl. retry 1/1 #518); registar `ERROR: subagent spawn failed/empty` e continuar no root com residual explícito.
 
 ## QA closeout
 
-**Cursor / Grok:** um filho QA isolado lê checks e MUST NOT chamar `process_event`. O pai chama `integrar_develop` no mesmo turno do filho verde (ou quando o próprio pai vê `qa-gate` success). `qa-gate pending` ⇒ espera e repete T14 no turno. `no_pr` e `sync: dirty` são causas visíveis; o primeiro reject não encerra o turno.
+**Cursor / Grok:** um filho QA isolado lê checks e MUST NOT `process_event`. O pai chama `integrar_develop` no mesmo turno do filho verde (ou quando o próprio pai vê `qa-gate` success). `qa-gate pending` ⇒ espera e repete T14 no turno. `no_pr` e `sync: dirty` são causas visíveis; o primeiro reject não encerra o turno.
 
-**dsh:** o root MUST NOT spawnar filho QA. O mesmo turno abre o PR antes de T11, espera `qa-gate` e chama T14 (Moore/plugin `covenant-flow:moore`, não só o texto desta skill).
+**dsh:** o root MUST NOT spawnar filho QA. O mesmo turno abre o PR antes de T11, espera `qa-gate` no turno (`job_output wait`, sem `continue`) e chama T14 (Moore/plugin `covenant-flow:moore`, não só o texto desta skill).
 
 Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evidence-comment.sh --transition homologado` (mesmo sem lote).
 
 ## Release
 
-Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `covenant-flow-environments`. Detalhe humano: `overlay_doc`. Guard: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
+Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `covenant-flow-environments`. Detalhe humano: `overlay_doc`. `bound_card=⊥` / `enabled_events: (unbound)` são display do paging, não deny de T16; pedido explícito unbound em `develop`/`release-*` carrega overlay + `covenant-flow-environments` e segue T16; Write de produto continua deny. Guard: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
 
 Quando o push do archive em `develop` for recusado por proteção (`qa-gate`), mesmo com pacote só Homologado: use `release-*` = `origin/develop` + archive → PR `release-* → main`; `pre` em `release-*` **não** exige archive em `origin/develop`. Após merge + deploy PROD, sync `main → develop` é obrigatório antes do `post` final (reexecutar `post` se as árvores ainda divergirem). Não dual-write o playbook completo neste `SKILL.md` nem no stub `AGENTS.md`.
 

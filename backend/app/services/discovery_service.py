@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -44,6 +44,20 @@ OUTBOX_MAX_GLOBAL = 8
 OUTBOX_MAX_PER_SWEEP = 1
 CLAIM_BATCH = 20
 
+
+# Teto de sweeps `cancelled` com resíduo varridos por dispatch (card #853,
+# P2): o restante fica para os dispatches seguintes, sem mudar a semântica.
+# Clamp >= 1 (card #853, P3): valor inválido ou <= 0 vira 1 em vez de
+# desligar silenciosamente o repair. Default 100 inalterado.
+def _repair_cancelled_batch() -> int:
+    try:
+        return max(1, int(__import__("os").getenv("DISCOVERY_REPAIR_CANCELLED_BATCH", "100")))
+    except (TypeError, ValueError):
+        return 1
+
+
+REPAIR_CANCELLED_BATCH = _repair_cancelled_batch()
+
 # Elegibilidade default (spec discovery-leaderboard): trades >= 30, coverage >= 0.90
 MIN_ELIGIBLE_TRADES = int(__import__("os").getenv("DISCOVERY_MIN_TRADES", "30"))
 MIN_ELIGIBLE_COVERAGE = float(__import__("os").getenv("DISCOVERY_MIN_COVERAGE", "0.90"))
@@ -60,6 +74,17 @@ SWEEP_STATES = {
 }
 TERMINAL_STATES = {"cancelled", "failed", "partial_failure", "completed"}
 NON_TERMINAL_STATES = {"pending", "running", "paused", "cancelling"}
+
+# Mensagens operacionais do início de varredura (card #837): o `detail` da
+# criação é exibido na tela na íntegra, então nenhum `detail` deste caminho
+# pode conter JSON ou jargão — só instrução de operação (o que fazer).
+# Cópia alinhada ao protótipo aprovado do card.
+LIVE_SWEEP_GUIDANCE = (
+    "Há uma varredura em execução. Cancele a atual antes de iniciar outra seleção."
+)
+INVALID_SELECTION_GUIDANCE = (
+    "A seleção não é válida para iniciar. " "Ajuste a seleção, refaça o preflight e inicie de novo."
+)
 
 STRUCTURE_VERSION = "discovery-structure-v1"
 QUANTUM_VERSION = "discovery-quantum-v1"
@@ -206,6 +231,39 @@ def build_evidence_fingerprint(
 
 def _canonical_templates(templates: list[str]) -> list[str]:
     return sorted({t.strip() for t in templates if t and t.strip()})
+
+
+def _followup_idempotency_key(idempotency_key: str) -> str:
+    """Deriva uma chave única para o começo novo pós-terminal (card #837).
+
+    A restrição única é (actor, idempotency_key), então a varredura nova não
+    pode reutilizar a chave da run morta; a chave efetiva volta na resposta
+    para o cliente adotar no rascunho.
+    """
+    return f"{idempotency_key[:46]}-r{uuid.uuid4().hex[:16]}"
+
+
+def _acquire_actor_create_lock(db: Session, actor: str) -> None:
+    """Serializa criações concorrentes do mesmo actor (card #837, follow-up).
+
+    A guarda live é SELECT-antes-INSERT sem lock: duas criações com chaves
+    DISTINTAS e seleções distintas podem passar lado a lado e persistir 2
+    lives. O advisory lock transacional por actor fecha essa janela no
+    PostgreSQL sem nenhuma migração (sem índice novo, sem backfill): o
+    segundo create_sweep espera o primeiro commitar e então enxerga a live.
+    Fora do PostgreSQL (ex.: SQLite em testes) é no-op deliberado.
+    """
+    try:
+        bind = db.bind
+        dialect = getattr(getattr(bind, "dialect", None), "name", "") or ""
+    except Exception:
+        return
+    if dialect != "postgresql":
+        return
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:key))"),
+        {"key": f"discovery-sweep-create:{actor}"},
+    )
 
 
 class DiscoveryService:
@@ -392,7 +450,13 @@ class DiscoveryService:
         # o payload hash (idempotência) não inclui o campo de validação.
         idem_payload = {k: v for k, v in payload.items() if k != "snapshot_hash"}
         payload_hash = _payload_hash(idem_payload)
+        # Chave original para o double-check dentro da seção crítica: o
+        # pre-check abaixo pode derivar a chave pós-terminal sem persistir.
+        original_idempotency_key = idempotency_key
 
+        # Pre-checks rápidos SEM lock (fora da seção crítica): evitam o
+        # preflight lento no caminho 200/409 óbvio e não precisam de
+        # serialização — a decisão final é revalidada sob o lock abaixo.
         existing = (
             db.query(DiscoverySweep)
             .filter(
@@ -401,12 +465,18 @@ class DiscoveryService:
             )
             .first()
         )
-        if existing:
+        if existing is not None and existing.state in TERMINAL_STATES:
+            # Pós-terminal, a seleção da tela é um começo novo (card #837):
+            # cria uma varredura nova mesmo com seleção igual, nunca reabre a
+            # run morta e nunca devolve o conflito de rascunho no caminho feliz.
+            idempotency_key = _followup_idempotency_key(idempotency_key)
+            existing = None
+        if existing is not None:
             if existing.payload_hash != payload_hash:
                 return (
                     {
                         "error": "idempotency conflict",
-                        "detail": "mesma chave com payload divergente",
+                        "detail": LIVE_SWEEP_GUIDANCE,
                     },
                     409,
                 )
@@ -414,7 +484,37 @@ class DiscoveryService:
                 "sweep_id": existing.id,
                 "state": existing.state,
                 "idempotent_retry": True,
+                "idempotency_key": existing.idempotency_key,
             }, 200
+
+        live = (
+            db.query(DiscoverySweep)
+            .filter(
+                DiscoverySweep.actor == actor,
+                DiscoverySweep.state.in_(tuple(NON_TERMINAL_STATES)),
+            )
+            .order_by(desc(DiscoverySweep.created_at), desc(DiscoverySweep.id))
+            .first()
+        )
+        if live is not None:
+            if live.payload_hash == payload_hash:
+                # Repetição da mesma seleção (mesmo com outra chave, ex.:
+                # rascunho refeito): mostra a existente, sem duplicata.
+                return {
+                    "sweep_id": live.id,
+                    "state": live.state,
+                    "idempotent_retry": True,
+                    "idempotency_key": live.idempotency_key,
+                }, 200
+            # Outra seleção com varredura em curso: não cria segunda nem
+            # substitui a ativa; orienta a cancelar antes.
+            return (
+                {
+                    "error": "live sweep in progress",
+                    "detail": LIVE_SWEEP_GUIDANCE,
+                },
+                409,
+            )
 
         # Revalida o token do snapshot atomicamente (spec discovery-sweep).
         preflight_result = self.preflight(
@@ -428,7 +528,7 @@ class DiscoveryService:
         )
         if preflight_result["errors"]:
             return (
-                {"error": "invalid snapshot", "detail": preflight_result["errors"]},
+                {"error": "invalid snapshot", "detail": INVALID_SELECTION_GUIDANCE},
                 400,
             )
         if preflight_result["snapshot_hash"] != payload.get("snapshot_hash"):
@@ -444,6 +544,69 @@ class DiscoveryService:
                 {
                     "error": "stale snapshot token",
                     "detail": "token expirado ou inválido; rode preflight novamente",
+                },
+                409,
+            )
+
+        # --- Seção crítica estreita (só DB, ms) ---
+        # Fecha a janela SELECT-antes-INSERT entre chaves distintas do mesmo
+        # actor (advisory lock transacional; no-op fora do PostgreSQL). O
+        # lock ficava no início do create_sweep e era segurado durante todo
+        # o preflight lento (exchange/templates) enquanto os testes
+        # compartilham o mesmo actor — a fila na mesma advisory key estourava
+        # o pytest-timeout no CI-PG. Agora cobre só: re-check → insert →
+        # flush/commit. Double-check obrigatório: outra sessão pode ter
+        # criado entre o pre-check e o lock.
+        _acquire_actor_create_lock(db, actor)
+        idempotency_key = original_idempotency_key
+        existing = (
+            db.query(DiscoverySweep)
+            .filter(
+                DiscoverySweep.actor == actor,
+                DiscoverySweep.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing is not None and existing.state in TERMINAL_STATES:
+            idempotency_key = _followup_idempotency_key(idempotency_key)
+            existing = None
+        if existing is not None:
+            if existing.payload_hash != payload_hash:
+                return (
+                    {
+                        "error": "idempotency conflict",
+                        "detail": LIVE_SWEEP_GUIDANCE,
+                    },
+                    409,
+                )
+            return {
+                "sweep_id": existing.id,
+                "state": existing.state,
+                "idempotent_retry": True,
+                "idempotency_key": existing.idempotency_key,
+            }, 200
+
+        live = (
+            db.query(DiscoverySweep)
+            .filter(
+                DiscoverySweep.actor == actor,
+                DiscoverySweep.state.in_(tuple(NON_TERMINAL_STATES)),
+            )
+            .order_by(desc(DiscoverySweep.created_at), desc(DiscoverySweep.id))
+            .first()
+        )
+        if live is not None:
+            if live.payload_hash == payload_hash:
+                return {
+                    "sweep_id": live.id,
+                    "state": live.state,
+                    "idempotent_retry": True,
+                    "idempotency_key": live.idempotency_key,
+                }, 200
+            return (
+                {
+                    "error": "live sweep in progress",
+                    "detail": LIVE_SWEEP_GUIDANCE,
                 },
                 409,
             )
@@ -479,9 +642,11 @@ class DiscoveryService:
         db.add(DiscoveryOutbox(sweep_id=sweep_id, generation=1, state="pending"))
         try:
             db.commit()
-        except Exception:
+        except IntegrityError:
             db.rollback()
-            # Corrida concorrente com a mesma chave: o vencedor já persistiu.
+            # Corrida concorrente na unicidade (actor, idempotency_key): o
+            # vencedor já persistiu. Só a violação de integridade cai aqui;
+            # qualquer outro erro de commit propaga abaixo sem mascarar.
             existing = (
                 db.query(DiscoverySweep)
                 .filter(
@@ -495,7 +660,7 @@ class DiscoveryService:
                     return (
                         {
                             "error": "idempotency conflict",
-                            "detail": "mesma chave com payload divergente",
+                            "detail": LIVE_SWEEP_GUIDANCE,
                         },
                         409,
                     )
@@ -503,12 +668,50 @@ class DiscoveryService:
                     "sweep_id": existing.id,
                     "state": existing.state,
                     "idempotent_retry": True,
+                    "idempotency_key": existing.idempotency_key,
                 }, 200
+            # A chave derivada pós-terminal é única por construção; se a
+            # corrida foi entre duas criações frescas com a mesma chave, o
+            # vencedor já persiste como varredura em curso.
+            live = (
+                db.query(DiscoverySweep)
+                .filter(
+                    DiscoverySweep.actor == actor,
+                    DiscoverySweep.state.in_(tuple(NON_TERMINAL_STATES)),
+                )
+                .order_by(desc(DiscoverySweep.created_at), desc(DiscoverySweep.id))
+                .first()
+            )
+            if live is not None:
+                if live.payload_hash == payload_hash:
+                    return {
+                        "sweep_id": live.id,
+                        "state": live.state,
+                        "idempotent_retry": True,
+                        "idempotency_key": live.idempotency_key,
+                    }, 200
+                return (
+                    {
+                        "error": "live sweep in progress",
+                        "detail": LIVE_SWEEP_GUIDANCE,
+                    },
+                    409,
+                )
+            raise
+        except Exception:
+            # Qualquer outro erro de commit (conexão, timeout, check, ...) não
+            # é corrida de idempotência: desfaz e propaga sem mascarar.
+            db.rollback()
             raise
 
         # Dispatcher: transiciona pending -> running e publica o wake-up.
         self._start_sweep(db, sweep_id)
-        return {"sweep_id": sweep_id, "state": "running", "total": total}, 201
+        return {
+            "sweep_id": sweep_id,
+            "state": "running",
+            "total": total,
+            "idempotency_key": idempotency_key,
+        }, 201
 
     def _start_sweep(self, db: Session, sweep_id: str) -> None:
         """Dispatcher: pending -> running e entrega o intent do outbox
@@ -806,6 +1009,71 @@ class DiscoveryService:
             "created": True,
         }
 
+    def ensure_cancel_wakeup(
+        self,
+        db: Session,
+        sweep_id: str,
+        *,
+        sweep: DiscoverySweep | None = None,
+    ) -> dict[str, Any]:
+        """Garante um único wake-up finalizador para sweep em `cancelling` (card #853).
+
+        Sem commit próprio: integra o commit do chamador (`command` ou repair),
+        que já detém o lock do sweep. Ordem sob o lock: dedup por intent
+        `pending`/`delivered` em aberto → insert da próxima `generation`
+        `pending` no mesmo commit. Limites OUTBOX_* são de publicação, não de
+        inserção: só adiam a entrega, nunca bloqueiam o insert. Nunca insere
+        sob `cancelled`/terminal. `created: False` SOMENTE no caminho limpo
+        (dedup enxergou intent em aberto, sem insert); corrida de dedup que
+        furar o check e violar a constraint única (`sweep_id`, `generation`)
+        implica rollback total da transação do chamador (sem savepoint, sem
+        `created: False`), com cura por retry do comando ou repair do próximo
+        dispatch. `ensure_sweep_wakeup` segue recusando `cancelling`.
+        """
+        locked = sweep or self._lock_sweep(db, sweep_id)
+        if not locked:
+            return {"sweep_id": sweep_id, "wake_up_state": None, "created": False}
+        if locked.state != "cancelling":
+            status = self._wakeup_status(db, locked.id)
+            return {
+                "sweep_id": locked.id,
+                "state": locked.state,
+                **status,
+                "created": False,
+            }
+        outstanding = (
+            db.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == locked.id,
+                DiscoveryOutbox.state.in_(("pending", "delivered")),
+            )
+            .order_by(desc(DiscoveryOutbox.generation))
+            .first()
+        )
+        if outstanding is not None:
+            return {
+                "sweep_id": locked.id,
+                "state": locked.state,
+                "wake_up_state": outstanding.state,
+                "generation": outstanding.generation,
+                "created": False,
+            }
+        max_gen = (
+            db.query(func.max(DiscoveryOutbox.generation))
+            .filter(DiscoveryOutbox.sweep_id == locked.id)
+            .scalar()
+        )
+        next_gen = int(max_gen or 0) + 1
+        db.add(DiscoveryOutbox(sweep_id=locked.id, generation=next_gen, state="pending"))
+        db.flush()
+        return {
+            "sweep_id": locked.id,
+            "state": locked.state,
+            "wake_up_state": "pending",
+            "generation": next_gen,
+            "created": True,
+        }
+
     def _wakeup_status(self, db: Session, sweep_id: str) -> dict[str, Any]:
         outstanding = (
             db.query(DiscoveryOutbox)
@@ -862,9 +1130,8 @@ class DiscoveryService:
         if command == "pause" and sweep.state == "paused":
             db.commit()
             return {"sweep_id": sweep.id, "state": sweep.state}, 200
-        if command == "cancel" and sweep.state in ("cancelling", "cancelled"):
-            db.commit()
-            return {"sweep_id": sweep.id, "state": sweep.state}, 200
+        if command == "cancel":
+            return self._command_cancel(db, sweep)
         error = self._apply_transition(sweep, target)
         if error is not None:
             db.commit()
@@ -893,6 +1160,42 @@ class DiscoveryService:
             return body, 200
         return {"sweep_id": sweep.id, "state": sweep.state}, 200
 
+    def _command_cancel(self, db: Session, sweep: DiscoverySweep) -> tuple[dict[str, Any], int]:
+        """`cancel` com auto-finalização (card #853, contrato 1/2/4).
+
+        Ordem num único commit: lock (já adquirido pelo `command`) →
+        `db.refresh` explícito → transição para `cancelling` → reconciliação
+        inline flush-only (`pending → skipped`; com `pending == 0` e
+        `running == 0` promove a `cancelled` + `completed_at`) → insert do
+        finalizador via `ensure_cancel_wakeup` SOMENTE se, após o reconcile
+        inline, ainda `cancelling` com `running > 0` → commit único.
+        Rollback total em falha parcial (sem `skipped` sem `cancelled`).
+        Repeat-cancel sob `cancelling` passa pelo ensure (reconcilia + dedup,
+        nunca duplica); sob `cancelled`, no-op idempotente sem wake-up.
+        """
+        from app.tasks.discovery_tasks import _reconcile_locked
+
+        db.refresh(sweep)
+        if sweep.state == "cancelled":
+            # No-op idempotente: nada foi escrito neste fluxo, então a
+            # transação (sempre do chamador aqui) é preservada sem rollback.
+            return {"sweep_id": sweep.id, "state": sweep.state}, 200
+        if sweep.state == "cancelling":
+            summary = _reconcile_locked(sweep, db)
+            if sweep.state == "cancelling" and summary["running"] > 0:
+                self.ensure_cancel_wakeup(db, sweep.id, sweep=sweep)
+            db.commit()
+            return {"sweep_id": sweep.id, "state": sweep.state}, 200
+        error = self._apply_transition(sweep, "cancelling")
+        if error is not None:
+            db.commit()
+            return error
+        summary = _reconcile_locked(sweep, db)
+        if sweep.state == "cancelling" and summary["running"] > 0:
+            self.ensure_cancel_wakeup(db, sweep.id, sweep=sweep)
+        db.commit()
+        return {"sweep_id": sweep.id, "state": sweep.state}, 200
+
     # --- Claims / leases (spec discovery-sweep) ----------------------------
 
     def claim_combinations(
@@ -904,10 +1207,30 @@ class DiscoveryService:
     ) -> list[DiscoveryCombination]:
         from app.database import SessionLocal
 
-        session = db or SessionLocal()
+        own_session = db is None
+        session = db if db is not None else SessionLocal()
         try:
-            sweep = session.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).first()
-            if not sweep or sweep.state != "running":
+            # Guarda anti-corrida cancel × claim (card #853, P0): lock do sweep
+            # → `db.refresh` explícito → só reclama com `state == running`
+            # pós-refresh → claim → commit único. Toda decisão de guarda usa
+            # valores pós-refresh: sem refresh, o identity map carrega valores
+            # pré-lock. Um claim concorrente bloqueia no lock do cancel e, ao
+            # adquiri-lo, observa `cancelling`/`cancelled` e devolve `[]`.
+            # Rollback só em sessão própria (card #853, P3): os retornos
+            # antecipados nada escreveram, então a sessão do chamador segue
+            # intacta; sessão fresca é encerrada (com rollback) no `finally`.
+            locked = (
+                session.query(DiscoverySweep)
+                .filter(DiscoverySweep.id == sweep_id)
+                .with_for_update()
+                .first()
+            )
+            if locked is None:
+                return []
+            session.refresh(locked)
+            if locked.state != "running":
+                if own_session:
+                    session.rollback()
                 return []
             now = _utcnow()
             claimed: list[DiscoveryCombination] = []
@@ -929,11 +1252,48 @@ class DiscoveryService:
                 row.lease_expires_at = now + timedelta(seconds=LEASE_SECONDS)
                 row.updated_at = now
                 claimed.append(row)
-            session.commit()
+            try:
+                session.commit()
+            except Exception:
+                if own_session:
+                    session.rollback()
+                raise
             return claimed
         finally:
             if db is None:
                 session.close()
+
+    def _release_expired_leases_for_sweep(self, db: Session, sweep_id: str) -> int:
+        """Release escopado ao sweep, flush-only sem commit próprio (card #853, P1).
+
+        Único release permitido nos caminhos de cancelamento (finalizador do
+        orquestrador) e no repair: roda dentro do commit por sweep junto ao
+        reconcile do MESMO sweep, preservando o invariante "nenhum `pending`
+        sobrevive ao commit". Vale também sob `cancelled`, onde `running` de
+        lease expirado e worker morto só converge via release → `pending`
+        transitório → `skipped` no mesmo commit.
+        """
+        now = _utcnow()
+        expired = (
+            db.query(DiscoveryCombination)
+            .filter(
+                DiscoveryCombination.sweep_id == sweep_id,
+                DiscoveryCombination.state == "running",
+                DiscoveryCombination.lease_expires_at.isnot(None),
+                DiscoveryCombination.lease_expires_at < now,
+            )
+            .all()
+        )
+        for row in expired:
+            if row.result_id:
+                row.state = "succeeded"
+            else:
+                row.state = "pending"
+                row.lease_owner = None
+                row.lease_expires_at = None
+            row.updated_at = now
+        db.flush()
+        return len(expired)
 
     def release_expired_leases(self, db: Session | None = None) -> int:
         from app.database import SessionLocal
@@ -941,12 +1301,24 @@ class DiscoveryService:
         session = db or SessionLocal()
         try:
             now = _utcnow()
+            # O release global NUNCA cobre sweeps `cancelling`/`cancelled`
+            # (card #853, P1): todo `running → pending` desses sweeps acontece
+            # somente dentro de um commit que contém o reconcile do mesmo
+            # sweep (helper escopado acima).
+            from sqlalchemy import select
+
+            fenced_sweeps = (
+                select(DiscoverySweep.id)
+                .where(DiscoverySweep.state.in_(("cancelling", "cancelled")))
+                .subquery()
+            )
             expired = (
                 session.query(DiscoveryCombination)
                 .filter(
                     DiscoveryCombination.state == "running",
                     DiscoveryCombination.lease_expires_at.isnot(None),
                     DiscoveryCombination.lease_expires_at < now,
+                    ~DiscoveryCombination.sweep_id.in_(fenced_sweeps),
                 )
                 .all()
             )
@@ -986,19 +1358,113 @@ class DiscoveryService:
     # --- Outbox at-least-once (spec discovery-sweep) ------------------------
 
     def _repair_incomplete_sweeps(self, session: Session) -> None:
-        """Promove start interrompido e cria wake-up para running sem intent reclamável."""
-        incomplete = (
-            session.query(DiscoverySweep)
-            .filter(DiscoverySweep.state.in_(("pending", "running")))
-            .order_by(DiscoverySweep.created_at.asc())
-            .all()
+        """Reparo periódico dentro do dispatch (card #853, contrato 2/3).
+
+        Cobre `pending`/`running` (wake-up legado), `cancelling` órfão
+        (reconcilia + finalizador via `ensure_cancel_wakeup`) e `cancelled`
+        com resíduo (`pending > 0 OR running > 0 OR processed != total`:
+        release escopado + residual `pending → skipped` + recount, sem
+        wake-up e sem tocar `state`/`completed_at`). `dispatch_outbox` publica
+        o finalizador pelo caminho `pending` existente, sem filtro novo.
+
+        Cada sweep roda em transação própria, sob lock com `db.refresh`
+        explícito, nesta ordem: release escopado flush-only do sweep →
+        reconciliação (flush) → `ensure_cancel_wakeup` se `cancelling` com
+        `running > 0` (NUNCA sob `cancelled`) → um commit por sweep.
+        Isolamento: exceção faz rollback só da transação do sweep e segue
+        ("falha num sweep não contamina"); o próximo dispatch retenta.
+        A varredura de `cancelled` com resíduo é filtrada no banco com teto
+        por dispatch (`REPAIR_CANCELLED_BATCH`); o restante converge nos
+        dispatches seguintes.
+        """
+        from app.tasks.discovery_tasks import _reconcile_locked
+        from sqlalchemy import select
+
+        candidate_ids: list[str] = [
+            row[0]
+            for row in (
+                session.query(DiscoverySweep.id)
+                .filter(DiscoverySweep.state.in_(("pending", "running", "cancelling")))
+                .order_by(DiscoverySweep.created_at.asc(), DiscoverySweep.id.asc())
+                .all()
+            )
+        ]
+        # Resíduo filtrado no banco (card #853, P2): sem carregar o histórico
+        # `cancelled` em memória, sem count por sweep e sem lock FOR UPDATE
+        # por candidato espúrio — só entra quem tem `pending`/`running` ou
+        # `processed != total`, até o teto do dispatch.
+        residue_pending = (
+            select(DiscoveryCombination.id)
+            .where(
+                DiscoveryCombination.sweep_id == DiscoverySweep.id,
+                DiscoveryCombination.state == "pending",
+            )
+            .exists()
         )
-        for row in incomplete:
-            locked = self._lock_sweep(session, row.id)
-            if not locked:
+        residue_running = (
+            select(DiscoveryCombination.id)
+            .where(
+                DiscoveryCombination.sweep_id == DiscoverySweep.id,
+                DiscoveryCombination.state == "running",
+            )
+            .exists()
+        )
+        candidate_ids.extend(
+            row[0]
+            for row in (
+                session.query(DiscoverySweep.id)
+                .filter(
+                    DiscoverySweep.state == "cancelled",
+                    residue_pending
+                    | residue_running
+                    | (DiscoverySweep.processed != DiscoverySweep.total),
+                )
+                .order_by(DiscoverySweep.created_at.asc(), DiscoverySweep.id.asc())
+                .limit(REPAIR_CANCELLED_BATCH)
+                .all()
+            )
+        )
+        for sweep_id in candidate_ids:
+            try:
+                locked = self._lock_sweep(session, sweep_id)
+                if locked is None:
+                    session.rollback()
+                    continue
+                session.refresh(locked)
+                if locked.state in ("pending", "running"):
+                    self.ensure_sweep_wakeup(session, locked.id, sweep=locked)
+                    session.commit()
+                elif locked.state == "cancelling":
+                    self._release_expired_leases_for_sweep(session, locked.id)
+                    summary = _reconcile_locked(locked, session)
+                    if locked.state == "cancelling" and summary["running"] > 0:
+                        self.ensure_cancel_wakeup(session, locked.id, sweep=locked)
+                    session.commit()
+                elif locked.state == "cancelled":
+                    counts = self._combination_counts(locked.id, session)
+                    if (
+                        counts["pending"] > 0
+                        or counts["running"] > 0
+                        or locked.processed != locked.total
+                    ):
+                        self._release_expired_leases_for_sweep(session, locked.id)
+                        _reconcile_locked(locked, session)
+                        session.commit()
+                    else:
+                        session.rollback()
+                else:
+                    session.rollback()
+            except Exception:
+                logger.warning(
+                    "Discovery repair failed for sweep=%s; retry next dispatch",
+                    sweep_id,
+                    exc_info=True,
+                )
+                try:
+                    session.rollback()
+                except Exception:
+                    pass
                 continue
-            if locked.state in ("pending", "running"):
-                self.ensure_sweep_wakeup(session, locked.id, sweep=locked)
 
     def dispatch_outbox(self, db: Session | None = None) -> int:
         """Lê intents pending (≤100), publica lotes (≤20) respeitando limites
@@ -1101,6 +1567,33 @@ class DiscoveryService:
         finally:
             if db is None:
                 session.close()
+
+    def _ack_locked(self, sweep_id: str, generation: int, db: Session) -> int:
+        """Variante flush-only do ack (card #853, P1, opção (a)).
+
+        Só o flip `delivered → acked`, sem commit próprio: última mutação do
+        commit único por sweep do caminho do intent com sweep `cancelling`.
+        O `ack_outbox` (commit próprio) NÃO é chamado nesse caminho.
+        """
+        now = _utcnow()
+        updated = (
+            db.query(DiscoveryOutbox)
+            .filter(
+                DiscoveryOutbox.sweep_id == sweep_id,
+                DiscoveryOutbox.generation == generation,
+                DiscoveryOutbox.state == "delivered",
+            )
+            .update(
+                {
+                    DiscoveryOutbox.state: "acked",
+                    DiscoveryOutbox.acked_at: now,
+                    DiscoveryOutbox.updated_at: now,
+                },
+                synchronize_session=False,
+            )
+        )
+        db.flush()
+        return updated
 
     # --- Leaderboard (spec discovery-leaderboard) ---------------------------
 
