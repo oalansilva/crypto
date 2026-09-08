@@ -235,9 +235,14 @@ test('Venda travada pela stop: remover no fluxo e revender sem vender junto', as
       previewCalls += 1
       if (previewCalls === 1) {
         await route.fulfill({
-          status: 422,
+          status: 400,
           contentType: 'application/json',
-          body: JSON.stringify({ detail: 'Saldo livre insuficiente: saldo travado pela stop (locked)' }),
+          body: JSON.stringify({
+            detail: {
+              code: 'BINANCE_VALIDATION_ERROR',
+              message: 'Quantidade abaixo do mínimo permitido pela Binance',
+            },
+          }),
         })
         return
       }

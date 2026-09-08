@@ -19,3 +19,7 @@
 ## 4. Portas de skill e gate (sem código antes de Pronto para Dev)
 
 - [x] 4.1 Use project skills available to Cursor when applicable (`.cursor/skills`, p. ex. `covenant-flow`); UI-impact work segue o gate Design → Aprovação de Design → Pronto para Dev, usando a skill `design-critic` e aguardando aprovação humana de Alan
+
+## 5. T18 residual — detector alcança o erro real da prévia SELL
+
+- [x] 5.1 Expand `STOP_BLOCKED_MESSAGE_RE` to also match real SELL preview errors when free qty is 0/dust (`quantidade abaixo do m[ií]nimo`, `valor abaixo do m[ií]nimo`); `requestPreview` passa `responseMessage` + `responseCode` em `looksStopBlocked` (como o submit); `enterBlockedIfStopOpen` permanece o segundo gate; teste de fonte executa o regex; e2e mocka `{ detail: { code: "BINANCE_VALIDATION_ERROR", message: "Quantidade abaixo do mínimo permitido pela Binance" } }`. Sem código novo de backend.
