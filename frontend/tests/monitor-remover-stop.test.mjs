@@ -103,6 +103,29 @@ test('2.4 venda: falha não-stop mantém o caminho atual sem oferecer remover', 
   assert.match(source, /side === 'SELL' && looksStopBlocked/)
 })
 
+test('T18 detector: regex da fonte casa o erro real da prévia SELL (qty/notional ~0)', () => {
+  const source = trade()
+  const match = source.match(/const STOP_BLOCKED_MESSAGE_RE =\s*\/(.+)\/([a-z]*)/)
+  assert.ok(match, 'STOP_BLOCKED_MESSAGE_RE must be present in source')
+  const re = new RegExp(match[1], match[2])
+  assert.equal(re.test('Quantidade abaixo do mínimo permitido pela Binance'), true)
+  assert.equal(re.test('Valor abaixo do mínimo permitido pela Binance'), true)
+  assert.equal(
+    re.test('A Binance recusou a credencial ou assinatura. Revise a conexão em Meu Perfil.'),
+    false,
+  )
+  assert.equal(re.test('Quantidade acima do máximo permitido pela Binance'), false)
+})
+
+test('T18 detector: requestPreview passa message e code para looksStopBlocked', () => {
+  const source = trade()
+  const previewFn = source.slice(source.indexOf('const requestPreview'), source.indexOf('const submitOrder'))
+  assert.match(previewFn, /previewFailureCode = responseCode\(payload\)/)
+  assert.match(previewFn, /looksStopBlocked\(message, previewFailureCode\)/)
+  assert.match(previewFn, /side === 'SELL' && looksStopBlocked/)
+  assert.match(previewFn, /enterBlockedIfStopOpen/)
+})
+
 test('2.4 venda: confirmação própria com origem explícita + foco vai-e-volta', () => {
   const source = trade()
   assert.match(source, /id="spot-trade-remove-confirm"/)

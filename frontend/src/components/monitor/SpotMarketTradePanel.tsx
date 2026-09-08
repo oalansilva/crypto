@@ -135,12 +135,13 @@ const responseCode = (payload: unknown): string | null => {
 const isTerminal = (state: OrderState): boolean => ['filled', 'partial', 'rejected'].includes(state);
 
 /**
- * Card 861: explicit locked-balance signal. The sell flow offers "Remover stop"
- * ONLY when the failure message indicates the free balance is locked/insufficient
- * (the open protective stop holds the base asset). Every other failure keeps the
- * existing failure path without offering removal.
+ * Card 861: stop-blocked SELL signal. Callers already guard `side === 'SELL'`.
+ * Matches locked/insufficient-balance copy and the real preview errors when the
+ * protective stop leaves free base qty at 0/dust (`Quantidade/Valor abaixo do
+ * mínimo`). Second gate `enterBlockedIfStopOpen` still requires an open stop.
  */
-const STOP_BLOCKED_MESSAGE_RE = /saldo.*insuficiente|insuficiente.*saldo|insufficient.*balance|balance.*insufficient|locked|travad/i;
+const STOP_BLOCKED_MESSAGE_RE =
+    /saldo.*insuficiente|insuficiente.*saldo|insufficient.*balance|balance.*insufficient|locked|travad|quantidade abaixo do m[ií]nimo|valor abaixo do m[ií]nimo/i;
 
 const looksStopBlocked = (message: string | null, code: string | null): boolean => {
     if (code === 'INSUFFICIENT_BALANCE' || code === 'SELL_BALANCE_LOCKED') return true;
@@ -621,6 +622,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         const generation = ++requestGenerationRef.current;
         setError(null);
         setStep('previewing');
+        let previewFailureCode: string | null = null;
         try {
             const response = await authFetch(`${API_BASE_URL}/monitor/spot-market-orders/preview`, {
                 method: 'POST',
@@ -634,6 +636,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
             });
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
+                previewFailureCode = responseCode(payload);
                 throw new Error(responseMessage(payload, 'Não foi possível validar a ordem.'));
             }
             if (generation !== requestGenerationRef.current) return;
@@ -643,7 +646,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         } catch (previewError) {
             if (generation !== requestGenerationRef.current) return;
             const message = previewError instanceof Error ? previewError.message : 'Falha ao validar a ordem.';
-            if (side === 'SELL' && looksStopBlocked(message, null)) {
+            if (side === 'SELL' && looksStopBlocked(message, previewFailureCode)) {
                 const entered = await enterBlockedIfStopOpen();
                 if (entered) return;
             }
