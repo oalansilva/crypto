@@ -18,7 +18,11 @@ from guard import github_status_provider  # noqa: E402
 from overlay import try_load_overlay  # noqa: E402
 from resolve import UNBOUND, resolve  # noqa: E402
 
-UNBOUND_PAGE = "bound_card=⊥. Write produto deny. Não carregue playbook de release."
+UNBOUND_PAGE = (
+    "bound_card=⊥. Write produto deny. Playbook de release não é always-on. "
+    "Pedido explícito suba a release / fechar release / subir lote: "
+    "carregue overlay e inicie T16."
+)
 FOOTER = (
     "Resolva (q, bound_card, q_git). Não invente aresta. "
     "Chat é wording; NLU ≠ δ. Overlay on-demand (portas, Drive, release)."
