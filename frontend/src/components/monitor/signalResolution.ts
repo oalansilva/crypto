@@ -3,6 +3,10 @@ import type { MarkerSignalType } from '@/lib/tradeMarkers';
 
 export type MonitorSignalKind = 'hold' | 'exit';
 
+export function boardStateLabel(section: MonitorSignalKind): string {
+    return section === 'hold' ? 'Em posição' : 'Saída / cobertura';
+}
+
 type MarkerDirection = 'aboveBar' | 'belowBar';
 type MarkerShape = 'arrowDown' | 'arrowUp';
 

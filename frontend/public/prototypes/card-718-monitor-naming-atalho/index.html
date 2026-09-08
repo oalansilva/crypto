@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<!--
+  card-718-monitor-naming-atalho — protótipo COM-TELA (clone da página viva /monitor).
+  Delta T6 (SÓ isto): busca sem ⌘K; KPIs/h3 "Em posição" e "Saída / cobertura" sem tags;
+  sem badge Estado Compra/Venda; coluna Status e card mobile com os mesmos nomes;
+  ScreenHelpPanel ensina esses nomes (não Compra/Venda como estado).
+  Lado de ordem (markerLabel / Spot) fora. Tokens de frontend/src/index.css.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:," />
+<title>Monitor de sinais — protótipo card-718</title>
+<style>
+  :root {
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --bg-primary: #0b0e11;
+    --bg-secondary: #181a20;
+    --bg-elevated: #1e2329;
+    --accent-primary: #fcd535;
+    --accent-success: #0ecb81;
+    --text-primary: #ffffff;
+    --text-secondary: #eaecef;
+    --text-tertiary: #929aa5;
+    --border-default: #2b3139;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', var(--font-family), sans-serif;
+    background: #0b0e11;
+    color: #ffffff;
+    min-height: 100vh;
+  }
+  a { color: inherit; text-decoration: none; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  .help-slot { padding: 22px 26px 0; }
+  .screen-help-panel {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    margin-bottom: 1rem; padding: 1rem;
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+  }
+  .screen-help-panel-icon {
+    display: inline-flex; width: 2.5rem; height: 2.5rem; flex-shrink: 0;
+    align-items: center; justify-content: center;
+    border: 1px solid rgba(252, 213, 53, 0.24); border-radius: var(--radius-md);
+    background: rgba(252, 213, 53, 0.1); color: var(--accent-primary);
+  }
+  .screen-help-panel-icon svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .screen-help-panel-copy { min-width: 0; flex: 1; }
+  .screen-help-panel h2 { color: var(--text-primary); font-size: 0.95rem; font-weight: 650; line-height: 1.3; }
+  .screen-help-panel p { color: var(--text-tertiary); margin-top: 0.35rem; font-size: 0.88rem; line-height: 1.5; }
+  .screen-help-panel-link {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 2.5rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 650;
+    border: 1px solid var(--border-default); background: var(--bg-secondary);
+    color: var(--text-secondary); padding: 0.68rem 0.9rem;
+  }
+  .monitor-theme {
+    --bg-0: #0b0e11; --bg-1: #181a20; --bg-2: #1e2329; --bg-3: #2b3139;
+    --bg-hover: rgba(255, 255, 255, 0.04);
+    --line: #2b3139; --line-soft: rgba(43, 49, 57, 0.72);
+    --t-1: #ffffff; --t-2: #eaecef; --t-3: #929aa5; --t-4: #707a8a;
+    --accent: #fcd535; --accent-soft: rgba(252, 213, 53, 0.1); --accent-line: rgba(252, 213, 53, 0.32);
+    --hold: #0ecb81; --hold-soft: rgba(14, 203, 129, 0.1); --hold-line: rgba(14, 203, 129, 0.32);
+    --wait: #e5b057; --exit: #f6465d; --exit-soft: rgba(246, 70, 93, 0.1); --exit-line: rgba(246, 70, 93, 0.32);
+    color: var(--t-1); background: var(--bg-0);
+  }
+  .monitor-theme .monitor-page-shell { width: min(100%, 1520px); margin: 0 auto; padding: 0; }
+  .monitor-theme .topbar {
+    height: 56px; border-bottom: 1px solid var(--line-soft); background: var(--bg-1);
+    display: flex; align-items: center; gap: 14px; padding: 0 22px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .monitor-theme .topbar-spacer { flex: 1; }
+  .monitor-theme .search {
+    display: flex; align-items: center; gap: 8px; background: var(--bg-2);
+    border: 1px solid var(--line-soft); border-radius: 7px; padding: 6px 10px;
+    width: min(280px, 38vw); color: var(--t-3);
+  }
+  .monitor-theme .search:focus-within { border-color: var(--accent-line); }
+  .monitor-theme .search input {
+    background: transparent; border: 0; outline: none; color: var(--t-1);
+    font: inherit; width: 100%;
+  }
+  .monitor-theme .search input::placeholder { color: var(--t-4); }
+  .monitor-theme .search svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+  .monitor-theme .topbar-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px;
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 7px;
+    color: var(--t-2); font: inherit; font-weight: 500; cursor: pointer;
+  }
+  .monitor-theme .topbar-btn.primary { background: var(--accent); border-color: var(--accent-line); color: #181a20; }
+  .monitor-theme .page { padding: 22px 26px 60px; }
+  .monitor-theme .page-sub { color: var(--t-3); font-size: 12.5px; margin-top: 4px; }
+  .monitor-theme .updated { color: var(--t-4); font-size: 11.5px; margin-top: 8px; }
+  .monitor-theme .updated .mono { color: var(--t-2); }
+  .monitor-theme .kpis {
+    display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 1px;
+    background: var(--line-soft); border: 1px solid var(--line-soft);
+    border-radius: 10px; overflow: hidden; margin-bottom: 18px; margin-top: 18px;
+  }
+  .monitor-theme .kpi { background: var(--bg-1); padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+  .monitor-theme .kpi-label { font-size: 11px; color: var(--t-3); font-weight: 500; letter-spacing: 0.02em; display: flex; align-items: center; gap: 8px; }
+  .monitor-theme .kpi-val { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .monitor-theme .kpi-foot { font-size: 11px; color: var(--t-3); margin-top: 2px; }
+  .monitor-theme .kpi-foot.up { color: var(--hold); }
+  .monitor-theme .filterbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 12px; background: var(--bg-1); border: 1px solid var(--line-soft);
+    border-radius: 10px; margin-bottom: 14px;
+  }
+  .monitor-theme .select {
+    background: var(--bg-2); border: 1px solid var(--line-soft); color: var(--t-2);
+    padding: 6px 26px 6px 10px; border-radius: 7px; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  .monitor-theme .filter-spacer { flex: 1; }
+  .monitor-theme .chip-count {
+    font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; color: var(--t-3);
+    padding: 1px 6px; background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: 99px;
+  }
+  .monitor-theme .monitor-board { margin-top: 1rem; display: grid; gap: 1rem; }
+  .monitor-theme .status-row { display: flex; align-items: center; gap: 10px; margin: 22px 0 10px; }
+  .monitor-theme .status-row h3 {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--t-2); margin: 0; display: flex; align-items: center; gap: 8px;
+  }
+  .monitor-theme .status-section-label { color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .monitor-theme .status-row .pip { width: 7px; height: 7px; border-radius: 50%; }
+  .monitor-theme .status-row .pip.hold { background: var(--hold); box-shadow: 0 0 8px rgba(61, 214, 140, 0.6); }
+  .monitor-theme .status-row .pip.exit { background: var(--exit); box-shadow: 0 0 8px rgba(242, 110, 126, 0.55); }
+  .monitor-theme .status-row .meta { color: var(--t-3); font-size: 11.5px; }
+  .monitor-theme .status-row .desc { color: var(--t-3); font-size: 12px; margin-left: auto; }
+  .monitor-theme .table-wrap { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line-soft); border-radius: 10px; margin-top: 12px; }
+  .monitor-theme table.signals { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--t-2); }
+  .monitor-theme table.signals th { text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--t-3); padding: 10px 12px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+  .monitor-theme table.signals td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  .monitor-theme .pair-cell { display: flex; align-items: center; gap: 10px; }
+  .monitor-theme .pair-icon { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-3); display: grid; place-items: center; font-size: 10px; font-weight: 700; color: var(--t-2); }
+  .monitor-theme .pair-name { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600; font-size: 13px; color: var(--t-1); }
+  .monitor-theme .pair-tf { color: var(--t-4); font-size: 11px; margin-left: 6px; }
+  .monitor-theme .pair-strat { color: var(--t-3); font-size: 11.5px; }
+  .monitor-theme .tag-cell { color: var(--t-3); font-size: 11.5px; }
+  .monitor-theme .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .monitor-theme .row-actions .topbar-btn { font-size: 12px; }
+  .monitor-theme .status-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px;
+    border-radius: 5px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .monitor-theme .status-pill.hold { background: var(--hold-soft); color: var(--hold); border: 1px solid var(--hold-line); }
+  .monitor-theme .status-pill.exit { background: var(--exit-soft); color: var(--exit); border: 1px solid var(--exit-line); }
+  .monitor-theme .mobile-cards { display: none; }
+  .monitor-theme .mobile-card {
+    border: 1px solid var(--line-soft); border-radius: 10px; background: var(--bg-1); overflow: hidden;
+  }
+  .monitor-theme .detail-control-strip {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;
+  }
+  .monitor-theme .detail-pair-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .monitor-theme .detail-symbol { color: var(--t-1); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600; }
+  .monitor-theme .detail-timeframe { color: var(--t-3); font-size: 11px; }
+  .monitor-theme .mobile-card-meta { padding: 0 16px 14px; display: flex; gap: 16px; font-size: 12px; color: var(--t-2); }
+  .monitor-theme .mobile-card-meta b { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600; }
+  @media (max-width: 1080px) {
+    .monitor-theme .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 900px) {
+    .screen-help-panel { flex-direction: column; align-items: stretch; }
+    .screen-help-panel-link { width: fit-content; }
+  }
+  @media (max-width: 740px) {
+    .monitor-theme .topbar { flex-wrap: wrap; height: auto; padding: 10px 14px; }
+    .monitor-theme .search { width: 100%; }
+    .monitor-theme .kpis { grid-template-columns: 1fr 1fr; }
+    .monitor-theme .status-row { flex-wrap: wrap; }
+    .monitor-theme .status-row .desc { display: none; }
+    .monitor-theme .mobile-cards { display: grid; gap: 12px; }
+    .monitor-theme .table-wrap { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app-page monitor-page">
+  <div class="help-slot">
+  <!-- COPIED:start ScreenHelpPanel MonitorPage -->
+    <section class="screen-help-panel" aria-label="Como usar o Monitor" data-testid="screen-help-panel">
+      <div class="screen-help-panel-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="screen-help-panel-copy">
+        <h2>Como usar o Monitor</h2>
+        <!-- DELTA T6: Compra/Venda-como-estado → nomes canónicos da board -->
+        <p>Acompanhe as estrategias que voce selecionou em Favoritos. Use Em posição, Saída / cobertura, contexto, Abrir Grafico e Ver Trades sempre como apoio a decisao.</p>
+      </div>
+      <a class="screen-help-panel-link" href="ajuda.html">Ajuda</a>
+    </section>
+  <!-- COPIED:end -->
+  </div>
+
+<div class="monitor-theme monitor-theme--black">
+  <div class="monitor-page-shell" data-testid="monitor-status-tab">
+  <!-- COPIED:start chrome MonitorStatusTab: topbar, KPIs, filterbar, sections hold/exit, table.signals, mobile-cards -->
+    <div class="monitor-main">
+
+      <header class="topbar">
+        <div class="topbar-spacer"></div>
+        <label class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+          <input value="" placeholder="Buscar par, estratégia, tag..." />
+          <!-- DELTA card-718: hint ⌘K removido; sem <span class="kbd">, sem foco por teclado -->
+        </label>
+        <button class="topbar-btn" type="button">Telegram: off</button>
+        <button class="topbar-btn" type="button">Tema</button>
+        <button class="topbar-btn primary" type="button">Atualizar</button>
+      </header>
+
+      <section class="page">
+        <header class="page-head">
+          <div>
+            <h1 class="sr-only">Monitor de sinais</h1>
+            <p class="page-sub">Operações ativas e saídas acionáveis. Atualização contínua a cada 30s.</p>
+            <div class="updated"><span>Última leitura</span><span class="mono"> 14:32:10 </span><span>· BRT</span></div>
+          </div>
+        </header>
+
+        <div class="kpis">
+          <!-- DELTA card-718: KPI "Em posição" sem tag Compra -->
+          <div class="kpi">
+            <div class="kpi-label">Em posição</div>
+            <div class="kpi-val">3</div>
+            <div class="kpi-foot up">média risco 2.41%</div>
+          </div>
+          <!-- DELTA card-718: KPI "Saída / cobertura" (unificado com a seção), sem tag Venda -->
+          <div class="kpi">
+            <div class="kpi-label">Saída / cobertura</div>
+            <div class="kpi-val">2</div>
+            <div class="kpi-foot">média risco 1.87%</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Total</div>
+            <div class="kpi-val">5</div>
+            <div class="kpi-foot">sinais filtrados</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Em carteira</div>
+            <div class="kpi-val">4</div>
+            <div class="kpi-foot">ativos rastreados</div>
+          </div>
+        </div>
+
+        <section class="filterbar" aria-label="Filtros do monitor">
+          <select class="select"><option>Timeframe: Todos</option><option>1d</option></select>
+          <select class="select"><option>Estrelas: Todas</option><option>★★★ 3 estrelas</option></select>
+          <select class="select"><option>Estratégia: Todas</option><option>trend-follow</option></select>
+          <div class="filter-spacer"></div>
+          <span class="chip-count">5 resultados</span>
+        </section>
+
+        <main class="monitor-board">
+          <section data-testid="monitor-section-hold">
+            <div class="status-row">
+              <h3><span class="pip hold"></span>Em posição <span class="meta">(3)</span></h3>
+              <p class="desc">Posição ativa com gestão em acompanhamento contínuo.</p>
+            </div>
+            <div class="mobile-cards">
+              <article class="mobile-card">
+                <div class="detail-control-strip">
+                  <div class="detail-pair-summary">
+                    <span class="detail-symbol">BTC/USDT</span>
+                    <span class="status-pill hold">Em posição</span>
+                    <span class="detail-timeframe">1d</span>
+                  </div>
+                </div>
+                <div class="mobile-card-meta"><span>Preço <b>$67,420.00</b></span><span>Risco <b>2.41%</b></span></div>
+              </article>
+              <article class="mobile-card">
+                <div class="detail-control-strip">
+                  <div class="detail-pair-summary">
+                    <span class="detail-symbol">ETH/USDT</span>
+                    <span class="status-pill hold">Em posição</span>
+                    <span class="detail-timeframe">1d</span>
+                  </div>
+                </div>
+                <div class="mobile-card-meta"><span>Preço <b>$3,512.75</b></span><span>Risco <b>1.87%</b></span></div>
+              </article>
+              <article class="mobile-card">
+                <div class="detail-control-strip">
+                  <div class="detail-pair-summary">
+                    <span class="detail-symbol">SOL/USDT</span>
+                    <span class="status-pill hold">Em posição</span>
+                    <span class="detail-timeframe">1d</span>
+                  </div>
+                </div>
+                <div class="mobile-card-meta"><span>Preço <b>$172.30</b></span><span>Risco <b>2.05%</b></span></div>
+              </article>
+            </div>
+            <div class="table-wrap">
+                <table class="signals">
+                    <thead>
+                        <tr>
+                            <th style="width:32px"></th>
+                            <th>Par / Estratégia</th>
+                            <th>Status</th>
+                            <th>Preço</th>
+                            <th>Distância</th>
+                            <th class="col-spark">7d</th>
+                            <th>Risco até stop</th>
+                            <th class="col-tags">Tags</th>
+                            <th class="actions-cell"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td></td>
+                            <td><div class="pair-cell"><div class="pair-icon">BTC</div><div><div class="pair-name">BTC/USDT<span class="pair-tf">1d</span></div><div class="pair-strat">trend-follow</div></div></div></td>
+                            <td><span class="status-pill hold">Em posição</span></td>
+                            <td>$67,420.00</td>
+                            <td>3.12%</td>
+                            <td>+4,1%</td>
+                            <td>2.41%</td>
+                            <td class="tag-cell">trend-follow ★★★</td>
+                            <td class="row-actions"><button class="topbar-btn" type="button">Abrir Gráfico</button><button class="topbar-btn" type="button">Ver Trades</button><button class="topbar-btn" type="button">Operar</button></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td><div class="pair-cell"><div class="pair-icon">ETH</div><div><div class="pair-name">ETH/USDT<span class="pair-tf">1d</span></div><div class="pair-strat">trend-follow</div></div></div></td>
+                            <td><span class="status-pill hold">Em posição</span></td>
+                            <td>$3,512.75</td>
+                            <td>1.94%</td>
+                            <td>+2,8%</td>
+                            <td>1.87%</td>
+                            <td class="tag-cell">trend-follow ★★</td>
+                            <td class="row-actions"><button class="topbar-btn" type="button">Operar</button></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td><div class="pair-cell"><div class="pair-icon">SOL</div><div><div class="pair-name">SOL/USDT<span class="pair-tf">1d</span></div><div class="pair-strat">breakout</div></div></div></td>
+                            <td><span class="status-pill hold">Em posição</span></td>
+                            <td>$172.30</td>
+                            <td>2.18%</td>
+                            <td>+6,3%</td>
+                            <td>2.05%</td>
+                            <td class="tag-cell">breakout ★</td>
+                            <td class="row-actions"><button class="topbar-btn" type="button">Operar</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+          </section>
+
+          <section data-testid="monitor-section-exit">
+            <div class="status-row">
+              <h3><span class="pip exit"></span>Saída / cobertura <span class="meta">(2)</span></h3>
+              <p class="desc">Saída ou cobertura acionável para nova análise.</p>
+            </div>
+            <div class="mobile-cards">
+              <article class="mobile-card">
+                <div class="detail-control-strip">
+                  <div class="detail-pair-summary">
+                    <span class="detail-symbol">DOGE/USDT</span>
+                    <span class="status-pill exit">Saída / cobertura</span>
+                    <span class="detail-timeframe">1d</span>
+                  </div>
+                </div>
+                <div class="mobile-card-meta"><span>Preço <b>$0.1582</b></span><span>Risco <b>0.64%</b></span></div>
+              </article>
+              <article class="mobile-card">
+                <div class="detail-control-strip">
+                  <div class="detail-pair-summary">
+                    <span class="detail-symbol">ADA/USDT</span>
+                    <span class="status-pill exit">Saída / cobertura</span>
+                    <span class="detail-timeframe">1d</span>
+                  </div>
+                </div>
+                <div class="mobile-card-meta"><span>Preço <b>$0.4521</b></span><span>Risco <b>0.41%</b></span></div>
+              </article>
+            </div>
+            <div class="table-wrap">
+                <table class="signals">
+                    <thead>
+                        <tr>
+                            <th style="width:32px"></th>
+                            <th>Par / Estratégia</th>
+                            <th>Status</th>
+                            <th>Preço</th>
+                            <th>Distância</th>
+                            <th class="col-spark">7d</th>
+                            <th>Risco até stop</th>
+                            <th class="col-tags">Tags</th>
+                            <th class="actions-cell"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td></td>
+                            <td><div class="pair-cell"><div class="pair-icon">DOGE</div><div><div class="pair-name">DOGE/USDT<span class="pair-tf">1d</span></div><div class="pair-strat">mean-revert</div></div></div></td>
+                            <td><span class="status-pill exit">Saída / cobertura</span></td>
+                            <td>$0.1582</td>
+                            <td>0.64%</td>
+                            <td>-1,2%</td>
+                            <td>0.64%</td>
+                            <td class="tag-cell">mean-revert ★★</td>
+                            <td class="row-actions"><button class="topbar-btn" type="button">Operar</button></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td><div class="pair-cell"><div class="pair-icon">ADA</div><div><div class="pair-name">ADA/USDT<span class="pair-tf">1d</span></div><div class="pair-strat">trend-follow</div></div></div></td>
+                            <td><span class="status-pill exit">Saída / cobertura</span></td>
+                            <td>$0.4521</td>
+                            <td>0.41%</td>
+                            <td>-0,8%</td>
+                            <td>0.41%</td>
+                            <td class="tag-cell">trend-follow ★</td>
+                            <td class="row-actions"><button class="topbar-btn" type="button">Operar</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+          </section>
+        </main>
+      </section>
+<!-- COPIED:end -->
+
+    </div>
+  </div>
+</div>
+</div>
+</body>
+</html>

@@ -3193,15 +3193,6 @@ select.input option {
   fill: none;
 }
 
-.monitor-theme .kbd {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10px;
-  color: var(--t-4);
-  border: 1px solid var(--line);
-  padding: 1px 5px;
-  border-radius: 4px;
-}
-
 .monitor-theme .topbar-btn {
   display: inline-flex;
   align-items: center;
@@ -3337,15 +3328,6 @@ select.input option {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.monitor-theme .kpi-label .tag {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9.5px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: var(--bg-3);
-  color: var(--t-2);
 }
 
 .monitor-theme .kpi-val {
@@ -3484,14 +3466,6 @@ select.input option {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.monitor-theme .status-section-label {
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .monitor-theme .status-row .pip {
