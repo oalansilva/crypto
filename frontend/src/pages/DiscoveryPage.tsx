@@ -37,6 +37,7 @@ type Sweep = {
   succeeded: number
   failed: number
   skipped: number
+  insufficient_sample?: number
   processed: number
   terminal_reason: string | null
   terminal_code: string | null
@@ -55,6 +56,7 @@ type HistoryRun = {
   succeeded: number
   failed: number
   skipped: number
+  insufficient_sample?: number
   snapshot_hash: string | null
   created_at: string | null
 }
@@ -612,13 +614,20 @@ export function DiscoveryPage() {
   // Definido antes de startSweep/restoreSession para satisfazer dependências.
   const loadPartials = useCallback(async (sweepId: string, m: Metric) => {
     try {
-      const params = new URLSearchParams({ metric: m, offset: '0', limit: '5' })
+      const params = new URLSearchParams({
+        metric: m,
+        offset: '0',
+        limit: '5',
+        exclude_eligibility: 'insufficient_sample',
+      })
       const res = await authFetch(
         `${API_BASE_URL}/combos/discovery/sweeps/${sweepId}/leaderboard?${params.toString()}`,
       )
       if (!res.ok) return
       const data = await res.json()
-      setPartials(data.results || [])
+      setPartials(
+        (data.results || []).filter((row: LeaderboardRow) => row.eligibility !== 'insufficient_sample'),
+      )
     } catch {
       /* parciais são auxiliares; o progresso segue */
     }
@@ -1598,7 +1607,7 @@ export function DiscoveryPage() {
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-tertiary)]">
                   <span data-testid="counter-invariant">
-                    {activeSweep.processed} processadas = {activeSweep.succeeded} sucesso + {activeSweep.failed} falha + {activeSweep.skipped} ignoradas
+                    {activeSweep.processed} processadas = {activeSweep.succeeded} sucesso + {activeSweep.failed} falha + {activeSweep.skipped} ignoradas + {activeSweep.insufficient_sample ?? 0} amostra insuficiente
                   </span>
                   <span>Limites: 8 global · 1 por sweep · fila justa</span>
                   {activeSweep.terminal_reason ? <span>terminal: {activeSweep.terminal_reason}</span> : null}
@@ -2263,13 +2272,19 @@ export function DiscoveryPage() {
                 </thead>
                 <tbody>
                   {rows.map((row) => {
-                    const lowSample = row.eligibility !== 'eligible'
+                    const insufficient = row.eligibility === 'insufficient_sample'
+                    const lowSample = row.eligibility === 'low_sample'
                     const duplicate = row.dedup_state === 'duplicate_favorite'
                     const promoted = row.dedup_state === 'already_promoted'
                     const promoteDisabled = busy || promoting || lowSample || duplicate || promoted
                     const expanded = expandedRows.has(row.result_id)
                     return (
-                      <tr key={row.result_id} className="result-row">
+                      <tr
+                        key={row.result_id}
+                        className="result-row"
+                        data-eligibility={row.eligibility}
+                        data-testid={insufficient ? 'row-insufficient' : undefined}
+                      >
                         <td className="rank-cell" data-label="Rank global">
                           <span className="rank-cell-value">{row.rank ?? '—'}</span>
                         </td>
@@ -2284,10 +2299,13 @@ export function DiscoveryPage() {
                               </span>
                             ) : null}
                             <span className="candidate-meta">
-                              {row.result_id} · cobertura {fmtPct(row.coverage)}
+                              {row.result_id} · cobertura {insufficient ? 'N/A' : fmtPct(row.coverage)}
                               {fmtParams(row.parameters) ? ` · ${fmtParams(row.parameters)}` : ''}
                               {row.direction === 'short' ? ' · benchmark B&H long-only' : ''}
                             </span>
+                            {insufficient ? (
+                              <span className="sample-badge" data-testid="seal-insufficient">Amostra insuficiente</span>
+                            ) : null}
                             {lowSample ? <span className="sample-badge">Baixa amostra</span> : null}
                             {duplicate ? (
                               <span className="dedup-note" title={`Promoção bloqueada: equivalente ao favorito ativo ${row.dedup_reference ?? ''}`}>
@@ -2321,11 +2339,11 @@ export function DiscoveryPage() {
                             ) : null}
                           </div>
                         </td>
-                        <td className={`number ${row.calmar_ratio != null && row.calmar_ratio < 0 ? 'negative' : ''}`} data-label="Calmar">
-                          {fmtNum(row.calmar_ratio)}
+                        <td className={`number ${insufficient ? 'na' : ''} ${!insufficient && row.calmar_ratio != null && row.calmar_ratio < 0 ? 'negative' : ''}`} data-label="Calmar">
+                          {insufficient ? 'N/A' : fmtNum(row.calmar_ratio)}
                         </td>
-                        <td className="number negative" data-label="Maximum Drawdown">{fmtDrawdown(row.max_drawdown)}</td>
-                        <td className="number" data-label="Trades/cobertura">{row.trades_count ?? 'N/A'} · {fmtPct(row.coverage)}</td>
+                        <td className={`number ${insufficient ? 'na' : 'negative'}`} data-label="Maximum Drawdown">{insufficient ? 'N/A' : fmtDrawdown(row.max_drawdown)}</td>
+                        <td className={`number ${insufficient ? 'na' : ''}`} data-label="Trades/cobertura">{insufficient ? 'N/A' : `${row.trades_count ?? 'N/A'} · ${fmtPct(row.coverage)}`}</td>
                         <td className="action-cell" data-label="Ação">
                           {promoted ? (
                             <span
@@ -2338,6 +2356,7 @@ export function DiscoveryPage() {
                             </span>
                           ) : (
                             <div className="action-stack">
+                              {insufficient ? null : (
                               <button
                                 type="button"
                                 disabled={promoteDisabled}
@@ -2358,6 +2377,7 @@ export function DiscoveryPage() {
                               >
                                 {lowSample ? 'Baixa amostra' : duplicate ? 'Já existe' : 'Promover'}
                               </button>
+                              )}
                               <button
                                 type="button"
                                 disabled={busy || discarding}
