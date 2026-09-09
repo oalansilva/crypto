@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import pytest
@@ -11,7 +11,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
-from app.services.discovery_service import MIN_ELIGIBLE_TRADES
+from app.services.discovery_service import (
+    DiscoveryService,
+    MIN_ELIGIBLE_TRADES,
+    build_strategy_identity,
+)
 from app.tasks.discovery_tasks import (
     DISCOVERY_SPLIT_TRAIN_RATIO,
     evaluate_listing_sample,
@@ -372,4 +376,289 @@ class TestReconcileFourTerm:
         assert summary["processed"] == 12 + 1 + 1 + 4
         assert summary["processed"] == summary["total"]
         assert summary["state"] == "partial_failure"
+        db.close()
+
+
+def test_evaluate_listing_split_valueerror_is_insufficient(monkeypatch):
+    _patch_provider(monkeypatch, _ohlcv_frame(5))
+    monkeypatch.setattr(
+        "app.services.combo_optimizer.split_train_holdout",
+        lambda *_a, **_k: (_ for _ in ()).throw(ValueError("split refused")),
+    )
+    insufficient, listing_len, train_len = evaluate_listing_sample(
+        symbol="BLZ/USDT",
+        timeframe="1d",
+        start_date="2024-01-01",
+        end_date="2024-01-06",
+    )
+    assert insufficient is True
+    assert listing_len == 5
+    assert train_len == 0
+
+
+def _result_kwargs(combo, *, result_id: str, eligibility: str, identity: str):
+    now = datetime.now(timezone.utc)
+    return {
+        "id": result_id,
+        "sweep_id": combo.sweep_id,
+        "combination_id": combo.id,
+        "template_id": combo.template_id,
+        "template_version": "v1",
+        "symbol": combo.symbol,
+        "timeframe": combo.timeframe,
+        "direction": combo.direction,
+        "parameters": {},
+        "start_at": now,
+        "end_at": now,
+        "metrics": {},
+        "strategy_identity_key": identity,
+        "evidence_fingerprint": f"fp-{result_id}",
+        "eligibility": eligibility,
+    }
+
+
+class TestRunCombinationBranches:
+    def test_fetch_exception_marks_failed(self, postgres_isolation, unit_database_url, monkeypatch):
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        _ensure_schema(engine)
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        _sweep, combo = _seed_running(db, sweep_id="sw-876-boom")
+        _patch_metadata(monkeypatch)
+
+        class BoomProvider:
+            def fetch_ohlcv(self, **_kwargs):
+                raise RuntimeError("timeout")
+
+        monkeypatch.setattr(
+            "app.services.market_data_providers.get_market_data_provider",
+            lambda *_a, **_k: BoomProvider(),
+        )
+        monkeypatch.setattr(
+            "app.services.market_data_providers.resolve_data_source_for_symbol",
+            lambda *_a, **_k: "ccxt",
+        )
+        monkeypatch.setattr(
+            "app.services.market_data_providers.validate_data_source_timeframe",
+            lambda *_a, **_k: "ccxt",
+        )
+        try:
+            run_combination(db, combo, owner="worker-876")
+            db.refresh(combo)
+            assert combo.state == "failed"
+            assert combo.attempts == 1
+            assert combo.result_id is None
+        finally:
+            db.close()
+
+    def test_empty_listing_persists_without_grid(
+        self, postgres_isolation, unit_database_url, monkeypatch
+    ):
+        from app.models_discovery import DiscoveryResult
+
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        _ensure_schema(engine)
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        _sweep, combo = _seed_running(db, sweep_id="sw-876-empty")
+        _patch_provider(monkeypatch, pd.DataFrame())
+        _patch_metadata(monkeypatch)
+        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", _BoomOptimizer)
+        try:
+            run_combination(db, combo, owner="worker-876")
+            db.refresh(combo)
+            result = db.query(DiscoveryResult).filter(DiscoveryResult.id == combo.result_id).one()
+            assert combo.state == "insufficient_sample"
+            assert result.eligibility == "insufficient_sample"
+            assert "listagem" in (result.eligibility_reason or "")
+        finally:
+            db.close()
+
+    def test_insufficient_redelivery_reuses_existing_result(
+        self, postgres_isolation, unit_database_url, monkeypatch
+    ):
+        from app.models_discovery import DiscoveryResult
+
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        _ensure_schema(engine)
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        _sweep, combo = _seed_running(db, sweep_id="sw-876-redeliver")
+        _patch_provider(monkeypatch, _ohlcv_frame(27))
+        _patch_metadata(monkeypatch)
+        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", _BoomOptimizer)
+        try:
+            run_combination(db, combo, owner="worker-876")
+            db.refresh(combo)
+            first_id = combo.result_id
+            combo.state = "running"
+            db.commit()
+            run_combination(db, combo, owner="worker-876")
+            db.refresh(combo)
+            assert combo.state == "insufficient_sample"
+            assert combo.result_id == first_id
+            assert db.query(DiscoveryResult).count() == 1
+        finally:
+            db.close()
+
+    def test_optimizer_redelivery_keeps_insufficient_eligibility(
+        self, postgres_isolation, unit_database_url, monkeypatch
+    ):
+        from app.models_discovery import DiscoveryResult
+
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        _ensure_schema(engine)
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        _sweep, combo = _seed_running(db, sweep_id="sw-876-opt-exist")
+        _patch_provider(monkeypatch, _ohlcv_frame(50))
+        _patch_metadata(monkeypatch)
+        identity = build_strategy_identity(
+            template_id=combo.template_id,
+            parameters={"direction": "long"},
+            symbol=combo.symbol,
+            timeframe=combo.timeframe,
+            direction=combo.direction,
+            template_metadata={
+                "name": "MACD_Cross",
+                "direction": "long",
+                "indicators": [],
+                "optimization_schema": {},
+            },
+        )
+        db.add(
+            DiscoveryResult(
+                **_result_kwargs(
+                    combo,
+                    result_id="RS-EXIST-INS",
+                    eligibility="insufficient_sample",
+                    identity=identity,
+                )
+            )
+        )
+        db.commit()
+        start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+        class FakeOptimizer:
+            def run_optimization(self, **_kwargs):
+                return {
+                    "best_metrics": {
+                        "sharpe_ratio": 1.2,
+                        "profit_factor": 1.5,
+                        "max_drawdown": 0.15,
+                        "win_rate": 0.55,
+                        "cagr": 0.42,
+                        "calmar_ratio": 2.8,
+                        "benchmark": {"cagr": 0.18},
+                    },
+                    "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 40,
+                    "candles": [
+                        {"timestamp_utc": start.isoformat(), "close": 1.0},
+                        {"timestamp_utc": end.isoformat(), "close": 1.0},
+                    ],
+                    "best_parameters": {"direction": "long"},
+                    "data_source": "ccxt",
+                }
+
+        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", FakeOptimizer)
+        try:
+            run_combination(db, combo, owner="worker-876")
+            db.refresh(combo)
+            assert combo.state == "insufficient_sample"
+            assert combo.result_id == "RS-EXIST-INS"
+        finally:
+            db.close()
+
+
+class TestLeaseRecoveryInsufficient:
+    def _seed_expired(self, db, *, sweep_id: str, eligibility: str, result_id: str):
+        from app.models_discovery import DiscoveryResult
+
+        sweep, combo = _seed_running(db, sweep_id=sweep_id)
+        combo.lease_owner = "worker-dead"
+        combo.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=5)
+        combo.result_id = result_id
+        db.add(
+            DiscoveryResult(
+                **_result_kwargs(
+                    combo,
+                    result_id=result_id,
+                    eligibility=eligibility,
+                    identity=f"id-{result_id}",
+                )
+            )
+        )
+        db.commit()
+        return sweep, combo
+
+    def test_scoped_release_restores_insufficient_sample(
+        self, postgres_isolation, unit_database_url
+    ):
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        _ensure_schema(engine)
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        sweep, combo = self._seed_expired(
+            db, sweep_id="sw-876-lease-ins", eligibility="insufficient_sample", result_id="RS-L-INS"
+        )
+        n = DiscoveryService()._release_expired_leases_for_sweep(db, sweep.id)
+        db.refresh(combo)
+        assert n == 1
+        assert combo.state == "insufficient_sample"
+        db.close()
+
+    def test_scoped_release_restores_succeeded(self, postgres_isolation, unit_database_url):
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        _ensure_schema(engine)
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        sweep, combo = self._seed_expired(
+            db, sweep_id="sw-876-lease-ok", eligibility="eligible", result_id="RS-L-OK"
+        )
+        n = DiscoveryService()._release_expired_leases_for_sweep(db, sweep.id)
+        db.refresh(combo)
+        assert n == 1
+        assert combo.state == "succeeded"
+        db.close()
+
+    def test_global_release_restores_insufficient_sample(
+        self, postgres_isolation, unit_database_url
+    ):
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        _ensure_schema(engine)
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        _sweep, combo = self._seed_expired(
+            db,
+            sweep_id="sw-876-lease-g-ins",
+            eligibility="insufficient_sample",
+            result_id="RS-G-INS",
+        )
+        n = DiscoveryService().release_expired_leases(db=db)
+        db.refresh(combo)
+        assert n == 1
+        assert combo.state == "insufficient_sample"
+        db.close()
+
+    def test_global_release_restores_succeeded(self, postgres_isolation, unit_database_url):
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        _ensure_schema(engine)
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        _sweep, combo = self._seed_expired(
+            db, sweep_id="sw-876-lease-g-ok", eligibility="low_sample", result_id="RS-G-OK"
+        )
+        n = DiscoveryService().release_expired_leases(db=db)
+        db.refresh(combo)
+        assert n == 1
+        assert combo.state == "succeeded"
         db.close()
