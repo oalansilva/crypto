@@ -1290,9 +1290,7 @@ class DiscoveryService:
         for row in expired:
             if row.result_id:
                 result = (
-                    db.query(DiscoveryResult)
-                    .filter(DiscoveryResult.id == row.result_id)
-                    .first()
+                    db.query(DiscoveryResult).filter(DiscoveryResult.id == row.result_id).first()
                 )
                 if result is not None and result.eligibility == "insufficient_sample":
                     row.state = "insufficient_sample"

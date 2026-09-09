@@ -2294,9 +2294,10 @@ class TestOrchestratorTasks:
         )
         snap = service.get_sweep(body["sweep_id"], db)
         assert snap["insufficient_sample"] == 0
-        assert snap["processed"] == snap["succeeded"] + snap["failed"] + snap["skipped"] + snap[
-            "insufficient_sample"
-        ]
+        assert (
+            snap["processed"]
+            == snap["succeeded"] + snap["failed"] + snap["skipped"] + snap["insufficient_sample"]
+        )
         db.close()
 
     def test_orchestrator_enqueue_and_run_with_missing_sweep(self, engine_factory, monkeypatch):

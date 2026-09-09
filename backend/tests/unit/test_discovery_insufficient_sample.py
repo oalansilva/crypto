@@ -252,9 +252,7 @@ class TestRunCombinationListingGate:
 
 
 class TestReconcileFourTerm:
-    def test_insufficient_only_completes(
-        self, postgres_isolation, unit_database_url
-    ):
+    def test_insufficient_only_completes(self, postgres_isolation, unit_database_url):
         from app.models_discovery import DiscoveryCombination, DiscoverySweep
 
         engine = create_engine(unit_database_url)
@@ -297,9 +295,7 @@ class TestReconcileFourTerm:
         assert sweep.terminal_reason is None
         db.close()
 
-    def test_skipped_only_remains_operational_failure(
-        self, postgres_isolation, unit_database_url
-    ):
+    def test_skipped_only_remains_operational_failure(self, postgres_isolation, unit_database_url):
         from app.models_discovery import DiscoveryCombination, DiscoverySweep
 
         engine = create_engine(unit_database_url)
@@ -339,9 +335,7 @@ class TestReconcileFourTerm:
         assert sweep.terminal_reason == "operational_failure"
         db.close()
 
-    def test_four_term_processed_formula(
-        self, postgres_isolation, unit_database_url
-    ):
+    def test_four_term_processed_formula(self, postgres_isolation, unit_database_url):
         from app.models_discovery import DiscoveryCombination, DiscoverySweep
 
         engine = create_engine(unit_database_url)
@@ -361,12 +355,7 @@ class TestReconcileFourTerm:
             total=18,
         )
         db.add(sweep)
-        states = (
-            ["succeeded"] * 12
-            + ["failed"] * 1
-            + ["skipped"] * 1
-            + ["insufficient_sample"] * 4
-        )
+        states = ["succeeded"] * 12 + ["failed"] * 1 + ["skipped"] * 1 + ["insufficient_sample"] * 4
         for i, state in enumerate(states):
             db.add(
                 DiscoveryCombination(

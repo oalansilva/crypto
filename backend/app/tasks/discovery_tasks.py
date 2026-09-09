@@ -168,12 +168,7 @@ def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
             sweep.state = "failed"
             sweep.terminal_reason = "all_results_failed"
             sweep.completed_at = now
-        elif (
-            succeeded == 0
-            and failed == 0
-            and insufficient_sample == 0
-            and skipped > 0
-        ):
+        elif succeeded == 0 and failed == 0 and insufficient_sample == 0 and skipped > 0:
             sweep.state = "failed"
             sweep.terminal_reason = "operational_failure"
             sweep.terminal_code = "execution_reconciliation_failure"
@@ -369,9 +364,7 @@ def run_combination(
     if existing:
         # Redelivery idempotente: resultado já commitado não reexecuta.
         combination.state = (
-            "insufficient_sample"
-            if existing.eligibility == "insufficient_sample"
-            else "succeeded"
+            "insufficient_sample" if existing.eligibility == "insufficient_sample" else "succeeded"
         )
         combination.result_id = existing.id
         combination.lease_owner = owner
