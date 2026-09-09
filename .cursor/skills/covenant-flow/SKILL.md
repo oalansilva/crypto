@@ -26,7 +26,7 @@ PT-BR curto. Não diga `concluído` / `Pronto` / `publicado` até a evidência d
 
 Título `#<id>` nos dois clientes (Em Refinamento → Done técnico). Homologado e Release/lote fora. Pai orquestra: `process_event`, git, recusas, handoff, relaying do grill. **Não** grelha, não escreve OpenSpec/protótipo (exceção: só `## Design Critique` após A/B), não implementa, não review, não QA. Recusar executar outra atividade **no mesmo chat** — não pedir outro transcript. Sem Status=Pronto para Dev + `implemente`: uma frase com Status atual + “Apply só depois de Pronto para Dev (T7 teu)” + parar. Sem estado, evento, hook ou `enabled_tools` novo na FSM. `AGENTS.md` always-on não cresce com esta regra.
 
-Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd atual sem branch):
+Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd atual sem branch; `working_directory` = worktree quando a árvore existir; filho MUST NOT `move_agent_to_root`):
 
 | Atividade | Spawn |
 | --- | --- |
@@ -39,6 +39,46 @@ Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd
 T7: Alan abre o **Snapshot Impeccable** linkado no comentário do card (path / blob). O Gist OpenSpec **não** é a crítica.
 
 Handoff de Design/Apply/Review registra **proxies**: palavras de `design.md`, bytes de HTML gerado vs copiado (`cp`/clone = copied; delta = generated; sem protótipo = `N/A`), número de spawns. Sem parser de usage Cursor/Grok e sem dashboard.
+
+## Modos Cursor (terminal vs Desktop+SSH)
+
+Dois modos do **mesmo** cliente Cursor nesta VM — não abandonar um modo e não forçar um só host:
+
+1. **modo terminal** — Agent/CLI no terminal Linux desta VM.
+2. **modo Desktop+SSH** — Cursor Desktop Windows + Remote SSH a esta VM.
+
+Cada etapa grelha / Design / Apply / review / QA / Done técnico passa **nos dois**. Grelhar num e Apply noutro **não** conta. Homologado / Release / lote fora deste chat. Grok / OpenCode / dsh fora (InstantiationService e Landlock/`uid_map` são Cursor; #822 não autoriza alargar). Destape de pai mudo pós-`completed` = #879. Hang do host (S2) = #879. Unbound `develop` = #864. Impeccable cwd = #822. Um chat `#<id>` = #729 (título **não** `#<id> Apply`). MUST NOT dual-write lei em `.dsh/` nem `.grok/` nem `.opencode/` só por estes modos.
+
+### Pasta (Q2)
+
+Depois do Apply arrancar e existir worktree `card-<id>-*`, a raiz **visível** (explorer) é essa pasta.
+
+- **modo Desktop+SSH Windows desta VM:** o pai **MUST NOT** chamar MCP `move_agent_to_root` (testemunha: `InstantiationService has been disposed`). Bind da raiz visível = **janela Remote-SSH nova** no worktree `card-<id>-*`, título `#<id>`. Operador MUST NOT File > Open. MUST NOT reload da **mesma** janela. MUST NOT retry do MCP após dispose. `working_directory` sozinho não satisfaz Q2 se o explorer ainda é `source` / `environments.dev.source`.
+- URI (MUST = janela **nova**, InstantiationService nova; MUST NOT MCP): `vscode-remote://ssh-remote+<esta-VM><abs-path-worktree>`. Comando host residual (P3): `cursor --folder-uri <uri>` **só** se abrir janela nova **sem** dispose do serviço actual; equivalente que **não** dispose = Remote-SSH «Open Folder in New Window». Diálogo de aceite da janela nova **não** conta como Q2.
+- **modo terminal:** o pai MAY `move_agent_to_root` ou já nascer com cwd no worktree.
+- Filho isolado (qualquer modo): **MUST NOT** `move_agent_to_root`.
+
+### Comando (Q3)
+
+Shell do fluxo (git do runbook, `process_event`, pytest do harness) no worktree `card-<id>-*` neste par Desktop+SSH: `required_permissions: ["all"]` no **primeiro** attempt do turno. MUST NOT `workspace_readwrite` + clique extra. Falha Landlock / `uid_map` (`Failed to write /proc/self/uid_map`) fica **visível**; ecrã em branco sem explicação não passa. Ensaio = needles; não afirmar que o host nunca pinta cartão. `.cursor/cli.json` / `sandbox.mode` **não** é contrato sem prova viva **neste** Desktop (P3). Sem pin novo. Sem overlay `clients.*.auto`.
+
+### Filho (Q4)
+
+Sucesso da etapa só com host `completed` **e** payload de retorno. `Task was interrupted by the user` sem Stop visível no turno = **kill do host** (falha deste card). Pai MUST NOT executar a etapa no Desktop em substituição. Operador MUST NOT retomar cadáver. Stop explícito = aborto: não sucesso; restage = spawn **novo**, não resume. Pai MUST NOT mutar o workbench (MCP de raiz, reload) enquanto o filho corre.
+
+### Ensaio e prova viva (Q5–Q6)
+
+Prova viva pasta + comando + filho **só** no par Windows + SSH a esta VM (QA deste card, não card inteiro, não outro PC). Grelha / Design / review / QA: ensaio (pytest needles / goldens / rubrica), não runbook-only. Destape #879 e hang S2 continuam #879.
+
+Rubrica prova viva (1.5):
+
+1. Pasta visível = worktree `card-<id>-*` (não File > Open; não só `working_directory`).
+2. Comando do fluxo no **mesmo turno** sem clique extra (`required_permissions: ["all"]` à primeira).
+3. Um filho de etapa com host `completed`.
+
+### Prompts autocontidos (grill / Design-autor / Apply / review / QA)
+
+O pai cola o bloco no spawn isolado (`inherit`, sem transcript). `working_directory` = worktree quando a árvore existir. Filho MUST NOT `move_agent_to_root`. Neste par Desktop+SSH: Shell do fluxo com `required_permissions: ["all"]` no primeiro attempt. MUST NOT `workspace_readwrite` + clique. Sucesso = host `completed`. `Task was interrupted by the user` sem Stop visível = kill do host. MUST NOT retomar cadáver. Título `#<id>` (não `#<id> Apply`).
 
 ## Colunas (Project 1)
 
