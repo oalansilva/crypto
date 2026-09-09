@@ -190,6 +190,7 @@ class TestDiscoveryRankingPersistence:
                 "optimization_schema": {},
             },
         )
+        _patch_listing_sufficient(monkeypatch)
         monkeypatch.setattr(
             "app.services.combo_optimizer.ComboOptimizer",
             FakeOptimizer,
@@ -213,6 +214,13 @@ class TestDiscoveryRankingPersistence:
         db.close()
 
 
+def _patch_listing_sufficient(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.tasks.discovery_tasks.evaluate_listing_sample",
+        lambda **_kwargs: (False, 100, 70),
+    )
+
+
 def _patch_combo_metadata(monkeypatch) -> None:
     from app.services.combo_service import ComboService
 
@@ -226,6 +234,7 @@ def _patch_combo_metadata(monkeypatch) -> None:
             "optimization_schema": {},
         },
     )
+    _patch_listing_sufficient(monkeypatch)
 
 
 def _seed_running_combination(db, *, sweep_id: str, snapshot: dict | None = None):

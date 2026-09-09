@@ -76,6 +76,13 @@ def _discovery_tables(monkeypatch):
     engine = create_engine(os.environ["DATABASE_URL"])
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "ALTER TABLE discovery_sweeps ADD COLUMN IF NOT EXISTS "
+            "insufficient_sample INTEGER NOT NULL DEFAULT 0"
+        )
+        connection.exec_driver_sql(
+            "ALTER TABLE discovery_results ALTER COLUMN eligibility TYPE VARCHAR(32)"
+        )
         connection.exec_driver_sql("DELETE FROM discovery_dedup_evidence")
         connection.exec_driver_sql("DELETE FROM discovery_outbox")
         connection.exec_driver_sql("DELETE FROM discovery_results")
@@ -1094,6 +1101,65 @@ class TestIdentityAndLeaderboard:
         assert unfiltered_total == 4
         assert [r["result_id"] for r in rows] == ["RS-B", "RS-C"]
         assert [r["rank"] for r in rows] == [2, 3]
+        db.close()
+
+    def test_insufficient_sample_on_decidir_and_excluded_from_partials(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        sweep_id = f"sw-{uuid.uuid4().hex[:8]}"
+        now = datetime.now(timezone.utc)
+        specs = [
+            ("RS-E", "BTCUSDT", 3.0, 45, "eligible"),
+            ("RS-L", "ADAUSDT", 3.2, 18, "low_sample"),
+            ("RS-I", "BLZUSDT", None, None, "insufficient_sample"),
+        ]
+        for i, (rid, symbol, calmar, trades, elig) in enumerate(specs):
+            db.add(
+                DiscoveryResult(
+                    id=rid,
+                    sweep_id=sweep_id,
+                    combination_id=960000 + i,
+                    template_id="t1",
+                    symbol=symbol,
+                    timeframe="1d",
+                    direction="long",
+                    parameters={},
+                    start_at=now,
+                    end_at=now + timedelta(days=1),
+                    metrics={},
+                    trades_count=trades,
+                    calmar_ratio=calmar,
+                    max_drawdown=None if elig == "insufficient_sample" else 0.15,
+                    coverage=None if elig == "insufficient_sample" else 0.97,
+                    strategy_identity_key=f"id-{rid}",
+                    evidence_fingerprint=f"fp-{rid}",
+                    eligibility=elig,
+                    dedup_state="unique",
+                )
+            )
+        db.commit()
+        rows, total, unfiltered_total = service.leaderboard(sweep_id, metric="calmar_ratio", db=db)
+        by_id = {r["result_id"]: r for r in rows}
+        assert total == 3
+        assert unfiltered_total == 3
+        assert by_id["RS-I"]["rank"] is None
+        assert by_id["RS-I"]["eligibility"] == "insufficient_sample"
+        assert by_id["RS-I"]["calmar_ratio"] is None
+        assert by_id["RS-I"]["trades_count"] is None
+        assert by_id["RS-E"]["rank"] == 1
+        assert by_id["RS-L"]["rank"] is None
+
+        partials, ptotal, _ = service.leaderboard(
+            sweep_id,
+            metric="calmar_ratio",
+            exclude_eligibility="insufficient_sample",
+            limit=5,
+            db=db,
+        )
+        assert all(r["eligibility"] != "insufficient_sample" for r in partials)
+        assert [r["result_id"] for r in partials] == ["RS-E", "RS-L"]
+        assert ptotal == 2
         db.close()
 
     def test_result_row_exposes_strategy_identity_fields(self):
@@ -2203,6 +2269,34 @@ class TestOrchestratorTasks:
         assert summary["state"] == "completed"
         assert summary["processed"] == summary["total"] == 1
         assert service.count_claimable(sweep_id, db=db) == 0
+        db.close()
+
+    def test_serialize_exposes_fourth_counter_default_zero(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        preflight = _preflight_payload(service)
+        body, _ = service.create_sweep(
+            actor="admin-1",
+            idempotency_key="ins-key-0001",
+            snapshot_token=preflight["snapshot_token"],
+            payload={
+                "templates": ["multi_ma_crossover"],
+                "symbols": ["BTCUSDT"],
+                "timeframes": ["1d"],
+                "directions": ["long"],
+                "start_date": "2024-01-01",
+                "end_date": "2024-12-31",
+                "period_type": "all",
+                "snapshot_hash": preflight["snapshot_hash"],
+            },
+            db=db,
+        )
+        snap = service.get_sweep(body["sweep_id"], db)
+        assert snap["insufficient_sample"] == 0
+        assert snap["processed"] == snap["succeeded"] + snap["failed"] + snap["skipped"] + snap[
+            "insufficient_sample"
+        ]
         db.close()
 
     def test_orchestrator_enqueue_and_run_with_missing_sweep(self, engine_factory, monkeypatch):

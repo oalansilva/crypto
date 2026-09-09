@@ -73,6 +73,48 @@ def enqueue_sweep_orchestrator(sweep_id: str, generation: int) -> None:
         raise
 
 
+def evaluate_listing_sample(
+    *,
+    symbol: str,
+    timeframe: str,
+    start_date: str | None,
+    end_date: str | None,
+) -> tuple[bool, int, int]:
+    """Count listing + in-sample bars. Does not instantiate ComboOptimizer.
+
+    Returns (insufficient, listing_len, train_len). Empty or <2 bars, or
+    train bars strictly below MIN_ELIGIBLE_TRADES, is insufficient. Uses the
+    same fetch window as ComboOptimizer («todo o histórico» → 2017-01-01).
+    """
+    from app.services.combo_optimizer import split_train_holdout
+    from app.services.market_data_providers import (
+        get_market_data_provider,
+        resolve_data_source_for_symbol,
+        validate_data_source_timeframe,
+    )
+
+    fetch_start = start_date or "2017-01-01"
+    fetch_end = end_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    inferred = resolve_data_source_for_symbol(symbol, "ccxt")
+    source = validate_data_source_timeframe(inferred, timeframe)
+    provider = get_market_data_provider(source)
+    df = provider.fetch_ohlcv(
+        symbol=symbol,
+        timeframe=timeframe,
+        since_str=fetch_start,
+        until_str=fetch_end,
+    )
+    listing_len = 0 if df is None else int(len(df))
+    if listing_len < 2:
+        return True, listing_len, 0
+    try:
+        train, _holdout = split_train_holdout(df, DISCOVERY_SPLIT_TRAIN_RATIO)
+    except ValueError:
+        return True, listing_len, 0
+    train_len = int(len(train))
+    return train_len < MIN_ELIGIBLE_TRADES, listing_len, train_len
+
+
 def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
     """Núcleo da reconciliação, flush-only sem commit próprio (card #853).
 
@@ -100,20 +142,23 @@ def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
     succeeded = sum(1 for r in rows if r.state == "succeeded")
     failed = sum(1 for r in rows if r.state == "failed")
     skipped = sum(1 for r in rows if r.state == "skipped")
+    insufficient_sample = sum(1 for r in rows if r.state == "insufficient_sample")
     pending = sum(1 for r in rows if r.state == "pending")
     running = sum(1 for r in rows if r.state == "running")
 
+    processed = succeeded + failed + skipped + insufficient_sample
     sweep.succeeded = succeeded
     sweep.failed = failed
     sweep.skipped = skipped
-    sweep.processed = succeeded + failed + skipped
+    sweep.insufficient_sample = insufficient_sample
+    sweep.processed = processed
     sweep.updated_at = now
 
     if sweep.state == "cancelling" and pending == 0 and running == 0:
         sweep.state = "cancelled"
         sweep.completed_at = now
     elif sweep.state == "running" and pending == 0 and running == 0:
-        if failed == 0 and succeeded > 0:
+        if failed == 0 and (succeeded > 0 or insufficient_sample > 0):
             sweep.state = "completed"
             sweep.completed_at = now
         elif succeeded > 0 and failed > 0:
@@ -123,7 +168,12 @@ def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
             sweep.state = "failed"
             sweep.terminal_reason = "all_results_failed"
             sweep.completed_at = now
-        elif succeeded == 0 and failed == 0 and skipped > 0:
+        elif (
+            succeeded == 0
+            and failed == 0
+            and insufficient_sample == 0
+            and skipped > 0
+        ):
             sweep.state = "failed"
             sweep.terminal_reason = "operational_failure"
             sweep.terminal_code = "execution_reconciliation_failure"
@@ -137,9 +187,10 @@ def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
         "succeeded": succeeded,
         "failed": failed,
         "skipped": skipped,
+        "insufficient_sample": insufficient_sample,
         "pending": pending,
         "running": running,
-        "processed": succeeded + failed + skipped,
+        "processed": processed,
         "total": sweep.total,
     }
 
@@ -152,7 +203,7 @@ def reconcile_sweep(sweep_id: str, db: Session) -> dict[str, Any]:
     os chamadores atuais. O comando `cancel` usa o núcleo diretamente no seu
     commit único. Em caminhos terminais (cancelled/failed), toda combinação
     ainda não terminal vira skipped: processed = succeeded + failed + skipped
-    = total em qualquer terminal (spec discovery-sweep).
+    + insufficient_sample = total em qualquer terminal (spec discovery-sweep).
     """
     service = DiscoveryService()
     locked = service._lock_sweep(db, sweep_id)
@@ -200,11 +251,40 @@ def run_combination(
         db.commit()
         return
 
+    snapshot = sweep.snapshot or {}
+    start_date, end_date = resolve_optimizer_date_range(snapshot)
+    try:
+        insufficient, listing_len, train_len = evaluate_listing_sample(
+            symbol=combination.symbol,
+            timeframe=combination.timeframe,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Discovery listing fetch failed: %s %s: %s",
+            combination.sweep_id,
+            combination.id,
+            exc,
+        )
+        combination.state = "failed"
+        combination.attempts += 1
+        combination.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        return
+    if insufficient:
+        _persist_insufficient_sample(
+            db,
+            combination,
+            owner,
+            listing_len=listing_len,
+            train_len=train_len,
+        )
+        return
+
     service = DiscoveryService()
     from app.services.combo_optimizer import ComboOptimizer
 
-    snapshot = sweep.snapshot or {}
-    start_date, end_date = resolve_optimizer_date_range(snapshot)
     try:
         optimizer = ComboOptimizer()
         result = optimizer.run_optimization(
@@ -288,7 +368,11 @@ def run_combination(
     )
     if existing:
         # Redelivery idempotente: resultado já commitado não reexecuta.
-        combination.state = "succeeded"
+        combination.state = (
+            "insufficient_sample"
+            if existing.eligibility == "insufficient_sample"
+            else "succeeded"
+        )
         combination.result_id = existing.id
         combination.lease_owner = owner
         combination.updated_at = datetime.now(timezone.utc)
@@ -346,6 +430,109 @@ def run_combination(
         combination.id,
         result_id,
         "eligible" if eligible else "low_sample",
+    )
+
+
+def _persist_insufficient_sample(
+    db: Session,
+    combination: DiscoveryCombination,
+    owner: str,
+    *,
+    listing_len: int,
+    train_len: int,
+) -> None:
+    """Persist a Decidir-visible result without running the optimizer grid."""
+    service = DiscoveryService()
+    now = datetime.now(timezone.utc)
+    metadata = service.combo_service.get_template_metadata(combination.template_id) or {}
+    identity = build_strategy_identity(
+        template_id=combination.template_id,
+        parameters={},
+        symbol=combination.symbol,
+        timeframe=combination.timeframe,
+        direction=combination.direction,
+        template_metadata=metadata,
+    )
+    existing = (
+        db.query(DiscoveryResult)
+        .filter(
+            DiscoveryResult.strategy_identity_key == identity,
+            DiscoveryResult.sweep_id == combination.sweep_id,
+        )
+        .first()
+    )
+    if existing:
+        combination.state = "insufficient_sample"
+        combination.result_id = existing.id
+        combination.lease_owner = owner
+        combination.updated_at = now
+        db.commit()
+        return
+
+    if listing_len < 2:
+        reason = f"listagem {listing_len} barras"
+    else:
+        reason = f"treino {train_len} < mínimo {MIN_ELIGIBLE_TRADES}"
+    evidence = build_evidence_fingerprint(
+        start_at=now,
+        end_at=now,
+        candle_source=None,
+        candle_version=None,
+        expected_candles=None,
+        observed_valid_candles=listing_len or None,
+        coverage=None,
+        fees_slippage=None,
+        metrics={},
+    )
+    result_id = f"RS-{uuid.uuid4().hex[:10].upper()}"
+    db.add(
+        DiscoveryResult(
+            id=result_id,
+            sweep_id=combination.sweep_id,
+            combination_id=combination.id,
+            template_id=combination.template_id,
+            template_version="v1",
+            symbol=combination.symbol,
+            timeframe=combination.timeframe,
+            direction=combination.direction,
+            parameters={},
+            start_at=now,
+            end_at=now,
+            candle_source=None,
+            candle_version=None,
+            expected_candles=None,
+            observed_valid_candles=listing_len or None,
+            coverage=None,
+            fees_slippage=None,
+            metrics={},
+            trades_count=None,
+            win_rate=None,
+            sharpe_ratio=None,
+            profit_factor=None,
+            max_drawdown=None,
+            calmar_ratio=None,
+            cagr=None,
+            benchmark_cagr=None,
+            delta_cagr_vs_bh=None,
+            strategy_identity_key=identity,
+            evidence_fingerprint=evidence,
+            eligibility="insufficient_sample",
+            eligibility_reason=reason[:128],
+            dedup_state="unique",
+        )
+    )
+    combination.state = "insufficient_sample"
+    combination.result_id = result_id
+    combination.lease_owner = owner
+    combination.updated_at = now
+    db.commit()
+    logger.info(
+        "Discovery combination insufficient_sample: sweep=%s combination=%s result=%s listing=%s train=%s",
+        combination.sweep_id,
+        combination.id,
+        result_id,
+        listing_len,
+        train_len,
     )
 
 
