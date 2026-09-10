@@ -15,7 +15,9 @@ def _load_scan_module(name: str):
     return module
 
 
-def test_cron_wrapper_block_prod_bot_ignores_json_and_token_leftovers(tmp_path, monkeypatch, capsys):
+def test_cron_wrapper_block_prod_bot_ignores_json_and_token_leftovers(
+    tmp_path, monkeypatch, capsys
+):
     module = _load_scan_module("run_monitor_telegram_alert_scan_block_test")
 
     secret_path = tmp_path / "runtime-secrets.json"
