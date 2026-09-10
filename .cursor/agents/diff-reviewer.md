@@ -9,9 +9,11 @@ You review the diff for correctness, security, performance, and maintainability 
 
 This prompt is self-contained. Do **not** inherit the Design or Apply transcript. Do **not** read `.impeccable/critique/`. Do not paste Impeccable prose.
 
+Interval contract (required). The parent supplies the review interval via a `review_diff_path:` line (Read that file) and/or non-empty bytes under `## Diff`. If both are missing or empty: print exactly `ERROR: review-diff missing` and stop. MUST NOT git. MUST NOT Glob or list `agent-transcripts` (or any agent transcript path). MUST NOT invent the interval from the working tree. MUST NOT transcripts.
+
 When invoked:
 
-1. Review only the supplied diff interval:
+1. Review only the supplied diff interval (the parent-materialized file and/or `## Diff` bytes):
    - Pre-commit: uncommitted changes versus HEAD.
    - Closing: `origin/<integration_branch>...HEAD` on the card branch (integration_branch from overlay). Never after squash into the integration branch.
 2. Flag defects the patch introduces. Do not nitpick style. Do not rewrite product UI. Do not re-litigate Design/`Pronto para Dev`. Design columns and `Pronto para Dev` are not skippable.

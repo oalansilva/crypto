@@ -27,6 +27,13 @@
       {
         "command": "test -f .cursor/hooks/impeccable.sh && exec .cursor/hooks/impeccable.sh stop; test -f ./hooks/impeccable.sh && exec ./hooks/impeccable.sh stop; test -f ./impeccable.sh && exec ./impeccable.sh stop; root=`git rev-parse --show-toplevel 2>/dev/null`; test -f \"$root/.cursor/hooks/impeccable.sh\" && exec \"$root/.cursor/hooks/impeccable.sh\" stop; exit 127"
       }
+    ],
+    "subagentStop": [
+      {
+        "command": ".cursor/hooks/process-fsm-subagent-stop.sh",
+        "matcher": "generalPurpose|diff-reviewer|code-reviewer",
+        "loop_limit": 32
+      }
     ]
   }
 }

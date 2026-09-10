@@ -164,8 +164,39 @@ Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. 
 
 Pós-T18 (`nao_homologar`): q já é Em desenvolvimento no mesmo card. Reabrir ou criar `card-<id>-*` a partir do `develop` actual (squash T14 já está lá). Write só com I1 (não develop/main). **Não** chamar `iniciar_apply` (T8 é de Pronto para Dev). Segue `pedir_review` → … → T14 → Done; o par homologar / não homologar reaparece.
 
-Pai: `pedir_review` (Code Review), `diff-reviewer` + `code-reviewer` no diff **não commitado** vs HEAD, commit, `diff-reviewer` vs a branch de integração, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
+Pai: `pedir_review` (Code Review), materializa o intervalo em `.cursor/tmp/review-diff.patch` e spawna `diff-reviewer` + `code-reviewer` com `review_diff_path:` (MUST NOT pedir git ao filho). MAY spawnar esses reviewers como `generalPurpose` cujo prompt é o corpo do agent file **ou** como `subagent_type` nomeado; o matcher do destape cobre os dois. Continua a exigir `review_diff_path:` e a string exacta do `description` do Task no sidecar. Depois: commit, closing vs develop, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
 **dsh:** após 400 desta classe (reasoning effort off/none) num filho, MUST NOT spawnar mais o mesmo preset (incl. retry 1/1 #518); registar `ERROR: subagent spawn failed/empty` e continuar no root com residual explícito.
+
+## Code Review — cola do diff (S1)
+
+Antes de spawnar `diff-reviewer` / `code-reviewer`, o **pai** materializa o intervalo (nunca o filho):
+
+- Pré-commit: `git diff HEAD` (staged+unstaged vs HEAD) **mais** untracked de `git ls-files --others --exclude-standard` como hunks de ficheiro novo.
+- Fecho: `git diff origin/develop...HEAD` (`integration_branch` do overlay).
+- Grava `.cursor/tmp/review-diff.patch` (já gitignored via `.cursor/*`).
+- No spawn: linha `review_diff_path:` apontando esse ficheiro. MAY colar bytes sob `## Diff`.
+- MAY spawnar como Task `generalPurpose` (prompt = corpo do agent file) **ou** como `subagent_type` nomeado `diff-reviewer` / `code-reviewer`. O matcher do destape cobre os dois.
+- MUST NOT pedir git ao filho. MUST NOT pedir Glob/listagem de `agent-transcripts`.
+- Grelha, Apply e QA **não** recebem este contrato.
+
+Pin overlay permanece `v1.1.14`. Stubs Grok/dsh/OpenCode: ponte ≤8 linhas; MUST NOT dual-write lei.
+
+## Destape — subagentStop (S2)
+
+Quando o filho das quatro etapas (grelha / Apply / review / QA) **ou** Design-autor / crítico / Assessment A/B já devolveu (`status=completed`) e o pai ainda espera o mesmo Task, o hook `subagentStop` injecta `followup_message` com **ordem** (nunca pergunta `concluiu?` / `já acabou?` / `verifique se nao concluiu`). Matcher: `generalPurpose|diff-reviewer|code-reviewer` (cobre spawn `generalPurpose` e `subagent_type` nomeado).
+
+O **pai**:
+
+- Grava `.cursor/tmp/awaiting-task.json` **antes** do Task das quatro etapas **e** do Task Design-autor / crítico / Assessment A/B.
+- Sidecar `description` MUST ser a string exacta do `description` do Task (título 3–5 palavras do spawn). Cursor `subagentStop` MAY colocar essa string em `task`. `task` no sidecar é o `subagent_type`, não o título. Não fuzzy-match (`Grill card` ≠ `grill-card 879`).
+- Sidecar MUST ter `description` não-vazia. Vazio ≠ wildcard. `task` / `subagent_type` no sidecar são opcionais; se presentes, comparar com o `subagent_type` do stop (ou nested), NÃO com o `task` do stop.
+- No `description` do Task (e no sidecar) MUST constar um needle do classificador. Títulos curtos sem needle MUST NOT destapar. Needles: `grill-card`, `apply-coluna`, `diff-reviewer`, `code-reviewer`, `qa-gate`, `design-autor`, `design-critic`, `Assessment A`, `Assessment B`.
+- O classificador usa só sidecar.description ∪ stop.task (título curto) ∪ `subagent_type`. MUST NOT classificar a partir do prompt longo (`description` / corpo colado, p.ex. SKILL.md com needles `design-autor`).
+- Sidecar **por** Task. Após destape de `diff-reviewer`, o pai spawna `code-reviewer` — ainda **não** commita. Poke do primeiro reviewer MUST NOT ser skip do segundo; commit só depois dos dois. O texto da ordem de review permanece o do design.
+- Apaga o sidecar ao tratar o resultado. O hook apaga o sidecar após o poke.
+- Poke = ordem. Proibido `concluiu?` / `já acabou?`.
+- Staff MUST NOT re-prompt enquanto o filho corre.
+- Background, `error`/`aborted` e filho ainda a trabalhar: **fora** do destape. Destape MUST NOT afirmar que dispara para filhos em background nem que cura hang do host. `AGENTS.md` e overlay `clients.*.auto` intocados; sem aresta em `process-fsm.yaml`.
 
 ## QA closeout
 
