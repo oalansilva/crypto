@@ -37,7 +37,7 @@ The complete critique report SHALL be written under `.impeccable/critique/` and 
 - **AND** MUST follow `design.md` short sections, specs, tasks, and the prototype file when UI-affected
 
 ### Requirement: Critics inherit model, not transcript
-Assessment A, Assessment B, `diff-reviewer`, and `code-reviewer` SHALL use the same model as the parent session and SHALL receive a self-contained prompt. They MUST NOT inherit the parent Design/Apply/Review transcript. Isolated critics MAY write only `.impeccable/critique/**`. They MUST NOT edit `design.md`, prototype HTML, or product code. Their return to the parent MUST be bullets, disposition, verdict, and snapshot path. For Code Review, both reviewer prompts SHALL be emitted in the same parent turn with the parent-materialized interval; reviewers return findings or `No findings.` as a list and MUST NOT instruct the parent to spawn per finding.
+Assessment A, Assessment B, `diff-reviewer`, and `code-reviewer` SHALL use the same model as the parent session and SHALL receive a self-contained prompt. They MUST NOT inherit the parent Design/Apply/Review transcript. Isolated critics MAY write only `.impeccable/critique/**`. They MUST NOT edit `design.md`, prototype HTML, or product code. Their return to the parent MUST be bullets, disposition, verdict, and snapshot path. For Code Review, the parent SHALL attach the materialized interval (`review_diff_path:` and optional `## Diff` bytes) to the versioned agent file; the reviewer prompt MUST NOT instruct the child to fetch that interval with git or by listing transcripts.
 
 #### Scenario: Dual critic without parent chat
 - **WHEN** Design spawns Assessment A and Assessment B
@@ -47,9 +47,9 @@ Assessment A, Assessment B, `diff-reviewer`, and `code-reviewer` SHALL use the s
 
 #### Scenario: Reviewers without Design/Apply transcript
 - **WHEN** Code Review spawns `diff-reviewer` or `code-reviewer`
-- **THEN** the prompt is the versioned agent file plus the diff under review
+- **THEN** the prompt is the versioned agent file plus the parent-materialized interval
 - **AND** it MUST NOT include the Design or Apply chat
-- **AND** both reviewer Tasks are present in that same parent turn
+- **AND** it MUST NOT ask the child to run git or list transcripts
 
 ### Requirement: Parent emits the review wave as two Tasks in one turn
 When Code Review starts, the parent session's emitted tool call set for that turn SHALL include both `diff-reviewer` and `code-reviewer` Tasks. The parent MUST NOT emit the second reviewer only after destape or completion of the first. Operator-facing emission MAY note that host queueing is allowed and does not fail the card. Destape remains an order/poke (#879); its followup MUST NOT be emitted as permission to skip the pair or to birth the missing reviewer. This SHALL NOT add a state, event, hook, or `enabled_tools` change to `.cursor/process-fsm.yaml`.
@@ -170,4 +170,17 @@ A screen-less card SHALL close Design with at most 1 author + 1 critic + 1 rewor
 - **WHEN** a second rework is proposed
 - **THEN** the prompt justifies a new product P0
 - **AND** without that justification the rework MUST NOT be spawned
+
+### Requirement: Stage child finishes in the host mode where it was spawned
+Grill, Design-author, Apply, review, and QA children SHALL reach host `completed` in the Cursor host mode that spawned them (modo terminal on this VM, or modo Desktop+SSH Windows to this VM). The parent MUST NOT execute that stage on Desktop as a substitute for a dead or interrupted child. The operator MUST NOT resume an interrupted child as the passing child. Mixing modes to hide a host kill (grill on terminal, Apply finished by the parent on Desktop) MUST NOT count as the stage passing.
+
+#### Scenario: Parent does not take over a dead Apply child on Desktop
+- **WHEN** an Apply child on modo Desktop+SSH is interrupted by the host
+- **THEN** the parent does not write product or harness patches for that stage in its own transcript
+- **AND** the stage remains failed until a new child reaches `completed` in that same mode
+
+#### Scenario: Operator resume of a corpse is refused
+- **WHEN** the operator asks to continue an interrupted Task id as the successful Apply/review/QA child
+- **THEN** the parent refuses that resume as acceptance
+- **AND** it spawns a new isolated child with a self-contained prompt
 

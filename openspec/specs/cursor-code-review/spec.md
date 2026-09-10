@@ -4,30 +4,32 @@
 Contrato do gate `Status=Code Review` no Cripto Farol: reviewers locais versionados (`diff-reviewer` + `code-reviewer`), comparação com `develop` na branch do card, Bugbot pago opcional.
 ## Requirements
 ### Requirement: Code Review MUST run the versioned diff reviewer on the uncommitted diff versus HEAD
-While `Status=Code Review` and before any implementation commit, the Cursor Agent SHALL launch one `generalPurpose` Task with `model: inherit`, instructed not to edit, whose prompt is the body of `.cursor/agents/diff-reviewer.md` plus the uncommitted diff versus HEAD, **in the same parent turn** as the `code-reviewer` Task for that interval. The spawn MUST be self-contained and MUST NOT inherit the Design or Apply transcript. A generic Task without that file MUST NOT be the happy-path reviewer. `/review-bugbot` MUST NOT run. `/review-security` MAY run only when Alan explicitly asks. The reviewer output MUST be findings with severity or the exact line `No findings.` The parent MUST NOT wait for destape of this Task before emitting the `code-reviewer` Task.
+While `Status=Code Review` and before any implementation commit, the Cursor **parent** SHALL materialize the uncommitted interval versus HEAD (`git diff HEAD` plus untracked files from `git ls-files --others --exclude-standard` as new-file hunks) into `.cursor/tmp/review-diff.patch` and SHALL launch one Task with `model: inherit`, instructed not to edit, whose prompt is the body of `.cursor/agents/diff-reviewer.md` plus `review_diff_path:` pointing at that file (bytes under `## Diff` MAY also be inlined). The parent MAY spawn that reviewer as `generalPurpose` with the agent-file body **or** as named `subagent_type` `diff-reviewer`; destape matcher covers both. The spawn MUST still include `review_diff_path:` and the exact Task `description` in the awaiting sidecar. The spawn MUST be self-contained and MUST NOT inherit the Design or Apply transcript. The child MUST NOT be instructed to compute the interval with git. A generic Task without that file MUST NOT be the happy-path reviewer. `/review-bugbot` MUST NOT run. `/review-security` MAY run only when Alan explicitly asks. The reviewer output MUST be findings with severity or the exact line `No findings.`
 
 #### Scenario: Pre-commit Code Review
 - **WHEN** a card is in `Status=Code Review` and the agent is about to commit implementation changes
-- **THEN** the agent MUST run the `diff-reviewer` Task against the uncommitted diff versus HEAD
-- **AND** it MUST emit the `code-reviewer` Task in the same parent turn
-- **AND** it MUST wait for **both** subagent results before committing
+- **THEN** the parent MUST materialize the uncommitted diff versus HEAD before spawn
+- **AND** the agent MUST run the `diff-reviewer` Task with that materialized interval in the prompt
+- **AND** it MUST wait for the subagent result before committing
 - **AND** the spawn prompt MUST NOT include the Design or Apply chat
+- **AND** the spawn MUST NOT ask the child to run git
 
 #### Scenario: Generic Task is not the default reviewer
 - **WHEN** Code Review starts
 - **THEN** the agent MUST NOT start with a generic `generalPurpose` Task that lacks the versioned `diff-reviewer` and `code-reviewer` prompts
 
 #### Scenario: Reviewer output is findings or No findings
-- **WHEN** `diff-reviewer` finishes
+- **WHEN** `diff-reviewer` finishes with a materialized interval
 - **THEN** the published result is findings with severity, or `No findings.`
 - **AND** it MUST NOT paste Design Impeccable prose
 
 ### Requirement: Closing review MUST cover branch changes versus develop on the card branch
-After the implementation commit and before `Status=QA`, the agent SHALL run the `diff-reviewer` Task against `origin/develop...HEAD` while still on the card branch. The agent MUST NOT run this comparison after squash/merge into `develop` (empty diff). Reuse is allowed only when that exact SHA already has this versus-`develop` run.
+After the implementation commit and before `Status=QA`, the **parent** SHALL materialize `origin/<integration_branch>...HEAD` (overlay `integration_branch`, Cripto: `develop`) into `.cursor/tmp/review-diff.patch` and SHALL run the `diff-reviewer` Task with that interval in the prompt while still on the card branch. The agent MUST NOT run this comparison after squash/merge into `develop` (empty diff). The child MUST NOT compute that interval with git. Reuse is allowed only when that exact SHA already has this versus-`develop` run.
 
 #### Scenario: Closing review versus develop
 - **WHEN** the card is closing after an implementation commit
-- **THEN** the agent MUST have a `diff-reviewer` result for `origin/develop...HEAD` on the closing SHA while still on the card branch
+- **THEN** the parent MUST materialize `origin/develop...HEAD` before spawn
+- **AND** the agent MUST have a `diff-reviewer` result for that interval on the closing SHA while still on the card branch
 
 #### Scenario: Closing review reused
 - **WHEN** the closing SHA already has a recorded `diff-reviewer` versus-`develop` run
@@ -59,7 +61,7 @@ If either local reviewer Task fails to spawn or returns zero messages/parts, the
 - **THEN** the Code Review stage remains incomplete until a successful local review or an explicit fallback after the error is recorded
 
 ### Requirement: Process reviewer MUST stay read-only and inherit the chat model
-The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: true` and `model: inherit`. During Code Review the primary session SHALL launch one `generalPurpose` Task instructed not to edit, whose prompt is that file's body plus the diff under review (uncommitted patch before the commit; the committed SHA after it exists), **in the same parent turn** as `diff-reviewer`. The spawn MUST NOT inherit the Design or Apply transcript. It SHALL review process/contract (OpenSpec vs implementation, Design approval evidence, status non-regression). It MUST NOT duplicate diff-reviewer defect hunting and MUST NOT edit files. It MUST NOT read `.impeccable/critique/`. The versus-`develop` comparison is owned by `diff-reviewer` after the commit and before `Status=QA`. Published output MUST be findings or `No findings.` Review constraints SHALL be in these two agent files (optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`.
+The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: true` and `model: inherit`. During Code Review the primary session SHALL materialize the interval under review (uncommitted patch versus HEAD before the commit; `origin/<integration_branch>...HEAD` after it exists) and SHALL launch one Task instructed not to edit, whose prompt is that file's body plus `review_diff_path:` (and optional `## Diff` bytes). The parent MAY spawn that reviewer as `generalPurpose` with the agent-file body **or** as named `subagent_type` `code-reviewer`; destape matcher covers both. The spawn MUST still include `review_diff_path:` and the exact Task `description` in the awaiting sidecar. The spawn MUST NOT inherit the Design or Apply transcript. The child MUST NOT run git to obtain the interval. It SHALL review process/contract (OpenSpec vs implementation, Design approval evidence, status non-regression). It MUST NOT duplicate diff-reviewer defect hunting and MUST NOT edit files. It MUST NOT read `.impeccable/critique/`. The versus-`develop` comparison is owned by `diff-reviewer` after the commit and before `Status=QA`. Published output MUST be findings or `No findings.` Review constraints SHALL be in these two agent files (optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`.
 
 #### Scenario: Process reviewer does not mutate
 - **WHEN** the process reviewer Task runs during Code Review
@@ -69,9 +71,9 @@ The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: tr
 
 #### Scenario: Process reviewer has no parent Design chat
 - **WHEN** `code-reviewer` is spawned
-- **THEN** the prompt is the versioned file plus the diff
+- **THEN** the prompt is the versioned file plus the parent-materialized interval
 - **AND** it does not include the Design or Apply transcript
-- **AND** the Task is emitted in the same parent turn as `diff-reviewer`
+- **AND** it MUST NOT ask the child to run git
 
 ### Requirement: Pre-commit reviewers are a same-turn wave
 While `Status=Code Review` and before any implementation commit, after the parent has materialized the uncommitted interval, the parent SHALL launch `diff-reviewer` and `code-reviewer` in the **same** parent turn, both read-only, both with `review_diff_path:` (optional `## Diff` bytes). MAY spawn each as `generalPurpose` with the agent-file body **or** as named `subagent_type`. Host serialization of the two Tasks MUST NOT fail this requirement. Destape of the first MUST NOT spawn the second. Closing review versus `develop` after the commit remains **one** wave and is outside this card's pingue-pongue. This requirement MUST NOT change `process-fsm.yaml` and MUST NOT reopen destape matching (#879).
@@ -132,4 +134,27 @@ On the dsh client, after the first this-class reasoning-effort rejection (400 / 
 - **WHEN** the client is Cursor or Grok and a reviewer Task returns 0 messages or 0 parts without this-class reasoning-effort 400
 - **THEN** the existing one-retry empty-spawn rule still applies
 - **AND** this requirement does not alter that path
+
+### Requirement: Reviewer child MUST NOT fetch the interval via git or transcripts
+The versioned files `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md` SHALL remain `readonly: true` and `model: inherit`. Their bodies SHALL forbid the child from running git, from listing or Globbing `agent-transcripts` (or any agent transcript path), and from inventing the review interval by reading the working tree. The parent session SHALL materialize the interval before spawn. Grelha, Apply, and QA MUST NOT receive this diff-paste contract.
+
+#### Scenario: Reviewer does not run git
+- **WHEN** `diff-reviewer` or `code-reviewer` runs with a materialized interval in the prompt
+- **THEN** the child MUST NOT invoke git
+- **AND** it MUST NOT Glob or list agent transcripts
+- **AND** it reports findings or `No findings.` from the supplied interval only
+
+#### Scenario: Diff contract is Code Review only
+- **WHEN** the parent spawns grill, Apply, or QA
+- **THEN** those children are not required to receive `review_diff_path` or `## Diff`
+- **AND** this requirement does not apply to them
+
+### Requirement: Missing review interval MUST fail visibly and stop
+If a Code Review spawn prompt contains neither a readable non-empty path after `review_diff_path:` nor non-empty bytes under a `## Diff` heading, the reviewer child SHALL print exactly `ERROR: review-diff missing` and SHALL stop. It MUST NOT continue the review by reading the repository, running git, or listing transcripts. Silent improvisation is forbidden.
+
+#### Scenario: Spawn without interval stops
+- **WHEN** `diff-reviewer` or `code-reviewer` starts without `review_diff_path` and without `## Diff` bytes
+- **THEN** the child output contains `ERROR: review-diff missing`
+- **AND** the review does not proceed
+- **AND** the child does not read the working tree as a substitute interval
 
