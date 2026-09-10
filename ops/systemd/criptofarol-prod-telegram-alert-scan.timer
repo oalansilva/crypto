@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Cripto Farol PROD Monitor Telegram alert scan daily at 08:05 BRT
+
+[Timer]
+OnCalendar=*-*-* 11:05:00 UTC
+Persistent=true
+Unit=criptofarol-prod-telegram-alert-scan.service
+
+[Install]
+WantedBy=timers.target

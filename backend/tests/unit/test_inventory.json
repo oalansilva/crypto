@@ -372,6 +372,15 @@
       "evidence": "link token, portfolio scope, and position matrix assertions"
     },
     {
+      "file": "backend/tests/unit/test_telegram_alert_scan_wrapper.py",
+      "protected_behavior": "BLOCK_PROD_BOT wrapper fail-closed",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "BLOCK_PROD_BOT ignores JSON/token leftovers; main() fail-closed CONFIG_INCOMPLETE"
+    },
+    {
       "file": "backend/tests/unit/test_ohlcv_backfill_service.py",
       "protected_behavior": "OHLCV backfill provider flow",
       "production_reachability": "reachable",
