@@ -151,13 +151,13 @@ async function setupApiMocks(page: any) {
   )
 }
 
-test('monitor shows only Compra and Venda and keeps same-symbol starred strategies visible', async ({ page }) => {
+test('monitor shows only Em posição and Saída / cobertura and keeps same-symbol starred strategies visible', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
-  await expect(page.getByText('Estado Compra')).toBeVisible()
+  await expect(page.getByText('Estado Compra')).toHaveCount(0)
   await expect(page.getByText('Estado Espera')).toHaveCount(0)
-  await expect(page.getByText('Estado Venda')).toBeVisible()
+  await expect(page.getByText('Estado Venda')).toHaveCount(0)
 
   await expect(page.getByTestId('monitor-row-btc-usdt')).toHaveCount(2)
   await expect(page.locator('[data-testid="monitor-row-btc-usdt"]', { hasText: 'multi_ma_crossoverV2' })).toBeVisible()
@@ -166,6 +166,6 @@ test('monitor shows only Compra and Venda and keeps same-symbol starred strategi
   await page.getByTestId('monitor-row-eth-usdt').click()
   await page.locator('[data-testid="monitor-row-btc-usdt"]', { hasText: 'multi_ma_crossoverV2' }).click()
 
-  await expect(page.getByTestId('monitor-card-eth-usdt').locator('.status-pill.hold').first()).toHaveText('Compra')
-  await expect(page.getByTestId('monitor-card-btc-usdt').first().locator('.status-pill.exit').first()).toHaveText('Venda')
+  await expect(page.getByTestId('monitor-card-eth-usdt').locator('.status-pill.hold').first()).toHaveText('Em posição')
+  await expect(page.getByTestId('monitor-card-btc-usdt').first().locator('.status-pill.exit').first()).toHaveText('Saída / cobertura')
 })

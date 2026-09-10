@@ -382,8 +382,8 @@ test('monitor renders exited strategies separately from stopped out ones', async
 
   await page.goto('/monitor')
 
-  await expect(page.getByText('Estado Venda')).toBeVisible()
-  await expect(page.getByTestId('monitor-card-btc-usdt').getByText(/^Venda$/)).toBeVisible()
+  await expect(page.getByText('Estado Venda')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-card-signal-btc-usdt')).toHaveText('Saída / cobertura')
 })
 
 test('monitor keeps backend exit in list and shows mismatched chart context', async ({ page }) => {
@@ -498,7 +498,7 @@ test('monitor keeps backend exit in list and shows mismatched chart context', as
 
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
-  await expect(card.getByText('Venda', { exact: true })).toBeVisible()
+  await expect(card.getByText('Saída / cobertura', { exact: true })).toBeVisible()
   await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
@@ -631,7 +631,7 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
 
   const card = page.getByTestId('monitor-card-sol-usdt')
   await expect(card).toBeVisible()
-  await expect(card.getByText('Compra', { exact: true })).toBeVisible()
+  await expect(card.getByText('Em posição', { exact: true })).toBeVisible()
   const longRules = card.getByTestId('monitor-strategy-rules-sol-usdt')
   await expect(longRules.getByText('Quando compra')).toBeVisible()
   await expect(longRules.getByText('Quando vende')).toBeVisible()
@@ -778,7 +778,7 @@ test('monitor adds current sell marker when history only has prior entry', async
 
   const card = page.getByTestId('monitor-card-hbar-usdt')
   await expect(card).toBeVisible()
-  await expect(card.getByText('Venda', { exact: true })).toBeVisible()
+  await expect(card.getByText('Saída / cobertura', { exact: true })).toBeVisible()
   const exitRules = card.getByTestId('monitor-strategy-rules-hbar-usdt')
   await expect(exitRules.getByText('Quando compra')).toBeVisible()
   await expect(exitRules.getByText('Quando vende')).toBeVisible()
@@ -1076,8 +1076,8 @@ test('monitor resolves same-day Compra and Venda trade to the opposite signal', 
 
   await expect(page.getByTestId('monitor-section-exit').getByTestId('monitor-card-ada-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-section-hold').getByTestId('monitor-card-ada-usdt')).toHaveCount(0)
-  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Venda')
-  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Venda')
+  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Saída / cobertura')
+  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Saída / cobertura')
 
   const card = page.getByTestId('monitor-card-ada-usdt')
   await expect(card).toBeVisible()
@@ -1223,8 +1223,8 @@ test('monitor keeps the canonical active entry when cached trades also contain a
 
   await expect(page.getByTestId('monitor-section-hold').getByTestId('monitor-card-ada-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-section-exit').getByTestId('monitor-card-ada-usdt')).toHaveCount(0)
-  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Compra')
-  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Compra')
+  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Em posição')
+  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Em posição')
 
   const card = page.getByTestId('monitor-card-ada-usdt')
   await expect(card).toBeVisible()

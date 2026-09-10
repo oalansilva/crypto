@@ -39,7 +39,7 @@ export default function HelpPage() {
         <article>
           <h2>Monitor</h2>
           <p>
-            E a tela de acompanhamento das estrategias selecionadas. Ela mostra Compra, Venda, contexto e distancia para
+            E a tela de acompanhamento das estrategias selecionadas. Ela mostra Em posição, Saída / cobertura, contexto e distancia para
             decisao, sempre como informacao para sua propria analise.
           </p>
         </article>

@@ -31,7 +31,7 @@ import { authFetch } from '@/lib/authFetch';
 import { useAuth } from '@/stores/authStore';
 import type { MarketCandle } from './MiniCandlesChart';
 import { fetchMarketCandles, type ChartTimeframe } from './chartData';
-import { resolveOpportunitySignal } from './signalResolution';
+import { boardStateLabel, resolveOpportunitySignal } from './signalResolution';
 
 type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
 type TierFilter = 'rated' | 'all' | '1_2' | '1' | '2' | '3' | 'none';
@@ -53,15 +53,6 @@ type DerivedPortfolioStatus = {
     inPortfolio: boolean;
     message: string | null;
     tone: 'neutral' | 'success' | 'warning';
-};
-
-type SectionRecord = {
-    title: string;
-    label: string;
-    dotClass: 'monitor-dot--hold' | 'monitor-dot--exit';
-    badgeClass: string;
-    countClass: string;
-    description: string;
 };
 
 type ResolvedSectionRow = {
@@ -108,25 +99,6 @@ const renderSparkPath = (values: number[]): { line: string; area: string; dot: {
     const area = `${line} L ${last.x.toFixed(2)},${height.toFixed(2)} L ${first.x.toFixed(2)},${height.toFixed(2)} Z`;
 
     return { line, area, dot: { x: last.x, y: last.y } };
-};
-
-const SectionConfig: Record<SectionKey, SectionRecord> = {
-    hold: {
-        title: 'Compra',
-        label: 'Posição ativa',
-        dotClass: 'monitor-dot--hold',
-        badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40',
-        countClass: 'text-emerald-300',
-        description: 'Sinais com decisão de compra e gestão ativa.',
-    },
-    exit: {
-        title: 'Venda',
-        label: 'Em observação',
-        dotClass: 'monitor-dot--exit',
-        badgeClass: 'bg-sky-500/20 text-sky-200 border border-sky-400/40',
-        countClass: 'text-sky-300',
-        description: 'Condição de venda detectada para novo monitoramento.',
-    },
 };
 
 const SECTION_ORDER: SectionKey[] = ['hold', 'exit'];
@@ -1008,7 +980,6 @@ export const MonitorStatusTab: React.FC = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder={effectiveSearchPlaceholder}
                         />
-                        <span className="kbd">⌘K</span>
                     </label>
                     <Button
                         variant="secondary"
@@ -1059,18 +1030,12 @@ export const MonitorStatusTab: React.FC = () => {
 
                     <div className="kpis">
                         <div className="kpi">
-                            <div className="kpi-label">
-                                Em posição
-                                <span className="tag">Compra</span>
-                            </div>
+                            <div className="kpi-label">Em posição</div>
                             <div className="kpi-val">{totalKpi.hold}</div>
                             <div className="kpi-foot up">média risco {totalKpi.avgHoldRisk}</div>
                         </div>
                         <div className="kpi">
-                            <div className="kpi-label">
-                                Em saída
-                                <span className="tag">Venda</span>
-                            </div>
+                            <div className="kpi-label">Saída / cobertura</div>
                             <div className="kpi-val">{totalKpi.exit}</div>
                             <div className="kpi-foot">média risco {totalKpi.avgExitRisk}</div>
                         </div>
@@ -1159,16 +1124,14 @@ export const MonitorStatusTab: React.FC = () => {
                             </section>
                         ) : (
                             SECTION_ORDER.map((sectionKey) => {
-                                const cfg = SectionConfig[sectionKey];
                                 const rows = resolvedSections[sectionKey];
 
                                 return (
                                     <section key={sectionKey} data-testid={`monitor-section-${sectionKey}`}>
                                         <div className="status-row">
-                                            <span className="status-section-label">Estado {cfg.title}</span>
                                             <h3>
                                                 <span className={`pip ${sectionKey}`} />
-                                                {sectionKey === 'hold' ? 'Em posição' : 'Saída / cobertura'}
+                                                {boardStateLabel(sectionKey)}
                                                 <span className="meta">({rows.length})</span>
                                             </h3>
                             <p className="desc">
@@ -1291,7 +1254,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                             className={`status-pill ${resolved.section}`}
                                                                             data-testid={`monitor-row-signal-${symbolTestKey(opportunity.symbol)}`}
                                                                         >
-                                                                            {resolved.visual.badgeText}
+                                                                            {boardStateLabel(resolved.section)}
                                                                         </span>
                                                                     </td>
                                                                     <td className="num lg">{formatPrice(opportunity.last_price)}</td>

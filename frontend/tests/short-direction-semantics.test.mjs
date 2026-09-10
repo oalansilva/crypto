@@ -33,10 +33,12 @@ test('chart modal renders signal history markers and entry line by opportunity d
 });
 
 test('monitor section headings are neutral because rows may mix long and short strategies', () => {
-  const source = read('src/components/monitor/MonitorStatusTab.tsx');
+  const tab = read('src/components/monitor/MonitorStatusTab.tsx');
+  const resolution = read('src/components/monitor/signalResolution.ts');
 
-  assert.match(source, /'Em posição'/);
-  assert.match(source, /'Saída \/ cobertura'/);
-  assert.doesNotMatch(source, /Em posição · Compra/);
-  assert.doesNotMatch(source, /Em saída · Venda/);
+  assert.match(tab, /boardStateLabel/);
+  assert.match(resolution, /section === 'hold' \? 'Em posição' : 'Saída \/ cobertura'/);
+  assert.doesNotMatch(tab, /Em posição · Compra/);
+  assert.doesNotMatch(tab, /Em saída · Venda/);
+  assert.doesNotMatch(tab, /Estado Compra/);
 });

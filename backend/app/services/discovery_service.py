@@ -805,11 +805,13 @@ class DiscoveryService:
         succeeded = counts.get("succeeded", 0)
         failed = counts.get("failed", 0)
         skipped = counts.get("skipped", 0)
+        insufficient_sample = counts.get("insufficient_sample", 0)
         return {
             "succeeded": succeeded,
             "failed": failed,
             "skipped": skipped,
-            "processed": succeeded + failed + skipped,
+            "insufficient_sample": insufficient_sample,
+            "processed": succeeded + failed + skipped + insufficient_sample,
             "pending": counts.get("pending", 0),
             "running": counts.get("running", 0),
         }
@@ -823,6 +825,7 @@ class DiscoveryService:
             "succeeded": counters["succeeded"],
             "failed": counters["failed"],
             "skipped": counters["skipped"],
+            "insufficient_sample": counters.get("insufficient_sample", 0),
             "processed": counters["processed"],
             "terminal_reason": sweep.terminal_reason,
             "terminal_code": sweep.terminal_code,
@@ -1286,7 +1289,13 @@ class DiscoveryService:
         )
         for row in expired:
             if row.result_id:
-                row.state = "succeeded"
+                result = (
+                    db.query(DiscoveryResult).filter(DiscoveryResult.id == row.result_id).first()
+                )
+                if result is not None and result.eligibility == "insufficient_sample":
+                    row.state = "insufficient_sample"
+                else:
+                    row.state = "succeeded"
             else:
                 row.state = "pending"
                 row.lease_owner = None
@@ -1324,7 +1333,15 @@ class DiscoveryService:
             )
             for row in expired:
                 if row.result_id:
-                    row.state = "succeeded"
+                    result = (
+                        session.query(DiscoveryResult)
+                        .filter(DiscoveryResult.id == row.result_id)
+                        .first()
+                    )
+                    if result is not None and result.eligibility == "insufficient_sample":
+                        row.state = "insufficient_sample"
+                    else:
+                        row.state = "succeeded"
                 else:
                     row.state = "pending"
                     row.lease_owner = None
@@ -1702,6 +1719,7 @@ class DiscoveryService:
         timeframe: str | None = None,
         direction: str | None = None,
         eligibility: str | None = None,
+        exclude_eligibility: str | None = None,
         offset: int = 0,
         limit: int | None = None,
         db: Session | None = None,
@@ -1723,6 +1741,8 @@ class DiscoveryService:
             matched = [r for r in matched if r["direction"] == direction]
         if eligibility:
             matched = [r for r in matched if r["eligibility"] == eligibility]
+        if exclude_eligibility:
+            matched = [r for r in matched if r["eligibility"] != exclude_eligibility]
         total = len(matched)
         if limit is not None:
             matched = matched[offset : offset + limit]

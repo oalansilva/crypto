@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Protótipo #861 — Monitor: remover stop (clone /monitor)</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+/* 861-CLONE: tokens + monitor-theme (mesma base dos clones /monitor anteriores) */
+:root {
+  --bg-primary: #0b0e11;
+  --bg-secondary: #181a20;
+  --bg-elevated: #1e2329;
+  --bg-input: #2b3139;
+  --bg-overlay: rgba(11, 14, 17, 0.92);
+  --accent-primary: #fcd535;
+  --accent-success: #0ecb81;
+  --accent-danger: #f6465d;
+  --accent-warning: #f0b90b;
+  --text-primary: #ffffff;
+  --text-secondary: #eaecef;
+  --text-tertiary: #929aa5;
+  --text-muted: #707a8a;
+  --border-default: #2b3139;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-primary); color: var(--text-secondary); font-family: var(--font-family); font-size: 14px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--text-tertiary); }
+
+/* 861-CLONE: review-bar do protótipo */
+.review-bar { position: sticky; top: 0; z-index: 50; background: #14181d; border-bottom: 1px solid var(--border-default); padding: 10px 18px; }
+.review-bar p { margin: 4px 0; font-size: 13px; color: var(--text-secondary); }
+.review-bar code { font-family: var(--font-mono); background: #0b0e11; padding: 1px 6px; border-radius: 4px; }
+.gate-tokens { font-family: var(--font-mono); font-size: 12px; color: var(--accent-primary); background: #0b0e11; border: 1px solid var(--border-default); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; }
+
+.canvas-wash { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(1200px 500px at 20% -10%, rgba(252,213,53,.05), transparent); }
+
+/* 861-CLONE: shell AppNav autenticado */
+.app-sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 224px; background: var(--bg-secondary); border-right: 1px solid var(--border-default); padding: 16px 12px; overflow: auto; }
+.brand-wrap img { height: 30px; }
+.panel-chip { margin: 14px 0; border: 1px solid var(--border-default); border-radius: 8px; padding: 10px 12px; background: var(--bg-elevated); }
+.panel-chip .k { font-size: 11px; color: var(--text-tertiary); }
+.panel-chip .v { font-weight: 600; }
+.env { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-tertiary); border: 1px solid var(--border-default); border-radius: 999px; padding: 2px 8px; margin-top: 6px; }
+.env i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-success); display: inline-block; }
+.nav-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 14px 6px 6px; }
+.nav-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--text-tertiary); text-decoration: none; font-size: 13px; }
+.nav-link svg { width: 16px; height: 16px; }
+.nav-link.active { background: rgba(252,213,53,.12); color: var(--text-secondary); }
+.app-header { margin-left: 224px; border-bottom: 1px solid var(--border-default); background: var(--bg-secondary); }
+.app-header-inner { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
+.workspace-label { font-size: 11px; color: var(--text-tertiary); }
+.workspace-title { font-weight: 700; font-size: 16px; }
+.account { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; background: #3b82f6; display: grid; place-items: center; font-weight: 700; }
+
+/* 861-CLONE: MonitorStatusTab chrome */
+.workspace { margin-left: 224px; }
+.monitor-page-shell { padding: 0 0 60px; }
+.monitor-main { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+.topbar { display: flex; align-items: center; gap: 10px; padding: 14px 0; }
+.topbar-spacer { flex: 1; }
+.search { display: flex; align-items: center; gap: 8px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 8px; padding: 7px 10px; min-width: 300px; }
+.search svg { width: 15px; height: 15px; color: var(--text-tertiary); }
+.search input { background: transparent; border: 0; outline: 0; color: var(--text-secondary); width: 100%; font-size: 13px; }
+.kbd { font-size: 11px; color: var(--text-muted); border: 1px solid var(--border-default); border-radius: 4px; padding: 1px 5px; }
+.topbar-btn { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-default); border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.topbar-btn svg { width: 14px; height: 14px; }
+.topbar-btn.primary { background: var(--accent-primary); border-color: var(--accent-primary); color: #181a20; font-weight: 600; }
+.page-sub { color: var(--text-tertiary); font-size: 13px; margin: 10px 0 4px; }
+.updated { font-size: 12px; color: var(--text-tertiary); }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 14px 0; }
+.kpi { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 10px; padding: 12px 14px; }
+.kpi-label { font-size: 12px; color: var(--text-tertiary); display: flex; gap: 8px; align-items: center; }
+.tag { font-size: 11px; border: 1px solid var(--border-default); border-radius: 999px; padding: 1px 8px; color: var(--text-secondary); }
+.kpi-val { font-size: 26px; font-weight: 700; margin-top: 4px; }
+.kpi-foot { font-size: 12px; color: var(--text-tertiary); }
+.filterbar { display: flex; align-items: center; gap: 10px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 10px; padding: 10px 12px; margin-bottom: 16px; }
+.select { background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border-default); border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+.filter-spacer { flex: 1; }
+.chip-count { font-size: 12px; color: var(--text-tertiary); }
+.monitor-board section { margin-bottom: 26px; }
+.status-row h3 { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 16px; }
+.status-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.pip { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.pip.hold { background: var(--accent-success); }
+.pip.exit { background: #f26e7e; }
+.meta { color: var(--text-tertiary); font-weight: 400; font-size: 13px; }
+.desc { color: var(--text-tertiary); font-size: 13px; margin: 0 0 10px; }
+table.monitor-table { width: 100%; border-collapse: collapse; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 10px; overflow: hidden; font-size: 13px; }
+.monitor-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); padding: 10px 12px; border-bottom: 1px solid var(--border-default); }
+.monitor-table td { padding: 10px 12px; border-bottom: 1px solid rgba(43,49,57,.6); vertical-align: middle; }
+.head-row { cursor: pointer; }
+.pair-cell { display: flex; gap: 10px; align-items: center; }
+.pair-icon { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: #0b0e11; flex: none; }
+.pair-icon.btc { background: #f7931a; }
+.pair-icon.sol { background: #9945ff; color: #fff; }
+.pair-icon.eth { background: #8a9cff; }
+.pair-icon.ada { background: #3b82f6; color: #fff; }
+.pair-icon.link { background: #5b8def; color: #fff; }
+.pair-name { font-weight: 600; }
+.pair-tf { font-size: 11px; color: var(--text-tertiary); border: 1px solid var(--border-default); border-radius: 4px; padding: 0 5px; margin-left: 6px; }
+.pair-strat { font-size: 12px; color: var(--text-secondary); }
+.pair-strat-desc { font-size: 12px; color: var(--text-tertiary); max-width: 420px; }
+.status-pill { font-size: 12px; border-radius: 999px; padding: 3px 10px; border: 1px solid; white-space: nowrap; }
+.status-pill.hold { color: #7ee2b0; border-color: rgba(14,203,129,.5); background: rgba(14,203,129,.12); }
+.status-pill.exit { color: #f5a9b4; border-color: rgba(242,110,126,.5); background: rgba(242,110,126,.1); }
+.num { font-family: var(--font-mono); }
+.num.lg { font-size: 14px; }
+.risk-bar { height: 6px; background: #0b0e11; border-radius: 999px; overflow: hidden; min-width: 110px; }
+.risk-fill { height: 100%; background: var(--accent-danger); }
+.risk-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag.portfolio { color: #7ee2b0; border-color: rgba(14,203,129,.4); }
+.tag.strategy { color: var(--text-tertiary); }
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.row-action { display: inline-flex; align-items: center; gap: 6px; background: #0b0e11; color: var(--text-secondary); border: 1px solid var(--border-default); border-radius: 8px; padding: 7px 10px; font-size: 12px; cursor: pointer; }
+.row-action svg { width: 14px; height: 14px; }
+.row-action:hover { border-color: var(--accent-primary); }
+.row-action-primary { border-color: rgba(252,213,53,.5); }
+.row-toggle { background: transparent; border: 1px solid var(--border-default); border-radius: 6px; color: var(--text-tertiary); width: 26px; height: 26px; cursor: pointer; }
+.row-toggle svg { width: 14px; height: 14px; }
+.detail-row td { background: #12161b; }
+.detail-control-strip { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.detail-pair-summary { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.detail-symbol { font-weight: 700; }
+.detail-timeframe { font-size: 11px; color: var(--text-tertiary); border: 1px solid var(--border-default); border-radius: 4px; padding: 1px 6px; }
+.detail-controls { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn { background: #0b0e11; color: var(--text-secondary); border: 1px solid var(--border-default); border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.btn svg { width: 14px; height: 14px; }
+.btn.primary { background: var(--accent-primary); border-color: var(--accent-primary); color: #181a20; font-weight: 600; }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.detail { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.detail h5 { font-size: 12px; margin: 0 0 8px; color: var(--text-secondary); }
+.exit-msg { background: rgba(14,203,129,.08); border: 1px solid rgba(14,203,129,.3); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.exit-msg .label { display: block; font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; }
+.candle-meta { margin-top: 10px; font-size: 12px; color: var(--text-tertiary); display: grid; gap: 4px; }
+.candle-meta b { color: var(--text-secondary); font-family: var(--font-mono); font-weight: 500; }
+.notes-block { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 13px; color: var(--text-tertiary); }
+.notes-edit { background: transparent; border: 1px solid var(--border-default); color: var(--text-secondary); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; background: #0b0e11; border: 1px solid var(--border-default); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin: 0; }
+.kv dt { color: var(--text-tertiary); }
+.kv dd { margin: 0; font-family: var(--font-mono); text-align: right; }
+.scenario-risk { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+.residual-block { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+.detail-foot { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.hint { font-size: 12px; color: var(--text-muted); }
+.detail-foot .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* 861-CLONE: ChartModal chrome */
+.chart-modal-overlay { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(11,14,17,.88); padding: 16px; overflow: auto; }
+.chart-modal-overlay.is-open { display: block; }
+.chart-modal { max-width: 1080px; margin: 0 auto; background: var(--bg-primary); border: 1px solid var(--border-default); border-radius: 10px; }
+.chart-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-default); }
+.chart-modal-head h2 { margin: 0; font-size: 15px; }
+.chart-modal-head button { background: #0b0e11; border: 1px solid var(--border-default); color: var(--text-secondary); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.chart-modal-body { padding: 16px; display: grid; gap: 12px; }
+.chart-placeholder { background: #0b0e11; border: 1px dashed var(--border-default); border-radius: 8px; min-height: 180px; display: grid; place-items: center; color: var(--text-muted); font-size: 13px; }
+.chart-risk-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 0; }
+.chart-risk { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
+.chart-kv-row { display: flex; justify-content: space-between; font-size: 13px; }
+.chart-kv-row .mono { font-family: var(--font-mono); }
+.chart-kv-row .stop { color: var(--accent-danger); }
+
+/* 861-DELTA: SpotProtectStopPanel — confirmação de Remover stop no gráfico */
+.d861-protect { border: 1px solid var(--border-default); background: var(--bg-elevated); border-radius: 8px; padding: 12px; }
+.d861-eyebrow { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); margin: 0 0 6px; }
+.d861-protect-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+.d861-protect-summary { font-size: 13px; margin: 0 0 4px; }
+.d861-protect-external { font-size: 12px; color: var(--accent-warning); margin: 0; }
+.d861-protect-empty { font-size: 13px; color: var(--text-tertiary); margin: 0; }
+.d861-protect-actions button { min-height: 40px; border-radius: 8px; border: 1px solid var(--border-default); background: #0b0e11; color: var(--text-secondary); padding: 8px 14px; font-size: 14px; cursor: pointer; }
+.d861-protect-actions button:hover { border-color: var(--accent-primary); }
+.d861-protect-confirm { margin-top: 10px; border: 1px solid rgba(246,70,93,.4); background: #0b0e11; border-radius: 8px; padding: 12px; }
+.d861-protect-confirm p { margin: 0 0 10px; font-size: 14px; }
+.d861-protect-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.d861-btn-danger { min-height: 40px; border-radius: 8px; border: 1px solid var(--accent-danger); background: rgba(246,70,93,.2); color: var(--text-secondary); padding: 8px 14px; font-size: 14px; cursor: pointer; }
+.d861-btn-ghost { min-height: 40px; border-radius: 8px; border: 1px solid var(--border-default); background: transparent; color: var(--text-tertiary); padding: 8px 14px; font-size: 14px; cursor: pointer; }
+.d861-protect-done { margin: 10px 0 0; font-size: 13px; color: #7ee2b0; }
+
+/* 861-CLONE: SpotMarketTradePanel chrome (concha do diálogo de venda) */
+.trade-overlay { display: none; position: fixed; inset: 0; z-index: 110; background: rgba(11,14,17,.88); padding: 16px; overflow: auto; }
+.trade-overlay.is-open { display: block; }
+.trade-panel { max-width: 560px; margin: 40px auto; background: var(--bg-primary); border: 1px solid var(--border-default); border-radius: 10px; }
+.trade-head { display: flex; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border-default); }
+.trade-head h2 { margin: 0; font-size: 15px; }
+.trade-head p { margin: 4px 0 0; font-size: 12px; color: var(--text-tertiary); }
+.trade-close { background: transparent; border: 1px solid var(--border-default); color: var(--text-secondary); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; }
+.trade-body { padding: 16px; display: grid; gap: 12px; }
+.trade-tabs { display: flex; gap: 6px; }
+.trade-tab { flex: 1; background: #0b0e11; border: 1px solid var(--border-default); color: var(--text-tertiary); border-radius: 8px; padding: 9px; font-size: 13px; cursor: pointer; }
+.trade-tab[aria-selected="true"] { border-color: var(--accent-primary); color: var(--text-secondary); }
+.trade-note { font-size: 13px; color: var(--text-tertiary); }
+.trade-sell-total { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 8px; padding: 12px; font-size: 13px; }
+.trade-sell-total strong { display: block; margin-bottom: 4px; }
+.trade-warning { display: flex; gap: 8px; font-size: 12px; color: var(--accent-warning); background: rgba(240,185,11,.07); border: 1px solid rgba(240,185,11,.3); border-radius: 8px; padding: 10px 12px; }
+.trade-error { font-size: 13px; color: var(--accent-danger); margin: 0; min-height: 18px; }
+.trade-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.trade-review { border: 1px solid var(--border-default); border-radius: 8px; padding: 12px; background: var(--bg-elevated); }
+.trade-review h3 { margin: 0 0 6px; font-size: 14px; }
+.trade-summary { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; margin: 10px 0; }
+.trade-summary dt { color: var(--text-tertiary); }
+.trade-summary dd { margin: 0; font-family: var(--font-mono); text-align: right; }
+.trade-ack { display: flex; gap: 8px; font-size: 13px; align-items: flex-start; }
+.trade-result { border-radius: 8px; padding: 14px; font-size: 14px; }
+.trade-result.ok { background: rgba(14,203,129,.08); border: 1px solid rgba(14,203,129,.35); }
+.trade-result h3 { margin: 0 0 6px; }
+
+/* 861-DELTA: bloco de venda travada pela stop dentro do fluxo de venda */
+.d861-stop-block { border: 1px solid rgba(240,185,11,.45); background: rgba(240,185,11,.06); border-radius: 8px; padding: 12px; }
+.d861-stop-block h3 { margin: 0 0 6px; font-size: 14px; }
+.d861-stop-block p { margin: 0 0 10px; font-size: 13px; }
+.d861-removed { border: 1px solid rgba(14,203,129,.4); background: rgba(14,203,129,.07); border-radius: 8px; padding: 12px; font-size: 13px; }
+.d861-removed p { margin: 0 0 10px; }
+@media (max-width: 900px) { .app-sidebar { display: none; } .app-header, .workspace { margin-left: 0; } .kpis { grid-template-columns: repeat(2, 1fr); } .detail { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- 861-LEGEND: regiões 861-CLONE = cópia fiel da página viva /monitor (somente leitura nesta proposta);
+       regiões 861-DELTA = único acréscimo deste card (remover stop no gráfico + remover no fluxo de venda).
+       Ganchos data-sym / data-expand / data-trade-* são do protótipo, não do produto. -->
+
+  <!-- 861-CLONE: review-bar (cromo do protótipo, fora da página viva) -->
+  <div class="review-bar">
+    <p><strong>#861</strong> clone da rota <code>/monitor</code> (MonitorStatusTab + ChartModal + SpotProtectStopPanel + SpotMarketTradePanel). Delta: remover stop com confirmação no gráfico + remover no fluxo de venda quando travada pela stop. Testemunha: BTC Spot USDT HOLD.</p>
+    <pre class="gate-tokens">UI impact: affected
+live_route: /monitor
+surface: chart-stop-panel + sell-flow-stop-block (cloned regions)</pre>
+  </div>
+
+  <div class="canvas-wash" aria-hidden="true"></div>
+
+  <!-- 861-CLONE:start shell AppNav autenticado -->
+  <aside class="app-sidebar" aria-label="Navegacao principal">
+    <div class="brand-wrap">
+      <img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol" />
+    </div>
+    <div class="panel-chip">
+      <div class="k">Painel</div>
+      <div class="v">Monitor de sinais</div>
+      <span class="env"><i></i> DEV</span>
+    </div>
+    <div class="nav-section-title">Principal</div>
+    <a class="nav-link" href="#">Favoritos</a>
+    <a class="nav-link active" href="#" aria-current="page">Monitor</a>
+    <div class="nav-section-title">Estratégias</div>
+    <a class="nav-link" href="#">Descoberta</a>
+    <a class="nav-link" href="#">Combo</a>
+    <div class="nav-section-title">Carteira</div>
+    <a class="nav-link" href="#">Carteira</a>
+    <a class="nav-link" href="#">Ajuda</a>
+  </aside>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div>
+        <div class="workspace-label">Workspace</div>
+        <div class="workspace-title">Monitor de sinais</div>
+      </div>
+      <div class="account">
+        <span class="env" style="margin:0"><i></i> DEV</span>
+        <span class="avatar" aria-hidden="true">A</span>
+        <span>Alan</span>
+      </div>
+    </div>
+  </header>
+  <!-- 861-CLONE:end shell -->
+
+  <!-- COPIED:start -->
+  <div class="workspace">
+    <!-- 861-CLONE:start MonitorStatusTab -->
+    <div class="monitor-page-shell monitor-theme monitor-theme--black" data-testid="monitor-status-tab">
+      <div class="monitor-main">
+        <header class="topbar">
+          <div class="topbar-spacer"></div>
+          <label class="search">
+            <input placeholder="Buscar par, estratégia, tag..." />
+            <span class="kbd">⌘K</span>
+          </label>
+          <button type="button" class="topbar-btn">Telegram: off</button>
+          <button type="button" class="topbar-btn">Tema</button>
+          <button type="button" class="topbar-btn primary">Atualizar</button>
+        </header>
+
+        <section class="page">
+          <header class="page-head">
+            <div>
+              <h1 class="sr-only">Monitor de sinais</h1>
+              <p class="page-sub">Operações ativas e saídas acionáveis. Atualização contínua a cada 30s.</p>
+              <div class="updated"><span>Última leitura</span><span class="mono"> 17:02:11 </span><span>· BRT</span></div>
+            </div>
+          </header>
+
+          <div class="kpis">
+            <div class="kpi"><div class="kpi-label">Em posição <span class="tag">Compra</span></div><div class="kpi-val">3</div><div class="kpi-foot">média risco 7.9%</div></div>
+            <div class="kpi"><div class="kpi-label">Em saída <span class="tag">Venda</span></div><div class="kpi-val">2</div><div class="kpi-foot">média risco -</div></div>
+            <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">5</div><div class="kpi-foot">sinais filtrados</div></div>
+            <div class="kpi"><div class="kpi-label">Em carteira</div><div class="kpi-val">3</div><div class="kpi-foot">ativos rastreados</div></div>
+          </div>
+
+          <section class="filterbar" aria-label="Filtros do monitor">
+            <select class="select"><option>Timeframe: Todos</option><option>1d</option></select>
+            <select class="select" data-testid="monitor-filter-stars"><option>Estrelas: Todas</option></select>
+            <select class="select"><option>Estratégia: Todas</option></select>
+            <div class="filter-spacer"></div>
+            <span class="chip-count">5 resultados</span>
+          </section>
+
+          <!-- 861-CLONE: compact signals list matching live MonitorStatusTab columns (clone fidelity) -->
+          <table class="monitor-table signals" data-testid="monitor-signals-table" aria-label="Sinais">
+            <thead><tr><th>Status</th><th>Preço</th><th>Distância</th><th>7d</th><th>Risco até stop</th><th>Tags</th><th>Par / Estratégia</th><th>Operar</th></tr></thead>
+            <tbody>
+              <tr data-row="BTC HOLD"><td>HOLD</td><td class="num">$112,350.20</td><td class="num">4.62%</td><td class="num">+3.1%</td><td class="num">11.38%</td><td>Carteira ★★★</td><td>BTC/USDT · Médias Móveis: Tendência Confirmada</td><td>Operar</td></tr>
+              <tr data-row="SOL HOLD"><td>HOLD</td><td class="num">$105.39</td><td class="num">13.38%</td><td class="num">+8.4%</td><td class="num">35.21%</td><td>Carteira ★★★</td><td>SOL/USDT · Médias Móveis: Tendência Confirmada</td><td>Operar</td></tr>
+              <tr data-row="ETH HOLD"><td>HOLD</td><td class="num">$3,482.10</td><td class="num">-</td><td class="num">+1.2%</td><td class="num">-</td><td>Carteira ★★</td><td>ETH/USDT · Rompimento de Canal</td><td>Operar</td></tr>
+            </tbody>
+          </table>
+
+          <main class="monitor-board">
+            <section data-testid="monitor-section-hold">
+              <div class="status-row">
+                <span class="status-section-label">Estado Compra</span>
+                <h3><span class="pip hold"></span> Em posição <span class="meta">(3)</span></h3>
+                <p class="desc">Posição ativa com gestão em acompanhamento contínuo.</p>
+              </div>
+              <table class="monitor-table">
+                <thead><tr><th></th><th>Par</th><th>Sinal</th><th>Preço</th><th>Dist. saída</th><th>Risco até stop</th><th>Tags</th><th>Ações</th></tr></thead>
+                <tbody>
+                <!-- 861-DELTA:start linha testemunha BTC Spot USDT HOLD (única linha nova; restante da tabela é clone) -->
+                <tr class="head-row expanded" data-idx="hold-btc" aria-expanded="true" data-testid="monitor-row-btc-usdt" data-expand="btc">
+                  <td><button type="button" class="row-toggle open" aria-expanded="true" aria-label="Expandir">›</button></td>
+                  <td><div class="pair-cell"><div class="pair-icon btc">BTC</div>
+                    <div class="pair-meta"><div class="pair-name">BTC/USDT <span class="pair-tf">1d</span></div>
+                    <div class="pair-strat">Médias Móveis: Tendência Confirmada</div>
+                    <div class="pair-strat-desc">Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída.</div></div></div></td>
+                  <td><span class="status-pill hold" data-testid="monitor-row-signal-btc-usdt">Compra</span></td>
+                  <td class="num lg">$112,350.20</td>
+                  <td>4.62%</td>
+                  <td><div class="risk-bar"><div class="risk-fill" style="width:32%"></div></div><div class="risk-meta"><span>11.38%</span><span>stop</span></div></td>
+                  <td><div class="tags"><span class="tag portfolio">● Carteira</span><span class="tag strategy">★★★</span></div></td>
+                  <td class="actions-cell"><div class="row-actions" aria-label="Ações BTC/USDT">
+                    <button type="button" class="row-action" data-chart-open="btc" aria-label="Abrir Gráfico BTC/USDT"><span>Abrir Gráfico</span></button>
+                    <button type="button" class="row-action" data-trade-open="btc" aria-label="Operar BTC/USDT" data-testid="open-spot-trade-btc-usdt"><span>Operar</span></button>
+                  </div></td>
+                </tr>
+                <tr class="detail-row" data-detail="hold-btc" data-expanded="true" aria-hidden="false">
+                  <td colspan="8">
+                    <div data-testid="monitor-card-btc-usdt">
+                      <div class="detail-control-strip">
+                        <div class="detail-pair-summary"><span class="detail-symbol">BTC/USDT</span>
+                          <span class="status-pill hold" data-testid="monitor-card-signal-btc-usdt">Compra</span>
+                          <span class="detail-timeframe">1d</span><span class="detail-timeframe">Gráfico 1d</span></div>
+                        <div class="detail-controls"><button type="button" class="btn ghost" aria-pressed="true">No portfólio</button></div>
+                      </div>
+                      <div class="detail">
+                        <div>
+                          <h5>Sinal · Compra</h5>
+                          <div class="exit-msg"><span class="label">Mensagem</span><span>Posição ativa. Distância até a saída 4.62%.</span></div>
+                          <div class="candle-meta"><strong>Médias Móveis: Tendência Confirmada</strong><span>tf <b>1d</b></span><span>candle <b>2026-08-29 00:00:00</b></span></div>
+                        </div>
+                        <div>
+                          <h5>Compra / Stop</h5>
+                          <dl class="kv" data-testid="monitor-risk-block-btc-usdt"><dt>distância até saída</dt><dd>4.62%</dd><dt>distância até stop</dt><dd>11.38%</dd><dt>stop</dt><dd>$99,560.00</dd><dt>entrada</dt><dd>$104,800.00</dd><dt>preço atual</dt><dd>$112,350.20</dd></dl>
+                          <p class="scenario-risk">Se o preço cruzar $99,560.00, a leitura de posição deixa de valer segundo a estratégia (stop).</p>
+                        </div>
+                      </div>
+                      <div class="detail-foot">
+                        <div class="hint">Posicionado (HOLD) · stop protetiva aberta no app</div>
+                        <div class="actions">
+                          <button type="button" class="btn" data-chart-open="btc">Abrir Gráfico</button>
+                          <button type="button" class="btn primary" data-trade-open="btc">Operar</button>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <!-- 861-DELTA:end linha testemunha -->
+
+                <!-- 861-CLONE:start linhas SOL/ETH (HOLD) -->
+                <tr class="head-row expanded" data-idx="hold-sol" aria-expanded="true" data-testid="monitor-row-sol-usdt" data-expand="sol">
+                  <td><button type="button" class="row-toggle open" aria-expanded="true" aria-label="Expandir">›</button></td>
+                  <td><div class="pair-cell"><div class="pair-icon sol">SOL</div>
+                    <div class="pair-meta"><div class="pair-name">SOL/USDT <span class="pair-tf">1d</span></div>
+                    <div class="pair-strat">Médias Móveis: Tendência Confirmada</div>
+                    <div class="pair-strat-desc">Exige alinhamento entre médias curta, intermediária e longa para confirmar tendência; a perda do alinhamento aciona a saída.</div></div></div></td>
+                  <td><span class="status-pill hold" data-testid="monitor-row-signal-sol-usdt">Compra</span></td>
+                  <td class="num lg">$105.39</td>
+                  <td>13.38%</td>
+                  <td><div class="risk-bar"><div class="risk-fill" style="width:100%"></div></div><div class="risk-meta"><span>35.21%</span><span>stop</span></div></td>
+                  <td><div class="tags"><span class="tag portfolio">● Carteira</span><span class="tag strategy">★★★</span></div></td>
+                  <td class="actions-cell"><div class="row-actions" aria-label="Ações SOL/USDT">
+                    <button type="button" class="row-action" data-chart-open="sol" aria-label="Abrir Gráfico SOL/USDT"><span>Abrir Gráfico</span></button>
+                    <button type="button" class="row-action" data-trade-open="sol" aria-label="Operar SOL/USDT" data-testid="open-spot-trade-sol-usdt"><span>Operar</span></button>
+                  </div></td>
+                </tr>
+                <tr class="detail-row" data-detail="hold-sol" data-expanded="true" aria-hidden="false">
+                  <td colspan="8">
+                    <div data-testid="monitor-card-sol-usdt">
+                      <div class="detail-control-strip">
+                        <div class="detail-pair-summary"><span class="detail-symbol">SOL/USDT</span>
+                          <span class="status-pill hold" data-testid="monitor-card-signal-sol-usdt">Compra</span>
+                          <span class="detail-timeframe">1d</span><span class="detail-timeframe">Gráfico 1d</span></div>
+                        <div class="detail-controls"><button type="button" class="btn ghost" aria-pressed="true">No portfólio</button></div>
+                      </div>
+                      <div class="detail">
+                        <div>
+                          <h5>Sinal · Compra</h5>
+                          <div class="exit-msg"><span class="label">Mensagem</span><span>Posição ativa. Distância até a saída 13.38%.</span></div>
+                          <div class="candle-meta"><strong>Médias Móveis: Tendência Confirmada</strong><span>tf <b>1d</b></span><span>candle <b>2026-08-29 00:00:00</b></span></div>
+                        </div>
+                        <div>
+                          <h5>Compra / Stop</h5>
+                          <dl class="kv" data-testid="monitor-risk-block-sol-usdt"><dt>distância até saída</dt><dd>13.38%</dd><dt>distância até stop</dt><dd>35.21%</dd><dt>stop</dt><dd>$68.28</dd><dt>entrada</dt><dd>$91.40</dd><dt>preço atual</dt><dd>$105.39</dd></dl>
+                          <p class="scenario-risk">Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop).</p>
+                        </div>
+                      </div>
+                      <div class="detail-foot">
+                        <div class="hint">Posicionado (HOLD) · stop protetiva aberta só na exchange</div>
+                        <div class="actions">
+                          <button type="button" class="btn" data-chart-open="sol">Abrir Gráfico</button>
+                          <button type="button" class="btn primary" data-trade-open="sol">Operar</button>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr class="head-row" data-idx="hold-eth" aria-expanded="false" data-testid="monitor-row-eth-usdt" data-expand="eth">
+                  <td><button type="button" class="row-toggle" aria-expanded="false" aria-label="Expandir">›</button></td>
+                  <td><div class="pair-cell"><div class="pair-icon eth">ETH</div>
+                    <div class="pair-meta"><div class="pair-name">ETH/USDT <span class="pair-tf">1d</span></div>
+                    <div class="pair-strat">Rompimento de Canal</div></div></div></td>
+                  <td><span class="status-pill hold" data-testid="monitor-row-signal-eth-usdt">Compra</span></td>
+                  <td class="num lg">$3,482.10</td>
+                  <td>-</td>
+                  <td><div class="risk-bar"><div class="risk-fill" style="width:0%"></div></div><div class="risk-meta"><span>-</span><span>stop</span></div></td>
+                  <td><div class="tags"><span class="tag portfolio">● Carteira</span><span class="tag strategy">★★</span></div></td>
+                  <td class="actions-cell"><div class="row-actions" aria-label="Ações ETH/USDT">
+                    <button type="button" class="row-action" data-chart-open="eth" aria-label="Abrir Gráfico ETH/USDT"><span>Abrir Gráfico</span></button>
+                    <button type="button" class="row-action" data-trade-open="eth" aria-label="Operar ETH/USDT" data-testid="open-spot-trade-eth-usdt"><span>Operar</span></button>
+                  </div></td>
+                </tr>
+                <tr class="detail-row" data-detail="hold-eth" data-expanded="false" aria-hidden="true" hidden>
+                  <td colspan="8"><div data-testid="monitor-card-eth-usdt">
+                    <p class="trade-note">Posicionado (HOLD), sem stop aberta — Remover stop não é oferecido (acceptance do card).</p>
+                    <div class="detail-foot"><div class="actions">
+                      <button type="button" class="btn" data-chart-open="eth">Abrir Gráfico</button>
+                      <button type="button" class="btn primary" data-trade-open="eth">Operar</button>
+                    </div></div>
+                  </div></td>
+                </tr>
+                <!-- 861-CLONE:end linhas SOL/ETH -->
+                </tbody>
+              </table>
+            </section>
+
+            <!-- 861-CLONE:start seção EXIT -->
+            <section data-testid="monitor-section-exit">
+              <div class="status-row">
+                <span class="status-section-label">Estado Venda</span>
+                <h3><span class="pip exit"></span> Saída / cobertura <span class="meta">(2)</span></h3>
+                <p class="desc">Saída ou cobertura acionável para nova análise.</p>
+              </div>
+              <table class="monitor-table">
+                <thead><tr><th></th><th>Par</th><th>Sinal</th><th>Preço</th><th>Dist. saída</th><th>Risco até stop</th><th>Tags</th><th>Ações</th></tr></thead>
+                <tbody>
+                <tr class="head-row" data-idx="exit-ada" aria-expanded="false" data-testid="monitor-row-ada-usdt" data-expand="ada">
+                  <td><button type="button" class="row-toggle" aria-expanded="false" aria-label="Expandir">›</button></td>
+                  <td><div class="pair-cell"><div class="pair-icon ada">ADA</div>
+                    <div class="pair-meta"><div class="pair-name">ADA/USDT <span class="pair-tf">1d</span></div></div></div></td>
+                  <td><span class="status-pill exit">Venda</span></td>
+                  <td class="num lg">$0.8420</td><td>-</td>
+                  <td><div class="residual-block">Risco residual · não operável</div></td>
+                  <td><div class="tags"><span class="tag strategy">★★★</span></div></td>
+                  <td class="actions-cell"><div class="row-actions">
+                    <button type="button" class="row-action" data-chart-open="ada" aria-label="Abrir Gráfico ADA/USDT"><span>Abrir Gráfico</span></button>
+                  </div></td>
+                </tr>
+                <tr class="detail-row" data-detail="exit-ada" hidden><td colspan="8"><p class="trade-note">Sem posição — Remover stop não é oferecido.</p></td></tr>
+                <tr class="head-row" data-idx="exit-link" aria-expanded="false" data-testid="monitor-row-link-usdt" data-expand="link">
+                  <td><button type="button" class="row-toggle" aria-expanded="false" aria-label="Expandir">›</button></td>
+                  <td><div class="pair-cell"><div class="pair-icon link">LIN</div>
+                    <div class="pair-meta"><div class="pair-name">LINK/USDT <span class="pair-tf">1d</span></div></div></div></td>
+                  <td><span class="status-pill exit">Venda</span></td>
+                  <td class="num lg">$14.82</td><td>-</td>
+                  <td><div class="residual-block">Risco residual · não operável</div></td>
+                  <td><div class="tags"><span class="tag strategy">★★</span></div></td>
+                  <td class="actions-cell"><div class="row-actions">
+                    <button type="button" class="row-action" data-chart-open="link" aria-label="Abrir Gráfico LINK/USDT"><span>Abrir Gráfico</span></button>
+                  </div></td>
+                </tr>
+                <tr class="detail-row" data-detail="exit-link" hidden><td colspan="8"><p class="trade-note">Sem posição — Remover stop não é oferecido.</p></td></tr>
+                </tbody>
+              </table>
+            </section>
+            <!-- 861-CLONE:end seção EXIT -->
+          </main>
+        </section>
+      </div>
+    </div>
+    <!-- 861-CLONE:end MonitorStatusTab -->
+  </div>
+
+  <!-- 861-CLONE:start ChartModal (concha: título, risco/stop, candle) -->
+  <div id="proto-chart-overlay" class="chart-modal-overlay">
+    <div id="proto-chart-modal" class="chart-modal" data-testid="chart-modal" role="dialog" aria-modal="true" aria-labelledby="chart-modal-title">
+      <div class="chart-modal-head">
+        <h2 id="chart-modal-title">Gráfico · BTC/USDT</h2>
+        <button type="button" data-chart-close>Fechar</button>
+      </div>
+      <div class="chart-modal-body">
+        <div class="chart-placeholder">Gráfico BTC/USDT · 1d (recorte do clone — velas omitidas)</div>
+        <p class="chart-risk-label" data-chart-section-label>Risco / Stop</p>
+        <div class="chart-risk" data-testid="chart-modal-risk" data-chart-risk>
+          <div data-chart-hold>
+            <div class="chart-kv-row"><span class="muted">distância até saída</span><span class="mono" data-chart-exit-dist>4.62%</span></div>
+            <div class="chart-kv-row"><span class="muted">distância até stop</span><span class="mono stop" data-chart-stop-dist>11.38%</span></div>
+            <div class="chart-kv-row"><span class="muted">Stop</span><span class="mono stop" data-chart-stop>$99,560.00</span></div>
+            <div class="chart-kv-row"><span class="muted">Entrada</span><span class="mono" data-chart-entry>$104,800.00</span></div>
+            <div class="chart-kv-row"><span class="muted">Preço atual</span><span class="mono" data-chart-price>$112,350.20</span></div>
+            <p class="scenario-risk" data-chart-scenario aria-live="polite">Se o preço cruzar $99,560.00, a leitura de posição deixa de valer segundo a estratégia (stop).</p>
+          </div>
+          <div data-chart-exit hidden>
+            <div class="chart-kv-row"><span class="muted">Preço atual</span><span class="mono" data-chart-exit-price>-</span></div>
+            <div class="residual-block"><span class="label"><strong>Risco residual</strong></span> <span data-chart-residual-text></span></div>
+          </div>
+        </div>
+
+        <!-- 861-DELTA:start SpotProtectStopPanel com confirmação de Remover stop -->
+        <section class="d861-protect" data-testid="spot-protect-stop-panel" data-protect-panel aria-label="Proteção Spot stop-limit">
+          <div class="d861-protect-top">
+            <div>
+              <p class="d861-eyebrow">Proteção Spot</p>
+              <p class="d861-protect-summary" data-testid="spot-protect-summary" data-protect-summary></p>
+              <p class="d861-protect-external" data-testid="spot-protect-external-note" data-protect-external hidden>Stop já aberto na Binance (fora do app). Remova aqui ou na exchange antes de criar outro.</p>
+              <p class="d861-protect-empty" data-protect-empty hidden></p>
+            </div>
+            <div class="d861-protect-actions">
+              <button type="button" data-protect-remove data-testid="spot-protect-remove" aria-expanded="false" aria-controls="d861-protect-confirm">Remover stop</button>
+            </div>
+          </div>
+          <div class="d861-protect-confirm" id="d861-protect-confirm" data-testid="spot-protect-confirm" data-protect-confirm hidden tabindex="-1" role="group" aria-label="Confirmar remoção da stop">
+            <p data-protect-confirm-text></p>
+            <div class="d861-protect-confirm-actions">
+              <button type="button" class="d861-btn-danger" data-protect-confirm-yes data-testid="spot-protect-confirm-yes">Confirmar remoção</button>
+              <button type="button" class="d861-btn-ghost" data-protect-confirm-no data-testid="spot-protect-confirm-no">Cancelar</button>
+            </div>
+          </div>
+          <p class="d861-protect-done" data-protect-done role="status" tabindex="-1" hidden></p>
+        </section>
+        <!-- 861-DELTA:end SpotProtectStopPanel -->
+      </div>
+    </div>
+  </div>
+  <!-- 861-CLONE:end ChartModal -->
+  <!-- COPIED:end -->
+
+  <!-- 861-CLONE:start SpotMarketTradePanel (concha do diálogo de venda SELL 100%) -->
+  <div id="proto-trade-overlay" class="trade-overlay">
+    <section class="trade-panel" data-testid="spot-trade-dialog" role="dialog" aria-modal="true" aria-labelledby="spot-trade-title">
+      <div class="trade-head">
+        <div><h2 id="spot-trade-title">Operar BTC/USDT</h2><p id="spot-trade-price">Preço indicativo: $112,350.20 USDT</p></div>
+        <button type="button" class="trade-close" data-trade-close aria-label="Fechar operação">×</button>
+      </div>
+      <div class="trade-body">
+        <div data-trade-state="entry">
+          <div class="trade-tabs" role="tablist" aria-label="Tipo de operação">
+            <button type="button" class="trade-tab" data-trade-tab="buy" role="tab" aria-selected="false">Comprar</button>
+            <button type="button" class="trade-tab" data-trade-tab="sell" role="tab" aria-selected="true">Vender 100%</button>
+          </div>
+          <div data-trade-buy hidden><p class="trade-note">Compra fora do escopo do card 861 (este protótipo demonstra só a venda como operação).</p></div>
+          <div data-trade-sell>
+            <div class="trade-sell-total"><strong>Venda de 100% do saldo livre</strong><p class="trade-note" style="margin:0">O backend consultará o saldo atual e enviará a maior quantidade válida sem ultrapassar 100%.</p></div>
+          </div>
+          <div class="trade-warning"><span>Uma ordem MARKET pode executar em preço diferente da estimativa. Você revisará os dados antes do envio.</span></div>
+          <p class="trade-error" role="alert" data-trade-error></p>
+          <div class="trade-actions">
+            <button type="button" class="btn" data-trade-close>Cancelar</button>
+            <button type="button" class="btn primary" data-trade-continue data-testid="spot-continue-order">Continuar</button>
+          </div>
+        </div>
+
+        <!-- 861-DELTA:start venda travada pela stop + remover no fluxo de venda -->
+        <div data-trade-state="blocked" hidden>
+          <div class="d861-stop-block" data-testid="spot-sell-stop-blocked">
+            <h3>Venda travada pela stop aberta</h3>
+            <p data-trade-blocked-text></p>
+            <button type="button" class="btn" data-trade-remove data-testid="spot-sell-stop-remove" aria-expanded="false" aria-controls="d861-trade-remove-confirm">Remover stop</button>
+          </div>
+          <div class="d861-protect-confirm" id="d861-trade-remove-confirm" data-trade-remove-confirm hidden tabindex="-1" role="group" aria-label="Confirmar remoção da stop">
+            <p data-trade-remove-confirm-text></p>
+            <div class="d861-protect-confirm-actions">
+              <button type="button" class="d861-btn-danger" data-trade-remove-yes data-testid="spot-sell-stop-confirm-yes">Confirmar remoção</button>
+              <button type="button" class="d861-btn-ghost" data-trade-remove-no>Voltar</button>
+            </div>
+          </div>
+          <p class="trade-error" role="alert" data-trade-error2></p>
+          <div class="trade-actions"><button type="button" class="btn" data-trade-back>Voltar</button></div>
+        </div>
+        <div data-trade-state="removed" hidden>
+          <div class="d861-removed" data-testid="spot-sell-stop-removed">
+            <p><strong>Stop removida via Farol.</strong> Nenhuma venda foi enviada. Para vender como operação, gere uma nova prévia — o fluxo normal recomeça aqui.</p>
+            <button type="button" class="btn primary" data-trade-repreview data-testid="spot-repreview-order">Gerar nova prévia</button>
+          </div>
+        </div>
+        <!-- 861-DELTA:end -->
+
+        <div data-trade-state="review" hidden>
+          <div class="trade-review">
+            <h3>Confirme sua ordem</h3>
+            <p class="trade-note">Confira a operação. O envio à Binance acontece somente após sua confirmação.</p>
+            <dl class="trade-summary" data-trade-summary></dl>
+            <label class="trade-ack"><input type="checkbox" data-trade-ack /> <span>Entendo que a ordem será enviada a mercado e que o preço final pode variar.</span></label>
+            <p class="trade-error" role="alert" data-trade-error3></p>
+            <div class="trade-actions">
+              <button type="button" class="btn" data-trade-back>Voltar</button>
+              <button type="button" class="btn primary" data-trade-submit data-testid="spot-confirm-order" disabled>Confirmar venda total</button>
+            </div>
+          </div>
+        </div>
+        <div data-trade-state="result" hidden>
+          <div class="trade-result ok" aria-live="polite">
+            <h3>Venda executada</h3>
+            <p class="trade-note" data-trade-result-text></p>
+            <div class="trade-actions">
+              <button type="button" class="btn" data-trade-close>Fechar</button>
+              <button type="button" class="btn primary" data-trade-reset>Nova operação</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <!-- 861-CLONE:end SpotMarketTradePanel -->
+
+<script>
+(function () {
+  /* 861-CLONE: dados do recorte (HOLD Posicionado + EXIT) */
+  var SYM_LABEL = { btc: "BTC/USDT", sol: "SOL/USDT", eth: "ETH/USDT", ada: "ADA/USDT", link: "LINK/USDT" };
+  var BASE_ASSET = { btc: "BTC", sol: "SOL", eth: "ETH", ada: "ADA", link: "LINK" };
+  var FREE_BAL = { btc: "0.085", sol: "12.4", eth: "1.250", ada: "920", link: "64.5" };
+  var INDIC_PRICE = { btc: "$112,350.20", sol: "$105.39", eth: "$3,482.10", ada: "$0.8420", link: "$14.82" };
+  /* 861-DELTA: stops abertas (mutável — remover no gráfico e no fluxo de venda compartilham este estado) */
+  var STOPS_OPEN = { btc: true, sol: true };
+  var CHART = {
+    btc: { title: "Gráfico · BTC/USDT", hold: true, exitDist: "4.62%", stopDist: "11.38%", stop: "$99,560.00", entry: "$104,800.00", price: "$112,350.20", scenario: "Se o preço cruzar $99,560.00, a leitura de posição deixa de valer segundo a estratégia (stop)." },
+    sol: { title: "Gráfico · SOL/USDT", hold: true, exitDist: "13.38%", stopDist: "35.21%", stop: "$68.28", entry: "$91.40", price: "$105.39", scenario: "Se o preço cruzar $68.28, a leitura de posição deixa de valer segundo a estratégia (stop)." },
+    eth: { title: "Gráfico · ETH/USDT", hold: true, unavailable: true, price: "$3,482.10" },
+    ada: { title: "Gráfico · ADA/USDT", hold: false, price: "$0.8420", residual: "posição encerrada segundo a estratégia — sem risco residual mapeado" },
+    link: { title: "Gráfico · LINK/USDT", hold: false, price: "$14.82", residual: "último EXIT em $14.82 · exposição residual 4.10% até o stop histórico — não operável." }
+  };
+  var PROTECT = {
+    btc: { qty: "0.085 BTC", stop: "$99,560.00", limit: "$99,460.44", source: "app" },
+    sol: { qty: "12.4 SOL", stop: "$68.28", limit: "$68.21", source: "external" }
+  };
+
+  /* 861-CLONE: expandir/recolher linhas */
+  function toggleRow(key) {
+    document.querySelectorAll('[data-expand="' + key + '"]').forEach(function (row) {
+      var expanded = row.getAttribute("aria-expanded") === "true";
+      var next = !expanded;
+      row.classList.toggle("expanded", next);
+      row.setAttribute("aria-expanded", next ? "true" : "false");
+      var btn = row.querySelector(".row-toggle");
+      if (btn) { btn.setAttribute("aria-expanded", next ? "true" : "false"); }
+      var idx = row.getAttribute("data-idx");
+      document.querySelectorAll('[data-detail="' + idx + '"]').forEach(function (detail) {
+        detail.hidden = !next;
+        detail.setAttribute("aria-hidden", next ? "false" : "true");
+        detail.setAttribute("data-expanded", next ? "true" : "false");
+      });
+    });
+  }
+  document.querySelectorAll("[data-expand]").forEach(function (row) {
+    row.addEventListener("click", function (event) {
+      if (event.target.closest("button, a, input, textarea, select")) {
+        if (event.target.closest(".row-toggle")) { event.stopPropagation(); toggleRow(row.getAttribute("data-expand")); }
+        return;
+      }
+      toggleRow(row.getAttribute("data-expand"));
+    });
+  });
+
+  /* 861-CLONE: ChartModal open/fill/close */
+  var modal = document.getElementById("proto-chart-modal");
+  var overlay = document.getElementById("proto-chart-overlay");
+  function fillChart(key) {
+    var pack = CHART[key] || CHART.btc;
+    document.getElementById("chart-modal-title").textContent = pack.title;
+    var holdEl = modal.querySelector("[data-chart-hold]");
+    var exitEl = modal.querySelector("[data-chart-exit]");
+    modal.querySelector("[data-chart-section-label]").textContent = pack.hold ? "Risco / Stop" : "Risco residual";
+    holdEl.hidden = !pack.hold;
+    exitEl.hidden = pack.hold;
+    if (pack.hold) {
+      if (pack.unavailable) {
+        modal.querySelector("[data-chart-exit-dist]").textContent = "indisponível — dado não confiável";
+        modal.querySelector("[data-chart-stop-dist]").textContent = "indisponível — dado não confiável";
+        modal.querySelector("[data-chart-stop]").textContent = "indisponível — dado não confiável";
+        modal.querySelector("[data-chart-entry]").textContent = "indisponível — dado não confiável";
+        modal.querySelector("[data-chart-price]").textContent = pack.price;
+        modal.querySelector("[data-chart-scenario]").textContent = "";
+      } else {
+        modal.querySelector("[data-chart-exit-dist]").textContent = pack.exitDist;
+        modal.querySelector("[data-chart-stop-dist]").textContent = pack.stopDist;
+        modal.querySelector("[data-chart-stop]").textContent = pack.stop;
+        modal.querySelector("[data-chart-entry]").textContent = pack.entry;
+        modal.querySelector("[data-chart-price]").textContent = pack.price;
+        modal.querySelector("[data-chart-scenario]").textContent = pack.scenario;
+      }
+    } else {
+      modal.querySelector("[data-chart-exit-price]").textContent = pack.price;
+      modal.querySelector("[data-chart-residual-text]").textContent = pack.residual;
+    }
+    modal.setAttribute("data-chart-symbol", key);
+    fillProtect(key);
+  }
+  function openChart(key) { fillChart(key); overlay.classList.add("is-open"); }
+  function closeChart() { overlay.classList.remove("is-open"); }
+  document.querySelectorAll("[data-chart-open]").forEach(function (btn) {
+    btn.addEventListener("click", function (event) { event.stopPropagation(); openChart(btn.getAttribute("data-chart-open")); });
+  });
+  document.querySelectorAll("[data-chart-close]").forEach(function (btn) { btn.addEventListener("click", closeChart); });
+  overlay.addEventListener("click", function (event) { if (event.target === event.currentTarget) closeChart(); });
+
+  /* 861-DELTA: SpotProtectStopPanel — remover com confirmação; nunca vende */
+  var panel = modal.querySelector("[data-protect-panel]");
+  function fillProtect(key) {
+    var pack = CHART[key] || CHART.btc;
+    var summary = panel.querySelector("[data-protect-summary]");
+    var external = panel.querySelector("[data-protect-external]");
+    var empty = panel.querySelector("[data-protect-empty]");
+    var removeBtn = panel.querySelector("[data-protect-remove]");
+    var confirm = panel.querySelector("[data-protect-confirm]");
+    var done = panel.querySelector("[data-protect-done]");
+    confirm.hidden = true; done.hidden = true;
+    if (!pack.hold) { panel.style.display = "none"; return; }
+    panel.style.display = "";
+    var stop = PROTECT[key];
+    if (STOPS_OPEN[key] && stop) {
+      empty.hidden = true; summary.hidden = false; removeBtn.style.display = "";
+      summary.textContent = "Ativa: qty " + stop.qty + " · stop " + stop.stop + " · limit " + stop.limit;
+      external.hidden = stop.source !== "external";
+      panel.querySelector("[data-protect-confirm-text]").textContent =
+        "Remover a stop " + stop.qty + " (stop " + stop.stop + ", limit " + stop.limit + ")" +
+        (stop.source === "external" ? ", criada só na exchange," : ", criada no app (Farol),") + " via Farol? O saldo destrava, mas nada será vendido.";
+    } else {
+      summary.hidden = true; external.hidden = true; removeBtn.style.display = "none";
+      empty.hidden = false;
+      empty.textContent = "Sem ordem protetiva. Remover stop não é oferecido (sem stop aberta).";
+    }
+  }
+  /* 861-DELTA: foco da confirmação no gráfico (P1-1) — abre move o foco, fechar devolve ao gatilho */
+  var protectTrigger = null;
+  panel.querySelector("[data-protect-remove]").addEventListener("click", function (event) {
+    protectTrigger = event.currentTarget;
+    panel.querySelector("[data-protect-confirm]").hidden = false;
+    panel.querySelector("[data-protect-done]").hidden = true;
+    protectTrigger.setAttribute("aria-expanded", "true");
+    panel.querySelector("[data-protect-confirm-yes]").focus();
+  });
+  panel.querySelector("[data-protect-confirm-no]").addEventListener("click", function () {
+    panel.querySelector("[data-protect-confirm]").hidden = true;
+    panel.querySelector("[data-protect-remove]").setAttribute("aria-expanded", "false");
+    if (protectTrigger) protectTrigger.focus();
+  });
+  panel.querySelector("[data-protect-confirm-yes]").addEventListener("click", function () {
+    var key = modal.getAttribute("data-chart-symbol") || "btc";
+    STOPS_OPEN[key] = false; /* DELETE /monitor/spot-stop-order simulado */
+    panel.querySelector("[data-protect-confirm]").hidden = true;
+    panel.querySelector("[data-protect-remove]").setAttribute("aria-expanded", "false");
+    fillProtect(key);
+    panel.querySelector("[data-protect-done]").hidden = false;
+    panel.querySelector("[data-protect-done]").textContent = "Stop removida via Farol. Saldo destravado — a venda como operação segue o fluxo normal (Operar na lista).";
+    panel.querySelector("[data-protect-done]").focus();
+  });
+
+  /* 861-CLONE+DELTA: SpotMarketTradePanel — venda SELL; travada pela stop oferece remover ali */
+  var tradeOverlay = document.getElementById("proto-trade-overlay");
+  var tradeSym = "btc";
+  function tradeState(name) {
+    document.querySelectorAll("[data-trade-state]").forEach(function (el) { el.hidden = el.getAttribute("data-trade-state") !== name; });
+  }
+  function openTrade(key) {
+    tradeSym = key;
+    document.getElementById("spot-trade-title").textContent = "Operar " + SYM_LABEL[key];
+    document.getElementById("spot-trade-price").textContent = "Preço indicativo: " + INDIC_PRICE[key] + " USDT";
+    document.querySelector("[data-trade-error]").textContent = "";
+    document.querySelector("[data-trade-error2]").textContent = "";
+    document.querySelector("[data-trade-error3]").textContent = "";
+    document.querySelector("[data-trade-remove-confirm]").hidden = true;
+    document.querySelector("[data-trade-ack]").checked = false;
+    document.querySelector("[data-trade-submit]").disabled = true;
+    tradeState("entry");
+    tradeOverlay.classList.add("is-open");
+  }
+  function closeTrade() { tradeOverlay.classList.remove("is-open"); }
+  document.querySelectorAll("[data-trade-open]").forEach(function (btn) {
+    btn.addEventListener("click", function (event) { event.stopPropagation(); openTrade(btn.getAttribute("data-trade-open")); });
+  });
+  document.querySelectorAll("[data-trade-close]").forEach(function (btn) { btn.addEventListener("click", closeTrade); });
+  tradeOverlay.addEventListener("click", function (event) { if (event.target === event.currentTarget) closeTrade(); });
+  document.querySelectorAll("[data-trade-tab]").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var sell = tab.getAttribute("data-trade-tab") === "sell";
+      document.querySelectorAll("[data-trade-tab]").forEach(function (t) { t.setAttribute("aria-selected", t === tab ? "true" : "false"); });
+      document.querySelector("[data-trade-sell]").hidden = !sell;
+      document.querySelector("[data-trade-buy]").hidden = sell;
+    });
+  });
+  document.querySelector("[data-trade-continue]").addEventListener("click", function () {
+    if (STOPS_OPEN[tradeSym] && PROTECT[tradeSym]) {
+      var stop = PROTECT[tradeSym];
+      document.querySelector("[data-trade-blocked-text]").textContent =
+        "Saldo livre insuficiente: " + stop.qty + " travados pela stop aberta (stop " + stop.stop +
+        (stop.source === "external" ? ", criada só na exchange" : ", criada no app (Farol)") + "). Remova a stop para vender como operação — remover não vende.";
+      document.querySelector("[data-trade-remove-confirm-text]").textContent =
+        "Remover a stop " + stop.qty + " (stop " + stop.stop + ", limit " + stop.limit +
+        (stop.source === "external" ? ", criada só na exchange" : ", criada no app (Farol)") + ") via Farol? Nada será vendido agora.";
+      document.querySelector("[data-trade-remove-confirm]").hidden = true;
+      tradeState("blocked");
+    } else {
+      toReview();
+    }
+  });
+  /* 861-DELTA: foco da confirmação no fluxo de venda (P1-1) — abre move o foco, fechar devolve ao gatilho */
+  var tradeRemoveTrigger = null;
+  document.querySelector("[data-trade-remove]").addEventListener("click", function (event) {
+    tradeRemoveTrigger = event.currentTarget;
+    document.querySelector("[data-trade-remove-confirm]").hidden = false;
+    tradeRemoveTrigger.setAttribute("aria-expanded", "true");
+    document.querySelector("[data-trade-remove-yes]").focus();
+  });
+  document.querySelector("[data-trade-remove-no]").addEventListener("click", function () {
+    document.querySelector("[data-trade-remove-confirm]").hidden = true;
+    document.querySelector("[data-trade-remove]").setAttribute("aria-expanded", "false");
+    if (tradeRemoveTrigger) tradeRemoveTrigger.focus();
+  });
+  document.querySelector("[data-trade-remove-yes]").addEventListener("click", function () {
+    STOPS_OPEN[tradeSym] = false; /* DELETE /monitor/spot-stop-order simulado */
+    if (modal.getAttribute("data-chart-symbol") === tradeSym) fillProtect(tradeSym);
+    document.querySelector("[data-trade-remove]").setAttribute("aria-expanded", "false");
+    tradeState("removed");
+    document.querySelector("[data-trade-repreview]").focus();
+  });
+  document.querySelector("[data-trade-repreview]").addEventListener("click", function () { toReview(); });
+  function toReview() {
+    var dl = document.querySelector("[data-trade-summary]");
+    dl.innerHTML = "<dt>Estratégia / sinal</dt><dd>" + BASE_ASSET[tradeSym] + "/USDT</dd>" +
+      "<dt>Lado e tipo</dt><dd>Vender · MARKET</dd>" +
+      "<dt>Quantidade solicitada</dt><dd>100% · " + FREE_BAL[tradeSym] + " " + BASE_ASSET[tradeSym] + "</dd>" +
+      "<dt>Resultado estimado</dt><dd>≈ " + INDIC_PRICE[tradeSym] + " USDT</dd>";
+    document.querySelector("[data-trade-ack]").checked = false;
+    document.querySelector("[data-trade-submit]").disabled = true;
+    tradeState("review");
+  }
+  document.querySelector("[data-trade-ack]").addEventListener("change", function (event) {
+    document.querySelector("[data-trade-submit]").disabled = !event.target.checked;
+  });
+  document.querySelector("[data-trade-submit]").addEventListener("click", function () {
+    document.querySelector("[data-trade-result-text]").textContent =
+      "Venda de 100% de " + BASE_ASSET[tradeSym] + " executada a mercado. Fluxo normal concluído após a remoção da stop.";
+    tradeState("result");
+  });
+  document.querySelectorAll("[data-trade-back]").forEach(function (btn) {
+    btn.addEventListener("click", function () { tradeState("entry"); });
+  });
+  document.querySelector("[data-trade-reset]").addEventListener("click", function () { openTrade(tradeSym); });
+
+  fillChart("btc");
+})();
+</script>
+</body>
+</html>

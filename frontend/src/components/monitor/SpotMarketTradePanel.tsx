@@ -8,10 +8,19 @@ import type { Opportunity } from './types';
 
 type TradeSide = 'BUY' | 'SELL';
 type QuoteOrigin = 'USDT' | 'USDC';
-type PanelStep = 'entry' | 'previewing' | 'review' | 'submitting' | 'resuming' | 'result';
+type PanelStep = 'entry' | 'previewing' | 'review' | 'submitting' | 'resuming' | 'result' | 'blocked' | 'removed';
 type OrderState = 'submitting' | 'reconciling' | 'filled' | 'partial' | 'rejected';
 type RefreshState = 'idle' | 'pending' | 'success' | 'failed';
 type BalanceState = 'loading' | 'value' | 'unavailable';
+
+type StopSource = 'app' | 'external';
+
+type BlockingStop = {
+    quantity: string;
+    stopPrice: string;
+    limitPrice: string;
+    source: StopSource;
+};
 
 type Preview = {
     preview_token: string;
@@ -125,6 +134,21 @@ const responseCode = (payload: unknown): string | null => {
 
 const isTerminal = (state: OrderState): boolean => ['filled', 'partial', 'rejected'].includes(state);
 
+/**
+ * Card 861: stop-blocked SELL signal. Callers already guard `side === 'SELL'`.
+ * Matches locked/insufficient-balance copy and the real preview errors when the
+ * protective stop leaves free base qty at 0/dust (`Quantidade/Valor abaixo do
+ * mínimo`). Second gate `enterBlockedIfStopOpen` still requires an open stop.
+ */
+const STOP_BLOCKED_MESSAGE_RE =
+    /saldo.*insuficiente|insuficiente.*saldo|insufficient.*balance|balance.*insufficient|locked|travad|quantidade abaixo do m[ií]nimo|valor abaixo do m[ií]nimo/i;
+
+const looksStopBlocked = (message: string | null, code: string | null): boolean => {
+    if (code === 'INSUFFICIENT_BALANCE' || code === 'SELL_BALANCE_LOCKED') return true;
+    if (!message) return false;
+    return STOP_BLOCKED_MESSAGE_RE.test(message);
+};
+
 export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
     opportunity,
     binanceConfigured,
@@ -143,11 +167,18 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
     const [refreshState, setRefreshState] = useState<RefreshState>('idle');
     const [quoteBalanceState, setQuoteBalanceState] = useState<BalanceState>('loading');
     const [quoteBalanceValue, setQuoteBalanceValue] = useState<number | null>(null);
+    const [blockingStop, setBlockingStop] = useState<BlockingStop | null>(null);
+    const [confirmTradeRemove, setConfirmTradeRemove] = useState(false);
+    const [removingStop, setRemovingStop] = useState(false);
+    const [stopActionError, setStopActionError] = useState<string | null>(null);
     const panelRef = useRef<HTMLElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
     const headingRef = useRef<HTMLHeadingElement>(null);
     const amountRef = useRef<HTMLInputElement>(null);
     const returnFocusRef = useRef<HTMLElement | null>(null);
+    const tradeRemoveTriggerRef = useRef<HTMLButtonElement | null>(null);
+    const tradeRemoveConfirmRef = useRef<HTMLDivElement | null>(null);
+    const tradeRepreviewRef = useRef<HTMLButtonElement | null>(null);
     const requestGenerationRef = useRef(0);
     const quoteBalanceGenerationRef = useRef(0);
     const quoteOriginRef = useRef(quoteOrigin);
@@ -404,6 +435,9 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         setResult(null);
         setError(null);
         setAcknowledged(false);
+        setBlockingStop(null);
+        setConfirmTradeRemove(false);
+        setStopActionError(null);
         setStep('entry');
     };
 
@@ -448,6 +482,135 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         });
     };
 
+    const stopSymbol = String(opportunity.symbol || '').toUpperCase();
+    const stopOpportunityId = String(opportunity.id);
+
+    const fetchBlockingStop = useCallback(async (): Promise<BlockingStop | null> => {
+        try {
+            const qs = new URLSearchParams({ symbol: stopSymbol, opportunity_id: stopOpportunityId });
+            const response = await authFetch(`${API_BASE_URL}/monitor/spot-stop-order?${qs}`);
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload || typeof payload !== 'object') return null;
+            const status = payload as {
+                protected?: boolean;
+                source?: StopSource | null;
+                managed_by_app?: boolean;
+                order?: { quantity?: number | null; stop_price?: number | null; limit_price?: number | null } | null;
+            };
+            if (!status.protected || !status.order) return null;
+            const source: StopSource = status.source === 'external' ? 'external' : 'app';
+            return {
+                quantity: `${formatBase(status.order.quantity)} ${base}`,
+                stopPrice: `${formatQuote(status.order.stop_price)}`,
+                limitPrice: `${formatQuote(status.order.limit_price)}`,
+                source,
+            };
+        } catch {
+            return null;
+        }
+    }, [base, stopOpportunityId, stopSymbol]);
+
+    const enterBlockedIfStopOpen = useCallback(async (): Promise<boolean> => {
+        const stop = await fetchBlockingStop();
+        if (!stop) return false;
+        setBlockingStop(stop);
+        setConfirmTradeRemove(false);
+        setStopActionError(null);
+        setStep('blocked');
+        return true;
+    }, [fetchBlockingStop]);
+
+    const removeBlockingStop = useCallback(async () => {
+        if (removingStop) return;
+        setRemovingStop(true);
+        setStopActionError(null);
+        try {
+            const qs = new URLSearchParams({ symbol: stopSymbol, opportunity_id: stopOpportunityId });
+            const response = await authFetch(`${API_BASE_URL}/monitor/spot-stop-order?${qs}`, {
+                method: 'DELETE',
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+                const message = responseMessage(payload, 'Falha ao remover stop-limit');
+                // Design mitigation: reconsult status on failure — the stop may
+                // have been executed/cancelled elsewhere between GET and DELETE.
+                const stop = await fetchBlockingStop();
+                if (stop) {
+                    setBlockingStop(stop);
+                    setStopActionError(message);
+                } else {
+                    setPreview(null);
+                    setResult(null);
+                    setAcknowledged(false);
+                    setBlockingStop(null);
+                    setConfirmTradeRemove(false);
+                    setStopActionError(null);
+                    setError(message);
+                    setStep('entry');
+                }
+                return;
+            }
+            // Removal never sells: clear any preview/result and require a fresh
+            // preview → review → confirmation before anything can be submitted.
+            setPreview(null);
+            setResult(null);
+            setAcknowledged(false);
+            setConfirmTradeRemove(false);
+            setBlockingStop(null);
+            setStep('removed');
+        } catch {
+            setStopActionError('Falha de rede ao remover stop-limit');
+        } finally {
+            setRemovingStop(false);
+        }
+    }, [fetchBlockingStop, removingStop, stopOpportunityId, stopSymbol]);
+
+    const backToEntryForNewPreview = useCallback(() => {
+        setPreview(null);
+        setResult(null);
+        setAcknowledged(false);
+        setError(null);
+        setBlockingStop(null);
+        setConfirmTradeRemove(false);
+        setStopActionError(null);
+        setStep('entry');
+    }, []);
+
+    const openTradeRemoveConfirm = useCallback(() => {
+        setStopActionError(null);
+        setConfirmTradeRemove(true);
+    }, []);
+
+    const closeTradeRemoveConfirm = useCallback(() => {
+        setConfirmTradeRemove(false);
+    }, []);
+
+    useEffect(() => {
+        if (confirmTradeRemove) {
+            tradeRemoveConfirmRef.current?.focus();
+        }
+    }, [confirmTradeRemove]);
+
+    const wasTradeRemoveOpen = useRef(false);
+    useEffect(() => {
+        if (wasTradeRemoveOpen.current && !confirmTradeRemove && step === 'blocked') {
+            tradeRemoveTriggerRef.current?.focus();
+        }
+        wasTradeRemoveOpen.current = confirmTradeRemove;
+    }, [confirmTradeRemove, step]);
+
+    useEffect(() => {
+        if (step === 'blocked') {
+            window.requestAnimationFrame(() => headingRef.current?.focus());
+        }
+    }, [step]);
+
+    useEffect(() => {
+        if (step === 'removed') {
+            window.requestAnimationFrame(() => tradeRepreviewRef.current?.focus());
+        }
+    }, [step]);
+
     const requestPreview = async () => {
         if (!binanceConfigured) return;
         const quoteAmount = parseAmount(amount);
@@ -459,6 +622,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         const generation = ++requestGenerationRef.current;
         setError(null);
         setStep('previewing');
+        let previewFailureCode: string | null = null;
         try {
             const response = await authFetch(`${API_BASE_URL}/monitor/spot-market-orders/preview`, {
                 method: 'POST',
@@ -472,6 +636,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
             });
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
+                previewFailureCode = responseCode(payload);
                 throw new Error(responseMessage(payload, 'Não foi possível validar a ordem.'));
             }
             if (generation !== requestGenerationRef.current) return;
@@ -480,7 +645,12 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
             setStep('review');
         } catch (previewError) {
             if (generation !== requestGenerationRef.current) return;
-            setError(previewError instanceof Error ? previewError.message : 'Falha ao validar a ordem.');
+            const message = previewError instanceof Error ? previewError.message : 'Falha ao validar a ordem.';
+            if (side === 'SELL' && looksStopBlocked(message, previewFailureCode)) {
+                const entered = await enterBlockedIfStopOpen();
+                if (entered) return;
+            }
+            setError(message);
             setStep('entry');
         }
     };
@@ -492,6 +662,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         setStep('submitting');
         sessionStorage.setItem(pendingStorageKey(opportunity.symbol), preview.idempotency_key);
         let definitiveResponseReceived = false;
+        let submitFailureCode: string | null = null;
         try {
             const response = await authFetch(`${API_BASE_URL}/monitor/spot-market-orders`, {
                 method: 'POST',
@@ -505,6 +676,7 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
                 const code = responseCode(payload);
+                submitFailureCode = code;
                 if (code === 'PRIOR_ORDER_RECONCILED' || code === 'PREVIEW_EXPIRED' || code === 'INVALID_PREVIEW') {
                     sessionStorage.removeItem(pendingStorageKey(opportunity.symbol));
                     setPreview(null);
@@ -546,7 +718,12 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                 setStep('result');
                 return;
             }
-            setError(submitError instanceof Error ? submitError.message : 'Falha ao enviar a ordem.');
+            const submitMessage = submitError instanceof Error ? submitError.message : 'Falha ao enviar a ordem.';
+            if (side === 'SELL' && looksStopBlocked(submitMessage, submitFailureCode)) {
+                const entered = await enterBlockedIfStopOpen();
+                if (entered) return;
+            }
+            setError(submitMessage);
             setStep('review');
         } finally {
             submitLockedRef.current = false;
@@ -562,6 +739,9 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
         setAcknowledged(false);
         setAmount('');
         setRefreshState('idle');
+        setBlockingStop(null);
+        setConfirmTradeRemove(false);
+        setStopActionError(null);
         setStep('entry');
         void refreshQuoteBalance();
     };
@@ -755,6 +935,91 @@ export const SpotMarketTradePanel: React.FC<SpotMarketTradePanelProps> = ({
                                 disabled={step === 'previewing'}
                             >
                                 {step === 'previewing' ? <><LoaderCircle className="spot-trade-spinner" aria-hidden="true" /> Validando…</> : 'Continuar'}
+                            </button>
+                        </div>
+                    </div>
+                ) : step === 'blocked' ? (
+                    <div>
+                        <div className="spot-trade-stop-blocked" data-testid="spot-sell-stop-blocked">
+                            <h3 ref={headingRef} tabIndex={-1}>Venda travada pela stop aberta</h3>
+                            <p>
+                                Saldo livre insuficiente: {blockingStop?.quantity ?? '—'} travados pela stop
+                                aberta (stop {blockingStop?.stopPrice ?? '—'}
+                                {blockingStop?.source === 'external'
+                                    ? ', criada só na exchange'
+                                    : ', criada no app (Farol)'}). Remova a stop para vender como
+                                operação — remover não vende.
+                            </p>
+                            <button
+                                ref={tradeRemoveTriggerRef}
+                                type="button"
+                                className="spot-trade-button"
+                                data-testid="spot-sell-stop-remove"
+                                aria-expanded={confirmTradeRemove}
+                                aria-controls="spot-trade-remove-confirm"
+                                onClick={openTradeRemoveConfirm}
+                                disabled={removingStop}
+                            >
+                                Remover stop
+                            </button>
+                        </div>
+                        {confirmTradeRemove && blockingStop ? (
+                            <div
+                                ref={tradeRemoveConfirmRef}
+                                id="spot-trade-remove-confirm"
+                                className="spot-trade-remove-confirm"
+                                data-testid="spot-sell-stop-remove-confirm"
+                                tabIndex={-1}
+                                role="group"
+                                aria-label="Confirmar remoção da stop"
+                            >
+                                <p>
+                                    Remover a stop {blockingStop.quantity} (stop {blockingStop.stopPrice},
+                                    limit {blockingStop.limitPrice}
+                                    {blockingStop.source === 'external'
+                                        ? ', criada só na exchange'
+                                        : ', criada no app (Farol)'}) via Farol? Nada será vendido agora.
+                                </p>
+                                <div className="spot-trade-actions">
+                                    <button
+                                        type="button"
+                                        className="spot-trade-button spot-trade-button--danger"
+                                        data-testid="spot-sell-stop-confirm-yes"
+                                        onClick={() => void removeBlockingStop()}
+                                        disabled={removingStop}
+                                    >
+                                        {removingStop ? 'Removendo…' : 'Confirmar remoção'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="spot-trade-button"
+                                        data-testid="spot-sell-stop-confirm-no"
+                                        onClick={closeTradeRemoveConfirm}
+                                        disabled={removingStop}
+                                    >
+                                        Voltar
+                                    </button>
+                                </div>
+                            </div>
+                        ) : null}
+                        {stopActionError ? <p className="spot-trade-error" role="alert">{stopActionError}</p> : null}
+                        <div className="spot-trade-actions">
+                            <button type="button" className="spot-trade-button" onClick={backToEntryForNewPreview}>Voltar</button>
+                        </div>
+                    </div>
+                ) : step === 'removed' ? (
+                    <div>
+                        <div className="spot-trade-removed" data-testid="spot-sell-stop-removed">
+                            <p><strong>Stop removida via Farol.</strong> Nenhuma venda foi enviada. Para vender
+                                como operação, gere uma nova prévia — o fluxo normal recomeça aqui.</p>
+                            <button
+                                ref={tradeRepreviewRef}
+                                type="button"
+                                className="spot-trade-button spot-trade-button--primary"
+                                data-testid="spot-repreview-order"
+                                onClick={backToEntryForNewPreview}
+                            >
+                                Gerar nova prévia
                             </button>
                         </div>
                     </div>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<!--
+  card-718-monitor-naming-atalho — clone extra da página viva /help.
+  Delta T6: parágrafo Monitor troca Compra/Venda-como-estado por Em posição / Saída / cobertura.
+  Não é o URL canónico (T5 mede o index /monitor). Tokens de frontend/src/index.css (help-page).
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:," />
+<title>Como usar o Cripto Farol — protótipo card-718</title>
+<style>
+  :root {
+    --bg-primary: #0b0e11;
+    --bg-secondary: #181a20;
+    --bg-elevated: #1e2329;
+    --accent-primary: #fcd535;
+    --accent-success: #0ecb81;
+    --text-primary: #ffffff;
+    --text-secondary: #eaecef;
+    --text-tertiary: #929aa5;
+    --text-on-primary: #181a20;
+    --border-default: #2b3139;
+    --border-subtle: rgba(43, 49, 57, 0.72);
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+  }
+  a { color: inherit; text-decoration: none; }
+  .help-page { padding: 22px 26px 60px; max-width: 1120px; margin: 0 auto; }
+  .page-stack { display: flex; flex-direction: column; gap: clamp(1rem, 0.8rem + 1vw, 2rem); }
+  .onboarding-guide,
+  .help-page-header,
+  .help-usage-grid article,
+  .help-action {
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+  }
+  .help-page-header {
+    display: flex; justify-content: space-between; gap: 1.25rem;
+    padding: clamp(1rem, 0.8rem + 1vw, 1.6rem);
+  }
+  .help-page-header > div:first-child { max-width: 760px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.45rem 0.8rem; border-radius: 9999px;
+    border: 1px solid rgba(252, 213, 53, 0.24);
+    background: rgba(252, 213, 53, 0.08);
+    color: var(--accent-primary);
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .help-page-header h1 {
+    color: var(--text-primary); font-size: clamp(1.25rem, 1rem + 0.9vw, 1.75rem);
+    font-weight: 650; line-height: 1.2; margin-top: 0.8rem;
+  }
+  .help-page-header p { color: var(--text-tertiary); margin-top: 0.65rem; font-size: 0.95rem; line-height: 1.5; }
+  .help-page-guardrail {
+    display: flex; align-self: flex-start; max-width: 360px; gap: 0.65rem;
+    border: 1px solid rgba(14, 203, 129, 0.24); border-radius: var(--radius-md);
+    background: rgba(14, 203, 129, 0.08); color: var(--text-secondary);
+    padding: 0.85rem; font-size: 0.86rem;
+  }
+  .help-page-guardrail svg { flex-shrink: 0; color: var(--accent-success); width: 20px; height: 20px; }
+  .onboarding-guide { display: flex; flex-direction: column; gap: 1rem; padding: clamp(1rem, 0.85rem + 0.6vw, 1.5rem); }
+  .onboarding-guide-head, .onboarding-guide-title { display: flex; align-items: center; }
+  .onboarding-guide-head { justify-content: space-between; gap: 1rem; }
+  .onboarding-guide-title { min-width: 0; gap: 0.75rem; }
+  .onboarding-guide-icon {
+    display: inline-flex; width: 2.5rem; height: 2.5rem; flex-shrink: 0;
+    align-items: center; justify-content: center;
+    border: 1px solid rgba(252, 213, 53, 0.24); border-radius: var(--radius-md);
+    background: rgba(252, 213, 53, 0.1); color: var(--accent-primary);
+  }
+  .onboarding-guide-icon svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .onboarding-guide-kicker {
+    color: var(--accent-primary); font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .onboarding-guide h2 { color: var(--text-primary); font-size: 1.1rem; font-weight: 650; }
+  .onboarding-guide-copy { color: var(--text-tertiary); font-size: 0.9rem; line-height: 1.5; }
+  .onboarding-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
+  .onboarding-step {
+    min-width: 0; padding: 0.9rem; border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md); background: var(--bg-secondary);
+  }
+  .onboarding-step-index {
+    width: 1.5rem; height: 1.5rem; margin-bottom: 0.75rem; border-radius: var(--radius-sm);
+    background: var(--accent-primary); color: var(--text-on-primary);
+    font-size: 0.78rem; font-weight: 800; line-height: 1.5rem; text-align: center;
+  }
+  .onboarding-step h3 { color: var(--text-primary); font-size: 0.95rem; font-weight: 650; line-height: 1.3; }
+  .onboarding-step p { margin-top: 0.35rem; font-size: 0.88rem; line-height: 1.5; color: var(--text-tertiary); }
+  .onboarding-guide-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+  .onboarding-primary-action, .onboarding-secondary-action, .help-action {
+    min-height: 2.5rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 650;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .onboarding-primary-action { background: var(--accent-primary); color: var(--text-on-primary); padding: 0.7rem 1rem; }
+  .onboarding-secondary-action {
+    border: 1px solid var(--border-default); background: var(--bg-secondary);
+    color: var(--text-secondary); padding: 0.68rem 0.9rem;
+  }
+  .onboarding-guardrail { display: flex; gap: 0.5rem; color: var(--text-tertiary); font-size: 0.82rem; align-items: center; }
+  .onboarding-guardrail svg { flex-shrink: 0; color: var(--accent-success); width: 16px; height: 16px; }
+  .help-usage-grid, .help-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+  .help-usage-grid article { padding: 1rem; }
+  .help-usage-grid h2 { color: var(--text-primary); font-size: 0.95rem; font-weight: 650; line-height: 1.3; }
+  .help-usage-grid p { color: var(--text-tertiary); margin-top: 0.35rem; font-size: 0.88rem; line-height: 1.5; }
+  .help-action {
+    justify-content: space-between; gap: 0.75rem; padding: 0.9rem 1rem;
+    color: var(--text-secondary); border: 1px solid var(--border-default);
+  }
+  @media (max-width: 900px) {
+    .onboarding-steps, .help-usage-grid, .help-actions { grid-template-columns: 1fr; }
+    .help-page-header { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+<main class="app-page help-page page-stack" data-testid="help-page">
+<!-- COPIED:start HelpPage header, onboarding, usage grid, actions -->
+  <section class="help-page-header">
+    <div>
+      <p class="eyebrow">Guia do beta</p>
+      <h1>Como usar o Cripto Farol no primeiro acesso</h1>
+      <p>
+        Comece pelos Favoritos, escolha as estrategias que merecem acompanhamento e depois use o Monitor. A carteira
+        Binance e opcional e pode ficar para depois.
+      </p>
+    </div>
+    <div class="help-page-guardrail">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>Apoio a decisao. Sem promessa de lucro, call milagrosa ou incentivo a alavancagem.</span>
+    </div>
+  </section>
+
+  <section class="onboarding-guide" aria-label="Guia inicial do Cripto Farol" data-testid="onboarding-guide">
+    <div class="onboarding-guide-head">
+      <div class="onboarding-guide-title">
+        <span class="onboarding-guide-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        <div>
+          <p class="onboarding-guide-kicker">Primeiros passos</p>
+          <h2>Comece pelo fluxo certo</h2>
+        </div>
+      </div>
+    </div>
+    <p class="onboarding-guide-copy">
+      O Cripto Farol comeca pelos Favoritos: avalie graficos e trades, selecione as melhores estrategias e acompanhe
+      no Monitor. A Binance e opcional e entra depois, como complemento.
+    </p>
+    <div class="onboarding-steps">
+      <article class="onboarding-step">
+        <div class="onboarding-step-index">1</div>
+        <div>
+          <h3>Favoritos</h3>
+          <p>Comece por aqui: compare estrategias, veja graficos, revise trades e separe as melhores opcoes.</p>
+        </div>
+      </article>
+      <article class="onboarding-step">
+        <div class="onboarding-step-index">2</div>
+        <div>
+          <h3>Selecionar estrategias</h3>
+          <p>Use as estrelas para priorizar o que merece acompanhamento e levar apenas o essencial ao Monitor.</p>
+        </div>
+      </article>
+      <article class="onboarding-step">
+        <div class="onboarding-step-index">3</div>
+        <div>
+          <h3>Monitor</h3>
+          <p>Acompanhe as estrategias selecionadas com status, contexto e distancia para a proxima decisao.</p>
+        </div>
+      </article>
+      <article class="onboarding-step">
+        <div class="onboarding-step-index">4</div>
+        <div>
+          <h3>Carteira Binance opcional</h3>
+          <p>Configure a carteira depois, se quiser complementar a leitura. Ela nao e requisito para comecar.</p>
+        </div>
+      </article>
+    </div>
+    <div class="onboarding-guide-actions">
+      <a class="onboarding-primary-action" href="ajuda.html">Ver guia completo</a>
+      <a class="onboarding-secondary-action" href="#">Ir para Favoritos</a>
+    </div>
+    <div class="onboarding-guardrail">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>Apoio a decisao, com leitura de contexto e disciplina. Nao e recomendacao financeira.</span>
+    </div>
+  </section>
+
+  <section class="help-usage-grid" aria-label="Como interpretar as telas">
+    <article>
+      <h2>Favoritos</h2>
+      <p>
+        E o ponto de partida. Compare estrategias, abra graficos, revise trades e use estrelas para separar o que
+        realmente merece acompanhamento.
+      </p>
+    </article>
+    <article data-testid="help-monitor-article">
+      <h2>Monitor</h2>
+      <!-- DELTA T6: Compra, Venda como estados → Em posição, Saída / cobertura -->
+      <p data-testid="help-monitor-copy">
+        E a tela de acompanhamento das estrategias selecionadas. Ela mostra Em posição, Saída / cobertura, contexto e distancia para
+        decisao, sempre como informacao para sua propria analise.
+      </p>
+    </article>
+    <article>
+      <h2>Carteira Binance opcional</h2>
+      <p>
+        Configure a carteira apenas se quiser complementar o acompanhamento com saldos (leitura) e, se quiser,
+        comprar / stop / vender Spot no Farol apos confirmacao — opcional, nunca saque, nao e bot. Ela nao e
+        pre-requisito para usar Favoritos ou Monitor.
+      </p>
+    </article>
+  </section>
+
+  <section class="help-actions" aria-label="Acoes principais">
+    <a class="help-action" href="#"><span>Abrir Favoritos</span></a>
+    <a class="help-action" href="index.html"><span>Abrir Monitor</span></a>
+    <a class="help-action" href="#"><span>Configurar Carteira</span></a>
+  </section>
+<!-- COPIED:end -->
+</main>
+</body>
+</html>

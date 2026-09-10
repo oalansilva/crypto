@@ -329,6 +329,18 @@ def test_hooks_json_session_start():
     adapter = REPO / ".cursor" / "hooks" / "process-fsm-session-start.sh"
     assert adapter.is_file()
     assert adapter.stat().st_mode & stat.S_IXUSR
+    destape = hooks["hooks"]["subagentStop"]
+    assert destape[0]["command"] == ".cursor/hooks/process-fsm-subagent-stop.sh"
+    matcher = destape[0]["matcher"]
+    assert "generalPurpose" in matcher
+    assert "diff-reviewer" in matcher
+    assert "code-reviewer" in matcher
+    assert destape[0]["loop_limit"] == 32
+    assert destape[0].get("failClosed") is not True
+    assert "subagentStart" not in hooks["hooks"]
+    stop_adapter = REPO / ".cursor" / "hooks" / "process-fsm-subagent-stop.sh"
+    assert stop_adapter.is_file()
+    assert stop_adapter.stat().st_mode & stat.S_IXUSR
 
 
 def test_session_start_adapter_prefers_venv():
