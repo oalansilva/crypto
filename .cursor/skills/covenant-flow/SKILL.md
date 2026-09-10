@@ -84,6 +84,8 @@ O pai cola o bloco no spawn isolado (`inherit`, sem transcript). `working_direct
 
 **Onda Code Review** (os dois nascem neste turno / não esperes destape do primeiro): no mesmo turno do pai, spawna `diff-reviewer` e `code-reviewer` sobre o intervalo já colado. Os dois nascem neste turno. Não esperes destape do primeiro. Fila do host não falha. Relógio = o mais lento.
 
+**Teto em silêncio** (classificar; 1+1; residual no Done; sem Ask): classificar cada achado **mecânico** vs **juízo**; mecânicos juntos num Apply de correção **sem Ask**; juízo → residual (não ocupa o slot); após 1 correção + 1 onda, P1/P2 restante ou P1/P2 novo = residual no Done (handoff + comentário), card segue; MUST NOT terceiro ciclo; MUST NOT «autorizar extra / aceitar residual».
+
 ## Colunas (Project 1)
 
 Caminho obrigatório:
@@ -168,7 +170,7 @@ Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. 
 
 Pós-T18 (`nao_homologar`): q já é Em desenvolvimento no mesmo card. Reabrir ou criar `card-<id>-*` a partir do `develop` actual (squash T14 já está lá). Write só com I1 (não develop/main). **Não** chamar `iniciar_apply` (T8 é de Pronto para Dev). Segue `pedir_review` → … → T14 → Done; o par homologar / não homologar reaparece.
 
-Pai: `pedir_review` (Code Review), materializa o intervalo em `.cursor/tmp/review-diff.patch` e spawna os **dois** Task (`diff-reviewer` + `code-reviewer`) **no mesmo turno** com `review_diff_path:` (MUST NOT pedir git ao filho). Fila do host não falha; destape do primeiro MUST NOT nascer o segundo (já spawnado). MAY spawnar esses reviewers como `generalPurpose` cujo prompt é o corpo do agent file **ou** como `subagent_type` nomeado; o matcher do destape cobre os dois. Continua a exigir `review_diff_path:` e a string exacta do `description` do Task no sidecar. P1/P2 voltam numa **lista** a no máximo **um** Apply de correção (prompt = a lista) + **uma** onda; resto = bloqueio visível. Pai MUST NOT corrigir no próprio transcript. P0 de reviewer classifica bloqueio da coluna; tecto de correção é a lista P1/P2. Fecho pós-commit continua **uma** onda. Depois: commit, closing vs develop, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
+Pai: `pedir_review` (Code Review), materializa o intervalo em `.cursor/tmp/review-diff.patch` e spawna os **dois** Task (`diff-reviewer` + `code-reviewer`) **no mesmo turno** com `review_diff_path:` (MUST NOT pedir git ao filho). Fila do host não falha; destape do primeiro MUST NOT nascer o segundo (já spawnado). MAY spawnar esses reviewers como `generalPurpose` cujo prompt é o corpo do agent file **ou** como `subagent_type` nomeado; o matcher do destape cobre os dois. Continua a exigir `review_diff_path:` e a string exacta do `description` do Task no sidecar. Classificar cada achado **mecânico** vs **juízo**; mecânicos juntos num único Apply de correção (prompt = a lista) **sem Ask**; juízo vai a residual e **não** ocupa o slot. Após 1 correção + 1 onda, P1/P2 restante **ou P1/P2 novo** = residual no handoff de Done **e** no comentário do card; o card **segue** (commit, PR, QA). MUST NOT terceiro ciclo. MUST NOT perguntar «autorizar extra / aceitar residual». Pai MUST NOT corrigir no próprio transcript. P0 de reviewer classifica bloqueio da coluna. Fecho pós-commit continua **uma** onda. Depois: commit, closing vs develop, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
 **dsh:** após 400 desta classe (reasoning effort off/none) num filho, MUST NOT spawnar mais o mesmo preset (incl. retry 1/1 #518); registar `ERROR: subagent spawn failed/empty` e continuar no root com residual explícito.
 
 ## Code Review — cola do diff (S1)
@@ -204,7 +206,7 @@ O **pai**:
 
 ## QA closeout
 
-**Cursor / Grok:** um filho QA isolado lê checks e MUST NOT `process_event`. O pai chama `integrar_develop` no mesmo turno do filho verde (ou quando o próprio pai vê `qa-gate` success). `qa-gate pending` ⇒ espera e repete T14 no turno. `no_pr` e `sync: dirty` são causas visíveis; o primeiro reject não encerra o turno.
+**Cursor / Grok:** um filho QA isolado lê checks e MUST NOT `process_event`. O pai chama `integrar_develop` no mesmo turno do filho verde (ou quando o próprio pai vê `qa-gate` success). `qa-gate pending` ⇒ espera e repete T14 no turno. `no_pr` e `sync: dirty` são causas visíveis; o primeiro reject não encerra o turno. Sinal determinístico (inventário de teste, formatação, skip de ficheiro novo) fica no Apply/QA até verde ou teto; MUST NOT reabrir onda de juízo.
 
 **dsh:** o root MUST NOT spawnar filho QA. O mesmo turno abre o PR antes de T11, espera `qa-gate` no turno (`job_output wait`, sem `continue`) e chama T14 (Moore/plugin `covenant-flow:moore`, não só o texto desta skill).
 
