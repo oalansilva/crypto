@@ -58,6 +58,7 @@ environments:
     - criptofarol-dev-runtime-worker.service
     - criptofarol-dev-discovery-worker.service
     - criptofarol-dev-candle-writer.service
+    - criptofarol-dev-telegram-alert-scan.service
   prod:
     source: /srv/apps/prod/criptofarol/source
     url: https://criptofarol.com.br
@@ -68,6 +69,7 @@ environments:
     - criptofarol-prod-leads.service
     - criptofarol-prod-runtime-worker.service
     - criptofarol-prod-candle-writer.service
+    - criptofarol-prod-telegram-alert-scan.service
 release:
   restart: ./restart
   migrate: alembic upgrade head

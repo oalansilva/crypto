@@ -16,13 +16,31 @@ SECRETS_CANDIDATES = (
     Path(os.getenv("MONITOR_TELEGRAM_SECRETS_FILE") or ""),
     ROOT_DIR / "backend" / ".monitor-telegram-secrets.json",
 )
+_BLOCK_LEFTOVER_KEYS = (
+    "MONITOR_TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_BOT_TOKEN",
+    "MONITOR_TELEGRAM_SECRETS_FILE",
+)
 
 for path in (str(ROOT_DIR), str(BACKEND_DIR)):
     if path not in sys.path:
         sys.path.insert(0, path)
 
 
+def _block_prod_bot() -> bool:
+    return os.getenv("CRYPTO_TELEGRAM_ALERT_SCAN_BLOCK_PROD_BOT", "").strip() == "1"
+
+
+def _clear_blocked_token_leftovers() -> None:
+    for key in _BLOCK_LEFTOVER_KEYS:
+        os.environ.pop(key, None)
+        os.environ[key] = ""
+
+
 def _load_telegram_token() -> str | None:
+    if _block_prod_bot():
+        _clear_blocked_token_leftovers()
+        return None
     token = os.getenv("MONITOR_TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
     if token:
         return token.strip()
@@ -48,6 +66,14 @@ def _load_telegram_token() -> str | None:
 
 
 def main() -> int:
+    if _block_prod_bot():
+        _clear_blocked_token_leftovers()
+        print(
+            "CONFIG_INCOMPLETE: DEV_ISOLATION blocked PROD bot "
+            "token_configured=False eligible_users=0"
+        )
+        return 1
+
     token = _load_telegram_token()
     if token:
         os.environ["MONITOR_TELEGRAM_BOT_TOKEN"] = token
