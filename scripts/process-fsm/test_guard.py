@@ -320,6 +320,15 @@ def test_hooks_json_composes_impeccable():
         assert "git rev-parse --show-toplevel" in command
         assert "exit 127" in command
     assert (REPO / ".cursor" / "hooks" / "impeccable.sh").is_file()
+    destape = hooks["hooks"]["subagentStop"]
+    assert destape[0]["command"] == ".cursor/hooks/process-fsm-subagent-stop.sh"
+    matcher = destape[0]["matcher"]
+    assert "generalPurpose" in matcher
+    assert "diff-reviewer" in matcher
+    assert "code-reviewer" in matcher
+    assert destape[0]["loop_limit"] == 32
+    assert destape[0].get("failClosed") is not True
+    assert "subagentStart" not in hooks["hooks"]
 
 
 def test_fsm_still_loads():
