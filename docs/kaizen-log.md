@@ -1,5 +1,51 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-10 — Kaizen release (lote 718/861/872/876/879/880/884)
+
+- **Release/card**: 2026-09-10 — Homologado `#718` (P2 Monitor nomes `04677767`) + `#861` (P0 Remover stop `7580e7ba` + #875 `06eb0e1e`) + `#872` (P0 dsh links `d1e1dda2`) + `#876` (P0 amostra insuficiente `fd601691`) + `#879` (P1 destapar pai `2dc937e3`) + `#880` (P1 dois modos Cursor `0176a3d5`) + `#884` (P1 Apply/onda `8f988d4d`) → `develop` → `main` PR #887 merged `e219d6dd453eeb0237ff6b2e8a687755903239b2`.
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --limit 500 --format json` (Homologado 7, Aprovação de Design 3 `600/614/728`, Em Refinamento 28), git `fetch --prune` + `status -sb` + `worktree list` + `log origin/main..origin/develop` (8 commits) + `release-guard pre` PASS (`RELEASE_CARDS=718,861,872,876,879,880,884` + `PRESERVED_BRANCHES` 9) + `openspec validate --all` 170→165, `gh pr checks 887 --watch` (e2e 5m9s, backend-tests 2m16s), REST comments 7 Homologado, PROD health `https://criptofarol.com.br/api/health` 200 após 502 de boot, frontend bundle `index--3lXkM0I.js` (hash novo).
+- **Sessões analisadas**: pai Cursor desta sessão (`suba a relese` unbound `q_git=develop`; overlay + `covenant-flow-environments` carregados, T16 iniciado). Sem `opencode.db`.
+- **Custo/eficácia**: 7 Homologados no pacote; homologation comments e campos Responsável/Prioridade/Tipo preenchidos neste turno antes do `pre`; stashes board-prototype movidos para `preserve/board-prototype-wip` (3 stashes dropados); `#884` archive `--skip-specs` (ADDED já no main spec); `mvp-scope` item 4 alinhado neste PR documental.
+
+#### Métricas
+
+- **Board**: 7 Homologado (`#718` Clara P2 Produto; `#861` Alan P0 Produto; `#872` Alan P0 Operacao; `#876` Clara P0 Produto; `#879` `#880` `#884` Alan P1 Operacao). Fora: `Done` 0, `Aprovação de Design` 3, `#888` criado neste closeout.
+- **Git**: `origin/develop 8f988d4d`; `origin/main e219d6dd` merge PR #887; stash 0 após classificação; 14 worktrees extra (7 do pacote + 7 in-flight).
+- **CI**: PR #887 `develop→main` checks `pass` (e2e 5m9s, backend-tests 2m16s, backend-unit-tests 4m30s, openspec-validate 17s, process-fsm 44s, frontend-build 45s) + `qa-gate`/`deploy-staging` `skipping` (base `main`); `mergeable=MERGEABLE`.
+- **OpenSpec**: 7 active antes do archive; após archive 7 dirs `2026-09-10-card-*`; specs sincronizadas (`closeout-links` nova, `cursor-host-modes` nova, monitor/discovery/cursor-*); `#884` `--skip-specs`; `validate --all` 170→165.
+- **PROD**: source `e219d6dd453eeb0237ff6b2e8a687755903239b2` (sudo, root-owned); alembic `20260909_0001`; `VITE_APP_ENV=production npm run build` bundle `index--3lXkM0I.js` (hash novo vs `index-BV0bshgg.js`); services `backend`+`frontend`+`leads`+`runtime-worker` restart; health 502→200; `/` 200; `/monitor` serve o bundle novo.
+
+#### Achados
+
+- **F-1 [minor] comentário Homologado canónico ausente até o `pre` deste lote** — 7/7 só tinham Done; helper postado neste turno antes do PR #887. Recidiva #658. Esforço S.
+- **F-2 [minor] `tasks.md` com `[ ]` apesar de Homologado** — `#880` 5.3 (prova viva Windows+SSH), `#861` 3.2 (witness BTC Spot). Recidiva #769. Esforço S.
+- **F-3 [minor] dirty/extra worktrees + stash no `pre`** — 7 dirty in-flight; leftover `#718` untracked critique; 3 stashes board-prototype (classificados em `preserve/board-prototype-wip`). Recidiva #759. Esforço S.
+- **F-4 [minor] `mvp-scope` item 4 ainda dizia Compra/Venda com `#718` Homologado** — alinhado neste PR documental. Recidiva #840. Esforço S.
+- **F-5 [minor] source PROD root-owned exige sudo** — mesmo padrão do lote 08. Recidiva #868. Esforço S.
+- **F-6 [minor] health PROD 502 na janela de boot (~2s) após restart** — uvicorn ainda em startup; retry 200. **Novo** | Esforço S | P2 | Card novo: #888.
+- **F-7 [minor] Drive/gog no closeout** — docs de produto atualizados localmente; sync Drive neste turno. Recidiva #825 como guarda. Esforço S.
+
+#### Padrões recorrentes
+
+- Homologado sem comentário no turno do arraste | recidiva | #658
+- `tasks.md` desatado após Done | recidiva | #769
+- Dirty worktrees / PRESERVED no `pre` | recidiva | #759
+- Doc de produto defasada no Homologado | recidiva | #840
+- PROD root-owned / sudo | recidiva | #868
+- Drive/gog sem credencial no closeout | recidiva | #825
+- Health 502 na janela de boot PROD | **novo** | #888
+
+### Cards kaizen criados (máx. 3/release) — lote 2026-09-10
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #888 — kaizen: health PROD 502 na janela de boot após restart do backend | P2 | F-6 | Em Refinamento |
+| (não criado) Homologado sem comentário no turno do arraste → coberto por #658 | — | F-1 | coberto por #658 (ainda Em Refinamento) |
+| (não criado) tasks.md residual → coberto por #769 | — | F-2 | coberto por #769 (ainda Em Refinamento) |
+| (não criado) dirty/PRESERVED/stash → coberto por #759; mvp-scope → coberto por #840; sudo PROD → coberto por #868; Drive → coberto por #825 | — | F-3/F-4/F-5/F-7 | coberto por #759/#840/#868/#825 (ainda Em Refinamento) |
+
+---
+
 ## 2026-09-08 — Kaizen release (lote 821/837/850/852/853/854/858/859)
 
 - **Release/card**: 2026-09-08 — Homologado `#821` (P1 unbound T16 `e2f72f49`) + `#837` (P0 Descoberta Iniciar `b65f6649`) + `#850` (P0 isolate reload `07ed8667`) + `#852` (P0 3 modos `935db1e8` + T18 `4a003481`) + `#853` (P0 cancel reconcile `3552c923`) + `#854` (P1 design teto `267e75de`) + `#858` (P0 idle closeout `8d431f62`) + `#859` (P1 devolver homologação `2cb33342`) → `develop` → `main` PR #867 merged `505e3b0dbfb1b6f23ba09599cb569dd19294e443`.
