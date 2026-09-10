@@ -20,11 +20,21 @@ FOLLOWUP_GRILL = (
     "Não perguntes se concluiu. Não spawnes outro grill."
 )
 FOLLOWUP_APPLY = (
-    "O filho Apply já devolveu. Segue para o review: materializa o diff e "
-    "spawna diff-reviewer + code-reviewer. Não perguntes se concluiu."
+    "O filho Apply já devolveu. "
+    "Se as tasks estão feitas ou há P0 visível: materializa o diff e "
+    "spawna os dois reviewers (diff-reviewer + code-reviewer) no mesmo turno; "
+    "não spawnes outro Apply. "
+    "Se devolveu cedo sem P0: bloqueio visível, não abras review. "
+    "Não perguntes se concluiu."
 )
 FOLLOWUP_REVIEW = (
-    "O filho reviewer já devolveu. Segue commit / push / PR agora. "
+    "O filho reviewer já devolveu. "
+    "Se o par da onda ainda não devolveu: espera (não commitas, "
+    "não spawnes o outro reviewer agora). "
+    "Se os dois devolveram com P1/P2: no máximo um Apply com a lista, "
+    "depois uma onda. "
+    "Se limpo: commit. "
+    "Se após esse ciclo ainda houver P1/P2: bloqueio visível, não terceiro ciclo. "
     "Não perguntes se concluiu."
 )
 FOLLOWUP_QA = (
