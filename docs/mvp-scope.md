@@ -29,7 +29,7 @@ Dar ao investidor uma leitura simples de oportunidade e risco para acompanhar es
 1. Login e acesso controlado.
 2. Monitor como tela principal.
 3. Estrategias favoritas vindas do fluxo de backtest ou selecao validada.
-4. Cards com estado claro: `Compra` e `Venda` para os sinais visíveis, mantendo estados intermediários apenas como lógica interna quando necessário.
+4. Cards com estado claro no Monitor: `Em posição` e `Saída / cobertura` (HOLD/EXIT). `Compra` e `Venda` ficam no lado da ordem Spot, não como nome de estado da board (card #718).
 5. Distância até saída, distância até stop, stop, entrada e preço atual quando houver dado confiável. HOLD não mostra alvo nem take-profit derivado (card #803).
 6. Grafico detalhado do ativo/estrategia.
 7. Timeframes principais para swing trade: `4h` e `1d`.

@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-09-10 - Monitor: um nome canónico por estado da board (card #718)
+
+**Decisão:** no Monitor (`/monitor`) e na Ajuda, o estado da board é `Em posição` (HOLD) e `Saída / cobertura` (EXIT). KPI, seção, coluna Status e card mobile usam o mesmo vocabulário. O hint `⌘K` da busca foi removido (sem atalho neste card). `Compra` / `Venda` continuam só no lado da ordem Spot (BUY/SELL), não como nome de estado. Landing V4 permanece `Compra`/`Venda` por decisão prévia do Alan.
+
+**Motivo:** Compra no HOLD é posição já confirmada, não «compre agora»; misturar pill/Ajuda com KPI mentia o estado. Hint ⌘K não focava nada no Mac.
+
+**Onde:** `MonitorStatusTab.tsx`, `OpportunityCard.tsx`, `HelpPage.tsx`, spec `monitor`, `docs/mvp-scope.md` item 4. Card #718.
+
+## 2026-09-10 - Remover stop no Farol para vender posicionado (card #861)
+
+**Decisão:** com stop Spot aberta (app `cfstop_` ou externa STOP_LOSS/STOP_LOSS_LIMIT SELL), `Remover stop` fica no gráfico (confirmação) e no fluxo de venda quando a venda trava pelo saldo. Remover nunca dispara a venda; depois exige nova prévia. Follow-up #875: o mesmo bloco no erro real da venda travada.
+
+**Motivo:** posicionado não conseguia tirar o stop pelo Farol e não vendia a operação.
+
+**Onde:** `SpotProtectStopPanel.tsx`, `SpotMarketTradePanel.tsx`, specs `monitor-spot-stop-limit` / `monitor-direct-spot-trading`. Cards #861 e #875.
+
+## 2026-09-10 - Descoberta corta o grid quando a listagem não chega a 30 negócios (card #876)
+
+**Decisão:** o worker mede o comprimento da listagem **antes** do grid. Combinação curta demais para alguma vez ter 30 negócios no ranking (incl. split 70/30) termina em segundos, sem otimização. Progresso: `N processadas = X sucesso + Y falha + Z ignoradas + W amostra insuficiente`. No Decidir a linha aparece com selo `Amostra insuficiente` (não `Baixa amostra`), rank «—», sem Promover.
+
+**Motivo:** incidente PROD 2026-09-08 (run `#c243f729`, 694 combinações) gastava minutos em pares cuja listagem nunca atingiria 30 negócios.
+
+**Onde:** worker Descoberta, `DiscoveryPage.tsx`, specs `discovery-sweep` / `discovery-leaderboard` / `discovery-three-modes`. Card #876.
+
 ## 2026-09-05 - HOLD do Monitor sem alvo derivado (card #803)
 
 **Decisão:** o card HOLD no Monitor e no modal do gráfico não mostra rótulo nem valor `alvo`. O número era estimativa de frontend (`preço atual × (1 ± distância até a saída)`), não take-profit operável. Ordem visível: `distância até saída` → `distância até stop` → `stop` → `entrada` → `preço atual`. EXIT continua sem `alvo`. Spec `opportunity-monitor`; `docs/mvp-scope.md` item 5 alinhado neste lote.
