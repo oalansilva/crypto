@@ -31,15 +31,20 @@ FOLLOWUP_REVIEW = (
     "O filho reviewer já devolveu. "
     "Se o par da onda ainda não devolveu: espera (não commitas, "
     "não spawnes o outro reviewer agora). "
-    "Se os dois devolveram com P1/P2: no máximo um Apply com a lista, "
-    "depois uma onda. "
+    "Classifica mecânico vs juízo. "
+    "Mecânicos: no máximo um Apply com a lista, depois uma onda. "
+    "Juízo: residual (não ocupa o slot). "
     "Se limpo: commit. "
-    "Se após esse ciclo ainda houver P1/P2: bloqueio visível, não terceiro ciclo. "
+    "Se após esse ciclo restar P1/P2 ou nascer P1/P2 novo: residual no Done "
+    "(handoff + comentário), card segue, não terceiro ciclo. "
+    "MUST NOT «autorizar extra / aceitar residual». "
     "Não perguntes se concluiu."
 )
 FOLLOWUP_QA = (
     "O filho QA já devolveu. Fecha o QA conforme o veredito "
     "(verde → integrar_develop; falhou → evidência visível). "
+    "Sinal determinístico (inventário, formatação, skip de ficheiro novo) "
+    "fica no Apply/QA até verde ou teto; não reabras onda de juízo. "
     "Não perguntes se concluiu."
 )
 FOLLOWUP_DESIGN_AUTOR = (
