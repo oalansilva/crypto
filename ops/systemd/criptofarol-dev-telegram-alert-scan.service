@@ -1,0 +1,15 @@
+[Unit]
+Description=Cripto Farol DEV Monitor Telegram alert scan
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__ROOT_DIR__/backend
+Environment=CRYPTO_TELEGRAM_ALERT_SCAN_LOCK_FILE=/tmp/crypto-telegram-alert-scan-dev.lock
+ExecStart=/bin/bash -lc 'set -euo pipefail; set -a; if [ -f "__ROOT_DIR__/backend/.env" ]; then source "__ROOT_DIR__/backend/.env"; fi; if [ -f "__ROOT_DIR__/.env" ]; then source "__ROOT_DIR__/.env"; fi; set +a; if [ "${CRYPTO_TELEGRAM_ALERT_SCAN_BLOCK_PROD_BOT:-0}" = 1 ]; then export MONITOR_TELEGRAM_BOT_TOKEN= TELEGRAM_BOT_TOKEN= MONITOR_TELEGRAM_SECRETS_FILE=; echo "DEV_ISOLATION: bot token cleared (must not call PROD bot)"; fi; LOCK_FILE="${CRYPTO_TELEGRAM_ALERT_SCAN_LOCK_FILE:-/tmp/crypto-telegram-alert-scan-dev.lock}"; exec 9>"$LOCK_FILE"; if ! flock -n 9; then echo "SKIP_LOCKED lock=$LOCK_FILE"; exit 0; fi; exec "__ROOT_DIR__/backend/.venv/bin/python" "__ROOT_DIR__/ops/run_monitor_telegram_alert_scan.py"'
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=criptofarol-dev-telegram-alert-scan
+TimeoutStartSec=1800
+Nice=10
