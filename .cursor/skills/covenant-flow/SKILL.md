@@ -32,8 +32,8 @@ Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd
 | --- | --- |
 | Em Refinamento | 1 filho `grill-card` (bind Status da issue N + N no prompt = `#<id>`) |
 | Design | 1 filho autor; depois 1 crítico (sem-tela) ou onda A/B (com-tela) |
-| Em desenvolvimento | 1ª entrada: pai `iniciar_apply` (T8), depois 1 filho apply (loop fatiado interno). Pós-T18: já em Em desenvolvimento; **não** T8 |
-| Code Review | onda `diff-reviewer` + `code-reviewer` |
+| Em desenvolvimento | 1ª entrada: pai `iniciar_apply` (T8), depois **um** filho Apply (único da coluna; loop interno até tasks feitas ou P0 visível). Recusa visível se devolver cedo sem P0 — não abre review nem segundo Apply. Pós-T18: já em Em desenvolvimento; **não** T8 |
+| Code Review | **dois** Task no **mesmo turno** do pai (`diff-reviewer` + `code-reviewer`) sobre o intervalo já colado; fila do host não falha; não esperar destape do primeiro para nascer o segundo |
 | QA | 1 filho checks/evidência; T14 no pai |
 
 T7: Alan abre o **Snapshot Impeccable** linkado no comentário do card (path / blob). O Gist OpenSpec **não** é a crítica.
@@ -79,6 +79,10 @@ Rubrica prova viva (1.5):
 ### Prompts autocontidos (grill / Design-autor / Apply / review / QA)
 
 O pai cola o bloco no spawn isolado (`inherit`, sem transcript). `working_directory` = worktree quando a árvore existir. Filho MUST NOT `move_agent_to_root`. Neste par Desktop+SSH: Shell do fluxo com `required_permissions: ["all"]` no primeiro attempt. MUST NOT `workspace_readwrite` + clique. Sucesso = host `completed`. `Task was interrupted by the user` sem Stop visível = kill do host. MUST NOT retomar cadáver. Título `#<id>` (não `#<id> Apply`).
+
+**Apply-coluna** (único filho da coluna / não devolvas entre tasks): és o único filho Apply desta entrada em Em desenvolvimento. Loop interno até todas as tasks feitas ou um P0 visível. Não devolvas o turno entre tasks. Não spawnes reviewers. Não `process_event` / commit / push. Recusa visível no pai se devolveres cedo sem P0 (não abre review nem segundo Apply).
+
+**Onda Code Review** (os dois nascem neste turno / não esperes destape do primeiro): no mesmo turno do pai, spawna `diff-reviewer` e `code-reviewer` sobre o intervalo já colado. Os dois nascem neste turno. Não esperes destape do primeiro. Fila do host não falha. Relógio = o mais lento.
 
 ## Colunas (Project 1)
 
@@ -160,11 +164,11 @@ Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto
 
 ## Implementação
 
-Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`. O **filho** Apply edita o código (loop fatiado); **não** `process_event`, **não** commit/push, **não** spawna reviewers; devolve status ao pai.
+Só com `Status=Pronto para Dev`. Pai chama `iniciar_apply` **antes** do spawn. Branch `card-<id>-<slug>` ou `change-<id>-<slug>` a partir de `develop`. Tecto: **um** filho Apply por entrada em Em desenvolvimento (loop interno até tasks feitas ou P0 visível). Recusa visível se o Apply devolver cedo sem P0: **não** abre review nem segundo Apply. O **filho** Apply edita o código (loop fatiado interno); **não** `process_event`, **não** commit/push, **não** spawna reviewers; devolve status ao pai só com tasks feitas ou P0 visível.
 
 Pós-T18 (`nao_homologar`): q já é Em desenvolvimento no mesmo card. Reabrir ou criar `card-<id>-*` a partir do `develop` actual (squash T14 já está lá). Write só com I1 (não develop/main). **Não** chamar `iniciar_apply` (T8 é de Pronto para Dev). Segue `pedir_review` → … → T14 → Done; o par homologar / não homologar reaparece.
 
-Pai: `pedir_review` (Code Review), materializa o intervalo em `.cursor/tmp/review-diff.patch` e spawna `diff-reviewer` + `code-reviewer` com `review_diff_path:` (MUST NOT pedir git ao filho). MAY spawnar esses reviewers como `generalPurpose` cujo prompt é o corpo do agent file **ou** como `subagent_type` nomeado; o matcher do destape cobre os dois. Continua a exigir `review_diff_path:` e a string exacta do `description` do Task no sidecar. Depois: commit, closing vs develop, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
+Pai: `pedir_review` (Code Review), materializa o intervalo em `.cursor/tmp/review-diff.patch` e spawna os **dois** Task (`diff-reviewer` + `code-reviewer`) **no mesmo turno** com `review_diff_path:` (MUST NOT pedir git ao filho). Fila do host não falha; destape do primeiro MUST NOT nascer o segundo (já spawnado). MAY spawnar esses reviewers como `generalPurpose` cujo prompt é o corpo do agent file **ou** como `subagent_type` nomeado; o matcher do destape cobre os dois. Continua a exigir `review_diff_path:` e a string exacta do `description` do Task no sidecar. P1/P2 voltam numa **lista** a no máximo **um** Apply de correção (prompt = a lista) + **uma** onda; resto = bloqueio visível. Pai MUST NOT corrigir no próprio transcript. P0 de reviewer classifica bloqueio da coluna; tecto de correção é a lista P1/P2. Fecho pós-commit continua **uma** onda. Depois: commit, closing vs develop, push. `aceitar_sha` só com PR `q_git`→develop (`no_pr` ⇒ abrir PR e repetir no mesmo turno). Depois: filho QA (checks), T14. `/review-bugbot` MUST NOT. `/review-security` MAY se Alan pedir explicitamente; o gate continua os dois reviewers locais.
 **dsh:** após 400 desta classe (reasoning effort off/none) num filho, MUST NOT spawnar mais o mesmo preset (incl. retry 1/1 #518); registar `ERROR: subagent spawn failed/empty` e continuar no root com residual explícito.
 
 ## Code Review — cola do diff (S1)
@@ -192,7 +196,7 @@ O **pai**:
 - Sidecar MUST ter `description` não-vazia. Vazio ≠ wildcard. `task` / `subagent_type` no sidecar são opcionais; se presentes, comparar com o `subagent_type` do stop (ou nested), NÃO com o `task` do stop.
 - No `description` do Task (e no sidecar) MUST constar um needle do classificador. Títulos curtos sem needle MUST NOT destapar. Needles: `grill-card`, `apply-coluna`, `diff-reviewer`, `code-reviewer`, `qa-gate`, `design-autor`, `design-critic`, `Assessment A`, `Assessment B`.
 - O classificador usa só sidecar.description ∪ stop.task (título curto) ∪ `subagent_type`. MUST NOT classificar a partir do prompt longo (`description` / corpo colado, p.ex. SKILL.md com needles `design-autor`).
-- Sidecar **por** Task. Após destape de `diff-reviewer`, o pai spawna `code-reviewer` — ainda **não** commita. Poke do primeiro reviewer MUST NOT ser skip do segundo; commit só depois dos dois. O texto da ordem de review permanece o do design.
+- Sidecar **por** Task. Destape do primeiro reviewer da onda = espera o par (não commita, **não** spawna o outro reviewer agora). Poke do primeiro reviewer MUST NOT ser skip do segundo; commit só depois dos dois. O texto da ordem de review permanece o do design. MUST NOT dois sidecars.
 - Apaga o sidecar ao tratar o resultado. O hook apaga o sidecar após o poke.
 - Poke = ordem. Proibido `concluiu?` / `já acabou?`.
 - Staff MUST NOT re-prompt enquanto o filho corre.
