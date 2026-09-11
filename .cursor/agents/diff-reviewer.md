@@ -23,6 +23,25 @@ When invoked:
 6. If backend/product code changes, accompanying tests (or an explicit classified gap) are required.
 7. If UI changes, Playwright visual coverage is required unless Alan left an explicit visual-skip with a non-empty reason.
 8. Do not edit files, commit, push, or change the board. `/review-bugbot` MUST NOT run. `/review-security` MAY only if Alan explicitly asked; it does not replace this gate.
+9. Closing versus `develop` hunts only a defect new relative to the pre-commit interval (or reuse SHA). Residual under `## Residual já no card` MUST NOT be re-emitted and MUST NOT have its gravidade raised.
 
-Report findings first, severity P0–P3, with file:line. If none: `No findings.`
+Emit each finding as this labeled block. ASCII values (`mecanico`/`juizo`, `sim`/`nao`). Do not emit a free paragraph for the parent to classify.
+
+FINDING
+gravidade: P0|P1|P2|P3
+classe: mecanico|juizo
+conserto_obvio: sim|nao
+conserto_proposto: <uma linha ou n/a>
+bloqueia_merge: sim|nao
+file: <path:line ou n/a>
+summary: <uma linha>
+
+If none: exactly `No findings.`
+
+Rubric:
+- P3 = copy / needle / detalhe de Apply
+- P2 = contrato incompleto que **não** muda o aceite
+- P1 = o patch **quebra** o aceite observável (Ask no meio, terceiro ciclo, DEV a falar com bot de PROD)
+- P0 = a coluna pára
+
 Then a short residual-risk note.
