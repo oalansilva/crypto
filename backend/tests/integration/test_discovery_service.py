@@ -1466,6 +1466,72 @@ class TestPromotion:
         assert retry["favorite_id"] == favorite_id
         db.close()
 
+    def test_promote_copies_snapshot_onto_grid_keys(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        snapshot = {
+            "sharpe_ratio": 0.31,
+            "win_rate": 0.467,
+            "total_return": 169.51,
+            "total_return_pct": 16951,
+            "max_drawdown": 0.165,
+            "total_trades": 30,
+            "profit_factor": 1.42,
+        }
+        result = DiscoveryResult(
+            id="RS-B109ED2C80",
+            sweep_id="sw-promo-193",
+            combination_id=999193,
+            template_id="bollinger_breakout",
+            symbol="ALPHA/USDT",
+            timeframe="1d",
+            direction="long",
+            parameters={"window": 20},
+            start_at=datetime(2020, 10, 10, tzinfo=timezone.utc),
+            end_at=datetime(2024, 2, 1, tzinfo=timezone.utc),
+            metrics=snapshot,
+            trades_count=30,
+            win_rate=0.467,
+            sharpe_ratio=0.31,
+            profit_factor=1.42,
+            max_drawdown=0.165,
+            strategy_identity_key="id-promo-193",
+            evidence_fingerprint="fp-promo-193",
+            eligibility="eligible",
+            dedup_state="unique",
+        )
+        db.add(result)
+        db.commit()
+
+        from app.models import FavoriteStrategy
+
+        body, status = service.promote_result(
+            result_id="RS-B109ED2C80",
+            actor="admin-1",
+            idempotency_key=f"p-{uuid.uuid4().hex[:12]}",
+            payload={"tier": 3, "result_id": "RS-B109ED2C80"},
+            db=db,
+        )
+        assert status == 201
+        favorite = (
+            db.query(FavoriteStrategy).filter(FavoriteStrategy.id == int(body["favorite_id"])).first()
+        )
+        metrics = favorite.metrics
+        assert metrics["origin_type"] == "discovery_sweep"
+        assert metrics["sweep_id"] == "sw-promo-193"
+        assert metrics["result_id"] == "RS-B109ED2C80"
+        assert metrics["strategy_identity_key"] == "id-promo-193"
+        assert metrics["metrics_snapshot"]["sharpe_ratio"] == 0.31
+        assert metrics["sharpe_ratio"] == 0.31
+        assert metrics["total_trades"] == 30
+        assert metrics["win_rate"] == 0.467
+        assert metrics["total_return_pct"] == 16951
+        assert metrics["max_drawdown"] == 0.165
+        assert metrics["profit_factor"] == 1.42
+        db.close()
+
     def test_promote_rejects_other_tier(self, engine_factory):
         engine = engine_factory()
         db = _session_factory(engine)()

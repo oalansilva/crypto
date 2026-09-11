@@ -48,6 +48,10 @@ from app.services.walk_forward_revalidation import (
 )
 from app.services.oos_promotion_proof import promotion_payload, verify_oos_promotion_proof
 from app.services.favorite_uniqueness import lock_and_find_duplicate
+from app.services.discovery_favorite_metrics import (
+    flatten_discovery_grid_metrics,
+    overlay_snapshot_grid_metrics,
+)
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -110,7 +114,10 @@ def _favorite_response(
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
     if isinstance(payload.get("metrics"), dict):
-        payload["metrics"] = _safe_cached_metrics(payload["metrics"], str(row.timeframe))
+        payload["metrics"] = _safe_cached_metrics(
+            flatten_discovery_grid_metrics(payload["metrics"]),
+            str(row.timeframe),
+        )
     strategy_key = str(row.strategy_name)
     payload["strategy_description"] = (description_by_strategy or {}).get(
         strategy_key,
@@ -734,7 +741,9 @@ async def get_favorite_trades(
     favorite = _normalize_favorite_json_fields(favorite)
     metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     strategy_transparency = _favorite_transparency(db, favorite, metrics)
-    metrics = _safe_cached_metrics(metrics, str(favorite.timeframe))
+    metrics = _safe_cached_metrics(
+        flatten_discovery_grid_metrics(metrics), str(favorite.timeframe)
+    )
     saved_trades = metrics.get("trades")
     saved_trade_count = _numeric_metric(metrics.get("total_trades"))
     history_cached = metrics.get("trades_history_cached") is True
@@ -845,6 +854,7 @@ async def get_favorite_trades(
             candles=analysis_candles,
             indicator_data=analysis_indicator_data,
         )
+    stored_metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     updated_metrics = {
         **metrics,
         **regenerated_metrics,
@@ -862,13 +872,16 @@ async def get_favorite_trades(
         updated_metrics["trades_previous_summary"] = _favorite_metric_summary(metrics)
         updated_metrics["trades_reconciled_summary"] = _favorite_metric_summary(regenerated_metrics)
         updated_metrics["trades_reconciled_at"] = datetime.now(timezone.utc).isoformat()
+    updated_metrics = overlay_snapshot_grid_metrics(
+        updated_metrics, source=stored_metrics
+    )
     favorite.metrics = updated_metrics
     db.commit()
 
     return FavoriteTradesResponse(
         favorite_id=favorite_id,
         trades=with_explanations(regenerated_trades, strategy_transparency),
-        metrics=updated_metrics,
+        metrics=flatten_discovery_grid_metrics(updated_metrics),
         metrics_match=True,
         metrics_deltas=metrics_deltas,
         regenerated=True,
