@@ -28,17 +28,14 @@ FOLLOWUP_APPLY = (
     "Não perguntes se concluiu."
 )
 FOLLOWUP_REVIEW = (
-    "O filho reviewer já devolveu. "
-    "Se o par da onda ainda não devolveu: espera (não commitas, "
-    "não spawnes o outro reviewer agora). "
-    "Classifica mecânico vs juízo. "
-    "Mecânicos: no máximo um Apply com a lista, depois uma onda. "
-    "Juízo: residual (não ocupa o slot). "
-    "Se limpo: commit. "
-    "Se após esse ciclo restar P1/P2 ou nascer P1/P2 novo: residual no Done "
-    "(handoff + comentário), card segue, não terceiro ciclo. "
-    "MUST NOT «autorizar extra / aceitar residual». "
-    "Não perguntes se concluiu."
+    "O filho reviewer já devolveu. Se o par da onda ainda não devolveu: espera (não commitas, não spawnes o outro reviewer agora).\n"
+    "Tabela destape (não pontues cláusula em falta):\n"
+    "limpo → commit\n"
+    "só juízo → residual, card segue (não gasta correção)\n"
+    "mecânico → no máximo um conserto + uma verificação\n"
+    "após 1+1 → residual, card segue\n"
+    "P0 → a coluna pára\n"
+    "MUST NOT «autorizar extra / aceitar residual». Não perguntes se concluiu."
 )
 FOLLOWUP_QA = (
     "O filho QA já devolveu. Fecha o QA conforme o veredito "
