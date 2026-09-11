@@ -1016,6 +1016,126 @@ class TestIdentityAndLeaderboard:
         assert ranked[0]["rank"] == 1
         db.close()
 
+    def test_rank_eligible_go_class_precedes_nogo_and_exposes_verdict(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        sweep_id = f"sw-{uuid.uuid4().hex[:8]}"
+        now = datetime.now(timezone.utc)
+        specs = [
+            (
+                "RS-B109ED2C80",
+                "ALPHA/USDT",
+                22.0,
+                30,
+                {"oos_verdict": {"status": "NO-GO", "reasons": ["Sharpe IS 0,31"]}},
+            ),
+            (
+                "RS-896-01",
+                "BTC/USDT",
+                1.20,
+                42,
+                {"oos_verdict": {"status": "GO", "reasons": ["ok"]}},
+            ),
+            (
+                "RS-896-02",
+                "ETH/USDT",
+                0.94,
+                44,
+                {"oos_verdict": {"status": "GO"}},
+            ),
+            (
+                "RS-896-NA",
+                "ARPA/USDT",
+                1.195e27,
+                31,
+                {"oos_verdict": {"status": "NO-GO"}},
+            ),
+            (
+                "RS-896-MISS",
+                "SOL/USDT",
+                50.0,
+                40,
+                {},
+            ),
+        ]
+        for i, (rid, symbol, calmar, trades, metrics) in enumerate(specs):
+            db.add(
+                DiscoveryResult(
+                    id=rid,
+                    sweep_id=sweep_id,
+                    combination_id=896000 + i,
+                    template_id="t1",
+                    symbol=symbol,
+                    timeframe="1d",
+                    direction="long",
+                    parameters={},
+                    start_at=now,
+                    end_at=now + timedelta(days=1),
+                    metrics=metrics,
+                    trades_count=trades,
+                    calmar_ratio=calmar,
+                    strategy_identity_key=f"id-{rid}",
+                    evidence_fingerprint=f"fp-{rid}",
+                    eligibility="eligible",
+                    dedup_state="unique",
+                )
+            )
+        db.commit()
+        ranked = service.rank_eligible(sweep_id, metric="calmar_ratio", db=db)
+        ids = [r["result_id"] for r in ranked]
+        assert ids[:2] == ["RS-896-01", "RS-896-02"]
+        assert ids.index("RS-B109ED2C80") > ids.index("RS-896-01")
+        assert ids.index("RS-B109ED2C80") > ids.index("RS-896-02")
+        assert ids.index("RS-896-MISS") > ids.index("RS-896-02")
+        assert ids[-1] == "RS-896-NA"
+        assert ranked[0]["rank"] == 1
+        assert ranked[0]["oos_verdict"]["status"] == "GO"
+        assert ranked[0]["calmar_ratio"] == pytest.approx(1.20)
+        alpha = next(r for r in ranked if r["result_id"] == "RS-B109ED2C80")
+        assert alpha["oos_verdict"]["status"] == "NO-GO"
+        assert alpha["rank"] > 2
+        missing = next(r for r in ranked if r["result_id"] == "RS-896-MISS")
+        assert missing["oos_verdict"] is None
+        na = next(r for r in ranked if r["result_id"] == "RS-896-NA")
+        assert na["rank"] == 5
+        db.close()
+
+    def test_two_nogos_keep_calmar_then_trades_then_id(self, engine_factory):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        sweep_id = f"sw-{uuid.uuid4().hex[:8]}"
+        now = datetime.now(timezone.utc)
+        for i, (rid, calmar, trades) in enumerate(
+            (("RS-N2", 3.0, 30), ("RS-N1", 3.0, 45), ("RS-N0", 8.0, 30))
+        ):
+            db.add(
+                DiscoveryResult(
+                    id=rid,
+                    sweep_id=sweep_id,
+                    combination_id=896100 + i,
+                    template_id="t1",
+                    symbol="BTCUSDT",
+                    timeframe="1d",
+                    direction="long",
+                    parameters={},
+                    start_at=now,
+                    end_at=now + timedelta(days=1),
+                    metrics={"oos_verdict": {"status": "NO-GO"}},
+                    trades_count=trades,
+                    calmar_ratio=calmar,
+                    strategy_identity_key=f"id-{rid}",
+                    evidence_fingerprint=f"fp-{rid}",
+                    eligibility="eligible",
+                    dedup_state="unique",
+                )
+            )
+        db.commit()
+        ranked = service.rank_eligible(sweep_id, metric="calmar_ratio", db=db)
+        assert [r["result_id"] for r in ranked] == ["RS-N0", "RS-N1", "RS-N2"]
+        db.close()
+
     def test_leaderboard_filters_pagination_and_ineligible(self, engine_factory):
         engine = engine_factory()
         db = _session_factory(engine)()
