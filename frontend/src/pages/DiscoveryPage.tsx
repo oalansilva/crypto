@@ -61,6 +61,11 @@ type HistoryRun = {
   created_at: string | null
 }
 
+type OosVerdict = {
+  status?: string | null
+  reasons?: string[] | null
+}
+
 type LeaderboardRow = {
   rank: number | null
   result_id: string
@@ -92,6 +97,8 @@ type LeaderboardRow = {
   observed_valid_candles: number | null
   parameters?: Record<string, unknown>
   fees_slippage: { fees?: number; slippage?: number; fee_pct?: number; slippage_pct?: number } | null
+  oos_verdict?: OosVerdict | null
+  metrics?: { oos_verdict?: OosVerdict | null } | null
 }
 
 type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
@@ -122,9 +129,33 @@ const STATE_LABEL: Record<SweepState, string> = {
   cancelled: 'cancelada', failed: 'falhou', partial_failure: 'falha parcial', completed: 'concluída',
 }
 
+const CALMAR_ABS_CEILING = 1000
+
 function fmtNum(v: number | null | undefined, digits = 2): string {
   if (v === null || v === undefined || Number.isNaN(v) || !Number.isFinite(v)) return 'N/A'
   return v.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+}
+function fmtCalmar(v: number | null | undefined): string {
+  if (v === null || v === undefined || Number.isNaN(v) || !Number.isFinite(v)) return 'N/A'
+  if (Math.abs(v) > CALMAR_ABS_CEILING) return 'N/A'
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+function walkForwardStatus(row: LeaderboardRow): 'GO' | 'NO-GO' | null {
+  const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics.oos_verdict : null
+  const raw = String(row.oos_verdict?.status ?? nested?.status ?? '').trim().toUpperCase()
+  if (raw === 'GO' || raw === 'NO-GO') return raw
+  return null
+}
+function WalkForwardSeal({ status }: { status: 'GO' | 'NO-GO' | null }) {
+  if (status !== 'GO' && status !== 'NO-GO') return null
+  return (
+    <span
+      className={`verdict ${status === 'GO' ? 'verdict-go' : 'verdict-nogo'}`}
+      data-testid={status === 'GO' ? 'seal-go' : 'seal-nogo'}
+    >
+      {status}
+    </span>
+  )
 }
 function fmtPct(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v) || !Number.isFinite(v)) return 'N/A'
@@ -1717,7 +1748,7 @@ export function DiscoveryPage() {
             <div className="border-b border-[var(--border-default)] p-5">
               <h2 className="text-lg font-semibold">Parciais · top-5 travadas</h2>
               <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                Ranking travado na varredura <span className="font-mono">#{activeSweep.sweep_id}</span> — parciais abaixo, sem re-perguntar o rascunho.
+                Ranking travado na varredura <span className="font-mono">#{activeSweep.sweep_id}</span> — parciais abaixo, sem re-perguntar o rascunho. Todo GO acima de todo NO-GO.
               </p>
             </div>
             {partials.length > 0 ? (
@@ -1727,26 +1758,50 @@ export function DiscoveryPage() {
                     <tr>
                       <th scope="col">Rank</th>
                       <th scope="col">Candidato</th>
-                      <th scope="col">Calmar</th>
-                      <th scope="col">Max DD</th>
-                      <th scope="col">Trades/cobertura</th>
+                      <th scope="col" aria-label="Calmar (CAGR anual do calendário ÷ Max DD)">
+                        <span>Calmar</span>
+                        <span className="th-hint">CAGR ÷ Max DD</span>
+                      </th>
+                      <th scope="col" aria-label="Maximum Drawdown">Max DD</th>
+                      <th scope="col" aria-label="negócios / cobertura">
+                        <span>Trades/cobertura</span>
+                        <span className="th-hint">negócios · velas</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {partials.slice(0, 5).map((row) => (
-                      <tr key={row.result_id} className="result-row">
+                    {partials.slice(0, 5).map((row) => {
+                      const verdict = walkForwardStatus(row)
+                      const calmarText = fmtCalmar(row.calmar_ratio)
+                      return (
+                      <tr
+                        key={row.result_id}
+                        className="result-row"
+                        data-verdict={verdict ?? undefined}
+                        data-testid={
+                          row.result_id === 'RS-B109ED2C80'
+                            ? 'partial-nogo'
+                            : row.rank === 1
+                              ? 'partial-go-1'
+                              : calmarText === 'N/A'
+                                ? 'partial-na'
+                                : undefined
+                        }
+                      >
                         <td className="rank-cell" data-label="Rank">
                           <span className="rank-cell-value">{row.rank ?? '—'}</span>
                         </td>
                         <td className="candidate-cell" data-label="Candidato">
                           <strong className="candidate-name">{row.display_name || row.template_id}</strong>
                           <span className="candidate-meta">{row.symbol} · {row.timeframe} · {row.direction === 'long' ? 'Long' : 'Short'}</span>
+                          <WalkForwardSeal status={verdict} />
                         </td>
-                        <td className="number" data-label="Calmar">{fmtNum(row.calmar_ratio)}</td>
+                        <td className={`number ${calmarText === 'N/A' ? 'na' : ''}`} data-label="Calmar">{calmarText}</td>
                         <td className="number negative" data-label="Maximum Drawdown">{fmtDrawdown(row.max_drawdown)}</td>
-                        <td className="number" data-label="Trades/cobertura">{row.trades_count ?? 'N/A'} · {fmtPct(row.coverage)}</td>
+                        <td className="number" data-label="negócios / cobertura">{row.trades_count ?? 'N/A'} · {fmtPct(row.coverage)}</td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -2258,15 +2313,21 @@ export function DiscoveryPage() {
               ) : null}
               <table className="discovery-table decidable" aria-describedby="leaderboard-note">
                 <caption className="sr-only">
-                  Candidatos da varredura selecionada; ranks são globais e permanecem sob filtro e paginação
+                  Candidatos da varredura selecionada; ranks globais não renumeram sob filtro. Calmar é CAGR anual do calendário dividido pelo Max DD, não retorno. Trades/cobertura são negócios fechados e cobertura de velas, não taxa de acerto.
                 </caption>
                 <thead>
                   <tr>
                     <th scope="col">Rank global</th>
                     <th scope="col">Candidato</th>
-                    <th scope="col">Calmar</th>
+                    <th scope="col" aria-label="Calmar (CAGR anual do calendário ÷ Max DD)">
+                      <span>Calmar</span>
+                      <span className="th-hint">CAGR ÷ Max DD</span>
+                    </th>
                     <th scope="col" aria-label="Maximum Drawdown">Max DD</th>
-                    <th scope="col">Trades/cobertura</th>
+                    <th scope="col" aria-label="negócios / cobertura">
+                      <span>Trades/cobertura</span>
+                      <span className="th-hint">negócios · velas</span>
+                    </th>
                     <th scope="col">Ação</th>
                   </tr>
                 </thead>
@@ -2278,12 +2339,15 @@ export function DiscoveryPage() {
                     const promoted = row.dedup_state === 'already_promoted'
                     const promoteDisabled = busy || promoting || lowSample || duplicate || promoted
                     const expanded = expandedRows.has(row.result_id)
+                    const verdict = walkForwardStatus(row)
+                    const calmarText = insufficient ? 'N/A' : fmtCalmar(row.calmar_ratio)
                     return (
                       <tr
                         key={row.result_id}
                         className="result-row"
                         data-eligibility={row.eligibility}
-                        data-testid={insufficient ? 'row-insufficient' : undefined}
+                        data-verdict={verdict ?? undefined}
+                        data-testid={insufficient ? 'row-insufficient' : row.result_id === 'RS-B109ED2C80' ? 'row-nogo' : undefined}
                       >
                         <td className="rank-cell" data-label="Rank global">
                           <span className="rank-cell-value">{row.rank ?? '—'}</span>
@@ -2303,6 +2367,7 @@ export function DiscoveryPage() {
                               {fmtParams(row.parameters) ? ` · ${fmtParams(row.parameters)}` : ''}
                               {row.direction === 'short' ? ' · benchmark B&H long-only' : ''}
                             </span>
+                            <WalkForwardSeal status={verdict} />
                             {insufficient ? (
                               <span className="sample-badge" data-testid="seal-insufficient">Amostra insuficiente</span>
                             ) : null}
@@ -2339,11 +2404,11 @@ export function DiscoveryPage() {
                             ) : null}
                           </div>
                         </td>
-                        <td className={`number ${insufficient ? 'na' : ''} ${!insufficient && row.calmar_ratio != null && row.calmar_ratio < 0 ? 'negative' : ''}`} data-label="Calmar">
-                          {insufficient ? 'N/A' : fmtNum(row.calmar_ratio)}
+                        <td className={`number ${calmarText === 'N/A' ? 'na' : ''} ${calmarText !== 'N/A' && row.calmar_ratio != null && row.calmar_ratio < 0 ? 'negative' : ''}`} data-label="Calmar">
+                          {calmarText}
                         </td>
                         <td className={`number ${insufficient ? 'na' : 'negative'}`} data-label="Maximum Drawdown">{insufficient ? 'N/A' : fmtDrawdown(row.max_drawdown)}</td>
-                        <td className={`number ${insufficient ? 'na' : ''}`} data-label="Trades/cobertura">{insufficient ? 'N/A' : `${row.trades_count ?? 'N/A'} · ${fmtPct(row.coverage)}`}</td>
+                        <td className={`number ${insufficient ? 'na' : ''}`} data-label="negócios / cobertura">{insufficient ? 'N/A' : `${row.trades_count ?? 'N/A'} · ${fmtPct(row.coverage)}`}</td>
                         <td className="action-cell" data-label="Ação">
                           {promoted ? (
                             <span
@@ -2442,6 +2507,10 @@ export function DiscoveryPage() {
             <p id="leaderboard-note" className="border-t border-[var(--border-default)] px-5 py-3 text-[11px] text-[var(--text-muted)]">
               Conteúdo educacional. Rank global usa resultados elegíveis (≥30 trades, ≥90% cobertura); filtros não renumeram posições.
               Dados históricos não garantem retornos futuros.
+            </p>
+            <p className="border-t border-[var(--border-default)] px-5 py-3 text-[11px] text-[var(--text-muted)]" data-testid="column-copy">
+              Calmar não é retorno: é CAGR do calendário da janela dividido pelo Max DD.{' '}
+              <span className="font-mono">30 · 100%</span> = 30 negócios fechados e 100% de cobertura de velas — não é taxa de acerto.
             </p>
           </section>
         ) : null}

@@ -2151,19 +2151,21 @@ class ComboOptimizer:
                     from app.metrics.benchmark import calculate_buy_and_hold
                     from app.metrics.risk_adjusted import calculate_calmar_ratio
 
-                    equity = pd.Series([100.0])
+                    equity_values = [100.0]
                     cap = 100.0
                     for trade in sorted(
                         holdout_trades,
                         key=lambda t: pd.Timestamp(t.get("entry_time") or 0),
                     ):
                         cap *= 1.0 + float(trade.get("profit") or 0.0)
-                        equity = pd.concat([equity, pd.Series([cap])])
-                    if len(equity) >= 2 and len(holdout_trades) > 0:
-                        oos_cagr = calculate_cagr(equity)
+                        equity_values.append(cap)
+                    equity = pd.Series(equity_values)
+                    close_series = df_holdout["close"]
+                    years = _calendar_years_from_evidence(close_series, holdout_trades)
+                    if len(equity) >= 2 and len(holdout_trades) > 0 and years:
+                        oos_cagr = calculate_cagr(equity, years=years)
                     else:
                         oos_cagr = 0.0
-                    close_series = df_holdout["close"]
                     bh = calculate_buy_and_hold(close_series, 100.0)
                     oos_calmar = calculate_calmar_ratio(
                         oos_cagr, float(oos_metrics.get("max_drawdown") or 0.0)
@@ -2294,6 +2296,40 @@ class ComboOptimizer:
         return manifest.model_dump(mode="json")
 
 
+def _calendar_years_from_evidence(
+    close_series: Optional[pd.Series],
+    trades: list | None,
+) -> float | None:
+    """Years = calendar of the evidence window / 365, never n_trades or len(equity)."""
+    from app.metrics.performance import calendar_years
+
+    if close_series is not None and not close_series.empty:
+        index = close_series.index
+        if isinstance(index, pd.DatetimeIndex) and len(index) >= 2:
+            try:
+                return calendar_years(index[0], index[-1])
+            except ValueError:
+                pass
+    times: list[pd.Timestamp] = []
+    for trade in trades or []:
+        if not isinstance(trade, dict):
+            continue
+        for key in ("exit_time", "entry_time"):
+            raw = trade.get(key)
+            if not raw:
+                continue
+            try:
+                times.append(pd.Timestamp(raw))
+            except (TypeError, ValueError):
+                continue
+    if len(times) >= 2:
+        try:
+            return calendar_years(min(times), max(times))
+        except ValueError:
+            return None
+    return None
+
+
 def _enrich_ranking_metrics(
     trades: list,
     close_series: Optional[pd.Series],
@@ -2316,13 +2352,15 @@ def _enrich_ranking_metrics(
 
     try:
         if trades:
-            equity = pd.Series([100.0])
+            equity_values = [100.0]
             cap = 100.0
             for trade in sorted(trades, key=lambda t: pd.Timestamp(t.get("entry_time") or 0)):
                 cap *= 1.0 + float(trade.get("profit") or 0.0)
-                equity = pd.concat([equity, pd.Series([cap])])
-            if len(equity) >= 2:
-                cagr = calculate_cagr(equity)
+                equity_values.append(cap)
+            equity = pd.Series(equity_values)
+            years = _calendar_years_from_evidence(close_series, trades)
+            if years is not None and years > 0 and len(equity) >= 2:
+                cagr = calculate_cagr(equity, years=years)
             elif legacy_zero_trade_ranking:
                 cagr = 0.0
             else:

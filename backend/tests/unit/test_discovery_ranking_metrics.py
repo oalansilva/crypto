@@ -94,6 +94,42 @@ class TestEnrichRankingMetrics:
         if "benchmark" in metrics:
             assert metrics["benchmark"].get("cagr") is not None
 
+    def test_thirty_trades_over_three_years_is_not_calmar_1e27(self):
+        from app.metrics.performance import calendar_years, calculate_cagr
+        from app.metrics.risk_adjusted import calculate_calmar_ratio
+
+        start = pd.Timestamp("2020-10-10", tz="UTC")
+        end = pd.Timestamp("2024-02-01", tz="UTC")
+        idx = pd.date_range(start, end, freq="D", tz="UTC")
+        close = pd.Series([100.0 + i * 0.01 for i in range(len(idx))], index=idx)
+        target_multiple = 170.51
+        profit = target_multiple ** (1 / 30) - 1
+        trades = [
+            {
+                "entry_time": (start + pd.Timedelta(days=30 * i)).isoformat(),
+                "profit": profit,
+            }
+            for i in range(30)
+        ]
+        metrics: dict = {"max_drawdown": 0.165}
+
+        _enrich_ranking_metrics(trades, close, metrics, legacy_zero_trade_ranking=False)
+
+        years = calendar_years(start, end)
+        expected_cagr = calculate_cagr(pd.Series([100.0, 100.0 * target_multiple]), years=years)
+        expected_calmar = calculate_calmar_ratio(expected_cagr, 0.165)
+        wrong_years = 31 / 365.0
+        wrong_cagr = calculate_cagr(pd.Series([100.0, 100.0 * target_multiple]), years=wrong_years)
+
+        assert years == pytest.approx((end - start).days / 365.0)
+        assert years != pytest.approx(wrong_years)
+        assert metrics["cagr"] == pytest.approx(expected_cagr, rel=1e-6)
+        assert metrics["calmar_ratio"] == pytest.approx(expected_calmar, rel=1e-6)
+        assert abs(metrics["calmar_ratio"]) < 1000
+        assert abs(metrics["calmar_ratio"]) == pytest.approx(22, abs=3)
+        assert metrics["calmar_ratio"] != pytest.approx(wrong_cagr / 0.165, rel=0.1)
+        assert metrics["calmar_ratio"] < 1e6
+
 
 class TestDiscoveryRankingPersistence:
     def test_run_combination_persists_ranking_columns(
@@ -575,4 +611,142 @@ class TestDiscoveryWalkForwardPersistence:
         assert result.calmar_ratio is None
         assert "calmar_ratio" not in result.metrics
         assert "calmar_ratio" not in result.metrics["oos_metrics"]
+        db.close()
+
+    def test_calmar_ceiling_and_honest_values(
+        self, postgres_isolation, unit_database_url, monkeypatch
+    ):
+        from app.models_discovery import DiscoveryResult
+        from app.tasks.discovery_tasks import run_combination
+
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        with engine.begin() as connection:
+            connection.exec_driver_sql("DELETE FROM discovery_results")
+            connection.exec_driver_sql("DELETE FROM discovery_combinations")
+            connection.exec_driver_sql("DELETE FROM discovery_sweeps")
+
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        combo_absurd = _seed_running_combination(db, sweep_id="sw-wf-1e27")
+        combo_honest = _seed_running_combination(db, sweep_id="sw-wf-honest")
+        start = datetime(2020, 10, 10, tzinfo=timezone.utc)
+        end = datetime(2024, 2, 1, tzinfo=timezone.utc)
+
+        class AbsurdOptimizer:
+            def run_optimization(self, **_kwargs):
+                return {
+                    "best_metrics": {
+                        "sharpe_ratio": 0.31,
+                        "profit_factor": 1.2,
+                        "max_drawdown": 0.165,
+                        "win_rate": 0.5,
+                        "cagr": 1.97e26,
+                        "calmar_ratio": 1.195e27,
+                        "benchmark": {"cagr": 0.1},
+                    },
+                    "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 30,
+                    "candles": [
+                        {"timestamp_utc": start.isoformat(), "close": 100.0},
+                        {"timestamp_utc": end.isoformat(), "close": 110.0},
+                    ],
+                    "best_parameters": {"direction": "long"},
+                    "data_source": "ccxt",
+                    "oos_verdict": {"status": "NO-GO", "reasons": ["Sharpe baixo"]},
+                }
+
+        class HonestOptimizer:
+            def run_optimization(self, **_kwargs):
+                return {
+                    "best_metrics": {
+                        "sharpe_ratio": 1.1,
+                        "profit_factor": 1.4,
+                        "max_drawdown": 0.148,
+                        "win_rate": 0.55,
+                        "cagr": 0.1776,
+                        "calmar_ratio": 1.20,
+                        "benchmark": {"cagr": 0.1},
+                    },
+                    "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 42,
+                    "candles": [
+                        {"timestamp_utc": start.isoformat(), "close": 100.0},
+                        {"timestamp_utc": end.isoformat(), "close": 110.0},
+                    ],
+                    "best_parameters": {"direction": "long"},
+                    "data_source": "ccxt",
+                    "oos_verdict": {"status": "GO", "reasons": ["ok"]},
+                }
+
+        _patch_combo_metadata(monkeypatch)
+        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", AbsurdOptimizer)
+        run_combination(db, combo_absurd, owner="worker-896")
+        db.refresh(combo_absurd)
+        absurd = (
+            db.query(DiscoveryResult).filter(DiscoveryResult.id == combo_absurd.result_id).one()
+        )
+        assert absurd.cagr is None
+        assert absurd.calmar_ratio is None
+        assert "cagr" not in absurd.metrics
+        assert "calmar_ratio" not in absurd.metrics
+
+        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", HonestOptimizer)
+        run_combination(db, combo_honest, owner="worker-896")
+        db.refresh(combo_honest)
+        honest = (
+            db.query(DiscoveryResult).filter(DiscoveryResult.id == combo_honest.result_id).one()
+        )
+        assert honest.cagr == pytest.approx(0.1776)
+        assert honest.calmar_ratio == pytest.approx(1.20)
+        assert honest.metrics["calmar_ratio"] == pytest.approx(1.20)
+        db.close()
+
+    def test_cagr_ceiling_nulls_ranking_column(
+        self, postgres_isolation, unit_database_url, monkeypatch
+    ):
+        from app.models_discovery import DiscoveryResult
+        from app.tasks.discovery_tasks import run_combination
+
+        engine = create_engine(unit_database_url)
+        Base.metadata.create_all(bind=engine)
+        with engine.begin() as connection:
+            connection.exec_driver_sql("DELETE FROM discovery_results")
+            connection.exec_driver_sql("DELETE FROM discovery_combinations")
+            connection.exec_driver_sql("DELETE FROM discovery_sweeps")
+
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        combo = _seed_running_combination(db, sweep_id="sw-wf-cagr-cap")
+        start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2024, 12, 31, tzinfo=timezone.utc)
+
+        class HugeCagrOptimizer:
+            def run_optimization(self, **_kwargs):
+                return {
+                    "best_metrics": {
+                        "sharpe_ratio": 1.0,
+                        "profit_factor": 1.2,
+                        "max_drawdown": 0.2,
+                        "win_rate": 0.5,
+                        "cagr": 101.0,
+                        "calmar_ratio": 22.0,
+                        "benchmark": {"cagr": 0.1},
+                    },
+                    "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 40,
+                    "candles": [
+                        {"timestamp_utc": start.isoformat(), "close": 100.0},
+                        {"timestamp_utc": end.isoformat(), "close": 110.0},
+                    ],
+                    "best_parameters": {"direction": "long"},
+                    "data_source": "ccxt",
+                    "oos_verdict": {"status": "GO", "reasons": ["ok"]},
+                }
+
+        _patch_combo_metadata(monkeypatch)
+        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", HugeCagrOptimizer)
+        run_combination(db, combo, owner="worker-896")
+        db.refresh(combo)
+        result = db.query(DiscoveryResult).filter(DiscoveryResult.id == combo.result_id).one()
+        assert result.cagr is None
+        assert result.calmar_ratio == pytest.approx(22.0)
+        assert "cagr" not in result.metrics
         db.close()
