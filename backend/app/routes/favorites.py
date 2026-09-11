@@ -741,9 +741,7 @@ async def get_favorite_trades(
     favorite = _normalize_favorite_json_fields(favorite)
     metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     strategy_transparency = _favorite_transparency(db, favorite, metrics)
-    metrics = _safe_cached_metrics(
-        flatten_discovery_grid_metrics(metrics), str(favorite.timeframe)
-    )
+    metrics = _safe_cached_metrics(flatten_discovery_grid_metrics(metrics), str(favorite.timeframe))
     saved_trades = metrics.get("trades")
     saved_trade_count = _numeric_metric(metrics.get("total_trades"))
     history_cached = metrics.get("trades_history_cached") is True
@@ -872,9 +870,7 @@ async def get_favorite_trades(
         updated_metrics["trades_previous_summary"] = _favorite_metric_summary(metrics)
         updated_metrics["trades_reconciled_summary"] = _favorite_metric_summary(regenerated_metrics)
         updated_metrics["trades_reconciled_at"] = datetime.now(timezone.utc).isoformat()
-    updated_metrics = overlay_snapshot_grid_metrics(
-        updated_metrics, source=stored_metrics
-    )
+    updated_metrics = overlay_snapshot_grid_metrics(updated_metrics, source=stored_metrics)
     favorite.metrics = updated_metrics
     db.commit()
 

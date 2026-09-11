@@ -1516,7 +1516,9 @@ class TestPromotion:
         )
         assert status == 201
         favorite = (
-            db.query(FavoriteStrategy).filter(FavoriteStrategy.id == int(body["favorite_id"])).first()
+            db.query(FavoriteStrategy)
+            .filter(FavoriteStrategy.id == int(body["favorite_id"]))
+            .first()
         )
         metrics = favorite.metrics
         assert metrics["origin_type"] == "discovery_sweep"

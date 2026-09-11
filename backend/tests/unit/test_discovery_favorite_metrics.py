@@ -11,7 +11,6 @@ from app.services.discovery_favorite_metrics import (
     overlay_snapshot_grid_metrics,
 )
 
-
 SNAPSHOT_193 = {
     "sharpe_ratio": 0.31,
     "win_rate": 0.467,

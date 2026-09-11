@@ -1961,9 +1961,7 @@ class DiscoveryService:
             start_date=result.start_at.date().isoformat(),
             end_date=result.end_at.date().isoformat(),
             period_type="all",
-            metrics=build_promoted_favorite_metrics(
-                result, promoted_at=_utc_iso(_utcnow())
-            ),
+            metrics=build_promoted_favorite_metrics(result, promoted_at=_utc_iso(_utcnow())),
         )
         db.add(favorite)
         db.flush()

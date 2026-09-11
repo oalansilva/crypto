@@ -13,7 +13,6 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.routes import favorites
 
-
 SNAPSHOT_193 = {
     "sharpe_ratio": 0.31,
     "win_rate": 0.467,
@@ -137,9 +136,7 @@ def test_combo_saved_get_contract_unchanged(tmp_path: Path):
     assert "metrics_snapshot" not in (row.metrics or {})
 
 
-def test_persist_regenerated_trades_does_not_overwrite_snapshot_keys(
-    tmp_path: Path, monkeypatch
-):
+def test_persist_regenerated_trades_does_not_overwrite_snapshot_keys(tmp_path: Path, monkeypatch):
     SessionLocal = _session_factory(tmp_path)
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
 
