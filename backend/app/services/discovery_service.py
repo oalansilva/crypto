@@ -31,6 +31,7 @@ from app.models_discovery import (
     DiscoverySweep,
     strategy_identity_key,
 )
+from app.services.discovery_favorite_metrics import build_promoted_favorite_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -1960,17 +1961,7 @@ class DiscoveryService:
             start_date=result.start_at.date().isoformat(),
             end_date=result.end_at.date().isoformat(),
             period_type="all",
-            metrics={
-                "origin_type": "discovery_sweep",
-                "sweep_id": result.sweep_id,
-                "result_id": result.id,
-                "strategy_identity_key": result.strategy_identity_key,
-                "evidence_fingerprint": result.evidence_fingerprint,
-                "template_version": result.template_version,
-                "parameters": result.parameters,
-                "metrics_snapshot": result.metrics,
-                "promoted_at": _utc_iso(_utcnow()),
-            },
+            metrics=build_promoted_favorite_metrics(result, promoted_at=_utc_iso(_utcnow())),
         )
         db.add(favorite)
         db.flush()
