@@ -36,6 +36,8 @@ Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd
 | Code Review | **dois** Task no **mesmo turno** do pai (`diff-reviewer` + `code-reviewer`) sobre o intervalo já colado; fila do host não falha; não esperar destape do primeiro para nascer o segundo |
 | QA | 1 filho checks/evidência; T14 no pai |
 
+Cliente dsh: em Design, root spawna 1 Design-autor; o pai não escreve OpenSpec no próprio turno; a excepção grill não se aplica.
+
 T7: Alan abre o **Snapshot Impeccable** linkado no comentário do card (path / blob). O Gist OpenSpec **não** é a crítica.
 
 Handoff de Design/Apply/Review registra **proxies**: palavras de `design.md`, bytes de HTML gerado vs copiado (`cp`/clone = copied; delta = generated; sem protótipo = `N/A`), número de spawns. Sem parser de usage Cursor/Grok e sem dashboard.
@@ -47,7 +49,7 @@ Dois modos do **mesmo** cliente Cursor nesta VM — não abandonar um modo e nã
 1. **modo terminal** — Agent/CLI no terminal Linux desta VM.
 2. **modo Desktop+SSH** — Cursor Desktop Windows + Remote SSH a esta VM.
 
-Cada etapa grelha / Design / Apply / review / QA / Done técnico passa **nos dois**. Grelhar num e Apply noutro **não** conta. Homologado / Release / lote fora deste chat. Grok / OpenCode / dsh fora (InstantiationService e Landlock/`uid_map` são Cursor; #822 não autoriza alargar). Destape de pai mudo pós-`completed` = #879. Hang do host (S2) = #879. Unbound `develop` = #864. Impeccable cwd = #822. Um chat `#<id>` = #729 (título **não** `#<id> Apply`). MUST NOT dual-write lei em `.dsh/` nem `.grok/` nem `.opencode/` só por estes modos.
+Cada etapa grelha / Design / Apply / review / QA / Done técnico passa **nos dois**. Grelhar num e Apply noutro **não** conta. Homologado / Release / lote fora deste chat. Grok / OpenCode / dsh fora (InstantiationService e Landlock/`uid_map` são Cursor; #822 não autoriza alargar). «Grok / OpenCode / dsh fora» não é deny de T5/`G_design`. Destape de pai mudo pós-`completed` = #879. Hang do host (S2) = #879. Unbound `develop` = #864. Impeccable cwd = #822. Um chat `#<id>` = #729 (título **não** `#<id> Apply`). MUST NOT dual-write lei em `.dsh/` nem `.grok/` nem `.opencode/` só por estes modos.
 
 ### Pasta (Q2)
 
