@@ -303,9 +303,7 @@ def test_issue_invite_locks_open_rows_for_update_before_insert(invite_db_session
         event.remove(bind, "before_cursor_execute", _capture)
 
     lock_sql = [
-        sql
-        for sql in statements
-        if "FOR UPDATE" in sql.upper() and "beta_invites" in sql.lower()
+        sql for sql in statements if "FOR UPDATE" in sql.upper() and "beta_invites" in sql.lower()
     ]
     assert lock_sql, statements
 
