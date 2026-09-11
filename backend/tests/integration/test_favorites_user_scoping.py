@@ -261,7 +261,7 @@ def test_common_user_cannot_update_admin_catalog_telegram_notification(tmp_path:
     admin_email = f"admin-{uuid.uuid4()}@example.com"
     monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
     monkeypatch.setattr(
-        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+        favorites, "is_admin_email", lambda _db, email: str(email).lower() == admin_email
     )
 
     with SessionLocal() as db:
@@ -301,7 +301,7 @@ def test_common_user_lists_admin_catalog_and_saves_own_star_tier(tmp_path: Path,
     common_email = f"common-{uuid.uuid4()}@example.com"
     monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
     monkeypatch.setattr(
-        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+        favorites, "is_admin_email", lambda _db, email: str(email).lower() == admin_email
     )
 
     with SessionLocal() as db:
@@ -381,7 +381,7 @@ def test_common_user_monitor_favorites_use_own_star_tier(tmp_path: Path, monkeyp
     monkeypatch.setenv("ADMIN_EMAILS", admin_email)
     monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
     monkeypatch.setattr(
-        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+        favorites, "is_admin_email", lambda _db, email: str(email).lower() == admin_email
     )
     monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {admin_email})
 
@@ -764,7 +764,7 @@ def test_common_user_can_read_cached_admin_catalog_chart_trades(tmp_path: Path, 
     admin_email = f"admin-{uuid.uuid4()}@example.com"
     monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
     monkeypatch.setattr(
-        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+        favorites, "is_admin_email", lambda _db, email: str(email).lower() == admin_email
     )
     monkeypatch.setattr(
         favorites,
@@ -852,7 +852,7 @@ def test_common_user_get_favorite_trades_rebuilds_legacy_timestamped_manifest(
     monkeypatch.setattr(
         favorites,
         "is_admin_email",
-        lambda email: str(email).lower() == admin_email,
+        lambda _db, email: str(email).lower() == admin_email,
     )
     monkeypatch.setattr(
         favorites,
@@ -1017,7 +1017,7 @@ def test_common_user_get_favorite_trades_extends_manifest_to_current_candle_with
     monkeypatch.setattr(favorites, "_FAVORITE_OHLCV_REPO", repository)
     monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
     monkeypatch.setattr(
-        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+        favorites, "is_admin_email", lambda _db, email: str(email).lower() == admin_email
     )
     monkeypatch.setattr(
         favorites,
@@ -1176,7 +1176,7 @@ def test_common_user_cannot_regenerate_admin_catalog_chart_trades(tmp_path: Path
     admin_email = f"admin-{uuid.uuid4()}@example.com"
     monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
     monkeypatch.setattr(
-        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+        favorites, "is_admin_email", lambda _db, email: str(email).lower() == admin_email
     )
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: False)
 

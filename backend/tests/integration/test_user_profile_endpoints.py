@@ -12,6 +12,7 @@ from app.database import Base, get_db
 from app.main import app
 from app.routes import auth as auth_routes
 from app.routes import user_profile as user_profile_routes
+from app.services import beta_invites as beta_invites_service
 
 
 def _build_session_local():
@@ -20,6 +21,12 @@ def _build_session_local():
     )
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+                "role VARCHAR(16) NOT NULL DEFAULT 'user'"
+            )
+        )
         conn.execute(
             text(
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
@@ -68,23 +75,42 @@ def _install_fast_password_helpers(monkeypatch: pytest.MonkeyPatch):
     def _verify_password(password: str, hashed: str) -> bool:
         return hashed == f"test-hash::{password}"
 
-    monkeypatch.setattr(auth_routes, "_hash_password", _hash_password)
+    # Card #689: `register` creates the account through the invite service, which
+    # imports the hasher directly; the public-registration flag no longer opens
+    # the door, so the invite is issued per registration below.
+    monkeypatch.setattr(beta_invites_service, "hash_password", _hash_password)
     monkeypatch.setattr(auth_routes, "_verify_password", _verify_password)
-    monkeypatch.setattr(auth_routes, "BETA_PUBLIC_REGISTRATION_ENABLED", True)
     monkeypatch.setattr(user_profile_routes, "_hash_password", _hash_password)
     monkeypatch.setattr(user_profile_routes, "_verify_password", _verify_password)
+
+
+def _issue_invite_token(email: str) -> str:
+    SessionLocal = _build_session_local()
+    session = SessionLocal()
+    try:
+        _, token = beta_invites_service.issue_invite(
+            session,
+            email=email,
+            created_by_user_id=None,
+        )
+        session.commit()
+        return token
+    finally:
+        session.close()
 
 
 async def _register_and_login(
     client: httpx.AsyncClient, email: str | None = None
 ) -> tuple[dict[str, str], str]:
     email = email or f"profile-{uuid4().hex}@example.com"
+    invite_token = _issue_invite_token(email)
     register = await client.post(
         "/api/auth/register",
         json={
             "email": email,
             "password": "supersecret123",
             "name": "Profile Tester",
+            "inviteToken": invite_token,
         },
     )
     assert register.status_code == 201
