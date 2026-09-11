@@ -24,6 +24,7 @@ import app.routes.user_profile as user_profile_routes
 import app.services.beta_access as beta_access_service
 from app.services.beta_access import create_beta_access_for_lead, send_welcome_email_gog
 from app.services.beta_access import verify_password, WelcomeEmail
+from app.services.beta_invites import issue_invite
 
 
 @pytest.fixture
@@ -31,6 +32,12 @@ def auth_db_session(postgres_isolation, unit_database_url):
     engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+                "role VARCHAR(16) NOT NULL DEFAULT 'user'"
+            )
+        )
         conn.execute(
             text(
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
@@ -199,6 +206,9 @@ def test_postgres_runtime_schema_migrations_execute_admin_user_statements(monkey
     assert "CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_email_created" in joined
     assert "CREATE TABLE IF NOT EXISTS admin_action_logs" in joined
     assert "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at" in joined
+    assert "CREATE TABLE IF NOT EXISTS beta_invites" in joined
+    assert "CREATE UNIQUE INDEX IF NOT EXISTS ix_beta_invites_token_hash" in joined
+    assert "ADD COLUMN IF NOT EXISTS role VARCHAR(16) NOT NULL DEFAULT 'user'" in joined
 
 
 def test_decode_token_handles_valid_expired_and_invalid_tokens(monkeypatch):
@@ -234,7 +244,9 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
     monkeypatch, auth_db_session
 ):
     monkeypatch.setattr(auth_middleware, "JWT_SECRET", "pytest-jwt-secret-do-not-use-elsewhere")
-    monkeypatch.setattr(auth_middleware, "ADMIN_EMAILS", {"admin@example.com"})
+    # Card #689: authorization reads the persisted role; the env list is no
+    # longer a source of truth at request time.
+    monkeypatch.setattr(auth_middleware, "ADMIN_EMAILS", {"env-only@example.com"})
 
     admin_id = uuid.uuid4()
     user_id = uuid.uuid4()
@@ -245,6 +257,7 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
                 email="Admin@Example.com",
                 password_hash="secret",
                 name="Admin",
+                role="admin",
             ),
             User(
                 id=user_id,
@@ -330,9 +343,10 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
         auth_db_session,
     ) == str(user_id)
 
-    assert auth_middleware.is_admin_email("ADMIN@example.com") is True
-    assert auth_middleware.is_admin_email("user@example.com") is False
-    assert auth_middleware.is_admin_email(None) is False
+    assert auth_middleware.is_admin_email(auth_db_session, "ADMIN@example.com") is True
+    assert auth_middleware.is_admin_email(auth_db_session, "user@example.com") is False
+    assert auth_middleware.is_admin_email(auth_db_session, "env-only@example.com") is False
+    assert auth_middleware.is_admin_email(auth_db_session, None) is False
 
     with pytest.raises(HTTPException) as admin_exc:
         await auth_middleware.get_current_admin(str(user_id), auth_db_session)
@@ -498,62 +512,62 @@ def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_ses
         auth_routes.refresh(auth_routes.RefreshRequest(refreshToken=ghost_refresh), auth_db_session)
 
 
-def test_closed_beta_registration_blocks_public_and_allows_invited_or_explicit_public(
-    monkeypatch, auth_db_session
-):
+def test_closed_beta_registration_requires_a_valid_single_use_invite(monkeypatch, auth_db_session):
     invited_email = f"invited-{uuid.uuid4().hex}@example.com"
     admin_email = f"admin-{uuid.uuid4().hex}@example.com"
     visitor_email = f"visitor-{uuid.uuid4().hex}@example.com"
     public_email = f"public-enabled-{uuid.uuid4().hex}@example.com"
 
-    monkeypatch.setattr(auth_routes, "_hash_password", lambda password: f"hash::{password}")
     monkeypatch.setattr(auth_routes, "BETA_PUBLIC_REGISTRATION_ENABLED", False)
     monkeypatch.setattr(auth_routes, "BETA_INVITED_EMAILS", {invited_email})
     monkeypatch.setattr(auth_routes, "ADMIN_EMAILS", {admin_email})
 
-    with pytest.raises(HTTPException) as blocked_exc:
+    # Card #689: neither the beta allowlist, nor ADMIN_EMAILS, nor the legacy
+    # public-registration flag is an entrance door any more.
+    for address in (visitor_email, invited_email, admin_email):
+        with pytest.raises(HTTPException) as blocked_exc:
+            auth_routes.register(
+                auth_routes.RegisterRequest(
+                    email=address,
+                    password="valid-pass",
+                    name="Visitor",
+                ),
+                auth_db_session,
+            )
+        assert blocked_exc.value.status_code == 403
+        assert blocked_exc.value.detail == "Closed beta access requires invitation"
+        assert auth_db_session.query(User).filter(User.email == address).first() is None
+
+    monkeypatch.setattr(auth_routes, "BETA_PUBLIC_REGISTRATION_ENABLED", True)
+    with pytest.raises(HTTPException) as public_blocked_exc:
         auth_routes.register(
             auth_routes.RegisterRequest(
-                email=visitor_email,
+                email=public_email,
                 password="valid-pass",
-                name="Visitor",
+                name="Public Enabled",
             ),
             auth_db_session,
         )
-    assert blocked_exc.value.status_code == 403
-    assert blocked_exc.value.detail == "Closed beta access requires invitation"
-    assert auth_db_session.query(User).filter(User.email == visitor_email).first() is None
+    assert public_blocked_exc.value.status_code == 403
+    assert auth_db_session.query(User).filter(User.email == public_email).first() is None
+
+    invite, invite_token = issue_invite(auth_db_session, email=invited_email)
+    auth_db_session.commit()
 
     invited = auth_routes.register(
         auth_routes.RegisterRequest(
             email=invited_email.upper(),
             password="valid-pass",
             name="Invited",
+            inviteToken=invite_token,
         ),
         auth_db_session,
     )
     assert invited.email == invited_email
-
-    admin_bootstrap = auth_routes.register(
-        auth_routes.RegisterRequest(
-            email=admin_email,
-            password="valid-pass",
-            name="Admin",
-        ),
-        auth_db_session,
-    )
-    assert admin_bootstrap.email == admin_email
-
-    monkeypatch.setattr(auth_routes, "BETA_PUBLIC_REGISTRATION_ENABLED", True)
-    public = auth_routes.register(
-        auth_routes.RegisterRequest(
-            email=public_email,
-            password="valid-pass",
-            name="Public Enabled",
-        ),
-        auth_db_session,
-    )
-    assert public.email == public_email
+    created = auth_db_session.query(User).filter(User.email == invited_email).one()
+    assert created.role == "user"
+    auth_db_session.refresh(invite)
+    assert invite.consumed_at is not None
 
 
 def test_beta_lead_access_creates_temp_user_and_audit_without_exposing_password(
@@ -678,13 +692,13 @@ def test_leads_route_returns_safe_response_without_temporary_password(auth_db_se
     email = f"route-lead-{uuid.uuid4().hex}@example.com"
     captured_payload = {}
 
-    def fake_create_beta_access_for_lead(db, **kwargs):
+    def fake_record_lead_submission(db, **kwargs):
         captured_payload.update(kwargs)
 
     monkeypatch.setattr(
         leads_routes,
-        "create_beta_access_for_lead",
-        fake_create_beta_access_for_lead,
+        "record_lead_submission",
+        fake_record_lead_submission,
     )
 
     response = leads_routes.create_lead_access(
@@ -716,6 +730,7 @@ def test_leads_route_returns_safe_response_without_temporary_password(auth_db_se
     assert "TemporaryPass" not in str(payload)
     assert "token_urlsafe" not in str(payload)
     assert captured_payload["email"] == email
+    assert captured_payload["invite_state"] is None
     assert len(captured_payload["origin"]) == 80
     assert captured_payload["origin"].startswith("https://dev.criptofarol.com.br/")
     assert captured_payload["attribution"] == {

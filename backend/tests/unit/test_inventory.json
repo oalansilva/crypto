@@ -372,6 +372,15 @@
       "evidence": "PostgreSQL session fixture and route assertions"
     },
     {
+      "file": "backend/tests/unit/test_card_689_beta_invites.py",
+      "protected_behavior": "single-use beta invite, persisted admin role, and bootstrap enforcement",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "invite lifecycle, register/leads doors, bootstrap idempotency, and admin issuance assertions"
+    },
+    {
       "file": "backend/tests/unit/test_card_747_telegram_alerts.py",
       "protected_behavior": "card 747 Telegram link and position-aware matrix",
       "production_reachability": "reachable",

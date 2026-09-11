@@ -292,6 +292,68 @@ def send_welcome_email(message: WelcomeEmail) -> bool:
     return send_welcome_email_gog(message)
 
 
+def record_lead_submission(
+    db: Session,
+    *,
+    email: str,
+    whatsapp: str | None = None,
+    profile: str | None = None,
+    pain: str | None = None,
+    origin: str = "landing",
+    attribution: dict | None = None,
+    invite_state: str | None = None,
+) -> BetaLeadAccessResult:
+    """Funnel-only landing submission (card #689, D10).
+
+    ``POST /api/leads`` is no longer an account-creation surface: with or
+    without a validated invite it records the funnel event and creates nothing.
+    A valid invite stays **open** for the invite link's own ``POST``, which is
+    where the owner defines the password.  No temporary password,
+    ``must_change_password``, or temporary-password expiry is produced here;
+    those semantics belong only to the legacy ``create_beta_access_for_lead``
+    path, which the route no longer calls.
+    """
+
+    normalized_email = _normalize_email(email)
+    lead_metadata = _metadata_for_lead(
+        whatsapp=whatsapp,
+        profile=profile,
+        pain=pain,
+        origin=origin,
+        attribution=attribution,
+    )
+
+    invite_validated = invite_state == "valid"
+    if invite_validated:
+        result = "invite_validated_not_consumed"
+        source = "landing_invite"
+    else:
+        result = "received_without_account"
+        source = "landing_invite" if invite_state else "landing"
+        if invite_state:
+            lead_metadata = {**lead_metadata, "invite_state": invite_state}
+
+    record_beta_access_audit(
+        db,
+        email=normalized_email,
+        user_id=None,
+        source=source,
+        action="lead_access_requested",
+        result=result,
+        metadata=lead_metadata,
+    )
+    db.commit()
+
+    return BetaLeadAccessResult(
+        email=normalized_email,
+        user_created=False,
+        must_change_password=False,
+        temporary_password_expires_at=None,
+        welcome_email_sent=False,
+        result=result,
+    )
+
+
 def create_beta_access_for_lead(
     db: Session,
     *,
@@ -306,6 +368,14 @@ def create_beta_access_for_lead(
     temporary_password: str | None = None,
     email_sender: EmailSender | None = None,
 ) -> BetaLeadAccessResult:
+    """Legacy landing path that creates a temporary-password account.
+
+    Enforcement (D9.3) removed this path from ``POST /api/leads``: the route now
+    calls :func:`record_lead_submission` and never creates an account.  This
+    helper is kept for the legacy semantics and its regression coverage until
+    the legacy path is retired.
+    """
+
     normalized_email = _normalize_email(email)
     current_time = now or datetime.utcnow()
     source = "landing"
