@@ -23,6 +23,8 @@ from app.models_discovery import (
     DiscoveryResult,
     DiscoverySweep,
 )
+from app.metrics.performance import CAGR_ABS_CEILING
+from app.metrics.risk_adjusted import CALMAR_ABS_CEILING
 from app.services.discovery_service import (
     TERMINAL_STATES,
     DiscoveryService,
@@ -541,6 +543,13 @@ def _finite_or_none(value: Any) -> float | None:
     return number
 
 
+def _ranking_metric_or_none(value: Any, *, abs_ceiling: float) -> float | None:
+    number = _finite_or_none(value)
+    if number is None or abs(number) > abs_ceiling:
+        return None
+    return number
+
+
 def _close_series_from_candles(candles: list[Any]):
     import pandas as pd
 
@@ -591,8 +600,10 @@ def _ranking_columns(
 ) -> tuple[float | None, float | None, float | None, float | None]:
     if trades_count == 0:
         return None, None, None, None
-    cagr_f = _finite_or_none(best_metrics.get("cagr"))
-    calmar_f = _finite_or_none(best_metrics.get("calmar_ratio"))
+    cagr_f = _ranking_metric_or_none(best_metrics.get("cagr"), abs_ceiling=CAGR_ABS_CEILING)
+    calmar_f = _ranking_metric_or_none(
+        best_metrics.get("calmar_ratio"), abs_ceiling=CALMAR_ABS_CEILING
+    )
     benchmark_cagr = _finite_or_none((best_metrics.get("benchmark") or {}).get("cagr"))
     delta = (
         (cagr_f - benchmark_cagr) * 100
@@ -626,9 +637,13 @@ def _persist_metrics_snapshot(
 
 
 def _drop_nonfinite_ranking_keys(metrics: dict[str, Any]) -> None:
-    """JSONB rejects Infinity/NaN; ranking non-finite values become omitted keys."""
-    for key in ("cagr", "calmar_ratio"):
-        if key in metrics and _finite_or_none(metrics.get(key)) is None:
+    """JSONB rejects Infinity/NaN; ranking non-finite or over-ceiling values become omitted keys."""
+    ceilings = {"cagr": CAGR_ABS_CEILING, "calmar_ratio": CALMAR_ABS_CEILING}
+    for key, ceiling in ceilings.items():
+        if (
+            key in metrics
+            and _ranking_metric_or_none(metrics.get(key), abs_ceiling=ceiling) is None
+        ):
             metrics.pop(key, None)
     benchmark = metrics.get("benchmark")
     if isinstance(benchmark, dict) and _finite_or_none(benchmark.get("cagr")) is None:

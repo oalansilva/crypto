@@ -44,6 +44,9 @@ def calculate_sortino_ratio(
     return sortino
 
 
+CALMAR_ABS_CEILING = 1000.0
+
+
 def calculate_calmar_ratio(cagr: float, max_drawdown: float) -> float:
     """
     Calcula o Calmar Ratio.
