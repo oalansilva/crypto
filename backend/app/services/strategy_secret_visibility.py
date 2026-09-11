@@ -15,7 +15,7 @@ PROTECTED_STRATEGY_CODE = "estrategia_protegida"
 
 
 def can_view_strategy_secrets(db: Session, user_id: str | None) -> bool:
-    """Return True only for users in the configured admin email allowlist."""
+    """Return True only for users whose persisted role is administrator."""
     if not user_id:
         return False
     if not hasattr(db, "query"):
@@ -27,7 +27,7 @@ def can_view_strategy_secrets(db: Session, user_id: str | None) -> bool:
         return False
 
     user = db.query(User).filter(User.id == parsed_user_id).first()
-    return bool(user and is_admin_email(user.email))
+    return bool(user and is_admin_email(db, user.email))
 
 
 def can_view_strategy_details(db: Session, user_id: str | None) -> bool:

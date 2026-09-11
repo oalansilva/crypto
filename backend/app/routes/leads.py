@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
-from app.services.beta_access import create_beta_access_for_lead
+from app.services.beta_access import record_lead_submission
+from app.services.beta_invites import validate_invite
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
 
@@ -16,6 +17,7 @@ BETA_TOTAL_SPOTS = 50
 class LeadAccessRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     email: EmailStr
+    inviteToken: str | None = Field(default=None, max_length=512)
     whatsapp: str | None = Field(default=None, max_length=40)
     profile: str | None = Field(default=None, max_length=80)
     pain: str | None = Field(default=None, max_length=500)
@@ -88,15 +90,24 @@ def get_lead_stats(db: Session = Depends(get_db)):
 
 @router.post("", response_model=LeadAccessResponse, status_code=status.HTTP_202_ACCEPTED)
 def create_lead_access(payload: LeadAccessRequest, db: Session = Depends(get_db)):
-    create_beta_access_for_lead(
+    # The landing validates the invite (when one is carried) for the submitted
+    # address but NEVER consumes it and never creates or modifies an account
+    # (D10).  The 202 stays neutral for every eligible submission.
+    invite_state = None
+    invite_token = str(payload.inviteToken or "").strip()
+    if invite_token:
+        decision = validate_invite(db, token=invite_token, email=str(payload.email))
+        invite_state = decision.state
+
+    record_lead_submission(
         db,
-        name=payload.name,
         email=str(payload.email),
         whatsapp=payload.whatsapp,
         profile=payload.profile,
         pain=payload.pain,
         origin=payload.origin,
         attribution=payload.attribution_payload(),
+        invite_state=invite_state,
     )
     return LeadAccessResponse(
         status="accepted",

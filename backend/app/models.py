@@ -245,6 +245,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="user", server_default="user")
     status = Column(String, default="active", nullable=False)
     suspended_until = Column(DateTime, nullable=True, default=None)
     suspension_reason = Column(Text, nullable=True)
@@ -265,6 +266,26 @@ class User(Base):
     telegram_link_expires_at = Column(DateTime, nullable=True)
     telegram_linked_at = Column(DateTime, nullable=True)
     telegram_username_mismatch = Column(Boolean, nullable=False, default=False)
+
+
+class BetaInvite(Base):
+    """Single-use invite bound to one address (card #689)."""
+
+    __tablename__ = "beta_invites"
+
+    id = Column(UUIDType, primary_key=True, default=uuid.uuid4)
+    email = Column(String, nullable=False, index=True)
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_by_user_id = Column(String, nullable=True)
+    consumed_at = Column(DateTime, nullable=True)
+    consumed_user_id = Column(String, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    revoked_reason = Column(String, nullable=True)
+    superseded_by_id = Column(UUIDType, nullable=True)
+
+    __table_args__ = (Index("ix_beta_invites_email_created_at", "email", "created_at"),)
 
 
 class BetaAccessAuditLog(Base):

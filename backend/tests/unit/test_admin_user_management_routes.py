@@ -200,6 +200,8 @@ def test_admin_user_routes_cover_crud_filters_and_action_logs(admin_db_session, 
     )
     assert created.status == "banned"
     assert created.isBanned is True
+    assert created.role == "user"
+    assert created.isAdmin is False
 
     with pytest.raises(Exception, match="No changes detected"):
         admin_users.update_user(

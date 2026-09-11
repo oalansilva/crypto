@@ -34,6 +34,7 @@ from app.routes.portfolio import router as portfolio_router
 from app.routes.ai_dashboard import router as ai_dashboard_router
 from app.routes.auth import router as auth_router
 from app.routes.leads import router as leads_router
+from app.routes.beta_invite_public import router as beta_invite_public_router
 from app.routes.user_profile import router as user_profile_router
 from app.routes.user_credentials import router as user_credentials_router
 from app.routes.monitor_spot_stop import router as monitor_spot_stop_router
@@ -310,6 +311,7 @@ app.include_router(portfolio_router)
 app.include_router(ai_dashboard_router)
 app.include_router(auth_router)
 app.include_router(leads_router)
+app.include_router(beta_invite_public_router)
 app.include_router(user_profile_router)
 app.include_router(user_telegram_router)
 app.include_router(telegram_webhook_router)
