@@ -135,6 +135,33 @@ The versioned `diff-reviewer` and `code-reviewer` Tasks MUST use `composer-2.5` 
 - **THEN** `/review-bugbot` MUST NOT run as the gate
 - **AND** `BUGBOT.md` MUST NOT be required
 
+### Requirement: Composer destape and resume keep execução slug
+When the Cursor parent resumes or destapes (`subagentStop` followup) an isolated execução child (Apply-coluna, QA, `diff-reviewer`, `code-reviewer`, same-card search, `fecho-lote`), the continued run MUST remain executed and billed as `composer-2.5`. `composer-2.5-fast` MUST NOT be used for that continuation, including after destape or host `resume`. If the host resumes or bills the continuation as `composer-2.5-fast`, the parent SHALL treat that run as abort: it MUST NOT use that run as acceptance and MUST NOT call Task `resume` on it. The parent SHALL spawn a **new** Task with `model: composer-2.5` and a self-contained prompt (Task `resume` MUST NOT be used to change model). Same-card search on a bound card MUST NOT use subagent_type `explore` when the host maps `explore` to `composer-2.5-fast`; search SHALL use `generalPurpose` with `model: composer-2.5`. The `fecho-lote` child MUST NOT use destape sidecar; if the host auto-resumes a prior `fecho-lote` run, the parent MUST ignore that run.
+
+#### Scenario: Fast continuation after destape is refused
+- **WHEN** an execução child was spawned with `model: composer-2.5` and the host continues after destape or resume as `composer-2.5-fast`
+- **THEN** the parent MUST NOT treat that continuation as the passing child
+- **AND** the parent MUST NOT `resume` that run
+- **AND** the parent SHALL spawn a new Task with `model: composer-2.5`
+
+#### Scenario: Same-card search avoids explore when mapped to fast
+- **WHEN** the parent needs codebase search on the same bound card on Cursor
+- **THEN** it SHALL use `generalPurpose` with `model: composer-2.5`
+- **AND** it MUST NOT rely on subagent_type `explore` if that maps to `composer-2.5-fast`
+
+### Requirement: Release and lote closeout require Composer parent chat
+When the operator explicitly asks to close the lote, subir a release, or run T16 (`process_event fechar_release`), including the isolated `fecho-lote` kaizen child, the Cursor parent chat MUST be Composer 2.5 (`composer-2.5`). This is the sole exception to silence about the parent picker on bound card chats. If the parent chat is Grok 4.6 (`cursor-grok-4.6-high`) or any model other than `composer-2.5`, the parent SHALL refuse visibly: it MUST NOT run T16 or spawn `fecho-lote` in that chat and SHALL direct the operator to a new session with Composer 2.5. Grok 4.6 remains only for juízo roles in the role table. The git MUST NOT force the parent picker via `AGENTS.md`, harness, or overlay `clients.*.auto`. The runbook MUST NOT recommend a parent picker on other `#<id>` card chats.
+
+#### Scenario: Grok parent refuses T16
+- **WHEN** the operator asks to fechar o lote or subir a release while the parent chat picker is not `composer-2.5`
+- **THEN** the parent shows a visible refusal
+- **AND** it MUST NOT call `process_event fechar_release` in that chat
+- **AND** it MUST NOT spawn `fecho-lote` in that chat
+
+#### Scenario: Composer parent may run release closeout
+- **WHEN** the operator asks to fechar o lote or subir a release and the parent chat is `composer-2.5`
+- **THEN** the parent MAY spawn `fecho-lote` and call T16 per the existing closeout contract
+
 ### Requirement: Isolated lote-close child uses Composer and does not destape
 When the operator explicitly asks to close the lote / subir a release, the Cursor parent SHALL spawn one isolated `fecho-lote` child with Task `model: composer-2.5` via `generalPurpose` with a self-contained prompt. The Task `description` MUST contain `fecho-lote` and MUST NOT contain destape classifier needles (`grill-card`, `apply-coluna`, `diff-reviewer`, `code-reviewer`, `qa-gate`, `design-autor`, `design-critic`, `Assessment A`, `Assessment B`). Canonical title: `fecho-lote kaizen`. The child MUST NOT call `process_event`, MUST NOT move Status, and MUST NOT commit or push. The parent SHALL await native Task `completed` plus payload in the **same** turn, then call `process_event fechar_release`. The parent MUST NOT write `.cursor/tmp/awaiting-task.json` for this spawn. Destape MUST NOT fire (no new classifier needle, no new `FOLLOWUP_*`). This requirement MUST NOT add a FSM state, event, hook, or `enabled_tools`. Overlay pin remains `v1.1.15` for this change.
 

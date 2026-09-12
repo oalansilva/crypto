@@ -1,5 +1,21 @@
 ## ADDED Requirements
 
+### Requirement: Composer destape and resume keep execução slug in the runbook
+The canonical Cursor runbook `.cursor/skills/covenant-flow/SKILL.md` SHALL state that destape, host `resume`, and follow-up of execução children MUST keep `composer-2.5` and MUST NOT accept `composer-2.5-fast` as the continuation model. If the host bills or resumes as fast, the parent MUST NOT use that run and MUST spawn anew with `model: composer-2.5`. Same-card search MUST use `generalPurpose` with `model: composer-2.5` and MUST NOT use subagent_type `explore` when the host maps explore to fast. `fecho-lote` MUST NOT destape; auto-resume of a prior `fecho-lote` run MUST be ignored.
+
+#### Scenario: Runbook documents fast abort on destape resume
+- **WHEN** `.cursor/skills/covenant-flow/SKILL.md` is read
+- **THEN** it tells the parent not to accept `composer-2.5-fast` after destape or resume of execução children
+- **AND** it tells the parent to spawn anew with `composer-2.5` instead of resuming fast
+
+### Requirement: Release closeout documents Composer parent chat exception
+The runbook SHALL state that release/lote closeout (T16 and `fecho-lote`) requires the parent chat to be Composer 2.5 (`composer-2.5`), as the only exception to silence about the parent picker on bound cards. If the parent chat is not Composer 2.5, the runbook SHALL require a visible refusal and a new Composer session. It MUST NOT tell operators to change picker on arbitrary card chats.
+
+#### Scenario: Runbook refuses Grok parent for release
+- **WHEN** `.cursor/skills/covenant-flow/SKILL.md` release section is read
+- **THEN** it requires Composer 2.5 parent chat for T16 and `fecho-lote`
+- **AND** it refuses Grok 4.6 parent chat for that closeout
+
 ### Requirement: Cursor Task model follows role not picker
 The canonical Cursor runbook `.cursor/skills/covenant-flow/SKILL.md` SHALL stop telling every Task/subagent to inherit the parent picker. It SHALL state that the law is the Task `model` parameter on both spawn paths. Juízo (grelha, Design-autor, crítico, Assessment A/B) SHALL be Grok 4.6 (`cursor-grok-4.6-high`). Execução (Apply, QA, the two reviewers, same-card explore, fecho-lote) SHALL be Composer 2.5 (`composer-2.5`). `composer-2.5-fast` MUST NOT be listed as a happy path. Reviewers on Grok MUST NOT be listed as a happy path of this change. Always-on `AGENTS.md` MUST NOT grow with the table. Isolation of existing children (no parent transcript, destape needles, sidecar, Q2–Q6, review ceiling 1+1) SHALL remain as already specified.
 
