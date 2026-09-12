@@ -355,6 +355,8 @@ export function DiscoveryPage() {
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
   const leaderboardTitleRef = useRef<HTMLHeadingElement | null>(null)
   const previousActiveStateRef = useRef<SweepState | null>(null)
+  // Métrica travada do top-5 Acompanhar (draftMetric ao iniciar; calmar no restore).
+  const partialsMetricRef = useRef<Metric>('calmar_ratio')
 
   useEffect(() => {
     persistDraftKey(draftKey)
@@ -657,7 +659,8 @@ export function DiscoveryPage() {
   // Card 852: top-5 travadas do sweep em curso para o modo Acompanhar.
   // Separadas de `rows` para não corromper o leaderboard do Decidir.
   // Definido antes de startSweep/restoreSession para satisfazer dependências.
-  const loadPartials = useCallback(async (sweepId: string, m: Metric) => {
+  const loadPartials = useCallback(async (sweepId: string, m: Metric): Promise<boolean> => {
+    partialsMetricRef.current = m
     try {
       const params = new URLSearchParams({
         metric: m,
@@ -668,13 +671,14 @@ export function DiscoveryPage() {
       const res = await authFetch(
         `${API_BASE_URL}/combos/discovery/sweeps/${sweepId}/leaderboard?${params.toString()}`,
       )
-      if (!res.ok) return
+      if (!res.ok) return false
       const data = await res.json()
       setPartials(
         (data.results || []).filter((row: LeaderboardRow) => row.eligibility !== 'insufficient_sample'),
       )
+      return true
     } catch {
-      /* parciais são auxiliares; o progresso segue */
+      return false
     }
   }, [])
 
@@ -1135,13 +1139,12 @@ export function DiscoveryPage() {
         return
       }
       const fid = data && typeof data === 'object' ? (data as Record<string, unknown>).favorite_id : null
-      setRows((prev) =>
-        prev.map((r) =>
-          r.result_id === promoteTarget.result_id
-            ? { ...r, dedup_state: 'already_promoted', dedup_reference: fid ? String(fid) : r.dedup_reference }
-            : r,
-        ),
-      )
+      const patchPromoted = (r: LeaderboardRow) =>
+        r.result_id === promoteTarget.result_id
+          ? { ...r, dedup_state: 'already_promoted' as const, dedup_reference: fid ? String(fid) : r.dedup_reference }
+          : r
+      setRows((prev) => prev.map(patchPromoted))
+      setPartials((prev) => prev.map(patchPromoted))
       const promotedId = promoteTarget.result_id
       setPromotedFocusId(promotedId)
       closePromotion(false)
@@ -1217,6 +1220,10 @@ export function DiscoveryPage() {
         showToast('Falha na exclusão', errorDetail(data, 'Não foi possível excluir o resultado.'))
         return
       }
+      const discardedId = discardTarget.result_id
+      const partialsBeforeDiscard = partials
+      setRows((prev) => prev.filter((r) => r.result_id !== discardedId))
+      setPartials((prev) => prev.filter((r) => r.result_id !== discardedId))
       closeDiscard(false)
       showToast(
         'Resultado excluído.',
@@ -1224,10 +1231,36 @@ export function DiscoveryPage() {
       )
       setPage(1)
       applyFilters(metric, fSymbol, fTimeframe, fDirection, 1)
+      const live = activeSweepRef.current
+      if (live && !TERMINAL.has(live.state)) {
+        const reloaded = await loadPartials(live.sweep_id, partialsMetricRef.current)
+        if (!reloaded) {
+          const retried = await loadPartials(live.sweep_id, partialsMetricRef.current)
+          if (!retried) {
+            setPartials(partialsBeforeDiscard)
+            showToast(
+              'Falha ao atualizar parciais',
+              'O top-5 não foi recarregado após a exclusão. Tente novamente ou atualize a página.',
+            )
+          }
+        }
+      }
     } finally {
       setDiscarding(false)
     }
-  }, [discardTarget, showToast, closeDiscard, viewSweep, applyFilters, metric, fSymbol, fTimeframe, fDirection])
+  }, [
+    discardTarget,
+    showToast,
+    closeDiscard,
+    viewSweep,
+    applyFilters,
+    metric,
+    fSymbol,
+    fTimeframe,
+    fDirection,
+    loadPartials,
+    partials,
+  ])
 
   useEffect(() => {
     if (!discardTarget) return
@@ -1260,6 +1293,73 @@ export function DiscoveryPage() {
       window.clearTimeout(t)
     }
   }, [discardTarget, closeDiscard])
+
+  const renderLeaderboardActionCell = (row: LeaderboardRow) => {
+    const insufficient = row.eligibility === 'insufficient_sample'
+    const lowSample = row.eligibility === 'low_sample'
+    const duplicate = row.dedup_state === 'duplicate_favorite'
+    const promoted = row.dedup_state === 'already_promoted'
+    const promoteDisabled = busy || promoting || lowSample || duplicate || promoted
+    return (
+      <td className="action-cell" data-label="Ação">
+        {promoted ? (
+          <span className="promoted-state" tabIndex={-1} data-promoted-result={row.result_id}>
+            <Check className="h-3.5 w-3.5" />
+            Favorito tier 3
+          </span>
+        ) : (
+          <div className="action-stack">
+            {insufficient ? null : (
+              <button
+                type="button"
+                disabled={promoteDisabled}
+                onClick={(event) => {
+                  promotionTriggerRef.current = event.currentTarget
+                  setPromoteTarget(row)
+                }}
+                aria-haspopup="dialog"
+                aria-controls="promotion-modal"
+                aria-expanded={promoteTarget?.result_id === row.result_id}
+                aria-describedby={lowSample || duplicate ? `reason-${row.result_id}` : undefined}
+                data-testid={`promote-${row.result_id}`}
+                className={`promote-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold ${
+                  promoteDisabled
+                    ? 'cursor-not-allowed border-[var(--accent-primary-disabled)] bg-[var(--accent-primary-disabled)] text-[var(--text-muted)]'
+                    : 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-[#181a20] hover:bg-[var(--accent-primary-hover)]'
+                }`}
+              >
+                {lowSample ? 'Baixa amostra' : duplicate ? 'Já existe' : 'Promover'}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={busy || discarding}
+              onClick={(event) => {
+                discardTriggerRef.current = event.currentTarget
+                setDiscardTarget(row)
+              }}
+              aria-haspopup="dialog"
+              aria-controls="discard-modal"
+              aria-expanded={discardTarget?.result_id === row.result_id}
+              aria-label={`Excluir resultado ${row.result_id} ${row.display_name || row.template_id}`}
+              data-testid={`discard-${row.result_id}`}
+              className="discard-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold border-[rgba(246,70,93,0.45)] bg-transparent text-[var(--trading-down-text)] hover:bg-[rgba(246,70,93,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Excluir
+            </button>
+          </div>
+        )}
+        {lowSample || duplicate ? (
+          <span id={`reason-${row.result_id}`} className="sr-only">
+            {lowSample
+              ? 'Promoção bloqueada: mínimo 30 trades e 90 por cento de cobertura'
+              : `Promoção bloqueada: equivalente ao favorito ativo ${row.dedup_reference ?? ''}`}
+          </span>
+        ) : null}
+      </td>
+    )
+  }
 
   useEffect(() => {
     const previous = previousActiveStateRef.current
@@ -1792,10 +1892,13 @@ export function DiscoveryPage() {
                         <span>CAGR</span>
                         <span className="th-hint">anualizado</span>
                       </th>
+                      <th scope="col" className="action">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {partials.slice(0, 5).map((row) => {
+                      const lowSample = row.eligibility === 'low_sample'
+                      const duplicate = row.dedup_state === 'duplicate_favorite'
                       const verdict = walkForwardStatus(row)
                       const calmarText = fmtCalmar(row.calmar_ratio)
                       const easy = gridEasyMetrics(row, calmarText === 'N/A')
@@ -1821,6 +1924,13 @@ export function DiscoveryPage() {
                           <strong className="candidate-name">{row.display_name || row.template_id}</strong>
                           <span className="candidate-meta">{row.symbol} · {row.timeframe} · {row.direction === 'long' ? 'Long' : 'Short'}</span>
                           <WalkForwardSeal status={verdict} />
+                          {lowSample ? <span className="sample-badge">Baixa amostra</span> : null}
+                          {duplicate ? (
+                            <span className="dedup-note" title={`Promoção bloqueada: equivalente ao favorito ativo ${row.dedup_reference ?? ''}`}>
+                              <Copy className="h-3 w-3" />
+                              Equivale ao favorito ativo {row.dedup_reference ?? '—'}
+                            </span>
+                          ) : null}
                         </td>
                         <td className={`number ${calmarText === 'N/A' ? 'na' : ''}`} data-label="Calmar">{calmarText}</td>
                         <td className="number negative" data-label="Maximum Drawdown">{fmtDrawdown(row.max_drawdown)}</td>
@@ -1845,6 +1955,7 @@ export function DiscoveryPage() {
                         >
                           {easy.cagr}
                         </td>
+                        {renderLeaderboardActionCell(row)}
                       </tr>
                       )
                     })}
@@ -2393,8 +2504,6 @@ export function DiscoveryPage() {
                     const insufficient = row.eligibility === 'insufficient_sample'
                     const lowSample = row.eligibility === 'low_sample'
                     const duplicate = row.dedup_state === 'duplicate_favorite'
-                    const promoted = row.dedup_state === 'already_promoted'
-                    const promoteDisabled = busy || promoting || lowSample || duplicate || promoted
                     const expanded = expandedRows.has(row.result_id)
                     const verdict = walkForwardStatus(row)
                     const calmarText = insufficient ? 'N/A' : fmtCalmar(row.calmar_ratio)
@@ -2503,67 +2612,7 @@ export function DiscoveryPage() {
                         >
                           {easy.cagr}
                         </td>
-                        <td className="action-cell" data-label="Ação">
-                          {promoted ? (
-                            <span
-                              className="promoted-state"
-                              tabIndex={-1}
-                              data-promoted-result={row.result_id}
-                            >
-                              <Check className="h-3.5 w-3.5" />
-                              Favorito tier 3
-                            </span>
-                          ) : (
-                            <div className="action-stack">
-                              {insufficient ? null : (
-                              <button
-                                type="button"
-                                disabled={promoteDisabled}
-                                onClick={(event) => {
-                                  promotionTriggerRef.current = event.currentTarget
-                                  setPromoteTarget(row)
-                                }}
-                                aria-haspopup="dialog"
-                                aria-controls="promotion-modal"
-                                aria-expanded={promoteTarget?.result_id === row.result_id}
-                                aria-describedby={lowSample || duplicate ? `reason-${row.result_id}` : undefined}
-                                data-testid={`promote-${row.result_id}`}
-                                className={`promote-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold ${
-                                  promoteDisabled
-                                    ? 'cursor-not-allowed border-[var(--accent-primary-disabled)] bg-[var(--accent-primary-disabled)] text-[var(--text-muted)]'
-                                    : 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-[#181a20] hover:bg-[var(--accent-primary-hover)]'
-                                }`}
-                              >
-                                {lowSample ? 'Baixa amostra' : duplicate ? 'Já existe' : 'Promover'}
-                              </button>
-                              )}
-                              <button
-                                type="button"
-                                disabled={busy || discarding}
-                                onClick={(event) => {
-                                  discardTriggerRef.current = event.currentTarget
-                                  setDiscardTarget(row)
-                                }}
-                                aria-haspopup="dialog"
-                                aria-controls="discard-modal"
-                                aria-expanded={discardTarget?.result_id === row.result_id}
-                                aria-label={`Excluir resultado ${row.result_id} ${row.display_name || row.template_id}`}
-                                data-testid={`discard-${row.result_id}`}
-                                className="discard-action inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border px-3.5 text-xs font-bold border-[rgba(246,70,93,0.45)] bg-transparent text-[var(--trading-down-text)] hover:bg-[rgba(246,70,93,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Excluir
-                              </button>
-                            </div>
-                          )}
-                          {lowSample || duplicate ? (
-                            <span id={`reason-${row.result_id}`} className="sr-only">
-                              {lowSample
-                                ? 'Promoção bloqueada: mínimo 30 trades e 90 por cento de cobertura'
-                                : `Promoção bloqueada: equivalente ao favorito ativo ${row.dedup_reference ?? ''}`}
-                            </span>
-                          ) : null}
-                        </td>
+                        {renderLeaderboardActionCell(row)}
                       </tr>
                     )
                   })}
