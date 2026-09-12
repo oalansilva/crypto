@@ -26,7 +26,7 @@ Dar ao investidor uma leitura simples de oportunidade e risco para acompanhar es
 
 ## Must-have para Beta Fechado
 
-1. Login e acesso controlado.
+1. Login e acesso controlado (convite de uso único no admin; sem auto-registro no e-mail admin — card #689).
 2. Monitor como tela principal.
 3. Estrategias favoritas vindas do fluxo de backtest ou selecao validada.
 4. Cards com estado claro no Monitor: `Em posição` e `Saída / cobertura` (HOLD/EXIT). `Compra` e `Venda` ficam no lado da ordem Spot, não como nome de estado da board (card #718).

@@ -388,7 +388,7 @@ def test_agents_require_review_diff_and_forbid_git_transcripts() -> None:
     for path in (DIFF_AGENT, CODE_AGENT):
         text = path.read_text(encoding="utf-8")
         assert "readonly: true" in text
-        assert "model: composer-2.5" in text
+        assert "model: inherit" in text
         assert "ERROR: review-diff missing" in text
         assert "MUST NOT git" in text
         assert "MUST NOT transcripts" in text
@@ -409,7 +409,7 @@ def test_skill_s1_parent_materializes_diff() -> None:
     assert "git ls-files --others --exclude-standard" in text
     assert "git diff origin/develop...HEAD" in text
     assert "MUST NOT pedir git ao filho" in text
-    assert "v1.1.15" in text
+    assert "v1.1.14" in text
 
 
 def test_skill_s2_sidecar_and_order() -> None:

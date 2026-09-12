@@ -1,5 +1,52 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-12 — Kaizen release (lote 689/886/893/895/896/906)
+
+- **Release/card**: 2026-09-12 — Homologado `#689` (P1 convite uso único `1c0ae1fb`) + `#886` (P0 timer Telegram `ce6c26d3`) + `#893` (P1 teto review `284a61b2`) + `#895` (P1 schema destape `24209b38`) + `#896` (P1 Calmar NO-GO `113cbf7c`) + `#906` (P1 grelha Sharpe/Win%/CAGR `03697afd`) → `release-2026-09-12` → `main` PR #908 merged `216a72f8b5233aef1845e49ad3d72cb75a5d3078`. Fora: `#897` `#899` `#904` Done na develop.
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --limit 500 --format json` (Homologado 6, Done 3, Aprovação de Design 3 `600/614/728`, Em Refinamento 27→30), git `fetch --prune` + `status -sb` + `worktree list` + `log origin/main..origin/develop` (9 commits, 3 fora do pacote) + `release-guard pre` PASS (`RELEASE_CARDS=689,886,893,895,896,906` + `PRESERVED_BRANCHES`) + `openspec validate --all` 166, `gh pr checks 908 --watch` (e2e 4m54s, backend-tests 2m6s), REST comments 6 Homologado, PROD health `https://criptofarol.com.br/api/health` 200 após 502 de boot, frontend bundle `index-CMHlCJ7i.js` (hash novo). Filho `fecho-lote kaizen`.
+- **Sessões analisadas**: pai Cursor desta sessão (`suba a release` unbound `q=None, bound_card=⊥, q_git=develop`; overlay + `covenant-flow-environments` carregados, T16 iniciado). Sem `opencode.db`.
+- **Custo/eficácia**: 6 Homologados no pacote; `develop` com 3 Done bloqueou `develop→main`; cherry-pick em `release-*` + conflito de inventário unitário (#689 72→71). Campos e comentários Homologado neste turno antes do `pre`.
+
+#### Métricas
+
+- **Board**: 6 Homologado (`#689` Clara P1 Seguranca; `#886` Clara P0 Operacao; `#893` `#895` Alan P1 Operacao; `#896` `#906` Clara P1 Produto). Fora: `Done` 3 (`#897` `#899` `#904`), `Aprovação de Design` 3, `#909` `#910` `#911` criados neste closeout.
+- **Git**: `origin/main 216a72f8` merge PR #908; `origin/develop 03697afd` ainda à frente com Done; stash 0; worktrees extra classificados via `PRESERVED_BRANCHES`.
+- **CI**: PR #908 `release-*→main` checks `pass` (e2e 4m54s, backend-tests 2m6s, backend-unit-tests 2m45s, openspec-validate 18s, process-fsm 48s, frontend-build 44s) + `qa-gate`/`deploy-staging` `skipping` (base `main`); `mergeable=MERGEABLE`.
+- **OpenSpec**: 6 active na release antes do archive; após archive 6 dirs `2026-09-12-card-*`; `#893` `--skip-specs`; `validate --all` 166.
+- **PROD**: source `216a72f8b5233aef1845e49ad3d72cb75a5d3078` (sudo, root-owned); alembic `20260915_0001`; `VITE_APP_ENV=production npm run build` bundle `index-CMHlCJ7i.js` (hash novo vs `index--3lXkM0I.js`); services `backend`+`frontend`+`leads`+`runtime-worker` restart; telegram timer oneshot 0; health 502→200; `/` 200; `/monitor` serve o bundle novo.
+
+#### Achados
+
+- **F-1 [major] linhas `proxy modelo:` ausentes nos comments REST do pacote** — 6/6 com `Spawns: N` e zero `proxy modelo:`. **Novo** | Esforço S | P1 | Card novo: #909.
+- **F-2 [minor] campos Project vazios até o closeout** — `#906` VAZIO×4; `#689` sem Responsável; preenchidos neste turno. Recidiva do gap T15 (post #438 já existe). **Novo** | Esforço S | P2 | Card novo: #910.
+- **F-3 [minor] `item-list --limit 200` subestima Homologado** — 2 vs 6; `totalCount=329`. Recidiva de fotografia truncada. **Novo** | Esforço S | P2 | Card novo: #911.
+- **F-4 [minor] dirty/extra worktrees no `pre`** — in-flight + leftover do pacote. Recidiva #759. Esforço S.
+- **F-5 [minor] health PROD 502 na janela de boot (~4s)** — retry 200. Recidiva #888. Esforço S.
+- **F-6 [minor] source PROD root-owned exige sudo** — mesmo padrão. Recidiva #868. Esforço S.
+- **F-7 [info] `develop` com 3 Done não homologados** — caminho `release-*` obrigatório; sync `main→develop` antes do `post` (árvores idênticas); restore `#897` `#899` `#904` depois do `post`.
+
+#### Padrões recorrentes
+
+- Homologado sem comentário no turno do arraste | recidiva | #658
+- Dirty worktrees / PRESERVED no `pre` | recidiva | #759
+- Health 502 na janela de boot PROD | recidiva | #888
+- PROD root-owned / sudo | recidiva | #868
+- Proxy modelo só no transcript, não no issue | **novo** | #909
+- Campos Project vazios em Homologado | **novo** | #910
+- Fotografia `item-list` truncada | **novo** | #911
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #909 — kaizen: handoff REST deve publicar linhas proxy modelo por spawn | P1 | F-1 | Em Refinamento |
+| #910 — kaizen: campos Project obrigatórios ao marcar Homologado | P2 | F-2 | Em Refinamento |
+| #911 — kaizen: fotografia do board no release pagina até totalCount | P2 | F-3 | Em Refinamento |
+| (não criado) health PROD 502 na janela de boot → coberto por #888 | — | F-5 | coberto por #888 (ainda Em Refinamento) |
+| (não criado) dirty/PRESERVED → coberto por #759; Homologado sem comentário → coberto por #658 | — | F-4 | coberto por #759/#658 (ainda Em Refinamento) |
+
+---
+
 ## 2026-09-10 — Kaizen release (lote 718/861/872/876/879/880/884)
 
 - **Release/card**: 2026-09-10 — Homologado `#718` (P2 Monitor nomes `04677767`) + `#861` (P0 Remover stop `7580e7ba` + #875 `06eb0e1e`) + `#872` (P0 dsh links `d1e1dda2`) + `#876` (P0 amostra insuficiente `fd601691`) + `#879` (P1 destapar pai `2dc937e3`) + `#880` (P1 dois modos Cursor `0176a3d5`) + `#884` (P1 Apply/onda `8f988d4d`) → `develop` → `main` PR #887 merged `e219d6dd453eeb0237ff6b2e8a687755903239b2`.

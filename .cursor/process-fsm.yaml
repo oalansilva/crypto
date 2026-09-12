@@ -92,7 +92,7 @@ context_file:
   Todo: |
     Issue grelhado. Próximo evento = iniciar_design. Não apply. Não /opsx:new ainda.
   Design: |
-    OpenSpec + crítica; sintetizar do issue grelhado, não reentrevistar. OpenSpec/protótipo allow. Write produto deny.
+    OpenSpec + crítica; sintetizar do issue grelhado, não reentrevistar. Write produto deny.
   Aprovação de Design: |
     Espere T7. Read-only. Agent não aprova design.
   Pronto para Dev: |
