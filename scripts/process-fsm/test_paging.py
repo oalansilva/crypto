@@ -248,7 +248,10 @@ def test_harness_mdc_body_budget():
     lines = _harness_body_lines()
     text = "\n".join(lines)
     assert 4 <= len(lines) <= 12
-    assert "inherit" in text or ".cursor/hooks.json" in text
+    assert "juízo" in text and "execução" in text
+    assert "Task `inherit`" not in text
+    assert "every Task inherits" not in text
+    assert "herdar o picker" not in text
     assert "T1/T7/T15" not in text
     assert "diff-reviewer" not in text
     assert "release-guard" not in text
