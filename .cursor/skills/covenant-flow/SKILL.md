@@ -21,7 +21,11 @@ Cliente: **Cursor Agent**. Lei = parâmetro `model` do Task nos dois caminhos de
 | grill-card, design-autor, design-critic, Assessment A, Assessment B | Grok 4.6 | `cursor-grok-4.6-high` |
 | apply-coluna, qa-gate, diff-reviewer, code-reviewer, explore/busca no mesmo card, fecho-lote | Composer 2.5 | `composer-2.5` |
 
-`composer-2.5-fast` MUST NOT aparecer no mapa, no spawn nem como fallback. Revisores no Grok MUST NOT neste card. Slug inválido: recusa visível; sem `inherit` silencioso; sem retry com `composer-2.5-fast`. Troca de modelo = sessão nova (#430).
+`composer-2.5-fast` MUST NOT aparecer no mapa, no spawn, em destape/resume/follow-up nem como fallback (inclusive quando o host auto-retoma um filho Composer). Revisores no Grok MUST NOT neste card. Slug inválido: recusa visível; sem `inherit` silencioso; sem retry com `composer-2.5-fast`. Troca de modelo = sessão nova (#430).
+
+**Destape/resume mantém slug Composer:** resume, destape (`subagentStop` followup) ou follow-up de filho de execução (Apply-coluna, QA, os dois revisores, busca no mesmo card, `fecho-lote`) MUST permanecer `composer-2.5`. Se o host retomar ou facturar `composer-2.5-fast`, o pai MUST NOT aceitar esse run (aborto): MUST NOT `resume` quando cair em fast; spawn **novo** com `model: composer-2.5` e prompt autocontido (`resume` não aceita `model`). Busca no mesmo card: `generalPurpose` + `model: composer-2.5`; MUST NOT `subagent_type` `explore` se o host mapear `explore` a fast. `fecho-lote`: sem sidecar/destape; auto-resume do host = ignorar.
+
+**Release/lote — chat pai Composer 2.5 (única excepção ao silêncio do picker):** pedido explícito fechar lote / subir release / T16 (`process_event fechar_release`) + filho `fecho-lote` exige chat pai `composer-2.5`. Se o pai é Grok 4.6 ou outro ≠ `composer-2.5`, recusa visível: MUST NOT T16 nem `fecho-lote` neste chat; sessão nova em Composer 2.5. Grok 4.6 só juízo (mapa). MUST NOT forçar picker via git / `AGENTS.md` / overlay `clients.*.auto`. MUST NOT recomendar picker noutros chats `#<id>`.
 
 Overlay humano: `Read` o path `overlay_doc` de `.covenant-flow/overlay.yaml` quando a tarefa precisar de portas/Drive/banco/release.
 
@@ -223,7 +227,7 @@ Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evid
 
 ## Release
 
-Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `covenant-flow-environments`. Detalhe humano: `overlay_doc`. `bound_card=⊥` / `enabled_events: (unbound)` são display do paging, não deny de T16; pedido explícito unbound em `develop`/`release-*` carrega overlay + `covenant-flow-environments` e segue T16; Write de produto continua deny. Guard: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
+Pedido explícito de Alan (`subir lote`, `fechar release`, …). **Pré-requisito (T18):** chat pai MUST ser Composer 2.5 (`composer-2.5`); chat Grok 4.6 ou outro modelo ⇒ recusa visível e sessão nova em Composer — única excepção ao silêncio sobre picker do pai nos chats de card. Overlay de ambiente em `covenant-flow-environments`. Detalhe humano: `overlay_doc`. `bound_card=⊥` / `enabled_events: (unbound)` são display do paging, não deny de T16; pedido explícito unbound em `develop`/`release-*` carrega overlay + `covenant-flow-environments` e segue T16; Write de produto continua deny. Guard: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
 
 ### Filho isolado `fecho-lote` (Cursor)
 
