@@ -140,6 +140,20 @@ function fmtCalmar(v: number | null | undefined): string {
   if (Math.abs(v) > CALMAR_ABS_CEILING) return 'N/A'
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+function gridEasyMetrics(row: LeaderboardRow, calmarBlocked: boolean) {
+  const sharpe = calmarBlocked ? 'N/A' : fmtNum(row.sharpe_ratio)
+  const win = calmarBlocked ? 'N/A' : fmtPct(row.win_rate)
+  const cagr = calmarBlocked ? 'N/A' : fmtPct(row.cagr)
+  return {
+    blocked: calmarBlocked,
+    sharpe,
+    win,
+    cagr,
+    sharpeNa: sharpe === 'N/A',
+    winNa: win === 'N/A',
+    cagrNa: cagr === 'N/A',
+  }
+}
 function walkForwardStatus(row: LeaderboardRow): 'GO' | 'NO-GO' | null {
   const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics.oos_verdict : null
   const raw = String(row.oos_verdict?.status ?? nested?.status ?? '').trim().toUpperCase()
@@ -1767,12 +1781,24 @@ export function DiscoveryPage() {
                         <span>Trades/cobertura</span>
                         <span className="th-hint">negócios · velas</span>
                       </th>
+                      <th scope="col" aria-label="Sharpe">
+                        <span>Sharpe</span>
+                      </th>
+                      <th scope="col" aria-label="Win rate (taxa de acerto)">
+                        <span>Win%</span>
+                        <span className="th-hint">acerto</span>
+                      </th>
+                      <th scope="col" aria-label="Retorno (CAGR) anualizado da varredura">
+                        <span>CAGR</span>
+                        <span className="th-hint">anualizado</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {partials.slice(0, 5).map((row) => {
                       const verdict = walkForwardStatus(row)
                       const calmarText = fmtCalmar(row.calmar_ratio)
+                      const easy = gridEasyMetrics(row, calmarText === 'N/A')
                       return (
                       <tr
                         key={row.result_id}
@@ -1799,6 +1825,26 @@ export function DiscoveryPage() {
                         <td className={`number ${calmarText === 'N/A' ? 'na' : ''}`} data-label="Calmar">{calmarText}</td>
                         <td className="number negative" data-label="Maximum Drawdown">{fmtDrawdown(row.max_drawdown)}</td>
                         <td className="number" data-label="negócios / cobertura">{row.trades_count ?? 'N/A'} · {fmtPct(row.coverage)}</td>
+                        <td
+                          className={`number ${easy.sharpeNa ? 'na' : ''}`}
+                          data-label="Sharpe"
+                          data-testid={
+                            row.rank === 1
+                              ? 'partial-sharpe-1'
+                              : easy.sharpeNa
+                                ? `partial-sharpe-na-${row.result_id}`
+                                : undefined
+                          }
+                        >
+                          {easy.sharpe}
+                        </td>
+                        <td className={`number ${easy.winNa ? 'na' : ''}`} data-label="Win rate">{easy.win}</td>
+                        <td
+                          className={`number ${easy.cagrNa ? 'na' : row.cagr != null && row.cagr > 0 ? 'positive' : ''}`}
+                          data-label="Retorno (CAGR)"
+                        >
+                          {easy.cagr}
+                        </td>
                       </tr>
                       )
                     })}
@@ -2311,7 +2357,7 @@ export function DiscoveryPage() {
                   </button>
                 </div>
               ) : null}
-              <table className="discovery-table decidable" aria-describedby="leaderboard-note">
+              <table className="discovery-table decidable" aria-describedby="leaderboard-note" data-testid="decidir-table">
                 <caption className="sr-only">
                   Candidatos da varredura selecionada; ranks globais não renumeram sob filtro. Calmar é CAGR anual do calendário dividido pelo Max DD, não retorno. Trades/cobertura são negócios fechados e cobertura de velas, não taxa de acerto.
                 </caption>
@@ -2328,7 +2374,18 @@ export function DiscoveryPage() {
                       <span>Trades/cobertura</span>
                       <span className="th-hint">negócios · velas</span>
                     </th>
-                    <th scope="col">Ação</th>
+                    <th scope="col" aria-label="Sharpe">
+                      <span>Sharpe</span>
+                    </th>
+                    <th scope="col" aria-label="Win rate (taxa de acerto)">
+                      <span>Win%</span>
+                      <span className="th-hint">acerto</span>
+                    </th>
+                    <th scope="col" aria-label="Retorno (CAGR) anualizado da varredura">
+                      <span>CAGR</span>
+                      <span className="th-hint">anualizado</span>
+                    </th>
+                    <th scope="col" className="action">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2341,6 +2398,7 @@ export function DiscoveryPage() {
                     const expanded = expandedRows.has(row.result_id)
                     const verdict = walkForwardStatus(row)
                     const calmarText = insufficient ? 'N/A' : fmtCalmar(row.calmar_ratio)
+                    const easy = gridEasyMetrics(row, insufficient || calmarText === 'N/A')
                     return (
                       <tr
                         key={row.result_id}
@@ -2396,8 +2454,7 @@ export function DiscoveryPage() {
                             </button>
                             {expanded ? (
                               <span className="candidate-meta" data-testid={`details-${row.result_id}`}>
-                                CAGR {fmtPct(row.cagr)} · B&amp;H {fmtPct(row.benchmark_cagr)} · Δ {fmtPp(row.delta_cagr_vs_bh)} ·
-                                Sharpe {fmtNum(row.sharpe_ratio)} · PF {fmtNum(row.profit_factor)} · Win {fmtPct(row.win_rate)} ·
+                                B&amp;H {fmtPct(row.benchmark_cagr)} · Δ {fmtPp(row.delta_cagr_vs_bh)} · PF {fmtNum(row.profit_factor)} ·
                                 mercado {row.symbol} · {row.timeframe} · {row.direction === 'long' ? 'Long' : 'Short'}
                                 {row.start_at || row.end_at ? ` · janela [${fmtDate(row.start_at)}, ${fmtDate(row.end_at)})` : ''}
                               </span>
@@ -2409,6 +2466,43 @@ export function DiscoveryPage() {
                         </td>
                         <td className={`number ${insufficient ? 'na' : 'negative'}`} data-label="Maximum Drawdown">{insufficient ? 'N/A' : fmtDrawdown(row.max_drawdown)}</td>
                         <td className={`number ${insufficient ? 'na' : ''}`} data-label="negócios / cobertura">{insufficient ? 'N/A' : `${row.trades_count ?? 'N/A'} · ${fmtPct(row.coverage)}`}</td>
+                        <td
+                          className={`number ${easy.sharpeNa ? 'na' : ''}`}
+                          data-label="Sharpe"
+                          data-testid={
+                            insufficient
+                              ? `decidir-sharpe-na-${row.result_id}`
+                              : row.rank === 1
+                                ? 'decidir-sharpe-1'
+                                : easy.sharpeNa
+                                  ? `decidir-sharpe-na-${row.result_id}`
+                                  : undefined
+                          }
+                        >
+                          {easy.sharpe}
+                        </td>
+                        <td
+                          className={`number ${easy.winNa ? 'na' : ''}`}
+                          data-label="Win rate"
+                          data-testid={insufficient || easy.winNa ? `decidir-win-na-${row.result_id}` : undefined}
+                        >
+                          {easy.win}
+                        </td>
+                        <td
+                          className={`number ${easy.cagrNa ? 'na' : row.cagr != null && row.cagr > 0 ? 'positive' : ''}`}
+                          data-label="Retorno (CAGR)"
+                          data-testid={
+                            insufficient
+                              ? `decidir-cagr-na-${row.result_id}`
+                              : row.rank === 1
+                                ? 'decidir-cagr-1'
+                                : easy.cagrNa
+                                  ? `decidir-cagr-na-${row.result_id}`
+                                  : undefined
+                          }
+                        >
+                          {easy.cagr}
+                        </td>
                         <td className="action-cell" data-label="Ação">
                           {promoted ? (
                             <span
@@ -2510,7 +2604,8 @@ export function DiscoveryPage() {
             </p>
             <p className="border-t border-[var(--border-default)] px-5 py-3 text-[11px] text-[var(--text-muted)]" data-testid="column-copy">
               Calmar não é retorno: é CAGR do calendário da janela dividido pelo Max DD.{' '}
-              <span className="font-mono">30 · 100%</span> = 30 negócios fechados e 100% de cobertura de velas — não é taxa de acerto.
+              <span className="font-mono">30 · 100%</span> = 30 negócios fechados e 100% de cobertura de velas — não é taxa de acerto.{' '}
+              CAGR na grelha é o retorno anualizado da varredura, o mesmo «Retorno (CAGR)» do promover.
             </p>
           </section>
         ) : null}
