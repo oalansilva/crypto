@@ -87,6 +87,20 @@ Variáveis de ambiente:
 
 Anti-ruído e auditoria são **por usuário** (dedupe, rate limit, histórico em `monitor_telegram_alerts.user_id`).
 
+### Agendamento diário — timer systemd do Cripto Farol (card #886)
+
+O scan diário **não** é o cron Hermes. O wake path do produto é um oneshot+timer systemd no host:
+
+- DEV: `criptofarol-dev-telegram-alert-scan.timer` → `.service`
+- PROD: `criptofarol-prod-telegram-alert-scan.timer` → `.service`
+- Calendário: `OnCalendar=*-*-* 11:05:00 UTC` (08:05 BRT; BRT=UTC−3 o ano todo)
+- Script: `ops/run_monitor_telegram_alert_scan.py` com o `backend/.env` do root canónico daquele ambiente
+- Installer: `./install-telegram-alert-scan-systemd.sh --env <dev|prod>` (recusa root não canónico; `enable --now` do timer **e** start imediato do oneshot)
+- Evidência: `journalctl -u criptofarol-{dev,prod}-telegram-alert-scan.service` (`SENT` / `ANNOUNCE_SKIP` / `FAILED` / `CONFIG_INCOMPLETE` / `SKIP_LOCKED`, sem segredos)
+- Falha do disparo (timeout 1800s, exit ≠ 0, env incompleto) fica só no journal; não há DM extra de “o relógio quebrou”
+- DEV **não** usa bot, token nem webhook de PROD. Se `CRYPTO_TELEGRAM_ALERT_SCAN_BLOCK_PROD_BOT=1` (token/leftover JSON de DEV coincide com PROD), o scanner sai `CONFIG_INCOMPLETE` **sem** Bot API — não `ANNOUNCE_SKIP`/`SENT`
+- O job Hermes `Monitor Telegram sinais diario` não é runtime do produto e só se desliga depois de 1 run PROD verde
+
 ### Operação DEV vs PROD — bootstrap append-only (card #752)
 
 Um bot Telegram = um webhook (`setWebhook`). O Telegram só entrega o webhook para **um** destino por vez: `setWebhook` para PROD invalida imediatamente o DEV e vice-versa. PROD e DEV **não** partilham webhook ao mesmo tempo. Operar DEV com o mesmo bot de PROD tira os eventos de PROD.
@@ -149,14 +163,13 @@ Implementacao tecnica futura deve derivar eventos a partir da mesma resolucao de
 
 ## Frequencia Recomendada
 
-MVP: polling periodico.
+Produto (card #886 / herança #200): **1×/dia às 08:05 BRT** via timer systemd do Cripto Farol (`OnCalendar=*-*-* 11:05:00 UTC`). Não usar o cron Hermes `Monitor Telegram sinais diario` como wake path.
 
-Recomendacao inicial:
+Anti-ruído continua no scanner:
 
-- checar a cada 15 minutos;
-- deduplicar por ativo, timeframe e status;
+- deduplicar por ativo, timeframe e status (por usuário);
 - nao repetir o mesmo alerta em menos de 6 horas;
-- permitir resumo manual ou diario se o volume ficar alto.
+- teto anti-ruído do card #747 intacto.
 
 Tempo real fica fora do MVP ate haver evidencia de necessidade.
 

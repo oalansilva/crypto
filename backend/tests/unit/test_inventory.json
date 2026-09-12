@@ -363,6 +363,15 @@
       "evidence": "PostgreSQL session fixture and route assertions"
     },
     {
+      "file": "backend/tests/unit/test_card_689_beta_invites.py",
+      "protected_behavior": "single-use beta invite, persisted admin role, and bootstrap enforcement",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "invite lifecycle, register/leads doors, bootstrap idempotency, and admin issuance assertions"
+    },
+    {
       "file": "backend/tests/unit/test_card_747_telegram_alerts.py",
       "protected_behavior": "card 747 Telegram link and position-aware matrix",
       "production_reachability": "reachable",
@@ -370,6 +379,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "link token, portfolio scope, and position matrix assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_telegram_alert_scan_wrapper.py",
+      "protected_behavior": "BLOCK_PROD_BOT wrapper fail-closed",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "BLOCK_PROD_BOT ignores JSON/token leftovers; main() fail-closed CONFIG_INCOMPLETE"
     },
     {
       "file": "backend/tests/unit/test_ohlcv_backfill_service.py",

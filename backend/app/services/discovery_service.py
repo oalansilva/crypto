@@ -20,6 +20,8 @@ from sqlalchemy import desc, func, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.metrics.performance import CAGR_ABS_CEILING
+from app.metrics.risk_adjusted import CALMAR_ABS_CEILING
 from app.models import FavoriteStrategy
 from app.models_discovery import (
     DiscoveryCombination,
@@ -103,6 +105,49 @@ def _utcnow() -> datetime:
 
 def _utc_iso(dt: datetime | None) -> str | None:
     return dt.astimezone(timezone.utc).isoformat() if dt else None
+
+
+def _row_oos_verdict(row: DiscoveryResult) -> dict[str, Any] | None:
+    """Top-level walk-forward verdict. Absent/invalid does not invent GO."""
+    metrics = row.metrics if isinstance(row.metrics, dict) else None
+    if not metrics:
+        return None
+    verdict = metrics.get("oos_verdict")
+    if not isinstance(verdict, dict):
+        return None
+    status = str(verdict.get("status") or "").strip().upper()
+    if not status:
+        return None
+    payload: dict[str, Any] = {"status": status}
+    reasons = verdict.get("reasons")
+    if isinstance(reasons, list):
+        payload["reasons"] = reasons
+    return payload
+
+
+def _walk_forward_status(row: DiscoveryResult) -> str | None:
+    verdict = _row_oos_verdict(row)
+    if not verdict:
+        return None
+    status = str(verdict.get("status") or "").strip().upper()
+    return status or None
+
+
+def _ranking_sort_value(row: DiscoveryResult, metric: str) -> float | None:
+    value = getattr(row, metric, None)
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    if metric == "calmar_ratio" and abs(number) > CALMAR_ABS_CEILING:
+        return None
+    if metric == "cagr" and abs(number) > CAGR_ABS_CEILING:
+        return None
+    return number
 
 
 def _canonical_axis_value(value: Any) -> str:
@@ -1657,6 +1702,7 @@ class DiscoveryService:
             "expected_candles": row.expected_candles,
             "observed_valid_candles": row.observed_valid_candles,
             "fees_slippage": row.fees_slippage,
+            "oos_verdict": _row_oos_verdict(row),
         }
         return payload
 
@@ -1676,23 +1722,33 @@ class DiscoveryService:
                     eligible.append(row)
                 else:
                     ineligible.append(row)
-            finite: list[DiscoveryResult] = []
-            na: list[DiscoveryResult] = []
+            go_finite: list[DiscoveryResult] = []
+            nogo_finite: list[DiscoveryResult] = []
+            go_na: list[DiscoveryResult] = []
+            nogo_na: list[DiscoveryResult] = []
             for row in eligible:
-                value = getattr(row, metric)
-                if value is None or (isinstance(value, float) and not math.isfinite(value)):
-                    na.append(row)
+                value = _ranking_sort_value(row, metric)
+                is_go = _walk_forward_status(row) == "GO"
+                if value is None:
+                    (go_na if is_go else nogo_na).append(row)
                 else:
-                    finite.append(row)
-            finite.sort(
-                key=lambda r: (
-                    -float(getattr(r, metric)),
-                    -int(r.trades_count or 0),
-                    r.id,
+                    (go_finite if is_go else nogo_finite).append(row)
+
+            def _metric_key(item: DiscoveryResult) -> tuple:
+                return (
+                    -float(_ranking_sort_value(item, metric) or 0.0),
+                    -int(item.trades_count or 0),
+                    item.id,
                 )
-            )
-            na.sort(key=lambda r: (-int(r.trades_count or 0), r.id))
-            ranked = finite + na
+
+            def _na_key(item: DiscoveryResult) -> tuple:
+                return (-int(item.trades_count or 0), item.id)
+
+            go_finite.sort(key=_metric_key)
+            nogo_finite.sort(key=_metric_key)
+            go_na.sort(key=_na_key)
+            nogo_na.sort(key=_na_key)
+            ranked = go_finite + go_na + nogo_finite + nogo_na
             ineligible.sort(key=lambda r: r.id)
             from app.services.combo_service import ComboService
 

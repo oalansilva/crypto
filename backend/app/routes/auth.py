@@ -12,9 +12,15 @@ from app.database import get_db
 from app.jwt_secret import resolve_jwt_secret
 from app.models import User
 from app.middleware.authMiddleware import ADMIN_EMAILS, is_admin_email
-from app.services.beta_access import hash_password as _hash_password
 from app.services.beta_access import temporary_password_expired
 from app.services.beta_access import verify_password as _verify_password
+from app.services.beta_invites import (
+    SOURCE_REGISTER_INVITE,
+    InviteConsumptionError,
+    consume_invite,
+    record_invite_refusal,
+    validate_invite,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +30,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 JWT_SECRET = resolve_jwt_secret()
 JWT_ACCESS_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRE_MINUTES", "15"))
 JWT_REFRESH_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_EXPIRE_DAYS", "7"))
+# Legacy configuration.  ``BETA_PUBLIC_REGISTRATION_ENABLED`` no longer restores
+# account creation without a single-use invite, and neither the beta invited
+# e-mail allowlist nor ``ADMIN_EMAILS`` is an entrance door any more (D5).
 BETA_PUBLIC_REGISTRATION_ENABLED = os.getenv(
     "BETA_PUBLIC_REGISTRATION_ENABLED",
     "0",
@@ -40,6 +49,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
+    inviteToken: str | None = None
 
     @field_validator("password")
     @classmethod
@@ -130,43 +140,62 @@ def _decode_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def _closed_beta_registration_emails() -> set[str]:
-    return {
-        *BETA_INVITED_EMAILS,
-        *ADMIN_EMAILS,
-    }
+def _invitation_required() -> HTTPException:
+    """Neutral refusal: never reveals privilege or allowlist membership."""
 
-
-def _is_registration_allowed(normalized_email: str) -> bool:
-    if BETA_PUBLIC_REGISTRATION_ENABLED:
-        return True
-    return normalized_email in _closed_beta_registration_emails()
+    return HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Closed beta access requires invitation",
+    )
 
 
 # --- Routes ---
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
     normalized_email = body.email.lower()
-    if not _is_registration_allowed(normalized_email):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Closed beta access requires invitation",
-        )
 
-    # Check duplicate email
+    # (1) The single-use invite for this address is checked FIRST -- before any
+    # duplicate lookup -- so a refusal without a valid invite reveals neither
+    # privilege (ADMIN_EMAILS / beta allowlist) nor account existence.
+    invite_token = str(body.inviteToken or "").strip()
+    decision = validate_invite(db, token=invite_token, email=normalized_email)
+    if not invite_token or not decision.is_valid:
+        if invite_token:
+            record_invite_refusal(
+                db,
+                invite=decision.invite,
+                email=normalized_email,
+                state=decision.state,
+                source=SOURCE_REGISTER_INVITE,
+            )
+            db.commit()
+        raise _invitation_required()
+
+    # (2) Only after a valid invite: the existing duplicate behavior stays
+    # explicit (C2).  It does NOT consume the invite nor touch the account, so
+    # the owner can still define a new password through the invite flow (D8).
     existing = db.query(User).filter(User.email == normalized_email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    user = User(
-        id=uuid.uuid4(),
-        email=normalized_email,
-        password_hash=_hash_password(body.password),
-        name=body.name,
-    )
-    db.add(user)
+    # (3) Consume the invite and create the account in the same transaction.
+    # No register path can grant administrator role.
+    try:
+        consumption = consume_invite(
+            db,
+            token=invite_token,
+            email=normalized_email,
+            password=body.password,
+            name=body.name,
+            source=SOURCE_REGISTER_INVITE,
+        )
+    except InviteConsumptionError:
+        db.rollback()
+        raise _invitation_required()
+
     db.commit()
-    db.refresh(user)
+    db.refresh(consumption.user)
+    user = consumption.user
 
     return RegisterResponse(id=str(user.id), email=user.email, name=user.name)
 
@@ -216,7 +245,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         userId=str(user.id),
         email=user.email,
         name=user.name,
-        isAdmin=is_admin_email(user.email),
+        isAdmin=is_admin_email(db, user.email),
         mustChangePassword=bool(user.must_change_password),
     )
 
@@ -263,7 +292,7 @@ def me(
         id=str(user.id),
         email=user.email,
         name=user.name,
-        isAdmin=is_admin_email(user.email),
+        isAdmin=is_admin_email(db, user.email),
         mustChangePassword=bool(user.must_change_password),
     )
 
@@ -302,6 +331,6 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
         userId=str(user.id),
         email=user.email,
         name=user.name,
-        isAdmin=is_admin_email(user.email),
+        isAdmin=is_admin_email(db, user.email),
         mustChangePassword=bool(user.must_change_password),
     )

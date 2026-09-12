@@ -222,6 +222,34 @@ def ensure_runtime_schema_migrations() -> None:
                 CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_email_created
                 ON beta_access_audit_logs (email, created_at)
                 """))
+        # Card #689: single-use beta invites (token persisted only as a digest).
+        conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS beta_invites (
+                    id VARCHAR NOT NULL PRIMARY KEY,
+                    email VARCHAR NOT NULL,
+                    token_hash VARCHAR NOT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    created_by_user_id VARCHAR NULL,
+                    consumed_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    consumed_user_id VARCHAR NULL,
+                    revoked_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    revoked_reason VARCHAR NULL,
+                    superseded_by_id VARCHAR NULL
+                )
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_invites_email
+                ON beta_invites (email)
+                """))
+        conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS ix_beta_invites_token_hash
+                ON beta_invites (token_hash)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_invites_email_created_at
+                ON beta_invites (email, created_at)
+                """))
         conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS admin_action_logs (
                     id SERIAL PRIMARY KEY,
@@ -569,6 +597,26 @@ def ensure_runtime_schema_migrations() -> None:
                 _verify_market_ohlcv_timescale_policies(
                     conn, timescale_functions_available=timescale_functions_available
                 )
+
+    # Card #689: the persisted administrator role is guaranteed on its own so the
+    # deployment bootstrap (which runs before the persistence migration, D9) can
+    # rely on it without depending on the rest of this init.
+    ensure_user_role_column()
+
+
+def ensure_user_role_column() -> None:
+    """Guarantee the persisted administrator role column exists (card #689)."""
+
+    with engine.begin() as conn:
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS role VARCHAR(16) NOT NULL DEFAULT 'user'
+                """))
+        conn.execute(text("""
+                UPDATE users
+                SET role = 'user'
+                WHERE role IS NULL OR btrim(role) = ''
+                """))
 
 
 def get_db():

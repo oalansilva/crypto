@@ -6,13 +6,19 @@ import uuid
 import bcrypt
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, TypeAdapter, ValidationError
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.middleware.authMiddleware import get_current_admin
 from app.models import AdminActionLog, User
+from app.services.beta_invites import (
+    build_invite_path,
+    build_invite_url,
+    issue_invite,
+    resolve_ttl_hours,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin-users"])
 
@@ -74,6 +80,7 @@ def _require_reason(reason: str | None, action: str) -> str:
 
 
 def _serialize_user(user: User) -> dict[str, Any]:
+    role = str(user.role or "user").strip().lower() or "user"
     return {
         "id": str(user.id),
         "email": user.email,
@@ -83,6 +90,8 @@ def _serialize_user(user: User) -> dict[str, Any]:
         "suspendedUntil": _serialize_datetime(user.suspended_until),
         "suspensionReason": user.suspension_reason,
         "notes": user.notes,
+        "role": role,
+        "isAdmin": role == "admin",
         "createdAt": _serialize_datetime(user.created_at),
         "lastLogin": _serialize_datetime(user.last_login),
     }
@@ -154,6 +163,8 @@ class AdminUserListItem(BaseModel):
     suspendedUntil: str | None
     suspensionReason: str | None
     notes: str | None
+    role: str
+    isAdmin: bool
     createdAt: str | None
     lastLogin: str | None
 
@@ -174,6 +185,8 @@ class AdminUserDetailResponse(BaseModel):
     suspendedUntil: str | None
     suspensionReason: str | None
     notes: str | None
+    role: str
+    isAdmin: bool
     createdAt: str | None
     lastLogin: str | None
 
@@ -348,6 +361,7 @@ def create_user(
         email=normalized_email,
         password_hash=_hash_password(payload.password),
         name=payload.name,
+        role="user",
         status=normalized_status,
         is_banned=is_banned,
         suspended_until=suspended_until,
@@ -629,4 +643,74 @@ def list_user_actions(
         total=total,
         page=page,
         pageSize=page_size,
+    )
+
+
+# --- Single-use beta invites (card #689, D2) ---------------------------------
+
+
+class BetaInviteCreateRequest(BaseModel):
+    email: str
+    ttlHours: int | None = None
+
+
+class BetaInviteResponse(BaseModel):
+    id: str
+    email: str
+    expiresAt: str
+    invitePath: str
+    inviteUrl: str
+
+
+def _validated_invite_email(raw_email: str) -> str:
+    """Validate the target address without revealing any allowlist state."""
+
+    try:
+        parsed = TypeAdapter(EmailStr).validate_python(str(raw_email or "").strip())
+    except ValidationError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email address",
+        )
+    return str(parsed).strip().lower()
+
+
+@router.post(
+    "/beta-invites",
+    response_model=BetaInviteResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_beta_invite(
+    payload: BetaInviteCreateRequest,
+    _admin_user_id: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Issue a single-use invite and return the copyable link exactly once."""
+
+    target_email = _validated_invite_email(payload.email)
+    try:
+        ttl_hours = resolve_ttl_hours(payload.ttlHours)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        )
+
+    invite, token = issue_invite(
+        db,
+        email=target_email,
+        created_by_user_id=_admin_user_id,
+        ttl_hours=ttl_hours,
+    )
+    db.commit()
+    db.refresh(invite)
+
+    # The clear token lives only in this response; it is never persisted in
+    # clear, never logged, and never written to audit.
+    return BetaInviteResponse(
+        id=str(invite.id),
+        email=invite.email,
+        expiresAt=invite.expires_at.isoformat(),
+        invitePath=build_invite_path(token),
+        inviteUrl=build_invite_url(token),
     )

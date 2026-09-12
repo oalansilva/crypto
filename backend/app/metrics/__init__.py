@@ -5,9 +5,19 @@ Este módulo fornece funções para calcular métricas de performance, risco,
 retorno ajustado ao risco, estatísticas de trades, benchmark e critérios GO/NO-GO.
 """
 
-from .performance import calculate_cagr, calculate_monthly_return
+from .performance import (
+    CAGR_ABS_CEILING,
+    CALENDAR_DAYS_PER_YEAR,
+    calculate_cagr,
+    calculate_monthly_return,
+    calendar_years,
+)
 from .risk import calculate_avg_drawdown, calculate_max_dd_duration, calculate_recovery_factor
-from .risk_adjusted import calculate_sortino_ratio, calculate_calmar_ratio
+from .risk_adjusted import (
+    CALMAR_ABS_CEILING,
+    calculate_sortino_ratio,
+    calculate_calmar_ratio,
+)
 from .trade_stats import (
     calculate_expectancy,
     calculate_max_consecutive_wins,
@@ -19,8 +29,12 @@ from .criteria import evaluate_go_nogo
 
 __all__ = [
     # Performance
+    "CAGR_ABS_CEILING",
+    "CALENDAR_DAYS_PER_YEAR",
+    "CALMAR_ABS_CEILING",
     "calculate_cagr",
     "calculate_monthly_return",
+    "calendar_years",
     # Risk
     "calculate_avg_drawdown",
     "calculate_max_dd_duration",

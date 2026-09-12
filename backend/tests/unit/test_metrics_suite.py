@@ -137,6 +137,10 @@ def test_calculate_cagr_validates_inputs_and_supports_both_index_modes():
 
     assert calculate_cagr(dated) > 0
     assert calculate_cagr(plain) > 0
+    calendar = calculate_cagr(plain, years=3.0)
+    point_as_day = calculate_cagr(plain)
+    assert calendar != pytest.approx(point_as_day)
+    assert calendar == pytest.approx((160.0 / 100.0) ** (1 / 3.0) - 1)
 
 
 def test_calculate_monthly_return_handles_resample_fallback_and_validation():

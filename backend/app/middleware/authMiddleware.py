@@ -12,6 +12,7 @@ import jwt
 import os
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -131,8 +132,24 @@ async def get_current_user(
     return user_id
 
 
-def is_admin_email(email: str | None) -> bool:
-    return str(email or "").strip().lower() in ADMIN_EMAILS
+def is_admin_user(user: User | None) -> bool:
+    """Administrator status comes from the persisted role, never from the env."""
+
+    return str(getattr(user, "role", "") or "").strip().lower() == "admin"
+
+
+def is_admin_email(db: Session, email: str | None) -> bool:
+    """Resolve the persisted role of an address (no environment comparison).
+
+    ``ADMIN_EMAILS`` stays only as input for the deployment bootstrap and for
+    the migration backfill of the already-configured admin (D7).
+    """
+
+    normalized = str(email or "").strip().lower()
+    if not normalized:
+        return False
+    user = db.query(User).filter(func.lower(User.email) == normalized).first()
+    return is_admin_user(user)
 
 
 async def get_current_admin(
@@ -140,7 +157,7 @@ async def get_current_admin(
     db: Session = Depends(get_db),
 ) -> str:
     user = db.query(User).filter(User.id == uuid.UUID(current_user_id)).first()
-    if not user or not is_admin_email(user.email):
+    if not user or not is_admin_user(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",

@@ -28,18 +28,20 @@ FOLLOWUP_APPLY = (
     "Não perguntes se concluiu."
 )
 FOLLOWUP_REVIEW = (
-    "O filho reviewer já devolveu. "
-    "Se o par da onda ainda não devolveu: espera (não commitas, "
-    "não spawnes o outro reviewer agora). "
-    "Se os dois devolveram com P1/P2: no máximo um Apply com a lista, "
-    "depois uma onda. "
-    "Se limpo: commit. "
-    "Se após esse ciclo ainda houver P1/P2: bloqueio visível, não terceiro ciclo. "
-    "Não perguntes se concluiu."
+    "O filho reviewer já devolveu. Se o par da onda ainda não devolveu: espera (não commitas, não spawnes o outro reviewer agora).\n"
+    "Tabela destape (não pontues cláusula em falta):\n"
+    "limpo → commit\n"
+    "só juízo → residual, card segue (não gasta correção)\n"
+    "mecânico → no máximo um conserto + uma verificação\n"
+    "após 1+1 → residual, card segue\n"
+    "P0 → a coluna pára\n"
+    "MUST NOT «autorizar extra / aceitar residual». Não perguntes se concluiu."
 )
 FOLLOWUP_QA = (
     "O filho QA já devolveu. Fecha o QA conforme o veredito "
     "(verde → integrar_develop; falhou → evidência visível). "
+    "Sinal determinístico (inventário, formatação, skip de ficheiro novo) "
+    "fica no Apply/QA até verde ou teto; não reabras onda de juízo. "
     "Não perguntes se concluiu."
 )
 FOLLOWUP_DESIGN_AUTOR = (

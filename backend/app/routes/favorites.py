@@ -386,7 +386,7 @@ def _admin_catalog_user_ids(db: Session, *, exclude_user_id: str | None = None) 
     return [
         str(row.id)
         for row in rows
-        if str(row.id) != str(exclude_user_id or "") and is_admin_email(row.email)
+        if str(row.id) != str(exclude_user_id or "") and is_admin_email(db, row.email)
     ]
 
 
@@ -515,7 +515,7 @@ def _can_view_cached_chart_payload(
         return True
 
     current_user = _current_user(db, current_user_id)
-    if not current_user or is_admin_email(current_user.email):
+    if not current_user or is_admin_email(db, current_user.email):
         return False
 
     admin_user_ids = _admin_catalog_user_ids(db, exclude_user_id=current_user_id)
@@ -613,7 +613,7 @@ def list_favorites(
     include_details = can_view_strategy_details(db, current_user_id)
     current_user = _current_user(db, current_user_id)
 
-    if include_secrets or (current_user and is_admin_email(current_user.email)):
+    if include_secrets or (current_user and is_admin_email(db, current_user.email)):
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
         descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
