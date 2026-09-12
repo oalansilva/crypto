@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-09-12 - Convite de uso único e role admin persistida (card #689)
+
+**Decisão:** o acesso beta não se auto-registra no e-mail admin sem verificação. Convite de uso único, emitido no admin e entregue fora do e-mail (sem SMTP neste card). A role de administrador fica persistida. Bootstrap `ops/bootstrap_admin.py` alinha o admin canónico.
+
+**Motivo:** auto-registro no endereço admin furava o controlo de acesso do beta.
+
+**Onde:** rotas admin/auth/leads, `beta_invites`, spec `single-use-invite-access`. Card #689.
+
+## 2026-09-12 - Calmar de calendário e selo NO-GO na Descoberta (card #896)
+
+**Decisão:** o ranking da Descoberta usa Calmar de calendário (não o número disparatado da janela). Linha NO-GO mostra selo visível nas grelhas Acompanhar/Decidir.
+
+**Motivo:** incidente PROD (favorite 193 / RS-B109ED2C80): Calmar enorme escondia o NO-GO.
+
+**Onde:** `discovery_service` / `combo_optimizer`, `DiscoveryPage.tsx`, specs `discovery-leaderboard` / `discovery-three-modes`. Card #896.
+
+## 2026-09-12 - Sharpe, Win% e CAGR na grelha da Descoberta (card #906)
+
+**Decisão:** nas parciais do Acompanhar (top-5) e na lista do Decidir, a grelha mostra em coluna, sem expandir: Calmar, Max DD, Trades/cobertura, Sharpe, Win% e CAGR (retorno anualizado da varredura). Amostra insuficiente: Sharpe/Win%/CAGR também N/A.
+
+**Motivo:** comparar candidatos exigia abrir linha a linha; Favoritos já mostra números fáceis.
+
+**Onde:** `DiscoveryPage.tsx`, specs `discovery-leaderboard` / `discovery-three-modes`. Card #906.
+
 ## 2026-09-10 - Monitor: um nome canónico por estado da board (card #718)
 
 **Decisão:** no Monitor (`/monitor`) e na Ajuda, o estado da board é `Em posição` (HOLD) e `Saída / cobertura` (EXIT). KPI, seção, coluna Status e card mobile usam o mesmo vocabulário. O hint `⌘K` da busca foi removido (sem atalho neste card). `Compra` / `Venda` continuam só no lado da ordem Spot (BUY/SELL), não como nome de estado. Landing V4 permanece `Compra`/`Venda` por decisão prévia do Alan.
