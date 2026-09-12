@@ -35,7 +35,7 @@ Use the Kaizen Audit Findings template (metrics, F-n findings with evidence, rec
 
 ## `/kaizen release` — proxy de modelo
 
-No modo `/kaizen release`, além das fontes acima, ler comentários REST dos issues do pacote (`gh api repos/<owner>/<repo>/issues/<n>/comments`) e procurar linhas `proxy modelo: <papel> → <rótulo> (<slug>)` nos handoffs de Design, Apply e Review. Comparar com a tabela juízo/execução vigente em `.cursor/skills/covenant-flow/SKILL.md` (Grok 4.6 / `cursor-grok-4.6-high` para juízo; Composer 2.5 / `composer-2.5` para execução). Linha em falta num card que spawnou filhos = achado (não skip silencioso). MUST NOT parser de usage Cursor/Grok; MUST NOT dashboard; MUST NOT valores em dinheiro de API de vendor.
+No modo `/kaizen release`, além das fontes acima, ler comentários REST dos issues do pacote (`gh api repos/<owner>/<repo>/issues/<n>/comments`) e procurar linhas `proxy modelo: <papel> → <rótulo> (<slug>)` nos handoffs de Design, Apply e Review. Comparar com a tabela juízo/execução vigente em `.cursor/skills/covenant-flow/SKILL.md` (Grok 4.6 / `cursor-grok-4.6-high` para juízo; Composer 2.5 / `composer-2.5` para execução). Linha em falta num card que spawnou filhos = achado (não skip silencioso). Se o closeout (T16 / `fecho-lote`) correu com chat pai não-Composer (p.ex. Grok 4.6) em vez de sessão Composer 2.5, registar achado de processo citando a lei «Release/lote — chat pai Composer 2.5» do runbook (sem inferir picker só pelo transcript). MUST NOT parser de usage Cursor/Grok; MUST NOT dashboard; MUST NOT valores em dinheiro de API de vendor.
 
 ## Closeout (orquestrador — fora desta skill)
 

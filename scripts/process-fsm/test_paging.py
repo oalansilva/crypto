@@ -311,6 +311,14 @@ def test_agents_md_is_stub():
     assert len([ln for ln in generated.splitlines() if ln.strip()]) <= 40
 
 
+def test_skill_t18_destape_resume_and_release_picker():
+    text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Destape/resume mantém slug Composer" in text
+    assert "Release/lote — chat pai Composer 2.5" in text
+    assert "composer-2.5-fast" in text
+    assert "lista fechada isolada" in text
+
+
 def test_skill_priority_anchor():
     text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
     assert "δ e Guard > overlay > skill > wording" in text
