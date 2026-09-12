@@ -292,26 +292,30 @@ When a hard-mode BTC discovery run saves a BTC/USDT 1d long Favorite, the system
 - **THEN** the response proves the saved Favorite has backtest trade evidence for the final strategy
 
 ### Requirement: Favorites analysis synchronizes entry and exit signals with Monitor
-The Favorites analysis flow SHALL refresh current Monitor opportunity data before rendering entry/exit markers and visible trades. When a matching Monitor opportunity includes signal history, the result chart and trade list SHALL include non-duplicate Monitor-derived entry and exit points without replacing a longer saved or regenerated favorite history.
+
+The Favorites analysis flow MAY refresh current Monitor opportunity data before rendering the analysis. When a matching Monitor opportunity includes signal history, the result MAY include non-duplicate Monitor-derived entry and exit points. That sync SHALL NOT replace a longer saved or regenerated favorite history in the list or on the chart markers. Chart arrows SHALL follow the analysis trade list.
 
 #### Scenario: Saved trades diverge from Monitor signal history
+
 - **WHEN** a favorite has saved trades with old entry/exit timestamps
 - **AND** the matching Monitor opportunity has current `signal_history`
 - **AND** the user opens full analysis from Favorites
-- **THEN** the visible result chart includes markers derived from Monitor `signal_history`
-- **AND** the visible trade list includes non-duplicate entries/exits derived from Monitor `signal_history`
-- **AND** saved or regenerated favorite trades remain visible when Monitor history is shorter
+- **THEN** saved or regenerated favorite trades remain visible in the list and as chart markers
+- **AND** Monitor `signal_history` MAY add only non-duplicate current operations
+- **AND** the chart SHALL NOT show only the recent Monitor recorte while the list shows the full history
 
 #### Scenario: Monitor signal sync unavailable
+
 - **WHEN** Monitor opportunities cannot be loaded or no matching signal history exists
 - **AND** the user opens full analysis from Favorites
 - **THEN** Favorites falls back to saved/reconstructed trades
 - **AND** the failure does not block opening analysis when fallback data exists
 
 #### Scenario: Protected common user opens synced favorite analysis
+
 - **WHEN** a common user opens analysis for a protected favorite
 - **AND** Monitor provides redacted signal history
-- **THEN** the chart can show safe entry/exit markers from that history
+- **THEN** the chart shows entry/exit markers that still match the visible trade list
 - **AND** protected parameters, indicators, moving averages, and moving-average values remain hidden
 
 ### Requirement: Favorites list ordering follows the selected sort option
