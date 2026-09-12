@@ -397,6 +397,27 @@ def test_agents_require_review_diff_and_forbid_git_transcripts() -> None:
         assert "## Diff" in text
 
 
+def test_skill_t18_destape_resume_keeps_composer_slug() -> None:
+    text = SKILL.read_text(encoding="utf-8")
+    assert "Destape/resume mantém slug Composer" in text
+    assert "composer-2.5-fast" in text
+    assert "MUST NOT `resume`" in text or "MUST NOT resume" in text
+    assert "spawn **novo**" in text or "spawn novo" in text
+    assert "generalPurpose" in text
+    assert "MUST NOT `subagent_type` `explore`" in text or "MUST NOT subagent_type `explore`" in text
+    assert "fecho-lote" in text
+    assert "auto-resume" in text
+
+
+def test_skill_t18_release_refuses_grok_parent() -> None:
+    text = SKILL.read_text(encoding="utf-8")
+    release = text.split("## Release", 1)[1]
+    assert "chat pai" in release or "chat pai MUST" in text
+    assert "composer-2.5" in release
+    assert "Grok" in release
+    assert "process_event fechar_release" in text or "T16" in release
+
+
 def test_skill_s1_parent_materializes_diff() -> None:
     text = SKILL.read_text(encoding="utf-8")
     assert "## Modos Cursor (terminal vs Desktop+SSH)" in text

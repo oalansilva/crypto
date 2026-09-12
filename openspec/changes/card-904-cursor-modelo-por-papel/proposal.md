@@ -9,7 +9,7 @@ No Cursor, o modelo de cada filho segue o picker de quem abriu o chat. Quem abre
 - Isolamento intacto nos filhos já existentes (sem transcript do pai; destape, nomes curtos, sidecar, pasta/comando/filho nos dois modos, teto 1+1). Este card não os redesenha.
 - Só o cliente Cursor. Stubs Grok Build, OpenCode e dsh continuam a herdar; stub ≤8 linhas; sem copiar a tabela.
 - Slug que o Cursor já não aceita: falha visível; o filho **não** herda o picker em silêncio; sem retry inventado. Troca de modelo = sessão nova (#430). Atualizar o nome = card novo.
-- O git não força o picker do chat pai. O runbook **não** recomenda picker ao pai. Ensaio do pai em Composer **não** entra.
+- O git não força o picker do chat pai. O runbook **não** recomenda picker ao pai nos chats normais do card. **Exceção D10:** release/lote (fechar lote / subir a release / T16 + filho `fecho-lote`) exige chat pai `composer-2.5`; se não for, recusa visível (sessão nova em Composer); MUST NOT forçar picker via git / `AGENTS.md` / overlay `clients.*.auto`. Ensaio do pai em Composer **não** entra.
 - Filho isolado de fecho de lote no Composer normal quando o operador pede fechar o lote / subir a release. O pai continua a chamar `process_event fechar_release`. Sem aresta nova na FSM.
 - Os dois revisores ficam no Composer normal **neste card, sem reversão escrita**.
 - Handoff de Design, Apply ou Review registra, por spawn, o proxy papel→modelo. `/kaizen release` lê esse proxy. Sem parser de fatura e sem dashboard.
