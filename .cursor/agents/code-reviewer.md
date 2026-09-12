@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Process/contract reviewer for Code Review. Use during Status=Code Review after the diff-reviewer. Read-only. Do not hunt generic bugs.
-model: inherit
+model: composer-2.5
 readonly: true
 ---
 

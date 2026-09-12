@@ -14,7 +14,14 @@ Prioridade (δ e Guard > overlay > skill > wording):
 3. **Esta skill** (runbook).
 4. **Wording** do chat (`implemente`, `autorizo`, `gostaria sempre`).
 
-Cliente: **Cursor Agent**. Task/subagent usa `inherit` salvo pedido explícito no chat. **Exceção — lista fechada isolada** (inherit de modelo, **sem** transcript do pai): `grill-card`, Design-autor, Apply-coluna, QA checks, Assessment A/B, `diff-reviewer`, `code-reviewer`. Review = diff **exato** (não “Codex review”).
+Cliente: **Cursor Agent**. Lei = parâmetro `model` do Task nos dois caminhos de spawn (tipo nomeado **ou** `generalPurpose` com o corpo do agent file colado). **Lista fechada isolada** (**sem** transcript do pai): `grill-card`, Design-autor, Apply-coluna, QA checks, Assessment A/B, `diff-reviewer`, `code-reviewer`. Review = diff **exato** (não “Codex review”). Mapa (rótulo no handoff; slug no parâmetro `model`):
+
+| Papel | Rótulo | Slug |
+| --- | --- | --- |
+| grill-card, design-autor, design-critic, Assessment A, Assessment B | Grok 4.6 | `cursor-grok-4.6-high` |
+| apply-coluna, qa-gate, diff-reviewer, code-reviewer, explore/busca no mesmo card, fecho-lote | Composer 2.5 | `composer-2.5` |
+
+`composer-2.5-fast` MUST NOT aparecer no mapa, no spawn nem como fallback. Revisores no Grok MUST NOT neste card. Slug inválido: recusa visível; sem `inherit` silencioso; sem retry com `composer-2.5-fast`. Troca de modelo = sessão nova (#430).
 
 Overlay humano: `Read` o path `overlay_doc` de `.covenant-flow/overlay.yaml` quando a tarefa precisar de portas/Drive/banco/release.
 
@@ -40,7 +47,7 @@ Cliente dsh: em Design, root spawna 1 Design-autor; o pai não escreve OpenSpec 
 
 T7: Alan abre o **Snapshot Impeccable** linkado no comentário do card (path / blob). O Gist OpenSpec **não** é a crítica.
 
-Handoff de Design/Apply/Review registra **proxies**: palavras de `design.md`, bytes de HTML gerado vs copiado (`cp`/clone = copied; delta = generated; sem protótipo = `N/A`), número de spawns. Sem parser de usage Cursor/Grok e sem dashboard.
+Handoff de Design/Apply/Review registra **proxies**: palavras de `design.md`, bytes de HTML gerado vs copiado (`cp`/clone = copied; delta = generated; sem protótipo = `N/A`), número de spawns, **uma linha por spawn** `proxy modelo: <papel> → <rótulo> (<slug>)` (papel = needle do spawn; rótulo/slug = mapa acima). Sem parser de usage Cursor/Grok e sem dashboard.
 
 ## Modos Cursor (terminal vs Desktop+SSH)
 
@@ -80,7 +87,7 @@ Rubrica prova viva (1.5):
 
 ### Prompts autocontidos (grill / Design-autor / Apply / review / QA)
 
-O pai cola o bloco no spawn isolado (`inherit`, sem transcript). `working_directory` = worktree quando a árvore existir. Filho MUST NOT `move_agent_to_root`. Neste par Desktop+SSH: Shell do fluxo com `required_permissions: ["all"]` no primeiro attempt. MUST NOT `workspace_readwrite` + clique. Sucesso = host `completed`. `Task was interrupted by the user` sem Stop visível = kill do host. MUST NOT retomar cadáver. Título `#<id>` (não `#<id> Apply`).
+O pai cola o bloco no spawn isolado (sem transcript do pai). O pai passa o slug no parâmetro `model` do Task (mapa acima). MUST NOT depender do picker do pai. MUST NOT recomendar picker ao pai. Ensaio do pai em Composer **não** substitui filhos de juízo (Grok 4.6). `working_directory` = worktree quando a árvore existir. Filho MUST NOT `move_agent_to_root`. Neste par Desktop+SSH: Shell do fluxo com `required_permissions: ["all"]` no primeiro attempt. MUST NOT `workspace_readwrite` + clique. Sucesso = host `completed`. `Task was interrupted by the user` sem Stop visível = kill do host. MUST NOT retomar cadáver. Título `#<id>` (não `#<id> Apply`).
 
 **Apply-coluna** (único filho da coluna / não devolvas entre tasks): és o único filho Apply desta entrada em Em desenvolvimento. Loop interno até todas as tasks feitas ou um P0 visível. Não devolvas o turno entre tasks. Não spawnes reviewers. Não `process_event` / commit / push. Recusa visível no pai se devolveres cedo sem P0 (não abre review nem segundo Apply).
 
@@ -187,7 +194,7 @@ Antes de spawnar `diff-reviewer` / `code-reviewer`, o **pai** materializa o inte
 - MUST NOT pedir git ao filho. MUST NOT pedir Glob/listagem de `agent-transcripts`.
 - Grelha, Apply e QA **não** recebem este contrato.
 
-Pin overlay permanece `v1.1.14`. Stubs Grok/dsh/OpenCode: ponte ≤8 linhas; MUST NOT dual-write lei.
+Pin overlay permanece `v1.1.15`. Stubs Grok/dsh/OpenCode: ponte ≤8 linhas; MUST NOT dual-write lei.
 
 ## Destape — subagentStop (S2)
 
@@ -217,6 +224,15 @@ Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evid
 ## Release
 
 Pedido explícito de Alan (`subir lote`, `fechar release`, …). Overlay de ambiente em `covenant-flow-environments`. Detalhe humano: `overlay_doc`. `bound_card=⊥` / `enabled_events: (unbound)` são display do paging, não deny de T16; pedido explícito unbound em `develop`/`release-*` carrega overlay + `covenant-flow-environments` e segue T16; Write de produto continua deny. Guard: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
+
+### Filho isolado `fecho-lote` (Cursor)
+
+No **mesmo turno** do pedido explícito de fechar lote / subir release, o pai spawna **um** filho isolado antes de T16:
+
+- `description` MUST conter `fecho-lote` e MUST NOT conter needles do classificador de destape (`grill-card`, `apply-coluna`, `diff-reviewer`, `code-reviewer`, `qa-gate`, `design-autor`, `design-critic`, `Assessment A`, `Assessment B`, nem `\bqa\b` / `\bgrill\b` soltos). Título canónico: `fecho-lote kaizen`.
+- Caminho: `generalPurpose` com `model: composer-2.5`.
+- Prompt autocontido: és o filho `fecho-lote`; MUST NOT `process_event`; MUST NOT arrastar Status; MUST NOT commit/push; MUST NOT `move_agent_to_root`; Read overlay + `covenant-flow-environments`; corre `/kaizen release` (skill `kaizen`, read-only); devolve o relatório. O **pai** chama `process_event fechar_release` no mesmo turno após host `completed`.
+- MUST NOT gravar `.cursor/tmp/awaiting-task.json` para este spawn. Destape MUST NOT disparar. MUST NOT needle novo no classificador. Shell do fluxo: `required_permissions: ["all"]` no primeiro attempt.
 
 Quando o push do archive em `develop` for recusado por proteção (`qa-gate`), mesmo com pacote só Homologado: use `release-*` = `origin/develop` + archive → PR `release-* → main`; `pre` em `release-*` **não** exige archive em `origin/develop`. Após merge + deploy PROD, sync `main → develop` é obrigatório antes do `post` final (reexecutar `post` se as árvores ainda divergirem). Não dual-write o playbook completo neste `SKILL.md` nem no stub `AGENTS.md`.
 
