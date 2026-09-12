@@ -28,7 +28,13 @@ R1_SHA256 = "068581d6b9b2171b7534cb1250575bf4a61ea9b0e428047ffff387e98341efd7"
 PANEL_INDEX = ROOT / "fixtures" / "790-panel-index.html"
 SIBLING_CLONE = ROOT / "fixtures" / "790-sibling-landing-clone.html"
 V4_CLONE = ROOT / "fixtures" / "v4-landing-clone.html"
-AUTH_ROUTES = {"/monitor", "/favorites", "/combo/discovery", "/combo/select"}
+AUTH_ROUTES = {
+    "/monitor",
+    "/favorites",
+    "/combo/discovery",
+    "/combo/select",
+    "/combo/results",
+}
 LANDING_TEXTS = (
     "Comprar ou vender cripto? O Cripto Farol responde.",
     "FAQ",
@@ -111,7 +117,7 @@ def _proto(tmp_path: Path, html: str, name: str = "index.html") -> Path:
     return proto
 
 
-def test_seeded_catalog_has_four_auth_routes_and_public_landing():
+def test_seeded_catalog_has_five_auth_routes_and_public_landing():
     data = load_catalog_file(default_catalog_path())
     assert data.get("version") == 1
     routes = routes_from_catalog(data)

@@ -1,0 +1,2511 @@
+{
+  "card": 917,
+  "assessor": "B",
+  "url": "https://dev.criptofarol.com.br/prototypes/card-917-historico-completo-analise/",
+  "desktop": {
+    "viewport": {
+      "name": "desktop-1440x900",
+      "width": 1440,
+      "height": 900
+    },
+    "asserts": {
+      "combo_page": true,
+      "lista_ops": true,
+      "aria_analise": true,
+      "ops_73": true,
+      "marker_count_146": true,
+      "list_count_73": true,
+      "bars_180_default": true,
+      "viewport_from_2026_01": true,
+      "old_2017_absent_default": true,
+      "recent_2026_07_10_present": true,
+      "zoom_old_2017_present": true,
+      "zoom_compra_73": true,
+      "zoom_venda_73": true,
+      "zoom_marker_count_still_146": true,
+      "zoom_labels_hidden": true,
+      "reset_180": true,
+      "reset_2017_hidden": true,
+      "reset_marker_count_146": true,
+      "reset2_marker_count_146": true,
+      "list_unique_73": true,
+      "no_antes_depois": true,
+      "no_overflow_x": true,
+      "console_error_0": true,
+      "pageerror_0": true,
+      "http_ge_400_0": true,
+      "lang_ptBR": true,
+      "menos_mais_reset": true,
+      "zoom_min_height_44": true,
+      "pair_1to1": true,
+      "zoom_clicks": 9
+    },
+    "default": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "180 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "12",
+      "viewportFrom": "2026-01-05",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 12,
+      "uniqueVisibleTimes": [
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": false,
+      "has2026_07_10": true,
+      "compra": 6,
+      "venda": 6,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda"
+      ],
+      "labelCount": 12,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 1440,
+      "cw": 1440,
+      "sh": 10839,
+      "ch": 900,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "CompraVendaCompraVendaCompraVendaCompraV",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "zoomed": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "2367 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "146",
+      "viewportFrom": "2017-08-17",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 146,
+      "uniqueVisibleTimes": [
+        "2017-10-05",
+        "2017-10-28",
+        "2017-11-03",
+        "2017-11-08",
+        "2017-11-20",
+        "2017-12-23",
+        "2018-02-23",
+        "2018-02-24",
+        "2018-04-20",
+        "2018-05-09",
+        "2018-07-17",
+        "2018-08-04",
+        "2018-09-02",
+        "2018-09-05",
+        "2018-10-07",
+        "2018-10-09",
+        "2018-10-16",
+        "2018-10-27",
+        "2018-12-29",
+        "2019-01-10",
+        "2019-02-13",
+        "2019-03-04",
+        "2019-03-16",
+        "2019-04-20",
+        "2019-05-04",
+        "2019-05-31",
+        "2019-06-18",
+        "2019-07-07",
+        "2019-08-08",
+        "2019-08-10",
+        "2019-09-16",
+        "2019-09-19",
+        "2019-10-28",
+        "2019-10-29",
+        "2020-01-05",
+        "2020-01-26",
+        "2020-01-31",
+        "2020-02-04",
+        "2020-04-08",
+        "2020-04-10",
+        "2020-04-26",
+        "2020-05-16",
+        "2020-06-04",
+        "2020-06-11",
+        "2020-06-23",
+        "2020-06-24",
+        "2020-07-23",
+        "2020-08-14",
+        "2020-10-05",
+        "2020-11-30",
+        "2020-12-17",
+        "2021-01-18",
+        "2021-02-08",
+        "2021-02-26",
+        "2021-03-12",
+        "2021-04-04",
+        "2021-04-18",
+        "2021-07-27",
+        "2021-08-25",
+        "2021-09-06",
+        "2021-09-07",
+        "2021-10-07",
+        "2021-10-27",
+        "2021-11-10",
+        "2022-02-09",
+        "2022-02-11",
+        "2022-03-02",
+        "2022-03-03",
+        "2022-03-20",
+        "2022-04-08",
+        "2022-06-10",
+        "2022-06-11",
+        "2022-07-18",
+        "2022-08-05",
+        "2022-08-11",
+        "2022-08-17",
+        "2022-10-24",
+        "2022-11-08",
+        "2022-12-12",
+        "2022-12-19",
+        "2023-01-11",
+        "2023-02-02",
+        "2023-02-19",
+        "2023-02-22",
+        "2023-03-18",
+        "2023-04-02",
+        "2023-04-13",
+        "2023-04-19",
+        "2023-04-28",
+        "2023-05-01",
+        "2023-06-22",
+        "2023-07-08",
+        "2023-09-20",
+        "2023-09-25",
+        "2023-10-20",
+        "2023-11-09",
+        "2023-12-02",
+        "2023-12-18",
+        "2024-01-06",
+        "2024-01-12",
+        "2024-02-09",
+        "2024-03-18",
+        "2024-04-02",
+        "2024-04-09",
+        "2024-05-18",
+        "2024-06-02",
+        "2024-07-20",
+        "2024-07-25",
+        "2024-09-20",
+        "2024-10-01",
+        "2024-10-17",
+        "2024-11-03",
+        "2024-11-07",
+        "2024-11-29",
+        "2024-12-14",
+        "2024-12-19",
+        "2025-01-19",
+        "2025-04-21",
+        "2025-05-28",
+        "2025-06-30",
+        "2025-07-27",
+        "2025-08-14",
+        "2025-09-17",
+        "2025-09-22",
+        "2025-10-04",
+        "2025-10-10",
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": true,
+      "has2026_07_10": true,
+      "compra": 73,
+      "venda": 73,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [],
+      "labelCount": 0,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 1440,
+      "cw": 1440,
+      "sh": 10839,
+      "ch": 900,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "2017-08\n        2026-09",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "reset": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "180 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "12",
+      "viewportFrom": "2026-01-05",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 12,
+      "uniqueVisibleTimes": [
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": false,
+      "has2026_07_10": true,
+      "compra": 6,
+      "venda": 6,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda"
+      ],
+      "labelCount": 12,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 1440,
+      "cw": 1440,
+      "sh": 10839,
+      "ch": 900,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "CompraVendaCompraVendaCompraVendaCompraV",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "panned": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "180 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "12",
+      "viewportFrom": "2026-01-05",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 12,
+      "uniqueVisibleTimes": [
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": false,
+      "has2026_07_10": true,
+      "compra": 6,
+      "venda": 6,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda"
+      ],
+      "labelCount": 12,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 1440,
+      "cw": 1440,
+      "sh": 10839,
+      "ch": 900,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "CompraVendaCompraVendaCompraVendaCompraV",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "reset2": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "180 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "12",
+      "viewportFrom": "2026-01-05",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 12,
+      "uniqueVisibleTimes": [
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": false,
+      "has2026_07_10": true,
+      "compra": 6,
+      "venda": 6,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda"
+      ],
+      "labelCount": 12,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 1440,
+      "cw": 1440,
+      "sh": 10839,
+      "ch": 900,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "CompraVendaCompraVendaCompraVendaCompraV",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "zoom_clicks": 9,
+    "zoom_meta": {
+      "bars": "2367 velas",
+      "from": "2017-08-17",
+      "count": "146"
+    },
+    "console_errors": [],
+    "console_warnings": [],
+    "pageerrors": [],
+    "bad_resp": []
+  },
+  "mobile": {
+    "viewport": {
+      "name": "mobile-390x844",
+      "width": 390,
+      "height": 844
+    },
+    "asserts": {
+      "combo_page": true,
+      "lista_ops": true,
+      "aria_analise": true,
+      "ops_73": true,
+      "marker_count_146": true,
+      "list_count_73": true,
+      "bars_180_default": true,
+      "viewport_from_2026_01": true,
+      "old_2017_absent_default": true,
+      "recent_2026_07_10_present": true,
+      "zoom_old_2017_present": true,
+      "zoom_compra_73": true,
+      "zoom_venda_73": true,
+      "zoom_marker_count_still_146": true,
+      "zoom_labels_hidden": true,
+      "reset_180": true,
+      "reset_2017_hidden": true,
+      "reset_marker_count_146": true,
+      "reset2_marker_count_146": true,
+      "list_unique_73": true,
+      "no_antes_depois": true,
+      "no_overflow_x": true,
+      "console_error_0": true,
+      "pageerror_0": true,
+      "http_ge_400_0": true,
+      "lang_ptBR": true,
+      "menos_mais_reset": true,
+      "zoom_min_height_44": true,
+      "pair_1to1": true,
+      "zoom_clicks": 9
+    },
+    "default": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "180 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "12",
+      "viewportFrom": "2026-01-05",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 12,
+      "uniqueVisibleTimes": [
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": false,
+      "has2026_07_10": true,
+      "compra": 6,
+      "venda": 6,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda"
+      ],
+      "labelCount": 12,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 390,
+      "cw": 390,
+      "sh": 7475,
+      "ch": 844,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "CompraVendaCompraVendaCompraVendaCompraV",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "zoomed": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "2367 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "146",
+      "viewportFrom": "2017-08-17",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 146,
+      "uniqueVisibleTimes": [
+        "2017-10-05",
+        "2017-10-28",
+        "2017-11-03",
+        "2017-11-08",
+        "2017-11-20",
+        "2017-12-23",
+        "2018-02-23",
+        "2018-02-24",
+        "2018-04-20",
+        "2018-05-09",
+        "2018-07-17",
+        "2018-08-04",
+        "2018-09-02",
+        "2018-09-05",
+        "2018-10-07",
+        "2018-10-09",
+        "2018-10-16",
+        "2018-10-27",
+        "2018-12-29",
+        "2019-01-10",
+        "2019-02-13",
+        "2019-03-04",
+        "2019-03-16",
+        "2019-04-20",
+        "2019-05-04",
+        "2019-05-31",
+        "2019-06-18",
+        "2019-07-07",
+        "2019-08-08",
+        "2019-08-10",
+        "2019-09-16",
+        "2019-09-19",
+        "2019-10-28",
+        "2019-10-29",
+        "2020-01-05",
+        "2020-01-26",
+        "2020-01-31",
+        "2020-02-04",
+        "2020-04-08",
+        "2020-04-10",
+        "2020-04-26",
+        "2020-05-16",
+        "2020-06-04",
+        "2020-06-11",
+        "2020-06-23",
+        "2020-06-24",
+        "2020-07-23",
+        "2020-08-14",
+        "2020-10-05",
+        "2020-11-30",
+        "2020-12-17",
+        "2021-01-18",
+        "2021-02-08",
+        "2021-02-26",
+        "2021-03-12",
+        "2021-04-04",
+        "2021-04-18",
+        "2021-07-27",
+        "2021-08-25",
+        "2021-09-06",
+        "2021-09-07",
+        "2021-10-07",
+        "2021-10-27",
+        "2021-11-10",
+        "2022-02-09",
+        "2022-02-11",
+        "2022-03-02",
+        "2022-03-03",
+        "2022-03-20",
+        "2022-04-08",
+        "2022-06-10",
+        "2022-06-11",
+        "2022-07-18",
+        "2022-08-05",
+        "2022-08-11",
+        "2022-08-17",
+        "2022-10-24",
+        "2022-11-08",
+        "2022-12-12",
+        "2022-12-19",
+        "2023-01-11",
+        "2023-02-02",
+        "2023-02-19",
+        "2023-02-22",
+        "2023-03-18",
+        "2023-04-02",
+        "2023-04-13",
+        "2023-04-19",
+        "2023-04-28",
+        "2023-05-01",
+        "2023-06-22",
+        "2023-07-08",
+        "2023-09-20",
+        "2023-09-25",
+        "2023-10-20",
+        "2023-11-09",
+        "2023-12-02",
+        "2023-12-18",
+        "2024-01-06",
+        "2024-01-12",
+        "2024-02-09",
+        "2024-03-18",
+        "2024-04-02",
+        "2024-04-09",
+        "2024-05-18",
+        "2024-06-02",
+        "2024-07-20",
+        "2024-07-25",
+        "2024-09-20",
+        "2024-10-01",
+        "2024-10-17",
+        "2024-11-03",
+        "2024-11-07",
+        "2024-11-29",
+        "2024-12-14",
+        "2024-12-19",
+        "2025-01-19",
+        "2025-04-21",
+        "2025-05-28",
+        "2025-06-30",
+        "2025-07-27",
+        "2025-08-14",
+        "2025-09-17",
+        "2025-09-22",
+        "2025-10-04",
+        "2025-10-10",
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": true,
+      "has2026_07_10": true,
+      "compra": 73,
+      "venda": 73,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [],
+      "labelCount": 0,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 390,
+      "cw": 390,
+      "sh": 7475,
+      "ch": 844,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "2017-08\n        2026-09",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "reset": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "180 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "12",
+      "viewportFrom": "2026-01-05",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 12,
+      "uniqueVisibleTimes": [
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": false,
+      "has2026_07_10": true,
+      "compra": 6,
+      "venda": 6,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda"
+      ],
+      "labelCount": 12,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 390,
+      "cw": 390,
+      "sh": 7475,
+      "ch": 844,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "CompraVendaCompraVendaCompraVendaCompraV",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "panned": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "180 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "10",
+      "viewportFrom": "2025-07-11",
+      "viewportTo": "2026-03-19",
+      "visibleMarkers": 10,
+      "uniqueVisibleTimes": [
+        "2025-07-27",
+        "2025-08-14",
+        "2025-09-17",
+        "2025-09-22",
+        "2025-10-04",
+        "2025-10-10",
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10"
+      ],
+      "has2017": false,
+      "has2026_07_10": false,
+      "compra": 5,
+      "venda": 5,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra"
+      ],
+      "labelCount": 10,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 390,
+      "cw": 390,
+      "sh": 7475,
+      "ch": 844,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "VendaCompraVendaCompraVendaCompraVendaCo",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "reset2": {
+      "combo": 1,
+      "listText": true,
+      "analysis": true,
+      "bars": "180 velas",
+      "subtitle": "BTC/USDT • 1d • 2367 velas",
+      "ops": "73",
+      "markerCountAttr": "146",
+      "listCountAttr": "73",
+      "visibleMarkerCount": "12",
+      "viewportFrom": "2026-01-05",
+      "viewportTo": "2026-09-11",
+      "visibleMarkers": 12,
+      "uniqueVisibleTimes": [
+        "2026-01-06",
+        "2026-01-08",
+        "2026-03-10",
+        "2026-03-23",
+        "2026-03-25",
+        "2026-03-27",
+        "2026-04-11",
+        "2026-05-01",
+        "2026-05-06",
+        "2026-05-17",
+        "2026-07-10",
+        "2026-07-29"
+      ],
+      "has2017": false,
+      "has2026_07_10": true,
+      "compra": 6,
+      "venda": 6,
+      "uniqueListTrades": 73,
+      "listRowCount": 146,
+      "mobileCards": 73,
+      "labels": [
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda",
+        "Compra",
+        "Venda"
+      ],
+      "labelCount": 12,
+      "zoomBtns": [
+        {
+          "id": "zoom-out",
+          "text": "Menos",
+          "aria": "Reduzir zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-in",
+          "text": "Mais",
+          "aria": "Aumentar zoom do grafico",
+          "h": 44
+        },
+        {
+          "id": "zoom-reset",
+          "text": "Resetar",
+          "aria": "Redefinir zoom do grafico",
+          "h": 44
+        }
+      ],
+      "overflowX": false,
+      "sw": 390,
+      "cw": 390,
+      "sh": 7475,
+      "ch": 844,
+      "pair": "Lista 73 · Setas 146 (entrada+saída) · 1:1",
+      "monitorCards": [],
+      "antes": 0,
+      "focusables": [
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Monitor",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Descoberta",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Combo",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Carteira",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Ajuda",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Preferências do sistema",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Usuários",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Recolher menu",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir conta",
+          "text": "ASContaAlan S",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Configurações",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": "Abrir menu",
+          "text": "",
+          "tabindex": null
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "aria": null,
+          "text": "Voltar aos favoritos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-out",
+          "aria": "Reduzir zoom do grafico",
+          "text": "Menos",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-in",
+          "aria": "Aumentar zoom do grafico",
+          "text": "Mais",
+          "tabindex": null
+        },
+        {
+          "tag": "BUTTON",
+          "id": "zoom-reset",
+          "aria": "Redefinir zoom do grafico",
+          "text": "Resetar",
+          "tabindex": null
+        },
+        {
+          "tag": "DIV",
+          "id": "chart-stage",
+          "aria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+          "text": "CompraVendaCompraVendaCompraVendaCompraV",
+          "tabindex": "0"
+        },
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "aria": null,
+          "text": "Exportar para Excel",
+          "tabindex": null
+        }
+      ],
+      "collapseText": "Recolher menu",
+      "menuAria": "Abrir menu",
+      "exportText": "Exportar para Excel",
+      "backText": "Voltar aos favoritos",
+      "stageTab": "0",
+      "stageAria": "Gráfico BTC/USDT com setas de Compra e Venda da lista completa",
+      "svgAria": "Velas BTC/USDT 1d com marcadores da lista de operações",
+      "title": "Análise — BTC/USDT 1d",
+      "h1": "Médias Móveis: Tendência em Virada",
+      "lang": "pt-BR",
+      "viewportMeta": "width=device-width, initial-scale=1, viewport-fit=cover",
+      "reducedMotion": false
+    },
+    "zoom_clicks": 9,
+    "zoom_meta": {
+      "bars": "2367 velas",
+      "from": "2017-08-17",
+      "count": "146"
+    },
+    "console_errors": [],
+    "console_warnings": [],
+    "pageerrors": [],
+    "bad_resp": []
+  },
+  "live": {
+    "url": "https://dev.criptofarol.com.br/login",
+    "title": "frontend",
+    "has_login": true,
+    "has_combo_page": 0,
+    "body_snip": "Bem-vindo de volta\n\nEntre com suas credenciais para continuar\n\nEMAIL\nSENHA\nEsqueci minha senha\nEntrar"
+  }
+}
