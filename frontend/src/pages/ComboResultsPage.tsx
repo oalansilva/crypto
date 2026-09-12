@@ -8,8 +8,8 @@ import { StrategyTransparencyPanel } from '../components/trades/StrategyTranspar
 import { StrategyRuleOverview } from '../components/trades/StrategyRuleOverview'
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
-import { buildTradeMarkers } from '@/lib/tradeMarkers'
-import { buildSignalHistoryMarkers, type MonitorSyncStatus } from '@/lib/signalHistory'
+import { buildComboResultsChartMarkers } from '@/lib/tradeMarkers'
+import { type MonitorSyncStatus } from '@/lib/signalHistory'
 import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
 import type { OpportunitySignalHistoryItem } from '@/components/monitor/types'
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison'
@@ -247,6 +247,16 @@ export function ComboResultsPage() {
         }
     }, [closedTrades])
 
+    const signalHistory = Array.isArray(result?.signal_history) ? result.signal_history : []
+    const markerDirection = ((result as any)?.direction ?? result?.parameters?.direction ?? strategyTransparency?.direction ?? 'long').toString().toLowerCase()
+    const markers = useMemo(
+        () => buildComboResultsChartMarkers(result?.trades, signalHistory, {
+            direction: markerDirection,
+            timeframe: result?.timeframe,
+        }),
+        [markerDirection, result?.timeframe, result?.trades, signalHistory],
+    )
+
     const isDiscovery = isDiscoveryOrigin(result?.metrics)
         || result?.origin_type === 'discovery_sweep'
         || result?.origin_type === 'discovery'
@@ -264,7 +274,7 @@ export function ComboResultsPage() {
         )
     }
 
-    const direction = ((result as any).direction ?? result.parameters?.direction ?? strategyTransparency?.direction ?? 'long').toString().toLowerCase()
+    const direction = markerDirection
     const isShort = direction === 'short'
     const snapshotMetrics = favoriteGridMetrics(
         result.promotion_metrics
@@ -295,11 +305,6 @@ export function ComboResultsPage() {
     const tradesWindowLabel = isDiscovery && closedTrades.length > 0
         ? currentCandlesTradesLabel(closedTrades.length)
         : null
-
-    const signalHistory = Array.isArray(result.signal_history) ? result.signal_history : []
-    const markers = signalHistory.length > 0
-        ? buildSignalHistoryMarkers(signalHistory, direction, undefined)
-        : buildTradeMarkers(result.trades, { direction, timeframe: result.timeframe })
 
     const strategyName = result?.display_name
         || strategyTransparency?.display_name
@@ -442,6 +447,7 @@ export function ComboResultsPage() {
                         <MonitorAlignedCandlestickChart
                             candles={result.candles}
                             markers={markers as any}
+                            tradeListCount={trades.length}
                             strategyName={strategyTransparency?.display_name || result.template_name}
                             symbol={result.symbol}
                             timeframe={result.timeframe}

@@ -1136,7 +1136,7 @@ test('favorites analysis uses full market history over stale saved analysis vela
   await expect(visibleTradeTable.getByText('Jan 1, 2025').first()).toBeVisible();
 });
 
-test('favorites analysis uses monitor signal history only as chart markers', async ({ page }) => {
+test('favorites analysis keeps trade-list chart markers with monitor sync', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 

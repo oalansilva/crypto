@@ -1,4 +1,7 @@
+import type { OpportunitySignalHistoryItem } from '@/components/monitor/types'
 import type { StrategyChartMarker } from '../components/charts/StrategyChartSurface'
+import { toStrategyChartTimestamp } from '../components/charts/StrategyChartSurface'
+import { getSignalHistoryMarkerStyle } from './signalHistory'
 
 export interface TradeMarkerTrade {
     entry_time?: string | number | null
@@ -11,6 +14,105 @@ export interface TradeMarkerTrade {
 export interface BuildTradeMarkersOptions {
     direction?: string | null
     timeframe?: string | null
+}
+
+export const MARKER_LABEL_MAX_VISIBLE_BARS = 260
+
+function markerTimesMatch(left: StrategyChartMarker['time'], right: StrategyChartMarker['time']): boolean {
+    const leftTime = toStrategyChartTimestamp(left)
+    const rightTime = toStrategyChartTimestamp(right)
+    return Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime === rightTime
+}
+
+function hasEquivalentMarker(markers: StrategyChartMarker[], marker: StrategyChartMarker): boolean {
+    return markers.some((existing) => (
+        markerTimesMatch(existing.time, marker.time)
+        && existing.shape === marker.shape
+        && existing.position === marker.position
+    ))
+}
+
+function signalMarkerToChartMarker(
+    item: OpportunitySignalHistoryItem,
+    direction?: string | null,
+): StrategyChartMarker | null {
+    if (!item.timestamp || (item.type !== 'entry' && item.type !== 'exit')) return null
+    const style = getSignalHistoryMarkerStyle(item, direction)
+    const isShort = String(direction || 'long').toLowerCase() === 'short'
+    const entryLabel = isShort ? 'VENDA' : 'COMPRA'
+    const exitLabel = isShort ? 'COMPRA' : 'VENDA'
+    return {
+        time: item.timestamp,
+        position: style.position,
+        shape: style.shape,
+        color: style.color,
+        text: item.type === 'entry' ? entryLabel : exitLabel,
+        signalType: style.signalType,
+    }
+}
+
+function getCurrentMonitorOperationSignals(
+    history: OpportunitySignalHistoryItem[],
+    trades: TradeMarkerTrade[] | null | undefined,
+    timeframe?: string | null,
+): OpportunitySignalHistoryItem[] {
+    const sorted = history
+        .filter((item) => item?.timestamp && (item.type === 'entry' || item.type === 'exit'))
+        .sort((left, right) => Date.parse(String(left.timestamp)) - Date.parse(String(right.timestamp)))
+
+    let activeEntry: OpportunitySignalHistoryItem | null = null
+    sorted.forEach((item) => {
+        if (item.type === 'entry') {
+            activeEntry = item
+            return
+        }
+        if (item.type === 'exit' && activeEntry) {
+            activeEntry = null
+        }
+    })
+
+    if (!activeEntry) return []
+
+    const openEntry = activeEntry as OpportunitySignalHistoryItem
+    const alreadyListed = (trades || []).some((trade) => (
+        trade.entry_time
+        && sameDisplayedCandle(trade.entry_time, openEntry.timestamp, timeframe)
+    ))
+    if (alreadyListed) return []
+
+    return [openEntry]
+}
+
+export function buildComboResultsChartMarkers(
+    trades: TradeMarkerTrade[] | null | undefined,
+    signalHistory: OpportunitySignalHistoryItem[] | null | undefined,
+    options: BuildTradeMarkersOptions = {},
+): StrategyChartMarker[] {
+    const baseMarkers = buildTradeMarkers(trades, options)
+    const history = Array.isArray(signalHistory) ? signalHistory : []
+    if (history.length === 0) return baseMarkers
+
+    const timeframe = options.timeframe
+    const supplemental = getCurrentMonitorOperationSignals(history, trades, options.timeframe)
+        .map((item) => signalMarkerToChartMarker(item, options.direction))
+        .filter((marker): marker is StrategyChartMarker => marker !== null)
+        .filter((marker) => (
+            !hasEquivalentMarker(baseMarkers, marker)
+            && !baseMarkers.some((existing) => sameDisplayedCandle(existing.time, marker.time, timeframe))
+        ))
+
+    if (supplemental.length === 0) return baseMarkers
+
+    return collapseSameCandleOppositeMarkers([...baseMarkers, ...supplemental], options.timeframe)
+}
+
+export function applyMarkerLabelDensity(
+    markers: StrategyChartMarker[],
+    visibleBarCount: number | null,
+): StrategyChartMarker[] {
+    const showLabels = (visibleBarCount ?? MARKER_LABEL_MAX_VISIBLE_BARS) <= MARKER_LABEL_MAX_VISIBLE_BARS
+    if (showLabels) return markers
+    return markers.map((marker) => (marker.text ? { ...marker, text: '' } : marker))
 }
 
 export type MarkerSignalType = 'entry' | 'exit'
