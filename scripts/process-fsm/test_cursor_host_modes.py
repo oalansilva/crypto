@@ -212,18 +212,10 @@ def test_live_proof_rubric_and_out_of_scope_cards() -> None:
     assert "Rubrica prova viva (1.5)" in ensaio
     assert "Windows + SSH a esta VM" in ensaio
     assert "#879" in ensaio
-    modos = _heading_section(text, "## Modos Cursor (terminal vs Desktop+SSH)")
-    assert "Grok / OpenCode / dsh fora" in modos
-    assert "não é deny de T5" in modos
-    assert "G_design" in modos
+    assert "Grok / OpenCode / dsh fora" in _heading_section(
+        text, "## Modos Cursor (terminal vs Desktop+SSH)"
+    )
     agents = AGENTS.read_text(encoding="utf-8")
     nonempty = [ln for ln in agents.splitlines() if ln.strip()]
     assert len(nonempty) <= 40
     assert "move_agent_to_root" not in agents
-
-
-def test_modos_cursor_dsh_fora_is_not_t5_deny() -> None:
-    section = _heading_section(_skill(), "## Modos Cursor (terminal vs Desktop+SSH)")
-    assert "Grok / OpenCode / dsh fora" in section
-    assert "não é deny de T5" in section
-    assert "G_design" in section

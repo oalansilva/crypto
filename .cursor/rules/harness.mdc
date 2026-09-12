@@ -5,7 +5,6 @@ alwaysApply: true
 
 # Harness (Cursor)
 
-- Cliente: Cursor Agent. Hooks: `.cursor/hooks.json`.
-- Task: juízo = Grok 4.6; execução = Composer 2.5. Sem inherit do picker. Tabela = skill `covenant-flow`.
+- Cliente: Cursor Agent. Hooks: `.cursor/hooks.json`. Task `inherit`.
 - Always-on δ vive em `AGENTS.md`. Não invente aresta; use `process_event`.
 - Overlay on-demand; runbook = skill `covenant-flow`.

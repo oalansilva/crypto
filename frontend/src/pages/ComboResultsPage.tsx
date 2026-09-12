@@ -13,12 +13,6 @@ import { buildSignalHistoryMarkers, type MonitorSyncStatus } from '@/lib/signalH
 import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
 import type { OpportunitySignalHistoryItem } from '@/components/monitor/types'
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison'
-import {
-    currentCandlesTradesLabel,
-    discoveryTrainWindowLabel,
-    favoriteGridMetrics,
-    isDiscoveryOrigin,
-} from '@/lib/discoveryFavoriteMetrics'
 
 interface BacktestResult {
     template_name: string
@@ -41,7 +35,6 @@ interface BacktestResult {
         max_drawdown?: number
     }
     promotion_metrics?: Record<string, any> | null
-    origin_type?: string | null
     trades: Array<{
         entry_time: string
         entry_price: number
@@ -247,10 +240,6 @@ export function ComboResultsPage() {
         }
     }, [closedTrades])
 
-    const isDiscovery = isDiscoveryOrigin(result?.metrics)
-        || result?.origin_type === 'discovery_sweep'
-        || result?.origin_type === 'discovery'
-
     if (!result) {
         return (
             <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
@@ -266,35 +255,16 @@ export function ComboResultsPage() {
 
     const direction = ((result as any).direction ?? result.parameters?.direction ?? strategyTransparency?.direction ?? 'long').toString().toLowerCase()
     const isShort = direction === 'short'
-    const snapshotMetrics = favoriteGridMetrics(
-        result.promotion_metrics
-            ? { origin_type: 'discovery_sweep', metrics_snapshot: result.promotion_metrics, ...(result.metrics || {}) }
-            : (result.metrics || (result as any).best_metrics || {}),
-    )
-    const baseMetrics = isDiscovery
-        ? {
-            total_trades: 0,
-            win_rate: 0,
-            total_return: 0,
-            avg_profit: 0,
-            ...snapshotMetrics,
-        }
-        : (result.metrics || (result as any).best_metrics || {
-            total_trades: 0,
-            win_rate: 0,
-            total_return: 0,
-            avg_profit: 0
-        })
-    // Combo-saved: métricas derivadas da lista. Descoberta: snapshot da promoção.
-    const metrics = isDiscovery
-        ? baseMetrics
-        : (derivedMetrics ? { ...baseMetrics, ...derivedMetrics } : baseMetrics)
-    const summaryWindowLabel = isDiscovery
-        ? discoveryTrainWindowLabel(result.start_date, result.end_date, result.metrics)
-        : null
-    const tradesWindowLabel = isDiscovery && closedTrades.length > 0
-        ? currentCandlesTradesLabel(closedTrades.length)
-        : null
+    // Usar métricas derivadas quando há trades; senão fallback para backend
+    const baseMetrics = result.metrics || (result as any).best_metrics || {
+        total_trades: 0,
+        win_rate: 0,
+        total_return: 0,
+        avg_profit: 0
+    }
+    const metrics = derivedMetrics
+        ? { ...baseMetrics, ...derivedMetrics }
+        : baseMetrics
 
     const signalHistory = Array.isArray(result.signal_history) ? result.signal_history : []
     const markers = signalHistory.length > 0
@@ -315,17 +285,13 @@ export function ComboResultsPage() {
     }
     const summaryMetrics = [
         {
-            key: 'return',
             label: 'Retorno total',
-            value: formatMetricPercentage(
-                isDiscovery ? (metrics.total_return_pct ?? metrics.total_return) : metrics.total_return,
-                2,
-            ),
-            tone: Number(isDiscovery ? (metrics.total_return_pct ?? metrics.total_return) : metrics.total_return) >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]',
+            value: formatMetricPercentage(metrics.total_return, 2),
+            tone: Number(metrics.total_return) >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]',
         },
-        { key: 'win', label: 'Taxa de acerto', value: formatMetricPercentage(metrics.win_rate), tone: 'text-[#eaecef]' },
-        { key: 'maxdd', label: 'Drawdown máximo', value: formatMetricPercentage(metrics.max_drawdown), tone: 'text-[#eaecef]' },
-        { key: 'trades', label: 'Operações', value: String(metrics.total_trades ?? 0), tone: 'text-[#eaecef]' },
+        { label: 'Taxa de acerto', value: formatMetricPercentage(metrics.win_rate), tone: 'text-[#eaecef]' },
+        { label: 'Drawdown máximo', value: formatMetricPercentage(metrics.max_drawdown), tone: 'text-[#eaecef]' },
+        { label: 'Operações', value: String(metrics.total_trades ?? 0), tone: 'text-[#eaecef]' },
     ]
 
     return (
@@ -369,18 +335,10 @@ export function ComboResultsPage() {
                                 <div data-testid="combo-read-mode">
                                     <h1
                                         className="mt-4 break-words text-2xl font-bold leading-tight sm:text-3xl [overflow-wrap:anywhere]"
-                                        data-testid={summaryWindowLabel ? 'summary-window-label' : 'combo-result-title'}
+                                        data-testid="combo-result-title"
                                     >
-                                        {summaryWindowLabel || strategyName}
+                                        {strategyName}
                                     </h1>
-                                    {summaryWindowLabel && strategyName ? (
-                                        <p
-                                            className="mt-3 max-w-3xl whitespace-normal break-words text-sm leading-6 text-[#eaecef] [overflow-wrap:anywhere]"
-                                            data-testid="combo-result-title"
-                                        >
-                                            {strategyName}
-                                        </p>
-                                    ) : null}
                                     {strategyDescription ? (
                                         <p
                                             className="mt-3 max-w-3xl whitespace-normal break-words text-sm leading-6 text-[#b7bdc6] [overflow-wrap:anywhere]"
@@ -395,12 +353,7 @@ export function ComboResultsPage() {
                                 {summaryMetrics.map((metric) => (
                                     <div key={metric.label} className="min-w-0">
                                         <dt className="text-xs text-[#929aa5]">{metric.label}</dt>
-                                        <dd
-                                            className={`mt-1 break-words font-mono text-xl font-semibold tabular-nums ${metric.tone}`}
-                                            data-metric={metric.key}
-                                        >
-                                            {metric.value}
-                                        </dd>
+                                        <dd className={`mt-1 break-words font-mono text-xl font-semibold tabular-nums ${metric.tone}`}>{metric.value}</dd>
                                     </div>
                                 ))}
                             </dl>
@@ -467,20 +420,11 @@ export function ComboResultsPage() {
                         fallbackParameters={result.parameters}
                     />
 
-                    {tradesWindowLabel ? (
-                        <h2
-                            id="trades-window-label"
-                            className="text-[1.05rem] font-semibold leading-snug text-[#eaecef]"
-                            data-testid="trades-window-label"
-                        >
-                            {tradesWindowLabel}
-                        </h2>
-                    ) : null}
                     <StrategyTradesTable
                         trades={result.trades}
                         candles={result.candles}
                         direction={direction}
-                        metrics={isDiscovery ? derivedMetrics || metrics : metrics}
+                        metrics={metrics}
                         onExport={handleExportTrades}
                         testId="result-trades"
                         showMetrics={false}

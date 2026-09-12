@@ -4,7 +4,7 @@
 Contrato do adapter Cursor sobre o núcleo do processo (yaml + `scripts/process-fsm/` + `AGENTS.md`). Grok Build é o adapter irmão em `.grok/`; OpenCode 1.18.18 em `.opencode/plugin/`.
 ## Requirements
 ### Requirement: Cursor is the versioned development harness
-The repository SHALL contain a versioned Cursor **adapter** under `.cursor/` (rules, skills, commands, hooks) that compiles the process nucleus (`.cursor/process-fsm.yaml` + `scripts/process-fsm/` + root `AGENTS.md`). Cursor is not the only versioned client: Grok Build has a sibling adapter under `.grok/`, OpenCode 1.18.18 has a sibling adapter under `.opencode/plugin/` (auto-load; no `opencode.json`), and dsh has a sibling adapter under `.dsh/plugin/` (Cordis native; no Claude `hooks.json` Guard). The repo MUST NOT restore the lock machine (`design_spawn_stage`, `design_artifact_write`, lease, packet, attestation, `opencode.db` as kaizen contract). `opencode.json` MUST NOT be an active contract of model, MCP, or permission. `.cursor/rules/harness.mdc` SHALL identify the Cursor client (hooks + juízo/execução Task models) and MUST NOT repeat the δ table or the 12-column runbook. The fourth harness (dsh) MUST NOT be a source of law.
+The repository SHALL contain a versioned Cursor **adapter** under `.cursor/` (rules, skills, commands, hooks) that compiles the process nucleus (`.cursor/process-fsm.yaml` + `scripts/process-fsm/` + root `AGENTS.md`). Cursor is not the only versioned client: Grok Build has a sibling adapter under `.grok/`, OpenCode 1.18.18 has a sibling adapter under `.opencode/plugin/` (auto-load; no `opencode.json`), and dsh has a sibling adapter under `.dsh/plugin/` (Cordis native; no Claude `hooks.json` Guard). The repo MUST NOT restore the lock machine (`design_spawn_stage`, `design_artifact_write`, lease, packet, attestation, `opencode.db` as kaizen contract). `opencode.json` MUST NOT be an active contract of model, MCP, or permission. `.cursor/rules/harness.mdc` SHALL identify the Cursor client (hooks + Task `inherit`) and MUST NOT repeat the δ table or the 12-column runbook. The fourth harness (dsh) MUST NOT be a source of law.
 
 #### Scenario: Fresh checkout loads Cursor config
 - **WHEN** a Cursor Agent session starts in the repo
@@ -17,9 +17,8 @@ The repository SHALL contain a versioned Cursor **adapter** under `.cursor/` (ru
 
 #### Scenario: harness.mdc is Cursor identity not the law
 - **WHEN** `.cursor/rules/harness.mdc` is counted excluding the YAML frontmatter
-- **THEN** the body names Cursor hooks and juízo/execução (or the covenant-flow runbook)
+- **THEN** the body names Cursor hooks and Task `inherit`
 - **AND** it does not contain a T0–T17 table or `release-guard`
-- **AND** it does not say that every Task inherits the parent picker
 
 ### Requirement: OpenSpec flow is available in Cursor
 Cursor SHALL load OpenSpec skills and `/opsx-*` commands that invoke the same `openspec` CLI used by the project.
@@ -29,26 +28,16 @@ Cursor SHALL load OpenSpec skills and `/opsx-*` commands that invoke the same `o
 - **THEN** the corresponding Cursor command runs the OpenSpec CLI flow
 - **AND** it MUST NOT invent artifacts outside `openspec instructions`
 
-### Requirement: Role models by juízo and execução
-On the Cursor client, isolated Task children SHALL use the role model passed as the Task `model` parameter on both spawn paths (named `subagent_type` or `generalPurpose` with the agent-file body pasted). They MUST NOT inherit the parent chat picker. Juízo (grill-card, Design-autor, Design-critic, Assessment A/B) SHALL use Grok 4.6 (`cursor-grok-4.6-high`). Execução (Apply-coluna, QA, `diff-reviewer`, `code-reviewer`, same-card explore/search, fecho-lote) SHALL use Composer 2.5 (`composer-2.5`). `composer-2.5-fast` MUST NOT be used. Reviewers on Grok MUST NOT be used by this change. The git MUST NOT force the parent picker; the runbook MUST NOT recommend a picker to the parent. Grok Build, OpenCode, and dsh children SHALL keep inherit. The law is the spawn parameter; agent-file YAML `model` is a redundant pin.
+### Requirement: Chat-selected model runs every role
+The Cursor chat model SHALL be the source of truth for Design, implementation, review and vision. Subagents MUST inherit that model unless Alan explicitly selects another model in the chat or Task.
 
-#### Scenario: Juízo spawn asks for Grok
-- **WHEN** the session spawns grill-card, Design-autor, Design-critic, or Assessment A/B on Cursor
-- **THEN** the Task `model` is `cursor-grok-4.6-high`
-- **AND** the child MUST NOT inherit the parent picker
-
-#### Scenario: Execução spawn asks for Composer
-- **WHEN** the session spawns Apply-coluna, QA, `diff-reviewer`, `code-reviewer`, same-card explore, or fecho-lote on Cursor
-- **THEN** the Task `model` is `composer-2.5`
-- **AND** it MUST NOT require `composer-2.5-fast` or Grok for those roles
-
-#### Scenario: Other clients keep inherit
-- **WHEN** Grok Build, OpenCode, or dsh stubs are read
-- **THEN** they still map children to inherit
-- **AND** they MUST NOT copy the Cursor role table
+#### Scenario: Default inheritance
+- **WHEN** the session spawns a Task for critique or review
+- **THEN** the child uses `inherit` (same chat model)
+- **AND** it MUST NOT require `openai/gpt-5.6-sol` or `opencode-go/*` models
 
 ### Requirement: Design gate is process-based
-While `Status=Design`, the **parent** session SHALL spawn an isolated Design-author child (Grok 4.6 / `cursor-grok-4.6-high`, no parent transcript) to write OpenSpec artifacts and a navigable prototype when UI-impacting. After those artifacts exist, the parent SHALL spawn Assessment A and B as a wave (MUST NOT nest A/B inside the Design child) with the same juízo model. Isolated critics MUST NOT edit product code, `design.md`, or prototype files. They MAY write only `.impeccable/critique/**`. The parent MUST NOT author OpenSpec proposal/specs/tasks, prototype files, or `design.md` **except** that after A/B return with zero open P0/P1 the parent MUST write only the `## Design Critique` section (bullets, disposition, verdict, snapshot path). Open P0/P1 SHALL re-spawn the Design-author child with those findings in the prompt; the parent MUST NOT polish. `process_event submeter_design` SHALL stay on the parent. The agent MUST NOT implement product code until `Status=Pronto para Dev`.
+While `Status=Design`, the **parent** session SHALL spawn an isolated Design-author child (same model, no parent transcript) to write OpenSpec artifacts and a navigable prototype when UI-impacting. After those artifacts exist, the parent SHALL spawn Assessment A and B as a wave (MUST NOT nest A/B inside the Design child). Isolated critics MUST NOT edit product code, `design.md`, or prototype files. They MAY write only `.impeccable/critique/**`. The parent MUST NOT author OpenSpec proposal/specs/tasks, prototype files, or `design.md` **except** that after A/B return with zero open P0/P1 the parent MUST write only the `## Design Critique` section (bullets, disposition, verdict, snapshot path). Open P0/P1 SHALL re-spawn the Design-author child with those findings in the prompt; the parent MUST NOT polish. `process_event submeter_design` SHALL stay on the parent. The agent MUST NOT implement product code until `Status=Pronto para Dev`.
 
 #### Scenario: Isolated critique
 - **WHEN** Design evidence is ready
@@ -67,11 +56,6 @@ While `Status=Design`, the **parent** session SHALL spawn an isolated Design-aut
 #### Scenario: No OpenCode lock machine
 - **WHEN** Design runs in Cursor
 - **THEN** the flow MUST NOT require `design_spawn_stage`, `design_artifact_write`, lease evidence or OpenCode 1.18.18 attestation
-
-#### Scenario: Design-author does not inherit the picker
-- **WHEN** the parent spawns the Design-author child on Cursor
-- **THEN** the Task `model` is `cursor-grok-4.6-high`
-- **AND** the spawn MUST NOT inherit the parent picker
 
 ### Requirement: Cursor loads the current environments skill
 The Cursor harness SHALL treat `covenant-flow-environments` as the environment map and SHALL NOT treat OpenClaw Gateway as the active runtime in that skill. Environment **values** SHALL come from the consumer overlay, not from the packaged skill.
@@ -122,56 +106,17 @@ The GitHub issue MAY originate the work. OpenSpec artifacts SHALL be a superset 
 - **THEN** the agent SHALL follow `openspec/changes/<change>/` and the published Gist
 - **AND** SHALL NOT treat a richer issue body as authorization to skip a task missing from `tasks.md`
 
-### Requirement: Code Review happy path MUST use Composer execução model
-The versioned `diff-reviewer` and `code-reviewer` Tasks MUST use `composer-2.5` on both spawn paths (named `subagent_type` or `generalPurpose` with the agent-file body). They MUST NOT inherit the parent picker and MUST NOT use Grok or `composer-2.5-fast`. Cursor Bugbot (`/review-bugbot`) MUST NOT be part of the product or the Code Review happy path. `/review-security` MAY run when Alan explicitly asks; it MUST NOT replace the local reviewers as the gate. Review constraints SHALL live in the two agent files (and optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`. Agent-file YAML MAY pin `model: composer-2.5`; the law remains the Task parameter.
+### Requirement: Code Review happy path MUST inherit the chat model
+The versioned `diff-reviewer` and `code-reviewer` Tasks MUST use `inherit` unless Alan selects another model in chat. Cursor Bugbot (`/review-bugbot`) MUST NOT be part of the product or the Code Review happy path. `/review-security` MAY run when Alan explicitly asks; it MUST NOT replace the local reviewers as the gate. Review constraints SHALL live in the two agent files (and optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`.
 
-#### Scenario: Local reviewers use Composer execução
+#### Scenario: Local reviewers inherit
 - **WHEN** Code Review spawns `.cursor/agents/diff-reviewer.md` or `.cursor/agents/code-reviewer.md`
-- **THEN** the child MUST use `composer-2.5`
-- **AND** the spawn MUST NOT omit `model` or pass `inherit`
+- **THEN** the child MUST use `inherit` (same chat model)
 
 #### Scenario: Bugbot is not a product path
 - **WHEN** Code Review runs on a pinned consumer
 - **THEN** `/review-bugbot` MUST NOT run as the gate
 - **AND** `BUGBOT.md` MUST NOT be required
-
-### Requirement: Isolated lote-close child uses Composer and does not destape
-When the operator explicitly asks to close the lote / subir a release, the Cursor parent SHALL spawn one isolated `fecho-lote` child with Task `model: composer-2.5` via `generalPurpose` with a self-contained prompt. The Task `description` MUST contain `fecho-lote` and MUST NOT contain destape classifier needles (`grill-card`, `apply-coluna`, `diff-reviewer`, `code-reviewer`, `qa-gate`, `design-autor`, `design-critic`, `Assessment A`, `Assessment B`). Canonical title: `fecho-lote kaizen`. The child MUST NOT call `process_event`, MUST NOT move Status, and MUST NOT commit or push. The parent SHALL await native Task `completed` plus payload in the **same** turn, then call `process_event fechar_release`. The parent MUST NOT write `.cursor/tmp/awaiting-task.json` for this spawn. Destape MUST NOT fire (no new classifier needle, no new `FOLLOWUP_*`). This requirement MUST NOT add a FSM state, event, hook, or `enabled_tools`. Overlay pin remains `v1.1.15` for this change.
-
-#### Scenario: Lote child is Composer and parent still calls T16
-- **WHEN** the operator asks to fechar o lote / subir a release on Cursor
-- **THEN** the parent spawns one isolated child whose Task `model` is `composer-2.5`
-- **AND** the Task `description` contains `fecho-lote`
-- **AND** the child does not call `process_event`
-- **AND** the parent calls `process_event fechar_release` in the same turn after `completed`
-
-#### Scenario: Lote child does not destape
-- **WHEN** that `fecho-lote` child returns `status=completed`
-- **THEN** `subagent_stop` does not inject a followup for it
-- **AND** no sidecar was written for that spawn
-- **AND** `classify_etapa` needles of existing children are unchanged
-
-### Requirement: Invalid Task model slug is a visible refusal
-If the Cursor host rejects the Task `model` slug, the parent SHALL surface that rejection in the chat. The parent MUST NOT omit `model`, MUST NOT pass `inherit`, and MUST NOT retry with `composer-2.5-fast`. Changing a subagent model requires a new session (#430); in-flight spawns stay on the old model. Renaming a slug is a new card.
-
-#### Scenario: Rejected slug does not inherit the picker
-- **WHEN** the parent spawns a Task with a slug the Cursor host no longer accepts
-- **THEN** the operator-facing chat shows the host refusal
-- **AND** the child MUST NOT run under the parent picker
-- **AND** the parent MUST NOT retry with `inherit` or with `composer-2.5-fast`
-
-### Requirement: Live proof of role models on both Cursor modes
-Done of this change SHALL include live proof on both Cursor modes (terminal and Desktop+SSH): one Apply-coluna spawn with `composer-2.5` and one grill or Design spawn with `cursor-grok-4.6-high`, each with host `completed`. The Apply of card #904 is that Composer proof (not a later product card). Cloud, Auto, and `composer-2.5-fast` MUST NOT be used. Q2–Q6 of existing children MUST NOT be redesigned.
-
-#### Scenario: Apply of this card is the Composer proof
-- **WHEN** Apply-coluna of #904 runs after T8
-- **THEN** the Task `model` is `composer-2.5`
-- **AND** host status is `completed` in that mode
-
-#### Scenario: Both Cursor modes are required
-- **WHEN** live proof is recorded
-- **THEN** terminal and Desktop+SSH each have host `completed` for one juízo spawn and one Apply spawn
-- **AND** Cloud and Auto were not used
 
 ### Requirement: Agent moves Status only via process_event
 While this change is active, the Cursor Agent MUST NOT invoke `gh project item-edit` (or GraphQL `updateProjectV2ItemFieldValue`) to change Project 1 `Status`. Named transitions SHALL go through `scripts/process-fsm/process_event.py`. Chat utterances such as `implemente`, `autorizo`, or `arrastei` MUST NOT be treated as `aprovar_design` / T7.
@@ -226,15 +171,14 @@ The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines th
 - **AND** it does not claim OpenCode Auto or Grok Auto
 
 ### Requirement: Always-on harness rule is 8-15 body lines
-`.cursor/rules/harness.mdc` SHALL remain `alwaysApply: true`. Its body (non-empty lines after the YAML frontmatter) MUST contain between 4 and 12 lines. The body SHALL identify the Cursor client: hooks under `.cursor/hooks.json`, juízo = Grok 4.6 and execução = Composer 2.5 without inheriting the picker, a pointer to skill `covenant-flow` for the table, and that the always-on δ lives in `AGENTS.md`. It MUST NOT include the Code Review reviewer procedure, the OpenSpec Gist republication helper, the release closeout, a T0–T17 table, a restatement of I1–I9, or the role table itself.
+`.cursor/rules/harness.mdc` SHALL remain `alwaysApply: true`. Its body (non-empty lines after the YAML frontmatter) MUST contain between 4 and 12 lines. The body SHALL identify the Cursor client: hooks under `.cursor/hooks.json`, Task `inherit`, and that the always-on δ lives in `AGENTS.md`. It MUST NOT include the Code Review reviewer procedure, the OpenSpec Gist republication helper, the release closeout, a T0–T17 table, or a restatement of I1–I9.
 
 #### Scenario: harness.mdc body budget
 - **WHEN** `.cursor/rules/harness.mdc` is counted excluding the YAML frontmatter
 - **THEN** non-empty body lines are between 4 and 12 inclusive
-- **AND** the body mentions juízo/execução or Cursor hooks
+- **AND** the body mentions Task `inherit` or Cursor hooks
 - **AND** the body does not mention `diff-reviewer` or `release-guard`
 - **AND** the body does not claim Grok Auto
-- **AND** the body does not say that every Task inherits the parent picker
 
 ### Requirement: alan-workflow skill priority is delta and Guard first
 `.cursor/skills/covenant-flow/SKILL.md` SHALL declare priority order **δ and Guard > overlay > skill > wording**. Chat utterances such as `implemente` MUST be classified as wording (lowest). Overlay (`overlay_doc`, Cripto: `docs/crypto-overlay.md`) MUST be loaded only when ports, Drive, PostgreSQL, or release are in scope.
@@ -359,7 +303,7 @@ While `Status=Code Review`, after the parent has materialized the interval, the 
 - **AND** the session MUST NOT treat that queue as a card failure
 
 ### Requirement: Wave findings are classified mechanical versus judgment
-Each finding from a Code Review wave SHALL be classified by the Cursor parent as **mechanical** or **judgment** before any correction spawn. Mechanical means an obvious file/line/instruction fix whose severity is below architecture, product, or acceptance of the bound card. Judgment means the finding would change design, change acceptance, or is robustness outside the card. Mechanical findings from that wave SHALL go together to the single correction Apply. Judgment findings SHALL go straight to residual and MUST NOT occupy the correction slot. A reviewer P0 remains a column block and MUST NOT enter the correction list. P3 remains classified residual. This requirement MUST NOT add a FSM column or event and MUST NOT reopen #884 spawn-per-task or #879 destape matching.
+Each finding from a Code Review wave SHALL already carry `classe` (`mecanico` | `juizo`) in the reviewer dump. The Cursor parent SHALL copy that class before any correction spawn and MUST NOT reclassify by re-reading prose and MUST NOT raise the emitted `gravidade`. Mechanical (`mecanico`) means an obvious file/line/instruction fix whose severity is below architecture, product, or acceptance of the bound card. Judgment (`juizo`) means the finding would change design, change acceptance, or is robustness outside the card. Mechanical findings from that wave SHALL go together to the single correction Apply. Judgment findings SHALL go straight to residual and MUST NOT occupy the correction slot. A reviewer P0 remains a column block and MUST NOT enter the correction list. P3 remains classified residual. A `bloqueia_merge: sim` field on a P3 nit MUST NOT authorize a third cycle. This requirement MUST NOT add a FSM column or event and MUST NOT reopen #884 spawn-per-task or #879 destape matching.
 
 #### Scenario: Mechanical findings occupy the one correction Apply without Ask
 - **WHEN** a Code Review wave returns P1 findings that are mechanical
@@ -372,6 +316,11 @@ Each finding from a Code Review wave SHALL be classified by the Cursor parent as
 - **THEN** that finding is recorded as residual
 - **AND** the parent MUST NOT spend the correction Apply slot on it
 - **AND** the parent MUST NOT ask whether to treat it as a correction
+
+#### Scenario: Parent does not reclassify from prose
+- **WHEN** a reviewer dump labels a finding `classe: juizo` with `gravidade: P2`
+- **THEN** the parent copies juízo / P2
+- **AND** the parent MUST NOT re-read the summary to promote it to mechanical P1
 
 ### Requirement: Deterministic QA failure stays out of the judgment-review wave
 A deterministic `qa-gate` failure caused by test inventory, formatting (Black), or a new-file skip SHALL be handled as Apply/QA backpressure until the check is green or the correction ceiling is already consumed. The parent MUST NOT reopen a judgment-review wave (`diff-reviewer` + `code-reviewer` as product/acceptance review) for that signal. Closing review versus `develop` after the implementation commit remains **one** wave and is not this judgment wave. This requirement MUST NOT add a FSM state, event, hook, or `enabled_tools` entry.
@@ -566,4 +515,61 @@ The `followup_message` SHALL be an order to finish the etapa, never a status que
 - **THEN** none contains a T0–T17 copy of this destape
 - **AND** `clients.*.auto` remains `false`
 - **AND** `AGENTS.md` line count does not grow with this rule
+
+### Requirement: Parent consumes reviewer finding schema as-is
+Each finding returned by `diff-reviewer` or `code-reviewer` SHALL already carry labeled fields in the child dump: `gravidade` (P0–P3), `classe` (`mecanico` | `juizo`), `conserto_obvio` (`sim` | `nao`), `conserto_proposto`, and `bloqueia_merge` (`sim` | `nao`). The Cursor parent SHALL copy those fields before any correction spawn. The parent MUST NOT reclassify `classe` by re-reading prose and MUST NOT raise the emitted `gravidade`. A `bloqueia_merge: sim` field on a P3 nit MUST NOT authorize a third cycle, MUST NOT emit an Ask, and MUST NOT stop the column. A reviewer P0 remains a column block. This requirement MUST NOT add a FSM column or event, MUST NOT reopen #884 spawn-per-task, MUST NOT reopen #879 destape matching, and MUST NOT change the #893 silent ceiling (1 mechanical correction Apply + 1 verify wave; leftover or new P1 = residual on Done; the card continues).
+
+#### Scenario: Parent copies class and severity from the dump
+- **WHEN** a Code Review wave dump contains a `FINDING` block with `gravidade: P2` and `classe: juizo`
+- **THEN** the parent records that finding as P2 judgment residual
+- **AND** the parent MUST NOT publish it as P1
+- **AND** the parent MUST NOT spawn a correction Apply for it
+
+#### Scenario: blocks_merge on a nit does not add a cycle
+- **WHEN** a dump contains `gravidade: P3` and `bloqueia_merge: sim`
+- **THEN** the parent records it as classified P3 residual
+- **AND** the parent MUST NOT open a third cycle
+- **AND** the parent MUST NOT ask the operator to authorize extra work
+
+### Requirement: Destape review followup is an operator-visible table
+`FOLLOWUP_REVIEW` in `scripts/process-fsm/subagent_stop.py` SHALL be an order whose destape policy is a short table of operator-visible rows, not a paragraph that tries to be a state machine. The rows SHALL be: limpo → commit; só juízo → residual, card segue (não gasta correção); mecânico → no máximo um conserto + uma verificação; após 1+1 → residual, card segue; P0 → a coluna pára. The followup MUST still wait for the pair, MUST NOT ask «autorizar extra / aceitar residual», and MUST NOT contain `concluiu?`. Destape matching, sidecar path `.cursor/tmp/awaiting-task.json`, `loop_count`, classification, and poke≠`concluiu?` stay #879. A process reviewer MUST NOT score a missing clause on that table as a finding. A table that is wrong about what the operator sees (P0 no longer stops the column) SHALL be a P1 of acceptance, not wording.
+
+#### Scenario: Review followup lists the five destape rows
+- **WHEN** destape fires for `diff-reviewer` or `code-reviewer` with matching sidecar
+- **THEN** `followup_message` contains the five destape rows (limpo, só juízo, mecânico, após 1+1, P0)
+- **AND** it still waits for the pair if the other reviewer has not returned
+- **AND** it does not contain `concluiu?`
+
+#### Scenario: Missing destape sentence is not a finding
+- **WHEN** a process reviewer dump scores «falta esta frase» or a missing clause on the destape table
+- **THEN** that item MUST NOT enter the operator-facing package
+- **AND** the parent MUST NOT raise it as a new P1 on closing versus `develop`
+
+#### Scenario: Destape table that stops stopping P0 is acceptance P1
+- **WHEN** the destape table or runbook copy would let a reviewer P0 continue the column
+- **THEN** that defect is P1 of acceptance
+- **AND** it is not classified as copy or «frase em falta»
+
+### Requirement: Mechanical process checklist is a parent script
+Before commit after a Code Review wave, the Cursor parent SHALL run `scripts/process-fsm/review_process_checklist.py`. The script SHALL confirm: bound change `tasks.md` has no pending `- [ ]`; bound `design.md` has parseable `UI impact:` / `live_route:` / `surface:` tokens; `.cursor/tmp/review-diff.patch` exists and is non-empty; the pasted interval does not add a state, event, or `enabled_tools` to `.cursor/process-fsm.yaml`. Two reviewers in the same parent turn remains a parent session fact (already #884); the parent MUST treat a wave that was not same-turn as the same visible block. Exit non-zero SHALL print `ERROR: process-checklist failed:` plus the failed item, SHALL be a visible block, and MUST NOT commit. A failed checklist MUST NOT come back as LLM prose or as a process-reviewer finding. Extra automatic tests MUST NOT be the Done criterion of this change.
+
+#### Scenario: Checklist failure blocks commit
+- **WHEN** the parent runs the process checklist and a disk item fails (empty review interval, pending task, missing Design token, or a new FSM edge in the interval)
+- **THEN** the operator-facing chat shows `ERROR: process-checklist failed:` with that item
+- **AND** the parent MUST NOT commit
+- **AND** the parent MUST NOT spawn the process reviewer to restate that failure as a finding
+
+#### Scenario: Checklist pass is not re-scored by the process LLM
+- **WHEN** the process checklist exits 0 and both reviewers were born in the same parent turn
+- **THEN** `code-reviewer` MUST NOT report tasks-done, Design tokens, same-turn wave, pasted interval, or «no new FSM edge» as findings
+- **AND** that reviewer only asks whether the diff punctures Entra/não entra of the bound change
+
+### Requirement: Schema does not change the silent ceiling
+The finding schema and destape table SHALL NOT change the #893 silent ceiling: at most one mechanical correction Apply plus one verify wave; no operator Ask; leftover or new P1/P2 = residual on Done (handoff + card comment) and the card continues; a reviewer P0 still stops the column. Deterministic QA inventory/formatting/new-file-skip stays out of the judgment-review wave. Human homologation remains once (T15). This requirement MUST NOT add a FSM column or event and MUST NOT reopen #884, #879, or #880.
+
+#### Scenario: Schema field does not authorize a third cycle
+- **WHEN** a verify wave dump still has P1/P2 after one correction Apply, including a `bloqueia_merge: sim` on a non-P0 finding
+- **THEN** the parent records residual on the Done handoff and the card comment
+- **AND** the parent MUST NOT spawn a third cycle
+- **AND** the parent MUST NOT ask «autorizar extra / aceitar residual»
 
