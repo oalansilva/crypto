@@ -75,15 +75,16 @@ The `/opsx:apply` skill SHALL include a mandatory step for `UI impact: affected`
 - **THEN** the skill instructs loading `frontend/public/prototypes/<slug>/` before coding UI
 
 ### Requirement: Versioned local reviewer subagents exist
-The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md`, each with `readonly: true` and `model: inherit`.
+The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md`, each with `readonly: true` and `model: composer-2.5`. The YAML `model` is a redundant pin; the law is the Task `model` parameter of the spawn. Neither file SHALL declare `model: inherit`.
 
 #### Scenario: Reviewer files are versioned
 - **WHEN** a Cursor Agent session starts in the repo
 - **THEN** both agent files are available for delegation during Code Review
-- **AND** each MUST declare `readonly: true` and `model: inherit`
+- **AND** each MUST declare `readonly: true` and `model: composer-2.5`
+- **AND** neither MUST declare `model: inherit`
 
 ### Requirement: Review stance lives in local reviewer agents
-The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md`, each with `readonly: true` and `model: inherit`, and those files SHALL carry review constraints (Design/`Pronto para Dev` not skippable, no secrets in commits, consumer overlay `runtime.database` when present, tests when backend changes, Playwright visual when UI changes). `REVIEW.md` MAY exist and MUST NOT mention Bugbot. `BUGBOT.md` MUST NOT exist. Cursor Bugbot MUST NOT be the Code Review path.
+The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md`, each with `readonly: true` and `model: composer-2.5`, and those files SHALL carry review constraints (Design/`Pronto para Dev` not skippable, no secrets in commits, consumer overlay `runtime.database` when present, tests when backend changes, Playwright visual when UI changes). `REVIEW.md` MAY exist and MUST NOT mention Bugbot. `BUGBOT.md` MUST NOT exist. Cursor Bugbot MUST NOT be the Code Review path.
 
 #### Scenario: Reviewer files carry the stance
 - **WHEN** a local `diff-reviewer` run starts
