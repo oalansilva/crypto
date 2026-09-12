@@ -117,9 +117,8 @@ N/A — sem superfície visual; não há pipeline context → shape → prototyp
 
 - `.cursor/rules/harness.mdc`: corpo exacto da D2 (5 linhas; orçamento 4–12).
 - `.cursor/skills/covenant-flow/SKILL.md`: substituir «Task/subagent usa inherit» pelo mapa da D1; prompts autocontidos passam o slug no parâmetro; silêncio sobre picker do pai (exceto D10: chat pai Composer 2.5 para release/lote); filho `fecho-lote` (D5); destape/resume keep-slug Composer (D9); proxy no handoff (D3). MUST NOT copiar a tabela para `AGENTS.md`. MUST NOT dual-write stubs. MUST NOT adicionar needle ao classificador de destape. Pin citado permanece `v1.1.15` (corrigir o `v1.1.14` residual no S1 se o Apply tocar essa linha — detalhe de Apply, não aceite).
-- `.cursor/skills/kaizen/SKILL.md`: `/kaizen release` MAY notar se o closeout correu com chat pai não-Composer (achado de processo; sem parser de usage).
+- `.cursor/skills/kaizen/SKILL.md`: `/kaizen release` lê `proxy modelo:` nos comentários REST do pacote e compara com a tabela vigente; MAY notar se o closeout correu com chat pai não-Composer (achado de processo; sem parser de usage).
 - `.cursor/agents/diff-reviewer.md` e `code-reviewer.md`: `model: composer-2.5`; `readonly: true` intacto; corpo (intervalo, schema FINDING, teto) intacto.
-- `.cursor/skills/kaizen/SKILL.md`: `/kaizen release` lê `proxy modelo:` nos comentários REST do pacote e compara com a tabela vigente.
 - Specs delta desta change. Isolamento / destape / sidecar / Q2–Q6 / teto 1+1 / onda no mesmo turno **não** se reabrem.
 - Goldens existentes que partirem (`model: inherit` nos agent files, `Task inherit` no harness) MAY ser retunados. MUST NOT `test_card_904_*` como aceite. MUST NOT editar `subagent_stop.py`.
 - Prova viva (QA deste card, não pytest): Apply #904 Composer + Design-crítico (ou grill) Grok, host `completed`, nos dois modos Cursor. Cloud/Auto/fast fora.
