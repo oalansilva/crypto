@@ -11,6 +11,9 @@ version: 1
 /combo/select:
   selectors: [".combo-page"]
   texts: ["Available Templates"]
+/combo/results:
+  selectors: [".combo-page"]
+  texts: ["Lista de operações", "Análise da estratégia"]
 landing:
   kind: public
   live_url: https://criptofarol.com.br/

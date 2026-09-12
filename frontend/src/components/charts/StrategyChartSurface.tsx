@@ -20,6 +20,7 @@ import {
     type StrategyTransparencyIndicator,
 } from '../../lib/strategyTransparency'
 import { formatStrategyParameterLabel, formatStrategyParameterValue } from '../../lib/strategyParameters'
+import { applyMarkerLabelDensity } from '../../lib/tradeMarkers'
 
 export interface StrategyChartCandle {
     timestamp_utc: string
@@ -86,6 +87,7 @@ interface StrategyChartSurfaceProps {
     loading?: boolean
     error?: string | null
     markerCount?: number
+    listCount?: number
     currentMarkerLabel?: string
     rootTestId: string
     chartTestId: string
@@ -215,6 +217,7 @@ export function StrategyChartSurface({
     loading,
     error,
     markerCount,
+    listCount,
     currentMarkerLabel,
     rootTestId,
     chartTestId,
@@ -245,6 +248,7 @@ export function StrategyChartSurface({
     const lastAppliedCandleCountRef = React.useRef(0)
     const userAdjustedViewportRef = React.useRef(false)
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null)
+    const [viewportFromTimestamp, setViewportFromTimestamp] = React.useState('')
     const [tooltip, setTooltip] = React.useState<StrategyChartSnapshot | null>(null)
     const resolvedViewportKey = viewportResetKey
         || [symbol, timeframe].filter(Boolean).join('|')
@@ -300,6 +304,10 @@ export function StrategyChartSurface({
         color: candle.close >= candle.open ? 'rgba(14, 203, 129, 0.45)' : 'rgba(246, 70, 93, 0.45)',
     })), [sortedCandles])
     const chartMarkers = React.useMemo(() => normalizeMarkers(markers), [markers])
+    const renderedChartMarkers = React.useMemo(
+        () => applyMarkerLabelDensity(chartMarkers, visibleBarCount),
+        [chartMarkers, visibleBarCount],
+    )
     const tooltipData = React.useMemo(() => (
         new Map<number, StrategyChartSnapshot>(
             sortedCandles.map((candle) => {
@@ -322,7 +330,16 @@ export function StrategyChartSurface({
 
     const syncVisibleBars = React.useCallback((range: LogicalRange | null) => {
         setVisibleBarCount(getVisibleBarCount(range))
-    }, [])
+        if (!range || sortedCandles.length === 0) {
+            setViewportFromTimestamp('')
+            return
+        }
+        const fromIndex = Math.min(
+            sortedCandles.length - 1,
+            Math.max(0, Math.round(range.from)),
+        )
+        setViewportFromTimestamp(sortedCandles[fromIndex]?.timestamp_utc ?? '')
+    }, [sortedCandles])
 
     React.useEffect(() => {
         tooltipDataRef.current = tooltipData
@@ -547,8 +564,8 @@ export function StrategyChartSurface({
         const candleSeries = candleSeriesRef.current
         if (!candleSeries) return
 
-        candleSeries.setMarkers(chartMarkers as any)
-    }, [chartMarkers])
+        candleSeries.setMarkers(renderedChartMarkers as any)
+    }, [renderedChartMarkers])
 
     React.useEffect(() => {
         const candleSeries = candleSeriesRef.current
@@ -709,7 +726,15 @@ export function StrategyChartSurface({
             className={`overflow-hidden rounded-lg border border-[#2b3139] bg-[#0b0e11] text-[#eaecef] ${className}`}
             data-testid={rootTestId}
             data-marker-count={markerCount ?? markers?.length ?? 0}
+            data-list-count={listCount != null ? String(listCount) : ''}
+            data-viewport-from={viewportFromTimestamp ? viewportFromTimestamp.slice(0, 10) : ''}
             data-marker-labels={chartMarkers.map((marker) => marker.text).join('|')}
+            data-marker-times={chartMarkers.map((marker) => {
+                if (typeof marker.time === 'number') {
+                    return new Date(marker.time * 1000).toISOString().slice(0, 10)
+                }
+                return String(marker.time).slice(0, 10)
+            }).join('|')}
             data-last-candle-timestamp={sortedCandles.at(-1)?.timestamp_utc ?? ''}
         >
             <header className="border-b border-[#2b3139] bg-[#0b0e11] px-4 py-4 sm:px-5">
