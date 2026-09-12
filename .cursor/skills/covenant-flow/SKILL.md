@@ -14,7 +14,7 @@ Prioridade (δ e Guard > overlay > skill > wording):
 3. **Esta skill** (runbook).
 4. **Wording** do chat (`implemente`, `autorizo`, `gostaria sempre`).
 
-Cliente: **Cursor Agent**. Lei = parâmetro `model` do Task nos dois caminhos de spawn (tipo nomeado **ou** `generalPurpose` com o corpo do agent file colado). **Lista fechada isolada** (**sem** transcript do pai): `grill-card`, Design-autor, Apply-coluna, QA checks, Assessment A/B, `diff-reviewer`, `code-reviewer`. Review = diff **exato** (não “Codex review”). Mapa (rótulo no handoff; slug no parâmetro `model`):
+Cliente: **Cursor Agent**. Lei = parâmetro `model` do Task nos dois caminhos de spawn (tipo nomeado **ou** `generalPurpose` com o corpo do agent file colado). **lista fechada isolada** (**sem** transcript do pai): `grill-card`, Design-autor, Apply-coluna, QA checks, Assessment A/B, `diff-reviewer`, `code-reviewer`. Review = diff **exato** (não “Codex review”). Mapa (rótulo no handoff; slug no parâmetro `model`):
 
 | Papel | Rótulo | Slug |
 | --- | --- | --- |
