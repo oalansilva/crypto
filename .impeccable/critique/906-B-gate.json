@@ -1,0 +1,1138 @@
+{
+  "viewports": [
+    {
+      "viewport": "desktop 1440x900",
+      "pass": true,
+      "n": 55,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "final_url_proto",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-906-discovery-metrics-grid/"
+        },
+        {
+          "id": "not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-906-discovery-metrics-grid/"
+        },
+        {
+          "id": "lm_html_descoberta",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_preflight",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_rascunho",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_h1_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 561,
+            "h": 38,
+            "x": 256,
+            "y": 136,
+            "text": "Descoberta de estratégias swing"
+          }
+        },
+        {
+          "id": "default_acomp",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "panel_acomp_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "acomp_no_expand",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "acomp_cell_Calmar",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 141,
+            "h": 97,
+            "x": 717,
+            "y": 807,
+            "text": "22,53"
+          }
+        },
+        {
+          "id": "acomp_cell_Maximum Drawdown",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 102,
+            "h": 97,
+            "x": 859,
+            "y": 807,
+            "text": "−16,5%"
+          }
+        },
+        {
+          "id": "acomp_cell_negócios / cobertura",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 172,
+            "h": 97,
+            "x": 961,
+            "y": 807,
+            "text": "30 · 100%"
+          }
+        },
+        {
+          "id": "acomp_cell_Sharpe",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 86,
+            "h": 97,
+            "x": 1133,
+            "y": 807,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "acomp_cell_Win rate",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 89,
+            "h": 97,
+            "x": 1219,
+            "y": 807,
+            "text": "46,7%"
+          }
+        },
+        {
+          "id": "acomp_cell_Retorno (CAGR)",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 99,
+            "h": 97,
+            "x": 1308,
+            "y": 807,
+            "text": "17,8%"
+          }
+        },
+        {
+          "id": "acomp_cagr_178",
+          "ok": true,
+          "detail": "17,8%"
+        },
+        {
+          "id": "no_return_47916",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "acomp_sharpe_031",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 86,
+            "h": 97,
+            "x": 1133,
+            "y": 807,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "acomp_sharpe_na_row",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 86,
+            "h": 97,
+            "x": 1133,
+            "y": 1195,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "acomp_win_na_row",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 89,
+            "h": 97,
+            "x": 1219,
+            "y": 1195,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "acomp_cagr_na_row",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 99,
+            "h": 97,
+            "x": 1308,
+            "y": 1195,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "acomp_thead_six",
+          "ok": true,
+          "detail": [
+            "Rank",
+            "Candidato",
+            "Calmar",
+            "Max DD",
+            "Trades/cobertura",
+            "Sharpe",
+            "Win%",
+            "CAGR"
+          ]
+        },
+        {
+          "id": "acomp_thead_cagr_shown",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 99,
+            "h": 57,
+            "x": 1308,
+            "y": 750,
+            "text": "CAGR\nanualizado"
+          }
+        },
+        {
+          "id": "decidir_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "decidir_cell_Calmar",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 111,
+            "h": 200,
+            "x": 694,
+            "y": 622,
+            "text": "22,53"
+          }
+        },
+        {
+          "id": "decidir_cell_Maximum Drawdown",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 80,
+            "h": 200,
+            "x": 804,
+            "y": 622,
+            "text": "−16,5%"
+          }
+        },
+        {
+          "id": "decidir_cell_negócios / cobertura",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 135,
+            "h": 200,
+            "x": 884,
+            "y": 622,
+            "text": "30 · 100%"
+          }
+        },
+        {
+          "id": "decidir_cell_Sharpe",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 67,
+            "h": 200,
+            "x": 1019,
+            "y": 622,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "decidir_cell_Win rate",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 70,
+            "h": 200,
+            "x": 1087,
+            "y": 622,
+            "text": "46,7%"
+          }
+        },
+        {
+          "id": "decidir_cell_Retorno (CAGR)",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 77,
+            "h": 200,
+            "x": 1156,
+            "y": 622,
+            "text": "17,8%"
+          }
+        },
+        {
+          "id": "decidir_cagr_178",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 77,
+            "h": 200,
+            "x": 1156,
+            "y": 622,
+            "text": "17,8%"
+          }
+        },
+        {
+          "id": "decidir_not_return",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "details_collapsed_none",
+          "ok": true,
+          "detail": {
+            "display": "none",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 0,
+            "h": 0,
+            "x": 0,
+            "y": 0,
+            "text": "B&H 8,4% · Δ +9,4 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+          }
+        },
+        {
+          "id": "decidir_six_without_expand",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "ins_row_present",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "ins_seal",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 321,
+            "h": 26,
+            "x": 365,
+            "y": 1079,
+            "text": "Amostra insuficiente"
+          }
+        },
+        {
+          "id": "ins_decidir-sharpe-na",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 67,
+            "h": 141,
+            "x": 1019,
+            "y": 1023,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "ins_decidir-win-na",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 70,
+            "h": 141,
+            "x": 1087,
+            "y": 1023,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "ins_decidir-cagr-na",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 77,
+            "h": 141,
+            "x": 1156,
+            "y": 1023,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "sort_two_only",
+          "ok": true,
+          "detail": {
+            "vals": [
+              "calmar",
+              "delta"
+            ],
+            "txt": [
+              "Calmar",
+              "CAGR vs B&H"
+            ]
+          }
+        },
+        {
+          "id": "sort_no_sharpe_win_cagr",
+          "ok": true,
+          "detail": [
+            "Calmar",
+            "CAGR vs B&H"
+          ]
+        },
+        {
+          "id": "sort_labels",
+          "ok": true,
+          "detail": [
+            "Calmar",
+            "CAGR vs B&H"
+          ]
+        },
+        {
+          "id": "details_open_block",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 257,
+            "h": 50,
+            "x": 365,
+            "y": 814,
+            "text": "B&H 8,4% · Δ +9,4 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+          }
+        },
+        {
+          "id": "details_bh_pf_janela",
+          "ok": true,
+          "detail": "B&H 8,4% · Δ +9,4 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+        },
+        {
+          "id": "details_no_sharpe_win_cagr",
+          "ok": true,
+          "detail": "B&H 8,4% · Δ +9,4 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+        },
+        {
+          "id": "cagr_visible_after_expand",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 77,
+            "h": 256,
+            "x": 1156,
+            "y": 622,
+            "text": "17,8%"
+          }
+        },
+        {
+          "id": "no_antes_depois",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "montar_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "montar_no_table_lb",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "montar_panel_no_metrics",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_preflight_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 106,
+            "h": 23,
+            "x": 1099,
+            "y": 323,
+            "text": "Preflight"
+          }
+        },
+        {
+          "id": "lm_rascunho_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 253,
+            "h": 23,
+            "x": 277,
+            "y": 323,
+            "text": "Rascunho de varredura"
+          }
+        },
+        {
+          "id": "console_impact_0",
+          "ok": true,
+          "detail": {
+            "console": [],
+            "pageerror": [],
+            "impact": []
+          }
+        },
+        {
+          "id": "no_http_ge_400",
+          "ok": true,
+          "detail": []
+        }
+      ],
+      "console": [],
+      "pageerror": [],
+      "bad_resps": [],
+      "overflow": {
+        "sw": 1440,
+        "cw": 1440
+      },
+      "url": "https://dev.criptofarol.com.br/prototypes/card-906-discovery-metrics-grid/"
+    },
+    {
+      "viewport": "mobile 390x844",
+      "pass": true,
+      "n": 55,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "final_url_proto",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-906-discovery-metrics-grid/"
+        },
+        {
+          "id": "not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-906-discovery-metrics-grid/"
+        },
+        {
+          "id": "lm_html_descoberta",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_preflight",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_rascunho",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_h1_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 358,
+            "h": 62,
+            "x": 16,
+            "y": 122,
+            "text": "Descoberta de estratégias swing"
+          }
+        },
+        {
+          "id": "default_acomp",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "panel_acomp_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "acomp_no_expand",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "acomp_cell_Calmar",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 50,
+            "x": 44,
+            "y": 1292,
+            "text": "22,53"
+          }
+        },
+        {
+          "id": "acomp_cell_Maximum Drawdown",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 50,
+            "x": 195,
+            "y": 1292,
+            "text": "−16,5%"
+          }
+        },
+        {
+          "id": "acomp_cell_negócios / cobertura",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 58,
+            "x": 44,
+            "y": 1342,
+            "text": "30 · 100%"
+          }
+        },
+        {
+          "id": "acomp_cell_Sharpe",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 58,
+            "x": 195,
+            "y": 1342,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "acomp_cell_Win rate",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 44,
+            "y": 1400,
+            "text": "46,7%"
+          }
+        },
+        {
+          "id": "acomp_cell_Retorno (CAGR)",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 195,
+            "y": 1400,
+            "text": "17,8%"
+          }
+        },
+        {
+          "id": "acomp_cagr_178",
+          "ok": true,
+          "detail": "17,8%"
+        },
+        {
+          "id": "no_return_47916",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "acomp_sharpe_031",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 58,
+            "x": 195,
+            "y": 1342,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "acomp_sharpe_na_row",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 58,
+            "x": 195,
+            "y": 2750,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "acomp_win_na_row",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 44,
+            "y": 2808,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "acomp_cagr_na_row",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 195,
+            "y": 2808,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "acomp_thead_six",
+          "ok": true,
+          "detail": [
+            "Rank",
+            "Candidato",
+            "Calmar",
+            "Max DD",
+            "Trades/cobertura",
+            "Sharpe",
+            "Win%",
+            "CAGR"
+          ]
+        },
+        {
+          "id": "acomp_mobile_cards",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "decidir_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "decidir_cell_Calmar",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 50,
+            "x": 44,
+            "y": 1301,
+            "text": "22,53"
+          }
+        },
+        {
+          "id": "decidir_cell_Maximum Drawdown",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 50,
+            "x": 195,
+            "y": 1301,
+            "text": "−16,5%"
+          }
+        },
+        {
+          "id": "decidir_cell_negócios / cobertura",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 58,
+            "x": 44,
+            "y": 1351,
+            "text": "30 · 100%"
+          }
+        },
+        {
+          "id": "decidir_cell_Sharpe",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 58,
+            "x": 195,
+            "y": 1351,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "decidir_cell_Win rate",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 44,
+            "y": 1409,
+            "text": "46,7%"
+          }
+        },
+        {
+          "id": "decidir_cell_Retorno (CAGR)",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 195,
+            "y": 1409,
+            "text": "17,8%"
+          }
+        },
+        {
+          "id": "decidir_cagr_178",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 195,
+            "y": 1409,
+            "text": "17,8%"
+          }
+        },
+        {
+          "id": "decidir_not_return",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "details_collapsed_none",
+          "ok": true,
+          "detail": {
+            "display": "none",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 0,
+            "h": 0,
+            "x": 0,
+            "y": 0,
+            "text": "B&H 8,4% · Δ +9,4 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+          }
+        },
+        {
+          "id": "decidir_six_without_expand",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "ins_row_present",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "ins_seal",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 125,
+            "h": 26,
+            "x": 49,
+            "y": 2288,
+            "text": "Amostra insuficiente"
+          }
+        },
+        {
+          "id": "ins_decidir-sharpe-na",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 50,
+            "x": 195,
+            "y": 2380,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "ins_decidir-win-na",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 44,
+            "y": 2430,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "ins_decidir-cagr-na",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 195,
+            "y": 2430,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "sort_two_only",
+          "ok": true,
+          "detail": {
+            "vals": [
+              "calmar",
+              "delta"
+            ],
+            "txt": [
+              "Calmar",
+              "CAGR vs B&H"
+            ]
+          }
+        },
+        {
+          "id": "sort_no_sharpe_win_cagr",
+          "ok": true,
+          "detail": [
+            "Calmar",
+            "CAGR vs B&H"
+          ]
+        },
+        {
+          "id": "sort_labels",
+          "ok": true,
+          "detail": [
+            "Calmar",
+            "CAGR vs B&H"
+          ]
+        },
+        {
+          "id": "details_open_block",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 257,
+            "h": 50,
+            "x": 49,
+            "y": 458,
+            "text": "B&H 8,4% · Δ +9,4 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+          }
+        },
+        {
+          "id": "details_bh_pf_janela",
+          "ok": true,
+          "detail": "B&H 8,4% · Δ +9,4 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+        },
+        {
+          "id": "details_no_sharpe_win_cagr",
+          "ok": true,
+          "detail": "B&H 8,4% · Δ +9,4 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+        },
+        {
+          "id": "cagr_visible_after_expand",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 151,
+            "h": 37,
+            "x": 195,
+            "y": 624,
+            "text": "17,8%"
+          }
+        },
+        {
+          "id": "no_antes_depois",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "montar_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "montar_no_table_lb",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "montar_panel_no_metrics",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_preflight_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 106,
+            "h": 23,
+            "x": 37,
+            "y": 925,
+            "text": "Preflight"
+          }
+        },
+        {
+          "id": "lm_rascunho_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 218,
+            "h": 23,
+            "x": 37,
+            "y": 419,
+            "text": "Rascunho de varredura"
+          }
+        },
+        {
+          "id": "console_impact_0",
+          "ok": true,
+          "detail": {
+            "console": [],
+            "pageerror": [],
+            "impact": []
+          }
+        },
+        {
+          "id": "no_http_ge_400",
+          "ok": true,
+          "detail": []
+        }
+      ],
+      "console": [],
+      "pageerror": [],
+      "bad_resps": [],
+      "overflow": {
+        "sw": 390,
+        "cw": 390
+      },
+      "url": "https://dev.criptofarol.com.br/prototypes/card-906-discovery-metrics-grid/"
+    }
+  ],
+  "all_pass": true
+}

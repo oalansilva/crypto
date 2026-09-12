@@ -217,7 +217,8 @@ for (const viewport of VIEWPORTS) {
     await expect(alphaPartial.getByText('Amostra insuficiente')).toHaveCount(0)
 
     const naPartial = page.getByTestId('partial-na')
-    await expect(naPartial.getByText('N/A')).toBeVisible()
+    await expect(naPartial.getByTestId('partial-sharpe-na-RS-896-NA')).toHaveText('N/A')
+    await expect(naPartial.locator('td.na')).toHaveCount(4)
 
     const partialVerdicts = await partials.locator('tbody tr').evaluateAll((rows) =>
       rows.map((row) => (row as HTMLElement).dataset.verdict || ''),
