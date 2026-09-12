@@ -33,6 +33,10 @@ Invented path/URL, loop without progress, high cost/work without `Done`, eternal
 
 Use the Kaizen Audit Findings template (metrics, F-n findings with evidence, recommendations mapped 1:1 to proposed cards). Public issues get IDs and aggregates only.
 
+## `/kaizen release` — proxy de modelo
+
+No modo `/kaizen release`, além das fontes acima, ler comentários REST dos issues do pacote (`gh api repos/<owner>/<repo>/issues/<n>/comments`) e procurar linhas `proxy modelo: <papel> → <rótulo> (<slug>)` nos handoffs de Design, Apply e Review. Comparar com a tabela juízo/execução vigente em `.cursor/skills/covenant-flow/SKILL.md` (Grok 4.6 / `cursor-grok-4.6-high` para juízo; Composer 2.5 / `composer-2.5` para execução). Linha em falta num card que spawnou filhos = achado (não skip silencioso). MUST NOT parser de usage Cursor/Grok; MUST NOT dashboard; MUST NOT valores em dinheiro de API de vendor.
+
 ## Closeout (orquestrador — fora desta skill)
 
 A auditoria `/kaizen release` permanece **read-only**. Antes do `release-guard post`, o **orquestrador do closeout** MUST materializar no board até 3 issues `kaizen` em `Status=Em Refinamento` **ou** registrar na tabela `### Cards kaizen criados…` dedupe válido (`(não criado) … coberto por #N` com `#N` ainda em fluxo, não `Pronto`/`Cancelado`) **ou** o marcador `Sem achados acionáveis` (sem linhas de dados). O `post` valida isso (#661); heading sozinho não basta.
