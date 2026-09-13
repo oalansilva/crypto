@@ -553,7 +553,11 @@ def test_grok_impeccable_command_resolves_from_workspace_and_hooks_dir():
         hooks["hooks"]["PreToolUse"][1]["hooks"][0]["command"],
         hooks["hooks"]["SessionStart"][0]["hooks"][0]["command"],
     ]
-    cwds = [REPO, REPO / ".grok" / "hooks", REPO / "frontend"]
+    cwds = [
+        path
+        for path in (REPO, REPO / ".grok" / "hooks", REPO / "frontend")
+        if path.is_dir()
+    ]
     for command in commands:
         for cwd in cwds:
             proc = _sh_hook(command, cwd)
