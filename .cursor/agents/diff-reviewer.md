@@ -1,7 +1,7 @@
 ---
 name: diff-reviewer
 description: Defect reviewer for Code Review. Use during Status=Code Review on the exact diff. Read-only. Hunt bugs introduced by the patch, not process ceremony.
-model: composer-2.5
+model: inherit
 readonly: true
 ---
 

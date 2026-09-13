@@ -1290,3 +1290,7 @@
 - **F-8 (P2)**: 3 todos abertos em sessão do #491; erros isolados de tool (webfetch 404, read not found) sem loop.
 - **Cards kaizen criados**: 3 (P0 bug #509 follow-up; P1 bug check changes terminais; P1 story ordem canônica de fechamento), todos em `Status=Em Refinamento`.
 - **Trechos de sessão (evidência local)**: `ses_00240169` — "Rate limit GraphQL zerou (0/5000, reset em ~57min) — o guard post consome ~4900 pontos por execução"; guard post com RELEASE_CARDS classificou branches como "preserved (card in flight; not deleted)" e o post passou (caso fail-open residual). `ses_000d79ef` — spawn kaizen com 0 messages/0 parts.
+
+## 2026-09-12 — Kaizen release (lote 916/917) — 2º pacote
+
+Pacote #916/#917 → main  (PR #922). Filho fecho-lote kaizen. Achados: #658 homologado comment; #910 Responsável; Pronto #897/#899 vs main (kaizen P1 proposto).

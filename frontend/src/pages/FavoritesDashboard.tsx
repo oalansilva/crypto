@@ -16,10 +16,6 @@ import {
 import type { TradeExplanation } from '@/types/tradeExplanation';
 import type { MonitorSyncStatus } from '@/lib/signalHistory';
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison';
-import {
-    favoriteGridMetrics,
-    isDiscoveryOrigin,
-} from '@/lib/discoveryFavoriteMetrics';
 
 import * as XLSX from 'xlsx';
 
@@ -587,9 +583,8 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const getSummaryTradeCount = (fav: FavoriteStrategy): number => {
-        const metrics = favoriteGridMetrics(fav.metrics);
         const summaryTradeCount = Number(
-            metrics.total_trades ?? (typeof metrics.trades === 'number' ? metrics.trades : 0)
+            fav.metrics?.total_trades ?? (typeof fav.metrics?.trades === 'number' ? fav.metrics.trades : 0)
         );
         return Number.isFinite(summaryTradeCount) ? summaryTradeCount : 0;
     };
@@ -816,20 +811,17 @@ const FavoritesDashboard: React.FC = () => {
         fav: FavoriteStrategy,
         recovered: Awaited<ReturnType<typeof loadTradesForAnalysis>>
     ) => {
-        const sourceMetrics = favoriteGridMetrics(recovered.metrics || fav.metrics || {});
+        const sourceMetrics = recovered.metrics || fav.metrics || {};
         const trades = Array.isArray(recovered.trades) ? recovered.trades : [];
-        const discoveryOrigin = isDiscoveryOrigin(sourceMetrics) || isDiscoveryOrigin(fav.metrics);
         const totalReturn = Number(
             sourceMetrics.total_return ?? (
                 sourceMetrics.total_return_pct != null ? Number(sourceMetrics.total_return_pct) / 100 : 0
             )
         );
-        const totalTrades = Number(
-            sourceMetrics.total_trades ?? (discoveryOrigin ? sourceMetrics.total_trades : trades.length)
-        );
+        const totalTrades = Number(sourceMetrics.total_trades ?? trades.length);
         const metrics = {
             ...sourceMetrics,
-            total_trades: Number.isFinite(totalTrades) ? totalTrades : (discoveryOrigin ? sourceMetrics.total_trades : trades.length),
+            total_trades: Number.isFinite(totalTrades) ? totalTrades : trades.length,
             total_return: Number.isFinite(totalReturn) ? totalReturn : 0,
             win_rate: Number(sourceMetrics.win_rate ?? 0),
             avg_profit: Number(sourceMetrics.avg_profit ?? (
@@ -840,10 +832,6 @@ const FavoritesDashboard: React.FC = () => {
             template_name: isFavoriteProtected(fav) ? getFavoriteStrategyLabel(fav) : fav.strategy_name,
             symbol: fav.symbol,
             timeframe: fav.timeframe,
-            start_date: fav.start_date ?? null,
-            end_date: fav.end_date ?? null,
-            origin_type: sourceMetrics.origin_type || fav.metrics?.origin_type || null,
-            promotion_metrics: sourceMetrics.metrics_snapshot || null,
             parameters: isFavoriteProtected(fav) && !isAdmin ? {} : fav.parameters || {},
             metrics,
             trades,
@@ -907,12 +895,10 @@ const FavoritesDashboard: React.FC = () => {
             if (monitorSync.trades && monitorSync.trades.length > 0) {
                 const mergedTrades = mergeFavoriteAndMonitorTrades(analysisResult.trades, monitorSync.trades);
                 analysisResult.trades = mergedTrades;
-                if (!isDiscoveryOrigin(analysisResult.metrics)) {
-                    analysisResult.metrics = {
-                        ...analysisResult.metrics,
-                        total_trades: mergedTrades.filter((trade: any) => trade.exit_time && trade.exit_price).length,
-                    };
-                }
+                analysisResult.metrics = {
+                    ...analysisResult.metrics,
+                    total_trades: mergedTrades.filter((trade: any) => trade.exit_time && trade.exit_price).length,
+                };
                 analysisResult.execution_mode = 'favorite_monitor_sync_all_trades';
             }
 
@@ -960,13 +946,9 @@ const FavoritesDashboard: React.FC = () => {
     type SortByOption = 'return' | 'sharpe' | 'trades' | 'returnPerTrade';
     const [sortBy, setSortBy] = useState<SortByOption>('returnPerTrade');
 
-    /** Número de trades: combo-saved usa a lista; Descoberta usa o snapshot da promoção. */
+    /** Número de trades: preferir tamanho da lista metrics.trades para bater com a "List of trades". */
     const getTradesCount = (fav: FavoriteStrategy): number => {
-        const m = favoriteGridMetrics(fav.metrics);
-        if (isDiscoveryOrigin(fav.metrics)) {
-            const n = m.total_trades ?? (typeof m.trades === 'number' ? m.trades : null);
-            return n != null && Number.isFinite(Number(n)) ? Math.max(0, Number(n)) : 0;
-        }
+        const m = fav.metrics || {};
         if (Array.isArray(m.trades) && m.trades.length >= 0) return m.trades.length;
         const n = m.total_trades ?? (typeof m.trades === 'number' ? m.trades : null);
         return n != null ? Math.max(0, Number(n)) : 0;
@@ -979,7 +961,7 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const getReturnPct = (fav: FavoriteStrategy): number => {
-        const metrics = favoriteGridMetrics(fav.metrics);
+        const metrics = fav.metrics || {};
         if (metrics.total_return_pct != null) {
             return getSortableNumber(metrics.total_return_pct);
         }
@@ -997,7 +979,7 @@ const FavoritesDashboard: React.FC = () => {
             case 'return':
                 return returnPct;
             case 'sharpe':
-                return getSortableNumber(favoriteGridMetrics(fav.metrics).sharpe_ratio);
+                return getSortableNumber(fav.metrics?.sharpe_ratio);
             case 'trades':
                 return trades;
             case 'returnPerTrade':
@@ -1069,7 +1051,7 @@ const FavoritesDashboard: React.FC = () => {
 
         // Prepare data for export
         const dataToExport = filteredFavorites.map(fav => {
-            const m = favoriteGridMetrics(fav.metrics);
+            const m = fav.metrics || {};
             // derived
             const totalReturn = m.total_return_pct ?? m.total_return;
             const totalReturnPct = m.total_return_pct ?? (m.total_return != null ? m.total_return * 100 : null);
@@ -1397,7 +1379,7 @@ const FavoritesDashboard: React.FC = () => {
                             <div className="fav-empty">Nenhuma estratégia favorita encontrada.</div>
                         ) : (
                             visibleFavorites.map((fav: FavoriteStrategy) => {
-                                const m = favoriteGridMetrics(fav.metrics);
+                                const m = fav.metrics || {};
                                 const tier = getTierDisplay(fav.tier);
                                 const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
                                 const direction = getFavoriteDirection(fav);
@@ -1405,15 +1387,8 @@ const FavoritesDashboard: React.FC = () => {
                                 const strategyDescription = getFavoriteStrategyDescription(fav);
                                 const refreshStatus = formatRefreshStatus(fav);
                                 const revalidationStatus = formatRevalidationStatus(fav);
-                                const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
                                 return (
-                                    <article
-                                        key={fav.id}
-                                        className={`fav-mobile-card ${tier.className}`}
-                                        data-testid={`favorite-${fav.id}-mobile`}
-                                        data-origin={origin}
-                                        data-favorite-id={fav.id}
-                                    >
+                                    <article key={fav.id} className={`fav-mobile-card ${tier.className}`}>
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
@@ -1439,9 +1414,9 @@ const FavoritesDashboard: React.FC = () => {
                                         </div>
                                         <div className="fav-mobile-metrics">
                                             <span><b>TF</b>{fav.timeframe}</span>
-                                            <span data-metric="sharpe"><b>Sharpe</b>{formatNum(m.sharpe_ratio)}</span>
-                                            <span data-metric="trades"><b>Trades</b>{getTradesCount(fav)}</span>
-                                            <span className={totalReturn.positive ? 'positive' : 'negative'} data-metric="return"><b>Return</b>{totalReturn.text}</span>
+                                            <span><b>Sharpe</b>{formatNum(m.sharpe_ratio)}</span>
+                                            <span><b>Trades</b>{getTradesCount(fav)}</span>
+                                            <span className={totalReturn.positive ? 'positive' : 'negative'}><b>Return</b>{totalReturn.text}</span>
                                         </div>
                                         <div className="fav-mobile-actions">
                                             <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa">
@@ -1496,7 +1471,7 @@ const FavoritesDashboard: React.FC = () => {
                                 ) : (
                                     visibleFavorites.map((fav: FavoriteStrategy) => {
                                         const isSelected = selectedIds.includes(fav.id);
-                                        const m = favoriteGridMetrics(fav.metrics);
+                                        const m = fav.metrics || {};
                                         const tier = getTierDisplay(fav.tier);
                                         const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
                                         const direction = getFavoriteDirection(fav);
@@ -1506,16 +1481,9 @@ const FavoritesDashboard: React.FC = () => {
                                         const strategyDescription = getFavoriteStrategyDescription(fav);
                                         const refreshStatus = formatRefreshStatus(fav);
                                         const revalidationStatus = formatRevalidationStatus(fav);
-                                        const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
 
                                         return (
-                                            <tr
-                                                key={fav.id}
-                                                className={`${tier.className} ${isSelected ? 'selected' : ''}`}
-                                                data-testid={`favorite-${fav.id}`}
-                                                data-origin={origin}
-                                                data-favorite-id={fav.id}
-                                            >
+                                            <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`}>
                                                 {isAdmin ? (
                                                     <td className="select-col">
                                                         <button
@@ -1560,18 +1528,18 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td><span className="tf-pill">{fav.timeframe}</span></td>
                                                 <td className="muted-cell period-col">{formatPeriod(fav)}</td>
                                                 <td className="metric-cell risk-col">{formatPct(stopLoss)}</td>
-                                                <td className="metric-cell accent" data-metric="sharpe">{formatNum(m.sharpe_ratio)}</td>
-                                                <td className="metric-cell" data-metric="trades">{getTradesCount(fav)}</td>
-                                                <td className="metric-cell win-col" data-metric="win">{formatPct(m.win_rate)}</td>
-                                                <td className={`metric-cell strong ${totalReturn.positive ? 'positive' : 'negative'}`} data-metric="return">{totalReturn.text}</td>
-                                                <td className="metric-cell negative risk-col" data-metric="maxdd">{formatPct(m.max_drawdown)}</td>
+                                                <td className="metric-cell accent">{formatNum(m.sharpe_ratio)}</td>
+                                                <td className="metric-cell">{getTradesCount(fav)}</td>
+                                                <td className="metric-cell win-col">{formatPct(m.win_rate)}</td>
+                                                <td className={`metric-cell strong ${totalReturn.positive ? 'positive' : 'negative'}`}>{totalReturn.text}</td>
+                                                <td className="metric-cell negative risk-col">{formatPct(m.max_drawdown)}</td>
                                                 <td className="metric-cell advanced-col">{formatNum(m.profit_factor)}</td>
                                                 <td className="metric-cell advanced-col">{formatNum(m.sqn ?? m.sortino_ratio ?? m.sortino)}</td>
                                                 <td className="metric-cell negative advanced-col">{formatPct(m.max_loss)}</td>
                                                 <td className="metric-cell advanced-col">{formatNum(m.avg_atr)}</td>
                                                 <td>
                                                     <div className="fav-row-actions">
-                                                        <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa" data-testid={`open-chart-${fav.id}`}>
+                                                        <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa">
                                                             {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
                                                         </button>
                                                         {isAdmin ? (
