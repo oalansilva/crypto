@@ -1,0 +1,271 @@
+<!doctype html>
+<!-- Prototype extra card-921 — clone da página viva /monitor + delta velas/médias alinhadas.
+     Landmarks: table.signals, Status, Preço, Distância, 7d, Risco até stop, Tags, Operar, Par / Estratégia.
+     NÃO é painel ANTES/DEPOIS nem index canónico. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Monitor — BTC/USDT 1d</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg">
+  <style>
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent:#fcd535; --success:#0ecb81; --danger:#f6465d; --info:#3b82f6;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-lg:8px;
+      --font:BinanceNova,BinancePlex,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --numbers:BinancePlex,ui-monospace,SFMono-Regular,Menlo,monospace;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    html{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--bg-primary);font-size:13px;line-height:1.5}
+    button,a{font:inherit} button{cursor:pointer}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97)}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:13px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}.compact-env{margin:0;font-size:13px;font-weight:700}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-top:1px solid rgba(43,49,57,.72);background:transparent;color:var(--text-tertiary)}
+    .topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94)}.topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:20px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:13px;letter-spacing:.15em;text-transform:uppercase}.top-env{margin:0}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}.page{width:min(100%,1544px);margin:0 auto;padding:24px 32px 52px}
+    .page-sub{margin:0 0 16px;color:var(--text-muted);font-size:13px}
+    table.signals{width:100%;border-collapse:collapse;background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    table.signals th{padding:10px 14px;border-bottom:1px solid var(--border);background:#181a20;color:var(--text-tertiary);font-size:13px;font-weight:650;text-align:left;text-transform:uppercase}
+    table.signals td{padding:12px 14px;border-bottom:1px solid rgba(43,49,57,.72);color:var(--text-secondary);font-size:13px;font-variant-numeric:tabular-nums}
+    table.signals tbody tr:hover{background:#11161c}
+    .status{color:var(--success);font-weight:700}
+    .row-action{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-secondary);font-size:13px;font-weight:650}
+    .chart-shell{margin-top:24px;overflow:hidden;border:1px solid var(--border);border-radius:12px;background:#0b0e11;color:var(--text-secondary)}
+    .chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)}
+    .chart-head h2{margin:0;font-size:20px;font-weight:600;color:#eaecef}
+    .chart-head p{margin:4px 0 0;color:var(--text-muted);font-size:13px}
+    .chart-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#1e2329}
+    .zoom-btn,.tf-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:#0b0e11;color:#eaecef;font-weight:600}
+    .tf-btn.on,.zoom-btn.primary{border-color:rgba(252,213,53,.65);background:var(--accent);color:#181a20}
+    .bars-chip{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--text-tertiary)}
+    .pair-chip{border:1px solid rgba(14,203,129,.35);background:rgba(14,203,129,.08);color:var(--success);border-radius:6px;padding:6px 10px;font-size:13px;font-weight:650}
+    .chart-stage{position:relative;height:320px;background:var(--bg-primary);touch-action:none}
+    .chart-stage svg{display:block;width:100%;height:100%}
+    .axis{fill:var(--text-muted);font-size:13px;font-family:var(--numbers)}
+    .ma-fast{fill:none;stroke:#f6465d;stroke-width:1.6}
+    .ma-slow{fill:none;stroke:#3b82f6;stroke-width:1.6}
+    @media(max-width:1023px){
+      .sidebar,.topbar{display:none}
+      .mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96)}
+      .menu-button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+      .mobile-title{min-width:0;flex:1}.mobile-title strong,.mobile-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-title span{color:var(--text-muted);font-size:13px}
+      .main{margin-left:0;padding-top:72px}.page{padding:18px 16px 40px}
+      .chart-stage{height:240px}
+      .table-wrap{overflow:auto}
+    }
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5M12 4v2M20 12h-2M12 20v-2M4 12h2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </svg>
+
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px, Monitor active em /monitor) -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Monitor de sinais</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item active" href="#" aria-current="page"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-history"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+    <button class="collapse" type="button"><svg class="icon"><use href="#i-menu"/></svg>Recolher menu</button>
+  </aside>
+  <header class="topbar"><div class="topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Monitor de sinais</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env top-env">Ambiente DEV</span><button class="account" type="button" aria-label="Abrir conta"><span class="avatar">AS</span><span><small>Conta</small>Alan S</span></button><button class="icon-button" type="button" aria-label="Configurações"><svg class="icon"><use href="#i-settings"/></svg></button></div></div></header>
+  <header class="mobilebar"><button class="menu-button" type="button" aria-label="Abrir menu"><svg class="icon"><use href="#i-menu"/></svg></button><div class="mobile-title"><strong>Monitor de sinais</strong><span>BTC/USDT 1d</span></div><span class="env compact-env">DEV</span><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+
+  <main class="main">
+    <div class="page">
+      <p class="page-sub">Operações ativas e saídas acionáveis. Atualização contínua a cada 30s.</p>
+      <div class="table-wrap">
+        <!-- COPIED:start table.signals chrome MonitorStatusTab -->
+        <table class="signals">
+          <thead>
+            <tr>
+              <th>Par / Estratégia</th>
+              <th>Status</th>
+              <th>Preço</th>
+              <th>Distância</th>
+              <th>7d</th>
+              <th>Risco até stop</th>
+              <th>Tags</th>
+              <th>Operar</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-testid="monitor-row-btc-usdt">
+              <td>BTC/USDT · Médias Móveis: Tendência em Virada</td>
+              <td><span class="status">Compra</span></td>
+              <td>$64,915.00</td>
+              <td>2.10%</td>
+              <td>+</td>
+              <td>8.50%</td>
+              <td>Carteira</td>
+              <td><button class="row-action" type="button">Operar</button></td>
+            </tr>
+            <tr data-testid="monitor-row-sol-usdt">
+              <td>SOL/USDT · Médias Móveis: Tendência Confirmada</td>
+              <td><span class="status">Compra</span></td>
+              <td>$105.39</td>
+              <td>13.38%</td>
+              <td>+</td>
+              <td>35.21%</td>
+              <td>Carteira</td>
+              <td><button class="row-action" type="button">Operar</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- COPIED:end -->
+      </div>
+
+      <section class="chart-shell" id="monitor-chart" data-last-candle="2026-09-12" data-last-ma="2026-09-12" data-market-last="2026-09-12" data-ma-ahead="0" data-testid="monitor-price-chart">
+        <header class="chart-head">
+          <div>
+            <h2 id="chart-title">BTC/USDT — Ação de preço</h2>
+            <p id="chart-subtitle">crypto • 1d • série de mercado até 2026-09-12</p>
+          </div>
+        </header>
+        <div class="chart-toolbar">
+          <div role="group" aria-label="Timeframe">
+            <button type="button" class="tf-btn" data-tf="15m" data-testid="timeframe-15m">15m</button>
+            <button type="button" class="tf-btn" data-tf="1h" data-testid="timeframe-1h">1h</button>
+            <button type="button" class="tf-btn" data-tf="4h" data-testid="timeframe-4h">4h</button>
+            <button type="button" class="tf-btn on" data-tf="1d" data-testid="timeframe-1d" aria-pressed="true">1d</button>
+          </div>
+          <span class="bars-chip" id="visible-bars">180 velas</span>
+          <span class="pair-chip" id="series-align">Velas e médias até 2026-09-12</span>
+        </div>
+        <div class="chart-stage" id="chart-stage" tabindex="0" aria-label="Gráfico do Monitor com velas até o presente e médias alinhadas">
+          <svg id="chart-svg" viewBox="0 0 1100 320" preserveAspectRatio="none" role="img" aria-label="Velas BTC/USDT com médias clipadas à última vela"></svg>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const MARKET_LAST="2026-09-12";
+    function buildCandles(count, endIso, seed){
+      const end=Date.parse(endIso+"T00:00:00Z");
+      const step=86400000;
+      const out=[];
+      let px=seed;
+      for(let i=count-1;i>=0;i--){
+        const t=new Date(end-i*step).toISOString().slice(0,10);
+        px=+(px*(1+(Math.sin(i/9)*0.004))).toFixed(2);
+        out.push({t,c:px});
+      }
+      out[out.length-1].t=endIso;
+      return out;
+    }
+    function smaSeries(src,len){
+      const out=new Array(src.length).fill(null);
+      let sum=0;
+      for(let i=0;i<src.length;i++){
+        sum+=src[i].c;
+        if(i>=len) sum-=src[i-len].c;
+        if(i>=len-1) out[i]=+(sum/len).toFixed(2);
+      }
+      return out;
+    }
+    const seriesByTf={
+      "15m": buildCandles(220, MARKET_LAST, 64820),
+      "1h": buildCandles(240, MARKET_LAST, 64710),
+      "4h": buildCandles(200, MARKET_LAST, 64100),
+      "1d": buildCandles(3314, MARKET_LAST, 4200)
+    };
+    let tf="1d";
+    const svg=document.getElementById("chart-svg");
+    const root=document.getElementById("monitor-chart");
+    const visibleEl=document.getElementById("visible-bars");
+    const sub=document.getElementById("chart-subtitle");
+    const align=document.getElementById("series-align");
+    const DEFAULT_BARS=180;
+    function render(){
+      const candles=seriesByTf[tf];
+      const from=Math.max(0, candles.length-DEFAULT_BARS);
+      const slice=candles.slice(from);
+      const n=slice.length;
+      const fast=smaSeries(candles,9).slice(from);
+      const slow=smaSeries(candles,21).slice(from);
+      const last=slice[n-1].t;
+      root.dataset.lastCandle=last;
+      root.dataset.lastMa=last;
+      root.dataset.marketLast=MARKET_LAST;
+      root.dataset.maAhead="0";
+      root.dataset.timeframe=tf;
+      visibleEl.textContent=n+" velas";
+      sub.textContent="crypto • "+tf+" • "+candles.length+" velas · série de mercado até "+last;
+      align.textContent="Velas e médias até "+last;
+      const W=1100,H=320,padL=56,padR=20,padT=20,padB=32,plotW=W-padL-padR,plotH=H-padT-padB;
+      const vals=slice.map(c=>c.c).concat(fast.filter(v=>v!=null), slow.filter(v=>v!=null));
+      let min=Math.min(...vals), max=Math.max(...vals);
+      const span=(max-min)||1; min-=span*0.08; max+=span*0.1;
+      const y=p=>padT+(1-(p-min)/(max-min))*plotH;
+      const x=i=>padL+(i/Math.max(n-1,1))*plotW;
+      let candlesSvg="";
+      const step=Math.max(1, Math.floor(n/220));
+      for(let i=0;i<n;i+=step){
+        const c=slice[i], prev=slice[Math.max(0,i-step)];
+        const up=c.c>=prev.c, x0=x(i), y0=y(c.c), y1=y(prev.c);
+        const top=Math.min(y0,y1), h=Math.max(4, Math.abs(y0-y1));
+        candlesSvg+=`<rect x="${(x0-2).toFixed(1)}" y="${top.toFixed(1)}" width="4" height="${h.toFixed(1)}" fill="${up?"#0ecb81":"#f6465d"}"/>`;
+      }
+      function path(values){
+        let d="", started=false;
+        for(let i=0;i<n;i++){
+          if(values[i]==null) continue;
+          d+=(started?"L":"M")+x(i).toFixed(1)+" "+y(values[i]).toFixed(1)+" ";
+          started=true;
+        }
+        return d.trim();
+      }
+      svg.innerHTML=`<rect width="${W}" height="${H}" fill="#0b0e11"/>
+        <g stroke="#20262e">${[0.25,0.5,0.75].map(p=>`<path d="M${padL} ${padT+plotH*p}H${W-padR}"/>`).join("")}</g>
+        ${candlesSvg}
+        <path class="ma-fast" data-ma="fast" d="${path(fast)}"/>
+        <path class="ma-slow" data-ma="slow" d="${path(slow)}"/>
+        <circle data-ma-end="fast" cx="${x(n-1).toFixed(1)}" cy="${y(fast[n-1]).toFixed(1)}" r="3" fill="#f6465d"/>
+        <circle data-ma-end="slow" cx="${x(n-1).toFixed(1)}" cy="${y(slow[n-1]).toFixed(1)}" r="3" fill="#3b82f6"/>
+        <text class="axis" x="${padL}" y="${H-10}">${slice[0].t.slice(0,7)}</text>
+        <text class="axis" x="${W-padR}" y="${H-10}" text-anchor="end">${last}</text>`;
+    }
+    document.querySelectorAll(".tf-btn").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        tf=btn.dataset.tf;
+        document.querySelectorAll(".tf-btn").forEach(b=>{
+          const on=b===btn;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-pressed", on?"true":"false");
+        });
+        render();
+      });
+    });
+    render();
+  </script>
+</body>
+</html>

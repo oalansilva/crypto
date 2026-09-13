@@ -238,6 +238,10 @@ def test_ohlcv_plan_parser_helpers_handle_dict_list_and_json_string():
     assert not MarketOhlcvRepository._read_plan_uses_timeframe_index("not-json")
 
 
+def test_default_ingestion_timeframes_include_monitor_intervals():
+    assert ohlcv_storage.DEFAULT_INGESTION_TIMEFRAMES == ["15m", "1h", "4h", "1d"]
+
+
 def test_ohlcv_ingestion_service_resolve_symbols_and_timeframes(monkeypatch):
     monkeypatch.setenv("MARKET_OHLCV_SYMBOLS", "btcusdt,ethusdt, ,")
     monkeypatch.setenv("MARKET_OHLCV_TIMEFRAMES", "1m,15m,99m,1m")
@@ -254,7 +258,7 @@ def test_ohlcv_ingestion_service_resolve_symbols_and_timeframes(monkeypatch):
     )
     service = _new_service(monkeypatch)
     assert service._symbols == ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
-    assert service._timeframes == ["15m", "1d"]
+    assert service._timeframes == ["15m", "1d", "1h", "4h"]
 
 
 def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
@@ -304,9 +308,34 @@ def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
 
 def test_ohlcv_ingestion_service_run_once_uses_default_timeframes(monkeypatch):
     service = _new_service(monkeypatch)
-    service._symbols = ["BTC/USDT", "ETH/USDT"]
     service._timeframes = ["15m", "1d"]
     service._repo._enabled = True
+
+    monkeypatch.setattr(
+        ohlcv_storage,
+        "resolve_binance_ohlcv_symbol_universe",
+        lambda: ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+    )
+    monkeypatch.setattr(
+        ohlcv_storage,
+        "slice_symbol_universe_for_ingestion_run",
+        lambda universe, *, priority_symbols=None, limit, offset: (
+            ["BTC/USDT", "ETH/USDT"],
+            2,
+        ),
+    )
+    offset_reads: list[int] = [0]
+    offset_writes: list[int] = []
+    monkeypatch.setattr(
+        ohlcv_storage,
+        "_read_ingestion_symbol_offset",
+        lambda: offset_reads[0],
+    )
+    monkeypatch.setattr(
+        ohlcv_storage,
+        "_write_ingestion_symbol_offset",
+        lambda value: offset_writes.append(value),
+    )
 
     ingested: list[tuple[str, str]] = []
     monkeypatch.setattr(
@@ -322,6 +351,7 @@ def test_ohlcv_ingestion_service_run_once_uses_default_timeframes(monkeypatch):
         ("BTC/USDT", "1d"),
         ("ETH/USDT", "1d"),
     ]
+    assert offset_writes == [2]
 
 
 def test_ohlcv_ingestion_lag_threshold_reads_env_or_defaults(monkeypatch):
