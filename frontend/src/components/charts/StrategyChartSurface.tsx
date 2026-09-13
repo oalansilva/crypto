@@ -14,7 +14,7 @@ import {
 } from 'lightweight-charts'
 import {
     buildIndicatorValueIndex,
-    clipStrategyTransparencyToLoadedCandles,
+    alignStrategyTransparencyToLoadedCandles,
     latestAvailableSeriesTimestampMs,
     maPointsAheadOfLastCandle,
     normalizeStrategyTransparency,
@@ -262,7 +262,7 @@ export function StrategyChartSurface({
         [candles],
     )
     const transparency = React.useMemo(
-        () => clipStrategyTransparencyToLoadedCandles(strategyTransparency, sortedCandles),
+        () => alignStrategyTransparencyToLoadedCandles(strategyTransparency, sortedCandles),
         [strategyTransparency, sortedCandles],
     )
     const maAheadCount = React.useMemo(
