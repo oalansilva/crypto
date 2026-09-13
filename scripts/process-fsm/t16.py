@@ -74,6 +74,18 @@ def lote_git(q_git: str | None) -> bool:
     return name == "develop" or name.startswith("release-")
 
 
+def wrong_fechar_release_git(q_git: str | None) -> bool:
+    name = str(q_git or "")
+    if name == "main":
+        return True
+    return name.startswith("docs-") or name.startswith("sync-")
+
+
+FECHAR_RELEASE_WRONG_GIT_MESSAGE = (
+    "Switch git to develop or release-* and repeat process_event fechar_release."
+)
+
+
 def measure_m_lote(
     *,
     cwd: Path | None = None,
