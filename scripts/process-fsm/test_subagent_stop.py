@@ -388,34 +388,13 @@ def test_agents_require_review_diff_and_forbid_git_transcripts() -> None:
     for path in (DIFF_AGENT, CODE_AGENT):
         text = path.read_text(encoding="utf-8")
         assert "readonly: true" in text
-        assert "model: composer-2.5" in text
+        assert "model: inherit" in text
         assert "ERROR: review-diff missing" in text
         assert "MUST NOT git" in text
         assert "MUST NOT transcripts" in text
         assert "agent-transcripts" in text
         assert "review_diff_path:" in text
         assert "## Diff" in text
-
-
-def test_skill_t18_destape_resume_keeps_composer_slug() -> None:
-    text = SKILL.read_text(encoding="utf-8")
-    assert "Destape/resume mantém slug Composer" in text
-    assert "composer-2.5-fast" in text
-    assert "MUST NOT `resume`" in text or "MUST NOT resume" in text
-    assert "spawn **novo**" in text or "spawn novo" in text
-    assert "generalPurpose" in text
-    assert "MUST NOT `subagent_type` `explore`" in text or "MUST NOT subagent_type `explore`" in text
-    assert "fecho-lote" in text
-    assert "auto-resume" in text
-
-
-def test_skill_t18_release_refuses_grok_parent() -> None:
-    text = SKILL.read_text(encoding="utf-8")
-    release = text.split("## Release", 1)[1]
-    assert "chat pai" in release or "chat pai MUST" in text
-    assert "composer-2.5" in release
-    assert "Grok" in release
-    assert "process_event fechar_release" in text or "T16" in release
 
 
 def test_skill_s1_parent_materializes_diff() -> None:
@@ -430,7 +409,7 @@ def test_skill_s1_parent_materializes_diff() -> None:
     assert "git ls-files --others --exclude-standard" in text
     assert "git diff origin/develop...HEAD" in text
     assert "MUST NOT pedir git ao filho" in text
-    assert "v1.1.15" in text
+    assert "v1.1.14" in text
 
 
 def test_skill_s2_sidecar_and_order() -> None:

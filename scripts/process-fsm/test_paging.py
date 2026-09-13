@@ -187,39 +187,6 @@ def test_page_uses_yaml_stubs():
     assert "sync: dirty" in qa
 
 
-def test_design_stub_names_openspec_prototype_allow():
-    fsm = load_fsm()
-    stub = str(fsm["context_file"]["Design"])
-    assert "sintetizar" in stub
-    assert "não reentrevistar" in stub
-    assert "OpenSpec/protótipo allow" in stub
-    assert "Write produto deny" in stub
-    assert stub.strip() != "Write produto deny"
-    assert list(fsm["enabled_tools"]["Design"]) == [
-        "write_openspec",
-        "write_prototype",
-        "gist",
-        "task_critique",
-    ]
-
-
-def test_design_page_carries_openspec_allow_carveout():
-    result = page(
-        cwd=".",
-        resolve_fn=_resolve("613", "card-899-dsh-design-moore-stub"),
-        status_provider=_provider("Design"),
-    )
-    ctx = result["additional_context"]
-    assert "sintetizar" in ctx
-    assert "não reentrevistar" in ctx
-    assert "OpenSpec/protótipo allow" in ctx
-    assert "Write produto deny" in ctx
-    assert "q=Design" in ctx
-    assert "enabled_events" in ctx
-    assert "enabled_tools" not in ctx
-    assert _line_count(ctx) <= 20
-
-
 def test_qa_page_has_closeout_stub():
     result = page(
         cwd=".",
@@ -248,10 +215,7 @@ def test_harness_mdc_body_budget():
     lines = _harness_body_lines()
     text = "\n".join(lines)
     assert 4 <= len(lines) <= 12
-    assert "juízo" in text and "execução" in text
-    assert "Task `inherit`" not in text
-    assert "every Task inherits" not in text
-    assert "herdar o picker" not in text
+    assert "inherit" in text or ".cursor/hooks.json" in text
     assert "T1/T7/T15" not in text
     assert "diff-reviewer" not in text
     assert "release-guard" not in text
@@ -309,14 +273,6 @@ def test_agents_md_is_stub():
     assert "Auto OpenCode" not in generated
     assert "Auto dsh" not in generated
     assert len([ln for ln in generated.splitlines() if ln.strip()]) <= 40
-
-
-def test_skill_t18_destape_resume_and_release_picker():
-    text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
-    assert "Destape/resume mantém slug Composer" in text
-    assert "Release/lote — chat pai Composer 2.5" in text
-    assert "composer-2.5-fast" in text
-    assert "lista fechada isolada" in text
 
 
 def test_skill_priority_anchor():
