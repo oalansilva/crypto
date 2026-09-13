@@ -1,0 +1,436 @@
+<!doctype html>
+<!-- Prototype card-921-velas-em-falta-analise — clone da página viva /combo/results + delta velas/médias alinhadas.
+     Live 2026-09-12 autenticado: class combo-page, «Lista de operações», aria «Análise da estratégia»,
+     Menos/Mais/Resetar, recorte 180 velas. NÃO é painel ANTES/DEPOIS.
+     Delta: última vela = mercado 2026-09-12; SMA/EMA clipadas a essa vela (sem buraco à direita). #917 1:1 permanece. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Análise — BTC/USDT 1d</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg">
+  <style>
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent:#fcd535; --accent-active:#f0b90b; --success:#0ecb81; --danger:#f6465d; --info:#3b82f6;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-md:6px; --radius-lg:8px;
+      --font:BinanceNova,BinancePlex,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --numbers:BinancePlex,ui-monospace,SFMono-Regular,Menlo,monospace;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    html{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--bg-primary);font-size:14px;line-height:1.5}
+    button,a{font:inherit} button{cursor:pointer}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97)}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:12px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}.compact-env{margin:0;font-size:10px;font-weight:700}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-top:1px solid rgba(43,49,57,.72);background:transparent;color:var(--text-tertiary)}
+    .topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94)}.topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:18px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:10px;letter-spacing:.15em;text-transform:uppercase}.top-env{margin:0}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}.page{width:min(100%,1220px);margin:0 auto;padding:24px 32px 52px}
+    .back{display:inline-flex;min-height:44px;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);background:var(--bg-elevated);text-decoration:none;font-weight:600}
+    .back:hover{background:var(--bg-input)}
+    .summary{margin-top:20px;overflow:hidden;border:1px solid var(--border);border-radius:16px;background:#181a20;color:var(--text-secondary)}
+    .summary-grid{display:grid;gap:24px;padding:20px 24px;align-items:end}
+    @media(min-width:1024px){.summary-grid{grid-template-columns:minmax(0,1.4fr) minmax(360px,1fr)}}
+    .chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .chip{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);font-size:12px;font-weight:600}
+    .chip.long{border-color:rgba(252,213,53,.5);background:rgba(252,213,53,.1);color:var(--accent)}
+    .summary h1{margin:16px 0 0;font-size:1.35rem;line-height:1.3;font-weight:700;color:#fff}
+    .desc{margin:10px 0 0;max-width:72ch;color:#b7bdc6;font-size:13px;line-height:1.6}
+    .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px;border-top:1px solid var(--border);padding-top:20px}
+    @media(min-width:640px){.metrics{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    @media(min-width:1024px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr));border-top:0;border-left:1px solid var(--border);padding:0 0 0 24px}}
+    .metrics dt{color:var(--text-tertiary);font-size:12px}
+    .metrics dd{margin:4px 0 0;font-family:var(--numbers);font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+    .metrics .up{color:var(--success)}
+    .section{margin-top:28px}
+    .chart-shell{overflow:hidden;border:1px solid var(--border);border-radius:12px;background:#0b0e11;color:var(--text-secondary)}
+    .chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);background:#0b0e11}
+    .chart-head h2{margin:0;font-size:18px;font-weight:600;color:#eaecef}
+    .chart-head p{margin:4px 0 0;color:var(--text-muted);font-size:13px}
+    .chart-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#1e2329}
+    .zoom-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:#0b0e11;color:#eaecef;font-weight:600}
+    .zoom-btn.primary{border-color:rgba(252,213,53,.65);background:var(--accent);color:#181a20}
+    .zoom-btn:hover{border-color:var(--accent)}
+    .bars-chip{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text-tertiary)}
+    .pair-chip{margin-left:auto;border:1px solid rgba(14,203,129,.35);background:rgba(14,203,129,.08);color:var(--success);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:650}
+    .chart-stage{position:relative;height:360px;background:var(--bg-primary);touch-action:none;user-select:none}
+    .chart-stage svg{display:block;width:100%;height:100%}
+    .axis{fill:var(--text-muted);font-size:11px;font-family:var(--numbers)}
+    .ma-fast{fill:none;stroke:#f6465d;stroke-width:1.6}
+    .ma-slow{fill:none;stroke:#3b82f6;stroke-width:1.6}
+    .marker-label{font-size:10px;font-weight:700}
+    .trades{overflow:hidden;border:1px solid var(--border);border-radius:12px;background:var(--bg-elevated)}
+    .trade-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:#181a20}
+    .tab{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-elevated);color:var(--text-tertiary);font-size:13px;font-weight:650}
+    .tab.on{border-color:var(--accent);background:var(--accent);color:var(--bg-secondary)}
+    .export{min-height:44px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;color:var(--bg-secondary);background:var(--accent);font-weight:650}
+    .trades-table{width:100%;border-collapse:collapse}
+    .trades-table th{padding:10px 14px;border-bottom:1px solid var(--border);background:#181a20;color:var(--text-tertiary);font-size:11px;font-weight:650;text-align:left;text-transform:uppercase}
+    .trades-table td{padding:12px 14px;border-bottom:1px solid rgba(43,49,57,.72);color:var(--text-secondary);font-size:13px;font-variant-numeric:tabular-nums}
+    .trades-table tbody tr:hover{background:#11161c}
+    .buy{color:var(--success);font-weight:700;font-size:12px}
+    .op-num{font-weight:600}
+    .profit{color:var(--success);font-family:var(--numbers)}
+    .loss{color:var(--danger);font-family:var(--numbers)}
+    .disclaimer{margin:20px 0 0;max-width:72ch;color:var(--text-muted);font-size:12px;line-height:1.6;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:#181a20}
+    .mobile-trades{display:none}
+    .rules{margin-top:24px;border:1px solid var(--border);border-radius:16px;background:#181a20;padding:20px 24px}
+    .rules h2{margin:0 0 8px;font-size:18px}
+    .rules p{margin:0 0 12px;color:var(--text-muted);font-size:13px}
+    .rule{margin-top:12px}.rule dt{color:var(--text-tertiary);font-size:12px;font-weight:650}.rule dd{margin:4px 0 0;color:var(--text-secondary)}
+    @media(max-width:1023px){
+      .sidebar,.topbar{display:none}
+      .mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96)}
+      .menu-button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+      .mobile-title{min-width:0;flex:1}.mobile-title strong,.mobile-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-title span{color:var(--text-muted);font-size:12px}
+      .main{margin-left:0;padding-top:72px}.page{padding:18px 16px 40px}
+      .chart-stage{height:240px}
+      .desk-trades{display:none}
+      .mobile-trades{display:grid;gap:10px;padding:12px}
+      .trade-card{border:1px solid var(--border);border-radius:8px;padding:12px;background:#181a20}
+      .trade-card p{margin:0}
+      .pair-chip{margin-left:0;width:100%}
+    }
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5M12 4v2M20 12h-2M12 20v-2M4 12h2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></symbol>
+  </svg>
+
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px, Combo active em /combo/results) -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Combo estratégias</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item active" href="#" aria-current="page"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-history"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+    <button class="collapse" type="button"><svg class="icon"><use href="#i-menu"/></svg>Recolher menu</button>
+  </aside>
+  <header class="topbar"><div class="topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Combo estratégias</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env top-env">Ambiente DEV</span><button class="account" type="button" aria-label="Abrir conta"><span class="avatar">AS</span><span><small>Conta</small>Alan S</span></button><button class="icon-button" type="button" aria-label="Configurações"><svg class="icon"><use href="#i-settings"/></svg></button></div></div></header>
+  <header class="mobilebar"><button class="menu-button" type="button" aria-label="Abrir menu"><svg class="icon"><use href="#i-menu"/></svg></button><div class="mobile-title"><strong>Combo estratégias</strong><span>Análise · BTC/USDT 1d</span></div><span class="env compact-env">DEV</span><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+
+  <main class="main">
+    <div class="page combo-page app-page">
+      <!-- COPIED:start combo/results chrome (voltar + identidade + resumo Análise da estratégia) -->
+      <a class="back" href="#"><svg class="icon"><use href="#i-back"/></svg>Voltar aos favoritos</a>
+      <section class="summary" aria-label="Análise da estratégia" data-testid="combo-result-summary">
+        <div class="summary-grid">
+          <div>
+            <div class="chips">
+              <span class="chip">BTC/USDT</span>
+              <span class="chip">1D</span>
+              <span class="chip long">Long / compra</span>
+            </div>
+            <h1 data-testid="combo-result-title">Médias Móveis: Tendência em Virada</h1>
+            <p class="desc" data-testid="combo-result-description">Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.</p>
+          </div>
+          <dl class="metrics" aria-label="Resumo de desempenho e risco">
+            <div><dt>Retorno total</dt><dd class="up" data-metric="return">201.14%</dd></div>
+            <div><dt>Taxa de acerto</dt><dd data-metric="win">58.9%</dd></div>
+            <div><dt>Drawdown máximo</dt><dd data-metric="maxdd">12.2%</dd></div>
+            <div><dt>Operações</dt><dd data-metric="trades">73</dd></div>
+          </dl>
+        </div>
+      </section>
+      <!-- COPIED:end -->
+
+      <!-- COPIED:start regras da estratégia (chrome vivo ComboResultsPage) -->
+      <section class="rules" aria-label="Regras da estratégia" data-testid="combo-result-strategy-rules">
+        <h2>Regras da estratégia</h2>
+        <p>Condições usadas para entrada, saída e proteção da operação.</p>
+        <dl>
+          <div class="rule"><dt>Quando compra</dt><dd>A entrada é confirmada quando a média curta assume a liderança sobre a tendência longa.</dd></div>
+          <div class="rule"><dt>Quando vende</dt><dd>A saída é confirmada quando essa hierarquia se desfaz.</dd></div>
+          <div class="rule"><dt>Proteção</dt><dd>O stop de proteção encerra a posição a 8.50% da entrada, abaixo do preço para long.</dd></div>
+        </dl>
+      </section>
+      <!-- COPIED:end -->
+
+      <section class="section" aria-labelledby="chart-title">
+        <!-- COPIED:start gráfico chrome StrategyChartSurface (Menos Mais Resetar 180 velas) -->
+        <div class="chart-shell" data-testid="monitor-aligned-result-chart" id="result-chart" data-marker-count="146" data-list-count="73" data-last-candle="2026-09-12" data-last-ma="2026-09-12" data-market-last="2026-09-12" data-ma-ahead="0">
+          <header class="chart-head">
+            <div>
+              <h2 id="chart-title">Médias Móveis: Tendência em Virada - Ação de preço</h2>
+              <p id="chart-subtitle">BTC/USDT • 1d • série de mercado até 2026-09-12</p>
+            </div>
+          </header>
+          <div class="chart-toolbar" role="group" aria-label="Controles de zoom do grafico">
+            <button type="button" class="zoom-btn" id="zoom-out" data-testid="result-chart-zoom-out" aria-label="Reduzir zoom do grafico"><svg class="icon"><use href="#i-minus"/></svg>Menos</button>
+            <button type="button" class="zoom-btn primary" id="zoom-in" data-testid="result-chart-zoom-in" aria-label="Aumentar zoom do grafico"><svg class="icon"><use href="#i-plus"/></svg>Mais</button>
+            <button type="button" class="zoom-btn" id="zoom-reset" data-testid="result-chart-zoom-reset" aria-label="Redefinir zoom do grafico"><svg class="icon"><use href="#i-reset"/></svg>Resetar</button>
+            <span class="bars-chip" aria-live="polite" data-testid="result-chart-visible-bars" id="visible-bars">180 velas</span>
+            <span class="bars-chip">Roda do mouse: zoom</span>
+            <!-- COPIED:end -->
+            <span class="pair-chip" data-testid="history-pair" id="history-pair">Lista 73 · Setas 146 (entrada+saída) · 1:1</span>
+            <span class="pair-chip" data-testid="series-align" id="series-align">Velas e médias até 2026-09-12</span>
+          </div>
+          <div class="chart-stage" id="chart-stage" data-testid="result-chart-shell" tabindex="0" aria-label="Gráfico BTC/USDT com velas até o presente e médias alinhadas">
+            <svg id="chart-svg" viewBox="0 0 1100 360" preserveAspectRatio="none" role="img" aria-label="Velas BTC/USDT 1d até 2026-09-12 com médias clipadas à última vela"></svg>
+          </div>
+        </div>
+      </section>
+
+      <section class="section trades" aria-labelledby="trades-window-label" data-testid="result-trades">
+        <!-- COPIED:start lista chrome StrategyTradesTable -->
+        <div class="trade-toolbar">
+          <div>
+            <span class="tab">Métricas</span>
+            <span class="tab on" id="trades-window-label">Lista de operações</span>
+          </div>
+          <button class="export" type="button">Exportar para Excel</button>
+        </div>
+        <div class="desk-trades">
+          <table class="trades-table">
+            <thead>
+              <tr>
+                <th>Operação <span style="color:#707a8a">↓</span></th>
+                <th>Tipo</th>
+                <th>Data e hora</th>
+                <th>Sinal</th>
+                <th>Preço</th>
+                <th>Valor da posição</th>
+                <th>Lucro/Prejuízo</th>
+                <th>Máximo favorável</th>
+                <th>Máximo adverso</th>
+                <th>Resultado acumulado</th>
+              </tr>
+            </thead>
+            <tbody id="trades-body"></tbody>
+          </table>
+        </div>
+        <!-- COPIED:end -->
+        <div class="mobile-trades" id="trades-mobile"></div>
+      </section>
+
+      <!-- COPIED:start disclaimer combo/results -->
+      <p class="disclaimer">Conteúdo educacional baseado em dados históricos. Resultados passados não garantem retornos futuros.</p>
+      <!-- COPIED:end -->
+    </div>
+  </main>
+  <script>
+    const TRADES = [
+      [1,"2017-10-05","2017-10-28",4208.59,5768.79,0.3687],[2,"2017-11-03","2017-11-08",7010.31,7070,0.007],[3,"2017-11-20","2017-12-23",8057.11,13326.61,0.6515],
+      [4,"2018-02-23","2018-02-24",9815.55,10131.04,0.0306],[5,"2018-04-20","2018-05-09",8273.84,9178,0.1076],[6,"2018-07-17","2018-08-04",6723.33,7412.27,0.1008],
+      [7,"2018-09-02","2018-09-05",7201.57,7359.05,0.0203],[8,"2018-10-07","2018-10-09",6596.44,6673.01,0.0101],[9,"2018-10-16","2018-10-27",6752.5,6538.63,-0.0331],
+      [10,"2018-12-29","2018-12-29",3839,3677.76,-0.0434],[11,"2019-01-10","2019-01-10",3966.06,3799.49,-0.0434],[12,"2019-02-13","2019-03-04",3631.51,3807.32,0.0468],
+      [13,"2019-03-16","2019-04-20",3924.46,5258.68,0.338],[14,"2019-05-04","2019-05-31",5770.62,8267.1,0.4305],[15,"2019-06-18","2019-07-07",9312.13,11256.45,0.207],
+      [16,"2019-08-08","2019-08-10",11975.04,11879.98,-0.0094],[17,"2019-09-16","2019-09-19",10303.34,10156.41,-0.0157],[18,"2019-10-28","2019-10-29",9528.23,9204.45,-0.0354],
+      [19,"2020-01-05","2020-01-26",7354.19,8340.01,0.1323],[20,"2020-01-31","2020-02-04",9511.52,9291.35,-0.0246],[21,"2020-04-08","2020-04-10",7197.32,7283.54,0.0105],
+      [22,"2020-04-26","2020-05-16",7539.03,9315.96,0.2338],[23,"2020-06-04","2020-06-11",9666.32,9885.22,0.0211],[24,"2020-06-23","2020-06-24",9685.69,9624.33,-0.0078],
+      [25,"2020-07-23","2020-08-14",9518.16,11779.77,0.2358],[26,"2020-10-05","2020-11-30",10666.62,18185,0.7023],[27,"2020-12-17","2021-01-18",21335.52,35824.99,0.6766],
+      [28,"2021-02-08","2021-02-26",38795.69,47073.73,0.2116],[29,"2021-03-12","2021-03-12",57773.15,55346.68,-0.0434],[30,"2021-04-04","2021-04-18",57051.95,60006.67,0.0502],
+      [31,"2021-07-27","2021-08-25",37241.33,47674.01,0.2782],[32,"2021-09-06","2021-09-07",51756.88,52666.2,0.016],[33,"2021-10-07","2021-10-27",55315,60328.81,0.089],
+      [34,"2021-11-10","2021-11-10",66947.67,64135.87,-0.0434],[35,"2022-02-09","2022-02-11",44043,43495.44,-0.0139],[36,"2022-03-02","2022-03-03",44421.2,43892.99,-0.0134],
+      [37,"2022-03-20","2022-04-08",42201.13,43444.2,0.0279],[38,"2022-06-10","2022-06-11",30109.93,29091.87,-0.0353],[39,"2022-07-18","2022-08-05",20799.58,22622.41,0.086],
+      [40,"2022-08-11","2022-08-17",23954.05,23856.15,-0.0056],[41,"2022-10-24","2022-11-08",19570.4,20590.67,0.0506],[42,"2022-12-12","2022-12-19",17085.05,16739,-0.0217],
+      [43,"2023-01-11","2023-02-02",17440.64,23731.41,0.3587],[44,"2023-02-19","2023-02-22",24632.05,24450.67,-0.0089],[45,"2023-03-18","2023-04-02",27395.13,28452.74,0.037],
+      [46,"2023-04-13","2023-04-19",29888.07,30380.01,0.0149],[47,"2023-04-28","2023-05-01",29472.77,29233.2,-0.0096],[48,"2023-06-22","2023-07-08",29993.89,30344.7,0.0102],
+      [49,"2023-09-20","2023-09-25",27210.25,26248.39,-0.0368],[50,"2023-10-20","2023-11-09",28713.71,35624.72,0.2388],[51,"2023-12-02","2023-12-18",38682.51,41374.64,0.068],
+      [52,"2024-01-06","2024-01-12",44145.12,46339.16,0.0481],[53,"2024-02-09","2024-03-18",45288.66,68393.47,0.5079],[54,"2024-04-02","2024-04-02",69649.81,66724.52,-0.0434],
+      [55,"2024-04-09","2024-04-09",71620,68611.96,-0.0434],[56,"2024-05-18","2024-06-02",67024,67766.84,0.0096],[57,"2024-07-20","2024-07-25",66660.01,65376.01,-0.0207],
+      [58,"2024-09-20","2024-10-01",62948,63327.6,0.0045],[59,"2024-10-17","2024-11-03",67620,69374.74,0.0244],[60,"2024-11-07","2024-11-29",75571.99,95643.99,0.2637],
+      [61,"2024-12-14","2024-12-19",101424.24,100204.01,-0.0135],[62,"2025-01-19","2025-01-19",104556.23,100164.87,-0.0434],[63,"2025-04-21","2025-05-28",85179.24,108938.17,0.277],
+      [64,"2025-06-30","2025-07-27",108356.93,117919.99,0.0866],[65,"2025-08-14","2025-08-14",123306.44,118127.57,-0.0434],[66,"2025-09-17","2025-09-22",116788.96,115232.29,-0.0148],
+      [67,"2025-10-04","2025-10-10",122232.21,121662.41,-0.0062],[68,"2026-01-06","2026-01-08",93859.71,91364.16,-0.028],[69,"2026-03-10","2026-03-23",68432.16,67859,-0.0099],
+      [70,"2026-03-25","2026-03-27",70556.74,68820.31,-0.0261],[71,"2026-04-11","2026-05-01",72962.71,76346.58,0.0448],[72,"2026-05-06","2026-05-17",80905.53,78148.05,-0.0355],
+      [73,"2026-07-10","2026-07-29",63230.01,63915,0.0093]
+    ].map(([n,entry,exit,ep,xp,profit]) => ({n,entry,exit,ep,xp,profit}));
+
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    function parseDay(s){ const [y,m,d]=s.split("-").map(Number); return Date.UTC(y,m-1,d); }
+    function fmtDate(s){ const dt=new Date(parseDay(s)); return months[dt.getUTCMonth()]+" "+dt.getUTCDate()+", "+dt.getUTCFullYear(); }
+    function fmtPx(v){ return v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USDT"; }
+    function fmtPct(p){ return (p>=0?"+":"")+(p*100).toFixed(2)+"%"; }
+
+    const start = parseDay("2017-08-17");
+    const end = parseDay("2026-09-12");
+    const pts = [];
+    TRADES.forEach(t => { pts.push([parseDay(t.entry), t.ep]); pts.push([parseDay(t.exit), t.xp]); });
+    pts.sort((a,b)=>a[0]-b[0]);
+    function priceAt(ms){
+      if (ms<=pts[0][0]) return pts[0][1];
+      if (ms>=pts[pts.length-1][0]) return pts[pts.length-1][1];
+      for (let i=1;i<pts.length;i++){
+        const [a,pa]=pts[i-1], [b,pb]=pts[i];
+        if (ms>=a && ms<=b){ const t=b===a?0:(ms-a)/(b-a); return pa+(pb-pa)*t; }
+      }
+      return pts[pts.length-1][1];
+    }
+    const candles=[];
+    for (let ms=start; ms<=end; ms+=86400000){
+      const iso=new Date(ms).toISOString().slice(0,10);
+      candles.push({t:iso, c:+priceAt(ms).toFixed(2)});
+    }
+    function smaSeries(src, len){
+      const out=new Array(src.length).fill(null);
+      let sum=0;
+      for(let i=0;i<src.length;i++){
+        sum+=src[i].c;
+        if(i>=len) sum-=src[i-len].c;
+        if(i>=len-1) out[i]=+(sum/len).toFixed(2);
+      }
+      return out;
+    }
+    const smaFast=smaSeries(candles,9);
+    const smaSlow=smaSeries(candles,21);
+    const lastCandle=candles[candles.length-1].t;
+    const lastMa=lastCandle;
+    document.getElementById("chart-subtitle").textContent = "BTC/USDT • 1d • "+candles.length+" velas · série de mercado até "+lastCandle;
+    document.getElementById("series-align").textContent = "Velas e médias até "+lastCandle;
+
+    const tbody=document.getElementById("trades-body");
+    const mobile=document.getElementById("trades-mobile");
+    [...TRADES].reverse().forEach(t=>{
+      const cls=t.profit>=0?"profit":"loss";
+      tbody.insertAdjacentHTML("beforeend",
+        `<tr data-trade="${t.n}" data-entry="${t.entry}" data-exit="${t.exit}"><td rowspan="2"><div class="op-num">${t.n}</div><div class="buy">Compra</div></td><td>Entrada</td><td>${fmtDate(t.entry)}</td><td>Comprar</td><td>${fmtPx(t.ep)}</td><td>—</td><td colspan="4"></td></tr>`+
+        `<tr data-trade="${t.n}"><td>Saida</td><td>${fmtDate(t.exit)}</td><td>Encerrar posição</td><td>${fmtPx(t.xp)}</td><td></td><td class="${cls}">${fmtPct(t.profit)}</td><td>—</td><td>—</td><td>—</td></tr>`);
+      mobile.insertAdjacentHTML("beforeend",
+        `<article class="trade-card" data-trade="${t.n}"><p>${t.n} · Compra · ${fmtDate(t.entry)} → ${fmtDate(t.exit)}</p><p class="${cls}">${fmtPct(t.profit)}</p></article>`);
+    });
+
+    const markers=[];
+    TRADES.forEach(t=>{
+      markers.push({t:t.entry, kind:"compra", n:t.n, price:t.ep});
+      markers.push({t:t.exit, kind:"venda", n:t.n, price:t.xp});
+    });
+    const DEFAULT_BARS=180, MIN_BARS=12;
+    let fromIdx=Math.max(0, candles.length-DEFAULT_BARS), toIdx=candles.length;
+    const svg=document.getElementById("chart-svg");
+    const visibleEl=document.getElementById("visible-bars");
+    const chartRoot=document.getElementById("result-chart");
+    const stage=document.getElementById("chart-stage");
+    chartRoot.dataset.markerCount=String(markers.length);
+    chartRoot.dataset.lastCandle=lastCandle;
+    chartRoot.dataset.lastMa=lastMa;
+    chartRoot.dataset.marketLast=lastCandle;
+    chartRoot.dataset.maAhead="0";
+
+    function render(){
+      const slice=candles.slice(fromIdx,toIdx);
+      const n=slice.length||1;
+      visibleEl.textContent=n+" velas";
+      const W=1100,H=360,padL=64,padR=24,padT=28,padB=36,plotW=W-padL-padR,plotH=H-padT-padB;
+      const closes=slice.map(c=>c.c);
+      const maFastSlice=smaFast.slice(fromIdx,toIdx).filter(v=>v!=null);
+      const maSlowSlice=smaSlow.slice(fromIdx,toIdx).filter(v=>v!=null);
+      let min=Math.min(...closes, ...maFastSlice, ...maSlowSlice), max=Math.max(...closes, ...maFastSlice, ...maSlowSlice);
+      const span=(max-min)||1; min-=span*0.08; max+=span*0.12;
+      const y=p=>padT+(1-(p-min)/(max-min))*plotH;
+      const x=i=>padL+(i/Math.max(n-1,1))*plotW;
+      const visFrom=slice[0].t, visTo=slice[slice.length-1].t;
+      const visMarkers=markers.filter(m=>m.t>=visFrom && m.t<=visTo);
+      chartRoot.dataset.visibleMarkerCount=String(visMarkers.length);
+      chartRoot.dataset.viewportFrom=visFrom;
+      chartRoot.dataset.viewportTo=visTo;
+      chartRoot.dataset.lastCandle=lastCandle;
+      chartRoot.dataset.lastMa=lastMa;
+      chartRoot.dataset.maAhead="0";
+      const showLabels=n<=260;
+      let candlesSvg="";
+      const step=Math.max(1, Math.floor(n/220));
+      for(let i=0;i<n;i+=step){
+        const c=slice[i], prev=slice[Math.max(0,i-step)];
+        const up=c.c>=prev.c, x0=x(i), y0=y(c.c), y1=y(prev.c);
+        const top=Math.min(y0,y1), h=Math.max(4, Math.abs(y0-y1));
+        candlesSvg+=`<rect x="${(x0-2).toFixed(1)}" y="${top.toFixed(1)}" width="4" height="${h.toFixed(1)}" fill="${up?"#0ecb81":"#f6465d"}"/>`;
+      }
+      function maPath(values){
+        let d="", started=false;
+        for(let i=0;i<n;i++){
+          const v=values[fromIdx+i];
+          if(v==null) continue;
+          const cmd=started?"L":"M";
+          d+=cmd+x(i).toFixed(1)+" "+y(v).toFixed(1)+" ";
+          started=true;
+        }
+        return d.trim();
+      }
+      const fastPath=maPath(smaFast);
+      const slowPath=maPath(smaSlow);
+      const lastFast=smaFast[fromIdx+n-1];
+      const lastSlow=smaSlow[fromIdx+n-1];
+      const endMarks = visTo===lastCandle && lastFast!=null
+        ? `<circle data-ma-end="fast" cx="${x(n-1).toFixed(1)}" cy="${y(lastFast).toFixed(1)}" r="3" fill="#f6465d"/><circle data-ma-end="slow" cx="${x(n-1).toFixed(1)}" cy="${y(lastSlow).toFixed(1)}" r="3" fill="#3b82f6"/>`
+        : "";
+      let marks="";
+      visMarkers.forEach(m=>{
+        const i=slice.findIndex(c=>c.t>=m.t);
+        const xi=x(i<0?n-1:i), yi=y(m.price);
+        if(m.kind==="compra"){
+          marks+=`<polygon data-marker="compra" data-trade="${m.n}" data-time="${m.t}" points="${xi.toFixed(1)},${(yi+10).toFixed(1)} ${(xi-6).toFixed(1)},${(yi+22).toFixed(1)} ${(xi+6).toFixed(1)},${(yi+22).toFixed(1)}" fill="#10b981"/>`;
+          if(showLabels) marks+=`<text class="marker-label" x="${xi.toFixed(1)}" y="${(yi+34).toFixed(1)}" text-anchor="middle" fill="#10b981">Compra</text>`;
+        } else {
+          marks+=`<polygon data-marker="venda" data-trade="${m.n}" data-time="${m.t}" points="${xi.toFixed(1)},${(yi-10).toFixed(1)} ${(xi-6).toFixed(1)},${(yi-22).toFixed(1)} ${(xi+6).toFixed(1)},${(yi-22).toFixed(1)}" fill="#ef4444"/>`;
+          if(showLabels) marks+=`<text class="marker-label" x="${xi.toFixed(1)}" y="${(yi-26).toFixed(1)}" text-anchor="middle" fill="#ef4444">Venda</text>`;
+        }
+      });
+      svg.innerHTML=`<rect width="${W}" height="${H}" fill="#0b0e11"/>
+        <g stroke="#20262e" stroke-width="1">${[0.2,0.4,0.6,0.8].map(p=>`<path d="M${padL} ${padT+plotH*p}H${W-padR}"/>`).join("")}</g>
+        ${candlesSvg}
+        <path class="ma-fast" data-ma="fast" d="${fastPath}"/>
+        <path class="ma-slow" data-ma="slow" d="${slowPath}"/>
+        ${endMarks}${marks}
+        <text class="axis" x="${padL}" y="${H-12}">${visFrom.slice(0,7)}</text>
+        <text class="axis" x="${W-padR}" y="${H-12}" text-anchor="end">${visTo.slice(0,7)}</text>`;
+    }
+    function zoom(dir){
+      const span=toIdx-fromIdx;
+      const next=dir==="out"?Math.min(candles.length, Math.round(span/0.75)):Math.max(MIN_BARS, Math.round(span*0.75));
+      toIdx=candles.length;
+      fromIdx=Math.max(0, toIdx-next);
+      if(dir==="out" && span>=candles.length){ fromIdx=0; toIdx=candles.length; }
+      render();
+    }
+    function reset(){ fromIdx=Math.max(0, candles.length-DEFAULT_BARS); toIdx=candles.length; render(); }
+    document.getElementById("zoom-out").addEventListener("click", ()=>zoom("out"));
+    document.getElementById("zoom-in").addEventListener("click", ()=>zoom("in"));
+    document.getElementById("zoom-reset").addEventListener("click", reset);
+    let drag=null;
+    stage.addEventListener("pointerdown", e=>{ drag={x:e.clientX, from:fromIdx, to:toIdx}; stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener("pointerup", ()=>{ drag=null; });
+    stage.addEventListener("pointermove", e=>{
+      if(!drag) return;
+      const span=drag.to-drag.from;
+      const shift=Math.round((-(e.clientX-drag.x)/stage.clientWidth)*span);
+      fromIdx=Math.min(Math.max(0, drag.from+shift), candles.length-span);
+      toIdx=fromIdx+span;
+      render();
+    });
+    stage.addEventListener("wheel", e=>{ e.preventDefault(); zoom(e.deltaY>0?"out":"in"); }, {passive:false});
+    render();
+  </script>
+</body>
+</html>

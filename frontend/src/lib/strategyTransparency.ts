@@ -360,6 +360,52 @@ export function mergeStrategyTransparencySeries(
     }
 }
 
+export function lastLoadedCandleTimestampMs(
+    candles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+): number | null {
+    if (!candles.length) return null
+    let latest: number | null = null
+    for (const candle of candles) {
+        const ms = Date.parse(String(candle.timestamp_utc ?? candle.timestamp ?? ''))
+        if (!Number.isFinite(ms)) continue
+        latest = latest == null ? ms : Math.max(latest, ms)
+    }
+    return latest
+}
+
+/** Clip SMA/EMA overlays so they never extend past the last loaded candle. */
+export function clipStrategyTransparencyToLoadedCandles(
+    value: StrategyTransparency | Record<string, unknown> | null | undefined,
+    candles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+): StrategyTransparency | null {
+    const transparency = normalizeStrategyTransparency(value)
+    const lastMs = lastLoadedCandleTimestampMs(candles)
+    if (!transparency || lastMs == null) return transparency
+
+    const indicators = transparency.indicators.map((indicator) => ({
+        ...indicator,
+        series: indicator.series.filter((point) => {
+            const ms = Date.parse(point.timestamp_utc)
+            return Number.isFinite(ms) && ms <= lastMs
+        }),
+    }))
+
+    return {
+        ...transparency,
+        indicators,
+    }
+}
+
+export function maPointsAheadOfLastCandle(
+    transparency: StrategyTransparency | null | undefined,
+    candles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+): number {
+    const lastMs = lastLoadedCandleTimestampMs(candles)
+    const latestMaMs = latestAvailableSeriesTimestampMs(transparency)
+    if (lastMs == null || latestMaMs == null) return 0
+    return latestMaMs > lastMs ? 1 : 0
+}
+
 export function latestAvailableSeriesTimestampMs(
     transparency: StrategyTransparency | null | undefined,
 ): number | null {
