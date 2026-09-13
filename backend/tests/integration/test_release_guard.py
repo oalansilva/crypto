@@ -346,7 +346,9 @@ def test_post_release_allows_main_merge_commit_with_identical_tree(tmp_path: Pat
     assert "Result: PASS" in result.stdout
 
 
-def test_post_release_caso_a_develop_ahead_different_tree_passes_with_warn(tmp_path: Path, monkeypatch):
+def test_post_release_caso_a_develop_ahead_different_tree_passes_with_warn(
+    tmp_path: Path, monkeypatch
+):
     repo = _init_repo(tmp_path)
     _post_ready(repo)
     fake_gh = _fake_gh(tmp_path)
