@@ -14,6 +14,9 @@ import {
 } from 'lightweight-charts'
 import {
     buildIndicatorValueIndex,
+    clipStrategyTransparencyToLoadedCandles,
+    latestAvailableSeriesTimestampMs,
+    maPointsAheadOfLastCandle,
     normalizeStrategyTransparency,
     transparencyMatchesTimeframe,
     type StrategyTransparency,
@@ -254,10 +257,22 @@ export function StrategyChartSurface({
         || [symbol, timeframe].filter(Boolean).join('|')
         || 'default'
 
-    const transparency = React.useMemo(
-        () => normalizeStrategyTransparency(strategyTransparency),
-        [strategyTransparency],
+    const sortedCandles = React.useMemo(
+        () => [...candles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
+        [candles],
     )
+    const transparency = React.useMemo(
+        () => clipStrategyTransparencyToLoadedCandles(strategyTransparency, sortedCandles),
+        [strategyTransparency, sortedCandles],
+    )
+    const maAheadCount = React.useMemo(
+        () => maPointsAheadOfLastCandle(transparency, sortedCandles),
+        [sortedCandles, transparency],
+    )
+    const lastMaTimestamp = React.useMemo(() => {
+        const latestMs = latestAvailableSeriesTimestampMs(transparency)
+        return latestMs == null ? '' : new Date(latestMs).toISOString()
+    }, [transparency])
     const timeframeMatches = React.useMemo(
         () => transparencyMatchesTimeframe(transparency, timeframe),
         [timeframe, transparency],
@@ -287,10 +302,6 @@ export function StrategyChartSurface({
         indicatorValueIndexRef.current = indicatorValueIndex
     }, [indicatorValueIndex])
 
-    const sortedCandles = React.useMemo(
-        () => [...candles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
-        [candles],
-    )
     const candlestickData = React.useMemo(() => sortedCandles.map((candle) => ({
         time: toStrategyChartTimestamp(candle.timestamp_utc),
         open: candle.open,
@@ -736,6 +747,8 @@ export function StrategyChartSurface({
                 return String(marker.time).slice(0, 10)
             }).join('|')}
             data-last-candle-timestamp={sortedCandles.at(-1)?.timestamp_utc ?? ''}
+            data-last-ma-timestamp={lastMaTimestamp}
+            data-ma-ahead={String(maAheadCount)}
         >
             <header className="border-b border-[#2b3139] bg-[#0b0e11] px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">

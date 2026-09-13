@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { BarChart3, ArrowLeft, Star } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
@@ -213,6 +213,64 @@ export function ComboResultsPage() {
             alert('Erro ao exportar trades para Excel. Tente novamente.');
         }
     }
+
+    const [chartCandles, setChartCandles] = useState(result?.candles ?? [])
+
+    useEffect(() => {
+        if (!result?.symbol || !result?.timeframe) {
+            setChartCandles([])
+            return undefined
+        }
+
+        setChartCandles(result.candles ?? [])
+        let disposed = false
+
+        const mergeCandlesByTimestamp = (current: typeof result.candles, saved: typeof result.candles) => {
+            if (!saved?.length) return current
+            if (!current?.length) return saved
+            const byTimestamp = new Map<string, (typeof result.candles)[number]>()
+            const keyFor = (candle: (typeof result.candles)[number]) => {
+                const parsed = Date.parse(String(candle.timestamp_utc ?? ''))
+                return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(candle.timestamp_utc ?? '')
+            }
+            saved.forEach((candle) => {
+                const key = keyFor(candle)
+                if (key) byTimestamp.set(key, candle)
+            })
+            current.forEach((candle) => {
+                const key = keyFor(candle)
+                if (key) byTimestamp.set(key, candle)
+            })
+            return Array.from(byTimestamp.values()).sort(
+                (left, right) => Date.parse(keyFor(left)) - Date.parse(keyFor(right)),
+            )
+        }
+
+        const url = new URL(`${API_BASE_URL}/market/candles`, window.location.origin)
+        url.searchParams.set('symbol', result.symbol)
+        url.searchParams.set('timeframe', result.timeframe)
+        url.searchParams.set('full_history', 'true')
+        url.searchParams.set('limit', '300')
+
+        authFetch(url.toString())
+            .then(async (response) => {
+                const payload = await response.json().catch(() => ({}))
+                if (!response.ok || disposed) return
+                const marketCandles = Array.isArray(payload?.candles) ? payload.candles : []
+                if (marketCandles.length === 0) return
+                const merged = mergeCandlesByTimestamp(marketCandles, result.candles)
+                if (!disposed && merged.length > 0) {
+                    setChartCandles(merged)
+                }
+            })
+            .catch((error) => {
+                console.warn(`Background market candle refresh failed for ${result.symbol} ${result.timeframe}`, error)
+            })
+
+        return () => {
+            disposed = true
+        }
+    }, [result?.candles, result?.symbol, result?.timeframe])
 
     const trades = useMemo(() => result?.trades ?? [], [result?.trades])
     const strategyTransparency = useMemo(
@@ -443,9 +501,9 @@ export function ComboResultsPage() {
                     />
 
                     {/* CHART VISUALIZATION */}
-                    {(result.candles && result.candles.length > 0) ? (
+                    {(chartCandles && chartCandles.length > 0) ? (
                         <MonitorAlignedCandlestickChart
-                            candles={result.candles}
+                            candles={chartCandles}
                             markers={markers as any}
                             tradeListCount={trades.length}
                             strategyName={strategyTransparency?.display_name || result.template_name}
@@ -484,7 +542,7 @@ export function ComboResultsPage() {
                     ) : null}
                     <StrategyTradesTable
                         trades={result.trades}
-                        candles={result.candles}
+                        candles={chartCandles}
                         direction={direction}
                         metrics={isDiscovery ? derivedMetrics || metrics : metrics}
                         onExport={handleExportTrades}

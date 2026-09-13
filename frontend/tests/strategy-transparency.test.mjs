@@ -6,6 +6,8 @@ import {
     buildIndicatorValueIndex,
     buildStrategyRuleOverview,
     clipCandlesToIndicatorCoverage,
+    clipStrategyTransparencyToLoadedCandles,
+    maPointsAheadOfLastCandle,
     hasAvailableIndicatorSeries,
     indicatorValueAtTimestamp,
     mergeStrategyTransparencySeries,
@@ -179,6 +181,33 @@ test('só libera cache com série disponível, pontos válidos e timeframe compa
     }, '1d'), false)
 })
 
+test('clipStrategyTransparencyToLoadedCandles corta médias à última vela', () => {
+    const candles = [
+        { timestamp_utc: '2026-07-11T00:00:00Z' },
+        { timestamp_utc: '2026-07-16T00:00:00Z' },
+    ]
+    const transparency = normalizeStrategyTransparency({
+        status: 'available',
+        timeframe: '1d',
+        indicators: [{
+            key: 'short',
+            type: 'ema',
+            panel: 'price',
+            series_status: 'available',
+            series: [
+                { timestamp_utc: '2026-07-11T00:00:00Z', value: 101 },
+                { timestamp_utc: '2026-07-16T00:00:00Z', value: 110 },
+                { timestamp_utc: '2026-07-20T00:00:00Z', value: 120 },
+            ],
+        }],
+    })
+
+    const clipped = clipStrategyTransparencyToLoadedCandles(transparency, candles)
+    assert.equal(clipped?.indicators[0].series.at(-1)?.timestamp_utc, '2026-07-16T00:00:00.000Z')
+    assert.equal(maPointsAheadOfLastCandle(transparency, candles), 1)
+    assert.equal(maPointsAheadOfLastCandle(clipped, candles), 0)
+})
+
 test('mergeStrategyTransparencySeries estende médias cacheadas até as velas ao vivo', () => {
     const cached = {
         status: 'available',
@@ -256,6 +285,9 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(chartSource, /Indicadores indisponíveis/)
     assert.match(chartSource, /buildIndicatorValueIndex/)
     assert.match(chartSource, /data-last-candle-timestamp/)
+    assert.match(chartSource, /data-last-ma-timestamp/)
+    assert.match(chartSource, /data-ma-ahead/)
+    assert.match(chartSource, /clipStrategyTransparencyToLoadedCandles/)
     assert.match(chartSource, /data-series-last-timestamp/)
     assert.match(chartSource, /h-11/)
     assert.match(chartSource, /viewportResetKey/)
@@ -266,6 +298,8 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.doesNotMatch(chartSource, /shell\.addEventListener\('wheel'/)
     assert.doesNotMatch(chartSource, /onWheel=\{handleWheel\}/)
     assert.match(comboSource, /strategyTransparency=\{strategyTransparency\}/)
+    assert.match(comboSource, /full_history', 'true'/)
+    assert.match(comboSource, /setChartCandles\(merged\)/)
     assert.match(comboSource, /StrategyTransparencyPanel/)
     assert.doesNotMatch(comboSource, /SignalHistoryPanel|favorites-signal-history/)
     assert.doesNotMatch(comboSource, /combo-result-parameters/)
@@ -294,4 +328,11 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
         /xl:h-\[calc\(100vh-330px\)\] xl:min-h-\[420px\] xl:max-h-\[720px\]/,
     )
     assert.doesNotMatch(monitorSource, /xl:h-full xl:min-h-\[calc\(100vh-330px\)\]/)
+    assert.match(monitorSource, /CHART_TIMEFRAMES/)
+})
+
+test('chartData expõe 15m, 1h, 4h e 1d no Monitor', () => {
+    const chartDataSource = readFileSync(new URL('../src/components/monitor/chartData.ts', import.meta.url), 'utf8')
+    assert.match(chartDataSource, /'15m' \| '1h' \| '4h' \| '1d'/)
+    assert.match(chartDataSource, /CHART_TIMEFRAMES: ChartTimeframe\[] = \['15m', '1h', '4h', '1d'\]/)
 })

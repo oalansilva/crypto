@@ -20,11 +20,17 @@ from app.services.market_data_providers import (
     resolve_data_source_for_symbol,
 )
 from app.services.canonical_candle_service import candle_writer_enabled
-from app.services.binance_symbol_universe import resolve_binance_ohlcv_symbols
+from app.services.binance_symbol_universe import (
+    _symbol_limit,
+    resolve_binance_ohlcv_symbol_universe,
+    resolve_binance_ohlcv_symbols,
+    slice_symbol_universe_for_ingestion_run,
+)
+from app.services.runtime_status import candle_writer_state_path
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_INGESTION_TIMEFRAMES = ["15m", "1d"]
+DEFAULT_INGESTION_TIMEFRAMES = ["15m", "1h", "4h", "1d"]
 SUPPORTED_OHLCV_TIMEFRAMES = {"1m", "5m", "15m", "1h", "4h", "1d"}
 
 _TIMEFRAME_TO_INTERVAL = {
@@ -910,11 +916,32 @@ class OhlcvIngestionService:
             logger.info("[ohlcv] storage is disabled; skipping one-shot ingestion")
             return 0
 
+        universe = resolve_binance_ohlcv_symbol_universe()
+        offset = _read_ingestion_symbol_offset()
+        priority_raw = os.getenv("MARKET_OHLCV_PRIORITY_SYMBOL", "").strip().upper()
+        priority_symbols = [priority_raw] if priority_raw else None
+        symbols, next_offset = slice_symbol_universe_for_ingestion_run(
+            universe,
+            priority_symbols=priority_symbols,
+            limit=_symbol_limit(),
+            offset=offset,
+        )
+        _write_ingestion_symbol_offset(next_offset)
+
+        priority_timeframe = _normalize_timeframe(
+            os.getenv("MARKET_OHLCV_PRIORITY_TIMEFRAME", "").strip().lower(),
+        )
+        timeframes = list(self._timeframes)
+        if priority_timeframe in SUPPORTED_OHLCV_TIMEFRAMES and priority_timeframe in timeframes:
+            timeframes = [priority_timeframe] + [
+                item for item in timeframes if item != priority_timeframe
+            ]
+
         runs = 0
-        for timeframe in self._timeframes:
+        for timeframe in timeframes:
             if timeframe not in SUPPORTED_OHLCV_TIMEFRAMES:
                 continue
-            for symbol in self._symbols:
+            for symbol in symbols:
                 self._ingest_symbol(symbol, timeframe)
                 runs += 1
         return runs
@@ -956,6 +983,41 @@ def start_ohlcv_ingestion() -> None:
 
 def stop_ohlcv_ingestion() -> None:
     _INGESTION_SERVICE.stop()
+
+
+def _ingestion_symbol_offset_path():
+    state_path = candle_writer_state_path()
+    state_name = state_path.name
+    if state_name.endswith("-state.json"):
+        offset_name = f"{state_name[: -len('-state.json')]}-symbol-offset.json"
+    elif state_name.endswith(".json"):
+        offset_name = f"{state_name[:-5]}-symbol-offset.json"
+    else:
+        offset_name = f"{state_name}-symbol-offset.json"
+    return state_path.with_name(offset_name)
+
+
+def _read_ingestion_symbol_offset() -> int:
+    path = _ingestion_symbol_offset_path()
+    if not path.exists():
+        return 0
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        offset = int(payload.get("offset", 0))
+        return max(0, offset)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return 0
+
+
+def _write_ingestion_symbol_offset(offset: int) -> None:
+    path = _ingestion_symbol_offset_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+    tmp_path.write_text(
+        json.dumps({"offset": max(0, int(offset))}, ensure_ascii=True, indent=2),
+        encoding="utf-8",
+    )
+    tmp_path.replace(path)
 
 
 def run_ohlcv_ingestion_once() -> int:
