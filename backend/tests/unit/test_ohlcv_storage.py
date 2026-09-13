@@ -354,6 +354,95 @@ def test_ohlcv_ingestion_service_run_once_uses_default_timeframes(monkeypatch):
     assert offset_writes == [2]
 
 
+@pytest.mark.parametrize(
+    ("state_name", "expected_offset_name"),
+    [
+        ("foo-state.json", "foo-symbol-offset.json"),
+        ("writer.json", "writer-symbol-offset.json"),
+        ("noextension", "noextension-symbol-offset.json"),
+    ],
+)
+def test_ingestion_symbol_offset_path_derives_basename(
+    monkeypatch, tmp_path, state_name, expected_offset_name
+):
+    state_path = tmp_path / state_name
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(state_path))
+    offset_path = ohlcv_storage._ingestion_symbol_offset_path()
+    assert offset_path == state_path.with_name(expected_offset_name)
+
+
+def test_read_ingestion_symbol_offset_missing_returns_zero(monkeypatch, tmp_path):
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(tmp_path / "writer-state.json"))
+    assert ohlcv_storage._read_ingestion_symbol_offset() == 0
+
+
+def test_read_ingestion_symbol_offset_reads_valid_json(monkeypatch, tmp_path):
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(tmp_path / "writer-state.json"))
+    offset_path = ohlcv_storage._ingestion_symbol_offset_path()
+    offset_path.parent.mkdir(parents=True, exist_ok=True)
+    offset_path.write_text('{"offset": 7}', encoding="utf-8")
+    assert ohlcv_storage._read_ingestion_symbol_offset() == 7
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "not-json",
+        '{"offset": "nope"}',
+        '{"offset": null}',
+    ],
+)
+def test_read_ingestion_symbol_offset_invalid_returns_zero(monkeypatch, tmp_path, payload):
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(tmp_path / "writer-state.json"))
+    offset_path = ohlcv_storage._ingestion_symbol_offset_path()
+    offset_path.parent.mkdir(parents=True, exist_ok=True)
+    offset_path.write_text(payload, encoding="utf-8")
+    assert ohlcv_storage._read_ingestion_symbol_offset() == 0
+
+
+def test_write_ingestion_symbol_offset_persists_and_reads_back(monkeypatch, tmp_path):
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(tmp_path / "writer-state.json"))
+    ohlcv_storage._write_ingestion_symbol_offset(12)
+    assert ohlcv_storage._read_ingestion_symbol_offset() == 12
+
+
+def test_ohlcv_ingestion_service_run_once_priority_timeframe_uses_real_offset_helpers(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(tmp_path / "writer-state.json"))
+    monkeypatch.setenv("MARKET_OHLCV_PRIORITY_TIMEFRAME", "1d")
+    service = _new_service(monkeypatch)
+    service._timeframes = ["15m", "1d"]
+    service._repo._enabled = True
+
+    monkeypatch.setattr(
+        ohlcv_storage,
+        "resolve_binance_ohlcv_symbol_universe",
+        lambda: ["BTC/USDT", "ETH/USDT"],
+    )
+    monkeypatch.setattr(
+        ohlcv_storage,
+        "slice_symbol_universe_for_ingestion_run",
+        lambda universe, *, priority_symbols=None, limit, offset: (universe, 0),
+    )
+
+    ingested: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        service,
+        "_ingest_symbol",
+        lambda symbol, timeframe: ingested.append((symbol, timeframe)),
+    )
+
+    assert service.run_once() == 4
+    assert ingested == [
+        ("BTC/USDT", "1d"),
+        ("ETH/USDT", "1d"),
+        ("BTC/USDT", "15m"),
+        ("ETH/USDT", "15m"),
+    ]
+    assert ohlcv_storage._read_ingestion_symbol_offset() == 0
+
+
 def test_ohlcv_ingestion_lag_threshold_reads_env_or_defaults(monkeypatch):
     service = _new_service(monkeypatch)
     assert service._ingestion_lag_warning_threshold("1m") >= 60
