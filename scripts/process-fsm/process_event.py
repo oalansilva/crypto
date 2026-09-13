@@ -54,7 +54,9 @@ from t16 import (  # noqa: E402
     T16Closer,
     T16Error,
     classify_package,
+    FECHAR_RELEASE_WRONG_GIT_MESSAGE,
     lote_git,
+    wrong_fechar_release_git,
     measure_m_lote,
     parse_package_cards,
 )
@@ -357,6 +359,14 @@ def process_event(
         if _unbound(bound):
             return _payload(result="reject", state=q, to=None, reason="unbound")
     else:
+        if wrong_fechar_release_git(git):
+            return _payload(
+                result="reject",
+                state=q,
+                to=None,
+                reason="guard:lote_git",
+                message=_fechar_message(FECHAR_RELEASE_WRONG_GIT_MESSAGE),
+            )
         if _unbound(bound) and not lote_git(git):
             return _payload(result="reject", state=q, to=None, reason="unbound")
         if parsed_package is None or len(parsed_package) == 0:

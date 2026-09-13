@@ -40,6 +40,16 @@ def test_lote_git():
     assert lote_git("card-652-x") is False
 
 
+def test_wrong_fechar_release_git():
+    from t16 import wrong_fechar_release_git
+
+    assert wrong_fechar_release_git("main") is True
+    assert wrong_fechar_release_git("docs-release") is True
+    assert wrong_fechar_release_git("sync-2026-07-01") is True
+    assert wrong_fechar_release_git("develop") is False
+    assert wrong_fechar_release_git("release-2026-08-21") is False
+
+
 def test_measure_m_lote_exit_codes():
     assert measure_m_lote(runner=lambda *a, **k: _ok(0)) is True
     assert measure_m_lote(runner=lambda *a, **k: _ok(1)) is False
