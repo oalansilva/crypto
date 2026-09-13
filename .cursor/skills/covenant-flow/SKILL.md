@@ -238,7 +238,7 @@ No **mesmo turno** do pedido explícito de fechar lote / subir release, o pai sp
 - Prompt autocontido: és o filho `fecho-lote`; MUST NOT `process_event`; MUST NOT arrastar Status; MUST NOT commit/push; MUST NOT `move_agent_to_root`; Read overlay + `covenant-flow-environments`; corre `/kaizen release` (skill `kaizen`, read-only); devolve o relatório. O **pai** chama `process_event fechar_release` no mesmo turno após host `completed`.
 - MUST NOT gravar `.cursor/tmp/awaiting-task.json` para este spawn. Destape MUST NOT disparar. MUST NOT needle novo no classificador. Shell do fluxo: `required_permissions: ["all"]` no primeiro attempt.
 
-Quando o push do archive em `develop` for recusado por proteção (`qa-gate`), mesmo com pacote só Homologado: use `release-*` = `origin/develop` + archive → PR `release-* → main`; `pre` em `release-*` **não** exige archive em `origin/develop`. Após merge + deploy PROD, sync `main → develop` é obrigatório antes do `post` final (reexecutar `post` se as árvores ainda divergirem). Não dual-write o playbook completo neste `SKILL.md` nem no stub `AGENTS.md`.
+Quando o push do archive em `develop` for recusado por proteção (`qa-gate`), mesmo com pacote só Homologado: use `release-*` = `origin/develop` + archive → PR `release-* → main`; `pre` em `release-*` **não** exige archive em `origin/develop`. Após merge + deploy PROD, sync `main → develop` (um PR de merge normal) é obrigatório antes do `post` final até `origin/main` ser ancestral de `origin/develop` (extra na develop = aviso no `post`; recusar #926 e #913+#914+#915). Não dual-write o playbook completo neste `SKILL.md` nem no stub `AGENTS.md`.
 
 ## Higiene
 

@@ -93,6 +93,15 @@ def _post_ready(repo: Path) -> str:
     _git(repo, "switch", "main")
     _git(repo, "merge", "--no-ff", "develop", "-m", "merge release docs")
     _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _git(repo, "merge", "--no-ff", "main", "-m", "sync main into develop for post")
+    _git(repo, "push", "origin", "develop")
+    _git(repo, "switch", "main")
+    _git(repo, "commit", "--allow-empty", "-m", "test: homologated package card #480 on main")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _git(repo, "merge", "--no-ff", "main", "-m", "sync card #480 reference")
+    _git(repo, "push", "origin", "develop")
     return code_sha
 
 
@@ -294,7 +303,10 @@ def test_post_release_allows_identical_remote_commits(tmp_path: Path, monkeypatc
     )
 
     assert result.returncode == 0
-    assert "ancestor of origin/main with identical trees" in result.stdout
+    assert (
+        "reference the same commit" in result.stdout
+        or "production contained in develop" in result.stdout
+    )
     assert "Result: PASS" in result.stdout
 
 
@@ -317,6 +329,9 @@ def test_post_release_allows_main_merge_commit_with_identical_tree(tmp_path: Pat
     _git(repo, "switch", "main")
     _git(repo, "merge", "--no-ff", "develop", "-m", "merge develop")
     _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _git(repo, "merge", "--no-ff", "main", "-m", "sync main into develop")
+    _git(repo, "push", "origin", "develop")
 
     result = _run_guard(
         repo,
@@ -327,7 +342,31 @@ def test_post_release_allows_main_merge_commit_with_identical_tree(tmp_path: Pat
     )
 
     assert result.returncode == 0
-    assert "ancestor of origin/main with identical trees" in result.stdout
+    assert "production contained in develop" in result.stdout
+    assert "Result: PASS" in result.stdout
+
+
+def test_post_release_caso_a_develop_ahead_different_tree_passes_with_warn(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    _post_ready(repo)
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board())
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+    _git(repo, "switch", "develop")
+    _commit_file(repo, "develop-only.txt", "extra\n", "develop ahead of main")
+    _git(repo, "push", "origin", "develop")
+
+    result = _run_guard(
+        repo,
+        release_date="2026-07-01",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+    )
+
+    assert result.returncode == 0
+    assert "production contained in develop" in result.stdout
+    assert "WARN:" in result.stdout
+    assert "develop-only.txt" in result.stdout
     assert "Result: PASS" in result.stdout
 
 
@@ -344,7 +383,7 @@ def test_post_release_blocks_material_tree_divergence(tmp_path: Path):
     result = _run_post_guard(repo)
 
     assert result.returncode == 1
-    assert "identical content trees" in result.stdout
+    assert "develop must contain production" in result.stdout
     assert "Result: FAIL" in result.stdout
 
 
@@ -360,8 +399,46 @@ def test_post_release_blocks_identical_trees_without_develop_ancestry(tmp_path: 
     result = _run_post_guard(repo)
 
     assert result.returncode == 1
-    assert "origin/develop to equal or be an ancestor of origin/main" in result.stdout
+    assert "origin/main to be an ancestor of origin/develop" in result.stdout
     assert "Result: FAIL" in result.stdout
+
+
+def test_post_release_cards_require_hash_reference_on_main(tmp_path: Path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    code_sha = _post_ready(repo)
+    fake_gh = _fake_gh(tmp_path)
+    monkeypatch.setenv("FAKE_BOARD_JSON", _board((927, "Homologado")))
+    monkeypatch.setenv("FAKE_PR_JSON", "[]")
+    monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
+    _git(repo, "switch", "main")
+    _git(repo, "commit", "--allow-empty", "-m", "chore: track card #927 in production")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _git(repo, "merge", "--no-ff", "main", "-m", "sync main into develop")
+    _git(repo, "push", "origin", "develop")
+
+    missing = _run_guard(
+        repo,
+        release_date="2026-07-01",
+        release_cards="927,999",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+        prod_evidence=f"{code_sha} services=app url=https://example.com",
+    )
+    assert missing.returncode == 1
+    assert "missing commit on origin/main referencing" in missing.stdout
+    assert "#999" in missing.stdout
+
+    present = _run_guard(
+        repo,
+        release_date="2026-07-01",
+        release_cards="927",
+        release_branches="card-999-deleted",
+        fake_gh=fake_gh,
+        prod_evidence=f"{code_sha} services=app url=https://example.com",
+    )
+    assert present.returncode == 0
+    assert "Package card #927 referenced on origin/main" in present.stdout
 
 
 def test_post_blocks_missing_homologation_comment(tmp_path: Path, monkeypatch):
@@ -2078,6 +2155,11 @@ def test_post_accepts_code_tip_when_main_is_ahead_only_with_closeout(tmp_path: P
     _git(repo, "switch", "main")
     _git(repo, "merge", "--no-ff", "develop", "-m", "merge documental")
     _git(repo, "push", "origin", "main")
+    _git(repo, "commit", "--allow-empty", "-m", "test: homologated package card #480 on main")
+    _git(repo, "push", "origin", "main")
+    _git(repo, "switch", "develop")
+    _git(repo, "merge", "--no-ff", "main", "-m", "sync main for post")
+    _git(repo, "push", "origin", "develop")
     fake_gh = _fake_gh(tmp_path)
     monkeypatch.setenv("FAKE_BOARD_JSON", _board((480, "Pronto", "Teste")))
     monkeypatch.setenv("FAKE_COMMENTS", "Homologado por Alan na develop.")
