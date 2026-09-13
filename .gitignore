@@ -160,4 +160,6 @@ backups/
 .impeccable/live/pending-manual-edits.json
 .impeccable/live/deferred-svelte-component-accepts.json
 .impeccable/live/*.png
+.impeccable/critique/921-A-*.json
+.impeccable/critique/921-B-*.json
 # impeccable-ignore-end

@@ -45,6 +45,68 @@ def _symbol_limit() -> int | None:
     return parsed if parsed > 0 else None
 
 
+def resolve_binance_ohlcv_symbol_universe() -> list[str]:
+    """Full Binance spot USDT universe (no per-run cap)."""
+    raw_symbols = os.getenv("MARKET_OHLCV_SYMBOLS", "").strip()
+    if raw_symbols and raw_symbols.lower() not in _ALL_SYMBOL_SENTINELS:
+        return _normalize_explicit_symbols(raw_symbols)
+
+    try:
+        symbols = _fetch_trading_spot_usdt_symbols()
+    except Exception as exchange_info_exc:
+        try:
+            symbols = ExchangeService().fetch_binance_symbols()
+        except Exception as exc:
+            logger.warning(
+                "Could not resolve Binance symbol universe; using fallback symbols: %s",
+                exc,
+            )
+            return [*FALLBACK_BINANCE_USDT_SYMBOLS]
+        logger.warning(
+            "Could not resolve Binance exchangeInfo symbol universe; using cached exchange service symbols: %s",
+            exchange_info_exc,
+        )
+
+    filtered = [
+        symbol.strip().upper()
+        for symbol in symbols
+        if str(symbol or "").strip().upper().endswith("/USDT")
+        and not is_excluded_symbol(str(symbol or ""))
+    ]
+    deduped = list(dict.fromkeys(filtered))
+    return deduped or [*FALLBACK_BINANCE_USDT_SYMBOLS]
+
+
+def slice_symbol_universe_for_ingestion_run(
+    universe: list[str],
+    *,
+    priority_symbols: list[str] | None = None,
+    limit: int | None,
+    offset: int,
+) -> tuple[list[str], int]:
+    """Rotate through the full universe when a per-run cap is configured."""
+    if not universe:
+        return [], 0
+
+    ordered = list(universe)
+    if priority_symbols:
+        priority_set = {symbol.strip().upper() for symbol in priority_symbols if symbol}
+        front = [symbol for symbol in ordered if symbol in priority_set]
+        tail = [symbol for symbol in ordered if symbol not in priority_set]
+        ordered = front + tail
+
+    if limit is None or limit <= 0 or limit >= len(ordered):
+        return ordered, 0
+
+    batch: list[str] = []
+    index = offset % len(ordered)
+    while len(batch) < limit:
+        batch.append(ordered[index])
+        index = (index + 1) % len(ordered)
+    next_offset = (offset + limit) % len(ordered)
+    return batch, next_offset
+
+
 def _apply_limit(symbols: list[str]) -> list[str]:
     """Cap the universe size while keeping major pairs in the window.
 
@@ -85,31 +147,4 @@ def _fetch_trading_spot_usdt_symbols() -> list[str]:
 
 
 def resolve_binance_ohlcv_symbols() -> list[str]:
-    raw_symbols = os.getenv("MARKET_OHLCV_SYMBOLS", "").strip()
-    if raw_symbols and raw_symbols.lower() not in _ALL_SYMBOL_SENTINELS:
-        return _apply_limit(_normalize_explicit_symbols(raw_symbols))
-
-    try:
-        symbols = _fetch_trading_spot_usdt_symbols()
-    except Exception as exchange_info_exc:
-        try:
-            symbols = ExchangeService().fetch_binance_symbols()
-        except Exception as exc:
-            logger.warning(
-                "Could not resolve Binance symbol universe; using fallback symbols: %s",
-                exc,
-            )
-            return _apply_limit([*FALLBACK_BINANCE_USDT_SYMBOLS])
-        logger.warning(
-            "Could not resolve Binance exchangeInfo symbol universe; using cached exchange service symbols: %s",
-            exchange_info_exc,
-        )
-
-    filtered = [
-        symbol.strip().upper()
-        for symbol in symbols
-        if str(symbol or "").strip().upper().endswith("/USDT")
-        and not is_excluded_symbol(str(symbol or ""))
-    ]
-    deduped = list(dict.fromkeys(filtered))
-    return _apply_limit(deduped or [*FALLBACK_BINANCE_USDT_SYMBOLS])
+    return _apply_limit(resolve_binance_ohlcv_symbol_universe())
