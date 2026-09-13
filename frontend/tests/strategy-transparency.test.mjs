@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import {
+    alignStrategyTransparencyToLoadedCandles,
     buildIndicatorValueIndex,
     buildStrategyRuleOverview,
     clipCandlesToIndicatorCoverage,
     clipStrategyTransparencyToLoadedCandles,
+    extendMovingAverageSeriesToCandles,
     maPointsAheadOfLastCandle,
     hasAvailableIndicatorSeries,
     indicatorValueAtTimestamp,
@@ -181,6 +183,60 @@ test('só libera cache com série disponível, pontos válidos e timeframe compa
     }, '1d'), false)
 })
 
+test('extendMovingAverageSeriesToCandles acompanha velas de mercado após snapshot', () => {
+    const staleUntil = '2026-07-16T00:00:00Z'
+    const marketUntil = '2026-07-20T00:00:00Z'
+    const buildCloses = (untilIso, startIso = '2026-07-10T00:00:00Z') => {
+        const start = Date.parse(startIso)
+        const end = Date.parse(untilIso)
+        const step = 86_400_000
+        const count = Math.floor((end - start) / step) + 1
+        return Array.from({ length: count }, (_, index) => {
+            const timestamp = start + index * step
+            const close = 100 + index
+            return {
+                timestamp_utc: new Date(timestamp).toISOString(),
+                open: close - 1,
+                high: close + 2,
+                low: close - 2,
+                close,
+                volume: 1000 + index,
+            }
+        })
+    }
+
+    const staleCandles = buildCloses(staleUntil)
+    const marketCandles = buildCloses(marketUntil)
+    const transparency = normalizeStrategyTransparency({
+        status: 'available',
+        timeframe: '1d',
+        indicators: [{
+            key: 'short',
+            type: 'ema',
+            panel: 'price',
+            parameters: { length: 3 },
+            series_status: 'available',
+            series: staleCandles.map((candle, index) => ({
+                timestamp_utc: candle.timestamp_utc,
+                value: 50 + index,
+            })),
+        }],
+    })
+
+    const extended = extendMovingAverageSeriesToCandles(transparency, marketCandles)
+    const aligned = alignStrategyTransparencyToLoadedCandles(transparency, marketCandles)
+    assert.ok(extended)
+    assert.equal(
+        extended.indicators[0].series.at(-1)?.timestamp_utc,
+        marketCandles.at(-1)?.timestamp_utc,
+    )
+    assert.equal(maPointsAheadOfLastCandle(aligned, marketCandles), 0)
+    assert.equal(
+        aligned?.indicators[0].series.at(-1)?.timestamp_utc,
+        marketCandles.at(-1)?.timestamp_utc,
+    )
+})
+
 test('clipStrategyTransparencyToLoadedCandles corta médias à última vela', () => {
     const candles = [
         { timestamp_utc: '2026-07-11T00:00:00Z' },
@@ -287,7 +343,7 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(chartSource, /data-last-candle-timestamp/)
     assert.match(chartSource, /data-last-ma-timestamp/)
     assert.match(chartSource, /data-ma-ahead/)
-    assert.match(chartSource, /clipStrategyTransparencyToLoadedCandles/)
+    assert.match(chartSource, /alignStrategyTransparencyToLoadedCandles/)
     assert.match(chartSource, /data-series-last-timestamp/)
     assert.match(chartSource, /h-11/)
     assert.match(chartSource, /viewportResetKey/)
@@ -297,6 +353,8 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(chartSource, /chartEl\.addEventListener\('wheel'/)
     assert.doesNotMatch(chartSource, /shell\.addEventListener\('wheel'/)
     assert.doesNotMatch(chartSource, /onWheel=\{handleWheel\}/)
+    assert.match(comboSource, /alignStrategyTransparencyToLoadedCandles/)
+    assert.match(comboSource, /chartCandles/)
     assert.match(comboSource, /strategyTransparency=\{strategyTransparency\}/)
     assert.match(comboSource, /full_history', 'true'/)
     assert.match(comboSource, /setChartCandles\(merged\)/)
