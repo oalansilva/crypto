@@ -40,7 +40,7 @@ const transparencyWithFutureMa = {
     participation: ['entry'],
     references: [],
     series_status: 'available',
-    series: MARKET_CANDLES.map((candle, index) => ({
+    series: STALE_CANDLES.map((candle, index) => ({
       timestamp_utc: candle.timestamp_utc,
       value: 39_000 + index * 40,
     })),

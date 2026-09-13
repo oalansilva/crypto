@@ -10,7 +10,11 @@ import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { buildComboResultsChartMarkers } from '@/lib/tradeMarkers'
 import { type MonitorSyncStatus } from '@/lib/signalHistory'
-import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
+import {
+    alignStrategyTransparencyToLoadedCandles,
+    normalizeStrategyTransparency,
+    type StrategyTransparency,
+} from '@/lib/strategyTransparency'
 import type { OpportunitySignalHistoryItem } from '@/components/monitor/types'
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison'
 import {
@@ -274,8 +278,11 @@ export function ComboResultsPage() {
 
     const trades = useMemo(() => result?.trades ?? [], [result?.trades])
     const strategyTransparency = useMemo(
-        () => normalizeStrategyTransparency(result?.strategy_transparency),
-        [result?.strategy_transparency],
+        () => alignStrategyTransparencyToLoadedCandles(
+            normalizeStrategyTransparency(result?.strategy_transparency),
+            chartCandles,
+        ),
+        [chartCandles, result?.strategy_transparency],
     )
 
     // Métricas derivadas dos MESMOS trades exibidos na tabela (fechados, ordenados)
