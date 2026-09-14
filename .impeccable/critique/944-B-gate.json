@@ -1,0 +1,1700 @@
+{
+  "card": 944,
+  "utc": "2026-09-14T20:56Z",
+  "digest": {
+    "disk": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+    "disk_bytes": 65246,
+    "https_dir": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+    "https_dir_bytes": 65246,
+    "https_dir_status": 200,
+    "https_index": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+    "https_index_bytes": 65246,
+    "https_index_status": 200,
+    "expected": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+    "match": true,
+    "cmp_dir": true,
+    "cmp_index": true
+  },
+  "detector": {
+    "exit": 0,
+    "stdout": "[]",
+    "stderr": "",
+    "findings": []
+  },
+  "chrome": "/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux-arm64/chrome",
+  "url": "https://dev.criptofarol.com.br/prototypes/card-944-discovery-favorites-nomenclature/",
+  "viewports": [
+    {
+      "viewport": "desktop 1440x900",
+      "pass": true,
+      "n": 65,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "final_url_proto",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-944-discovery-favorites-nomenclature/"
+        },
+        {
+          "id": "not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-944-discovery-favorites-nomenclature/"
+        },
+        {
+          "id": "digest_match",
+          "ok": true,
+          "detail": {
+            "disk": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+            "disk_bytes": 65246,
+            "https_dir": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+            "https_dir_bytes": 65246,
+            "https_dir_status": 200,
+            "https_index": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+            "https_index_bytes": 65246,
+            "https_index_status": 200,
+            "expected": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+            "match": true,
+            "cmp_dir": true,
+            "cmp_index": true
+          }
+        },
+        {
+          "id": "lm_html_descoberta",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_preflight",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_rascunho",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_h1_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 560.59375,
+            "h": 38.390625,
+            "x": 256,
+            "y": 135.5,
+            "text": "Descoberta de estratégias swing"
+          }
+        },
+        {
+          "id": "default_acomp",
+          "ok": true,
+          "detail": "true"
+        },
+        {
+          "id": "panel_acomp_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "acomp_no_expand",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "acomp_thead_order",
+          "ok": true,
+          "detail": {
+            "got": [
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado"
+            ],
+            "want": [
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado"
+            ],
+            "all": [
+              "Rank",
+              "Candidato",
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado",
+              "Ação"
+            ]
+          }
+        },
+        {
+          "id": "acomp_no_trades_cobertura_name",
+          "ok": true,
+          "detail": [
+            "Rank",
+            "Candidato",
+            "Sharpe",
+            "Trades",
+            "Win%",
+            "Return",
+            "Max DD",
+            "Calmar",
+            "CAGR anualizado",
+            "Ação"
+          ]
+        },
+        {
+          "id": "acomp_row_label_order",
+          "ok": true,
+          "detail": [
+            {
+              "label": "Rank",
+              "text": "1"
+            },
+            {
+              "label": "Candidato",
+              "text": "Médias Móveis: Tendência em Virada 1 ALPHA/USDT · 1d · Long NO-GO"
+            },
+            {
+              "label": "Sharpe",
+              "text": "0,31"
+            },
+            {
+              "label": "Trades",
+              "text": "30 100% velas"
+            },
+            {
+              "label": "Win rate",
+              "text": "46,7%"
+            },
+            {
+              "label": "Return",
+              "text": "+12,8%"
+            },
+            {
+              "label": "Maximum Drawdown",
+              "text": "−16,5%"
+            },
+            {
+              "label": "Calmar",
+              "text": "22,53"
+            },
+            {
+              "label": "CAGR anualizado",
+              "text": "3,7%"
+            },
+            {
+              "label": "Ação",
+              "text": "Promover Excluir"
+            }
+          ]
+        },
+        {
+          "id": "acomp_return_128",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 84.703125,
+            "h": 125,
+            "x": 880.953125,
+            "y": 274.28125,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "acomp_cagr_37",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 146.1875,
+            "h": 125,
+            "x": 1167.5,
+            "y": 274.28125,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "acomp_return_ne_cagr",
+          "ok": true,
+          "detail": {
+            "return": "+12,8%",
+            "cagr": "3,7%"
+          }
+        },
+        {
+          "id": "acomp_return_not_cagr_num",
+          "ok": true,
+          "detail": "+12,8%"
+        },
+        {
+          "id": "acomp_cagr_not_return_num",
+          "ok": true,
+          "detail": "3,7%"
+        },
+        {
+          "id": "acomp_cell_Sharpe",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 71.171875,
+            "h": 125,
+            "x": 638.796875,
+            "y": 274.28125,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "acomp_cell_Trades",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 96.984375,
+            "h": 125,
+            "x": 709.96875,
+            "y": 274.28125,
+            "text": "30\n100% velas"
+          }
+        },
+        {
+          "id": "acomp_cell_Win rate",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 74,
+            "h": 125,
+            "x": 806.953125,
+            "y": 274.28125,
+            "text": "46,7%"
+          }
+        },
+        {
+          "id": "acomp_cell_Return",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 84.703125,
+            "h": 125,
+            "x": 880.953125,
+            "y": 274.28125,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "acomp_cell_Maximum Drawdown",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 84.703125,
+            "h": 125,
+            "x": 965.65625,
+            "y": 274.28125,
+            "text": "−16,5%"
+          }
+        },
+        {
+          "id": "acomp_cell_Calmar",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 117.140625,
+            "h": 125,
+            "x": 1050.359375,
+            "y": 274.28125,
+            "text": "22,53"
+          }
+        },
+        {
+          "id": "acomp_cell_CAGR anualizado",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 146.1875,
+            "h": 125,
+            "x": 1167.5,
+            "y": 274.28125,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "decidir_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "tab_decidir_selected",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "decidir_thead_order",
+          "ok": true,
+          "detail": {
+            "got": [
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado"
+            ],
+            "want": [
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado"
+            ],
+            "all": [
+              "Rank global",
+              "Candidato",
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado",
+              "Ação"
+            ]
+          }
+        },
+        {
+          "id": "decidir_no_trades_cobertura_name",
+          "ok": true,
+          "detail": [
+            "Rank global",
+            "Candidato",
+            "Sharpe",
+            "Trades",
+            "Win%",
+            "Return",
+            "Max DD",
+            "Calmar",
+            "CAGR anualizado",
+            "Ação"
+          ]
+        },
+        {
+          "id": "details_collapsed_none",
+          "ok": true,
+          "detail": {
+            "display": "none",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": null,
+            "h": null,
+            "x": null,
+            "y": null,
+            "text": "B&H 8,4% · Δ −4,7 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+          }
+        },
+        {
+          "id": "expand_present_decidir",
+          "ok": true,
+          "detail": 4
+        },
+        {
+          "id": "decidir_return_128",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 79.5625,
+            "h": 216.78125,
+            "x": 918.421875,
+            "y": 199.890625,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "decidir_cagr_37",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 137.296875,
+            "h": 216.78125,
+            "x": 1187.5625,
+            "y": 199.890625,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "decidir_return_ne_cagr",
+          "ok": true,
+          "detail": {
+            "return": "+12,8%",
+            "cagr": "3,7%"
+          }
+        },
+        {
+          "id": "decidir_cell_Sharpe",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 66.84375,
+            "h": 216.78125,
+            "x": 691.015625,
+            "y": 199.890625,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "decidir_cell_Trades",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 91.078125,
+            "h": 216.78125,
+            "x": 757.859375,
+            "y": 199.890625,
+            "text": "30\n100% velas"
+          }
+        },
+        {
+          "id": "decidir_cell_Win rate",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 69.484375,
+            "h": 216.78125,
+            "x": 848.9375,
+            "y": 199.890625,
+            "text": "46,7%"
+          }
+        },
+        {
+          "id": "decidir_cell_Return",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 79.5625,
+            "h": 216.78125,
+            "x": 918.421875,
+            "y": 199.890625,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "decidir_cell_Maximum Drawdown",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 79.5625,
+            "h": 216.78125,
+            "x": 997.984375,
+            "y": 199.890625,
+            "text": "−16,5%"
+          }
+        },
+        {
+          "id": "decidir_cell_Calmar",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 110.015625,
+            "h": 216.78125,
+            "x": 1077.546875,
+            "y": 199.890625,
+            "text": "22,53"
+          }
+        },
+        {
+          "id": "decidir_cell_CAGR anualizado",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 137.296875,
+            "h": 216.78125,
+            "x": 1187.5625,
+            "y": 199.890625,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "decidir_six_without_expand",
+          "ok": true,
+          "detail": "metrics visible with details display:none"
+        },
+        {
+          "id": "ins_row_present",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "ins_seal",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 318.609375,
+            "h": 26,
+            "x": 364.40625,
+            "y": 814.953125,
+            "text": "Amostra insuficiente"
+          }
+        },
+        {
+          "id": "ins_return_na",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 79.5625,
+            "h": 141,
+            "x": 918.421875,
+            "y": 758.453125,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "ins_cagr_na",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 137.296875,
+            "h": 141,
+            "x": 1187.5625,
+            "y": 758.453125,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "sort_two_only",
+          "ok": true,
+          "detail": {
+            "vals": [
+              "calmar",
+              "delta"
+            ],
+            "txt": [
+              "Calmar",
+              "CAGR vs B&H"
+            ]
+          }
+        },
+        {
+          "id": "sort_labels",
+          "ok": true,
+          "detail": [
+            "Calmar",
+            "CAGR vs B&H"
+          ]
+        },
+        {
+          "id": "sort_no_sharpe_win_cagr_return",
+          "ok": true,
+          "detail": [
+            "Calmar",
+            "CAGR vs B&H"
+          ]
+        },
+        {
+          "id": "details_open_block",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 256.9375,
+            "h": 49.5,
+            "x": 364.40625,
+            "y": 408.171875,
+            "text": "B&H 8,4% · Δ −4,7 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+          }
+        },
+        {
+          "id": "details_bh_pf_janela",
+          "ok": true,
+          "detail": "B&H 8,4% · Δ −4,7 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+        },
+        {
+          "id": "details_no_sharpe_win_cagr_return",
+          "ok": true,
+          "detail": "B&H 8,4% · Δ −4,7 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+        },
+        {
+          "id": "cagr_visible_after_expand",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 137.296875,
+            "h": 272.28125,
+            "x": 1187.5625,
+            "y": 199.890625,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "return_visible_after_expand",
+          "ok": true,
+          "detail": {
+            "display": "table-cell",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 79.5625,
+            "h": 272.28125,
+            "x": 918.421875,
+            "y": 199.890625,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "montar_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "montar_no_table_lb",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "montar_panel_no_metrics",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_rascunho_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 252.90625,
+            "h": 23.390625,
+            "x": 277,
+            "y": 445.890625,
+            "text": "Rascunho de varredura"
+          }
+        },
+        {
+          "id": "lm_preflight_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 105.5,
+            "h": 23.390625,
+            "x": 1084,
+            "y": 445.890625,
+            "text": "Preflight"
+          }
+        },
+        {
+          "id": "no_antes_depois",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "no_trades_cobertura_column",
+          "ok": true,
+          "detail": [
+            "Rank",
+            "Candidato",
+            "Sharpe",
+            "Tradescobertura",
+            "Win%acerto",
+            "Returnjanela",
+            "Max DD",
+            "CalmarCAGR ÷ Max DD",
+            "CAGR anualizado",
+            "Ação",
+            "Rank global",
+            "Candidato",
+            "Sharpe",
+            "Tradescobertura",
+            "Win%acerto",
+            "Returnjanela",
+            "Max DD",
+            "CalmarCAGR ÷ Max DD",
+            "CAGR anualizado",
+            "Ação"
+          ]
+        },
+        {
+          "id": "overflow_sw_cw",
+          "ok": true,
+          "detail": {
+            "sw": 1425,
+            "cw": 1425
+          }
+        },
+        {
+          "id": "console_impact_0",
+          "ok": true,
+          "detail": {
+            "console": [],
+            "pageerror": [],
+            "impact": []
+          }
+        },
+        {
+          "id": "no_http_ge_400",
+          "ok": true,
+          "detail": []
+        }
+      ],
+      "console": [],
+      "pageerror": [],
+      "bad_resps": [],
+      "overflow": {
+        "sw": 1425,
+        "cw": 1425
+      },
+      "url": "https://dev.criptofarol.com.br/prototypes/card-944-discovery-favorites-nomenclature/"
+    },
+    {
+      "viewport": "mobile 390x844",
+      "pass": true,
+      "n": 65,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "final_url_proto",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-944-discovery-favorites-nomenclature/"
+        },
+        {
+          "id": "not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-944-discovery-favorites-nomenclature/"
+        },
+        {
+          "id": "digest_match",
+          "ok": true,
+          "detail": {
+            "disk": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+            "disk_bytes": 65246,
+            "https_dir": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+            "https_dir_bytes": 65246,
+            "https_dir_status": 200,
+            "https_index": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+            "https_index_bytes": 65246,
+            "https_index_status": 200,
+            "expected": "e8e632a2d44c34ac7e93674adad5599f3a2b159ac6a0a57ae6a38640c8f44ed3",
+            "match": true,
+            "cmp_dir": true,
+            "cmp_index": true
+          }
+        },
+        {
+          "id": "lm_html_descoberta",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_preflight",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_rascunho",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_h1_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 343,
+            "h": 62.375,
+            "x": 16,
+            "y": 121.5,
+            "text": "Descoberta de estratégias swing"
+          }
+        },
+        {
+          "id": "default_acomp",
+          "ok": true,
+          "detail": "true"
+        },
+        {
+          "id": "panel_acomp_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "acomp_no_expand",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "acomp_thead_order",
+          "ok": true,
+          "detail": {
+            "got": [
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado"
+            ],
+            "want": [
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado"
+            ],
+            "all": [
+              "Rank",
+              "Candidato",
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado",
+              "Ação"
+            ]
+          }
+        },
+        {
+          "id": "acomp_no_trades_cobertura_name",
+          "ok": true,
+          "detail": [
+            "Rank",
+            "Candidato",
+            "Sharpe",
+            "Trades",
+            "Win%",
+            "Return",
+            "Max DD",
+            "Calmar",
+            "CAGR anualizado",
+            "Ação"
+          ]
+        },
+        {
+          "id": "acomp_row_label_order",
+          "ok": true,
+          "detail": [
+            {
+              "label": "Rank",
+              "text": "1"
+            },
+            {
+              "label": "Candidato",
+              "text": "Médias Móveis: Tendência em Virada 1 ALPHA/USDT · 1d · Long NO-GO"
+            },
+            {
+              "label": "Sharpe",
+              "text": "0,31"
+            },
+            {
+              "label": "Trades",
+              "text": "30 100% velas"
+            },
+            {
+              "label": "Win rate",
+              "text": "46,7%"
+            },
+            {
+              "label": "Return",
+              "text": "+12,8%"
+            },
+            {
+              "label": "Maximum Drawdown",
+              "text": "−16,5%"
+            },
+            {
+              "label": "Calmar",
+              "text": "22,53"
+            },
+            {
+              "label": "CAGR anualizado",
+              "text": "3,7%"
+            },
+            {
+              "label": "Ação",
+              "text": "Promover Excluir"
+            }
+          ]
+        },
+        {
+          "id": "acomp_return_128",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 187.5,
+            "y": -594.65625,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "acomp_cagr_37",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 44,
+            "y": -507.65625,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "acomp_return_ne_cagr",
+          "ok": true,
+          "detail": {
+            "return": "+12,8%",
+            "cagr": "3,7%"
+          }
+        },
+        {
+          "id": "acomp_return_not_cagr_num",
+          "ok": true,
+          "detail": "+12,8%"
+        },
+        {
+          "id": "acomp_cagr_not_return_num",
+          "ok": true,
+          "detail": "3,7%"
+        },
+        {
+          "id": "acomp_cell_Sharpe",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 44,
+            "y": -631.65625,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "acomp_cell_Trades",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 187.5,
+            "y": -631.65625,
+            "text": "30\n100% velas"
+          }
+        },
+        {
+          "id": "acomp_cell_Win rate",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 44,
+            "y": -594.65625,
+            "text": "46,7%"
+          }
+        },
+        {
+          "id": "acomp_cell_Return",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 187.5,
+            "y": -594.65625,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "acomp_cell_Maximum Drawdown",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 44,
+            "y": -557.65625,
+            "text": "−16,5%"
+          }
+        },
+        {
+          "id": "acomp_cell_Calmar",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 187.5,
+            "y": -557.65625,
+            "text": "22,53"
+          }
+        },
+        {
+          "id": "acomp_cell_CAGR anualizado",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 44,
+            "y": -507.65625,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "decidir_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "tab_decidir_selected",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "decidir_thead_order",
+          "ok": true,
+          "detail": {
+            "got": [
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado"
+            ],
+            "want": [
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado"
+            ],
+            "all": [
+              "Rank global",
+              "Candidato",
+              "Sharpe",
+              "Trades",
+              "Win%",
+              "Return",
+              "Max DD",
+              "Calmar",
+              "CAGR anualizado",
+              "Ação"
+            ]
+          }
+        },
+        {
+          "id": "decidir_no_trades_cobertura_name",
+          "ok": true,
+          "detail": [
+            "Rank global",
+            "Candidato",
+            "Sharpe",
+            "Trades",
+            "Win%",
+            "Return",
+            "Max DD",
+            "Calmar",
+            "CAGR anualizado",
+            "Ação"
+          ]
+        },
+        {
+          "id": "details_collapsed_none",
+          "ok": true,
+          "detail": {
+            "display": "none",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": null,
+            "h": null,
+            "x": null,
+            "y": null,
+            "text": "B&H 8,4% · Δ −4,7 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+          }
+        },
+        {
+          "id": "expand_present_decidir",
+          "ok": true,
+          "detail": 4
+        },
+        {
+          "id": "decidir_return_128",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 187.5,
+            "y": -354.5625,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "decidir_cagr_37",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 44,
+            "y": -267.5625,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "decidir_return_ne_cagr",
+          "ok": true,
+          "detail": {
+            "return": "+12,8%",
+            "cagr": "3,7%"
+          }
+        },
+        {
+          "id": "decidir_cell_Sharpe",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 44,
+            "y": -391.5625,
+            "text": "0,31"
+          }
+        },
+        {
+          "id": "decidir_cell_Trades",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 187.5,
+            "y": -391.5625,
+            "text": "30\n100% velas"
+          }
+        },
+        {
+          "id": "decidir_cell_Win rate",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 44,
+            "y": -354.5625,
+            "text": "46,7%"
+          }
+        },
+        {
+          "id": "decidir_cell_Return",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 187.5,
+            "y": -354.5625,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "decidir_cell_Maximum Drawdown",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 44,
+            "y": -317.5625,
+            "text": "−16,5%"
+          }
+        },
+        {
+          "id": "decidir_cell_Calmar",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 187.5,
+            "y": -317.5625,
+            "text": "22,53"
+          }
+        },
+        {
+          "id": "decidir_cell_CAGR anualizado",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 44,
+            "y": -267.5625,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "decidir_six_without_expand",
+          "ok": true,
+          "detail": "metrics visible with details display:none"
+        },
+        {
+          "id": "ins_row_present",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "ins_seal",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 124.8125,
+            "h": 26,
+            "x": 49,
+            "y": 350.8125,
+            "text": "Amostra insuficiente"
+          }
+        },
+        {
+          "id": "ins_return_na",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 187.5,
+            "y": 429.8125,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "ins_cagr_na",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 44,
+            "y": 516.8125,
+            "text": "N/A"
+          }
+        },
+        {
+          "id": "sort_two_only",
+          "ok": true,
+          "detail": {
+            "vals": [
+              "calmar",
+              "delta"
+            ],
+            "txt": [
+              "Calmar",
+              "CAGR vs B&H"
+            ]
+          }
+        },
+        {
+          "id": "sort_labels",
+          "ok": true,
+          "detail": [
+            "Calmar",
+            "CAGR vs B&H"
+          ]
+        },
+        {
+          "id": "sort_no_sharpe_win_cagr_return",
+          "ok": true,
+          "detail": [
+            "Calmar",
+            "CAGR vs B&H"
+          ]
+        },
+        {
+          "id": "details_open_block",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 256.9375,
+            "h": 49.5,
+            "x": 49,
+            "y": 458.4375,
+            "text": "B&H 8,4% · Δ −4,7 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+          }
+        },
+        {
+          "id": "details_bh_pf_janela",
+          "ok": true,
+          "detail": "B&H 8,4% · Δ −4,7 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+        },
+        {
+          "id": "details_no_sharpe_win_cagr_return",
+          "ok": true,
+          "detail": "B&H 8,4% · Δ −4,7 p.p. · PF 1,12 · mercado ALPHA/USDT · 1d · Long · janela [09 out 2020, 31 jan 2024)"
+        },
+        {
+          "id": "cagr_visible_after_expand",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 50,
+            "x": 44,
+            "y": 639.9375,
+            "text": "3,7%"
+          }
+        },
+        {
+          "id": "return_visible_after_expand",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 143.5,
+            "h": 37,
+            "x": 187.5,
+            "y": 552.9375,
+            "text": "+12,8%"
+          }
+        },
+        {
+          "id": "montar_active",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "montar_no_table_lb",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "montar_panel_no_metrics",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_rascunho_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 203.4375,
+            "h": 23.390625,
+            "x": 37,
+            "y": 614.0625,
+            "text": "Rascunho de varredura"
+          }
+        },
+        {
+          "id": "lm_preflight_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 105.5,
+            "h": 23.390625,
+            "x": 37,
+            "y": 581.953125,
+            "text": "Preflight"
+          }
+        },
+        {
+          "id": "no_antes_depois",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "no_trades_cobertura_column",
+          "ok": true,
+          "detail": [
+            "Rank",
+            "Candidato",
+            "Sharpe",
+            "Tradescobertura",
+            "Win%acerto",
+            "Returnjanela",
+            "Max DD",
+            "CalmarCAGR ÷ Max DD",
+            "CAGR anualizado",
+            "Ação",
+            "Rank global",
+            "Candidato",
+            "Sharpe",
+            "Tradescobertura",
+            "Win%acerto",
+            "Returnjanela",
+            "Max DD",
+            "CalmarCAGR ÷ Max DD",
+            "CAGR anualizado",
+            "Ação"
+          ]
+        },
+        {
+          "id": "overflow_sw_cw",
+          "ok": true,
+          "detail": {
+            "sw": 375,
+            "cw": 375
+          }
+        },
+        {
+          "id": "console_impact_0",
+          "ok": true,
+          "detail": {
+            "console": [],
+            "pageerror": [],
+            "impact": []
+          }
+        },
+        {
+          "id": "no_http_ge_400",
+          "ok": true,
+          "detail": []
+        }
+      ],
+      "console": [],
+      "pageerror": [],
+      "bad_resps": [],
+      "overflow": {
+        "sw": 375,
+        "cw": 375
+      },
+      "url": "https://dev.criptofarol.com.br/prototypes/card-944-discovery-favorites-nomenclature/"
+    }
+  ]
+}

@@ -204,21 +204,22 @@ for (const viewport of VIEWPORTS) {
     const firstPartial = partials.locator('tbody tr').first()
     await expect(firstPartial).toHaveAttribute('data-verdict', 'GO')
     await expect(firstPartial.getByTestId('seal-go')).toHaveText('GO')
-    await expect(firstPartial.locator('td').nth(2)).toHaveText('1,20')
+    await expect(firstPartial.locator('td[data-label="Calmar"]')).toHaveText('1,20')
     await expect(partials.getByText('1.195.206')).toHaveCount(0)
     await expect(partials.getByText(/1e\+?27/i)).toHaveCount(0)
 
     const alphaPartial = page.getByTestId('partial-nogo')
     await expect(alphaPartial.getByTestId('seal-nogo')).toHaveText('NO-GO')
     await expect(alphaPartial.getByText('ALPHA/USDT')).toBeVisible()
-    await expect(alphaPartial.locator('td').nth(2)).toHaveText('22,00')
-    await expect(alphaPartial.getByText('30 · 100%')).toBeVisible()
+    await expect(alphaPartial.locator('td[data-label="Calmar"]')).toHaveText('22,00')
+    await expect(alphaPartial.locator('td[data-label="Trades"]')).toContainText('30')
+    await expect(alphaPartial.locator('td[data-label="Trades"]')).toContainText('100% velas')
     await expect(alphaPartial.getByText('Baixa amostra')).toHaveCount(0)
     await expect(alphaPartial.getByText('Amostra insuficiente')).toHaveCount(0)
 
     const naPartial = page.getByTestId('partial-na')
     await expect(naPartial.getByTestId('partial-sharpe-na-RS-896-NA')).toHaveText('N/A')
-    await expect(naPartial.locator('td.na')).toHaveCount(4)
+    await expect(naPartial.locator('td.na')).toHaveCount(5)
 
     const partialVerdicts = await partials.locator('tbody tr').evaluateAll((rows) =>
       rows.map((row) => (row as HTMLElement).dataset.verdict || ''),
@@ -234,17 +235,19 @@ for (const viewport of VIEWPORTS) {
 
     await page.getByRole('tab', { name: 'Decidir' }).click()
     await expect(page.getByRole('columnheader', { name: 'Calmar (CAGR anual do calendário ÷ Max DD)' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'negócios / cobertura' })).toBeVisible()
-    await expect(page.getByTestId('column-copy')).toContainText('não é taxa de acerto')
+    await expect(page.getByRole('columnheader', { name: 'Trades' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Trades/cobertura' })).toHaveCount(0)
+    await expect(page.getByTestId('column-copy')).toContainText('cobertura de velas é subtexto')
 
     const decidirRows = page.locator('#panel-decidir tbody tr.result-row')
     await expect(decidirRows.first()).toHaveAttribute('data-verdict', 'GO')
-    await expect(decidirRows.first().locator('td').nth(2)).toHaveText('1,20')
+    await expect(decidirRows.first().locator('td[data-label="Calmar"]')).toHaveText('1,20')
 
     const nogo = page.getByTestId('row-nogo')
     await expect(nogo.getByTestId('seal-nogo')).toHaveText('NO-GO')
     await expect(nogo.getByText('22,00')).toBeVisible()
-    await expect(nogo.getByText('30 · 100%')).toBeVisible()
+    await expect(nogo.locator('td[data-label="Trades"]')).toContainText('30')
+    await expect(nogo.locator('td[data-label="Trades"]')).toContainText('100% velas')
     await expect(page.getByTestId('promote-RS-B109ED2C80')).toBeEnabled()
     await expect(page.getByTestId('promote-RS-B109ED2C80')).toHaveText('Promover')
 

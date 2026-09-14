@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { authFetch } from '../lib/authFetch'
 import { API_BASE_URL } from '../lib/apiBase'
+import { formatCompoundReturn, type CompoundReturnSource } from '../lib/compoundReturn'
 import { SelectionWorkbench } from '../components/SelectionWorkbench'
 import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
 import './DiscoveryPage.css'
@@ -85,6 +86,8 @@ type LeaderboardRow = {
   win_rate: number | null
   trades_count: number | null
   coverage: number | null
+  total_return?: number | null
+  total_return_pct?: number | null
   eligibility: string
   eligibility_reason: string | null
   dedup_state: string
@@ -98,7 +101,7 @@ type LeaderboardRow = {
   parameters?: Record<string, unknown>
   fees_slippage: { fees?: number; slippage?: number; fee_pct?: number; slippage_pct?: number } | null
   oos_verdict?: OosVerdict | null
-  metrics?: { oos_verdict?: OosVerdict | null } | null
+  metrics?: (CompoundReturnSource & { oos_verdict?: OosVerdict | null }) | null
 }
 
 type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
@@ -143,14 +146,17 @@ function fmtCalmar(v: number | null | undefined): string {
 function gridEasyMetrics(row: LeaderboardRow, calmarBlocked: boolean) {
   const sharpe = calmarBlocked ? 'N/A' : fmtNum(row.sharpe_ratio)
   const win = calmarBlocked ? 'N/A' : fmtPct(row.win_rate)
+  const ret = calmarBlocked ? 'N/A' : fmtGridReturn(row)
   const cagr = calmarBlocked ? 'N/A' : fmtPct(row.cagr)
   return {
     blocked: calmarBlocked,
     sharpe,
     win,
+    ret,
     cagr,
     sharpeNa: sharpe === 'N/A',
     winNa: win === 'N/A',
+    retNa: ret === 'N/A',
     cagrNa: cagr === 'N/A',
   }
 }
@@ -175,6 +181,19 @@ function fmtPct(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v) || !Number.isFinite(v)) return 'N/A'
   const percentage = Math.abs(v) <= 1 ? v * 100 : v
   return `${percentage.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+}
+function compoundSource(row: LeaderboardRow): CompoundReturnSource {
+  const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics : null
+  return {
+    total_return: row.total_return ?? nested?.total_return,
+    total_return_pct: row.total_return_pct ?? nested?.total_return_pct,
+  }
+}
+function fmtGridReturn(row: LeaderboardRow): string {
+  const formatted = formatCompoundReturn(compoundSource(row), { decimals: 1, empty: 'N/A' })
+  if (formatted.points === null) return 'N/A'
+  const sign = formatted.points >= 0 ? '+' : '−'
+  return `${sign}${Math.abs(formatted.points).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
 }
 function fmtPp(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v) || !Number.isFinite(v)) return 'N/A'
@@ -1872,25 +1891,28 @@ export function DiscoveryPage() {
                     <tr>
                       <th scope="col">Rank</th>
                       <th scope="col">Candidato</th>
-                      <th scope="col" aria-label="Calmar (CAGR anual do calendário ÷ Max DD)">
-                        <span>Calmar</span>
-                        <span className="th-hint">CAGR ÷ Max DD</span>
-                      </th>
-                      <th scope="col" aria-label="Maximum Drawdown">Max DD</th>
-                      <th scope="col" aria-label="negócios / cobertura">
-                        <span>Trades/cobertura</span>
-                        <span className="th-hint">negócios · velas</span>
-                      </th>
                       <th scope="col" aria-label="Sharpe">
                         <span>Sharpe</span>
+                      </th>
+                      <th scope="col" aria-label="Trades">
+                        <span>Trades</span>
+                        <span className="th-hint">cobertura</span>
                       </th>
                       <th scope="col" aria-label="Win rate (taxa de acerto)">
                         <span>Win%</span>
                         <span className="th-hint">acerto</span>
                       </th>
-                      <th scope="col" aria-label="Retorno (CAGR) anualizado da varredura">
-                        <span>CAGR</span>
-                        <span className="th-hint">anualizado</span>
+                      <th scope="col" aria-label="Return (retorno composto da janela da varredura)">
+                        <span>Return</span>
+                        <span className="th-hint">janela</span>
+                      </th>
+                      <th scope="col" aria-label="Maximum Drawdown">Max DD</th>
+                      <th scope="col" aria-label="Calmar (CAGR anual do calendário ÷ Max DD)">
+                        <span>Calmar</span>
+                        <span className="th-hint">CAGR ÷ Max DD</span>
+                      </th>
+                      <th scope="col" aria-label="CAGR anualizado da varredura">
+                        <span>CAGR anualizado</span>
                       </th>
                       <th scope="col" className="action">Ação</th>
                     </tr>
@@ -1932,9 +1954,6 @@ export function DiscoveryPage() {
                             </span>
                           ) : null}
                         </td>
-                        <td className={`number ${calmarText === 'N/A' ? 'na' : ''}`} data-label="Calmar">{calmarText}</td>
-                        <td className="number negative" data-label="Maximum Drawdown">{fmtDrawdown(row.max_drawdown)}</td>
-                        <td className="number" data-label="negócios / cobertura">{row.trades_count ?? 'N/A'} · {fmtPct(row.coverage)}</td>
                         <td
                           className={`number ${easy.sharpeNa ? 'na' : ''}`}
                           data-label="Sharpe"
@@ -1948,10 +1967,25 @@ export function DiscoveryPage() {
                         >
                           {easy.sharpe}
                         </td>
-                        <td className={`number ${easy.winNa ? 'na' : ''}`} data-label="Win rate">{easy.win}</td>
+                        <td className="number" data-label="Trades">
+                          {row.trades_count ?? 'N/A'}
+                          {row.coverage != null && Number.isFinite(row.coverage) ? (
+                            <span className="th-hint">{fmtPct(row.coverage)} velas</span>
+                          ) : null}
+                        </td>
+                        <td className={`number ${easy.winNa ? 'na' : ''}`} data-label="Win%">{easy.win}</td>
+                        <td
+                          className={`number ${easy.retNa ? 'na' : easy.ret.startsWith('−') ? 'negative' : 'positive'}`}
+                          data-label="Return"
+                          data-testid={row.rank === 1 ? 'partial-return-1' : undefined}
+                        >
+                          {easy.ret}
+                        </td>
+                        <td className={`number ${fmtDrawdown(row.max_drawdown) === 'N/A' ? 'na' : 'negative'}`} data-label="Max DD">{fmtDrawdown(row.max_drawdown)}</td>
+                        <td className={`number ${calmarText === 'N/A' ? 'na' : ''}`} data-label="Calmar">{calmarText}</td>
                         <td
                           className={`number ${easy.cagrNa ? 'na' : row.cagr != null && row.cagr > 0 ? 'positive' : ''}`}
-                          data-label="Retorno (CAGR)"
+                          data-label="CAGR anualizado"
                         >
                           {easy.cagr}
                         </td>
@@ -2470,31 +2504,34 @@ export function DiscoveryPage() {
               ) : null}
               <table className="discovery-table decidable" aria-describedby="leaderboard-note" data-testid="decidir-table">
                 <caption className="sr-only">
-                  Candidatos da varredura selecionada; ranks globais não renumeram sob filtro. Calmar é CAGR anual do calendário dividido pelo Max DD, não retorno. Trades/cobertura são negócios fechados e cobertura de velas, não taxa de acerto.
+                  Candidatos da varredura selecionada; ranks globais não renumeram sob filtro. Ordem das métricas: Sharpe, Trades, Win%, Return, Max DD, Calmar (CAGR ÷ Max DD), CAGR anualizado. Return é o composto da janela, não o CAGR. Trades são negócios fechados; cobertura de velas é subtexto.
                 </caption>
                 <thead>
                   <tr>
                     <th scope="col">Rank global</th>
                     <th scope="col">Candidato</th>
-                    <th scope="col" aria-label="Calmar (CAGR anual do calendário ÷ Max DD)">
-                      <span>Calmar</span>
-                      <span className="th-hint">CAGR ÷ Max DD</span>
-                    </th>
-                    <th scope="col" aria-label="Maximum Drawdown">Max DD</th>
-                    <th scope="col" aria-label="negócios / cobertura">
-                      <span>Trades/cobertura</span>
-                      <span className="th-hint">negócios · velas</span>
-                    </th>
                     <th scope="col" aria-label="Sharpe">
                       <span>Sharpe</span>
+                    </th>
+                    <th scope="col" aria-label="Trades">
+                      <span>Trades</span>
+                      <span className="th-hint">cobertura</span>
                     </th>
                     <th scope="col" aria-label="Win rate (taxa de acerto)">
                       <span>Win%</span>
                       <span className="th-hint">acerto</span>
                     </th>
-                    <th scope="col" aria-label="Retorno (CAGR) anualizado da varredura">
-                      <span>CAGR</span>
-                      <span className="th-hint">anualizado</span>
+                    <th scope="col" aria-label="Return (retorno composto da janela da varredura)">
+                      <span>Return</span>
+                      <span className="th-hint">janela</span>
+                    </th>
+                    <th scope="col" aria-label="Maximum Drawdown">Max DD</th>
+                    <th scope="col" aria-label="Calmar (CAGR anual do calendário ÷ Max DD)">
+                      <span>Calmar</span>
+                      <span className="th-hint">CAGR ÷ Max DD</span>
+                    </th>
+                    <th scope="col" aria-label="CAGR anualizado da varredura">
+                      <span>CAGR anualizado</span>
                     </th>
                     <th scope="col" className="action">Ação</th>
                   </tr>
@@ -2570,11 +2607,6 @@ export function DiscoveryPage() {
                             ) : null}
                           </div>
                         </td>
-                        <td className={`number ${calmarText === 'N/A' ? 'na' : ''} ${calmarText !== 'N/A' && row.calmar_ratio != null && row.calmar_ratio < 0 ? 'negative' : ''}`} data-label="Calmar">
-                          {calmarText}
-                        </td>
-                        <td className={`number ${insufficient ? 'na' : 'negative'}`} data-label="Maximum Drawdown">{insufficient ? 'N/A' : fmtDrawdown(row.max_drawdown)}</td>
-                        <td className={`number ${insufficient ? 'na' : ''}`} data-label="negócios / cobertura">{insufficient ? 'N/A' : `${row.trades_count ?? 'N/A'} · ${fmtPct(row.coverage)}`}</td>
                         <td
                           className={`number ${easy.sharpeNa ? 'na' : ''}`}
                           data-label="Sharpe"
@@ -2590,16 +2622,41 @@ export function DiscoveryPage() {
                         >
                           {easy.sharpe}
                         </td>
+                        <td className={`number ${insufficient ? 'na' : ''}`} data-label="Trades">
+                          {insufficient ? 'N/A' : row.trades_count ?? 'N/A'}
+                          {!insufficient && row.coverage != null && Number.isFinite(row.coverage) ? (
+                            <span className="th-hint">{fmtPct(row.coverage)} velas</span>
+                          ) : null}
+                        </td>
                         <td
                           className={`number ${easy.winNa ? 'na' : ''}`}
-                          data-label="Win rate"
+                          data-label="Win%"
                           data-testid={insufficient || easy.winNa ? `decidir-win-na-${row.result_id}` : undefined}
                         >
                           {easy.win}
                         </td>
                         <td
+                          className={`number ${easy.retNa ? 'na' : easy.ret.startsWith('−') ? 'negative' : 'positive'}`}
+                          data-label="Return"
+                          data-testid={
+                            insufficient
+                              ? `decidir-return-na-${row.result_id}`
+                              : row.rank === 1
+                                ? 'decidir-return-1'
+                                : easy.retNa
+                                  ? `decidir-return-na-${row.result_id}`
+                                  : undefined
+                          }
+                        >
+                          {easy.ret}
+                        </td>
+                        <td className={`number ${insufficient ? 'na' : 'negative'}`} data-label="Max DD">{insufficient ? 'N/A' : fmtDrawdown(row.max_drawdown)}</td>
+                        <td className={`number ${calmarText === 'N/A' ? 'na' : ''} ${calmarText !== 'N/A' && row.calmar_ratio != null && row.calmar_ratio < 0 ? 'negative' : ''}`} data-label="Calmar">
+                          {calmarText}
+                        </td>
+                        <td
                           className={`number ${easy.cagrNa ? 'na' : row.cagr != null && row.cagr > 0 ? 'positive' : ''}`}
-                          data-label="Retorno (CAGR)"
+                          data-label="CAGR anualizado"
                           data-testid={
                             insufficient
                               ? `decidir-cagr-na-${row.result_id}`
@@ -2652,9 +2709,9 @@ export function DiscoveryPage() {
               Dados históricos não garantem retornos futuros.
             </p>
             <p className="border-t border-[var(--border-default)] px-5 py-3 text-[11px] text-[var(--text-muted)]" data-testid="column-copy">
-              Calmar não é retorno: é CAGR do calendário da janela dividido pelo Max DD.{' '}
-              <span className="font-mono">30 · 100%</span> = 30 negócios fechados e 100% de cobertura de velas — não é taxa de acerto.{' '}
-              CAGR na grelha é o retorno anualizado da varredura, o mesmo «Retorno (CAGR)» do promover.
+              Ordem igual a Favoritos: Sharpe, Trades, Win%, Return, Max DD; depois Calmar (CAGR ÷ Max DD) e CAGR anualizado.
+              Return é o composto da janela da varredura — não o CAGR e não o número de Favoritos.
+              Trades = negócios fechados; cobertura de velas é subtexto. Max DD permanece com sinal negativo desta tela.
             </p>
           </section>
         ) : null}

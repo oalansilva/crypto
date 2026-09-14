@@ -80,6 +80,9 @@ const RESULTS = NAMES.map((name, index) => {
   const duplicate = index === 5
   const symbol = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT'][index % 4]
   const direction = index % 3 === 0 ? 'short' : 'long'
+  const cagr = 0.384 - index * 0.018
+  // Window compound ≠ CAGR (2y fixture window). Omit on lowSample so Return is N/A.
+  const totalReturn = Number(((1 + cagr) ** 2 - 1).toFixed(4))
   return {
     rank: lowSample ? null : index + 1,
     result_id: `RS-${1048 + index}`,
@@ -92,7 +95,9 @@ const RESULTS = NAMES.map((name, index) => {
     direction,
     parameters: index % 2 === 0 ? { ema: 55, rsi: 18 } : { period: 20, deviation: 2.2 },
     calmar_ratio: lowSample ? 3.2 : 2.84 - index * 0.19,
-    cagr: 0.384 - index * 0.018,
+    cagr,
+    total_return: lowSample ? null : totalReturn,
+    total_return_pct: lowSample ? null : Number((totalReturn * 100).toFixed(2)),
     benchmark_cagr: 0.205,
     delta_cagr_vs_bh: 17.9 - index * 2.1,
     max_drawdown: 0.135 + index * 0.006,
@@ -304,12 +309,15 @@ async function openDiscovery(page: Page) {
   await expect(page.getByTestId('result-count')).toContainText('12 de 12 candidatos')
   await expect(page.getByRole('columnheader', { name: 'Rank global' })).toHaveCount(1)
   await expect(page.getByRole('columnheader', { name: 'Candidato' })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Calmar (CAGR anual do calendário ÷ Max DD)' })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Maximum Drawdown' })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'negócios / cobertura' })).toHaveCount(1)
   await expect(page.getByRole('columnheader', { name: 'Sharpe' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Trades' })).toHaveCount(1)
   await expect(page.getByRole('columnheader', { name: 'Win rate (taxa de acerto)' })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Retorno (CAGR) anualizado da varredura' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Return (retorno composto da janela da varredura)' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Maximum Drawdown' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Calmar (CAGR anual do calendário ÷ Max DD)' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'CAGR anualizado da varredura' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Trades/cobertura' })).toHaveCount(0)
+  await expect(page.getByRole('columnheader', { name: 'Retorno (CAGR) anualizado da varredura' })).toHaveCount(0)
   await expect(page.getByRole('columnheader', { name: 'Buy and Hold', exact: true })).toHaveCount(0)
   await expect(page.getByRole('columnheader', { name: 'Profit Factor', exact: true })).toHaveCount(0)
   await expect(page.getByTestId('sort-filter')).toBeVisible()

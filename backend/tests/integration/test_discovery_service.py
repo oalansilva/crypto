@@ -1344,6 +1344,56 @@ class TestIdentityAndLeaderboard:
         assert raw["display_name"] != "Estratégia Cripto Farol"
         assert raw["rank"] == 2
 
+    def test_result_row_exposes_compound_return_from_persisted_json(self):
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        with_return = DiscoveryResult(
+            id="RS-RET",
+            sweep_id="sw-return",
+            combination_id=944001,
+            template_id="multi_ma_crossover",
+            symbol="ALPHA/USDT",
+            timeframe="1d",
+            direction="long",
+            parameters={},
+            start_at=now,
+            end_at=now + timedelta(days=1),
+            metrics={"total_return": 0.128, "total_return_pct": 12.8, "cagr": 0.037},
+            trades_count=30,
+            calmar_ratio=22.53,
+            cagr=0.037,
+            eligibility="eligible",
+            dedup_state="unique",
+        )
+        missing = DiscoveryResult(
+            id="RS-NA",
+            sweep_id="sw-return",
+            combination_id=944002,
+            template_id="multi_ma_crossover",
+            symbol="ADA/USDT",
+            timeframe="1d",
+            direction="long",
+            parameters={},
+            start_at=now,
+            end_at=now + timedelta(days=1),
+            metrics={"cagr": 0.037},
+            trades_count=30,
+            calmar_ratio=1.2,
+            cagr=0.037,
+            eligibility="eligible",
+            dedup_state="unique",
+        )
+
+        exposed = service._result_row(with_return, 1)
+        absent = service._result_row(missing, 2)
+
+        assert exposed["total_return"] == 0.128
+        assert exposed["total_return_pct"] == 12.8
+        assert exposed["cagr"] == 0.037
+        assert exposed["total_return_pct"] != exposed["cagr"]
+        assert absent["total_return"] is None
+        assert absent["total_return_pct"] is None
+
     def test_leaderboard_omits_discarded_results(self, engine_factory):
         engine = engine_factory()
         db = _session_factory(engine)()

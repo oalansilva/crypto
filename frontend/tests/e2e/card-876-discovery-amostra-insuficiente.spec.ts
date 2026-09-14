@@ -217,7 +217,7 @@ for (const viewport of VIEWPORTS) {
     await expect(insufficient.getByTestId('seal-insufficient')).toHaveText('Amostra insuficiente')
     await expect(insufficient.getByText('Baixa amostra')).toHaveCount(0)
     await expect(insufficient.getByText('—')).toBeVisible()
-    await expect(insufficient.locator('td.na')).toHaveCount(6)
+    await expect(insufficient.locator('td.na')).toHaveCount(7)
     await expect(insufficient.getByRole('button', { name: 'Promover' })).toHaveCount(0)
     await expect(insufficient.getByRole('button', { name: /Excluir/ })).toBeVisible()
 

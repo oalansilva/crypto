@@ -108,6 +108,22 @@ def _utc_iso(dt: datetime | None) -> str | None:
     return dt.astimezone(timezone.utc).isoformat() if dt else None
 
 
+def _json_metric_float(metrics: Any, key: str) -> float | None:
+    """Lift a finite numeric from the persisted result JSON. Missing/invalid → None (N/A)."""
+    if not isinstance(metrics, dict):
+        return None
+    value = metrics.get(key)
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
+
+
 def _row_oos_verdict(row: DiscoveryResult) -> dict[str, Any] | None:
     """Top-level walk-forward verdict. Absent/invalid does not invent GO."""
     metrics = row.metrics if isinstance(row.metrics, dict) else None
@@ -1690,6 +1706,8 @@ class DiscoveryService:
             "win_rate": row.win_rate,
             "trades_count": row.trades_count,
             "coverage": row.coverage,
+            "total_return": _json_metric_float(row.metrics, "total_return"),
+            "total_return_pct": _json_metric_float(row.metrics, "total_return_pct"),
             "eligibility": row.eligibility,
             "eligibility_reason": row.eligibility_reason,
             "dedup_state": row.dedup_state,
