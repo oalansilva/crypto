@@ -10,6 +10,7 @@ from app.services.discovery_favorite_metrics import (
     grid_metrics_from_snapshot,
     overlay_snapshot_grid_metrics,
 )
+from app.services.discovery_service import _json_metric_float
 
 SNAPSHOT_193 = {
     "sharpe_ratio": 0.31,
@@ -115,3 +116,18 @@ def test_build_promoted_favorite_metrics_copies_grid_keys():
     assert payload["total_trades"] == 30
     assert payload["total_return_pct"] == 16951
     assert payload["promoted_at"] == "2026-09-11T00:00:00Z"
+
+
+def test_json_metric_float_non_dict_metrics_are_none():
+    assert _json_metric_float(None, "total_return") is None
+    assert _json_metric_float(["x"], "total_return") is None
+
+
+def test_json_metric_float_non_numeric_value_is_none():
+    assert _json_metric_float({"total_return": "x"}, "total_return") is None
+    assert _json_metric_float({"total_return": ["x"]}, "total_return") is None
+
+
+def test_json_metric_float_non_finite_value_is_none():
+    assert _json_metric_float({"total_return": float("inf")}, "total_return") is None
+    assert _json_metric_float({"total_return": float("nan")}, "total_return") is None
