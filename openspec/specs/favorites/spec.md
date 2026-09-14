@@ -236,7 +236,7 @@ The Favorites analysis result view SHALL use the shared Monitor-aligned chart an
 - **AND** SHALL keep implementation-only fields and unauthorized regeneration hidden.
 
 ### Requirement: Favorites analysis uses current market candles for chart rendering
-The Favorites analysis flow SHALL merge available candle sources when opening a favorite analysis. Saved favorite trades and metrics SHALL remain the source for summary and trade evidence. The `/api/market/candles?full_history=true` data for the favorite symbol/timeframe SHALL be requested so the chart can use all persisted historical candles for the asset, independent of strategy. Saved `metrics.analysis_candles` SHALL be merged with market candles by timestamp so older backtest history and recent market candles both remain visible.
+The Favorites analysis flow SHALL merge available candle sources when opening a favorite analysis. Saved favorite trades and metrics SHALL remain the source for summary and trade evidence. The `/api/market/candles?full_history=true` data for the favorite symbol/timeframe SHALL be requested so the chart can use all persisted historical candles for the asset, independent of strategy. Saved `metrics.analysis_candles` SHALL be merged with market candles by timestamp so older backtest history and recent market candles both remain visible. A short open timeout MUST NOT freeze the snapshot when the market series is already current: the live series SHALL replace the snapshot so the newest chart candle matches the market.
 
 #### Scenario: Stale saved candles are replaced by full market history
 - **WHEN** a favorite has saved `metrics.analysis_candles` ending before the current market candle window
@@ -253,24 +253,20 @@ The Favorites analysis flow SHALL merge available candle sources when opening a 
 - **THEN** the result chart includes the saved older candles and the newer market candles
 - **AND** saved trades and metrics remain available in the result view
 
+#### Scenario: Open timeout does not freeze a stale snapshot
+- **WHEN** the live market candle request exceeds the short open timeout
+- **AND** the market series for that pair/interval is already current
+- **THEN** the analysis MAY paint the snapshot first
+- **AND** the live request SHALL continue and replace the snapshot
+- **AND** the newest chart candle MUST match the newest market candle
+- **AND** the chart MUST NOT remain on the August snapshot while the market is already in September
+
 #### Scenario: Current candle request fails
 - **WHEN** current market candles cannot be loaded for the favorite
 - **AND** saved `metrics.analysis_candles` exist
 - **THEN** Favorites analysis can still render the saved candles as fallback
+- **AND** moving-average overlays MUST still end at that last loaded candle
 - **AND** the failure does not trigger favorite metric regeneration by itself
-
-#### Scenario: Full persisted market history is incomplete
-- **WHEN** Favorites analysis requests `/api/market/candles?full_history=true`
-- **AND** the persisted OHLCV table does not cover the configured historical window or is stale
-- **THEN** the backend schedules an OHLCV backfill job for the favorite symbol/timeframe
-- **AND** the current request still returns the best available candle series
-- **AND** future requests can use the backfilled candles after the job writes them
-
-#### Scenario: Backend starts with favorite symbols already registered
-- **WHEN** the OHLCV backfill scheduler starts
-- **THEN** it includes crypto symbols/timeframes found in Favorites by default
-- **AND** it runs an initial scheduler pass without waiting for the daily interval
-- **AND** missing historical candles can be fetched in the background before the user opens the chart
 
 #### Scenario: Protected common user opens favorite analysis
 - **WHEN** a common user opens a protected favorite analysis
@@ -527,4 +523,21 @@ Favorites SHALL match free-text searches when all typed terms appear across the 
 #### Scenario: Existing single-field search remains supported
 - **WHEN** a user searches Favorites for a symbol, strategy word, or favorite name fragment
 - **THEN** matching favorites SHALL remain visible
+
+### Requirement: Analysis summary uses the same compound the Favorites grid already shows
+
+The Favorites panel already stores and renders `total_return` as compound return. When that RETURN is already visible on a row, opening `/combo/results` from that row SHALL render «Retorno total» with the same canonical large compound. The system MUST NOT treat a compound ratio whose absolute value is greater than 1 as if it were already a percent (that heuristic MAY remain valid for win rate and drawdown, which stay below 1 as ratios). Percentage-point fields (`total_return_pct`) MUST continue to mean points (98591,56 = +98.591,56%), not a second ×100.
+
+#### Scenario: Grid points and analysis ratio resolve to the same large percent
+
+- **WHEN** the grade reads percentage points 98591,56 (or ratio 985,91) for a filled Favorites row
+- **THEN** RETURN on `/favorites` is the large compound (~+98.591%)
+- **AND** «Retorno total» on the analysis of that same row is the same large compound
+- **AND** the analysis MUST NOT show ~985,85%
+
+#### Scenario: Small ratio stays a small percent on both screens
+
+- **WHEN** a favorite metric payload contains compound ratio `total_return=0.35` (or points 35)
+- **THEN** the Favorites page renders RETURN as ~+35%
+- **AND** the analysis summary of that row also renders ~+35%
 
