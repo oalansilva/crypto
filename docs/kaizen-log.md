@@ -1,5 +1,57 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-14 — Kaizen release (lote 904/921/927/935)
+
+- **Release/card**: 2026-09-14 — Homologado `#904` (P1 modelo por papel `38b854a3` + T18 `cf8f49a0`) + `#921` (P0 velas/médias `8689a71c` + T18 `a7f145a3`) + `#927` (P0 Caso A `d4b2a42d` + preflight `c1493106`) + `#935` (P0 retorno composto `23369ac9` + testids `09bc7c5a` + snapshot `27cb48a9`) → `release-2026-09-14` → `main` PR #937 merged `1e90437008aafe0a7fde39a4a3a9d6c298a08e93`. Fora: leftover `#897` `#899` (Pronto no board; código na develop).
+- **Fontes consultadas**: board Project 1 `gh project item-list 1 --owner oalansilva --limit 500 --format json` (Homologado 4, Done 0, Aprovação de Design 3 `600/614/728`, Em Refinamento 30→32), git `fetch --prune` + `status -sb` + `worktree list` + `log origin/main..origin/develop` + `release-guard pre` PASS (`RELEASE_CARDS=904,921,927,935` + `PRESERVED_BRANCHES`) + `openspec validate --all` 169 na release, `gh pr checks 937 --watch` (e2e 5m51s no SHA final, backend-tests 1m49s), REST comments 4 Homologado, PROD health `https://criptofarol.com.br/api/health` 200 após 502 de boot, frontend bundle `index-DifINXDO.js`. Filho `fecho-lote kaizen`.
+- **Sessões analisadas**: pai Grok Build desta sessão (`suba a release` unbound `q=None, bound_card=⊥, q_git=develop`; overlay + `covenant-flow-environments` carregados, T16 iniciado). Transcripts Cursor dos cards do pacote. Sem `opencode.db`.
+- **Custo/eficácia**: 4 Homologados; `develop` com leftover `#897`/`#899` bloqueou `develop→main`; cherry-pick em `release-*` + 2 falhas e2e no PR (testids + snapshot Descoberta) até `27cb48a9`. Campos e comentários Homologado neste turno antes do `pre`.
+
+#### Métricas
+
+- **Board**: 4 Homologado (`#904` Alan P1 Operacao; `#921` Clara P0 Produto; `#927` Clara P0 Operacao; `#935` Alan P0 Produto). Fora: `Done` 0, `Aprovação de Design` 3, `#938` `#939` criados neste closeout.
+- **Git**: `origin/main 1e904370` merge PR #937; `origin/develop aced62e1` ainda à frente com leftover; stash 0; worktrees extra classificados via `PRESERVED_BRANCHES`.
+- **CI**: PR #937 `release-*→main` SHA final `27cb48a9` checks `pass` (e2e 5m51s, backend-tests 1m49s, backend-unit-tests 2m13s, openspec-validate 21s, process-fsm 49s, frontend-build 48s) + `qa-gate`/`deploy-staging` `skipping` (base `main`); `mergeable=MERGEABLE`.
+- **OpenSpec**: 4 active na release antes do archive; após archive 4 dirs `2026-09-14-card-*`; `#904` `--skip-specs`; `validate --all` 169.
+- **PROD**: source `1e90437008aafe0a7fde39a4a3a9d6c298a08e93` (sudo, root-owned); alembic `20260915_0001`; `VITE_APP_ENV=production npm run build` bundle `index-DifINXDO.js` (hash novo vs `index-CMHlCJ7i.js`); services `backend`+`frontend`+`leads`+`runtime-worker` restart; candle-writer timer reinstalado (`15m,1h,4h,1d`); health 502→200; `/` 200; `/monitor` serve o bundle novo.
+
+#### Achados
+
+- **F-1 [major] Caso A cherry-pick a partir de `origin/main` entregou árvore e2e incompleta — 2 falhas, 3º SHA passou** — PR #937 `c1493106` e2e fail `getByTestId('favorite-935')`; `09bc7c5a` `favorite-193` return `"-"`; `27cb48a9` SUCCESS. Preflight tsc do `#927` não apanhou. **Novo** | Esforço M | P1 | Card novo: #938.
+- **F-2 [major] closeout T16/`fecho-lote` com chat pai Grok Build, não Composer 2.5** — lei Cursor D10 recusa T16 se o pai ≠ `composer-2.5`; stubs Grok inherit. Conflito não encoded. **Novo** | Esforço S | P1 | Card novo: #939.
+- **F-3 [major] linhas `proxy modelo:` ausentes ou desalinhadas no REST** — 3/4 cards com `Spawns: N` e zero proxy; `#904` autor com slug `inherit`. Recidiva #909. Esforço S.
+- **F-4 [minor] comentário Homologado canónico só neste turno, não no arraste T15** — 4/4 via helper no closeout. Recidiva #658. Esforço S.
+- **F-5 [minor] campos Project do `#904` preenchidos neste turno** — recidiva #910. Esforço S.
+- **F-6 [minor] dirty/extra worktrees + leftover `#897`/`#899` no `audit`** — recidiva #759. Esforço S.
+- **F-7 [minor] health PROD 502 na janela de boot → 200** — recidiva #888. Esforço S.
+- **F-8 [minor] source PROD root-owned / sudo** — recidiva #868. Esforço S.
+- **F-9 [info] `origin/main` ainda não ancestral de `origin/develop`** — esperado no Caso A antes do sync 5b.
+- **F-10 [info] T18 `#921` comment duplicado/garbled** — motivo válido; texto corrompido.
+- **F-11 [info] `#921` residual 4.1/4.3 vs `tasks.md` tudo `[x]`** — sobre-alegação; recidiva fraca #769.
+
+#### Padrões recorrentes
+
+- Proxy modelo só no git/transcript, não no issue REST | recidiva | #909
+- Homologado sem comentário no turno do arraste | recidiva | #658
+- Campos Project vazios até o closeout | recidiva | #910
+- Dirty worktrees / PRESERVED no `pre`/`audit` | recidiva | #759
+- Health 502 na janela de boot PROD | recidiva | #888
+- PROD root-owned / sudo | recidiva | #868
+- Caso A cherry-pick perde superfície e2e | **novo** | #938
+- T16/`fecho-lote` em pai Grok vs lei Cursor Composer 2.5 | **novo** | #939
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #938 — kaizen: Caso A cherry-pick a partir de origin/main deve levar a superfície e2e do pacote | P1 | F-1 | Em Refinamento |
+| #939 — kaizen: T16/fecho-lote — excepção por cliente vs lei Cursor Composer 2.5 | P1 | F-2 | Em Refinamento |
+| (não criado) proxy REST / slug inherit → coberto por #909 | — | F-3 | coberto por #909 (ainda Em Refinamento) |
+| (não criado) Homologado sem comentário no arraste → coberto por #658 | — | F-4 | coberto por #658 (ainda Em Refinamento) |
+| (não criado) campos Homologado → coberto por #910; dirty/PRESERVED → #759; health 502 → #888; sudo PROD → #868 | — | F-5/F-6/F-7/F-8 | coberto por #910/#759/#888/#868 (ainda Em Refinamento) |
+
+---
+
 ## 2026-09-12 — Kaizen release (lote 689/886/893/895/896/906)
 
 - **Release/card**: 2026-09-12 — Homologado `#689` (P1 convite uso único `1c0ae1fb`) + `#886` (P0 timer Telegram `ce6c26d3`) + `#893` (P1 teto review `284a61b2`) + `#895` (P1 schema destape `24209b38`) + `#896` (P1 Calmar NO-GO `113cbf7c`) + `#906` (P1 grelha Sharpe/Win%/CAGR `03697afd`) → `release-2026-09-12` → `main` PR #908 merged `216a72f8b5233aef1845e49ad3d72cb75a5d3078`. Fora: `#897` `#899` `#904` Done na develop.
