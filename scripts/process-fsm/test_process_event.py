@@ -1026,7 +1026,23 @@ def test_fechar_release_unbound_non_lote_git_rejected():
         **_t16_kwargs(q_git="main"),
     )
     assert out["result"] == "reject"
-    assert out["reason"] == "unbound"
+    assert out["reason"] == "guard:lote_git"
+    assert "develop" in out.get("message", "")
+    assert "release-*" in out.get("message", "")
+    assert mover.calls == []
+
+
+@pytest.mark.parametrize("q_git", ["docs-release-2026-07-01", "sync-main-develop"])
+def test_fechar_release_wrong_lote_git_docs_or_sync_rejected(q_git: str):
+    mover = FakeMover()
+    out = process_event(
+        "fechar_release",
+        mover=mover,
+        t16_closer=None,
+        **_t16_kwargs(q_git=q_git),
+    )
+    assert out["result"] == "reject"
+    assert out["reason"] == "guard:lote_git"
     assert mover.calls == []
 
 

@@ -1,0 +1,420 @@
+{
+  "results": [
+    {
+      "name": "digest-index.html",
+      "pass": true,
+      "detail": "http=200 disk=a9535af5af197d4228a225d1ee1854215953c4cbd5339d4758c48708e314a6ae https=a9535af5af197d4228a225d1ee1854215953c4cbd5339d4758c48708e314a6ae bytes=42109"
+    },
+    {
+      "name": "digest-analise.html",
+      "pass": true,
+      "detail": "http=200 disk=6a56f2dfef63f4809d4afa63c9a0a16b794b7c760cd4a844e6c4616b5e8403fd https=6a56f2dfef63f4809d4afa63c9a0a16b794b7c760cd4a844e6c4616b5e8403fd bytes=26823"
+    },
+    {
+      "name": "digest-monitor.html",
+      "pass": true,
+      "detail": "http=200 disk=fe217e1465874d2c3c95e0a66596668abf7203165a6f4ae5b374608f71f9bc9f https=fe217e1465874d2c3c95e0a66596668abf7203165a6f4ae5b374608f71f9bc9f bytes=22816"
+    },
+    {
+      "name": "desktop-index-fav-table",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-h1",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-symbol",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-estrategia",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-acoes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-sol-big",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-eth-35",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-no-985",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-antes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-sharpe",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-win",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-n32",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-analise-combo",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-analise-lista",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-analise-titulo",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-analise-return",
+      "pass": true,
+      "detail": "+98.591,56%"
+    },
+    {
+      "name": "desktop-analise-win",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-analise-dd",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-analise-n",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-analise-no-985",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-table",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-status",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-preco",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-dist",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-7d",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-risco",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-tags",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-operar",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-par",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-ver-trades-btn",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-closed-no-985",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-modal-visible",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-modal-return",
+      "pass": true,
+      "detail": "SOL/USDT\n\nMédias Móveis: Tendência Confirmada • 1d • Ver Trades\n\n×\n32\n\nTotal de operações\n\n68,75%\n\nTaxa de acerto\n\n+98.591,56%\n\nRetorno total\n\n+3,08%\n\nLucro médio\n\nLista de operações\n32 operações · me"
+    },
+    {
+      "name": "desktop-monitor-modal-win",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-modal-n",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-modal-label",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-open-no-985",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-eth-35",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-monitor-eth-no-regress",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-console",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile-index-fav-table",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-h1",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-symbol",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-estrategia",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-acoes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-sol-big",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-eth-35",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-no-985",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-antes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-sharpe",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-win",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-n32",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-analise-combo",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-analise-lista",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-analise-titulo",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-analise-return",
+      "pass": true,
+      "detail": "+98.591,56%"
+    },
+    {
+      "name": "mobile-analise-win",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-analise-dd",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-analise-n",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-analise-no-985",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-table",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-status",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-preco",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-dist",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-7d",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-risco",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-tags",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-operar",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-par",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-ver-trades-btn",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-closed-no-985",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-modal-visible",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-modal-return",
+      "pass": true,
+      "detail": "SOL/USDT\n\nMédias Móveis: Tendência Confirmada • 1d • Ver Trades\n\n×\n32\n\nTotal de operações\n\n68,75%\n\nTaxa de acerto\n\n+98.591,56%\n\nRetorno total\n\n+3,08%\n\nLucro médio\n\nLista de operações\n32 operações · me"
+    },
+    {
+      "name": "mobile-monitor-modal-win",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-modal-n",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-modal-label",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-open-no-985",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-eth-35",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-monitor-eth-no-regress",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-console",
+      "pass": true,
+      "detail": "[]"
+    }
+  ],
+  "fail": []
+}

@@ -1,0 +1,106 @@
+{
+  "results": [
+    {
+      "name": "voltar URL",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/prototypes/card-935-favorites-combo-return/index.html"
+    },
+    {
+      "name": "voltar SOL RETURN still large",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "voltar ETH still +35",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile table hidden",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile SOL card visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile SOL RETURN large",
+      "ok": true,
+      "detail": "RETURN\n+98.591,56%"
+    },
+    {
+      "name": "mobile SOL NOT 985,85",
+      "ok": true,
+      "detail": "RETURN\n+98.591,56%"
+    },
+    {
+      "name": "mobile ETH +35",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile h1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile full name",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile Analisar link",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile analise retorno",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile analise win",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile analise dd",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile analise n",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile analise Lista",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile trade cards 33",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile desk-trades hidden",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile voltar visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "console errors 0",
+      "ok": true,
+      "detail": "[]"
+    }
+  ],
+  "fails": [],
+  "console_errors": []
+}

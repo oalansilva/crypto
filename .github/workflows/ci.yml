@@ -465,8 +465,10 @@ jobs:
     timeout-minutes: 30
     needs:
       - qa-policy
+      - frontend-build
     if: >-
       always() &&
+      needs.frontend-build.result == 'success' &&
       (github.event_name != 'pull_request' || needs.qa-policy.result == 'success')
     steps:
       - name: Checkout

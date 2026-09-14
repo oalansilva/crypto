@@ -215,7 +215,10 @@ def test_harness_mdc_body_budget():
     lines = _harness_body_lines()
     text = "\n".join(lines)
     assert 4 <= len(lines) <= 12
-    assert "inherit" in text or ".cursor/hooks.json" in text
+    assert "juízo" in text and "execução" in text
+    assert "Task `inherit`" not in text
+    assert "every Task inherits" not in text
+    assert "herdar o picker" not in text
     assert "T1/T7/T15" not in text
     assert "diff-reviewer" not in text
     assert "release-guard" not in text
@@ -273,6 +276,14 @@ def test_agents_md_is_stub():
     assert "Auto OpenCode" not in generated
     assert "Auto dsh" not in generated
     assert len([ln for ln in generated.splitlines() if ln.strip()]) <= 40
+
+
+def test_skill_t18_destape_resume_and_release_picker():
+    text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Destape/resume mantém slug Composer" in text
+    assert "Release/lote — chat pai Composer 2.5" in text
+    assert "composer-2.5-fast" in text
+    assert "lista fechada isolada" in text
 
 
 def test_skill_priority_anchor():

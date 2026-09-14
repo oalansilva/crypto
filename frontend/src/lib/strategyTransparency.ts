@@ -360,6 +360,194 @@ export function mergeStrategyTransparencySeries(
     }
 }
 
+export function movingAveragePeriod(indicator: StrategyTransparencyIndicator): number | null {
+    for (const key of ['length', 'period', 'window']) {
+        const numeric = Number(indicator.parameters[key])
+        if (Number.isFinite(numeric) && numeric > 0) return Math.floor(numeric)
+    }
+    return null
+}
+
+interface CandleCloseRow {
+    timestampMs: number
+    timestampUtc: string
+    close: number
+}
+
+function sortedCandleCloseRows(
+    candles: Array<{ timestamp_utc?: string; timestamp?: string; close?: number }>,
+): CandleCloseRow[] {
+    const rows: CandleCloseRow[] = []
+    for (const candle of candles) {
+        const timestampMs = Date.parse(String(candle.timestamp_utc ?? candle.timestamp ?? ''))
+        const close = Number(candle.close)
+        if (!Number.isFinite(timestampMs) || !Number.isFinite(close)) continue
+        rows.push({
+            timestampMs,
+            timestampUtc: new Date(timestampMs).toISOString(),
+            close,
+        })
+    }
+    return rows.sort((left, right) => left.timestampMs - right.timestampMs)
+}
+
+function computeSmaValues(closes: number[], period: number): Array<number | null> {
+    const values: Array<number | null> = closes.map(() => null)
+    if (period <= 0 || closes.length === 0) return values
+    let sum = 0
+    for (let index = 0; index < closes.length; index += 1) {
+        sum += closes[index]
+        if (index >= period) sum -= closes[index - period]
+        if (index >= period - 1) values[index] = sum / period
+    }
+    return values
+}
+
+/** Talib-compatible EMA seed: SMA of the first `period` closes. */
+function computeEmaValues(closes: number[], period: number): Array<number | null> {
+    const values: Array<number | null> = closes.map(() => null)
+    if (period <= 0 || closes.length < period) return values
+    const multiplier = 2 / (period + 1)
+    let seedSum = 0
+    for (let index = 0; index < period; index += 1) seedSum += closes[index]
+    let ema = seedSum / period
+    values[period - 1] = ema
+    for (let index = period; index < closes.length; index += 1) {
+        ema = (closes[index] - ema) * multiplier + ema
+        values[index] = ema
+    }
+    return values
+}
+
+function movingAveragePointsFromCandles(
+    indicator: StrategyTransparencyIndicator,
+    rows: CandleCloseRow[],
+): StrategyIndicatorPoint[] {
+    const type = indicator.type.toLowerCase()
+    if (!['sma', 'ema'].includes(type)) return []
+    const period = movingAveragePeriod(indicator)
+    if (!period || rows.length === 0) return []
+
+    const closes = rows.map((row) => row.close)
+    const values = type === 'sma'
+        ? computeSmaValues(closes, period)
+        : computeEmaValues(closes, period)
+
+    const points: StrategyIndicatorPoint[] = []
+    values.forEach((value, index) => {
+        if (value == null || !Number.isFinite(value)) return
+        points.push({
+            timestamp_utc: rows[index].timestampUtc,
+            value,
+        })
+    })
+    return points
+}
+
+/**
+ * Recompute SMA/EMA price-panel overlays from loaded candle closes when market
+ * extends past the analysis manifest snapshot.
+ */
+export function extendMovingAverageSeriesToCandles(
+    value: StrategyTransparency | Record<string, unknown> | null | undefined,
+    candles: Array<{ timestamp_utc?: string; timestamp?: string; close?: number }>,
+): StrategyTransparency | null {
+    const transparency = normalizeStrategyTransparency(value)
+    if (!transparency || candles.length === 0) return transparency
+
+    const rows = sortedCandleCloseRows(candles)
+    if (rows.length === 0) return transparency
+
+    const lastCandleMs = rows[rows.length - 1].timestampMs
+    const indicators = transparency.indicators.map((indicator) => {
+        const type = indicator.type.toLowerCase()
+        if (!['sma', 'ema'].includes(type) || indicator.panel !== 'price') return indicator
+
+        const latestMs = indicator.series.length > 0
+            ? Date.parse(indicator.series[indicator.series.length - 1].timestamp_utc)
+            : null
+        if (latestMs != null && Number.isFinite(latestMs) && latestMs >= lastCandleMs) {
+            return indicator
+        }
+
+        const recomputed = movingAveragePointsFromCandles(indicator, rows)
+        if (recomputed.length === 0) return indicator
+
+        const series = mergeIndicatorSeriesPoints(indicator.series, recomputed)
+        return {
+            ...indicator,
+            series,
+            availability: normalizeAvailability('available', series.length > 0),
+            unavailable_reason: series.length > 0 ? '' : indicator.unavailable_reason,
+        }
+    })
+
+    return {
+        ...transparency,
+        indicators,
+        status: indicators.some((item) => item.availability === 'available' && item.series.length > 0)
+            ? 'available'
+            : transparency.status,
+    }
+}
+
+/** Extend price-panel MAs to loaded candles, then clip so nothing paints ahead. */
+export function alignStrategyTransparencyToLoadedCandles(
+    value: StrategyTransparency | Record<string, unknown> | null | undefined,
+    candles: Array<{ timestamp_utc?: string; timestamp?: string; close?: number }>,
+): StrategyTransparency | null {
+    return clipStrategyTransparencyToLoadedCandles(
+        extendMovingAverageSeriesToCandles(value, candles),
+        candles,
+    )
+}
+
+export function lastLoadedCandleTimestampMs(
+    candles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+): number | null {
+    if (!candles.length) return null
+    let latest: number | null = null
+    for (const candle of candles) {
+        const ms = Date.parse(String(candle.timestamp_utc ?? candle.timestamp ?? ''))
+        if (!Number.isFinite(ms)) continue
+        latest = latest == null ? ms : Math.max(latest, ms)
+    }
+    return latest
+}
+
+/** Clip SMA/EMA overlays so they never extend past the last loaded candle. */
+export function clipStrategyTransparencyToLoadedCandles(
+    value: StrategyTransparency | Record<string, unknown> | null | undefined,
+    candles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+): StrategyTransparency | null {
+    const transparency = normalizeStrategyTransparency(value)
+    const lastMs = lastLoadedCandleTimestampMs(candles)
+    if (!transparency || lastMs == null) return transparency
+
+    const indicators = transparency.indicators.map((indicator) => ({
+        ...indicator,
+        series: indicator.series.filter((point) => {
+            const ms = Date.parse(point.timestamp_utc)
+            return Number.isFinite(ms) && ms <= lastMs
+        }),
+    }))
+
+    return {
+        ...transparency,
+        indicators,
+    }
+}
+
+export function maPointsAheadOfLastCandle(
+    transparency: StrategyTransparency | null | undefined,
+    candles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+): number {
+    const lastMs = lastLoadedCandleTimestampMs(candles)
+    const latestMaMs = latestAvailableSeriesTimestampMs(transparency)
+    if (lastMs == null || latestMaMs == null) return 0
+    return latestMaMs > lastMs ? 1 : 0
+}
+
 export function latestAvailableSeriesTimestampMs(
     transparency: StrategyTransparency | null | undefined,
 ): number | null {

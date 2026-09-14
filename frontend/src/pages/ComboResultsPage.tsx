@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { BarChart3, ArrowLeft, Star } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
@@ -10,7 +10,11 @@ import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { buildComboResultsChartMarkers } from '@/lib/tradeMarkers'
 import { type MonitorSyncStatus } from '@/lib/signalHistory'
-import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
+import {
+    alignStrategyTransparencyToLoadedCandles,
+    normalizeStrategyTransparency,
+    type StrategyTransparency,
+} from '@/lib/strategyTransparency'
 import type { OpportunitySignalHistoryItem } from '@/components/monitor/types'
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison'
 import {
@@ -19,6 +23,7 @@ import {
     favoriteGridMetrics,
     isDiscoveryOrigin,
 } from '@/lib/discoveryFavoriteMetrics'
+import { formatBoundedRatioPercent, formatCompoundReturn } from '@/lib/compoundReturn'
 
 interface BacktestResult {
     template_name: string
@@ -36,6 +41,7 @@ interface BacktestResult {
         total_trades: number
         win_rate: number
         total_return: number
+        total_return_pct?: number
         avg_profit: number
         sharpe_ratio?: number
         max_drawdown?: number
@@ -214,10 +220,71 @@ export function ComboResultsPage() {
         }
     }
 
+    const [chartCandles, setChartCandles] = useState(result?.candles ?? [])
+
+    useEffect(() => {
+        if (!result?.symbol || !result?.timeframe) {
+            setChartCandles([])
+            return undefined
+        }
+
+        setChartCandles(result.candles ?? [])
+        let disposed = false
+
+        const mergeCandlesByTimestamp = (current: typeof result.candles, saved: typeof result.candles) => {
+            if (!saved?.length) return current
+            if (!current?.length) return saved
+            const byTimestamp = new Map<string, (typeof result.candles)[number]>()
+            const keyFor = (candle: (typeof result.candles)[number]) => {
+                const parsed = Date.parse(String(candle.timestamp_utc ?? ''))
+                return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(candle.timestamp_utc ?? '')
+            }
+            saved.forEach((candle) => {
+                const key = keyFor(candle)
+                if (key) byTimestamp.set(key, candle)
+            })
+            current.forEach((candle) => {
+                const key = keyFor(candle)
+                if (key) byTimestamp.set(key, candle)
+            })
+            return Array.from(byTimestamp.values()).sort(
+                (left, right) => Date.parse(keyFor(left)) - Date.parse(keyFor(right)),
+            )
+        }
+
+        const url = new URL(`${API_BASE_URL}/market/candles`, window.location.origin)
+        url.searchParams.set('symbol', result.symbol)
+        url.searchParams.set('timeframe', result.timeframe)
+        url.searchParams.set('full_history', 'true')
+        url.searchParams.set('limit', '300')
+
+        authFetch(url.toString())
+            .then(async (response) => {
+                const payload = await response.json().catch(() => ({}))
+                if (!response.ok || disposed) return
+                const marketCandles = Array.isArray(payload?.candles) ? payload.candles : []
+                if (marketCandles.length === 0) return
+                const merged = mergeCandlesByTimestamp(marketCandles, result.candles)
+                if (!disposed && merged.length > 0) {
+                    setChartCandles(merged)
+                }
+            })
+            .catch((error) => {
+                console.warn(`Background market candle refresh failed for ${result.symbol} ${result.timeframe}`, error)
+            })
+
+        return () => {
+            disposed = true
+        }
+    }, [result?.candles, result?.symbol, result?.timeframe])
+
     const trades = useMemo(() => result?.trades ?? [], [result?.trades])
     const strategyTransparency = useMemo(
-        () => normalizeStrategyTransparency(result?.strategy_transparency),
-        [result?.strategy_transparency],
+        () => alignStrategyTransparencyToLoadedCandles(
+            normalizeStrategyTransparency(result?.strategy_transparency),
+            chartCandles,
+        ),
+        [chartCandles, result?.strategy_transparency],
     )
 
     // Métricas derivadas dos MESMOS trades exibidos na tabela (fechados, ordenados)
@@ -313,23 +380,16 @@ export function ComboResultsPage() {
     const strategyDescription = String(result?.strategy_description || strategyTransparency?.description || '').trim()
     const directionLabel = isShort ? 'Short / venda' : 'Long / compra'
 
-    const formatMetricPercentage = (value: number | undefined, decimals = 1) => {
-        if (value === undefined || value === null || Number.isNaN(value)) return 'Indisponível'
-        const percentage = Math.abs(value) > 1 ? value : value * 100
-        return `${percentage.toFixed(decimals)}%`
-    }
+    const returnDisplay = formatCompoundReturn(metrics)
     const summaryMetrics = [
         {
             key: 'return',
             label: 'Retorno total',
-            value: formatMetricPercentage(
-                isDiscovery ? (metrics.total_return_pct ?? metrics.total_return) : metrics.total_return,
-                2,
-            ),
-            tone: Number(isDiscovery ? (metrics.total_return_pct ?? metrics.total_return) : metrics.total_return) >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]',
+            value: returnDisplay.text,
+            tone: returnDisplay.positive ? 'text-[#0ecb81]' : 'text-[#f6465d]',
         },
-        { key: 'win', label: 'Taxa de acerto', value: formatMetricPercentage(metrics.win_rate), tone: 'text-[#eaecef]' },
-        { key: 'maxdd', label: 'Drawdown máximo', value: formatMetricPercentage(metrics.max_drawdown), tone: 'text-[#eaecef]' },
+        { key: 'win', label: 'Taxa de acerto', value: formatBoundedRatioPercent(metrics.win_rate, 2), tone: 'text-[#eaecef]' },
+        { key: 'maxdd', label: 'Drawdown máximo', value: formatBoundedRatioPercent(metrics.max_drawdown, 2), tone: 'text-[#eaecef]' },
         { key: 'trades', label: 'Operações', value: String(metrics.total_trades ?? 0), tone: 'text-[#eaecef]' },
     ]
 
@@ -443,9 +503,9 @@ export function ComboResultsPage() {
                     />
 
                     {/* CHART VISUALIZATION */}
-                    {(result.candles && result.candles.length > 0) ? (
+                    {(chartCandles && chartCandles.length > 0) ? (
                         <MonitorAlignedCandlestickChart
-                            candles={result.candles}
+                            candles={chartCandles}
                             markers={markers as any}
                             tradeListCount={trades.length}
                             strategyName={strategyTransparency?.display_name || result.template_name}
@@ -484,7 +544,7 @@ export function ComboResultsPage() {
                     ) : null}
                     <StrategyTradesTable
                         trades={result.trades}
-                        candles={result.candles}
+                        candles={chartCandles}
                         direction={direction}
                         metrics={isDiscovery ? derivedMetrics || metrics : metrics}
                         onExport={handleExportTrades}
