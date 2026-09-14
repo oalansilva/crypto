@@ -16,6 +16,7 @@ import {
 import type { TradeExplanation } from '@/types/tradeExplanation';
 import type { MonitorSyncStatus } from '@/lib/signalHistory';
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison';
+import { favoriteGridMetrics } from '@/lib/discoveryFavoriteMetrics';
 import { formatCompoundReturn } from '@/lib/compoundReturn';
 
 import * as XLSX from 'xlsx';
@@ -949,7 +950,7 @@ const FavoritesDashboard: React.FC = () => {
 
     /** Número de trades: preferir tamanho da lista metrics.trades para bater com a "List of trades". */
     const getTradesCount = (fav: FavoriteStrategy): number => {
-        const m = fav.metrics || {};
+        const m = favoriteGridMetrics(fav.metrics);
         if (Array.isArray(m.trades) && m.trades.length >= 0) return m.trades.length;
         const n = m.total_trades ?? (typeof m.trades === 'number' ? m.trades : null);
         return n != null ? Math.max(0, Number(n)) : 0;
@@ -1052,7 +1053,7 @@ const FavoritesDashboard: React.FC = () => {
 
         // Prepare data for export
         const dataToExport = filteredFavorites.map(fav => {
-            const m = fav.metrics || {};
+            const m = favoriteGridMetrics(fav.metrics);
             const totalReturnPct = formatCompoundReturn(m, { empty: '-' }).points;
             const tradesN = Math.max(1, getTradesCount(fav));
             const returnPerTradePct = totalReturnPct != null ? totalReturnPct / tradesN : null;
@@ -1374,7 +1375,7 @@ const FavoritesDashboard: React.FC = () => {
                             <div className="fav-empty">Nenhuma estratégia favorita encontrada.</div>
                         ) : (
                             visibleFavorites.map((fav: FavoriteStrategy) => {
-                                const m = fav.metrics || {};
+                                const m = favoriteGridMetrics(fav.metrics);
                                 const tier = getTierDisplay(fav.tier);
                                 const totalReturn = formatSignedPct(m);
                                 const direction = getFavoriteDirection(fav);
@@ -1466,7 +1467,7 @@ const FavoritesDashboard: React.FC = () => {
                                 ) : (
                                     visibleFavorites.map((fav: FavoriteStrategy) => {
                                         const isSelected = selectedIds.includes(fav.id);
-                                        const m = fav.metrics || {};
+                                        const m = favoriteGridMetrics(fav.metrics);
                                         const tier = getTierDisplay(fav.tier);
                                         const totalReturn = formatSignedPct(m);
                                         const direction = getFavoriteDirection(fav);
