@@ -23,6 +23,7 @@ import {
     favoriteGridMetrics,
     isDiscoveryOrigin,
 } from '@/lib/discoveryFavoriteMetrics'
+import { formatBoundedRatioPercent, formatCompoundReturn } from '@/lib/compoundReturn'
 
 interface BacktestResult {
     template_name: string
@@ -40,6 +41,7 @@ interface BacktestResult {
         total_trades: number
         win_rate: number
         total_return: number
+        total_return_pct?: number
         avg_profit: number
         sharpe_ratio?: number
         max_drawdown?: number
@@ -378,23 +380,16 @@ export function ComboResultsPage() {
     const strategyDescription = String(result?.strategy_description || strategyTransparency?.description || '').trim()
     const directionLabel = isShort ? 'Short / venda' : 'Long / compra'
 
-    const formatMetricPercentage = (value: number | undefined, decimals = 1) => {
-        if (value === undefined || value === null || Number.isNaN(value)) return 'Indisponível'
-        const percentage = Math.abs(value) > 1 ? value : value * 100
-        return `${percentage.toFixed(decimals)}%`
-    }
+    const returnDisplay = formatCompoundReturn(metrics)
     const summaryMetrics = [
         {
             key: 'return',
             label: 'Retorno total',
-            value: formatMetricPercentage(
-                isDiscovery ? (metrics.total_return_pct ?? metrics.total_return) : metrics.total_return,
-                2,
-            ),
-            tone: Number(isDiscovery ? (metrics.total_return_pct ?? metrics.total_return) : metrics.total_return) >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]',
+            value: returnDisplay.text,
+            tone: returnDisplay.positive ? 'text-[#0ecb81]' : 'text-[#f6465d]',
         },
-        { key: 'win', label: 'Taxa de acerto', value: formatMetricPercentage(metrics.win_rate), tone: 'text-[#eaecef]' },
-        { key: 'maxdd', label: 'Drawdown máximo', value: formatMetricPercentage(metrics.max_drawdown), tone: 'text-[#eaecef]' },
+        { key: 'win', label: 'Taxa de acerto', value: formatBoundedRatioPercent(metrics.win_rate, 2), tone: 'text-[#eaecef]' },
+        { key: 'maxdd', label: 'Drawdown máximo', value: formatBoundedRatioPercent(metrics.max_drawdown, 2), tone: 'text-[#eaecef]' },
         { key: 'trades', label: 'Operações', value: String(metrics.total_trades ?? 0), tone: 'text-[#eaecef]' },
     ]
 
