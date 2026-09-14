@@ -1,0 +1,311 @@
+{
+  "card": 935,
+  "asserts": {
+    "desktop": {
+      "viewport": "desktop-1280x800",
+      "index_url": {
+        "pass": true,
+        "detail": "https://dev.criptofarol.com.br/prototypes/card-935-favorites-combo-return/"
+      },
+      "landmark_table": {
+        "pass": true,
+        "detail": "table.fav-strategies"
+      },
+      "landmark_h1": {
+        "pass": true,
+        "detail": "h1 text"
+      },
+      "landmark_symbol": {
+        "pass": true,
+        "detail": "\n                \n                  Sel\n                  Tier\n                  Telegram\n                  Symbol\n                  Estratégia\n                  Direção\n                  TF\n                  Período\n                  Stop\n                  Sharpe\n                  Trades\n                  Win%\n                  Return\n                  Max DD\n                  PF\n                  SQN\n                  Max L\n                  ATR\n                  Ações\n                \n              "
+      },
+      "landmark_estrategia": {
+        "pass": true,
+        "detail": "\n                \n                  Sel\n                  Tier\n                  Telegram\n                  Symbol\n                  Estratégia\n                  Direção\n                  TF\n                  Período\n                  Stop\n                  Sharpe\n                  Trades\n                  Win%\n                  Return\n                  Max DD\n                  PF\n                  SQN\n                  Max L\n                  ATR\n                  Ações\n                \n              "
+      },
+      "landmark_acoes": {
+        "pass": true,
+        "detail": "\n                \n                  Sel\n                  Tier\n                  Telegram\n                  Symbol\n                  Estratégia\n                  Direção\n                  TF\n                  Período\n                  Stop\n                  Sharpe\n                  Trades\n                  Win%\n                  Return\n                  Max DD\n                  PF\n                  SQN\n                  Max L\n                  ATR\n                  Ações\n                \n              "
+      },
+      "acoes_box": {
+        "x": 1140,
+        "y": 573.578125,
+        "width": 92,
+        "height": 37.3125
+      },
+      "return_th_box": {
+        "x": 972,
+        "y": 573.578125,
+        "width": 92,
+        "height": 37.3125
+      },
+      "return_in_viewport": {
+        "pass": true,
+        "detail": "{'x': 972, 'y': 573.578125, 'width': 92, 'height': 37.3125}"
+      },
+      "antes_depois": {
+        "pass": true,
+        "detail": "no ANTES/DEPOIS"
+      },
+      "sol_big": {
+        "pass": true,
+        "detail": "+98.591,56%"
+      },
+      "eth_35": {
+        "pass": true,
+        "detail": "+35,00%"
+      },
+      "no_small_copy": {
+        "pass": true,
+        "detail": "visible copy"
+      },
+      "sol_sharpe": {
+        "pass": true,
+        "detail": "sharpe"
+      },
+      "sol_win": {
+        "pass": true,
+        "detail": "win"
+      },
+      "sol_dd": {
+        "pass": true,
+        "detail": "maxdd"
+      },
+      "sol_n": {
+        "pass": true,
+        "detail": "32 trades"
+      },
+      "combo_page": {
+        "pass": true,
+        "detail": ".combo-page"
+      },
+      "analise_landmark": {
+        "pass": true,
+        "detail": "Análise da estratégia"
+      },
+      "lista_ops": {
+        "pass": true,
+        "detail": "Lista de operações"
+      },
+      "retorno_total_label": {
+        "pass": true,
+        "detail": "dt Retorno total"
+      },
+      "retorno_big": {
+        "pass": true,
+        "detail": "+98.591,56%"
+      },
+      "retorno_match_grade": {
+        "pass": true,
+        "detail": "+98.591,56%"
+      },
+      "win_match": {
+        "pass": true,
+        "detail": "68,75%"
+      },
+      "dd_match": {
+        "pass": true,
+        "detail": "14,15%"
+      },
+      "n_match": {
+        "pass": true,
+        "detail": "32"
+      },
+      "no_985_analise": {
+        "pass": true,
+        "detail": "no small number"
+      },
+      "summary_a11y_section": {
+        "pass": true,
+        "detail": "section aria-label"
+      },
+      "summary_a11y_dl": {
+        "pass": true,
+        "detail": "dl aria-label"
+      },
+      "summary_dt_dd": {
+        "pass": true,
+        "detail": "4 dt/dd"
+      },
+      "voltar_present": {
+        "pass": true,
+        "detail": "voltar"
+      },
+      "list_33_out_of_scope": {
+        "pass": true,
+        "detail": "32 vs 33 left visible"
+      },
+      "voltar_target": {
+        "pass": true,
+        "detail": "{'x': 256, 'y': 104, 'width': 181.671875, 'height': 44}"
+      },
+      "voltar_keeps_big": {
+        "pass": true,
+        "detail": "+98.591,56%"
+      },
+      "overflow": {
+        "scrollWidth": 1265,
+        "clientWidth": 1265,
+        "ok": true
+      },
+      "console": {
+        "pass": true,
+        "detail": "[]"
+      },
+      "http400": {
+        "pass": true,
+        "detail": "[]"
+      },
+      "console_errors": [],
+      "pageerrors": []
+    },
+    "mobile": {
+      "viewport": "mobile-390x844",
+      "index_url": {
+        "pass": true,
+        "detail": "https://dev.criptofarol.com.br/prototypes/card-935-favorites-combo-return/"
+      },
+      "landmark_table": {
+        "pass": true,
+        "detail": "table.fav-strategies"
+      },
+      "landmark_h1": {
+        "pass": true,
+        "detail": "h1 text"
+      },
+      "landmark_symbol": {
+        "pass": true,
+        "detail": "\n                \n                  Sel\n                  Tier\n                  Telegram\n                  Symbol\n                  Estratégia\n                  Direção\n                  TF\n                  Período\n                  Stop\n                  Sharpe\n                  Trades\n                  Win%\n                  Return\n                  Max DD\n                  PF\n                  SQN\n                  Max L\n                  ATR\n                  Ações\n                \n              "
+      },
+      "landmark_estrategia": {
+        "pass": true,
+        "detail": "\n                \n                  Sel\n                  Tier\n                  Telegram\n                  Symbol\n                  Estratégia\n                  Direção\n                  TF\n                  Período\n                  Stop\n                  Sharpe\n                  Trades\n                  Win%\n                  Return\n                  Max DD\n                  PF\n                  SQN\n                  Max L\n                  ATR\n                  Ações\n                \n              "
+      },
+      "landmark_acoes": {
+        "pass": true,
+        "detail": "\n                \n                  Sel\n                  Tier\n                  Telegram\n                  Symbol\n                  Estratégia\n                  Direção\n                  TF\n                  Período\n                  Stop\n                  Sharpe\n                  Trades\n                  Win%\n                  Return\n                  Max DD\n                  PF\n                  SQN\n                  Max L\n                  ATR\n                  Ações\n                \n              "
+      },
+      "acoes_box": null,
+      "return_th_box": null,
+      "antes_depois": {
+        "pass": true,
+        "detail": "no ANTES/DEPOIS"
+      },
+      "sol_big": {
+        "pass": true,
+        "detail": "RETURN\n+98.591,56%"
+      },
+      "eth_35": {
+        "pass": true,
+        "detail": "RETURN\n+35,00%"
+      },
+      "no_small_copy": {
+        "pass": true,
+        "detail": "visible copy"
+      },
+      "sol_sharpe": {
+        "pass": true,
+        "detail": "sharpe"
+      },
+      "sol_win": {
+        "pass": true,
+        "detail": "win"
+      },
+      "sol_dd": {
+        "pass": true,
+        "detail": "maxdd"
+      },
+      "sol_n": {
+        "pass": true,
+        "detail": "32 trades"
+      },
+      "combo_page": {
+        "pass": true,
+        "detail": ".combo-page"
+      },
+      "analise_landmark": {
+        "pass": true,
+        "detail": "Análise da estratégia"
+      },
+      "lista_ops": {
+        "pass": true,
+        "detail": "Lista de operações"
+      },
+      "retorno_total_label": {
+        "pass": true,
+        "detail": "dt Retorno total"
+      },
+      "retorno_big": {
+        "pass": true,
+        "detail": "+98.591,56%"
+      },
+      "retorno_match_grade": {
+        "pass": true,
+        "detail": "+98.591,56%"
+      },
+      "win_match": {
+        "pass": true,
+        "detail": "68,75%"
+      },
+      "dd_match": {
+        "pass": true,
+        "detail": "14,15%"
+      },
+      "n_match": {
+        "pass": true,
+        "detail": "32"
+      },
+      "no_985_analise": {
+        "pass": true,
+        "detail": "no small number"
+      },
+      "summary_a11y_section": {
+        "pass": true,
+        "detail": "section aria-label"
+      },
+      "summary_a11y_dl": {
+        "pass": true,
+        "detail": "dl aria-label"
+      },
+      "summary_dt_dd": {
+        "pass": true,
+        "detail": "4 dt/dd"
+      },
+      "voltar_present": {
+        "pass": true,
+        "detail": "voltar"
+      },
+      "list_33_out_of_scope": {
+        "pass": true,
+        "detail": "32 vs 33 left visible"
+      },
+      "voltar_target": {
+        "pass": true,
+        "detail": "{'x': 16, 'y': 90, 'width': 181.671875, 'height': 44}"
+      },
+      "voltar_keeps_big": {
+        "pass": true,
+        "detail": "RETURN\n+98.591,56%"
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375,
+        "ok": true
+      },
+      "console": {
+        "pass": true,
+        "detail": "[]"
+      },
+      "http400": {
+        "pass": true,
+        "detail": "[]"
+      },
+      "console_errors": [],
+      "pageerrors": []
+    }
+  },
+  "pass": 67,
+  "fail": 0,
+  "fails": [],
+  "verdict": "PASS"
+}
