@@ -20,6 +20,7 @@ import {
     favoriteGridMetrics,
     isDiscoveryOrigin,
 } from '@/lib/discoveryFavoriteMetrics';
+import { formatCompoundReturn } from '@/lib/compoundReturn';
 
 import * as XLSX from 'xlsx';
 
@@ -1070,9 +1071,7 @@ const FavoritesDashboard: React.FC = () => {
         // Prepare data for export
         const dataToExport = filteredFavorites.map(fav => {
             const m = favoriteGridMetrics(fav.metrics);
-            // derived
-            const totalReturn = m.total_return_pct ?? m.total_return;
-            const totalReturnPct = m.total_return_pct ?? (m.total_return != null ? m.total_return * 100 : null);
+            const totalReturnPct = formatCompoundReturn(m, { empty: '-' }).points;
             const tradesN = Math.max(1, getTradesCount(fav));
             const returnPerTradePct = totalReturnPct != null ? totalReturnPct / tradesN : null;
             const expectancy = m.expectancy ?? (m.total_pnl && tradesN ? m.total_pnl / tradesN : null);
@@ -1091,7 +1090,7 @@ const FavoritesDashboard: React.FC = () => {
                 Sharpe: formatNum(m.sharpe_ratio),
                 Trades: getTradesCount(fav),
                 "Win Rate": formatPct(m.win_rate),
-                "Total Return": formatPct(totalReturn),
+                "Total Return": formatCompoundReturn(m, { empty: '-' }).text,
                 "Ret/T %": returnPerTradePct != null ? formatPct(returnPerTradePct) : '-',
                 "Exp/Trade": formatCurrency(expectancy),
                 "Max DD": formatPct(m.max_drawdown),
@@ -1238,11 +1237,7 @@ const FavoritesDashboard: React.FC = () => {
         return { base: base || symbol || '-', quote: quote || '' };
     };
 
-    const formatSignedPct = (val?: number) => {
-        if (val === undefined || val === null) return { text: '-', positive: true };
-        const normalized = val > 1 || val < -1 ? val : val * 100;
-        return { text: `${normalized >= 0 ? '+' : ''}${normalized.toFixed(2)}%`, positive: normalized >= 0 };
-    };
+    const formatSignedPct = (metrics?: Record<string, any>) => formatCompoundReturn(metrics, { empty: '-' });
 
     const tableColumnCount = isAdmin ? 19 : 17;
 
@@ -1399,7 +1394,7 @@ const FavoritesDashboard: React.FC = () => {
                             visibleFavorites.map((fav: FavoriteStrategy) => {
                                 const m = favoriteGridMetrics(fav.metrics);
                                 const tier = getTierDisplay(fav.tier);
-                                const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
+                                const totalReturn = formatSignedPct(m);
                                 const direction = getFavoriteDirection(fav);
                                 const strategyDetail = getGridStrategyDetail(fav);
                                 const strategyDescription = getFavoriteStrategyDescription(fav);
@@ -1498,7 +1493,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const isSelected = selectedIds.includes(fav.id);
                                         const m = favoriteGridMetrics(fav.metrics);
                                         const tier = getTierDisplay(fav.tier);
-                                        const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
+                                        const totalReturn = formatSignedPct(m);
                                         const direction = getFavoriteDirection(fav);
                                         const symbol = splitSymbol(fav.symbol);
                                         const stopLoss = fav.parameters?.stop_loss ?? null;
@@ -1690,10 +1685,10 @@ const FavoritesDashboard: React.FC = () => {
                                             <tr className="bg-zinc-50/10">
                                                 <td className="p-4 font-bold text-zinc-400 border-r border-zinc-200 text-xs uppercase">Total Return</td>
                                                 {selectedStrategies.map(s => {
-                                                    const val = s.metrics.total_return_pct ?? s.metrics.total_return ?? 0;
+                                                    const totalReturn = formatCompoundReturn(s.metrics, { empty: '-' });
                                                     return (
-                                                        <td key={s.id} className={`p-4 font-bold text-lg border-r border-zinc-200 ${val >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                            {formatPct(val)}
+                                                        <td key={s.id} className={`p-4 font-bold text-lg border-r border-zinc-200 ${totalReturn.positive ? 'text-green-500' : 'text-red-500'}`}>
+                                                            {totalReturn.text}
                                                         </td>
                                                     );
                                                 })}

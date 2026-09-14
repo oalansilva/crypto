@@ -1,5 +1,6 @@
 import { Activity, DollarSign, Download, Target, TrendingDown, TrendingUp } from 'lucide-react'
 import type { TradeExplanation } from '@/types/tradeExplanation'
+import { formatBoundedRatioPercent, formatCompoundReturn } from '@/lib/compoundReturn'
 
 export interface StrategyTrade {
     entry_time: string
@@ -29,6 +30,7 @@ export interface StrategyTradeMetrics {
     total_trades?: number
     win_rate?: number
     total_return?: number
+    total_return_pct?: number
     avg_profit?: number
 }
 
@@ -141,12 +143,17 @@ function buildClosedTradeRows(trades: StrategyTrade[], candles: StrategyTradeCan
     }).reverse()
 }
 
-function deriveMetrics(rows: ReturnType<typeof buildClosedTradeRows>, metrics?: StrategyTradeMetrics | null): Required<StrategyTradeMetrics> {
+function deriveMetrics(rows: ReturnType<typeof buildClosedTradeRows>, metrics?: StrategyTradeMetrics | null): StrategyTradeMetrics {
     const wins = rows.filter((trade) => trade.netPnlUSD > 0).length
+    const fallbackRatio = rows[0]?.cumulativePnlPct ? rows[0].cumulativePnlPct / 100 : 0
+    const totalReturnPct = metrics?.total_return_pct
     return {
         total_trades: Number(metrics?.total_trades ?? rows.length),
         win_rate: Number(metrics?.win_rate ?? (rows.length > 0 ? wins / rows.length : 0)),
-        total_return: Number(metrics?.total_return ?? (rows[0]?.cumulativePnlPct ? rows[0].cumulativePnlPct / 100 : 0)),
+        total_return: Number(metrics?.total_return ?? fallbackRatio),
+        total_return_pct: totalReturnPct === undefined || totalReturnPct === null || Number.isNaN(Number(totalReturnPct))
+            ? undefined
+            : Number(totalReturnPct),
         avg_profit: Number(metrics?.avg_profit ?? (rows.length > 0 && rows[0]?.cumulativePnlPct ? (rows[0].cumulativePnlPct / 100) / rows.length : 0)),
     }
 }
@@ -168,6 +175,7 @@ export function StrategyTradesTable({
         .filter((trade) => trade.entry_time && (!trade.exit_time || trade.exit_price == null))
         .sort((left, right) => new Date(right.entry_time).getTime() - new Date(left.entry_time).getTime())
     const displayMetrics = deriveMetrics(rows, metrics)
+    const returnDisplay = formatCompoundReturn(displayMetrics)
 
     return (
         <section className="space-y-4" data-testid={testId}>
@@ -175,22 +183,22 @@ export function StrategyTradesTable({
                 <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] p-5">
                     <div className="mb-3 flex items-center justify-between">
                         <Activity className="h-5 w-5 text-[#fcd535]" />
-                        <span className="text-2xl font-bold text-[#eaecef]">{displayMetrics.total_trades}</span>
+                        <span className="text-2xl font-bold text-[#eaecef]" data-metric="trades">{displayMetrics.total_trades}</span>
                     </div>
                     <p className="text-sm text-[#929aa5]">Total de operações</p>
                 </div>
                 <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] p-5">
                     <div className="mb-3 flex items-center justify-between">
                         <Target className="h-5 w-5 text-[#0ecb81]" />
-                        <span className="text-2xl font-bold text-[#eaecef]">{(displayMetrics.win_rate * 100).toFixed(1)}%</span>
+                        <span className="text-2xl font-bold text-[#eaecef]" data-metric="win">{formatBoundedRatioPercent(displayMetrics.win_rate, 2, '0.00%')}</span>
                     </div>
                     <p className="text-sm text-[#929aa5]">Taxa de acerto</p>
                 </div>
                 <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] p-5">
                     <div className="mb-3 flex items-center justify-between">
-                        {displayMetrics.total_return >= 0 ? <TrendingUp className="h-5 w-5 text-[#0ecb81]" /> : <TrendingDown className="h-5 w-5 text-[#f6465d]" />}
-                        <span className={`text-2xl font-bold ${displayMetrics.total_return >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>
-                            {(displayMetrics.total_return * 100).toFixed(2)}%
+                        {returnDisplay.positive ? <TrendingUp className="h-5 w-5 text-[#0ecb81]" /> : <TrendingDown className="h-5 w-5 text-[#f6465d]" />}
+                        <span className={`text-2xl font-bold ${returnDisplay.positive ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`} data-metric="return">
+                            {returnDisplay.text}
                         </span>
                     </div>
                     <p className="text-sm text-[#929aa5]">Retorno total</p>
@@ -198,7 +206,7 @@ export function StrategyTradesTable({
                 <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] p-5">
                     <div className="mb-3 flex items-center justify-between">
                         <DollarSign className="h-5 w-5 text-[#fcd535]" />
-                        <span className="text-2xl font-bold text-[#eaecef]">{(displayMetrics.avg_profit * 100).toFixed(2)}%</span>
+                        <span className="text-2xl font-bold text-[#eaecef]" data-metric="avg">{(displayMetrics.avg_profit * 100).toFixed(2)}%</span>
                     </div>
                     <p className="text-sm text-[#929aa5]">Lucro médio</p>
                 </div>
