@@ -1383,7 +1383,7 @@ const FavoritesDashboard: React.FC = () => {
                                 const refreshStatus = formatRefreshStatus(fav);
                                 const revalidationStatus = formatRevalidationStatus(fav);
                                 return (
-                                    <article key={fav.id} className={`fav-mobile-card ${tier.className}`}>
+                                    <article key={fav.id} className={`fav-mobile-card ${tier.className}`} data-testid={`favorite-${fav.id}-mobile`} data-favorite-id={fav.id}>
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
@@ -1409,9 +1409,9 @@ const FavoritesDashboard: React.FC = () => {
                                         </div>
                                         <div className="fav-mobile-metrics">
                                             <span><b>TF</b>{fav.timeframe}</span>
-                                            <span><b>Sharpe</b>{formatNum(m.sharpe_ratio)}</span>
-                                            <span><b>Trades</b>{getTradesCount(fav)}</span>
-                                            <span className={totalReturn.positive ? 'positive' : 'negative'}><b>Return</b>{totalReturn.text}</span>
+                                            <span data-metric="sharpe"><b>Sharpe</b>{formatNum(m.sharpe_ratio)}</span>
+                                            <span data-metric="trades"><b>Trades</b>{getTradesCount(fav)}</span>
+                                            <span className={totalReturn.positive ? 'positive' : 'negative'} data-metric="return"><b>Return</b>{totalReturn.text}</span>
                                         </div>
                                         <div className="fav-mobile-actions">
                                             <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa">
@@ -1478,7 +1478,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const revalidationStatus = formatRevalidationStatus(fav);
 
                                         return (
-                                            <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`}>
+                                            <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`} data-testid={`favorite-${fav.id}`} data-favorite-id={fav.id}>
                                                 {isAdmin ? (
                                                     <td className="select-col">
                                                         <button
@@ -1523,18 +1523,18 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td><span className="tf-pill">{fav.timeframe}</span></td>
                                                 <td className="muted-cell period-col">{formatPeriod(fav)}</td>
                                                 <td className="metric-cell risk-col">{formatPct(stopLoss)}</td>
-                                                <td className="metric-cell accent">{formatNum(m.sharpe_ratio)}</td>
-                                                <td className="metric-cell">{getTradesCount(fav)}</td>
-                                                <td className="metric-cell win-col">{formatPct(m.win_rate)}</td>
-                                                <td className={`metric-cell strong ${totalReturn.positive ? 'positive' : 'negative'}`}>{totalReturn.text}</td>
-                                                <td className="metric-cell negative risk-col">{formatPct(m.max_drawdown)}</td>
+                                                <td className="metric-cell accent" data-metric="sharpe">{formatNum(m.sharpe_ratio)}</td>
+                                                <td className="metric-cell" data-metric="trades">{getTradesCount(fav)}</td>
+                                                <td className="metric-cell win-col" data-metric="win">{formatPct(m.win_rate)}</td>
+                                                <td className={`metric-cell strong ${totalReturn.positive ? 'positive' : 'negative'}`} data-metric="return">{totalReturn.text}</td>
+                                                <td className="metric-cell negative risk-col" data-metric="maxdd">{formatPct(m.max_drawdown)}</td>
                                                 <td className="metric-cell advanced-col">{formatNum(m.profit_factor)}</td>
                                                 <td className="metric-cell advanced-col">{formatNum(m.sqn ?? m.sortino_ratio ?? m.sortino)}</td>
                                                 <td className="metric-cell negative advanced-col">{formatPct(m.max_loss)}</td>
                                                 <td className="metric-cell advanced-col">{formatNum(m.avg_atr)}</td>
                                                 <td>
                                                     <div className="fav-row-actions">
-                                                        <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa">
+                                                        <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa" data-testid={`open-chart-${fav.id}`}>
                                                             {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
                                                         </button>
                                                         {isAdmin ? (
