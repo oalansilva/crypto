@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-09-14 - Retorno composto canónico em três sítios (card #935)
+
+**Decisão:** na mesma linha já preenchida, Favoritos (RETURN), resumo da análise (`Retorno total`) e Ver Trades no Monitor mostram o mesmo percentual composto grande (ex. +98.591,56%, não 985,85%). `total_return` é sempre razão decimal.
+
+**Motivo:** o administrador lia dois retornos ~100× diferentes e não confiava no número para decidir o que entra no Monitor.
+
+**Onde:** `compoundReturn.ts`, `FavoritesDashboard.tsx`, `ComboResultsPage.tsx`, `StrategyTradesTable.tsx`, spec `favorites-combo-return-parity`. Card #935.
+
+## 2026-09-14 - Velas e médias até a última vela carregada (card #921)
+
+**Decisão:** SMA/EMA partilham o último timestamp da série carregada (análise e Monitor). O writer canónico PROD passa a `15m,1h,4h,1d`. Overlay de média não avança à frente da última vela.
+
+**Motivo:** o gráfico da análise mostrava velas em falta e médias paradas enquanto o OHLCV já tinha avançado.
+
+**Onde:** `ohlcv_storage`, `strategyTransparency.ts`, `StrategyChartSurface.tsx`, unit `criptofarol-prod-candle-writer`, spec `aligned-candle-ma-series`. Card #921.
+
 ## 2026-09-12 - Convite de uso único e role admin persistida (card #689)
 
 **Decisão:** o acesso beta não se auto-registra no e-mail admin sem verificação. Convite de uso único, emitido no admin e entregue fora do e-mail (sem SMTP neste card). A role de administrador fica persistida. Bootstrap `ops/bootstrap_admin.py` alinha o admin canónico.

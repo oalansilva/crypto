@@ -379,7 +379,7 @@ release_frontend_preflight_compile() {
     issue "release pre frontend npm ci failed; fix dependencies before gh pr create"
     return 0
   fi
-  if ! npm --prefix "$repo_root/frontend" exec tsc -b --pretty false --noEmit >/dev/null 2>&1; then
+  if ! (cd "$repo_root/frontend" && npm exec -- tsc -b --pretty false --noEmit) >/dev/null 2>&1; then
     issue "release pre frontend compile failed (missing module or type error); do not run gh pr create until fixed"
   else
     printf 'Frontend preflight compile passed.\n'
@@ -1231,6 +1231,10 @@ if git rev-parse --verify -q origin/develop >/dev/null &&
     # Card #618: on release-* pre, local develop tip is noise — authority is origin/develop.
     # Do not require PRESERVED_BRANCHES=develop; diverge warn (~438) still applies.
     if [[ "$mode" == "pre" && "$current_branch" == release-* && "$branch" == "develop" ]]; then
+      continue
+    fi
+    # Card #759/#927: local main tracks origin/main; branch_merged only tests develop.
+    if [[ "$mode" == "pre" && "$current_branch" == release-* && "$branch" == "main" ]]; then
       continue
     fi
 

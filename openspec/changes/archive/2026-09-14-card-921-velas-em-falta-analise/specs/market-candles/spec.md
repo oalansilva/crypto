@@ -1,28 +1,4 @@
-# market-candles Specification
-
-## Purpose
-TBD - created by archiving change card-241-unified-binance-candles. Update Purpose after archive.
-## Requirements
-### Requirement: Canonical Binance candle reads
-
-The market candles API SHALL use `market_ohlcv` as the canonical read source for Binance OHLCV candles when canonical candle mode is enabled.
-
-#### Scenario: fresh persisted candles exist
-
-- **GIVEN** canonical candle mode is enabled
-- **AND** `market_ohlcv` has fresh candles for the requested symbol and timeframe
-- **WHEN** a client requests market candles
-- **THEN** the response returns the persisted candles
-- **AND** the response marks the source as canonical storage.
-
-#### Scenario: direct fetch fallback is disabled
-
-- **GIVEN** canonical candle mode is enabled
-- **AND** direct Binance candle fallback is disabled
-- **AND** canonical storage has no fresh candles for the requested symbol and timeframe
-- **WHEN** a client requests market candles
-- **THEN** the API SHALL NOT fetch Binance directly from the request path
-- **AND** the response SHALL either return persisted stale candles or an empty canonical payload.
+## MODIFIED Requirements
 
 ### Requirement: Incremental canonical candle writer
 The canonical candle writer SHALL fetch incrementally after the first population by starting from the last saved candle, with a small idempotent overlap, and persisting into `market_ohlcv`. The default timeframe scope for this product surface SHALL be `15m`, `1h`, `4h` and `1d`. The default symbol scope SHALL be all Binance spot `*/USDT` market pairs available from the symbol cache/API, excluding symbols blocked by the existing excluded-symbol rules. A configured symbol cap MUST NOT shrink that universe for the analysis and Monitor candle contract.
@@ -68,4 +44,3 @@ The canonical candle writer SHALL fetch incrementally after the first population
 - **WHEN** the operator is looking at one pair/interval on Monitor or analysis
 - **THEN** that pair/interval MAY be ingested first
 - **AND** every other market pair still reaches the present on `15m`, `1h`, `4h` and `1d`
-

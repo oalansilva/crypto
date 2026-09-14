@@ -28,12 +28,12 @@ Dar ao investidor uma leitura simples de oportunidade e risco para acompanhar es
 
 1. Login e acesso controlado (convite de uso único no admin; sem auto-registro no e-mail admin — card #689).
 2. Monitor como tela principal.
-3. Estrategias favoritas vindas do fluxo de backtest ou selecao validada.
+3. Estrategias favoritas vindas do fluxo de backtest ou selecao validada. O retorno composto da mesma linha é o mesmo em Favoritos, resumo da análise e Ver Trades (card #935).
 4. Cards com estado claro no Monitor: `Em posição` e `Saída / cobertura` (HOLD/EXIT). `Compra` e `Venda` ficam no lado da ordem Spot, não como nome de estado da board (card #718).
 5. Distância até saída, distância até stop, stop, entrada e preço atual quando houver dado confiável. HOLD não mostra alvo nem take-profit derivado (card #803).
-6. Grafico detalhado do ativo/estrategia.
+6. Grafico detalhado do ativo/estrategia. Médias acompanham a última vela carregada; não avançam à frente (card #921).
 7. Timeframes principais para swing trade: `4h` e `1d`.
-8. Candles e oportunidades estaveis o suficiente para teste beta.
+8. Candles e oportunidades estaveis o suficiente para teste beta. Writer canónico PROD cobre `15m,1h,4h,1d` (card #921).
 9. Disclaimer visivel: educacional, apoio a decisao, nao recomendacao financeira.
 10. Teste ponta a ponta: login -> Monitor -> card -> grafico -> contexto/historico -> risco.
 
