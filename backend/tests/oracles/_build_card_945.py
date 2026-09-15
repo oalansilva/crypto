@@ -335,8 +335,14 @@ def split_windows(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
     }
 
 
+_CANONICAL_QNAN = struct.unpack("<d", struct.pack("<Q", 0x7FF8000000000000))[0]
+
+
 def sha256_col(series: pd.Series) -> str:
     arr = np.ascontiguousarray(series.to_numpy(dtype=np.float64, copy=True))
+    nonfinite = ~np.isfinite(arr)
+    if np.any(nonfinite):
+        arr[nonfinite] = _CANONICAL_QNAN
     return hashlib.sha256(arr.tobytes()).hexdigest()
 
 
