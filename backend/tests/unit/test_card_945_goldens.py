@@ -232,9 +232,7 @@ def test_cache_cold_hot_and_aba_bytes(inch_1d):
         entry = _safe_mask(strat, calc, td["entry_logic"])
         exit_ = _safe_mask(strat, calc, td["exit_logic"])
         sig = strat.generate_signals(ohlcv.copy())
-        trades = extract_trades_from_signals(
-            sig, strat.stop_loss, direction="long"
-        )
+        trades = extract_trades_from_signals(sig, strat.stop_loss, direction="long")
         metrics = _metrics_from_trades(trades, 100)
         cols = indicator_columns(calc)
         return (
@@ -296,9 +294,7 @@ def _run_trial(cls, extract_fn, metrics_fn, td, params, direction, df_1d, df_15m
 @pytest.mark.parametrize("name", CATALOG)
 @pytest.mark.parametrize("direction", ("long", "short"))
 @pytest.mark.parametrize("mode_name,deep", (("deep_15m", True), ("fast_1d", False)))
-def test_trial_trades_and_metrics_match_oracle(
-    name, direction, mode_name, deep, inch_1d, inch_15m
-):
+def test_trial_trades_and_metrics_match_oracle(name, direction, mode_name, deep, inch_1d, inch_15m):
     td = _template_data(name)
     for i, params in enumerate(_r1()[name]):
         prod_trades, prod_metrics = _run_trial(
@@ -337,9 +333,7 @@ def test_trial_trades_and_metrics_match_oracle(
 @pytest.mark.parametrize("name", CATALOG)
 @pytest.mark.parametrize("direction", ("long", "short"))
 @pytest.mark.parametrize("mode_name,deep", (("deep_15m", True), ("fast_1d", False)))
-def test_trial_second_symbol_matches_oracle(
-    name, direction, mode_name, deep, aave_1d, aave_15m
-):
+def test_trial_second_symbol_matches_oracle(name, direction, mode_name, deep, aave_1d, aave_15m):
     td = _template_data(name)
     for i, params in enumerate(_r1()[name]):
         trial_params = dict(params)
@@ -499,9 +493,7 @@ def test_representative_winner_holdout_go_nogo(inch_1d, inch_15m, monkeypatch):
 
     def _core(prod, ora):
         keys = sorted(set(ora) - skip)
-        return {k: _jsonable(prod.get(k)) for k in keys}, {
-            k: _jsonable(ora.get(k)) for k in keys
-        }
+        return {k: _jsonable(prod.get(k)) for k in keys}, {k: _jsonable(ora.get(k)) for k in keys}
 
     prod_train_trades, prod_train_metrics = _eval_window(
         ComboStrategy, extract_trades_with_mode, _metrics_from_trades, train

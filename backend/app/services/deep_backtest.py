@@ -21,12 +21,8 @@ def simulate_execution_with_15m(
     df_daily_signals: pd.DataFrame, df_15m: pd.DataFrame, stop_loss: float, direction: str = "long"
 ) -> List[Dict]:
     if os.environ.get("COMBO_OPTIMIZER_LEGACY") == "1":
-        return _legacy_simulate_execution_with_15m(
-            df_daily_signals, df_15m, stop_loss, direction
-        )
-    return _fast_simulate_execution_with_15m(
-        df_daily_signals, df_15m, stop_loss, direction
-    )
+        return _legacy_simulate_execution_with_15m(df_daily_signals, df_15m, stop_loss, direction)
+    return _fast_simulate_execution_with_15m(df_daily_signals, df_15m, stop_loss, direction)
 
 
 def _legacy_simulate_execution_with_15m(
@@ -241,7 +237,9 @@ def _fast_simulate_execution_with_15m(
         else:
             exact_stop_price = entry_price * (1 - stop_loss_pct)
 
-        next_exit_idx = int(exit_asi8.searchsorted(entry_asi8, side="right")) if exit_asi8.size else 0
+        next_exit_idx = (
+            int(exit_asi8.searchsorted(entry_asi8, side="right")) if exit_asi8.size else 0
+        )
         if next_exit_idx < len(exit_asi8):
             signal_exit_asi8 = int(exit_asi8[next_exit_idx])
             signal_exit_price = float(exit_opens[next_exit_idx])

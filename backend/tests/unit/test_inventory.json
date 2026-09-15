@@ -111,6 +111,24 @@
       "evidence": "tmp_path lock and state assertions"
     },
     {
+      "file": "backend/tests/unit/test_card_945_fastpath.py",
+      "protected_behavior": "card 945 ComboOptimizer kill-switch, callers, and _legacy_* aliases",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "COMBO_OPTIMIZER_LEGACY position-loop, shared ComboOptimizer callers, and legacy alias assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_card_945_goldens.py",
+      "protected_behavior": "card 945 ComboOptimizer/ComboStrategy golden equality vs legacy oracle",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "exact SHA256/equality goldens for indicators, masks, trades and metrics; never allclose"
+    },
+    {
       "file": "backend/tests/unit/test_chart_pattern_service.py",
       "protected_behavior": "chart pattern detection",
       "production_reachability": "reachable",

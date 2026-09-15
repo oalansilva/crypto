@@ -28,6 +28,7 @@ from src.data.incremental_loader import IncrementalLoader
 
 _deep_coverage_warned: set = set()
 
+
 class LegacyComboStrategy:
     """
     Base class for combo strategies that combine multiple indicators.

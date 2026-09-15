@@ -104,9 +104,14 @@ def write_oracle() -> None:
     ext_body = opt[ext_start:ext_end]
 
     mode_start = opt.index("def extract_trades_with_mode(")
-    mode_end = opt.index("\n\n# -----------------------------------------------------------------------------")
+    mode_end = opt.index(
+        "\n\n# -----------------------------------------------------------------------------"
+    )
     # first banner after extract_trades_with_mode
-    mode_end = opt.index("\n# -----------------------------------------------------------------------------\n# WORKER FUNCTION", mode_start)
+    mode_end = opt.index(
+        "\n# -----------------------------------------------------------------------------\n# WORKER FUNCTION",
+        mode_start,
+    )
     mode_body = opt[mode_start:mode_end]
     mode_body = mode_body.replace(
         "from src.data.incremental_loader import IncrementalLoader\n",
@@ -553,9 +558,7 @@ def write_goldens() -> None:
         for direction in ("long", "short"):
             for i, params in enumerate(params_list):
                 for mode_name, deep in (("deep_15m", True), ("fast_1d", False)):
-                    hash_trial(
-                        name, primary, direction, mode_name, i, template_data, params, deep
-                    )
+                    hash_trial(name, primary, direction, mode_name, i, template_data, params, deep)
         print(f"hashed {name}", flush=True)
 
     secondary = "AAVE/USDT"

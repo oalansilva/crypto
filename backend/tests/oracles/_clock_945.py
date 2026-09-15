@@ -13,7 +13,11 @@ import pandas as pd
 
 from app.services.combo_optimizer import ComboOptimizer
 from app.strategies.combos import ComboStrategy
-from tests.oracles._build_card_945 import apply_param_overrides, load_templates, metadata_from_export
+from tests.oracles._build_card_945 import (
+    apply_param_overrides,
+    load_templates,
+    metadata_from_export,
+)
 
 logging.basicConfig(level=logging.WARNING)
 

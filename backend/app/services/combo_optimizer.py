@@ -566,12 +566,8 @@ def _run_backtest_logic(
                     exit_mask = pd.Series(False, index=df_ind.index)
                 _WORKER_INDICATOR_CACHE[cache_key] = {
                     "frame": df_ind,
-                    "entry": np.ascontiguousarray(
-                        entry_mask.fillna(False).astype(bool).to_numpy()
-                    ),
-                    "exit": np.ascontiguousarray(
-                        exit_mask.fillna(False).astype(bool).to_numpy()
-                    ),
+                    "entry": np.ascontiguousarray(entry_mask.fillna(False).astype(bool).to_numpy()),
+                    "exit": np.ascontiguousarray(exit_mask.fillna(False).astype(bool).to_numpy()),
                 }
                 cached = _WORKER_INDICATOR_CACHE[cache_key]
             work = cached["frame"].copy(deep=False)
@@ -1768,9 +1764,7 @@ class ComboOptimizer:
             current_stages = copy.deepcopy(stages)
             for stage in current_stages:
                 if stage.get("adaptive_meta"):
-                    self._refine_stage_values(
-                        stage, candidate["params"], round_num=round_num
-                    )
+                    self._refine_stage_values(stage, candidate["params"], round_num=round_num)
             branch_states.append(
                 {
                     "candidate": candidate,
@@ -1787,17 +1781,14 @@ class ComboOptimizer:
             ordered = [None] * len(batches)
             if batches:
                 futures = {
-                    executor.submit(_worker_run_batch, batch): i
-                    for i, batch in enumerate(batches)
+                    executor.submit(_worker_run_batch, batch): i for i, batch in enumerate(batches)
                 }
                 for future in concurrent.futures.as_completed(futures):
                     bidx = futures[future]
                     try:
                         ordered[bidx] = future.result()
                     except Exception as exc:
-                        logging.warning(
-                            "Pooled R%s batch %s failed: %s", round_num, bidx, exc
-                        )
+                        logging.warning("Pooled R%s batch %s failed: %s", round_num, bidx, exc)
             flat = []
             for chunk in ordered:
                 if chunk:
@@ -2227,96 +2218,96 @@ class ComboOptimizer:
                         idx = len(candidates)
                         execution_result = None
                     else:
-                      for idx, candidate in enumerate(candidates):
-                        logging.info(
-                            f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}"
-                        )
-
-                        # 1. Setup stages for this candidate
-                        if round_num == 1:
-                            current_stages = stages  # Use initial coarse stages
-                        else:
-                            # Clone stages to avoid polluting other branches
-                            import copy
-
-                            current_stages = copy.deepcopy(stages)
-                            # Refine based on THIS candidate's best params
-                            for stage in current_stages:
-                                if stage.get("adaptive_meta"):
-                                    self._refine_stage_values(
-                                        stage, candidate["params"], round_num=round_num
-                                    )
-
-                        # 2. Execute Optimization for this branch
-                        # For Round 1 (Grid), we want multiple candidates to feed the logical branches.
-                        # For Round > 1, we just want the best refinement for this specific branch.
-                        return_n = 10 if round_num == 1 else 1
-
-                        execution_result = self._execute_opt_stages(
-                            current_stages,
-                            candidate["params"],
-                            round_num,
-                            max_workers,
-                            template_name,
-                            symbol,
-                            timeframe,
-                            fixed_timeframe,
-                            start_date,
-                            end_date,
-                            deep_backtest,
-                            template_metadata,
-                            df,
-                            return_top_n=return_n,
-                            executor=executor,
-                        )
-
-                        if round_num == 1:
-                            # Reviewing multiple candidates from Grid (or single fallback when all batches failed)
-                            branch_candidates = execution_result
-                            if (
-                                isinstance(branch_candidates, (tuple, list))
-                                and len(branch_candidates) == 2
-                                and not isinstance(branch_candidates[0], dict)
-                            ):
-                                branch_candidates = [
-                                    {
-                                        "params": branch_candidates[0],
-                                        "metrics": branch_candidates[1] or {},
-                                        "score": float("-inf"),
-                                    }
-                                ]
-                            for cand in branch_candidates:
-                                params = cand.get("params") if isinstance(cand, dict) else None
-                                if params is None:
-                                    continue
-                                result_candidate = {
-                                    "params": params,
-                                    "meta": candidate["meta"],
-                                    "round": round_num + 1,
-                                    "score": cand.get("score", float("-inf")),
-                                    "metrics": cand.get("metrics") or {},
-                                }
-                                next_round_candidates.append(result_candidate)
-                        else:
-                            # Standard single result
-                            branch_best_params, branch_best_metrics = execution_result
-
-                            # 3. Score this branch result
-                            score = (
-                                branch_best_metrics.get("sharpe_ratio", -999)
-                                if branch_best_metrics
-                                else -999
+                        for idx, candidate in enumerate(candidates):
+                            logging.info(
+                                f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}"
                             )
 
-                            result_candidate = {
-                                "params": branch_best_params,
-                                "meta": candidate["meta"],
-                                "round": round_num + 1,
-                                "score": score,
-                                "metrics": branch_best_metrics,
-                            }
+                            # 1. Setup stages for this candidate
+                            if round_num == 1:
+                                current_stages = stages  # Use initial coarse stages
+                            else:
+                                # Clone stages to avoid polluting other branches
+                                import copy
 
-                            next_round_candidates.append(result_candidate)
+                                current_stages = copy.deepcopy(stages)
+                                # Refine based on THIS candidate's best params
+                                for stage in current_stages:
+                                    if stage.get("adaptive_meta"):
+                                        self._refine_stage_values(
+                                            stage, candidate["params"], round_num=round_num
+                                        )
+
+                            # 2. Execute Optimization for this branch
+                            # For Round 1 (Grid), we want multiple candidates to feed the logical branches.
+                            # For Round > 1, we just want the best refinement for this specific branch.
+                            return_n = 10 if round_num == 1 else 1
+
+                            execution_result = self._execute_opt_stages(
+                                current_stages,
+                                candidate["params"],
+                                round_num,
+                                max_workers,
+                                template_name,
+                                symbol,
+                                timeframe,
+                                fixed_timeframe,
+                                start_date,
+                                end_date,
+                                deep_backtest,
+                                template_metadata,
+                                df,
+                                return_top_n=return_n,
+                                executor=executor,
+                            )
+
+                            if round_num == 1:
+                                # Reviewing multiple candidates from Grid (or single fallback when all batches failed)
+                                branch_candidates = execution_result
+                                if (
+                                    isinstance(branch_candidates, (tuple, list))
+                                    and len(branch_candidates) == 2
+                                    and not isinstance(branch_candidates[0], dict)
+                                ):
+                                    branch_candidates = [
+                                        {
+                                            "params": branch_candidates[0],
+                                            "metrics": branch_candidates[1] or {},
+                                            "score": float("-inf"),
+                                        }
+                                    ]
+                                for cand in branch_candidates:
+                                    params = cand.get("params") if isinstance(cand, dict) else None
+                                    if params is None:
+                                        continue
+                                    result_candidate = {
+                                        "params": params,
+                                        "meta": candidate["meta"],
+                                        "round": round_num + 1,
+                                        "score": cand.get("score", float("-inf")),
+                                        "metrics": cand.get("metrics") or {},
+                                    }
+                                    next_round_candidates.append(result_candidate)
+                            else:
+                                # Standard single result
+                                branch_best_params, branch_best_metrics = execution_result
+
+                                # 3. Score this branch result
+                                score = (
+                                    branch_best_metrics.get("sharpe_ratio", -999)
+                                    if branch_best_metrics
+                                    else -999
+                                )
+
+                                result_candidate = {
+                                    "params": branch_best_params,
+                                    "meta": candidate["meta"],
+                                    "round": round_num + 1,
+                                    "score": score,
+                                    "metrics": branch_best_metrics,
+                                }
+
+                                next_round_candidates.append(result_candidate)
 
                     # SELECTION LOGIC (End of Round)
                     if round_num < max_rounds:
