@@ -8,15 +8,15 @@ python-dotenv==1.0.0
 httpx>=0.24,<0.26
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.9
-TA-Lib>=0.4.32
+TA-Lib==0.6.8
 celery[redis]>=5.4.0
 redis>=5.2.0
 
 # Core Data/Trading
 ccxt
 # ccxt.pro  # opcional/pago; não existe no PyPI
-pandas
-numpy
+pandas==3.0.3
+numpy==2.4.6
 openpyxl
 pyarrow
 
