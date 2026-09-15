@@ -5,6 +5,7 @@ This class provides the foundation for combo strategies that combine
 multiple indicators with custom entry/exit logic.
 """
 
+import os
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Any, Optional
@@ -12,6 +13,10 @@ import re
 import ast
 import talib
 from .helpers import HELPER_FUNCTIONS
+
+
+def _combo_optimizer_legacy() -> bool:
+    return os.environ.get("COMBO_OPTIMIZER_LEGACY") == "1"
 
 
 class ComboStrategy:
@@ -650,44 +655,53 @@ class ComboStrategy:
         Returns:
             DataFrame with 'signal' column (1=entry, -1=exit, 0=hold)
         """
-        # Use empty check
+        if _combo_optimizer_legacy():
+            return self._legacy_generate_signals(df)
+        return self._fast_generate_signals(df)
+
+    def _legacy_generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         if df.empty:
             df["signal"] = 0
             return df
 
-        # Calculate indicators
         df = self.calculate_indicators(df)
-
-        # Initialize signal column
         df["signal"] = 0
         df["signal_reason"] = ""
-
-        # ---------------------------------------------------------------------
-        # OPTIMIZATION: Vectorized Logic Evaluation
-        # ---------------------------------------------------------------------
-        # Pre-calculate entry and exit masks for the whole dataframe
-        # This replaces the O(N^2) row-by-row slicing loop.
         try:
             entry_mask = self._evaluate_logic_vectorized(df, self.entry_logic)
             exit_mask = self._evaluate_logic_vectorized(df, self.exit_logic)
         except Exception as e:
             print(f"Error in vectorized logic: {e}")
             return df
+        return self._legacy_position_loop(df, entry_mask, exit_mask)
 
-        # Optimization: Early exit if no entries
-        if not entry_mask.any():
+    def _fast_generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            df["signal"] = 0
             return df
 
-        # Iteration is still needed for state management (In Position, Stop Loss),
-        # but now we strictly check boolean flags (O(1)) instead of evaluating logic.
+        df = self.calculate_indicators(df)
+        df["signal"] = 0
+        df["signal_reason"] = ""
+        try:
+            entry_mask = self._evaluate_logic_vectorized(df, self.entry_logic)
+            exit_mask = self._evaluate_logic_vectorized(df, self.exit_logic)
+        except Exception as e:
+            print(f"Error in vectorized logic: {e}")
+            return df
+        return self._fast_position_loop(df, entry_mask, exit_mask)
+
+    def _legacy_position_loop(
+        self, df: pd.DataFrame, entry_mask: pd.Series, exit_mask: pd.Series
+    ) -> pd.DataFrame:
+        if not entry_mask.any():
+            return df
 
         in_position = False
         entry_price = None
         pending_entry = False
         pending_exit = False
 
-        # Pre-convert columns to Numpy arrays for max speed in the loop
-        # (Pandas .iloc is slow inside loops)
         close_arr = df["close"].values
         open_arr = df["open"].values
         low_arr = df["low"].values
@@ -695,14 +709,12 @@ class ComboStrategy:
         entry_bits = entry_mask.values
         exit_bits = exit_mask.values
 
-        # Output signal arrays
         signals = np.zeros(len(df), dtype=int)
         signal_reasons = np.full(len(df), "", dtype=object)
 
         stop_loss_decimal = self.stop_loss
 
         for i in range(len(df)):
-            # Apply confirmed signals from Previous Candle
             if pending_entry and not in_position:
                 signals[i] = 1
                 signal_reasons[i] = "entry"
@@ -719,11 +731,6 @@ class ComboStrategy:
                 pending_exit = False
                 continue
 
-            # Intra-candle Stop Loss Check (Priority)
-            #
-            # Short stop loss is handled in the direction-aware trade extractor
-            # using candle high above entry. Keeping the old low-based stop here
-            # for short would close profitable short moves as losses.
             if self.direction == "long" and in_position and entry_price is not None:
                 current_low = float(low_arr[i])
                 low_pnl = (current_low - entry_price) / entry_price
@@ -736,25 +743,87 @@ class ComboStrategy:
                     pending_exit = False
                     continue
 
-            # Logic Check for Signal Confirmation (happens at close)
-            # If logic is True at index i (Close of candle i),
-            # we set pending flag for index i+1 (Open of candle i+1)
-
-            if i > 0:  # Logic usually requires lookback (shift)
-                # Entry Logic
+            if i > 0:
                 if not in_position:
                     if entry_bits[i]:
                         pending_entry = True
-
-                # Exit Logic
                 elif in_position:
                     if exit_bits[i]:
                         pending_exit = True
 
-        # Write back results
         df["signal"] = signals
         df["signal_reason"] = signal_reasons
         return df
+
+    def _fast_position_loop(
+        self, df: pd.DataFrame, entry_mask: pd.Series, exit_mask: pd.Series
+    ) -> pd.DataFrame:
+        """Event-oriented loop. Same comparisons as _legacy_position_loop."""
+        if not entry_mask.any():
+            # Cache path skips generate_signals init; cached frames have no signal.
+            return df.assign(signal=0, signal_reason="")
+
+        open_arr = np.ascontiguousarray(df["open"].to_numpy(dtype=np.float64))
+        low_arr = np.ascontiguousarray(df["low"].to_numpy(dtype=np.float64))
+        entry_bits = np.ascontiguousarray(entry_mask.fillna(False).to_numpy(dtype=bool))
+        exit_bits = np.ascontiguousarray(exit_mask.fillna(False).to_numpy(dtype=bool))
+        n = len(df)
+        signals = np.zeros(n, dtype=int)
+        signal_reasons = np.full(n, "", dtype=object)
+        stop_loss_decimal = self.stop_loss
+        is_long = self.direction == "long"
+
+        i = 1
+        in_position = False
+        entry_price = None
+        while i < n:
+            if not in_position:
+                rel = np.flatnonzero(entry_bits[i:])
+                if rel.size == 0:
+                    break
+                k = i + int(rel[0])
+                e = k + 1
+                if e >= n:
+                    break
+                signals[e] = 1
+                signal_reasons[e] = "entry"
+                in_position = True
+                entry_price = float(open_arr[e])
+                i = e + 1
+                continue
+
+            s = None
+            if is_long and entry_price is not None:
+                lows = low_arr[i:]
+                low_pnl = (lows - entry_price) / entry_price
+                hits = np.flatnonzero(low_pnl <= -stop_loss_decimal)
+                if hits.size:
+                    s = i + int(hits[0])
+
+            ex = np.flatnonzero(exit_bits[i:])
+            i_exit = i + int(ex[0]) if ex.size else None
+
+            if s is not None and (i_exit is None or s <= i_exit):
+                signals[s] = -1
+                signal_reasons[s] = "stop_loss"
+                in_position = False
+                entry_price = None
+                i = s + 1
+                continue
+
+            if i_exit is not None:
+                x = i_exit + 1
+                if x >= n:
+                    break
+                signals[x] = -1
+                signal_reasons[x] = "exit_logic"
+                in_position = False
+                entry_price = None
+                i = x + 1
+                continue
+            break
+
+        return df.assign(signal=signals, signal_reason=signal_reasons)
 
     def get_indicator_columns(self) -> List[str]:
         """
