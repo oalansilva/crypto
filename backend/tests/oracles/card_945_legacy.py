@@ -1,25 +1,35 @@
-"""
-Base ComboStrategy class for multi-indicator strategies.
+"""Frozen combo-optimizer path at baseline-945=e43b93e5e0569a9c4a82d4cce2ef24dfa0ef5e4c.
 
-This class provides the foundation for combo strategies that combine
-multiple indicators with custom entry/exit logic.
+Literal copies of:
+- ComboStrategy.calculate_indicators
+- ComboStrategy._evaluate_logic_vectorized
+- ComboStrategy.generate_signals (position loop)
+- simulate_execution_with_15m
+- extract_trades_from_signals
+- _metrics_from_trades
+
+Test-only. Not product. Speed commits MUST NOT edit this module.
 """
 
-import os
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Any, Optional
-import re
+from __future__ import annotations
+
 import ast
+import copy
+import logging
+import re
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 import talib
-from .helpers import HELPER_FUNCTIONS
+
+from app.strategies.combos.helpers import HELPER_FUNCTIONS
+from src.data.incremental_loader import IncrementalLoader
+
+_deep_coverage_warned: set = set()
 
 
-def _combo_optimizer_legacy() -> bool:
-    return os.environ.get("COMBO_OPTIMIZER_LEGACY") == "1"
-
-
-class ComboStrategy:
+class LegacyComboStrategy:
     """
     Base class for combo strategies that combine multiple indicators.
 
@@ -655,53 +665,44 @@ class ComboStrategy:
         Returns:
             DataFrame with 'signal' column (1=entry, -1=exit, 0=hold)
         """
-        if _combo_optimizer_legacy():
-            return self._legacy_generate_signals(df)
-        return self._fast_generate_signals(df)
-
-    def _legacy_generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Use empty check
         if df.empty:
             df["signal"] = 0
             return df
 
+        # Calculate indicators
         df = self.calculate_indicators(df)
+
+        # Initialize signal column
         df["signal"] = 0
         df["signal_reason"] = ""
+
+        # ---------------------------------------------------------------------
+        # OPTIMIZATION: Vectorized Logic Evaluation
+        # ---------------------------------------------------------------------
+        # Pre-calculate entry and exit masks for the whole dataframe
+        # This replaces the O(N^2) row-by-row slicing loop.
         try:
             entry_mask = self._evaluate_logic_vectorized(df, self.entry_logic)
             exit_mask = self._evaluate_logic_vectorized(df, self.exit_logic)
         except Exception as e:
             print(f"Error in vectorized logic: {e}")
             return df
-        return self._legacy_position_loop(df, entry_mask, exit_mask)
 
-    def _fast_generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
-        if df.empty:
-            df["signal"] = 0
-            return df
-
-        df = self.calculate_indicators(df)
-        df["signal"] = 0
-        df["signal_reason"] = ""
-        try:
-            entry_mask = self._evaluate_logic_vectorized(df, self.entry_logic)
-            exit_mask = self._evaluate_logic_vectorized(df, self.exit_logic)
-        except Exception as e:
-            print(f"Error in vectorized logic: {e}")
-            return df
-        return self._fast_position_loop(df, entry_mask, exit_mask)
-
-    def _legacy_position_loop(
-        self, df: pd.DataFrame, entry_mask: pd.Series, exit_mask: pd.Series
-    ) -> pd.DataFrame:
+        # Optimization: Early exit if no entries
         if not entry_mask.any():
             return df
+
+        # Iteration is still needed for state management (In Position, Stop Loss),
+        # but now we strictly check boolean flags (O(1)) instead of evaluating logic.
 
         in_position = False
         entry_price = None
         pending_entry = False
         pending_exit = False
 
+        # Pre-convert columns to Numpy arrays for max speed in the loop
+        # (Pandas .iloc is slow inside loops)
         close_arr = df["close"].values
         open_arr = df["open"].values
         low_arr = df["low"].values
@@ -709,12 +710,14 @@ class ComboStrategy:
         entry_bits = entry_mask.values
         exit_bits = exit_mask.values
 
+        # Output signal arrays
         signals = np.zeros(len(df), dtype=int)
         signal_reasons = np.full(len(df), "", dtype=object)
 
         stop_loss_decimal = self.stop_loss
 
         for i in range(len(df)):
+            # Apply confirmed signals from Previous Candle
             if pending_entry and not in_position:
                 signals[i] = 1
                 signal_reasons[i] = "entry"
@@ -731,6 +734,11 @@ class ComboStrategy:
                 pending_exit = False
                 continue
 
+            # Intra-candle Stop Loss Check (Priority)
+            #
+            # Short stop loss is handled in the direction-aware trade extractor
+            # using candle high above entry. Keeping the old low-based stop here
+            # for short would close profitable short moves as losses.
             if self.direction == "long" and in_position and entry_price is not None:
                 current_low = float(low_arr[i])
                 low_pnl = (current_low - entry_price) / entry_price
@@ -743,87 +751,25 @@ class ComboStrategy:
                     pending_exit = False
                     continue
 
-            if i > 0:
+            # Logic Check for Signal Confirmation (happens at close)
+            # If logic is True at index i (Close of candle i),
+            # we set pending flag for index i+1 (Open of candle i+1)
+
+            if i > 0:  # Logic usually requires lookback (shift)
+                # Entry Logic
                 if not in_position:
                     if entry_bits[i]:
                         pending_entry = True
+
+                # Exit Logic
                 elif in_position:
                     if exit_bits[i]:
                         pending_exit = True
 
+        # Write back results
         df["signal"] = signals
         df["signal_reason"] = signal_reasons
         return df
-
-    def _fast_position_loop(
-        self, df: pd.DataFrame, entry_mask: pd.Series, exit_mask: pd.Series
-    ) -> pd.DataFrame:
-        """Event-oriented loop. Same comparisons as _legacy_position_loop."""
-        if not entry_mask.any():
-            # Cache path skips generate_signals init; cached frames have no signal.
-            return df.assign(signal=0, signal_reason="")
-
-        open_arr = np.ascontiguousarray(df["open"].to_numpy(dtype=np.float64))
-        low_arr = np.ascontiguousarray(df["low"].to_numpy(dtype=np.float64))
-        entry_bits = np.ascontiguousarray(entry_mask.fillna(False).to_numpy(dtype=bool))
-        exit_bits = np.ascontiguousarray(exit_mask.fillna(False).to_numpy(dtype=bool))
-        n = len(df)
-        signals = np.zeros(n, dtype=int)
-        signal_reasons = np.full(n, "", dtype=object)
-        stop_loss_decimal = self.stop_loss
-        is_long = self.direction == "long"
-
-        i = 1
-        in_position = False
-        entry_price = None
-        while i < n:
-            if not in_position:
-                rel = np.flatnonzero(entry_bits[i:])
-                if rel.size == 0:
-                    break
-                k = i + int(rel[0])
-                e = k + 1
-                if e >= n:
-                    break
-                signals[e] = 1
-                signal_reasons[e] = "entry"
-                in_position = True
-                entry_price = float(open_arr[e])
-                i = e + 1
-                continue
-
-            s = None
-            if is_long and entry_price is not None:
-                lows = low_arr[i:]
-                low_pnl = (lows - entry_price) / entry_price
-                hits = np.flatnonzero(low_pnl <= -stop_loss_decimal)
-                if hits.size:
-                    s = i + int(hits[0])
-
-            ex = np.flatnonzero(exit_bits[i:])
-            i_exit = i + int(ex[0]) if ex.size else None
-
-            if s is not None and (i_exit is None or s <= i_exit):
-                signals[s] = -1
-                signal_reasons[s] = "stop_loss"
-                in_position = False
-                entry_price = None
-                i = s + 1
-                continue
-
-            if i_exit is not None:
-                x = i_exit + 1
-                if x >= n:
-                    break
-                signals[x] = -1
-                signal_reasons[x] = "exit_logic"
-                in_position = False
-                entry_price = None
-                i = x + 1
-                continue
-            break
-
-        return df.assign(signal=signals, signal_reason=signal_reasons)
 
     def get_indicator_columns(self) -> List[str]:
         """
@@ -872,3 +818,691 @@ class ComboStrategy:
                 columns.append(alias if alias else f"VOL_SMA_{length}")
 
         return columns
+
+
+TRADING_FEE = 0.00075  # Binance 0.075%
+
+
+def simulate_execution_with_15m(
+    df_daily_signals: pd.DataFrame, df_15m: pd.DataFrame, stop_loss: float, direction: str = "long"
+) -> List[Dict]:
+    """
+    Simulate trade execution using 15-minute candles for realistic stop/target validation.
+
+    direction: "long" (default) or "short". Short = stop above entry (high >= stop_price), PnL when price falls.
+
+    CRITICAL PRIORITY RULES:
+    - STOP LOSS ALWAYS has priority over exit signals
+    - Stop loss is checked FIRST in the period between entry and exit signal
+
+    Args:
+        df_daily_signals: DataFrame with 1D candles and signals (indexed by timestamp_utc)
+        df_15m: DataFrame with 15m candles (indexed by timestamp_utc)
+        stop_loss: Stop loss percentage (e.g., 0.015 for 1.5%)
+        direction: "long" or "short"
+
+    Returns:
+        List of trade dictionaries with accurate entry/exit times and prices
+    """
+    trades = []
+    stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
+    is_short = (direction or "long").lower() == "short"
+
+    if df_15m.empty:
+        times_15m = np.array([])
+        lows_15m = np.array([])
+        highs_15m = np.array([])
+    else:
+        times_15m = df_15m.index
+        lows_15m = df_15m["low"].values
+        highs_15m = df_15m["high"].values
+
+    # Pre-calculate entry signals
+    entry_signals = df_daily_signals[df_daily_signals["signal"] == 1]
+
+    # Pre-calculate ALL exit signals (signal == -1) to avoid repeated filtering
+    exit_signals = df_daily_signals[df_daily_signals["signal"] == -1]
+    exit_times = exit_signals.index
+    # Exit executes at OPEN of daily candle (signal detected at CLOSE of previous candle → execute at OPEN of next day)
+    exit_prices = exit_signals["open"].values
+
+    last_exit_time = None
+
+    for entry_time, entry_row in entry_signals.iterrows():
+        # 1. Skip if we are still in a position (simulated strictly sequential trades)
+        if last_exit_time is not None and entry_time < last_exit_time:
+            continue
+
+        entry_price = float(entry_row["open"])
+        if is_short:
+            exact_stop_price = entry_price * (1 + stop_loss_pct)  # short: stop above entry
+        else:
+            exact_stop_price = entry_price * (1 - stop_loss_pct)  # long: stop below entry
+
+        next_exit_idx = exit_times.searchsorted(entry_time, side="right")
+        if next_exit_idx < len(exit_times):
+            signal_exit_time = exit_times[next_exit_idx]
+            signal_exit_price = float(exit_prices[next_exit_idx])
+            reason_end = "signal"
+        else:
+            signal_exit_time = df_daily_signals.index[-1] + pd.Timedelta(days=1)
+            signal_exit_price = float(df_daily_signals.iloc[-1]["close"])
+            reason_end = "end_of_period"
+
+        # 3. PRIORIDADE 1: Intraday stop loss check (high for short, low for long)
+        if len(times_15m) > 0:
+            start_idx = times_15m.searchsorted(entry_time)
+            end_idx = times_15m.searchsorted(signal_exit_time)
+            if is_short:
+                chunk_ohlc = highs_15m[start_idx:end_idx]
+                hit_stop = (
+                    stop_loss_pct > 0
+                    and chunk_ohlc.size > 0
+                    and np.any(chunk_ohlc >= exact_stop_price)
+                )
+            else:
+                chunk_ohlc = lows_15m[start_idx:end_idx]
+                hit_stop = (
+                    stop_loss_pct > 0
+                    and chunk_ohlc.size > 0
+                    and np.any(chunk_ohlc <= exact_stop_price)
+                )
+
+            if hit_stop and stop_loss_pct > 0 and chunk_ohlc.size > 0:
+                if is_short:
+                    hit_indices = np.where(chunk_ohlc >= exact_stop_price)[0]
+                else:
+                    hit_indices = np.where(chunk_ohlc <= exact_stop_price)[0]
+                if hit_indices.size > 0:
+                    hit_offset = hit_indices[0]
+                    first_hit_time = times_15m[start_idx + hit_offset]
+                    final_exit_time = pd.Timestamp(first_hit_time)
+                    if final_exit_time.tz is None and entry_time.tz is not None:
+                        final_exit_time = final_exit_time.tz_localize(entry_time.tz)
+                    final_exit_price = exact_stop_price
+                    exit_reason = "stop_loss"
+                else:
+                    final_exit_time = signal_exit_time
+                    final_exit_price = signal_exit_price
+                    exit_reason = reason_end
+            else:
+                final_exit_time = signal_exit_time
+                final_exit_price = signal_exit_price
+                exit_reason = reason_end
+        else:
+            final_exit_time = signal_exit_time
+            final_exit_price = signal_exit_price
+            exit_reason = reason_end
+
+        # An open position is not a completed trade.  The old implementation
+        # fabricated an exit on the day after the last candle, which could be
+        # cached and exposed as a future sell signal by the monitor.
+        if exit_reason == "end_of_period":
+            continue
+
+        last_exit_time = final_exit_time
+        if is_short:
+            profit = (
+                entry_price * (1 - TRADING_FEE) - float(final_exit_price) * (1 + TRADING_FEE)
+            ) / (entry_price * (1 - TRADING_FEE))
+        else:
+            profit = (
+                (final_exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
+            ) / (entry_price * (1 + TRADING_FEE))
+
+        signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
+        trades.append(
+            {
+                "entry_time": entry_time.isoformat(),
+                "entry_price": entry_price,
+                "type": "short" if is_short else "long",
+                "exit_time": final_exit_time.isoformat(),
+                "exit_price": float(final_exit_price),
+                "profit": profit,
+                "exit_reason": "stop_loss_15m" if exit_reason == "stop_loss" else "signal_15m",
+                "signal_type": signal_type,
+                "entry_signal_type": "Vender" if is_short else "Comprar",
+            }
+        )
+
+    # logger.info(f"Deep Backtest complete: {len(trades)} trades extracted")
+    return trades
+
+
+def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
+    """
+    Extract trades from signals with consistent logic:
+    - Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
+    - ComboStrategy: logic confirmed at CLOSE of candle i → signal on candle i+1 → execute at OPEN of candle i+1
+    - direction: "long" (default) or "short". Short = signal 1 opens short, -1 closes short; stop above entry, PnL when price falls.
+    - Intra-candle Stop Loss - checked BEFORE signal processing (low for long, high for short)
+    - Binance Fees (0.075% per op) - applied on both entry and exit
+    - Exit at exact Stop Price if triggered
+
+    CRITICAL PRIORITY RULES:
+    - STOP LOSS ALWAYS has priority over exit signals
+    - Stop loss is checked FIRST on each candle before checking exit signals
+    """
+    TRADING_FEE = 0.00075  # Binance spot fee: 0.075%
+    trades = []
+    position = None
+    is_short = (direction or "long").lower() == "short"
+    stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
+
+    for idx, row in df_with_signals.iterrows():
+        # PRIORIDADE 1: Check stop loss FIRST if we have an open position
+        if position is not None and stop_loss_pct > 0:
+            entry_price = position["entry_price"]
+            if is_short:
+                exact_stop_price = entry_price * (1 + stop_loss_pct)  # short: stop above entry
+                current_high = float(row["high"])
+                hit_stop = current_high >= exact_stop_price
+            else:
+                exact_stop_price = entry_price * (1 - stop_loss_pct)  # long: stop below entry
+                current_low = float(row["low"])
+                hit_stop = current_low <= exact_stop_price
+
+            if hit_stop:
+                position["exit_time"] = idx.isoformat()
+                position["exit_price"] = exact_stop_price
+                if is_short:
+                    # Short PnL: sold at entry*(1-fee), buy back at exit*(1+fee); profit when exit < entry
+                    position["profit"] = (
+                        entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)
+                    ) / (entry_price * (1 - TRADING_FEE))
+                else:
+                    position["profit"] = (
+                        (exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
+                    ) / (entry_price * (1 + TRADING_FEE))
+                position["exit_reason"] = "stop_loss"
+                position["signal_type"] = "Stop"
+                trades.append(position)
+                position = None
+                continue
+
+        # PRIORIDADE 2: Check signals
+        if row["signal"] == 1 and position is None:
+            position = {
+                "entry_time": idx.isoformat(),
+                "entry_price": float(row["open"]),
+                "type": "short" if is_short else "long",
+                "entry_signal_type": "Vender" if is_short else "Comprar",
+            }
+        elif row["signal"] == -1 and position is not None:
+            exit_price = float(row["open"])
+            entry_price = position["entry_price"]
+            position["exit_time"] = idx.isoformat()
+            position["exit_price"] = exit_price
+            if is_short:
+                position["profit"] = (
+                    entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)
+                ) / (entry_price * (1 - TRADING_FEE))
+            else:
+                position["profit"] = (
+                    (exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
+                ) / (entry_price * (1 + TRADING_FEE))
+            position["exit_reason"] = "signal"
+            position["signal_type"] = "Close entry(s) order..."
+            trades.append(position)
+            position = None
+
+    return trades
+
+
+def extract_trades_with_mode(
+    df_with_signals,
+    stop_loss: float,
+    deep_backtest: bool = False,
+    symbol: str = None,
+    since_str: str = None,
+    until_str: str = None,
+    df_15m_cache: Optional[pd.DataFrame] = None,
+    direction: str = "long",
+    return_mode: bool = False,
+):
+    """
+    Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
+
+    Args:
+        df_with_signals: DataFrame with daily signals
+        stop_loss: Stop loss percentage
+        deep_backtest: If True, use 15m intraday simulation
+        symbol: Trading pair (required for deep backtest)
+        since_str: Start date (required for deep backtest)
+        until_str: End date (required for deep backtest)
+        direction: "long" (default) or "short"
+
+    Returns:
+        List of trades
+    """
+    df_exec = df_with_signals.copy()
+
+    if not deep_backtest:
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        return (trades, "fast_1d") if return_mode else trades
+
+    logger = logging.getLogger(__name__)
+
+    if not symbol or not since_str:
+        logger.warning(
+            "Deep Backtesting requires symbol and date range. Falling back to fast mode."
+        )
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        return (trades, "fast_1d") if return_mode else trades
+
+    try:
+        if df_15m_cache is not None:
+            df_15m = df_15m_cache
+        else:
+            # Fetch 15m data
+            loader = IncrementalLoader()
+            df_15m = loader.fetch_intraday_data(
+                symbol=symbol,
+                timeframe="15m",
+                since_str=since_str,
+                until_str=until_str,
+                read_only=True,
+            )
+
+        if df_15m.empty:
+            if df_15m_cache is None:  # Only warn if we tried to fetch it
+                logger.warning("No 15m data available. Falling back to fast mode.")
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            return (trades, "fast_1d") if return_mode else trades
+
+        # Coverage guard: we need 15m for the current day of each trade to simulate stop/target correctly.
+        # So 15m must cover the full daily range (same end as daily); otherwise fallback to fast mode.
+        try:
+            daily_start = df_exec.index.min()
+            daily_end = df_exec.index.max()
+            intraday_start = df_15m.index.min()
+            intraday_end = df_15m.index.max()
+
+            # Some markets start trading partway through the first "day" (listing time).
+            # Daily candles are still labeled at 00:00 UTC, but intraday data may begin later that same date
+            # (e.g., BTC/USDT starting at 04:00 UTC on the first day). This is NOT a real coverage problem.
+            start_ok = True
+            if intraday_start > daily_start:
+                try:
+                    start_ok = intraday_start.date() == daily_start.date()
+                except Exception:
+                    start_ok = False
+
+            # 15m must extend to at least the last daily candle so we have intraday data for the day of each trade.
+            end_ok = intraday_end >= daily_end
+
+            if (not start_ok) or (not end_ok):
+                # Log only once per symbol per process to avoid flooding the log (e.g. 16k identical lines)
+                warn_key = (symbol,)
+                if warn_key not in _deep_coverage_warned:
+                    _deep_coverage_warned.add(warn_key)
+                    logger.warning(
+                        "15m coverage insufficient for deep backtest (%s): daily=[%s..%s] 15m=[%s..%s]. Falling back to fast mode.",
+                        symbol,
+                        str(daily_start),
+                        str(daily_end),
+                        str(intraday_start),
+                        str(intraday_end),
+                    )
+                trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+                return (trades, "fast_1d") if return_mode else trades
+        except Exception:
+            logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            return (trades, "fast_1d") if return_mode else trades
+
+        if df_15m_cache is None:
+            logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
+
+        trades = simulate_execution_with_15m(
+            df_daily_signals=df_exec, df_15m=df_15m, stop_loss=stop_loss, direction=direction
+        )
+        return (trades, "deep_15m") if return_mode else trades
+
+    except Exception as e:
+        logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        return (trades, "fast_1d") if return_mode else trades
+
+
+def _run_backtest_logic(
+    template_data,
+    params,
+    df,
+    deep_backtest,
+    symbol,
+    since_str,
+    until_str,
+    df_15m_cache=None,
+    initial_capital=100,
+):
+    """
+    Core backtest logic shared by single and batch workers.
+
+    Args:
+        initial_capital: Capital inicial em USD para cálculo de métricas (padrão: $100)
+                        Usado para calcular Return e Profit Factor no estilo TradingView
+    """
+    try:
+        # Reconstruct strategy logic locally to avoid DB connection in worker
+        indicators = template_data["indicators"]
+        entry_logic = template_data["entry_logic"]
+        exit_logic = template_data["exit_logic"]
+        stop_loss = template_data.get("stop_loss", 0.015)
+
+        # Handle stop_loss if it's a dict with 'default' key
+        if isinstance(stop_loss, dict):
+            stop_loss = stop_loss.get("default", 0.015)
+
+        # Apply parameter overrides
+        import copy
+
+        indicators = copy.deepcopy(indicators)
+
+        if params:
+            for param_key, param_value in params.items():
+                if param_key == "stop_loss":
+                    stop_loss = param_value
+                    continue
+
+                if param_key == "timeframe":
+                    continue
+                if param_key == "direction":
+                    continue  # Top-level backtest config, not a strategy parameter
+
+                matched = False
+                for indicator in indicators:
+                    alias = indicator.get("alias", "")
+                    type_ = indicator.get("type", "")
+
+                    # 1. Try "alias_param" format (e.g., "short_length") - Generated by auto-schema
+                    if alias and param_key.startswith(f"{alias}_"):
+                        target_field = param_key[len(alias) + 1 :]
+                        if "params" not in indicator:
+                            indicator["params"] = {}
+                        indicator["params"][target_field] = param_value
+                        matched = True
+                        break
+
+                    # 2. Try "type_alias" format (e.g., "sma_short") - Used in multi_ma_crossover
+                    # Default to 'length' or 'period' if not specified
+                    if alias and type_ and param_key == f"{type_}_{alias}":
+                        if "params" not in indicator:
+                            indicator["params"] = {}
+                        # Try to find which param to update: length, period, or default to length
+                        if "length" in indicator["params"]:
+                            indicator["params"]["length"] = param_value
+                        elif "period" in indicator["params"]:
+                            indicator["params"]["period"] = param_value
+                        else:
+                            indicator["params"]["length"] = param_value  # Fallback
+                        matched = True
+                        break
+
+                    # 3. Try exact alias match (e.g. "short")
+                    if alias and param_key == alias:
+                        if "params" not in indicator:
+                            indicator["params"] = {}
+                        if "length" in indicator["params"]:
+                            indicator["params"]["length"] = param_value
+                        elif "period" in indicator["params"]:
+                            indicator["params"]["period"] = param_value
+                        else:
+                            indicator["params"]["length"] = param_value
+                        matched = True
+                        break
+
+                    # 4. Fallback for indicators without alias:
+                    # allow "type_param" format (e.g. "rsi_length") used by legacy stage generation.
+                    if (not alias) and type_ and param_key.startswith(f"{type_}_"):
+                        target_field = param_key[len(type_) + 1 :]
+                        if "params" not in indicator:
+                            indicator["params"] = {}
+                        indicator["params"][target_field] = param_value
+                        matched = True
+                        break
+
+        # Create strategy instance
+        ComboStrategy = LegacyComboStrategy
+
+        strategy = ComboStrategy(
+            indicators=indicators,
+            entry_logic=entry_logic,
+            exit_logic=exit_logic,
+            stop_loss=stop_loss,
+            direction=(params or {}).get("direction", "long"),
+        )
+
+        # Generate signals
+        df_with_signals = strategy.generate_signals(df.copy())
+
+        # Direction: long (default) or short
+        direction = (params or {}).get("direction", "long")
+        if direction not in ("long", "short"):
+            direction = "long"
+        # Extract trades from signals WITH STOP LOSS using Deep or Fast mode
+        trades = extract_trades_with_mode(
+            df_with_signals,
+            stop_loss,
+            deep_backtest=deep_backtest,
+            symbol=symbol,
+            since_str=since_str,
+            until_str=until_str,
+            df_15m_cache=df_15m_cache,
+            direction=direction,
+        )
+
+        # Construct full effective parameters (médias, stop) para log de "profit fora do range"
+        full_params = {}
+        for ind in indicators:
+            p_prefix = ind.get("alias") or ind.get("type")
+            for pk, pv in ind.get("params", {}).items():
+                full_params[f"{p_prefix}_{pk}"] = pv
+        full_params["stop_loss"] = stop_loss
+
+        # Métricas via fonte única (_metrics_from_trades) – scoring e exibição consistentes
+        metrics = _metrics_from_trades(trades, initial_capital, context_params=full_params)
+
+        # Optional diagnostic indicators (best-effort).
+        # Use df_with_signals because that's where indicator columns live.
+        def _first_col(prefix: str):
+            pref = prefix.upper()
+            for c in df_with_signals.columns:
+                try:
+                    if str(c).upper().startswith(pref):
+                        return c
+                except Exception:
+                    continue
+            return None
+
+        atr_col = _first_col("ATR")
+        adx_col = _first_col("ADX")
+
+        def _safe_mean(series):
+            try:
+                m = series.dropna().mean()
+                # avoid serializing NaN
+                if m != m:  # NaN
+                    return None
+                return float(m)
+            except Exception:
+                return None
+
+        metrics["avg_atr"] = _safe_mean(df_with_signals[atr_col]) if atr_col else None
+        metrics["avg_adx"] = _safe_mean(df_with_signals[adx_col]) if adx_col else None
+
+        return metrics, full_params
+
+    except Exception as e:
+        # Return empty metrics on failure
+        return {
+            "total_trades": 0,
+            "win_rate": 0,
+            "total_return": 0,
+            "avg_profit": 0,
+            "sharpe_ratio": 0,
+            "error": str(e),
+        }, params
+
+
+def _metrics_from_trades(
+    trades: list, initial_capital: float = 100, context_params: Optional[Dict[str, Any]] = None
+) -> dict:
+    """
+    Single source of truth for all metrics derived from a trade list.
+    Used by _run_backtest_logic (optimization scoring) and final backtest.
+    Ensures Sharpe, Total Return, Win Rate, etc. are always computed the same way.
+    context_params: opcional; se fornecido, é logado nos warnings "profit fora do range" (médias, stop, etc.).
+    """
+    import numpy as np
+
+    out = {
+        # --- Core ---
+        "total_trades": 0,
+        "win_rate": 0.0,
+        "total_return": 0.0,  # decimal (e.g. 0.35 = +35%)
+        "total_return_pct": 0.0,  # percent (e.g. 35.0)
+        "avg_profit": 0.0,  # mean return per trade (decimal)
+        # --- Risk / ratios ---
+        "sharpe_ratio": 0.0,
+        "sortino_ratio": None,  # may be None when degenerate
+        "sortino_status": None,  # ok|degenerate|invalid
+        "downside_deviation": None,  # downside std (same units as returns)
+        "neg_return_count": 0,
+        "return_series_kind": "per_trade",
+        # --- PnL / trade stats ---
+        "profit_factor": 0.0,
+        "max_loss": 0.0,
+        "max_consecutive_losses": 0,
+        # Drawdown: keep both decimal + pct (avoid unit confusion)
+        "max_drawdown": 0.0,  # decimal (0..1)
+        "max_drawdown_pct": 0.0,  # percent (0..100)
+        # Expectancy: provide multiple units explicitly
+        "expectancy": 0.0,  # decimal per trade (same unit as avg_profit)
+        "expectancy_pct": 0.0,  # percent per trade
+        "expectancy_usd_10k": 0.0,  # legacy-style (assumes $10k notional)
+    }
+    if not trades:
+        return out
+
+    # Ordenar por entry_time (mesma ordem do frontend / Cumulative P&L)
+    def _ts(t):
+        et = t.get("entry_time")
+        if et is None:
+            return 0
+        try:
+            return pd.Timestamp(et).timestamp()
+        except Exception:
+            return 0
+
+    sorted_trades = sorted(trades, key=_ts)
+
+    # Coletar returns válidos; ignorar apenas trades com profit None
+    # profit é decimal: 0.05 = 5%, 1.66 = 166%, 16.32 = 1632% — ganhos >100% são válidos (ex.: TradingView)
+    returns = []
+    for t in sorted_trades:
+        p = t.get("profit")
+        if p is None:
+            continue
+        returns.append(float(p))
+
+    n = len(returns)
+    if n == 0:
+        out["total_trades"] = len(trades)
+        return out
+
+    wins = sum(1 for r in returns if r > 0)
+    out["total_trades"] = n
+    out["win_rate"] = wins / n
+
+    # Compounding (equity curve)
+    cap = float(initial_capital)
+    equity_curve = [cap]
+    for r in returns:
+        cap *= 1.0 + r
+        equity_curve.append(cap)
+
+    total_return_pct = (cap / initial_capital - 1) * 100.0
+    total_return = total_return_pct / 100.0
+    out["total_return"] = float(total_return)
+    out["total_return_pct"] = float(total_return_pct)
+
+    # avg_profit = mean return per trade (decimal)
+    out["avg_profit"] = float(np.mean(np.array(returns, dtype=float))) if n else 0.0
+
+    # Sharpe (per-trade return series; not annualized)
+    arr = np.array(returns, dtype=float)
+    std_dev = float(np.std(arr))
+    out["sharpe_ratio"] = float(np.mean(arr) / std_dev) if std_dev > 0 else 0.0
+
+    # Sortino (downside deviation) with guardrails
+    neg = arr[arr < 0]
+    out["neg_return_count"] = int(len(neg))
+
+    # Note: with very few negatives or near-zero downside deviation, Sortino is degenerate.
+    # Returning a huge number is misleading; we return None + status instead.
+    eps = 1e-9
+    if len(neg) < 2:
+        out["sortino_ratio"] = None
+        out["downside_deviation"] = 0.0
+        out["sortino_status"] = "degenerate"
+    else:
+        down_std = float(np.std(neg))
+        out["downside_deviation"] = down_std
+        if down_std < eps:
+            out["sortino_ratio"] = None
+            out["sortino_status"] = "degenerate"
+        else:
+            out["sortino_ratio"] = float(np.mean(arr) / down_std)
+            out["sortino_status"] = "ok"
+
+    # Profit factor (USD com compounding)
+    cap2 = float(initial_capital)
+    gross_profit_usd = 0.0
+    gross_loss_usd = 0.0
+    for r in returns:
+        pnl = cap2 * r
+        if r > 0:
+            gross_profit_usd += pnl
+        else:
+            gross_loss_usd += abs(pnl)
+        cap2 *= 1.0 + r
+    out["profit_factor"] = (
+        gross_profit_usd / gross_loss_usd
+        if gross_loss_usd > 0
+        else (999.0 if gross_profit_usd > 0 else 0.0)
+    )
+
+    out["max_loss"] = float(np.min(arr))
+
+    # Expectancy: keep units explicit
+    mean_r = float(np.mean(arr))
+    out["expectancy"] = mean_r
+    out["expectancy_pct"] = mean_r * 100.0
+    out["expectancy_usd_10k"] = mean_r * 10000.0  # legacy: assumes $10k notional
+
+    # Max consecutive losses
+    streak = 0
+    max_streak = 0
+    for r in returns:
+        if r < 0:
+            streak += 1
+            max_streak = max(max_streak, streak)
+        else:
+            streak = 0
+    out["max_consecutive_losses"] = max_streak
+
+    # Max drawdown (equity curve em valor absoluto)
+    peak = float(initial_capital)
+    max_dd = 0.0
+    for eq in equity_curve:
+        if eq > peak:
+            peak = eq
+        dd = (peak - eq) / peak if peak > 0 else 0
+        max_dd = max(max_dd, float(dd))
+
+    # IMPORTANT: store drawdown as decimal + pct (avoid mixing units elsewhere)
+    out["max_drawdown"] = float(max_dd)  # 0..1
+    out["max_drawdown_pct"] = float(max_dd) * 100.0
+
+    return out

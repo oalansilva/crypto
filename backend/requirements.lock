@@ -1,0 +1,6 @@
+# Scientific stack pinned from pip freeze of the backend VPS venv
+# (card #945, baseline-945=e43b93e5e0569a9c4a82d4cce2ef24dfa0ef5e4c)
+TA-Lib==0.6.8
+numpy==2.4.6
+pandas==3.0.3
+pyarrow==24.0.0
