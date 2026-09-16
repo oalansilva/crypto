@@ -1,5 +1,40 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-16 — Kaizen release (lote #944–#955)
+
+- **Release/card**: 2026-09-16 — Homologado `#944` `#945` `#948` `#949` `#952` `#953` `#954` `#955` → `release-2026-09-16` → `main` PR #961 merged `cc5370c56d18504f854af702840333509848363e`. PROD bundle `index-ByCce8mR.js`.
+- **Fontes consultadas**: board Project 1, git, `release-guard audit` scoped, `openspec validate --all` 171, `gh pr checks 961`, health/bundle PROD, transcripts. Filho `fecho-lote kaizen`.
+- **Sessões analisadas**: 8 cards; destaque #955 pin wipe corrigido T10. Grelha 3/8 sessões (média 0,375).
+- **Custo/eficácia**: archive bloqueado em `develop` → caminho `release-*`; sync `main→develop` antes do `post`.
+
+#### Métricas
+
+- **Board**: 8 Homologado; campos Responsável/Prioridade/Tipo preenchidos no closeout.
+- **Git**: `origin/main cc5370c5`; `develop` ancestral pendente sync 5b (+2 em `main`).
+- **CI**: PR #961 all pass; backend-unit-tests ~11m.
+- **OpenSpec**: 8 archives `2026-09-16-card-*`; 0 changes ativas.
+- **PROD**: health 200; bundle `index-ByCce8mR.js`.
+
+#### Achados
+
+- **F-1 [major] pin wipe #955 apagou release-guard/T16 no 1º Apply** — Novo P1 → #962.
+- **F-2 [major] kaizen/SKILL.md sem auditoria REST `proxy modelo:` no `/kaizen release`** — Novo P1 → #963.
+- **F-3 [minor] goldens pytest needles kaizen/openspec** — Novo P2 → #964.
+- **F-5 [minor] worktree #953 dirty Impeccable** — coberto por #759.
+
+#### Padrões recorrentes
+
+- Proxy modelo ausente no REST | recidiva | #909
+- Dirty worktrees | recidiva | #759
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #962 | P1 | F-1 | Em Refinamento |
+| #963 | P1 | F-2 | Em Refinamento |
+| #964 | P2 | F-3 | Em Refinamento |
+
 ## 2026-09-14 — Kaizen release (lote 904/921/927/935)
 
 - **Release/card**: 2026-09-14 — Homologado `#904` (P1 modelo por papel `38b854a3` + T18 `cf8f49a0`) + `#921` (P0 velas/médias `8689a71c` + T18 `a7f145a3`) + `#927` (P0 Caso A `d4b2a42d` + preflight `c1493106`) + `#935` (P0 retorno composto `23369ac9` + testids `09bc7c5a` + snapshot `27cb48a9`) → `release-2026-09-14` → `main` PR #937 merged `1e90437008aafe0a7fde39a4a3a9d6c298a08e93`. Fora: leftover `#897` `#899` (Pronto no board; código na develop).
