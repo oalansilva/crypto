@@ -1,0 +1,794 @@
+{
+  "card": 948,
+  "utc": "2026-09-16T01:04Z",
+  "digest": {
+    "disk": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+    "disk_bytes": 69158,
+    "https_dir": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+    "https_dir_bytes": 69158,
+    "https_dir_status": 200,
+    "https_index": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+    "https_index_bytes": 69158,
+    "https_index_status": 200,
+    "expected": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+    "match": true,
+    "cmp_dir": true,
+    "cmp_index": true
+  },
+  "detector": {
+    "exit": 0,
+    "stdout": "[]",
+    "stderr": "",
+    "findings": []
+  },
+  "chrome": "/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux-arm64/chrome",
+  "url": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/",
+  "copied": {
+    "pairs": 11,
+    "utf8_sum": 31631
+  },
+  "status": "Design",
+  "viewports": [
+    {
+      "viewport": "desktop 1440x900",
+      "pass": true,
+      "n": 38,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "final_url_proto",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/"
+        },
+        {
+          "id": "not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/"
+        },
+        {
+          "id": "digest_match",
+          "ok": true,
+          "detail": {
+            "disk": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+            "disk_bytes": 69158,
+            "https_dir": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+            "https_dir_bytes": 69158,
+            "https_dir_status": 200,
+            "https_index": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+            "https_index_bytes": 69158,
+            "https_index_status": 200,
+            "expected": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+            "match": true,
+            "cmp_dir": true,
+            "cmp_index": true
+          }
+        },
+        {
+          "id": "lm_html_descoberta",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_preflight",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_rascunho",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_h1_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 560.59375,
+            "h": 38.390625,
+            "x": 256,
+            "y": 135.5,
+            "text": "Descoberta de estratégias swing"
+          }
+        },
+        {
+          "id": "default_decidir",
+          "ok": true,
+          "detail": {
+            "selected": "true",
+            "panelActive": true,
+            "tabText": "Decidir"
+          }
+        },
+        {
+          "id": "panel_decidir_active",
+          "ok": true,
+          "detail": {
+            "selected": "true",
+            "panelActive": true,
+            "tabText": "Decidir"
+          }
+        },
+        {
+          "id": "decidir_orphan_ja_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "1 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 GO + detalhes 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir",
+            "rawText": "1\t\nMédias Móveis: Tendência em Virada\nCompara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.\nRS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8\nGO\n+ detalhes\t1,12\t84\n100% velas\n\t52,4%\t+18,2%\t−14,1%\t8,40\t4,1%\t\nPromover\nExcluir",
+            "display": "table-row",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 1240,
+            "h": 216.78125,
+            "x": 257,
+            "y": 774.890625,
+            "promote": "Promover",
+            "promoteDisabled": false,
+            "notes": [],
+            "result": "RS-E2FF8F9FEB"
+          }
+        },
+        {
+          "id": "decidir_orphan_ja_promover",
+          "ok": true,
+          "detail": "Promover"
+        },
+        {
+          "id": "decidir_orphan_ja_no_ja_existe",
+          "ok": true,
+          "detail": "1 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 GO + detalhes 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir"
+        },
+        {
+          "id": "decidir_orphan_ja_no_equivale",
+          "ok": true,
+          "detail": "1 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 GO + detalhes 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir"
+        },
+        {
+          "id": "decidir_orphan_t3_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "2 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-EA2A508DBD · cobertura 100% · direction long · ema_short 8 GO + detalhes 0,88 60 100% velas 49,1% +3,4% −10,8% 12,93 1,0% Promover Excluir",
+            "rawText": "2\t\nMédias Móveis: Tendência em Virada\nCompara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.\nRS-EA2A508DBD · cobertura 100% · direction long · ema_short 8\nGO\n+ detalhes\t0,88\t60\n100% velas\n\t49,1%\t+3,4%\t−10,8%\t12,93\t1,0%\t\nPromover\nExcluir",
+            "display": "table-row",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 1240,
+            "h": 217.28125,
+            "x": 257,
+            "y": 991.671875,
+            "promote": "Promover",
+            "promoteDisabled": false,
+            "notes": [],
+            "result": "RS-EA2A508DBD"
+          }
+        },
+        {
+          "id": "decidir_orphan_t3_promover",
+          "ok": true,
+          "detail": "Promover"
+        },
+        {
+          "id": "decidir_orphan_t3_no_tier3",
+          "ok": true,
+          "detail": "2 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-EA2A508DBD · cobertura 100% · direction long · ema_short 8 GO + detalhes 0,88 60 100% velas 49,1% +3,4% −10,8% 12,93 1,0% Promover Excluir"
+        },
+        {
+          "id": "decidir_live_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "3 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-LIVE-DUP · cobertura 100% · direction long · ema_short 9 NO-GO Equivale ao favorito ativo 12 + detalhes 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Já existe Excluir",
+            "rawText": "3\t\nMédias Móveis: Tendência em Virada 1\nCompara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.\nRS-LIVE-DUP · cobertura 100% · direction long · ema_short 9\nNO-GO\nEquivale ao favorito ativo 12\n+ detalhes\t0,36\t40\n100% velas\n\t17,5%\t+4,4%\t−7,5%\t16,90\t1,3%\t\nJá existe\nExcluir",
+            "display": "table-row",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 1240,
+            "h": 226.28125,
+            "x": 257,
+            "y": 1208.953125,
+            "promote": "Já existe",
+            "promoteDisabled": true,
+            "notes": [
+              "Equivale ao favorito ativo 12"
+            ],
+            "result": "RS-LIVE-DUP"
+          }
+        },
+        {
+          "id": "decidir_live_ja_existe",
+          "ok": true,
+          "detail": "Já existe"
+        },
+        {
+          "id": "decidir_live_equivale_12",
+          "ok": true,
+          "detail": "3 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-LIVE-DUP · cobertura 100% · direction long · ema_short 9 NO-GO Equivale ao favorito ativo 12 + detalhes 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Já existe Excluir"
+        },
+        {
+          "id": "acomp_selected",
+          "ok": true,
+          "detail": {
+            "selected": "true",
+            "panelActive": true
+          }
+        },
+        {
+          "id": "acomp_orphan_ja_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "1 Médias Móveis: Tendência em Virada BTC/USDT · 1d · Long GO 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir",
+            "rawText": "1\t\nMédias Móveis: Tendência em Virada\nBTC/USDT · 1d · Long\nGO\n\t1,12\t84\n100% velas\n\t52,4%\t+18,2%\t−14,1%\t8,40\t4,1%\t\nPromover\nExcluir",
+            "display": "table-row",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 1240,
+            "h": 125,
+            "x": 257,
+            "y": 274.28125,
+            "promote": "Promover",
+            "promoteDisabled": false,
+            "notes": [],
+            "result": "RS-E2FF8F9FEB"
+          }
+        },
+        {
+          "id": "acomp_orphan_ja_promover",
+          "ok": true,
+          "detail": "Promover"
+        },
+        {
+          "id": "acomp_orphan_ja_no_ja_existe",
+          "ok": true,
+          "detail": "1 Médias Móveis: Tendência em Virada BTC/USDT · 1d · Long GO 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir"
+        },
+        {
+          "id": "acomp_orphan_ja_no_equivale",
+          "ok": true,
+          "detail": "1 Médias Móveis: Tendência em Virada BTC/USDT · 1d · Long GO 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir"
+        },
+        {
+          "id": "acomp_orphan_t3_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "2 Médias Móveis: Tendência em Virada ETH/USDT · 1d · Long GO 0,88 60 100% velas 49,1% +3,4% −10,8% 12,93 1,0% Promover Excluir",
+            "rawText": "2\t\nMédias Móveis: Tendência em Virada\nETH/USDT · 1d · Long\nGO\n\t0,88\t60\n100% velas\n\t49,1%\t+3,4%\t−10,8%\t12,93\t1,0%\t\nPromover\nExcluir",
+            "display": "table-row",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 1240,
+            "h": 125,
+            "x": 257,
+            "y": 399.28125,
+            "promote": "Promover",
+            "promoteDisabled": false,
+            "notes": [],
+            "result": "RS-EA2A508DBD"
+          }
+        },
+        {
+          "id": "acomp_orphan_t3_promover",
+          "ok": true,
+          "detail": "Promover"
+        },
+        {
+          "id": "acomp_orphan_t3_no_tier3",
+          "ok": true,
+          "detail": "2 Médias Móveis: Tendência em Virada ETH/USDT · 1d · Long GO 0,88 60 100% velas 49,1% +3,4% −10,8% 12,93 1,0% Promover Excluir"
+        },
+        {
+          "id": "acomp_live_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "3 Médias Móveis: Tendência em Virada 1 SOL/USDT · 1d · Long NO-GO Equivale ao favorito ativo 12 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Já existe Excluir",
+            "rawText": "3\t\nMédias Móveis: Tendência em Virada 1\nSOL/USDT · 1d · Long\nNO-GO\nEquivale ao favorito ativo 12\n\t0,36\t40\n100% velas\n\t17,5%\t+4,4%\t−7,5%\t16,90\t1,3%\t\nJá existe\nExcluir",
+            "display": "table-row",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 1240,
+            "h": 125,
+            "x": 257,
+            "y": 524.28125,
+            "promote": "Já existe",
+            "promoteDisabled": true,
+            "notes": [
+              "Equivale ao favorito ativo 12"
+            ],
+            "result": "RS-LIVE-DUP"
+          }
+        },
+        {
+          "id": "acomp_live_ja_existe",
+          "ok": true,
+          "detail": "Já existe"
+        },
+        {
+          "id": "acomp_live_equivale_12",
+          "ok": true,
+          "detail": "3 Médias Móveis: Tendência em Virada 1 SOL/USDT · 1d · Long NO-GO Equivale ao favorito ativo 12 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Já existe Excluir"
+        },
+        {
+          "id": "montar_active",
+          "ok": true,
+          "detail": {
+            "selected": "true",
+            "panelActive": true
+          }
+        },
+        {
+          "id": "lm_preflight_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 105.5,
+            "h": 23.390625,
+            "x": 1099,
+            "y": 445.890625,
+            "text": "Preflight"
+          }
+        },
+        {
+          "id": "lm_rascunho_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 252.90625,
+            "h": 23.390625,
+            "x": 277,
+            "y": 445.890625,
+            "text": "Rascunho de varredura"
+          }
+        },
+        {
+          "id": "no_antes_depois",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "overflow_sw_cw",
+          "ok": true,
+          "detail": {
+            "sw": 1440,
+            "cw": 1440
+          }
+        },
+        {
+          "id": "console_impact_0",
+          "ok": true,
+          "detail": {
+            "console": [],
+            "pageerror": [],
+            "impact": []
+          }
+        },
+        {
+          "id": "no_http_ge_400",
+          "ok": true,
+          "detail": []
+        }
+      ],
+      "console": [],
+      "pageerror": [],
+      "bad_resps": [],
+      "overflow": {
+        "sw": 1440,
+        "cw": 1440
+      },
+      "url": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/",
+      "shots": [
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-decidir.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-1440x900.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-decidir-orphan-ja.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-decidir-orphan-t3.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-decidir-live.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-acomp.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-acomp-orphan-ja.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-acomp-live.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-montar.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-desktop-montar-preflight.png"
+      ]
+    },
+    {
+      "viewport": "mobile 390x844",
+      "pass": true,
+      "n": 38,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "final_url_proto",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/"
+        },
+        {
+          "id": "not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/"
+        },
+        {
+          "id": "digest_match",
+          "ok": true,
+          "detail": {
+            "disk": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+            "disk_bytes": 69158,
+            "https_dir": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+            "https_dir_bytes": 69158,
+            "https_dir_status": 200,
+            "https_index": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+            "https_index_bytes": 69158,
+            "https_index_status": 200,
+            "expected": "1f8b13c879526506637fe6cce691b87db9d38fd5d4c7047e4be9d839bba13d74",
+            "match": true,
+            "cmp_dir": true,
+            "cmp_index": true
+          }
+        },
+        {
+          "id": "lm_html_descoberta",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_preflight",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_html_rascunho",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_h1_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 358,
+            "h": 62.375,
+            "x": 16,
+            "y": 121.5,
+            "text": "Descoberta de estratégias swing"
+          }
+        },
+        {
+          "id": "default_decidir",
+          "ok": true,
+          "detail": {
+            "selected": "true",
+            "panelActive": true,
+            "tabText": "Decidir"
+          }
+        },
+        {
+          "id": "panel_decidir_active",
+          "ok": true,
+          "detail": {
+            "selected": "true",
+            "panelActive": true,
+            "tabText": "Decidir"
+          }
+        },
+        {
+          "id": "decidir_orphan_ja_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "1 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 GO + detalhes 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir",
+            "rawText": "1\nMédias Móveis: Tendência em Virada\nCompara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.\nRS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8\nGO\n+ detalhes\n1,12\n84\n100% velas\n52,4%\n+18,2%\n−14,1%\n8,40\n4,1%\nPromover\nExcluir",
+            "display": "grid",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 332,
+            "h": 622.875,
+            "x": 29,
+            "y": 1181.0625,
+            "promote": "Promover",
+            "promoteDisabled": false,
+            "notes": [],
+            "result": "RS-E2FF8F9FEB"
+          }
+        },
+        {
+          "id": "decidir_orphan_ja_promover",
+          "ok": true,
+          "detail": "Promover"
+        },
+        {
+          "id": "decidir_orphan_ja_no_ja_existe",
+          "ok": true,
+          "detail": "1 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 GO + detalhes 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir"
+        },
+        {
+          "id": "decidir_orphan_ja_no_equivale",
+          "ok": true,
+          "detail": "1 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 GO + detalhes 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir"
+        },
+        {
+          "id": "decidir_orphan_t3_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "2 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-EA2A508DBD · cobertura 100% · direction long · ema_short 8 GO + detalhes 0,88 60 100% velas 49,1% +3,4% −10,8% 12,93 1,0% Promover Excluir",
+            "rawText": "2\nMédias Móveis: Tendência em Virada\nCompara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.\nRS-EA2A508DBD · cobertura 100% · direction long · ema_short 8\nGO\n+ detalhes\n0,88\n60\n100% velas\n49,1%\n+3,4%\n−10,8%\n12,93\n1,0%\nPromover\nExcluir",
+            "display": "grid",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 332,
+            "h": 622.875,
+            "x": 29,
+            "y": 1815.9375,
+            "promote": "Promover",
+            "promoteDisabled": false,
+            "notes": [],
+            "result": "RS-EA2A508DBD"
+          }
+        },
+        {
+          "id": "decidir_orphan_t3_promover",
+          "ok": true,
+          "detail": "Promover"
+        },
+        {
+          "id": "decidir_orphan_t3_no_tier3",
+          "ok": true,
+          "detail": "2 Médias Móveis: Tendência em Virada Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-EA2A508DBD · cobertura 100% · direction long · ema_short 8 GO + detalhes 0,88 60 100% velas 49,1% +3,4% −10,8% 12,93 1,0% Promover Excluir"
+        },
+        {
+          "id": "decidir_live_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "3 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-LIVE-DUP · cobertura 100% · direction long · ema_short 9 NO-GO Equivale ao favorito ativo 12 + detalhes 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Já existe Excluir",
+            "rawText": "3\nMédias Móveis: Tendência em Virada 1\nCompara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.\nRS-LIVE-DUP · cobertura 100% · direction long · ema_short 9\nNO-GO\nEquivale ao favorito ativo 12\n+ detalhes\n0,36\n40\n100% velas\n17,5%\n+4,4%\n−7,5%\n16,90\n1,3%\nJá existe\nExcluir",
+            "display": "grid",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 332,
+            "h": 622.875,
+            "x": 29,
+            "y": 2450.8125,
+            "promote": "Já existe",
+            "promoteDisabled": true,
+            "notes": [
+              "Equivale ao favorito ativo 12"
+            ],
+            "result": "RS-LIVE-DUP"
+          }
+        },
+        {
+          "id": "decidir_live_ja_existe",
+          "ok": true,
+          "detail": "Já existe"
+        },
+        {
+          "id": "decidir_live_equivale_12",
+          "ok": true,
+          "detail": "3 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-LIVE-DUP · cobertura 100% · direction long · ema_short 9 NO-GO Equivale ao favorito ativo 12 + detalhes 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Já existe Excluir"
+        },
+        {
+          "id": "acomp_selected",
+          "ok": true,
+          "detail": {
+            "selected": "true",
+            "panelActive": true
+          }
+        },
+        {
+          "id": "acomp_orphan_ja_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "1 Médias Móveis: Tendência em Virada BTC/USDT · 1d · Long GO 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir",
+            "rawText": "1\nMédias Móveis: Tendência em Virada\nBTC/USDT · 1d · Long\nGO\n1,12\n84\n100% velas\n52,4%\n+18,2%\n−14,1%\n8,40\n4,1%\nPromover\nExcluir",
+            "display": "grid",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 332,
+            "h": 468,
+            "x": 29,
+            "y": -789.15625,
+            "promote": "Promover",
+            "promoteDisabled": false,
+            "notes": [],
+            "result": "RS-E2FF8F9FEB"
+          }
+        },
+        {
+          "id": "acomp_orphan_ja_promover",
+          "ok": true,
+          "detail": "Promover"
+        },
+        {
+          "id": "acomp_orphan_ja_no_ja_existe",
+          "ok": true,
+          "detail": "1 Médias Móveis: Tendência em Virada BTC/USDT · 1d · Long GO 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir"
+        },
+        {
+          "id": "acomp_orphan_ja_no_equivale",
+          "ok": true,
+          "detail": "1 Médias Móveis: Tendência em Virada BTC/USDT · 1d · Long GO 1,12 84 100% velas 52,4% +18,2% −14,1% 8,40 4,1% Promover Excluir"
+        },
+        {
+          "id": "acomp_orphan_t3_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "2 Médias Móveis: Tendência em Virada ETH/USDT · 1d · Long GO 0,88 60 100% velas 49,1% +3,4% −10,8% 12,93 1,0% Promover Excluir",
+            "rawText": "2\nMédias Móveis: Tendência em Virada\nETH/USDT · 1d · Long\nGO\n0,88\n60\n100% velas\n49,1%\n+3,4%\n−10,8%\n12,93\n1,0%\nPromover\nExcluir",
+            "display": "grid",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 332,
+            "h": 468,
+            "x": 29,
+            "y": -309.15625,
+            "promote": "Promover",
+            "promoteDisabled": false,
+            "notes": [],
+            "result": "RS-EA2A508DBD"
+          }
+        },
+        {
+          "id": "acomp_orphan_t3_promover",
+          "ok": true,
+          "detail": "Promover"
+        },
+        {
+          "id": "acomp_orphan_t3_no_tier3",
+          "ok": true,
+          "detail": "2 Médias Móveis: Tendência em Virada ETH/USDT · 1d · Long GO 0,88 60 100% velas 49,1% +3,4% −10,8% 12,93 1,0% Promover Excluir"
+        },
+        {
+          "id": "acomp_live_present",
+          "ok": true,
+          "detail": {
+            "present": true,
+            "text": "3 Médias Móveis: Tendência em Virada 1 SOL/USDT · 1d · Long NO-GO Equivale ao favorito ativo 12 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Já existe Excluir",
+            "rawText": "3\nMédias Móveis: Tendência em Virada 1\nSOL/USDT · 1d · Long\nNO-GO\nEquivale ao favorito ativo 12\n0,36\n40\n100% velas\n17,5%\n+4,4%\n−7,5%\n16,90\n1,3%\nJá existe\nExcluir",
+            "display": "grid",
+            "visibility": "visible",
+            "opacity": "1",
+            "w": 332,
+            "h": 501.5,
+            "x": 29,
+            "y": 170.84375,
+            "promote": "Já existe",
+            "promoteDisabled": true,
+            "notes": [
+              "Equivale ao favorito ativo 12"
+            ],
+            "result": "RS-LIVE-DUP"
+          }
+        },
+        {
+          "id": "acomp_live_ja_existe",
+          "ok": true,
+          "detail": "Já existe"
+        },
+        {
+          "id": "acomp_live_equivale_12",
+          "ok": true,
+          "detail": "3 Médias Móveis: Tendência em Virada 1 SOL/USDT · 1d · Long NO-GO Equivale ao favorito ativo 12 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Já existe Excluir"
+        },
+        {
+          "id": "montar_active",
+          "ok": true,
+          "detail": {
+            "selected": "true",
+            "panelActive": true
+          }
+        },
+        {
+          "id": "lm_preflight_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 105.5,
+            "h": 23.390625,
+            "x": 37,
+            "y": 1119.953125,
+            "text": "Preflight"
+          }
+        },
+        {
+          "id": "lm_rascunho_visible",
+          "ok": true,
+          "detail": {
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "clip": "auto",
+            "clipPath": "none",
+            "w": 218.4375,
+            "h": 23.390625,
+            "x": 37,
+            "y": 614.0625,
+            "text": "Rascunho de varredura"
+          }
+        },
+        {
+          "id": "no_antes_depois",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "overflow_sw_cw",
+          "ok": true,
+          "detail": {
+            "sw": 390,
+            "cw": 390
+          }
+        },
+        {
+          "id": "console_impact_0",
+          "ok": true,
+          "detail": {
+            "console": [],
+            "pageerror": [],
+            "impact": []
+          }
+        },
+        {
+          "id": "no_http_ge_400",
+          "ok": true,
+          "detail": []
+        }
+      ],
+      "console": [],
+      "pageerror": [],
+      "bad_resps": [],
+      "overflow": {
+        "sw": 390,
+        "cw": 390
+      },
+      "url": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/",
+      "shots": [
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-decidir.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-390x844.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-decidir-orphan-ja.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-decidir-orphan-t3.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-decidir-live.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-acomp.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-acomp-orphan-ja.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-acomp-live.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-montar.png",
+        "/srv/apps/dev/criptofarol/crypto-worktrees/card-948-discovery-deleted-favorite/.impeccable/critique/948-B-mobile-montar-preflight.png"
+      ]
+    }
+  ],
+  "pass": true
+}

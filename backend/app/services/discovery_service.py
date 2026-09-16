@@ -1676,14 +1676,119 @@ class DiscoveryService:
 
     # --- Leaderboard (spec discovery-leaderboard) ---------------------------
 
+    @staticmethod
+    def _favorite_id_exists(
+        db: Session, favorite_ref: str | None, *, exclude_id: int | None = None
+    ) -> bool:
+        if not favorite_ref:
+            return False
+        try:
+            fav_id = int(str(favorite_ref).strip())
+        except (TypeError, ValueError):
+            return False
+        if exclude_id is not None and fav_id == exclude_id:
+            return False
+        return (
+            db.query(FavoriteStrategy.id).filter(FavoriteStrategy.id == fav_id).first() is not None
+        )
+
+    def _find_favorite_by_strategy_identity(
+        self,
+        db: Session,
+        strategy_identity_key: str,
+        *,
+        exclude_id: int | None = None,
+    ) -> FavoriteStrategy | None:
+        try:
+            sql = (
+                "SELECT id FROM favorite_strategies "
+                "WHERE CAST(metrics AS jsonb)->>'strategy_identity_key' = :key"
+            )
+            params: dict[str, object] = {"key": strategy_identity_key}
+            if exclude_id is not None:
+                sql += " AND id != :exclude_id"
+                params["exclude_id"] = exclude_id
+            sql += " LIMIT 1"
+            rows = db.execute(text(sql), params).first()
+            if rows is not None:
+                return db.query(FavoriteStrategy).filter(FavoriteStrategy.id == rows[0]).first()
+        except Exception:
+            for fav in db.query(FavoriteStrategy).all():
+                if exclude_id is not None and fav.id == exclude_id:
+                    continue
+                metrics = fav.metrics or {}
+                if metrics.get("strategy_identity_key") == strategy_identity_key:
+                    return fav
+        return None
+
+    def _resolve_effective_dedup(
+        self,
+        row: DiscoveryResult,
+        db: Session,
+        *,
+        exclude_favorite_id: int | None = None,
+    ) -> tuple[str, str | None]:
+        state = row.dedup_state
+        ref = row.dedup_reference
+        if state not in ("duplicate_favorite", "already_promoted"):
+            return state, ref
+        if self._favorite_id_exists(db, ref, exclude_id=exclude_favorite_id):
+            return state, ref
+        live = self._find_favorite_by_strategy_identity(
+            db, row.strategy_identity_key, exclude_id=exclude_favorite_id
+        )
+        if live is not None:
+            return "duplicate_favorite", str(live.id)
+        return "unique", None
+
+    def reclassify_discovery_results_for_deleted_favorite(
+        self, favorite_id: int, db: Session
+    ) -> int:
+        """Reclassify discovery rows that pointed at a deleted favorite (card #948)."""
+        ref = str(favorite_id)
+        rows = (
+            db.query(DiscoveryResult)
+            .filter(
+                DiscoveryResult.dedup_state.in_(("duplicate_favorite", "already_promoted")),
+                DiscoveryResult.dedup_reference == ref,
+            )
+            .all()
+        )
+        if not rows:
+            return 0
+        now = _utcnow()
+        for row in rows:
+            dedup_state, dedup_reference = self._resolve_effective_dedup(
+                row, db, exclude_favorite_id=favorite_id
+            )
+            row.dedup_state = dedup_state
+            row.dedup_reference = dedup_reference
+            row.updated_at = now
+            db.add(
+                DiscoveryDedupEvidence(
+                    result_id=row.id,
+                    classification=dedup_state,
+                    matched_reference=dedup_reference,
+                    structure_version=STRUCTURE_VERSION,
+                    quantum_version=QUANTUM_VERSION,
+                )
+            )
+        db.flush()
+        return len(rows)
+
     def _result_row(
         self,
         row: DiscoveryResult,
         rank: int | None,
         *,
         identity_map: dict[str, dict[str, str]] | None = None,
+        db: Session | None = None,
     ) -> dict[str, Any]:
         identity = (identity_map or {}).get(str(row.template_id or ""), {})
+        dedup_state = row.dedup_state
+        dedup_reference = row.dedup_reference
+        if db is not None:
+            dedup_state, dedup_reference = self._resolve_effective_dedup(row, db)
         payload = {
             "rank": rank,
             "result_id": row.id,
@@ -1710,8 +1815,8 @@ class DiscoveryService:
             "total_return_pct": _json_metric_float(row.metrics, "total_return_pct"),
             "eligibility": row.eligibility,
             "eligibility_reason": row.eligibility_reason,
-            "dedup_state": row.dedup_state,
-            "dedup_reference": row.dedup_reference,
+            "dedup_state": dedup_state,
+            "dedup_reference": dedup_reference,
             "strategy_identity_key": row.strategy_identity_key,
             "evidence_fingerprint": row.evidence_fingerprint,
             "start_at": _utc_iso(row.start_at),
@@ -1774,9 +1879,12 @@ class DiscoveryService:
             template_names = [str(row.template_id) for row in rows if row.template_id]
             identity_map = ComboService.identity_map_for_template_names(session, template_names)
             return [
-                self._result_row(row, idx + 1, identity_map=identity_map)
+                self._result_row(row, idx + 1, identity_map=identity_map, db=session)
                 for idx, row in enumerate(ranked)
-            ] + [self._result_row(row, None, identity_map=identity_map) for row in ineligible]
+            ] + [
+                self._result_row(row, None, identity_map=identity_map, db=session)
+                for row in ineligible
+            ]
         finally:
             if db is None:
                 session.close()
@@ -1873,17 +1981,18 @@ class DiscoveryService:
                 },
                 422,
             )
-        if result.dedup_state == "duplicate_favorite":
+        effective_state, effective_ref = self._resolve_effective_dedup(result, db)
+        if effective_state == "duplicate_favorite":
             return (
                 {
                     "error": "duplicate",
                     "detail": "candidato já duplica favorito ativo",
-                    "reference": result.dedup_reference,
+                    "reference": effective_ref,
                 },
                 409,
             )
-        if result.dedup_state == "already_promoted":
-            return {"favorite_id": result.dedup_reference, "result_id": result.id}, 200
+        if effective_state == "already_promoted":
+            return {"favorite_id": effective_ref, "result_id": result.id}, 200
 
         tier = payload.get("tier")
         if tier != 3:
@@ -1907,8 +2016,18 @@ class DiscoveryService:
                 },
                 422,
             )
-        if result.dedup_state == "already_promoted":
-            return {"favorite_id": result.dedup_reference, "result_id": result.id}, 200
+        effective_state, effective_ref = self._resolve_effective_dedup(result, db)
+        if effective_state == "duplicate_favorite":
+            return (
+                {
+                    "error": "duplicate",
+                    "detail": "candidato já duplica favorito",
+                    "reference": effective_ref,
+                },
+                409,
+            )
+        if effective_state == "already_promoted":
+            return {"favorite_id": effective_ref, "result_id": result.id}, 200
 
         duplicate = None
         try:
@@ -2024,7 +2143,9 @@ class DiscoveryService:
         result = db.query(DiscoveryResult).filter(DiscoveryResult.id == result_id).first()
         if not result:
             return {"error": "result not found"}, 404
-        if result.dedup_state == "already_promoted":
+        if result.dedup_state == "already_promoted" and self._favorite_id_exists(
+            db, result.dedup_reference
+        ):
             return (
                 {
                     "error": "already_promoted",
@@ -2038,7 +2159,9 @@ class DiscoveryService:
         lock_key &= 0x7FFFFFFFFFFFFFFF
         db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
         db.refresh(result)
-        if result.dedup_state == "already_promoted":
+        if result.dedup_state == "already_promoted" and self._favorite_id_exists(
+            db, result.dedup_reference
+        ):
             return (
                 {
                     "error": "already_promoted",

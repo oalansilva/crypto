@@ -1117,6 +1117,9 @@ def delete_favorite(
     )
     if not favorite:
         raise HTTPException(status_code=404, detail="Favorite not found")
+    from app.services.discovery_service import DiscoveryService
+
+    DiscoveryService().reclassify_discovery_results_for_deleted_favorite(favorite_id, db)
     db.delete(favorite)
     db.commit()
     return {"message": "Favorite deleted"}

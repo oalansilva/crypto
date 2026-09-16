@@ -1750,10 +1750,27 @@ class TestPromotion:
         db.close()
 
     def test_discard_rejects_already_promoted(self, engine_factory):
+        from app.models import FavoriteStrategy
+
         engine = engine_factory()
         db = _session_factory(engine)()
         service = DiscoveryService()
         now = datetime.now(timezone.utc)
+        live = FavoriteStrategy(
+            user_id="admin-1",
+            name="live promoted",
+            symbol="ETHUSDT",
+            timeframe="1d",
+            strategy_name="t1",
+            parameters={"direction": "long"},
+            tier=3,
+            start_date=now.date().isoformat(),
+            end_date=(now + timedelta(days=30)).date().isoformat(),
+            period_type="all",
+            metrics={},
+        )
+        db.add(live)
+        db.flush()
         db.add(
             DiscoveryResult(
                 id="RS-DSC-2",
@@ -1773,7 +1790,7 @@ class TestPromotion:
                 evidence_fingerprint="fp-dsc-2",
                 eligibility="eligible",
                 dedup_state="already_promoted",
-                dedup_reference="fav-1",
+                dedup_reference=str(live.id),
             )
         )
         db.commit()
