@@ -124,14 +124,16 @@ Each visible non-promoted row whose eligibility is `eligible` or `low_sample` SH
 
 ### Requirement: Communicate metric meaning accessibly
 
-Headers SHALL expose full accessible names for Sharpe, Win%, CAGR (annualized scan return), `Maximum Drawdown` and, when those headers remain in expansion or elsewhere, `Buy and Hold`, `Delta versus Buy and Hold` and `Profit Factor`, through accessible text or `aria-label` (an abbreviation `title` alone is insufficient). Lifecycle colors SHALL use informational blue/yellow/neutrals, while green/red remain reserved for Long/Short and trading performance. Result-count changes SHALL use a polite live region. The educational disclaimer SHALL state that historical ranking is decision support, not a return guarantee.
+Headers SHALL expose full accessible names for Sharpe, Trades, Win%, Return (compound return of the scan evidence window), Maximum Drawdown, Calmar (calendar CAGR ÷ Max DD), and CAGR anualizado (annualized scan return), and, when those headers remain in expansion or elsewhere, Buy and Hold, Delta versus Buy and Hold and Profit Factor, through accessible text or `aria-label` (an abbreviation `title` alone is insufficient). Lifecycle colors SHALL use informational blue/yellow/neutrals, while green/red remain reserved for Long/Short and trading performance. Result-count changes SHALL use a polite live region. The educational disclaimer SHALL state that historical ranking is decision support, not a return guarantee.
 
 #### Scenario: Expanded metric names are announced
 
-- **GIVEN** a leaderboard with Sharpe, Win%, CAGR and `Max DD` column headers
+- **GIVEN** a leaderboard with Sharpe, Trades, Win%, Return, Max DD, Calmar and CAGR anualizado column headers
 - **WHEN** a screen reader traverses the column headers
-- **THEN** each header exposes its full accessible name (Sharpe, Win rate, annualized CAGR of the scan, Maximum Drawdown)
+- **THEN** each header exposes its full accessible name (Sharpe, Trades, Win rate, Return of the scan window, Maximum Drawdown, Calmar as CAGR ÷ Max DD, annualized CAGR of the scan)
 - **AND** an abbreviation `title` attribute alone is not used as the accessible name
+- **AND** Return is not announced as CAGR
+- **AND** CAGR anualizado is not announced as Return
 
 #### Scenario: Operational lifecycle colors do not reuse trading semantics
 
@@ -255,56 +257,129 @@ Among results that are ranking-eligible (existing 30 trades / 90% coverage polic
 
 ### Requirement: Column copy distinguishes Calmar from return and trades from win rate
 
-The Calmar column header SHALL expose an accessible name that states the metric is Calmar (CAGR of the calendar window ÷ Max DD), not return and not hit rate. The `Trades/cobertura` header SHALL expose the accessible name «negócios / cobertura» (closed trades and candle coverage). Visible column copy MAY add a short muted hint (`CAGR ÷ Max DD` / `negócios · velas`). `30 · 100%` SHALL remain the trades × coverage pair. Win rate, when shown, SHALL stay in «+ detalhes», never in that column.
+The Calmar column header SHALL expose an accessible name that states the metric is Calmar (CAGR of the calendar window ÷ Max DD), not Return and not hit rate. The Trades header SHALL expose the accessible name Trades (closed trades). Visible column copy MAY add a short muted hint for coverage (`cobertura` / `velas`). Coverage SHALL NOT rename the column to `Trades/cobertura`. Win% SHALL stay in its own column. Return SHALL stay in its own column and SHALL NOT reuse the CAGR anualizado value or name.
 
-#### Scenario: Screen reader names Calmar and coverage
+#### Scenario: Screen reader names Calmar and Trades
 
 - **GIVEN** a leaderboard or parciais table
 - **WHEN** a screen reader traverses the column headers
-- **THEN** Calmar is announced as Calmar (annual calendar CAGR ÷ Max DD), not as return
-- **AND** `Trades/cobertura` is announced as negócios / cobertura
+- **THEN** Calmar is announced as Calmar (annual calendar CAGR ÷ Max DD), not as Return
+- **AND** Trades is announced as Trades
 - **AND** an abbreviation `title` alone is not the accessible name
 
-#### Scenario: Thirty times one hundred percent is not win rate
+#### Scenario: Coverage is subtext of Trades not win rate
 
-- **GIVEN** a row showing `30 · 100%` in `Trades/cobertura`
-- **WHEN** the operator reads the column
-- **THEN** the header/aria identify negócios and cobertura
-- **AND** win rate is not that cell (it remains in «+ detalhes» when present)
+- **GIVEN** a row showing 30 closed trades and 100% candle coverage
+- **WHEN** the operator reads the Trades column
+- **THEN** the header name is Trades
+- **AND** coverage is subtext, not the column name
+- **AND** win rate is not that cell
 
 ### Requirement: Easy metrics columns on the Decidir leaderboard
 
-The Decidir leaderboard SHALL show six metric columns in the table, visible without expanding the row: Calmar, Max DD, Trades/cobertura, Sharpe, Win%, and CAGR. Sharpe SHALL be the persisted `sharpe_ratio` formatted with two decimal places. Win% SHALL be the persisted `win_rate` formatted as a percentage (hit rate), never the Trades/cobertura pair. CAGR SHALL be the scan's annualized return (`cagr`, the same value labelled «Retorno (CAGR)» in the promote dialog), never Favorites' accumulated Return. Sort controls SHALL remain Calmar and CAGR vs B&H only; the operator SHALL NOT gain sort-by Sharpe, Win%, or CAGR in this change.
+The Decidir leaderboard SHALL show seven metric columns in the table, visible without expanding the row, in this order: Sharpe, Trades, Win%, Return, Max DD, Calmar, CAGR anualizado. Sharpe SHALL be the persisted `sharpe_ratio` formatted with two decimal places. Win% SHALL be the persisted `win_rate` formatted as a percentage (hit rate), never the Trades cell. Return SHALL be the compound return of the scan evidence window (`total_return` / `total_return_pct` from the persisted result metrics), never `cagr` and never Favorites' stored Return. CAGR anualizado SHALL be the scan's annualized return (`cagr`, the same value labelled «Retorno (CAGR)» in the promote dialog). Sort controls SHALL remain Calmar and CAGR vs B&H only; the operator SHALL NOT gain sort-by Sharpe, Win%, Return, or CAGR anualizado in this change.
 
-#### Scenario: Six columns without expanding
+#### Scenario: Seven columns without expanding
 
 - **GIVEN** the operator is on Decidir with a list of candidates
 - **WHEN** they look at a row without clicking «+ detalhes»
-- **THEN** that row shows Calmar, Max DD, Trades/cobertura, Sharpe, Win%, and CAGR in columns
-- **AND** neighboring rows align those six values in the same columns
+- **THEN** that row shows Sharpe, Trades, Win%, Return, Max DD, Calmar, and CAGR anualizado in that order
+- **AND** neighboring rows align those seven values in the same columns
 
-#### Scenario: CAGR is annualized scan return
+#### Scenario: Return is not CAGR
 
-- **GIVEN** a candidate whose promote dialog shows «Retorno (CAGR)» as a percentage
+- **GIVEN** a candidate whose CAGR anualizado is 3,7%
 - **WHEN** the same row renders in the Decidir grid
-- **THEN** the CAGR column shows that annualized percentage
-- **AND** it does not show Favorites accumulated Return (example: `+47.916%`)
+- **THEN** the Return column shows the window compound return, not 3,7%
+- **AND** CAGR anualizado remains the last metric with its own name
 
 #### Scenario: Sort options stay Calmar and CAGR vs B&H
 
 - **GIVEN** the Decidir sort control
 - **WHEN** the operator opens it
 - **THEN** the options remain Calmar and CAGR vs B&H
-- **AND** Sharpe, Win%, and CAGR are not sort keys
+- **AND** Sharpe, Win%, Return, and CAGR anualizado are not sort keys
 
 ### Requirement: Expanded details keep non-column extras
 
-When the operator expands «+ detalhes» on a Decidir row, the expansion SHALL still expose Buy & Hold, delta versus B&H, Profit Factor, market, and evidence window. Sharpe, Win%, and CAGR SHALL NOT be the only place those three metrics appear; they SHALL already be in columns. The expansion MAY omit Sharpe, Win%, and CAGR to avoid duplicating the new columns.
+When the operator expands «+ detalhes» on a Decidir row, the expansion SHALL still expose Buy & Hold, delta versus B&H, Profit Factor, market, and evidence window. Sharpe, Win%, Return, and CAGR anualizado SHALL already be in columns. The expansion MAY omit those column metrics to avoid duplicating them.
 
 #### Scenario: Plus details still has B&H PF and window
 
 - **GIVEN** a Decidir row with «+ detalhes»
 - **WHEN** the operator expands it
 - **THEN** B&H, Δ B&H, PF, and the evidence window remain readable
-- **AND** Sharpe, Win%, and CAGR were already visible as columns before the click
+- **AND** Sharpe, Trades, Win%, Return, Max DD, Calmar, and CAGR anualizado were already visible as columns before the click
+
+### Requirement: Shared Favorites indicator names and order on the Decidir grid
+
+The Decidir leaderboard SHALL show the shared Favorites indicators with the same names and the same left-to-right order: Sharpe, Trades, Win%, Return, Max DD. Discovery-only extras SHALL follow that block: Calmar (visible subtext `CAGR ÷ Max DD`) then CAGR anualizado (own name, last metric). Return SHALL exist as its own column. CAGR anualizado SHALL NOT use the name Return and SHALL NOT occupy Return's slot. Trades SHALL be named Trades; candle coverage, if shown, SHALL be subtext of Trades, never the column name. Rank, candidate identity, and Ação SHALL remain. The grid SHALL NOT copy Favorites columns Sel, Tier, Telegram, Symbol, Stop, PF, or SQN. Numbers MAY differ from Favorites; this requirement aligns names and order, not values. All seven metric columns SHALL be visible without expanding «+ detalhes».
+
+#### Scenario: Operator rereads Favorites names in order
+
+- **GIVEN** Favorites shows Sharpe, Trades, Win%, Return, Max DD
+- **WHEN** the administrator opens Decidir
+- **THEN** those five names appear in that order before Calmar and CAGR anualizado
+- **AND** a Return column exists
+- **AND** CAGR anualizado is the last metric and is not labelled Return
+
+#### Scenario: Same setup may keep different numbers
+
+- **GIVEN** the same setup has Return +16.951% in Favorites and CAGR 3,7% in Discovery
+- **WHEN** this change is in place
+- **THEN** names and order are aligned
+- **AND** it is not a failure that the numbers remain different
+
+### Requirement: Grid tells the truth after a favorite is deleted
+
+On `/combo/discovery`, Decidir and Acompanhar (when the same row is still visible) SHALL show the same current classification. After the referenced favorite has been deleted, an eligible row that used to show **Já existe** / **Equivale ao favorito ativo N** or **Favorito tier 3** SHALL show **Promover** (if the rest of the row still allows it). That row SHALL NOT show **Já existe**, SHALL NOT show **Equivale ao favorito ativo N**, SHALL NOT show **Favorito tier 3**, and SHALL NOT show a note that it used to be a favorite. The row SHALL remain on the sweep; deleting the favorite SHALL NOT hide it. A row whose equivalent favorite still exists SHALL keep **Já existe** / **Equivale ao favorito ativo N**. **Excluir** on the grid still discards only that sweep result and SHALL NOT delete a favorite.
+
+#### Scenario: Orphan Já existe row returns to Promover
+
+- **GIVEN** a completed sweep whose row showed **Já existe** / **Equivale ao favorito ativo N**
+- **AND** favorite N has been deleted
+- **WHEN** the administrator opens Decidir on that sweep
+- **THEN** the row shows **Promover** if otherwise eligible
+- **AND** it does not show **Já existe**
+- **AND** it does not show **Equivale ao favorito ativo N**
+- **AND** it does not show a historical-favorite note
+- **AND** the row is still on the sweep
+
+#### Scenario: Orphan Favorito tier 3 row returns to Promover
+
+- **GIVEN** a sweep row that showed **Favorito tier 3** because it created favorite N
+- **AND** favorite N has been deleted
+- **WHEN** the administrator opens that sweep
+- **THEN** the row does not show **Favorito tier 3**
+- **AND** it shows **Promover** if otherwise eligible
+
+#### Scenario: Acompanhar matches Decidir
+
+- **GIVEN** the same orphan or live-duplicate row is still visible on Acompanhar
+- **WHEN** the administrator opens Acompanhar
+- **THEN** that surface shows the same Promover / Já existe / Favorito tier 3 truth as Decidir
+
+#### Scenario: Live favorite is not a regression
+
+- **GIVEN** a favorite that still exists
+- **WHEN** an equivalent candidate is shown
+- **THEN** the row still shows **Já existe** and **Equivale ao favorito ativo N**
+
+### Requirement: Acompanhar parciais show the candidate before the run closes
+
+While the active Discovery sweep is still non-terminal, Acompanhar locked top-5 parciais SHALL show a candidate row as soon as that result exists for **this** sweep. The empty copy **Parciais ainda carregando** SHALL NOT remain in that state. The Acompanhar progress counter SHALL NOT display 0 of N when this sweep has already processed combinations. Parciais SHALL keep being a top-5 of this sweep (no pagination, no becoming Decidir). Montar SHALL keep Preflight and Rascunho without this card's partials delta.
+
+#### Scenario: Candidate exists mid-run
+
+- **GIVEN** a non-terminal sweep the Acompanhar is following, and a ranked result for that sweep already exists
+- **WHEN** the operator stays on Acompanhar without reloading
+- **THEN** the parciais table shows that candidate line
+- **AND** the phrase «Parciais ainda carregando» is not shown
+
+#### Scenario: Progress is not stuck at zero after processing
+
+- **GIVEN** the active sweep has `processed > 0`
+- **WHEN** Acompanhar shows the progress of that sweep
+- **THEN** the counter is not 0 de N
+- **AND** the displayed processed count matches this sweep, not another run in Histórico
 
