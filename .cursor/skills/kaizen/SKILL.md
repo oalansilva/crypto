@@ -33,9 +33,14 @@ Invented path/URL, loop without progress, high cost/work without `Done`, eternal
 
 Use the Kaizen Audit Findings template (metrics, F-n findings with evidence, recommendations mapped 1:1 to proposed cards). Public issues get IDs and aggregates only.
 
-## `/kaizen release` — proxy de modelo
+## `/kaizen release` — métricas de grelha (proxy transcript)
 
-No modo `/kaizen release`, além das fontes acima, ler comentários REST dos issues do pacote (`gh api repos/<owner>/<repo>/issues/<n>/comments`) e procurar linhas `proxy modelo: <papel> → <rótulo> (<slug>)` nos handoffs de Design, Apply e Review. Comparar com a tabela juízo/execução vigente em `.cursor/skills/covenant-flow/SKILL.md` (Grok 4.6 / `cursor-grok-4.6-high` para juízo; Composer 2.5 / `composer-2.5` para execução). Linha em falta num card que spawnou filhos = achado (não skip silencioso). Se o closeout (T16 / `fecho-lote`) correu com chat pai não-Composer (p.ex. Grok 4.6) em vez de sessão Composer 2.5, registar achado de processo citando a lei «Release/lote — chat pai Composer 2.5» do runbook (sem inferir picker só pelo transcript). MUST NOT parser de usage Cursor/Grok; MUST NOT dashboard; MUST NOT valores em dinheiro de API de vendor.
+No relatório de **`/kaizen release`**, além dos achados habituais, incluir (read-only, mesma fonte de transcripts já usada: `$CURSOR_TRANSCRIPTS_DIR` / `agent-transcripts`, correlação `#<id>` / `card-<id>`):
+
+- **sessões de grelha por card** — count de filhos/spawns cujo título ou descrição contém needle `grill-card`; comentário exacto `card nítido; sem grill` no card conta como **0** sessões de grelha nesse card;
+- **Em Refinamento vs Design** — count grelha vs count `design-autor` + `design-critic` + `Assessment A`/`Assessment B` na mesma janela/cards analisados.
+
+MUST NOT parser de usage Cursor/Grok; MUST NOT dashboard; MUST NOT valores em dinheiro. Alvo de melhoria contínua (não assert de CI): média ≤ **1,5** sessões de grelha por card nos próximos 10 cards que saem de Em Refinamento.
 
 ## Closeout (orquestrador — fora desta skill)
 
