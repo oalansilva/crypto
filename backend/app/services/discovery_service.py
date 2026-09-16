@@ -1711,9 +1711,7 @@ class DiscoveryService:
             sql += " LIMIT 1"
             rows = db.execute(text(sql), params).first()
             if rows is not None:
-                return (
-                    db.query(FavoriteStrategy).filter(FavoriteStrategy.id == rows[0]).first()
-                )
+                return db.query(FavoriteStrategy).filter(FavoriteStrategy.id == rows[0]).first()
         except Exception:
             for fav in db.query(FavoriteStrategy).all():
                 if exclude_id is not None and fav.id == exclude_id:
