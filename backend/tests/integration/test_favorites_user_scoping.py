@@ -149,6 +149,31 @@ def _attach_oos_proof(payload: favorites.FavoriteStrategyCreate) -> None:
     )
 
 
+def _patch_oos_enrich_without_backtest(monkeypatch) -> None:
+    """Integração OOS: não corre ComboOptimizer/OHLCV no create_favorite."""
+    from app.services.favorite_operational_period import resolve_chosen_period
+
+    def _fake_enrich(**kwargs):
+        metrics = dict(kwargs.get("metrics") or {})
+        ptype, start, end = resolve_chosen_period(
+            period_type=kwargs.get("period_type"),
+            start_date=kwargs.get("start_date"),
+            end_date=kwargs.get("end_date"),
+            symbol=kwargs.get("symbol"),
+            timeframe=kwargs.get("timeframe"),
+        )
+        return (ptype, start, end, metrics)
+
+    monkeypatch.setattr(
+        "app.services.favorite_operational_period._first_candle_iso",
+        lambda symbol, timeframe: "2017-08-17",
+    )
+    monkeypatch.setattr(
+        "app.services.favorite_operational_period.enrich_walk_forward_favorite_create",
+        _fake_enrich,
+    )
+
+
 def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
@@ -1515,6 +1540,7 @@ def test_create_favorite_allows_no_go_with_admin_override(tmp_path: Path, monkey
     persiste o veredito + override nos metrics."""
     SessionLocal = _session_factory(tmp_path)
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+    _patch_oos_enrich_without_backtest(monkeypatch)
     with SessionLocal() as db:
         payload = _favorite_payload("NO-GO override")
         payload.oos_metrics = {"total_trades": 12, "sharpe_ratio": 0.2}
@@ -1530,8 +1556,9 @@ def test_create_favorite_allows_no_go_with_admin_override(tmp_path: Path, monkey
         assert stored.metrics["oos_metrics"]["total_trades"] == 12
 
 
-def test_create_favorite_allows_go_and_legacy(tmp_path: Path):
+def test_create_favorite_allows_go_and_legacy(tmp_path: Path, monkeypatch):
     """Gate walk-forward (card #470): GO permite; payload legado sem veredito mantém comportamento."""
+    _patch_oos_enrich_without_backtest(monkeypatch)
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
         go_payload = _favorite_payload("GO candidate")
@@ -1596,10 +1623,7 @@ def test_create_favorite_oos_dedup_uses_operational_window_before_enrich(
         )
         return (ptype, start, end, metrics)
 
-    monkeypatch.setattr(
-        "app.services.favorite_operational_period._first_candle_iso",
-        lambda symbol, timeframe: "2017-08-17",
-    )
+    _patch_oos_enrich_without_backtest(monkeypatch)
     monkeypatch.setattr(
         "app.services.favorite_operational_period.enrich_walk_forward_favorite_create",
         _fake_enrich,
