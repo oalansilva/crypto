@@ -1,0 +1,807 @@
+{
+  "card": 952,
+  "utc": "2026-09-16T18:23Z",
+  "digest": {
+    "disk": "eab36595d3bc5548703d2bd826849f8579d86ede884d39df418580510c0e52c5",
+    "disk_bytes": 32337,
+    "https_dir": "eab36595d3bc5548703d2bd826849f8579d86ede884d39df418580510c0e52c5",
+    "https_dir_bytes": 32337,
+    "https_dir_status": 200,
+    "https_index": "eab36595d3bc5548703d2bd826849f8579d86ede884d39df418580510c0e52c5",
+    "https_index_bytes": 32337,
+    "https_index_status": 200,
+    "expected": "eab36595d3bc5548703d2bd826849f8579d86ede884d39df418580510c0e52c5",
+    "match": true,
+    "cmp_dir": true,
+    "cmp_index": true
+  },
+  "detector": {
+    "exit": 0,
+    "stdout": "[\n  {\n    \"antipattern\": \"em-dash-overuse\",\n    \"name\": \"Em-dash overuse\",\n    \"description\": \"Em-dash saturation in body copy is an AI cadence tell. Advisory only: humans use em-dashes legitimately, so this fires only on saturation — at least 8 em-dashes (— or --) at a density near one per 500 characters of body text — never on a long article that uses a few. Prefer commas, colons, periods, or parentheses.\",\n    \"severity\": \"warning\",\n    \"category\": \"slop\",\n    \"file\": \"/srv/apps/dev/criptofarol/crypto-worktrees/card-952-discovery-rascunho-defaults/frontend/public/prototypes/card-952-discovery-rascunho-defaults/index.html\",\n    \"line\": 0,\n    \"snippet\": \"8 em-dashes in body text\",\n    \"advisory\": true\n  }\n]",
+    "stderr": "",
+    "findings": [
+      {
+        "antipattern": "em-dash-overuse",
+        "name": "Em-dash overuse",
+        "description": "Em-dash saturation in body copy is an AI cadence tell. Advisory only: humans use em-dashes legitimately, so this fires only on saturation — at least 8 em-dashes (— or --) at a density near one per 500 characters of body text — never on a long article that uses a few. Prefer commas, colons, periods, or parentheses.",
+        "severity": "warning",
+        "category": "slop",
+        "file": "/srv/apps/dev/criptofarol/crypto-worktrees/card-952-discovery-rascunho-defaults/frontend/public/prototypes/card-952-discovery-rascunho-defaults/index.html",
+        "line": 0,
+        "snippet": "8 em-dashes in body text",
+        "advisory": true
+      }
+    ]
+  },
+  "chrome": "/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux-arm64/chrome",
+  "url": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/",
+  "copied": {
+    "pairs_start": 6,
+    "pairs_end": 6,
+    "utf8_sum": 9498,
+    "delta_start": 0
+  },
+  "status": "Design",
+  "live_probe": {
+    "status": 200,
+    "bytes": 455,
+    "sha256": "7f341f8e24fade9166e76ce159f3625001ef5dcc27edcc055591830a548e9b67",
+    "snippet": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/"
+  },
+  "restore_exists": true,
+  "restore_never_canonical": true,
+  "viewports": [
+    {
+      "viewport": "desktop 1440x900",
+      "pass": true,
+      "n": 49,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "final_url_proto",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/"
+        },
+        {
+          "id": "not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/"
+        },
+        {
+          "id": "not_restore_canonical",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/"
+        },
+        {
+          "id": "lm_descoberta",
+          "ok": true,
+          "detail": "Descoberta de estratégias swing"
+        },
+        {
+          "id": "lm_preflight",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "lm_rascunho",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "default_montar",
+          "ok": true,
+          "detail": "true"
+        },
+        {
+          "id": "tpl_zero",
+          "ok": true,
+          "detail": "0 de 8 selecionados"
+        },
+        {
+          "id": "sym_zero",
+          "ok": true,
+          "detail": "0 de 8 selecionados"
+        },
+        {
+          "id": "chips_empty",
+          "ok": true,
+          "detail": {
+            "tpl": [],
+            "sym": []
+          }
+        },
+        {
+          "id": "tf_1d_on",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "tf_4h_off",
+          "ok": true,
+          "detail": false
+        },
+        {
+          "id": "falta_fazer_visible",
+          "ok": true,
+          "detail": "Falta fazer:\nEscolha ao menos 1 template.\nEscolha ao menos 1 símbolo."
+        },
+        {
+          "id": "start_blocked",
+          "ok": true,
+          "detail": {
+            "exists": true,
+            "text": "Iniciar varredura — —, —",
+            "hidden": false,
+            "disabled": true,
+            "x": 1084,
+            "y": 792.171875,
+            "w": 288,
+            "h": 44,
+            "visible_box": true
+          }
+        },
+        {
+          "id": "dir_long",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "period_all",
+          "ok": true,
+          "detail": "all"
+        },
+        {
+          "id": "ranking_calmar",
+          "ok": true,
+          "detail": "calmar_ratio"
+        },
+        {
+          "id": "cards_templates",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "cards_symbols",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "cards_tf",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "zero_antes_depois",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "overflow_ok",
+          "ok": true,
+          "detail": {
+            "sw": 1425,
+            "cw": 1425
+          }
+        },
+        {
+          "id": "tf_4h_markable",
+          "ok": true,
+          "detail": {
+            "4h": true,
+            "1d": true
+          }
+        },
+        {
+          "id": "after_4h_still_empty_axes",
+          "ok": true,
+          "detail": {
+            "tpl": [],
+            "sym": []
+          }
+        },
+        {
+          "id": "after_4h_still_blocked",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "can_mark_tpl_sym",
+          "ok": true,
+          "detail": {
+            "tpl": [
+              "mm-virada-1"
+            ],
+            "sym": [
+              "BTC/USDT"
+            ]
+          }
+        },
+        {
+          "id": "aviso_gone_when_ready",
+          "ok": true,
+          "detail": {
+            "exists": true,
+            "text": "Falta fazer:\n            Escolha ao menos 1 símbolo.",
+            "hidden": true,
+            "disabled": false,
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "visible_box": false
+          }
+        },
+        {
+          "id": "start_enabled_when_ready",
+          "ok": true,
+          "detail": false
+        },
+        {
+          "id": "chips_appear",
+          "ok": true,
+          "detail": {
+            "tpl": [
+              "Médias Móveis: Tendência em Virada 1"
+            ],
+            "sym": [
+              "BTC/USDT"
+            ]
+          }
+        },
+        {
+          "id": "novo_tpl_zero",
+          "ok": true,
+          "detail": "0 de 8 selecionados"
+        },
+        {
+          "id": "novo_sym_zero",
+          "ok": true,
+          "detail": "0 de 8 selecionados"
+        },
+        {
+          "id": "novo_tf_1d_only",
+          "ok": true,
+          "detail": {
+            "4h": false,
+            "1d": true
+          }
+        },
+        {
+          "id": "novo_falta",
+          "ok": true,
+          "detail": "Falta fazer:\nEscolha ao menos 1 template.\nEscolha ao menos 1 símbolo."
+        },
+        {
+          "id": "novo_start_blocked",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "novo_keeps_period",
+          "ok": true,
+          "detail": "2y"
+        },
+        {
+          "id": "novo_keeps_dir_rank",
+          "ok": true,
+          "detail": {
+            "dir": true,
+            "rank": "calmar_ratio"
+          }
+        },
+        {
+          "id": "console_error_0",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "console_warning_0",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "pageerror_0",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "http_ge_400_0",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "restore_http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "restore_not_canonical_url",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/restore.html"
+        },
+        {
+          "id": "restore_3_tpl",
+          "ok": true,
+          "detail": [
+            "mm-virada-1",
+            "mm-virada-2",
+            "rsi-reversao"
+          ]
+        },
+        {
+          "id": "restore_4_sym",
+          "ok": true,
+          "detail": [
+            "BTC/USDT",
+            "ETH/USDT",
+            "ALPHA/USDT",
+            "ARPA/USDT"
+          ]
+        },
+        {
+          "id": "restore_both_tf",
+          "ok": true,
+          "detail": {
+            "4h": true,
+            "1d": true
+          }
+        },
+        {
+          "id": "restore_no_new_defaults_overlay",
+          "ok": true,
+          "detail": {
+            "tpl": [
+              "mm-virada-1",
+              "mm-virada-2",
+              "rsi-reversao"
+            ],
+            "4h": true
+          }
+        },
+        {
+          "id": "restore_aviso_hidden",
+          "ok": true,
+          "detail": {
+            "exists": true,
+            "text": "Falta fazer:\n            \n              Escolha ao menos 1 template.\n              Escolha ao menos 1 símbolo.",
+            "hidden": true,
+            "disabled": false,
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "visible_box": false
+          }
+        },
+        {
+          "id": "restore_start_enabled",
+          "ok": true,
+          "detail": false
+        }
+      ],
+      "shots": [
+        ".impeccable/critique/952-B-desktop-default.png",
+        ".impeccable/critique/952-B-desktop-4h.png",
+        ".impeccable/critique/952-B-desktop-ready.png",
+        ".impeccable/critique/952-B-desktop-novo-rascunho.png",
+        ".impeccable/critique/952-B-desktop-restore-sibling.png"
+      ],
+      "pixels": {
+        "default_tf_colors": {
+          "4h": "rgb(146, 154, 165)",
+          "1d": "rgb(252, 213, 53)"
+        },
+        "default_overflow": {
+          "sw": 1425,
+          "cw": 1425
+        },
+        "falta_y": 504.671875,
+        "start_y": 792.171875,
+        "tpl_count": "0 de 8 selecionados",
+        "after_4h": {
+          "4h": true,
+          "1d": true
+        },
+        "after_novo": {
+          "tpl": "0 de 8 selecionados",
+          "4h": false,
+          "1d": true,
+          "period": "2y"
+        },
+        "restore": {
+          "tpl": "3 de 8 selecionados",
+          "sym": "4 de 8 selecionados",
+          "4h": true,
+          "1d": true
+        }
+      },
+      "console": {
+        "error": [],
+        "warning": [],
+        "pageerror": []
+      },
+      "http_bad": []
+    },
+    {
+      "viewport": "mobile 390x844",
+      "pass": true,
+      "n": 49,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "final_url_proto",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/"
+        },
+        {
+          "id": "not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/"
+        },
+        {
+          "id": "not_restore_canonical",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/"
+        },
+        {
+          "id": "lm_descoberta",
+          "ok": true,
+          "detail": "Descoberta de estratégias swing"
+        },
+        {
+          "id": "lm_preflight",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "lm_rascunho",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "default_montar",
+          "ok": true,
+          "detail": "true"
+        },
+        {
+          "id": "tpl_zero",
+          "ok": true,
+          "detail": "0 de 8 selecionados"
+        },
+        {
+          "id": "sym_zero",
+          "ok": true,
+          "detail": "0 de 8 selecionados"
+        },
+        {
+          "id": "chips_empty",
+          "ok": true,
+          "detail": {
+            "tpl": [],
+            "sym": []
+          }
+        },
+        {
+          "id": "tf_1d_on",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "tf_4h_off",
+          "ok": true,
+          "detail": false
+        },
+        {
+          "id": "falta_fazer_visible",
+          "ok": true,
+          "detail": "Falta fazer:\nEscolha ao menos 1 template.\nEscolha ao menos 1 símbolo."
+        },
+        {
+          "id": "start_blocked",
+          "ok": true,
+          "detail": {
+            "exists": true,
+            "text": "Iniciar varredura — —, —",
+            "hidden": false,
+            "disabled": true,
+            "x": 37,
+            "y": 2339.4375,
+            "w": 301,
+            "h": 44,
+            "visible_box": true
+          }
+        },
+        {
+          "id": "dir_long",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "period_all",
+          "ok": true,
+          "detail": "all"
+        },
+        {
+          "id": "ranking_calmar",
+          "ok": true,
+          "detail": "calmar_ratio"
+        },
+        {
+          "id": "cards_templates",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "cards_symbols",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "cards_tf",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "zero_antes_depois",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "overflow_ok",
+          "ok": true,
+          "detail": {
+            "sw": 375,
+            "cw": 375
+          }
+        },
+        {
+          "id": "tf_4h_markable",
+          "ok": true,
+          "detail": {
+            "4h": true,
+            "1d": true
+          }
+        },
+        {
+          "id": "after_4h_still_empty_axes",
+          "ok": true,
+          "detail": {
+            "tpl": [],
+            "sym": []
+          }
+        },
+        {
+          "id": "after_4h_still_blocked",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "can_mark_tpl_sym",
+          "ok": true,
+          "detail": {
+            "tpl": [
+              "mm-virada-1"
+            ],
+            "sym": [
+              "BTC/USDT"
+            ]
+          }
+        },
+        {
+          "id": "aviso_gone_when_ready",
+          "ok": true,
+          "detail": {
+            "exists": true,
+            "text": "Falta fazer:\n            Escolha ao menos 1 símbolo.",
+            "hidden": true,
+            "disabled": false,
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "visible_box": false
+          }
+        },
+        {
+          "id": "start_enabled_when_ready",
+          "ok": true,
+          "detail": false
+        },
+        {
+          "id": "chips_appear",
+          "ok": true,
+          "detail": {
+            "tpl": [
+              "Médias Móveis: Tendência em Virada 1"
+            ],
+            "sym": [
+              "BTC/USDT"
+            ]
+          }
+        },
+        {
+          "id": "novo_tpl_zero",
+          "ok": true,
+          "detail": "0 de 8 selecionados"
+        },
+        {
+          "id": "novo_sym_zero",
+          "ok": true,
+          "detail": "0 de 8 selecionados"
+        },
+        {
+          "id": "novo_tf_1d_only",
+          "ok": true,
+          "detail": {
+            "4h": false,
+            "1d": true
+          }
+        },
+        {
+          "id": "novo_falta",
+          "ok": true,
+          "detail": "Falta fazer:\nEscolha ao menos 1 template.\nEscolha ao menos 1 símbolo."
+        },
+        {
+          "id": "novo_start_blocked",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "id": "novo_keeps_period",
+          "ok": true,
+          "detail": "2y"
+        },
+        {
+          "id": "novo_keeps_dir_rank",
+          "ok": true,
+          "detail": {
+            "dir": true,
+            "rank": "calmar_ratio"
+          }
+        },
+        {
+          "id": "console_error_0",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "console_warning_0",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "pageerror_0",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "http_ge_400_0",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "restore_http_200",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "id": "restore_not_canonical_url",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/restore.html"
+        },
+        {
+          "id": "restore_3_tpl",
+          "ok": true,
+          "detail": [
+            "mm-virada-1",
+            "mm-virada-2",
+            "rsi-reversao"
+          ]
+        },
+        {
+          "id": "restore_4_sym",
+          "ok": true,
+          "detail": [
+            "BTC/USDT",
+            "ETH/USDT",
+            "ALPHA/USDT",
+            "ARPA/USDT"
+          ]
+        },
+        {
+          "id": "restore_both_tf",
+          "ok": true,
+          "detail": {
+            "4h": true,
+            "1d": true
+          }
+        },
+        {
+          "id": "restore_no_new_defaults_overlay",
+          "ok": true,
+          "detail": {
+            "tpl": [
+              "mm-virada-1",
+              "mm-virada-2",
+              "rsi-reversao"
+            ],
+            "4h": true
+          }
+        },
+        {
+          "id": "restore_aviso_hidden",
+          "ok": true,
+          "detail": {
+            "exists": true,
+            "text": "Falta fazer:\n            \n              Escolha ao menos 1 template.\n              Escolha ao menos 1 símbolo.",
+            "hidden": true,
+            "disabled": false,
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "visible_box": false
+          }
+        },
+        {
+          "id": "restore_start_enabled",
+          "ok": true,
+          "detail": false
+        }
+      ],
+      "shots": [
+        ".impeccable/critique/952-B-mobile-default.png",
+        ".impeccable/critique/952-B-mobile-4h.png",
+        ".impeccable/critique/952-B-mobile-ready.png",
+        ".impeccable/critique/952-B-mobile-novo-rascunho.png",
+        ".impeccable/critique/952-B-mobile-restore-sibling.png"
+      ],
+      "pixels": {
+        "default_tf_colors": {
+          "4h": "rgb(146, 154, 165)",
+          "1d": "rgb(252, 213, 53)"
+        },
+        "default_overflow": {
+          "sw": 375,
+          "cw": 375
+        },
+        "falta_y": 2051.9375,
+        "start_y": 2339.4375,
+        "tpl_count": "0 de 8 selecionados",
+        "after_4h": {
+          "4h": true,
+          "1d": true
+        },
+        "after_novo": {
+          "tpl": "0 de 8 selecionados",
+          "4h": false,
+          "1d": true,
+          "period": "2y"
+        },
+        "restore": {
+          "tpl": "3 de 8 selecionados",
+          "sym": "4 de 8 selecionados",
+          "4h": true,
+          "1d": true
+        }
+      },
+      "console": {
+        "error": [],
+        "warning": [],
+        "pageerror": []
+      },
+      "http_bad": []
+    }
+  ]
+}

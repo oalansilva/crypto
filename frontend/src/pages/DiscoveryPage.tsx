@@ -297,7 +297,7 @@ export function DiscoveryPage() {
   // Seleção
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
-  const [timeframes, setTimeframes] = useState<string[]>(['4h', '1d'])
+  const [timeframes, setTimeframes] = useState<string[]>(['1d'])
   const [directions, setDirections] = useState<string[]>(['long'])
   const [period, setPeriod] = useState<'6m' | '2y' | 'all'>('all')
   const [draftMetric, setDraftMetric] = useState<Metric>('calmar_ratio')
@@ -360,7 +360,6 @@ export function DiscoveryPage() {
   const preflightTimer = useRef<number | null>(null)
   const toastTimer = useRef<number | null>(null)
   const focusStartedSweepRef = useRef(false)
-  const skipCatalogDefaultsRef = useRef(false)
   const viewOriginRef = useRef<'auto' | 'user'>('auto')
   const pollRevRef = useRef(0)
   const pollInFlightRef = useRef(false)
@@ -444,13 +443,6 @@ export function DiscoveryPage() {
         }))
         const catT = catalogFromTemplates(flat)
         setTemplatesCatalog(catT)
-        if (!skipCatalogDefaultsRef.current) {
-          setSelectedTemplates(flat.slice(0, 3).map((t) => t.name))
-          setCommittedSelection((prev) => ({
-            ...prev,
-            templates: { ...prev.templates, selected: new Set(flat.slice(0, 3).map((t) => t.name)) },
-          }))
-        }
       } catch {
         /* catálogo auxiliar */
       }
@@ -467,10 +459,6 @@ export function DiscoveryPage() {
         setSymbols(list)
         const catS = catalogFromSymbols(list)
         setSymbolsCatalog(catS)
-        if (!skipCatalogDefaultsRef.current) {
-          setSelectedSymbols(list.slice(0, 4))
-          setCommittedSelection((prev) => ({ ...prev, symbols: { ...prev.symbols, selected: new Set(list.slice(0, 4)) } }))
-        }
       } catch {
         /* catálogo auxiliar */
       }
@@ -482,10 +470,9 @@ export function DiscoveryPage() {
     const snapshot = sweep.snapshot
     const axes = snapshot?.axes
     if (!axes) return false
-    skipCatalogDefaultsRef.current = true
     setSelectedTemplates(axes.templates || [])
     setSelectedSymbols(axes.symbols || [])
-    setTimeframes(axes.timeframes?.length ? axes.timeframes : ['4h', '1d'])
+    setTimeframes(axes.timeframes?.length ? axes.timeframes : [])
     setDirections(axes.directions?.length ? axes.directions : ['long'])
     const periodType = snapshot.period_type
     if (periodType === '6m' || periodType === '2y' || periodType === 'all') {
@@ -1076,6 +1063,13 @@ export function DiscoveryPage() {
     persistDraftKey(nextKey)
     setDraftFrozen(false)
     setCancelConfirmOpen(false)
+    setSelectedTemplates([])
+    setSelectedSymbols([])
+    setCommittedSelection(makeEmptySelection())
+    setTimeframes(['1d'])
+    setPreflight(null)
+    setSnapshotStale(false)
+    setStartError(null)
     // Card 852: novo rascunho volta ao modo Montar (live preservada).
     setMode('montar')
     showToast('Novo rascunho', 'Sweep ativo preservado no histórico; configurador liberado.')
