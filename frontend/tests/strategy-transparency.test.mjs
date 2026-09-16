@@ -7,8 +7,12 @@ import {
     buildIndicatorValueIndex,
     buildStrategyRuleOverview,
     clipCandlesToIndicatorCoverage,
+    clipCandlesToTimestampWindow,
     clipStrategyTransparencyToLoadedCandles,
     extendMovingAverageSeriesToCandles,
+    favoriteCandleWindowMs,
+    hydrateIndicatorSeriesFromIndicatorData,
+    isWholeMarketCandleLoad,
     maPointsAheadOfLastCandle,
     hasAvailableIndicatorSeries,
     indicatorValueAtTimestamp,
@@ -183,6 +187,83 @@ test('só libera cache com série disponível, pontos válidos e timeframe compa
     }, '1d'), false)
 })
 
+test('extendMovingAverageSeriesToCandles recalcula SMA no histórico carregado', () => {
+    const candles = Array.from({ length: 40 }, (_, index) => {
+        const close = 100 + index
+        const timestamp = new Date(Date.UTC(2024, 8, 1 + index)).toISOString()
+        return {
+            timestamp_utc: timestamp,
+            open: close - 1,
+            high: close + 1,
+            low: close - 2,
+            close,
+            volume: 1000,
+        }
+    })
+    const recentOnly = candles.slice(-8)
+    const transparency = normalizeStrategyTransparency({
+        status: 'available',
+        timeframe: '1d',
+        indicators: [{
+            key: 'fast',
+            type: 'sma',
+            panel: 'price',
+            parameters: { length: 3 },
+            series_status: 'available',
+            series: recentOnly.map((candle, index) => ({
+                timestamp_utc: candle.timestamp_utc,
+                value: 999 + index,
+            })),
+        }],
+    })
+
+    const aligned = alignStrategyTransparencyToLoadedCandles(transparency, candles)
+    assert.equal(aligned?.indicators[0].series[0]?.timestamp_utc, candles[2].timestamp_utc)
+    assert.equal(aligned?.indicators[0].series.at(-1)?.timestamp_utc, candles.at(-1)?.timestamp_utc)
+    assert.notEqual(aligned?.indicators[0].series[0]?.value, 999)
+})
+
+test('hydrateIndicatorSeriesFromIndicatorData alinha arrays paralelos às velas', () => {
+    const candles = Array.from({ length: 5 }, (_, index) => ({
+        timestamp_utc: new Date(Date.UTC(2026, 0, 1 + index)).toISOString(),
+        close: 100 + index,
+    }))
+    const transparency = normalizeStrategyTransparency({
+        status: 'available',
+        timeframe: '1d',
+        indicators: [{
+            key: 'rsi_14',
+            type: 'rsi',
+            panel: 'oscillator',
+            parameters: { length: 14 },
+            series_status: 'available',
+            series: [{ timestamp_utc: candles.at(-1).timestamp_utc, value: 42 }],
+        }],
+    })
+    const hydrated = hydrateIndicatorSeriesFromIndicatorData(transparency, candles, {
+        rsi_14: [40, 41, 42, 43, 44],
+    })
+    assert.equal(hydrated?.indicators[0].series.length, 5)
+    assert.equal(hydrated?.indicators[0].series[0].value, 40)
+})
+
+test('clipCandlesToTimestampWindow preserva período operacional do favorito', () => {
+    const favorite = [
+        { timestamp_utc: '2024-09-16T00:00:00.000Z' },
+        { timestamp_utc: '2026-09-16T00:00:00.000Z' },
+    ]
+    const wholeMarket = [
+        { timestamp_utc: '2017-08-17T00:00:00.000Z' },
+        { timestamp_utc: '2024-09-16T00:00:00.000Z' },
+        { timestamp_utc: '2026-09-16T00:00:00.000Z' },
+    ]
+    const window = favoriteCandleWindowMs(favorite)
+    const clipped = clipCandlesToTimestampWindow(wholeMarket, window.startMs, window.endMs)
+    assert.equal(clipped.length, 2)
+    assert.equal(isWholeMarketCandleLoad(wholeMarket, favorite), true)
+    assert.equal(isWholeMarketCandleLoad(clipped, favorite), false)
+})
+
 test('extendMovingAverageSeriesToCandles acompanha velas de mercado após snapshot', () => {
     const staleUntil = '2026-07-16T00:00:00Z'
     const marketUntil = '2026-07-20T00:00:00Z'
@@ -343,6 +424,9 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(chartSource, /data-last-candle-timestamp/)
     assert.match(chartSource, /data-last-ma-timestamp/)
     assert.match(chartSource, /data-ma-ahead/)
+    assert.match(chartSource, /data-whole-market/)
+    assert.match(chartSource, /data-lines-on-old/)
+    assert.match(chartSource, /data-period-start/)
     assert.match(chartSource, /alignStrategyTransparencyToLoadedCandles/)
     assert.match(chartSource, /data-series-last-timestamp/)
     assert.match(chartSource, /h-11/)
@@ -357,7 +441,8 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(comboSource, /chartCandles/)
     assert.match(comboSource, /strategyTransparency=\{strategyTransparency\}/)
     assert.match(comboSource, /full_history', 'true'/)
-    assert.match(comboSource, /setChartCandles\(merged\)/)
+    assert.match(comboSource, /setChartCandles\(clipped\)/)
+    assert.match(comboSource, /clipCandlesToTimestampWindow/)
     assert.match(comboSource, /StrategyTransparencyPanel/)
     assert.doesNotMatch(comboSource, /SignalHistoryPanel|favorites-signal-history/)
     assert.doesNotMatch(comboSource, /combo-result-parameters/)
@@ -369,7 +454,9 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(favoritesSource, /mergeStrategyTransparencySeries/)
     assert.match(favoritesSource, /strategy_transparency: recovered\.strategyTransparency/)
     assert.match(monitorSource, /mergeStrategyTransparencySeries/)
-    assert.match(monitorSource, /strategyTransparency=\{activeStrategyTransparency\}/)
+    assert.match(monitorSource, /payload\?\.indicator_data/)
+    assert.match(monitorSource, /alignStrategyTransparencyToLoadedCandles/)
+    assert.match(monitorSource, /strategyTransparency=\{chartStrategyTransparency\}/)
     assert.match(panelSource, /Parâmetros efetivos/)
     assert.match(panelSource, /Uma ou mais séries timestampadas ainda não estão disponíveis/)
     assert.match(panelSource, /Manifesto técnico completo indisponível/)

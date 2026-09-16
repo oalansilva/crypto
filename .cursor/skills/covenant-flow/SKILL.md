@@ -47,6 +47,8 @@ Filhos (Status tem que bater; mesmo worktree `card-<id>-*` pós-T1; grill no cwd
 | Code Review | **dois** Task no **mesmo turno** do pai (`diff-reviewer` + `code-reviewer`) sobre o intervalo já colado; fila do host não falha; não esperar destape do primeiro para nascer o segundo |
 | QA | 1 filho checks/evidência; T14 no pai |
 
+Cliente dsh: em Design, root spawna 1 Design-autor; o pai não escreve OpenSpec no próprio turno; a excepção grill não se aplica.
+
 T7: Alan abre o **Snapshot Impeccable** linkado no comentário do card (path / blob). O Gist OpenSpec **não** é a crítica.
 
 Handoff de Design/Apply/Review registra **proxies**: palavras de `design.md`, bytes de HTML gerado vs copiado (`cp`/clone = copied; delta = generated; sem protótipo = `N/A`), número de spawns, **uma linha por spawn** `proxy modelo: <papel> → <rótulo> (<slug>)` (papel = needle do spawn; rótulo/slug = mapa acima). Sem parser de usage Cursor/Grok e sem dashboard.
@@ -58,7 +60,7 @@ Dois modos do **mesmo** cliente Cursor nesta VM — não abandonar um modo e nã
 1. **modo terminal** — Agent/CLI no terminal Linux desta VM.
 2. **modo Desktop+SSH** — Cursor Desktop Windows + Remote SSH a esta VM.
 
-Cada etapa grelha / Design / Apply / review / QA / Done técnico passa **nos dois**. Grelhar num e Apply noutro **não** conta. Homologado / Release / lote fora deste chat. Grok / OpenCode / dsh fora (InstantiationService e Landlock/`uid_map` são Cursor; #822 não autoriza alargar). Destape de pai mudo pós-`completed` = #879. Hang do host (S2) = #879. Unbound `develop` = #864. Impeccable cwd = #822. Um chat `#<id>` = #729 (título **não** `#<id> Apply`). MUST NOT dual-write lei em `.dsh/` nem `.grok/` nem `.opencode/` só por estes modos.
+Cada etapa grelha / Design / Apply / review / QA / Done técnico passa **nos dois**. Grelhar num e Apply noutro **não** conta. Homologado / Release / lote fora deste chat. Grok / OpenCode / dsh fora (InstantiationService e Landlock/`uid_map` são Cursor; #822 não autoriza alargar). «Grok / OpenCode / dsh fora» não é deny de T5/`G_design`. Destape de pai mudo pós-`completed` = #879. Hang do host (S2) = #879. Unbound `develop` = #864. Impeccable cwd = #822. Um chat `#<id>` = #729 (título **não** `#<id> Apply`). MUST NOT dual-write lei em `.dsh/` nem `.grok/` nem `.opencode/` só por estes modos.
 
 ### Pasta (Q2)
 
@@ -147,7 +149,7 @@ Antes de editar:
 
 Skill de entrada: `.cursor/skills/grill-card/` (adapter). Primitivo vendorado: `.cursor/skills/grilling/`. **Não** usar `grill-with-docs` nem `to-spec`.
 
-Disparar quando Alan pede para grelhar/afiar **ou** Status da issue N é Em Refinamento **e** o body não tem as 6 seções do DoD (N no prompt, mesmo em `develop`). Não em todo T0 (cards nítidos podem T1 direto). Não em Todo/Design.
+Disparar quando Alan pede para grelhar/afiar **ou** Status da issue N é Em Refinamento **e** o body **ainda não** diz quem sofre e o que entra/não entra (N no prompt, mesmo em `develop`). **Card nítido:** quando o body já diz quem sofre e entra/não entra, o pai **não** spawna `grill-card`; posta ou mantém exactamente `card nítido; sem grill` (idempotente; não é o comentário T1). Pedido explícito grelhar/afiar continua. Não em todo T0. Não em Todo/Design. DoD da grelha = **3 seções** (`## Problema`, `## História`, `## Entra`; critérios dentro de Entra); MUST NOT exigir Vocabulário/Riscos no issue em Em Refinamento.
 
 O **pai** spawna o filho `grill-card` (id no prompt, mesmo em `develop`). O filho reescreve o **body do issue N** e, com fronteira vazia, comenta o handoff T1. Pai só relaying das rodadas. Nas Qs fechadas, o pai chama a ferramenta do host com **todas as options** que o filho listou e não colapsa à recomendada. Com o host no ar, o prompt da Q é título + conflito; a recomendação é só a primeira option `(Recommended)`. Não arrasta Status. Não grava `CONTEXT.md` / `docs/adr/`. Não chama `/opsx:*`.
 Tecto: Qs e options em português de operador em todo card em Em Refinamento; identificador do git é facto no body ou *como* no Design, não option no host; Other vazio, silêncio e «não percebi» / «isto é técnico» reclassificam e nunca aceitam a recomendada.
@@ -157,10 +159,10 @@ Cliente dsh: dsh não spawna filho grill.
 
 1. O card nasce primeiro (pode estar incompleto). Em Refinamento: `grill-card` afia o issue; T1 continua só Alan.
 2. Design refina em OpenSpec + Gist secreto `crypto openspec <change>`, **sintetizando** o issue grelhado (não reentrevista).
-3. O Gist SHALL ser **superset** do issue. `/opsx:apply` lê Gist + `openspec/changes/`, não o body do GitHub como spec paralela.
+3. O Gist SHALL ser **superset** do issue (**história copiada** — Problema, História, Entra/não entra — **+** *como* neste pacote). MUST NOT Gist só o *como*. `/opsx:apply` lê Gist + `openspec/changes/`, não o body do GitHub como spec paralela.
 4. Sem Gist/comentário no card, Design está incompleto. Republicar: `--gist-id` + `--comment-id`.
 5. HTML de protótipo **não** vai no Gist. URL HTTP em bloco separado. Protótipos HTTP: URL do consumidor (overlay), nunca HTML no Gist.
-6. Se o body em Design **não** tiver o DoD: não `/opsx:ff`; comentar as seções em falta; permanecer em Design. `/opsx:explore` só para furo técnico (código/specs), nunca para reescrever a história.
+6. Se o body em Design **não** tiver Problema, História e Entra/não entra (briefing de 3 seções no *issue*): não `/opsx:ff`; comentar as seções em falta; permanecer em Design. `proposal.md` MUST copiar essas seções do body do issue (MUST NOT inventar história). `/opsx:explore` só para furo técnico (código/specs), nunca para reescrever a história.
 
 Helper (path relativo a esta skill no repo):
 
@@ -173,7 +175,7 @@ Helper (path relativo a esta skill no repo):
 
 Usar skills `.cursor/skills/openspec-*` e CLI `openspec`. Não inventar artefatos fora de `openspec instructions`.
 
-Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto para Dev → `/opsx:apply` → `/opsx:verify`. Archive só no fechamento de lote/release. Se o issue bound já tiver o DoD do `grill-card`, o briefing **é** o issue; não perguntar de novo o que construir; não invocar `grill-card` para gerar `proposal.md`. Sem schema `grill-driven`.
+Ordem: `/opsx:new` → `/opsx:ff` → publicar Gist → Design → (Alan) Pronto para Dev → `/opsx:apply` → `/opsx:verify`. Archive só no fechamento de lote/release. Se o issue bound já tiver o briefing grelhado (Problema, História, Entra/não entra), o briefing **é** o issue; não perguntar de novo o que construir; não invocar `grill-card` para gerar `proposal.md`. Sem schema `grill-driven`.
 
 ## Implementação
 
@@ -196,7 +198,7 @@ Antes de spawnar `diff-reviewer` / `code-reviewer`, o **pai** materializa o inte
 - MUST NOT pedir git ao filho. MUST NOT pedir Glob/listagem de `agent-transcripts`.
 - Grelha, Apply e QA **não** recebem este contrato.
 
-Pin overlay permanece `v1.1.15`. Stubs Grok/dsh/OpenCode: ponte ≤8 linhas; MUST NOT dual-write lei.
+Pin overlay permanece `v1.1.16`. Stubs Grok/dsh/OpenCode: ponte ≤8 linhas; MUST NOT dual-write lei.
 
 ## Destape — subagentStop (S2)
 

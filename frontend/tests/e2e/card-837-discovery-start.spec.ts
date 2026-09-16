@@ -169,15 +169,19 @@ test('card 837 — reload após cancelar não prende à run morta; Iniciar cria 
 
   // Run morta reconciliada: sem bloco de progresso ativo, rascunho liberado.
   await expect(page.getByTestId('sweep-progress')).toHaveCount(0)
-  await expect(page.getByTestId('start-sweep')).toBeEnabled()
+  await expect(page.getByTestId('start-sweep')).toBeDisabled()
 
   // Reload pós-cancelar: o servidor já não tem ativo; a tela continua livre.
   phase.active = []
   await page.reload()
   await expect(page.getByTestId('sweep-progress')).toHaveCount(0)
-  await expect(page.getByTestId('start-sweep')).toBeEnabled()
+  await expect(page.getByTestId('start-sweep')).toBeDisabled()
 
-  // Monta outra seleção (desmarca 1d) e inicia: nasce UMA varredura nova.
+  // Monta outra seleção (4h + template + símbolo; desmarca 1d) e inicia: nasce UMA varredura nova.
+  await page.getByText('4 horas').click()
+  await page.getByRole('checkbox', { name: 'Médias' }).first().click()
+  await page.getByRole('checkbox', { name: 'BTC/USDT' }).first().click()
+  await expect(page.getByTestId('start-sweep')).toBeEnabled()
   await page.getByText('1 dia').click()
   await expect(page.getByTestId('start-sweep')).toBeEnabled()
   await page.getByTestId('start-sweep').click()

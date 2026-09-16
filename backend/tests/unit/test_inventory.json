@@ -111,6 +111,24 @@
       "evidence": "tmp_path lock and state assertions"
     },
     {
+      "file": "backend/tests/unit/test_card_945_fastpath.py",
+      "protected_behavior": "card 945 ComboOptimizer kill-switch, callers, and _legacy_* aliases",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "COMBO_OPTIMIZER_LEGACY position-loop, shared ComboOptimizer callers, and legacy alias assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_card_945_goldens.py",
+      "protected_behavior": "card 945 ComboOptimizer/ComboStrategy golden equality vs legacy oracle",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "exact SHA256/equality goldens for indicators, masks, trades and metrics; never allclose"
+    },
+    {
       "file": "backend/tests/unit/test_chart_pattern_service.py",
       "protected_behavior": "chart pattern detection",
       "production_reachability": "reachable",
@@ -210,6 +228,15 @@
       "evidence": "deterministic worker/service fakes assert per-combination reconciliation and ACK ordering"
     },
     {
+      "file": "backend/tests/unit/test_discovery_favorite_metrics.py",
+      "protected_behavior": "discovery promotion flatten onto Favorites grid keys and persist overlay",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "#193 GET flatten, combo-saved passthrough, overlay after regenerated merge, promote copy"
+    },
+    {
       "file": "backend/tests/unit/test_discovery_insufficient_sample.py",
       "protected_behavior": "discovery listing gate cuts optimizer before grid; four-term reconcile; insufficient-only completed",
       "production_reachability": "reachable",
@@ -226,6 +253,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "helper unit cases plus run_combination persistence with mocked optimizer, split_train_ratio=0.7, N/A sanitization, holdout ERROR enrich, IS coverage window"
+    },
+    {
+      "file": "backend/tests/unit/test_favorite_operational_period.py",
+      "protected_behavior": "favorite operational period resolution (all/2y/custom) and discovery flatten/overlay without clobbering portrait metrics",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "#949 resolve_chosen_period date bounds; flatten skips operational flag; apply_operational_period keeps metrics_snapshot portrait"
     },
     {
       "file": "backend/tests/unit/test_forgot_password_logging.py",

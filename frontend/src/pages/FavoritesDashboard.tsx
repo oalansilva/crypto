@@ -16,7 +16,11 @@ import {
 import type { TradeExplanation } from '@/types/tradeExplanation';
 import type { MonitorSyncStatus } from '@/lib/signalHistory';
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison';
-import { favoriteGridMetrics } from '@/lib/discoveryFavoriteMetrics';
+import {
+    favoriteGridMetrics,
+    formatPtBrDate,
+    isDiscoveryOrigin,
+} from '@/lib/discoveryFavoriteMetrics';
 import { formatCompoundReturn } from '@/lib/compoundReturn';
 
 import * as XLSX from 'xlsx';
@@ -585,8 +589,9 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const getSummaryTradeCount = (fav: FavoriteStrategy): number => {
+        const metrics = favoriteGridMetrics(fav.metrics);
         const summaryTradeCount = Number(
-            fav.metrics?.total_trades ?? (typeof fav.metrics?.trades === 'number' ? fav.metrics.trades : 0)
+            metrics.total_trades ?? (typeof metrics.trades === 'number' ? metrics.trades : 0)
         );
         return Number.isFinite(summaryTradeCount) ? summaryTradeCount : 0;
     };
@@ -813,17 +818,20 @@ const FavoritesDashboard: React.FC = () => {
         fav: FavoriteStrategy,
         recovered: Awaited<ReturnType<typeof loadTradesForAnalysis>>
     ) => {
-        const sourceMetrics = recovered.metrics || fav.metrics || {};
+        const sourceMetrics = favoriteGridMetrics(recovered.metrics || fav.metrics || {});
         const trades = Array.isArray(recovered.trades) ? recovered.trades : [];
+        const discoveryOrigin = isDiscoveryOrigin(sourceMetrics) || isDiscoveryOrigin(fav.metrics);
         const totalReturn = Number(
             sourceMetrics.total_return ?? (
                 sourceMetrics.total_return_pct != null ? Number(sourceMetrics.total_return_pct) / 100 : 0
             )
         );
-        const totalTrades = Number(sourceMetrics.total_trades ?? trades.length);
+        const totalTrades = Number(
+            sourceMetrics.total_trades ?? (discoveryOrigin ? sourceMetrics.total_trades : trades.length)
+        );
         const metrics = {
             ...sourceMetrics,
-            total_trades: Number.isFinite(totalTrades) ? totalTrades : trades.length,
+            total_trades: Number.isFinite(totalTrades) ? totalTrades : (discoveryOrigin ? sourceMetrics.total_trades : trades.length),
             total_return: Number.isFinite(totalReturn) ? totalReturn : 0,
             win_rate: Number(sourceMetrics.win_rate ?? 0),
             avg_profit: Number(sourceMetrics.avg_profit ?? (
@@ -834,6 +842,10 @@ const FavoritesDashboard: React.FC = () => {
             template_name: isFavoriteProtected(fav) ? getFavoriteStrategyLabel(fav) : fav.strategy_name,
             symbol: fav.symbol,
             timeframe: fav.timeframe,
+            start_date: fav.start_date ?? null,
+            end_date: fav.end_date ?? null,
+            origin_type: sourceMetrics.origin_type || fav.metrics?.origin_type || null,
+            promotion_metrics: sourceMetrics.metrics_snapshot || null,
             parameters: isFavoriteProtected(fav) && !isAdmin ? {} : fav.parameters || {},
             metrics,
             trades,
@@ -897,10 +909,12 @@ const FavoritesDashboard: React.FC = () => {
             if (monitorSync.trades && monitorSync.trades.length > 0) {
                 const mergedTrades = mergeFavoriteAndMonitorTrades(analysisResult.trades, monitorSync.trades);
                 analysisResult.trades = mergedTrades;
-                analysisResult.metrics = {
-                    ...analysisResult.metrics,
-                    total_trades: mergedTrades.filter((trade: any) => trade.exit_time && trade.exit_price).length,
-                };
+                if (!isDiscoveryOrigin(analysisResult.metrics)) {
+                    analysisResult.metrics = {
+                        ...analysisResult.metrics,
+                        total_trades: mergedTrades.filter((trade: any) => trade.exit_time && trade.exit_price).length,
+                    };
+                }
                 analysisResult.execution_mode = 'favorite_monitor_sync_all_trades';
             }
 
@@ -948,9 +962,13 @@ const FavoritesDashboard: React.FC = () => {
     type SortByOption = 'return' | 'sharpe' | 'trades' | 'returnPerTrade';
     const [sortBy, setSortBy] = useState<SortByOption>('returnPerTrade');
 
-    /** Número de trades: preferir tamanho da lista metrics.trades para bater com a "List of trades". */
+    /** Número de trades: combo-saved usa a lista; Descoberta usa o snapshot da promoção. */
     const getTradesCount = (fav: FavoriteStrategy): number => {
         const m = favoriteGridMetrics(fav.metrics);
+        if (isDiscoveryOrigin(fav.metrics)) {
+            const n = m.total_trades ?? (typeof m.trades === 'number' ? m.trades : null);
+            return n != null && Number.isFinite(Number(n)) ? Math.max(0, Number(n)) : 0;
+        }
         if (Array.isArray(m.trades) && m.trades.length >= 0) return m.trades.length;
         const n = m.total_trades ?? (typeof m.trades === 'number' ? m.trades : null);
         return n != null ? Math.max(0, Number(n)) : 0;
@@ -963,7 +981,7 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const getReturnPct = (fav: FavoriteStrategy): number => {
-        const metrics = fav.metrics || {};
+        const metrics = favoriteGridMetrics(fav.metrics);
         if (metrics.total_return_pct != null) {
             return getSortableNumber(metrics.total_return_pct);
         }
@@ -981,7 +999,7 @@ const FavoritesDashboard: React.FC = () => {
             case 'return':
                 return returnPct;
             case 'sharpe':
-                return getSortableNumber(fav.metrics?.sharpe_ratio);
+                return getSortableNumber(favoriteGridMetrics(fav.metrics).sharpe_ratio);
             case 'trades':
                 return trades;
             case 'returnPerTrade':
@@ -1129,9 +1147,12 @@ const FavoritesDashboard: React.FC = () => {
         const s = fav.start_date;
         const e = fav.end_date;
         if (!s && !e) return 'Todo';
-        if (s && e) return `${s} → ${e}`;
-        if (s) return `≥ ${s}`;
-        return `≤ ${e!}`;
+        const startLabel = formatPtBrDate(s);
+        const endLabel = formatPtBrDate(e);
+        if (startLabel && endLabel) return `${startLabel} → ${endLabel}`;
+        if (startLabel) return `≥ ${startLabel}`;
+        if (endLabel) return `≤ ${endLabel}`;
+        return 'Todo';
     };
 
     const formatRefreshStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } => {
@@ -1383,8 +1404,15 @@ const FavoritesDashboard: React.FC = () => {
                                 const strategyDescription = getFavoriteStrategyDescription(fav);
                                 const refreshStatus = formatRefreshStatus(fav);
                                 const revalidationStatus = formatRevalidationStatus(fav);
+                                const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
                                 return (
-                                    <article key={fav.id} className={`fav-mobile-card ${tier.className}`} data-testid={`favorite-${fav.id}-mobile`} data-favorite-id={fav.id}>
+                                    <article
+                                        key={fav.id}
+                                        className={`fav-mobile-card ${tier.className}`}
+                                        data-testid={`favorite-${fav.id}-mobile`}
+                                        data-origin={origin}
+                                        data-favorite-id={fav.id}
+                                    >
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
@@ -1477,9 +1505,16 @@ const FavoritesDashboard: React.FC = () => {
                                         const strategyDescription = getFavoriteStrategyDescription(fav);
                                         const refreshStatus = formatRefreshStatus(fav);
                                         const revalidationStatus = formatRevalidationStatus(fav);
+                                        const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
 
                                         return (
-                                            <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`} data-testid={`favorite-${fav.id}`} data-favorite-id={fav.id}>
+                                            <tr
+                                                key={fav.id}
+                                                className={`${tier.className} ${isSelected ? 'selected' : ''}`}
+                                                data-testid={`favorite-${fav.id}`}
+                                                data-origin={origin}
+                                                data-favorite-id={fav.id}
+                                            >
                                                 {isAdmin ? (
                                                     <td className="select-col">
                                                         <button

@@ -245,8 +245,12 @@ const VIEWPORTS = [
 
 const METRIC_HEADERS = [
   'Sharpe',
+  'Trades',
   'Win rate (taxa de acerto)',
-  'Retorno (CAGR) anualizado da varredura',
+  'Return (retorno composto da janela da varredura)',
+  'Maximum Drawdown',
+  'Calmar (CAGR anual do calendário ÷ Max DD)',
+  'CAGR anualizado da varredura',
 ] as const
 
 for (const viewport of VIEWPORTS) {
@@ -284,8 +288,9 @@ for (const viewport of VIEWPORTS) {
     await expect(insufficient).toBeVisible()
     await expect(insufficient.getByTestId('decidir-sharpe-na-RS-906-INS')).toHaveText('N/A')
     await expect(insufficient.getByTestId('decidir-win-na-RS-906-INS')).toHaveText('N/A')
+    await expect(insufficient.getByTestId('decidir-return-na-RS-906-INS')).toHaveText('N/A')
     await expect(insufficient.getByTestId('decidir-cagr-na-RS-906-INS')).toHaveText('N/A')
-    await expect(insufficient.locator('td.na')).toHaveCount(6)
+    await expect(insufficient.locator('td.na')).toHaveCount(7)
     await expect(insufficient.getByRole('button', { name: 'Promover' })).toHaveCount(0)
 
     await page.getByTestId('expand-RS-C22EB0B811').click()
@@ -296,7 +301,7 @@ for (const viewport of VIEWPORTS) {
     await expect(details).not.toContainText('Sharpe')
     await expect(details).not.toContainText('Win ')
 
-    await expect(page.getByTestId('column-copy')).toContainText('CAGR na grelha')
+    await expect(page.getByTestId('column-copy')).toContainText('Return é o composto da janela')
     await expect(page.getByText('+47.916%')).toHaveCount(0)
   })
 }

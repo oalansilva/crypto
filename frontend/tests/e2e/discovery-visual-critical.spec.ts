@@ -80,6 +80,9 @@ const RESULTS = NAMES.map((name, index) => {
   const duplicate = index === 5
   const symbol = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT'][index % 4]
   const direction = index % 3 === 0 ? 'short' : 'long'
+  const cagr = 0.384 - index * 0.018
+  // Window compound ≠ CAGR (2y fixture window). Omit on lowSample so Return is N/A.
+  const totalReturn = Number(((1 + cagr) ** 2 - 1).toFixed(4))
   return {
     rank: lowSample ? null : index + 1,
     result_id: `RS-${1048 + index}`,
@@ -92,7 +95,9 @@ const RESULTS = NAMES.map((name, index) => {
     direction,
     parameters: index % 2 === 0 ? { ema: 55, rsi: 18 } : { period: 20, deviation: 2.2 },
     calmar_ratio: lowSample ? 3.2 : 2.84 - index * 0.19,
-    cagr: 0.384 - index * 0.018,
+    cagr,
+    total_return: lowSample ? null : totalReturn,
+    total_return_pct: lowSample ? null : Number((totalReturn * 100).toFixed(2)),
     benchmark_cagr: 0.205,
     delta_cagr_vs_bh: 17.9 - index * 2.1,
     max_drawdown: 0.135 + index * 0.006,
@@ -285,6 +290,25 @@ async function installMocks(page: Page) {
 
 const STABLE_DRAFT_KEY = 'a1b2c3d4-e5f6-4718-293a-4b5c6d7e8f90'
 
+/** Seleção mínima para o mock PREFLIGHT (card 469) após defaults vazios do card 952. */
+async function seedCard469PreflightSelection(page: Page) {
+  await page.getByRole('tab', { name: 'Montar' }).click()
+  await expect(page.getByTestId('template-count')).toContainText('0 de 4 selecionados')
+  await page.getByTestId('edit-templates').click()
+  const tplDialog = page.getByRole('dialog', { name: 'Edição avançada' })
+  await expect(tplDialog).toBeVisible()
+  await tplDialog.getByTestId('select-all').click()
+  await tplDialog.getByRole('button', { name: 'Aplicar seleção' }).click()
+  await expect(tplDialog).toBeHidden()
+  await page.getByTestId('edit-symbols').click()
+  const symDialog = page.getByRole('dialog', { name: 'Edição avançada' })
+  await symDialog.getByTestId('select-all').click()
+  await symDialog.getByRole('button', { name: 'Aplicar seleção' }).click()
+  await expect(symDialog).toBeHidden()
+  await page.getByText('4 horas').click()
+  await expect(page.getByTestId('planned-total')).toHaveText('46', { timeout: 15_000 })
+}
+
 async function openDiscovery(page: Page) {
   const captured = await installMocks(page)
   await page.addInitScript((key) => {
@@ -292,10 +316,12 @@ async function openDiscovery(page: Page) {
   }, STABLE_DRAFT_KEY)
   await page.goto('/combo/discovery')
   await expect(page.getByRole('heading', { name: 'Descoberta de estratégias swing' })).toBeVisible()
-  // Modo Montar (default, sem sweep ativo)
-  await expect(page.getByTestId('planned-total')).toHaveText('46')
-  await expect(page.getByTestId('template-count')).toContainText('3 de 4 selecionados')
-  await expect(page.getByTestId('symbol-count')).toContainText('4 de 16 selecionados')
+  // Modo Montar (default, sem sweep ativo) — rascunho novo vazio (card 952)
+  await expect(page.getByTestId('planned-total')).toHaveText('—')
+  await expect(page.getByTestId('template-count')).toContainText('0 de 4 selecionados')
+  await expect(page.getByTestId('symbol-count')).toContainText('0 de 16 selecionados')
+  await expect(page.getByTestId('preflight-impediments')).toContainText('Falta fazer')
+  await expect(page.getByTestId('start-sweep')).toBeDisabled()
   // Card 852: leaderboard vive no modo Decidir (auto-select não troca mais de modo)
   const decidirTab = page.getByRole('tab', { name: 'Decidir' })
   await expect(decidirTab).toBeEnabled()
@@ -304,12 +330,15 @@ async function openDiscovery(page: Page) {
   await expect(page.getByTestId('result-count')).toContainText('12 de 12 candidatos')
   await expect(page.getByRole('columnheader', { name: 'Rank global' })).toHaveCount(1)
   await expect(page.getByRole('columnheader', { name: 'Candidato' })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Calmar (CAGR anual do calendário ÷ Max DD)' })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Maximum Drawdown' })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'negócios / cobertura' })).toHaveCount(1)
   await expect(page.getByRole('columnheader', { name: 'Sharpe' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Trades' })).toHaveCount(1)
   await expect(page.getByRole('columnheader', { name: 'Win rate (taxa de acerto)' })).toHaveCount(1)
-  await expect(page.getByRole('columnheader', { name: 'Retorno (CAGR) anualizado da varredura' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Return (retorno composto da janela da varredura)' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Maximum Drawdown' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Calmar (CAGR anual do calendário ÷ Max DD)' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'CAGR anualizado da varredura' })).toHaveCount(1)
+  await expect(page.getByRole('columnheader', { name: 'Trades/cobertura' })).toHaveCount(0)
+  await expect(page.getByRole('columnheader', { name: 'Retorno (CAGR) anualizado da varredura' })).toHaveCount(0)
   await expect(page.getByRole('columnheader', { name: 'Buy and Hold', exact: true })).toHaveCount(0)
   await expect(page.getByRole('columnheader', { name: 'Profit Factor', exact: true })).toHaveCount(0)
   await expect(page.getByTestId('sort-filter')).toBeVisible()
@@ -349,7 +378,7 @@ test('card 469 — edição avançada fiel ao protótipo (sem tabs, sem pager)',
   await expect(workbench.getByText('Projeção local')).toHaveCount(0)
   await expect(workbench.getByText(/por página/)).toHaveCount(0)
   await expect(workbench.getByText('Adicionar à seleção')).toHaveCount(0)
-  await expect(page.getByTestId('adv-count')).toHaveText('3 de 4 selecionados')
+  await expect(page.getByTestId('adv-count')).toHaveText('0 de 4 selecionados')
 
   // filtro + lista corrida única com checkboxes (sem paginação: mostra todos)
   const search = page.getByLabel('Filtrar itens')
@@ -361,34 +390,36 @@ test('card 469 — edição avançada fiel ao protótipo (sem tabs, sem pager)',
   await expect(search).toBeFocused()
 
   // exatamente 2 ações de eixo inteiro + Aplicar
-  await page.getByTestId('select-all').click()
+  await workbench.getByTestId('select-all').click()
   await expect(page.getByTestId('adv-count')).toHaveText('4 de 4 selecionados')
 
   // aplicar atualiza o resumo do shell (inline reflete o total do eixo)
-  await page.getByRole('button', { name: 'Aplicar seleção' }).click()
+  await workbench.getByRole('button', { name: 'Aplicar seleção' }).click()
   await expect(workbench).toBeHidden()
   await expect(page.getByTestId('template-count')).toContainText('4 de 4 selecionados')
 
   // eixo símbolos: modal de eixo único, sem tabs
   await page.getByTestId('edit-symbols').click()
-  await expect(workbench).toBeVisible()
-  await expect(workbench.getByRole('tab')).toHaveCount(0)
-  await expect(page.getByTestId('adv-count')).toHaveText('4 de 16 selecionados')
-  await page.getByTestId('select-all').click()
+  const symWorkbench = page.getByRole('dialog', { name: 'Edição avançada' })
+  await expect(symWorkbench).toBeVisible()
+  await expect(symWorkbench.getByRole('tab')).toHaveCount(0)
+  await expect(page.getByTestId('adv-count')).toHaveText('0 de 16 selecionados')
+  await symWorkbench.getByTestId('select-all').click()
   await expect(page.getByTestId('adv-count')).toHaveText('16 de 16 selecionados')
-  await workbench.getByRole('checkbox', { name: 'AVAX/USDT' }).click()
+  await symWorkbench.getByRole('checkbox', { name: 'AVAX/USDT' }).click()
   await expect(page.getByTestId('adv-count')).toHaveText('15 de 16 selecionados')
 
   // aplicar atualiza o resumo do shell
-  await page.getByRole('button', { name: 'Aplicar seleção' }).click()
-  await expect(workbench).toBeHidden()
+  await symWorkbench.getByRole('button', { name: 'Aplicar seleção' }).click()
+  await expect(symWorkbench).toBeHidden()
   await expect(page.getByTestId('symbol-count')).toContainText('15 de 16 selecionados')
   await expect(page.getByTestId('symbol-axis-status')).toContainText('Catálogo inteiro')
 
   // cancelar com edição suja pede confirmação
   await page.getByTestId('edit-symbols').click()
-  await expect(workbench).toBeVisible()
-  await page.getByTestId('clear-axis').click()
+  const symWorkbenchDirty = page.getByRole('dialog', { name: 'Edição avançada' })
+  await expect(symWorkbenchDirty).toBeVisible()
+  await symWorkbenchDirty.getByTestId('clear-axis').click()
   await expect(page.getByTestId('adv-count')).toHaveText('0 de 16 selecionados')
   await page.getByRole('button', { name: 'Fechar editor de seleção' }).click()
   await expect(page.getByRole('alertdialog', { name: /Descartar alterações não aplicadas/ })).toBeVisible()
@@ -398,7 +429,7 @@ test('card 469 — edição avançada fiel ao protótipo (sem tabs, sem pager)',
   await page.keyboard.press('Escape')
   await expect(page.getByRole('alertdialog', { name: /Descartar alterações não aplicadas/ })).toBeVisible()
   await page.getByRole('button', { name: 'Descartar alterações' }).click()
-  await expect(workbench).toBeHidden()
+  await expect(symWorkbenchDirty).toBeHidden()
   await expect(page.getByTestId('edit-symbols')).toBeFocused()
 })
 
@@ -461,6 +492,18 @@ test('card 469 — iniciar uma combinação revela o progresso', async ({ page }
   )
 
   await page.goto('/combo/discovery')
+  await page.getByTestId('edit-templates').click()
+  const tplDialog = page.getByRole('dialog', { name: 'Edição avançada' })
+  await expect(tplDialog).toBeVisible()
+  await tplDialog.getByRole('checkbox', { name: 'Médias: tendência' }).click()
+  await tplDialog.getByRole('button', { name: 'Aplicar seleção' }).click()
+  await expect(tplDialog).toBeHidden()
+  await page.getByTestId('edit-symbols').click()
+  const symDialog = page.getByRole('dialog', { name: 'Edição avançada' })
+  await expect(symDialog).toBeVisible()
+  await symDialog.getByRole('checkbox', { name: 'BTC/USDT' }).click()
+  await symDialog.getByRole('button', { name: 'Aplicar seleção' }).click()
+  await expect(symDialog).toBeHidden()
   const start = page.getByTestId('start-sweep')
   await expect(start).toContainText('1, ~2min')
   await start.click()
@@ -480,6 +523,7 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   // leaderboard-meta vive no Decidir; start-sweep e draft-key vivem no Montar
   await expect(page.getByTestId('leaderboard-meta')).toContainText(HISTORY_SWEEP.sweep_id)
   await page.getByRole('tab', { name: 'Montar' }).click()
+  await seedCard469PreflightSelection(page)
 
   const startBox = await page.getByTestId('start-sweep').boundingBox()
   expect(startBox?.height ?? 0).toBeGreaterThanOrEqual(44)

@@ -66,9 +66,14 @@ export function gridMetricsFromSnapshot(
     return grid
 }
 
+export function usesOperationalPeriod(metrics?: Metrics): boolean {
+    return Boolean(metrics && metrics.operational_period_after_walk_forward === true)
+}
+
 export function favoriteGridMetrics(metrics?: Metrics): Record<string, any> {
     if (!metrics || typeof metrics !== 'object') return {}
     if (!isDiscoveryOrigin(metrics)) return metrics
+    if (usesOperationalPeriod(metrics)) return metrics
     const snapshot = getDiscoverySnapshot(metrics)
     if (!snapshot) return metrics
     return { ...metrics, ...gridMetricsFromSnapshot(snapshot) }

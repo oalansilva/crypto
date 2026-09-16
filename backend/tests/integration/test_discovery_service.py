@@ -1344,6 +1344,103 @@ class TestIdentityAndLeaderboard:
         assert raw["display_name"] != "Estratégia Cripto Farol"
         assert raw["rank"] == 2
 
+    def test_result_row_exposes_compound_return_from_persisted_json(self):
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        with_return = DiscoveryResult(
+            id="RS-RET",
+            sweep_id="sw-return",
+            combination_id=944001,
+            template_id="multi_ma_crossover",
+            symbol="ALPHA/USDT",
+            timeframe="1d",
+            direction="long",
+            parameters={},
+            start_at=now,
+            end_at=now + timedelta(days=1),
+            metrics={"total_return": 0.128, "total_return_pct": 12.8, "cagr": 0.037},
+            trades_count=30,
+            calmar_ratio=22.53,
+            cagr=0.037,
+            eligibility="eligible",
+            dedup_state="unique",
+        )
+        missing = DiscoveryResult(
+            id="RS-NA",
+            sweep_id="sw-return",
+            combination_id=944002,
+            template_id="multi_ma_crossover",
+            symbol="ADA/USDT",
+            timeframe="1d",
+            direction="long",
+            parameters={},
+            start_at=now,
+            end_at=now + timedelta(days=1),
+            metrics={"cagr": 0.037},
+            trades_count=30,
+            calmar_ratio=1.2,
+            cagr=0.037,
+            eligibility="eligible",
+            dedup_state="unique",
+        )
+
+        exposed = service._result_row(with_return, 1)
+        absent = service._result_row(missing, 2)
+
+        assert exposed["total_return"] == 0.128
+        assert exposed["total_return_pct"] == 12.8
+        assert exposed["cagr"] == 0.037
+        assert exposed["total_return_pct"] != exposed["cagr"]
+        assert absent["total_return"] is None
+        assert absent["total_return_pct"] is None
+
+    def test_result_row_invalid_total_return_metrics_are_none(self):
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+
+        def row(result_id: str, metrics, combination_id: int) -> DiscoveryResult:
+            return DiscoveryResult(
+                id=result_id,
+                sweep_id="sw-return-invalid",
+                combination_id=combination_id,
+                template_id="multi_ma_crossover",
+                symbol="ALPHA/USDT",
+                timeframe="1d",
+                direction="long",
+                parameters={},
+                start_at=now,
+                end_at=now + timedelta(days=1),
+                metrics=metrics,
+                trades_count=30,
+                calmar_ratio=1.2,
+                cagr=0.037,
+                eligibility="eligible",
+                dedup_state="unique",
+            )
+
+        none_metrics = service._result_row(row("RS-NONE", None, 944010), 1)
+        list_metrics = service._result_row(row("RS-LIST", ["x"], 944011), 2)
+        string_value = service._result_row(
+            row("RS-STR", {"total_return": "x", "total_return_pct": "x"}, 944012), 3
+        )
+        inf_value = service._result_row(
+            row(
+                "RS-INF",
+                {"total_return": float("inf"), "total_return_pct": float("inf")},
+                944013,
+            ),
+            4,
+        )
+
+        assert none_metrics["total_return"] is None
+        assert none_metrics["total_return_pct"] is None
+        assert list_metrics["total_return"] is None
+        assert list_metrics["total_return_pct"] is None
+        assert string_value["total_return"] is None
+        assert string_value["total_return_pct"] is None
+        assert inf_value["total_return"] is None
+        assert inf_value["total_return_pct"] is None
+
     def test_leaderboard_omits_discarded_results(self, engine_factory):
         engine = engine_factory()
         db = _session_factory(engine)()
@@ -1466,6 +1563,102 @@ class TestPromotion:
         assert retry["favorite_id"] == favorite_id
         db.close()
 
+    def test_promote_copies_snapshot_onto_grid_keys(self, engine_factory, monkeypatch):
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = DiscoveryService()
+        now = datetime.now(timezone.utc)
+        snapshot = {
+            "sharpe_ratio": 0.31,
+            "win_rate": 0.467,
+            "total_return": 169.51,
+            "total_return_pct": 16951,
+            "max_drawdown": 0.165,
+            "total_trades": 30,
+            "profit_factor": 1.42,
+        }
+
+        def _fake_enrich(**_kwargs):
+            return (
+                "all",
+                "2017-08-17",
+                "2026-09-15",
+                {"total_trades": 71, "sharpe_ratio": 0.38, "total_return_pct": 210.4},
+            )
+
+        monkeypatch.setattr(
+            "app.services.favorite_operational_period.enrich_walk_forward_favorite_create",
+            _fake_enrich,
+        )
+        from app.models_discovery import DiscoverySweep
+
+        db.add(
+            DiscoverySweep(
+                id="sw-promo-193",
+                actor="admin-1",
+                state="completed",
+                idempotency_key="idem-193",
+                payload_hash="hash",
+                snapshot_token="tok",
+                snapshot_hash="sh",
+                snapshot={"period_type": "all"},
+                total=1,
+            )
+        )
+        result = DiscoveryResult(
+            id="RS-B109ED2C80",
+            sweep_id="sw-promo-193",
+            combination_id=999193,
+            template_id="bollinger_breakout",
+            symbol="ALPHA/USDT",
+            timeframe="1d",
+            direction="long",
+            parameters={"window": 20},
+            start_at=datetime(2020, 10, 10, tzinfo=timezone.utc),
+            end_at=datetime(2024, 2, 1, tzinfo=timezone.utc),
+            metrics=snapshot,
+            trades_count=30,
+            win_rate=0.467,
+            sharpe_ratio=0.31,
+            profit_factor=1.42,
+            max_drawdown=0.165,
+            strategy_identity_key="id-promo-193",
+            evidence_fingerprint="fp-promo-193",
+            eligibility="eligible",
+            dedup_state="unique",
+        )
+        db.add(result)
+        db.commit()
+
+        from app.models import FavoriteStrategy
+
+        body, status = service.promote_result(
+            result_id="RS-B109ED2C80",
+            actor="admin-1",
+            idempotency_key=f"p-{uuid.uuid4().hex[:12]}",
+            payload={"tier": 3, "result_id": "RS-B109ED2C80"},
+            db=db,
+        )
+        assert status == 201
+        favorite = (
+            db.query(FavoriteStrategy)
+            .filter(FavoriteStrategy.id == int(body["favorite_id"]))
+            .first()
+        )
+        metrics = favorite.metrics
+        assert metrics["origin_type"] == "discovery_sweep"
+        assert metrics["sweep_id"] == "sw-promo-193"
+        assert metrics["result_id"] == "RS-B109ED2C80"
+        assert metrics["strategy_identity_key"] == "id-promo-193"
+        assert metrics["metrics_snapshot"]["sharpe_ratio"] == 0.31
+        assert metrics["operational_period_after_walk_forward"] is True
+        assert metrics["sharpe_ratio"] == 0.38
+        assert metrics["total_trades"] == 71
+        assert favorite.start_date == "2017-08-17"
+        assert favorite.end_date == "2026-09-15"
+        assert favorite.end_date != result.end_at.date().isoformat()
+        db.close()
+
     def test_promote_rejects_other_tier(self, engine_factory):
         engine = engine_factory()
         db = _session_factory(engine)()
@@ -1585,10 +1778,27 @@ class TestPromotion:
         db.close()
 
     def test_discard_rejects_already_promoted(self, engine_factory):
+        from app.models import FavoriteStrategy
+
         engine = engine_factory()
         db = _session_factory(engine)()
         service = DiscoveryService()
         now = datetime.now(timezone.utc)
+        live = FavoriteStrategy(
+            user_id="admin-1",
+            name="live promoted",
+            symbol="ETHUSDT",
+            timeframe="1d",
+            strategy_name="t1",
+            parameters={"direction": "long"},
+            tier=3,
+            start_date=now.date().isoformat(),
+            end_date=(now + timedelta(days=30)).date().isoformat(),
+            period_type="all",
+            metrics={},
+        )
+        db.add(live)
+        db.flush()
         db.add(
             DiscoveryResult(
                 id="RS-DSC-2",
@@ -1608,7 +1818,7 @@ class TestPromotion:
                 evidence_fingerprint="fp-dsc-2",
                 eligibility="eligible",
                 dedup_state="already_promoted",
-                dedup_reference="fav-1",
+                dedup_reference=str(live.id),
             )
         )
         db.commit()

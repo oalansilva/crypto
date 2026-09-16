@@ -14,6 +14,7 @@ interface MonitorAlignedCandlestickChartProps {
     symbol?: string
     timeframe?: string
     strategyTransparency?: StrategyTransparency | Record<string, unknown> | null
+    favoritePeriodCandles?: StrategyChartCandle[]
 }
 
 export function MonitorAlignedCandlestickChart({
@@ -24,6 +25,7 @@ export function MonitorAlignedCandlestickChart({
     symbol,
     timeframe,
     strategyTransparency,
+    favoritePeriodCandles,
 }: MonitorAlignedCandlestickChartProps) {
     const transparency = normalizeStrategyTransparency(strategyTransparency)
     const configurationItems: StrategyChartConfigurationItem[] = transparency
@@ -42,6 +44,7 @@ export function MonitorAlignedCandlestickChart({
             timeframe={timeframe}
             viewportResetKey={`${symbol || ''}|${timeframe || ''}`}
             strategyTransparency={strategyTransparency}
+            favoritePeriodCandles={favoritePeriodCandles}
             configurationItems={configurationItems}
             toolbarLeading={typeof tradeListCount === 'number' ? (
                 <span

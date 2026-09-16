@@ -13,12 +13,14 @@ Features:
 
 import json
 import concurrent.futures
+import hashlib
 import os
 import time
 import logging
 import itertools  # For Grid Search cartesian product
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+import numpy as np
 import pandas as pd
 
 # Log 15m coverage warning only once per symbol per process (avoids thousands of identical lines)
@@ -41,6 +43,32 @@ from app.metrics.indicators import ensure_ta_lib_context_columns
 # - This cache lives inside each ProcessPoolExecutor worker process.
 # - It only becomes effective if we reuse the same executor across stages/rounds.
 _WORKER_15M_CACHE: Dict[str, Any] = {"key": None, "df": None}
+_WORKER_INDICATOR_CACHE: Dict[Any, Any] = {}
+_WORKER_COVERAGE_CACHE: Dict[Any, Any] = {}
+
+
+def _combo_optimizer_legacy() -> bool:
+    return os.environ.get("COMBO_OPTIMIZER_LEGACY") == "1"
+
+
+def _local_ohlcv_covers(loader, symbol: str, timeframe: str, end_date: str) -> bool:
+    """True when parquet for this pair/tf exists and its last bar covers period end."""
+    try:
+        path = loader._get_parquet_path(symbol, timeframe)
+        if not path or not os.path.exists(path):
+            return False
+        df_ts = pd.read_parquet(path, columns=["timestamp_utc"])
+        if df_ts.empty:
+            return False
+        cache_end = pd.Timestamp(df_ts["timestamp_utc"].max())
+        if getattr(cache_end, "tz", None) is None:
+            cache_end = cache_end.tz_localize("UTC")
+        end_dt = pd.Timestamp(end_date)
+        if getattr(end_dt, "tz", None) is None:
+            end_dt = end_dt.tz_localize("UTC")
+        return cache_end.date() >= end_dt.date()
+    except Exception:
+        return False
 
 
 def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Optional[pd.DataFrame]:
@@ -96,6 +124,12 @@ def _init_worker_logging():
 # SHARED LOGIC HELPER
 # -----------------------------------------------------------------------------
 def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
+    if _combo_optimizer_legacy():
+        return _legacy_extract_trades_from_signals(df_with_signals, stop_loss, direction)
+    return _fast_extract_trades_from_signals(df_with_signals, stop_loss, direction)
+
+
+def _legacy_extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
     """
     Extract trades from signals with consistent logic:
     - Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
@@ -175,6 +209,83 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: st
     return trades
 
 
+def _fast_extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
+    TRADING_FEE = 0.00075
+    trades = []
+    is_short = (direction or "long").lower() == "short"
+    stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
+    n = len(df_with_signals)
+    if n == 0:
+        return trades
+
+    from app.services.deep_backtest import _iso_array
+
+    index = df_with_signals.index
+    iso = _iso_array(index)
+    opens = df_with_signals["open"].to_numpy(dtype=np.float64, copy=False)
+    highs = df_with_signals["high"].to_numpy(dtype=np.float64, copy=False)
+    lows = df_with_signals["low"].to_numpy(dtype=np.float64, copy=False)
+    signals = df_with_signals["signal"].to_numpy(copy=False)
+
+    pos = None
+    i = 0
+    while i < n:
+        if pos is not None and stop_loss_pct > 0:
+            entry_price = pos["entry_price"]
+            if is_short:
+                exact_stop_price = entry_price * (1 + stop_loss_pct)
+                hit_stop = float(highs[i]) >= exact_stop_price
+            else:
+                exact_stop_price = entry_price * (1 - stop_loss_pct)
+                hit_stop = float(lows[i]) <= exact_stop_price
+            if hit_stop:
+                pos["exit_time"] = iso[i]
+                pos["exit_price"] = exact_stop_price
+                if is_short:
+                    pos["profit"] = (
+                        entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)
+                    ) / (entry_price * (1 - TRADING_FEE))
+                else:
+                    pos["profit"] = (
+                        (exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
+                    ) / (entry_price * (1 + TRADING_FEE))
+                pos["exit_reason"] = "stop_loss"
+                pos["signal_type"] = "Stop"
+                trades.append(pos)
+                pos = None
+                i += 1
+                continue
+
+        sig = signals[i]
+        if sig == 1 and pos is None:
+            pos = {
+                "entry_time": iso[i],
+                "entry_price": float(opens[i]),
+                "type": "short" if is_short else "long",
+                "entry_signal_type": "Vender" if is_short else "Comprar",
+            }
+        elif sig == -1 and pos is not None:
+            exit_price = float(opens[i])
+            entry_price = pos["entry_price"]
+            pos["exit_time"] = iso[i]
+            pos["exit_price"] = exit_price
+            if is_short:
+                pos["profit"] = (
+                    entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)
+                ) / (entry_price * (1 - TRADING_FEE))
+            else:
+                pos["profit"] = (
+                    (exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
+                ) / (entry_price * (1 + TRADING_FEE))
+            pos["exit_reason"] = "signal"
+            pos["signal_type"] = "Close entry(s) order..."
+            trades.append(pos)
+            pos = None
+        i += 1
+
+    return trades
+
+
 def extract_trades_with_mode(
     df_with_signals,
     stop_loss: float,
@@ -201,7 +312,7 @@ def extract_trades_with_mode(
     Returns:
         List of trades
     """
-    df_exec = df_with_signals.copy()
+    df_exec = df_with_signals.copy() if _combo_optimizer_legacy() else df_with_signals
 
     if not deep_backtest:
         trades = extract_trades_from_signals(df_exec, stop_loss, direction)
@@ -243,19 +354,26 @@ def extract_trades_with_mode(
             daily_end = df_exec.index.max()
             intraday_start = df_15m.index.min()
             intraday_end = df_15m.index.max()
-
-            # Some markets start trading partway through the first "day" (listing time).
-            # Daily candles are still labeled at 00:00 UTC, but intraday data may begin later that same date
-            # (e.g., BTC/USDT starting at 04:00 UTC on the first day). This is NOT a real coverage problem.
-            start_ok = True
-            if intraday_start > daily_start:
-                try:
-                    start_ok = intraday_start.date() == daily_start.date()
-                except Exception:
-                    start_ok = False
-
-            # 15m must extend to at least the last daily candle so we have intraday data for the day of each trade.
-            end_ok = intraday_end >= daily_end
+            cov_key = (
+                symbol,
+                str(daily_start),
+                str(daily_end),
+                str(intraday_start),
+                str(intraday_end),
+            )
+            cached_cov = None if _combo_optimizer_legacy() else _WORKER_COVERAGE_CACHE.get(cov_key)
+            if cached_cov is not None:
+                start_ok, end_ok = cached_cov
+            else:
+                start_ok = True
+                if intraday_start > daily_start:
+                    try:
+                        start_ok = intraday_start.date() == daily_start.date()
+                    except Exception:
+                        start_ok = False
+                end_ok = intraday_end >= daily_end
+                if not _combo_optimizer_legacy():
+                    _WORKER_COVERAGE_CACHE[cov_key] = (start_ok, end_ok)
 
             if (not start_ok) or (not end_ok):
                 # Log only once per symbol per process to avoid flooding the log (e.g. 16k identical lines)
@@ -289,6 +407,30 @@ def extract_trades_with_mode(
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
         trades = extract_trades_from_signals(df_exec, stop_loss, direction)
         return (trades, "fast_1d") if return_mode else trades
+
+
+def _window_identity(df: pd.DataFrame) -> tuple:
+    ohlcv = np.ascontiguousarray(
+        df[["open", "high", "low", "close", "volume"]].to_numpy(dtype=np.float64)
+    )
+    return (
+        int(pd.Timestamp(df.index[0]).value),
+        int(pd.Timestamp(df.index[-1]).value),
+        int(len(df)),
+        hashlib.sha256(ohlcv.tobytes()).hexdigest(),
+    )
+
+
+def _indicator_cache_key(
+    indicators, entry_logic, exit_logic, derived_features, df: pd.DataFrame
+) -> tuple:
+    return (
+        json.dumps(indicators, sort_keys=True, default=str),
+        entry_logic,
+        exit_logic,
+        json.dumps(derived_features or [], sort_keys=True, default=str),
+        _window_identity(df),
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -394,21 +536,44 @@ def _run_backtest_logic(
         # Create strategy instance
         from app.strategies.combos import ComboStrategy
 
+        direction = (params or {}).get("direction", "long")
+        if direction not in ("long", "short"):
+            direction = "long"
+        derived_features = template_data.get("derived_features") or []
         strategy = ComboStrategy(
             indicators=indicators,
             entry_logic=entry_logic,
             exit_logic=exit_logic,
             stop_loss=stop_loss,
-            direction=(params or {}).get("direction", "long"),
+            direction=direction,
         )
 
-        # Generate signals
-        df_with_signals = strategy.generate_signals(df.copy())
-
-        # Direction: long (default) or short
-        direction = (params or {}).get("direction", "long")
-        if direction not in ("long", "short"):
-            direction = "long"
+        if _combo_optimizer_legacy():
+            df_with_signals = strategy._legacy_generate_signals(df.copy())
+        else:
+            cache_key = _indicator_cache_key(
+                indicators, entry_logic, exit_logic, derived_features, df
+            )
+            cached = _WORKER_INDICATOR_CACHE.get(cache_key)
+            if cached is None:
+                df_ind = strategy.calculate_indicators(df)
+                try:
+                    entry_mask = strategy._evaluate_logic_vectorized(df_ind, entry_logic)
+                    exit_mask = strategy._evaluate_logic_vectorized(df_ind, exit_logic)
+                except Exception as exc:
+                    print(f"Error in vectorized logic: {exc}")
+                    entry_mask = pd.Series(False, index=df_ind.index)
+                    exit_mask = pd.Series(False, index=df_ind.index)
+                _WORKER_INDICATOR_CACHE[cache_key] = {
+                    "frame": df_ind,
+                    "entry": np.ascontiguousarray(entry_mask.fillna(False).astype(bool).to_numpy()),
+                    "exit": np.ascontiguousarray(exit_mask.fillna(False).astype(bool).to_numpy()),
+                }
+                cached = _WORKER_INDICATOR_CACHE[cache_key]
+            work = cached["frame"].copy(deep=False)
+            entry_mask = pd.Series(cached["entry"], index=work.index)
+            exit_mask = pd.Series(cached["exit"], index=work.index)
+            df_with_signals = strategy._fast_position_loop(work, entry_mask, exit_mask)
         # Extract trades from signals WITH STOP LOSS using Deep or Fast mode
         trades = extract_trades_with_mode(
             df_with_signals,
@@ -474,6 +639,18 @@ def _run_backtest_logic(
         }, params
 
 
+def _legacy_run_backtest_logic(*args, **kwargs):
+    prev = os.environ.get("COMBO_OPTIMIZER_LEGACY")
+    os.environ["COMBO_OPTIMIZER_LEGACY"] = "1"
+    try:
+        return _run_backtest_logic(*args, **kwargs)
+    finally:
+        if prev is None:
+            os.environ.pop("COMBO_OPTIMIZER_LEGACY", None)
+        else:
+            os.environ["COMBO_OPTIMIZER_LEGACY"] = prev
+
+
 def _worker_run_backtest(args):
     """Legacy worker for single execution (Sequential Mode)."""
     template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str = (
@@ -535,7 +712,8 @@ def _worker_run_batch(batch_args):
 
     # 2. Iterate through batch
     for args in batch_args:
-        template_data, params, df, stage_param, value, deep_backtest, _, _, _ = args
+        template_data, params, df, stage_param, value, deep_backtest, _, _, _ = args[:9]
+        trial_index = args[9] if len(args) > 9 else 0
 
         metrics, full_params = _run_backtest_logic(
             template_data,
@@ -550,7 +728,14 @@ def _worker_run_batch(batch_args):
 
         # Wrap result to match single worker structure
         if "error" in metrics:
-            results.append({"value": value, "error": metrics["error"], "success": False})
+            results.append(
+                {
+                    "value": value,
+                    "error": metrics["error"],
+                    "success": False,
+                    "trial_index": trial_index,
+                }
+            )
         else:
             results.append(
                 {
@@ -560,6 +745,7 @@ def _worker_run_batch(batch_args):
                     "metrics": metrics,
                     "trades_count": metrics["total_trades"],
                     "success": True,
+                    "trial_index": trial_index,
                 }
             )
 
@@ -1373,6 +1559,13 @@ class ComboOptimizer:
 
             results = []
             BATCH_SIZE = 200
+            tagged_args = []
+            for trial_index, args in enumerate(worker_args):
+                if isinstance(args, tuple) and len(args) >= 9:
+                    tagged_args.append(args[:9] + (trial_index,))
+                else:
+                    tagged_args.append(args)
+            worker_args = tagged_args
             worker_batches = [
                 worker_args[i : i + BATCH_SIZE] for i in range(0, len(worker_args), BATCH_SIZE)
             ]
@@ -1399,6 +1592,7 @@ class ComboOptimizer:
                 exec_to_use = local_executor
 
             futures = {}
+            ordered_batches: list = [None] * len(worker_batches)
             try:
                 futures = {
                     exec_to_use.submit(_worker_run_batch, batch): i
@@ -1408,7 +1602,7 @@ class ComboOptimizer:
                     batch_idx = futures[future]
                     try:
                         batch_results = future.result()
-                        results.extend(batch_results)
+                        ordered_batches[batch_idx] = batch_results
 
                         # Update progress
                         completed_batches += 1
@@ -1459,6 +1653,11 @@ class ComboOptimizer:
                 f"🏁 Stage completo em {total_min}m{total_sec}s | Total processado: {processed_combinations:,} combinações"
             )
 
+            results = []
+            for batch_results in ordered_batches:
+                if batch_results:
+                    results.extend(batch_results)
+            results.sort(key=lambda r: r.get("trial_index", 0))
             valid_results = [r for r in results if r["success"]]
 
             if valid_results:
@@ -1486,10 +1685,17 @@ class ComboOptimizer:
                     else:
                         result_params[stage_param] = res["value"]
 
-                    scored_results.append({"params": result_params, "metrics": m, "score": score})
+                    scored_results.append(
+                        {
+                            "params": result_params,
+                            "metrics": m,
+                            "score": score,
+                            "trial_index": res.get("trial_index", 0),
+                        }
+                    )
 
-                # Sort by score
-                scored_results.sort(key=lambda x: x["score"], reverse=True)
+                # Sort by score, then original trial index so as_completed cannot decide ties.
+                scored_results.sort(key=lambda x: (-x["score"], x["trial_index"]))
 
                 # If we are in Grid Mode and collecting candidates for branching
                 if is_grid_mode and return_top_n > 1:
@@ -1521,6 +1727,242 @@ class ComboOptimizer:
             return [{"params": best_params, "metrics": best_metrics or {}, "score": float("-inf")}]
 
         return best_params, best_metrics
+
+    def _execute_r2r4_pooled(
+        self,
+        candidates,
+        stages,
+        round_num,
+        max_workers,
+        template_name,
+        symbol,
+        timeframe,
+        fixed_timeframe,
+        start_date,
+        end_date,
+        deep_backtest,
+        template_metadata,
+        df,
+        executor,
+    ):
+        """Submit all branches of each R2–R4 stage together, then greedy-update."""
+        import copy
+
+        if df is not None and not df.empty and "regime" not in df.columns:
+            try:
+                df = df.copy()
+                df = ensure_ta_lib_context_columns(df)
+                if "SMA_50" in df.columns:
+                    df["regime"] = "Unknown"
+                    df.loc[df["close"] > df["SMA_50"], "regime"] = "Bull"
+                    df.loc[df["close"] < df["SMA_50"], "regime"] = "Bear"
+            except Exception as exc:
+                logging.warning("Failed to enrich DF with regime metrics: %s", exc)
+
+        branch_states = []
+        for candidate in candidates:
+            current_stages = copy.deepcopy(stages)
+            for stage in current_stages:
+                if stage.get("adaptive_meta"):
+                    self._refine_stage_values(stage, candidate["params"], round_num=round_num)
+            branch_states.append(
+                {
+                    "candidate": candidate,
+                    "stages": current_stages,
+                    "params": candidate["params"].copy(),
+                    "metrics": {},
+                    "score": float("-inf"),
+                }
+            )
+
+        def _submit_tagged(tagged):
+            BATCH_SIZE = 200
+            batches = [tagged[i : i + BATCH_SIZE] for i in range(0, len(tagged), BATCH_SIZE)]
+            ordered = [None] * len(batches)
+            if batches:
+                futures = {
+                    executor.submit(_worker_run_batch, batch): i for i, batch in enumerate(batches)
+                }
+                for future in concurrent.futures.as_completed(futures):
+                    bidx = futures[future]
+                    try:
+                        ordered[bidx] = future.result()
+                    except Exception as exc:
+                        logging.warning("Pooled R%s batch %s failed: %s", round_num, bidx, exc)
+            flat = []
+            for chunk in ordered:
+                if chunk:
+                    flat.extend(chunk)
+            return {r.get("trial_index"): r for r in flat}
+
+        def _greedy_update(state, stage, branch_rows):
+            valid_results = [row for row in branch_rows if row.get("success")]
+            if not valid_results:
+                return
+            is_grid_mode = stage.get("grid_mode", False)
+            stage_param = stage["parameter"]
+            sharpes = [row["metrics"]["sharpe_ratio"] for row in valid_results]
+            returns = [row["metrics"]["total_return"] for row in valid_results]
+            min_s, max_s = min(sharpes), max(sharpes)
+            min_r, max_r = min(returns), max(returns)
+            range_s = max_s - min_s
+            range_r = max_r - min_r
+            scored_results = []
+            best_params = state["params"]
+            for res in valid_results:
+                m = res["metrics"]
+                s = m["sharpe_ratio"]
+                r = m["total_return"]
+                ns = (s - min_s) / range_s if range_s > 0 else 0
+                nr = (r - min_r) / range_r if range_r > 0 else 0
+                score = (0.7 * ns) + (0.3 * nr)
+                result_params = best_params.copy()
+                if is_grid_mode:
+                    result_params.update(res["value"])
+                else:
+                    result_params[stage_param] = res["value"]
+                scored_results.append(
+                    {
+                        "params": result_params,
+                        "metrics": m,
+                        "score": score,
+                        "trial_index": res.get("trial_index", 0),
+                    }
+                )
+            scored_results.sort(key=lambda x: (-x["score"], x["trial_index"]))
+            top = scored_results[0]
+            state["params"] = top["params"]
+            state["metrics"] = top["metrics"]
+            state["score"] = top["metrics"].get("sharpe_ratio", top["score"])
+
+        n_stages = max((len(state["stages"]) for state in branch_states), default=0)
+        for stage_i in range(n_stages):
+            all_args = []
+            branch_ranges = []
+            for state in branch_states:
+                if stage_i >= len(state["stages"]):
+                    continue
+                stage = state["stages"][stage_i]
+                start = len(all_args)
+                worker_args = self._stage_worker_args(
+                    stage,
+                    state["params"],
+                    df,
+                    deep_backtest,
+                    symbol,
+                    start_date,
+                    end_date,
+                    template_metadata,
+                )
+                for args in worker_args:
+                    all_args.append(args[:9] + (len(all_args),))
+                branch_ranges.append((state, start, len(all_args), stage))
+            by_index = _submit_tagged(all_args)
+            for state, start, end, stage in branch_ranges:
+                branch_rows = [by_index[i] for i in range(start, end) if i in by_index]
+                _greedy_update(state, stage, branch_rows)
+
+        next_round_candidates = []
+        for state in branch_states:
+            candidate = state["candidate"]
+            metrics = state["metrics"]
+            if not metrics:
+                next_round_candidates.append(
+                    {
+                        "params": state["params"],
+                        "meta": candidate["meta"],
+                        "round": round_num + 1,
+                        "score": float("-inf"),
+                        "metrics": {},
+                    }
+                )
+                continue
+            next_round_candidates.append(
+                {
+                    "params": state["params"],
+                    "meta": candidate["meta"],
+                    "round": round_num + 1,
+                    "score": metrics.get("sharpe_ratio", state["score"]),
+                    "metrics": metrics,
+                }
+            )
+        return next_round_candidates
+
+    def _stage_worker_args(
+        self,
+        stage,
+        best_params,
+        df,
+        deep_backtest,
+        symbol,
+        start_date,
+        end_date,
+        template_metadata,
+    ):
+        worker_args = []
+        stage_param = stage["parameter"]
+        stage_values = stage["values"]
+        is_grid_mode = stage.get("grid_mode", False)
+        if is_grid_mode:
+            param_names = stage_param
+            value_lists = stage_values
+            for combo in itertools.product(*value_lists):
+                test_params = best_params.copy()
+                p_short = p_inter = p_long = None
+                current_combo = dict(zip(param_names, combo))
+                full_context = {**best_params, **current_combo}
+                for k, v in full_context.items():
+                    k_lower = str(k).lower()
+                    if (
+                        k_lower.endswith("media_curta")
+                        or k_lower.endswith("ema_short")
+                        or k_lower.endswith("sma_short")
+                    ):
+                        p_short = v
+                    elif k_lower.endswith("media_inter") or k_lower.endswith("sma_medium"):
+                        p_inter = v
+                    elif k_lower.endswith("media_longa") or k_lower.endswith("sma_long"):
+                        p_long = v
+                if p_short is not None and p_inter is not None and p_long is not None:
+                    try:
+                        if not (float(p_short) < float(p_inter) < float(p_long)):
+                            continue
+                    except (ValueError, TypeError):
+                        pass
+                for pname, pval in zip(param_names, combo):
+                    test_params[pname] = pval
+                worker_args.append(
+                    (
+                        template_metadata,
+                        test_params,
+                        df,
+                        param_names,
+                        dict(zip(param_names, combo)),
+                        deep_backtest,
+                        symbol,
+                        start_date,
+                        end_date,
+                    )
+                )
+        else:
+            for value in stage_values:
+                test_params = best_params.copy()
+                if stage_param != "timeframe":
+                    test_params[stage_param] = value
+                    worker_args.append(
+                        (
+                            template_metadata,
+                            test_params,
+                            df,
+                            stage_param,
+                            value,
+                            deep_backtest,
+                            symbol,
+                            start_date,
+                            end_date,
+                        )
+                    )
+        return worker_args
 
     def run_optimization(
         self,
@@ -1621,72 +2063,82 @@ class ComboOptimizer:
         # Workers will only READ the parquet slice (read_only=True) to avoid concurrent writes/corruption.
         # After prefetch, ensure 15m tail is up to end_date (self-healing: avoids stale cache for this symbol).
         if deep_backtest and selected_data_source == "ccxt":
-            try:
-                # For "all history", align intraday start to the first available daily candle
-                # (avoids downloading 15m before the exchange has data for the symbol).
-                intraday_since = start_date
-                allow_large = False
-                if start_date_defaulted and df is not None and not df.empty:
-                    intraday_since = pd.Timestamp(df.index.min()).date().isoformat()
-                    allow_large = True
-                    logging.warning(
-                        "Deep backtest requested for full history. Building/expanding 15m cache for %s from %s..%s. "
-                        "This may take a long time on first run.",
-                        symbol,
-                        intraday_since,
-                        end_date,
-                    )
-                self.loader.fetch_intraday_data(
-                    symbol=symbol,
-                    timeframe="15m",
-                    since_str=intraday_since,
-                    until_str=end_date,
-                    read_only=False,
-                    allow_large_backfill=allow_large,
-                )
-            except Exception as e:
-                logging.warning(
-                    "Prefetch 15m failed for %s (%s..%s): %s. Deep backtest will fall back to fast mode.",
+            period_end = end_date
+            daily_covers = _local_ohlcv_covers(self.loader, symbol, timeframe, period_end)
+            intra_covers = _local_ohlcv_covers(self.loader, symbol, "15m", period_end)
+            if daily_covers and intra_covers:
+                logging.info(
+                    "Skipping exchange tail/setup for %s: 1d+15m already on disk covering %s",
                     symbol,
-                    start_date,
-                    end_date,
-                    e,
+                    period_end,
                 )
-            # Self-healing: ensure 15m cache extends to end_date (handles stale cache or partial prefetch failure).
-            try:
-                from datetime import datetime as _dt, timedelta
-
-                info = self.loader.check_intraday_availability(symbol, "15m")
-                end_dt = _dt.strptime(end_date, "%Y-%m-%d")
-                need_tail = False
-                if not info.get("available") or not info.get("coverage"):
-                    need_tail = True  # No cache or empty: try last 30 days only
-                else:
-                    cache_end_str = info["coverage"].get("end")
-                    if cache_end_str:
-                        cache_end = pd.Timestamp(cache_end_str)
-                        if getattr(cache_end, "tz", None) is None:
-                            cache_end = cache_end.tz_localize("UTC")
-                        if cache_end.date() < end_dt.date():
-                            need_tail = True
-                if need_tail:
-                    tail_since = (end_dt - timedelta(days=30)).strftime("%Y-%m-%d")
-                    logging.info(
-                        "15m cache lags behind end_date; updating tail for %s (%s to %s)",
-                        symbol,
-                        tail_since,
-                        end_date,
-                    )
+            else:
+                try:
+                    # For "all history", align intraday start to the first available daily candle
+                    # (avoids downloading 15m before the exchange has data for the symbol).
+                    intraday_since = start_date
+                    allow_large = False
+                    if start_date_defaulted and df is not None and not df.empty:
+                        intraday_since = pd.Timestamp(df.index.min()).date().isoformat()
+                        allow_large = True
+                        logging.warning(
+                            "Deep backtest requested for full history. Building/expanding 15m cache for %s from %s..%s. "
+                            "This may take a long time on first run.",
+                            symbol,
+                            intraday_since,
+                            end_date,
+                        )
                     self.loader.fetch_intraday_data(
                         symbol=symbol,
                         timeframe="15m",
-                        since_str=tail_since,
+                        since_str=intraday_since,
                         until_str=end_date,
                         read_only=False,
-                        allow_large_backfill=False,
+                        allow_large_backfill=allow_large,
                     )
-            except Exception as e2:
-                logging.debug("15m tail update check failed: %s", e2)
+                except Exception as e:
+                    logging.warning(
+                        "Prefetch 15m failed for %s (%s..%s): %s. Deep backtest will fall back to fast mode.",
+                        symbol,
+                        start_date,
+                        end_date,
+                        e,
+                    )
+                # Self-healing: ensure 15m cache extends to end_date (handles stale cache or partial prefetch failure).
+                try:
+                    from datetime import datetime as _dt, timedelta
+
+                    info = self.loader.check_intraday_availability(symbol, "15m")
+                    end_dt = _dt.strptime(end_date, "%Y-%m-%d")
+                    need_tail = False
+                    if not info.get("available") or not info.get("coverage"):
+                        need_tail = True  # No cache or empty: try last 30 days only
+                    else:
+                        cache_end_str = info["coverage"].get("end")
+                        if cache_end_str:
+                            cache_end = pd.Timestamp(cache_end_str)
+                            if getattr(cache_end, "tz", None) is None:
+                                cache_end = cache_end.tz_localize("UTC")
+                            if cache_end.date() < end_dt.date():
+                                need_tail = True
+                    if need_tail:
+                        tail_since = (end_dt - timedelta(days=30)).strftime("%Y-%m-%d")
+                        logging.info(
+                            "15m cache lags behind end_date; updating tail for %s (%s to %s)",
+                            symbol,
+                            tail_since,
+                            end_date,
+                        )
+                        self.loader.fetch_intraday_data(
+                            symbol=symbol,
+                            timeframe="15m",
+                            since_str=tail_since,
+                            until_str=end_date,
+                            read_only=False,
+                            allow_large_backfill=False,
+                        )
+                except Exception as e2:
+                    logging.debug("15m tail update check failed: %s", e2)
             logging.info(
                 "Deep backtest ON: workers will use 15m intraday data for exit simulation (stop/target precision)."
             )
@@ -1745,34 +2197,10 @@ class ComboOptimizer:
 
                     next_round_candidates = []
 
-                    for idx, candidate in enumerate(candidates):
-                        logging.info(
-                            f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}"
-                        )
-
-                        # 1. Setup stages for this candidate
-                        if round_num == 1:
-                            current_stages = stages  # Use initial coarse stages
-                        else:
-                            # Clone stages to avoid polluting other branches
-                            import copy
-
-                            current_stages = copy.deepcopy(stages)
-                            # Refine based on THIS candidate's best params
-                            for stage in current_stages:
-                                if stage.get("adaptive_meta"):
-                                    self._refine_stage_values(
-                                        stage, candidate["params"], round_num=round_num
-                                    )
-
-                        # 2. Execute Optimization for this branch
-                        # For Round 1 (Grid), we want multiple candidates to feed the logical branches.
-                        # For Round > 1, we just want the best refinement for this specific branch.
-                        return_n = 10 if round_num == 1 else 1
-
-                        execution_result = self._execute_opt_stages(
-                            current_stages,
-                            candidate["params"],
+                    if round_num > 1 and len(candidates) > 1:
+                        next_round_candidates = self._execute_r2r4_pooled(
+                            candidates,
+                            stages,
                             round_num,
                             max_workers,
                             template_name,
@@ -1784,57 +2212,102 @@ class ComboOptimizer:
                             deep_backtest,
                             template_metadata,
                             df,
-                            return_top_n=return_n,
-                            executor=executor,
+                            executor,
                         )
-
-                        if round_num == 1:
-                            # Reviewing multiple candidates from Grid (or single fallback when all batches failed)
-                            branch_candidates = execution_result
-                            if (
-                                isinstance(branch_candidates, (tuple, list))
-                                and len(branch_candidates) == 2
-                                and not isinstance(branch_candidates[0], dict)
-                            ):
-                                branch_candidates = [
-                                    {
-                                        "params": branch_candidates[0],
-                                        "metrics": branch_candidates[1] or {},
-                                        "score": float("-inf"),
-                                    }
-                                ]
-                            for cand in branch_candidates:
-                                params = cand.get("params") if isinstance(cand, dict) else None
-                                if params is None:
-                                    continue
-                                result_candidate = {
-                                    "params": params,
-                                    "meta": candidate["meta"],
-                                    "round": round_num + 1,
-                                    "score": cand.get("score", float("-inf")),
-                                    "metrics": cand.get("metrics") or {},
-                                }
-                                next_round_candidates.append(result_candidate)
-                        else:
-                            # Standard single result
-                            branch_best_params, branch_best_metrics = execution_result
-
-                            # 3. Score this branch result
-                            score = (
-                                branch_best_metrics.get("sharpe_ratio", -999)
-                                if branch_best_metrics
-                                else -999
+                        # Skip the per-branch loop; selection below uses next_round_candidates.
+                        idx = len(candidates)
+                        execution_result = None
+                    else:
+                        for idx, candidate in enumerate(candidates):
+                            logging.info(
+                                f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}"
                             )
 
-                            result_candidate = {
-                                "params": branch_best_params,
-                                "meta": candidate["meta"],
-                                "round": round_num + 1,
-                                "score": score,
-                                "metrics": branch_best_metrics,
-                            }
+                            # 1. Setup stages for this candidate
+                            if round_num == 1:
+                                current_stages = stages  # Use initial coarse stages
+                            else:
+                                # Clone stages to avoid polluting other branches
+                                import copy
 
-                            next_round_candidates.append(result_candidate)
+                                current_stages = copy.deepcopy(stages)
+                                # Refine based on THIS candidate's best params
+                                for stage in current_stages:
+                                    if stage.get("adaptive_meta"):
+                                        self._refine_stage_values(
+                                            stage, candidate["params"], round_num=round_num
+                                        )
+
+                            # 2. Execute Optimization for this branch
+                            # For Round 1 (Grid), we want multiple candidates to feed the logical branches.
+                            # For Round > 1, we just want the best refinement for this specific branch.
+                            return_n = 10 if round_num == 1 else 1
+
+                            execution_result = self._execute_opt_stages(
+                                current_stages,
+                                candidate["params"],
+                                round_num,
+                                max_workers,
+                                template_name,
+                                symbol,
+                                timeframe,
+                                fixed_timeframe,
+                                start_date,
+                                end_date,
+                                deep_backtest,
+                                template_metadata,
+                                df,
+                                return_top_n=return_n,
+                                executor=executor,
+                            )
+
+                            if round_num == 1:
+                                # Reviewing multiple candidates from Grid (or single fallback when all batches failed)
+                                branch_candidates = execution_result
+                                if (
+                                    isinstance(branch_candidates, (tuple, list))
+                                    and len(branch_candidates) == 2
+                                    and not isinstance(branch_candidates[0], dict)
+                                ):
+                                    branch_candidates = [
+                                        {
+                                            "params": branch_candidates[0],
+                                            "metrics": branch_candidates[1] or {},
+                                            "score": float("-inf"),
+                                        }
+                                    ]
+                                for cand in branch_candidates:
+                                    params = cand.get("params") if isinstance(cand, dict) else None
+                                    if params is None:
+                                        continue
+                                    result_candidate = {
+                                        "params": params,
+                                        "meta": candidate["meta"],
+                                        "round": round_num + 1,
+                                        "score": cand.get("score", float("-inf")),
+                                        "metrics": cand.get("metrics") or {},
+                                    }
+                                    next_round_candidates.append(result_candidate)
+                            else:
+                                # Standard single result
+                                branch_best_params, branch_best_metrics = execution_result
+
+                                # 3. Score this branch result
+                                score = (
+                                    branch_best_metrics.get("sharpe_ratio", -999)
+                                    if branch_best_metrics
+                                    else -999
+                                )
+
+                                result_candidate = {
+                                    "params": branch_best_params,
+                                    "meta": candidate["meta"],
+                                    "round": round_num + 1,
+                                    "score": score,
+                                    "metrics": branch_best_metrics,
+                                }
+
+                                next_round_candidates.append(result_candidate)
 
                     # SELECTION LOGIC (End of Round)
                     if round_num < max_rounds:

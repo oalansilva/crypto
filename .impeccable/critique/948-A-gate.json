@@ -1,0 +1,933 @@
+{
+  "proto": {
+    "desktop_url": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/",
+    "desktop_title": "Descoberta de estratégias swing",
+    "h1": "Descoberta de estratégias swing",
+    "desktop_tabs": {
+      "Montar": {
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "text": "Montar"
+      },
+      "Acompanhando": {
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "text": "Acompanhando #af8fb5de"
+      },
+      "Decidir": {
+        "visible": true,
+        "aria_selected": "true",
+        "aria_pressed": null,
+        "text": "Decidir"
+      }
+    },
+    "desktop_landmarks_default": {
+      "Descoberta de estratégias swing": {
+        "count": 1,
+        "visible": 1
+      },
+      "Preflight": {
+        "count": 1,
+        "visible": 0
+      },
+      "Rascunho de varredura": {
+        "count": 1,
+        "visible": 0
+      }
+    },
+    "antes_depois_vis": 0,
+    "antes_depois_exact_vis": 0,
+    "antes_btn": 0,
+    "table_count": 2,
+    "table_vis": 1,
+    "tr_vis": 5,
+    "desktop_default": {
+      "RS-E2FF8F9FEB": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": true,
+            "promote_exact_vis": 1,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 1,
+            "hist_note": false,
+            "text_snip": "1 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 | GO | + detalhes\t1,12\t84 | 100% velas | 52,4%\t+18,2%\t−14,1%\t8,40\t4,1% | Promover | Excluir"
+          }
+        ]
+      },
+      "RS-EA2A508DBD": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": true,
+            "promote_exact_vis": 1,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 1,
+            "hist_note": false,
+            "text_snip": "2 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-EA2A508DBD · cobertura 100% · direction long · ema_short 8 | GO | + detalhes\t0,88\t60 | 100% velas | 49,1%\t+3,4%\t−10,8%\t12,93\t1,0% | Promover | Excluir"
+          }
+        ]
+      },
+      "vivo12": {
+        "found": true,
+        "row_count": 2,
+        "facts": [
+          {
+            "visible": false,
+            "promote_exact_vis": 0,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 0,
+            "hist_note": false,
+            "text_snip": ""
+          },
+          {
+            "visible": true,
+            "promote_exact_vis": 0,
+            "ja_existe_vis": 1,
+            "equivale_vis": 1,
+            "tier3_vis": 0,
+            "excluir_vis": 1,
+            "hist_note": false,
+            "text_snip": "3 | Médias Móveis: Tendência em Virada 1 | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-LIVE-DUP · cobertura 100% · direction long · ema_short 9 | NO-GO | Equivale ao favorito ativo 12 | + detalhes\t0,36\t40 | 100% velas | 17,5%\t+4,4%\t−7,5%\t16,90\t1,3% | Já existe | Excluir"
+          }
+        ]
+      }
+    },
+    "desktop_ja_existe_rows": [
+      "3\t\nMédias Móveis: Tendência em Virada 1\nCompara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.\nRS-LIVE-DUP · cobertura 100% · direction long · ema_short 9\nNO-GO\nEquivale ao favorito ativo 12\n+ detalhes\t0,36\t40\n100% velas\n\t17,5%\t+4,4%\t−7,5%\t16,90\t1,3%\t\nJá existe\nExcluir"
+    ],
+    "desktop_global": {
+      "promover_vis": 3,
+      "ja_existe_vis": 1,
+      "tier3_vis": 0,
+      "equivale_vis": 1,
+      "ja_esteve_vis": 0,
+      "ja_foi_favorito_vis": 0,
+      "historical_vis": 0
+    },
+    "desktop_acomp_tabs": {
+      "Montar": {
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "text": "Montar"
+      },
+      "Acompanhando": {
+        "visible": true,
+        "aria_selected": "true",
+        "aria_pressed": null,
+        "text": "Acompanhando #af8fb5de"
+      },
+      "Decidir": {
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "text": "Decidir"
+      }
+    },
+    "desktop_acomp_landmarks": {
+      "Descoberta de estratégias swing": {
+        "count": 1,
+        "visible": 1
+      },
+      "Preflight": {
+        "count": 1,
+        "visible": 0
+      },
+      "Rascunho de varredura": {
+        "count": 1,
+        "visible": 0
+      }
+    },
+    "desktop_acomp": {
+      "RS-E2FF8F9FEB": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": false,
+            "promote_exact_vis": 0,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 0,
+            "hist_note": false,
+            "text_snip": ""
+          }
+        ]
+      },
+      "RS-EA2A508DBD": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": false,
+            "promote_exact_vis": 0,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 0,
+            "hist_note": false,
+            "text_snip": ""
+          }
+        ]
+      }
+    },
+    "desktop_acomp_global": {
+      "promover_vis": 4,
+      "ja_existe_vis": 1,
+      "tier3_vis": 0,
+      "equivale_vis": 1
+    },
+    "desktop_acomp_ja_existe_rows": [
+      "3\t\nMédias Móveis: Tendência em Virada 1\nSOL/USDT · 1d · Long\nNO-GO\nEquivale ao favorito ativo 12\n\t0,36\t40\n100% velas\n\t17,5%\t+4,4%\t−7,5%\t16,90\t1,3%\t\nJá existe\nExcluir"
+    ],
+    "desktop_montar_tabs": {
+      "Montar": {
+        "visible": true,
+        "aria_selected": "true",
+        "aria_pressed": null,
+        "text": "Montar"
+      },
+      "Acompanhando": {
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "text": "Acompanhando #af8fb5de"
+      },
+      "Decidir": {
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "text": "Decidir"
+      }
+    },
+    "desktop_montar_landmarks": {
+      "Descoberta de estratégias swing": {
+        "count": 1,
+        "visible": 1
+      },
+      "Preflight": {
+        "count": 1,
+        "visible": 1
+      },
+      "Rascunho de varredura": {
+        "count": 1,
+        "visible": 1
+      }
+    },
+    "desktop_montar_tables_vis": 0,
+    "desktop_montar_preflight_h2": 1,
+    "desktop_montar_rascunho": 1,
+    "desktop_promote_click": {
+      "clicked": true,
+      "dialog": 1,
+      "dialog_vis": 1,
+      "dialog_text": "Promover a favorito tier 3\n\nDestino fixo deste fluxo. Revise a origem antes de confirmar.\n\nMédias Móveis: Tendência em Virada\nRS-E2FF8F9FEB · ma_virada\nBTC/USDT · 1d · Long\nRetorno (CAGR)\n4,1%\nQueda máxima\n−14,1%\nTrades\n84\nCobertura · janela\n100% · 09 out 2020 – 31 jan 2024\nVarredura de origem\n#af8fb5dee323462c98baa5c492f0fbfb\nResultado\nRS-E2FF8F9FEB\nDestino obrigatório\nTier 3 · observação\nOnde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica.\n\nElegibi",
+      "orphan_still": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": true,
+            "promote_exact_vis": 1,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 1,
+            "hist_note": false,
+            "text_snip": "1 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 | GO | + detalhes\t1,12\t84 | 100% velas | 52,4%\t+18,2%\t−14,1%\t8,40\t4,1% | Promover | Excluir"
+          }
+        ]
+      }
+    },
+    "mobile_url": "https://dev.criptofarol.com.br/prototypes/card-948-discovery-deleted-favorite/",
+    "mobile_tabs": {
+      "Montar": {
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "text": "Montar"
+      },
+      "Acompanhando": {
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "text": "Acompanhando #af8fb5de"
+      },
+      "Decidir": {
+        "visible": true,
+        "aria_selected": "true",
+        "aria_pressed": null,
+        "text": "Decidir"
+      }
+    },
+    "mobile_landmarks_default": {
+      "Descoberta de estratégias swing": {
+        "count": 1,
+        "visible": 1
+      },
+      "Preflight": {
+        "count": 1,
+        "visible": 0
+      },
+      "Rascunho de varredura": {
+        "count": 1,
+        "visible": 0
+      }
+    },
+    "mobile_default": {
+      "RS-E2FF8F9FEB": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": true,
+            "promote_exact_vis": 1,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 1,
+            "hist_note": false,
+            "text_snip": "1 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 | GO | + detalhes | 1,12 | 84 | 100% velas | 52,4% | +18,2% | −14,1%"
+          }
+        ]
+      },
+      "RS-EA2A508DBD": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": true,
+            "promote_exact_vis": 1,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 1,
+            "hist_note": false,
+            "text_snip": "2 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-EA2A508DBD · cobertura 100% · direction long · ema_short 8 | GO | + detalhes | 0,88 | 60 | 100% velas | 49,1% | +3,4% | −10,8%"
+          }
+        ]
+      }
+    },
+    "mobile_global": {
+      "promover_vis": 3,
+      "ja_existe_vis": 1,
+      "tier3_vis": 0,
+      "equivale_vis": 1
+    },
+    "mobile_ja_existe_rows": [
+      "3\nMédias Móveis: Tendência em Virada 1\nCompara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz.\nRS-LIVE-DUP · cobertura 100% · direction long · ema_short 9\nNO-GO\nEquivale ao favorito ativo 12\n+ detalhes\n0,36\n40\n100% velas\n17,5%\n+4,4%\n−7,5%\n16,90\n1,3%\nJá existe\nExcluir"
+    ],
+    "mobile_acomp": {
+      "RS-E2FF8F9FEB": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": false,
+            "promote_exact_vis": 0,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 0,
+            "hist_note": false,
+            "text_snip": ""
+          }
+        ]
+      },
+      "RS-EA2A508DBD": {
+        "found": true,
+        "row_count": 1,
+        "facts": [
+          {
+            "visible": false,
+            "promote_exact_vis": 0,
+            "ja_existe_vis": 0,
+            "equivale_vis": 0,
+            "tier3_vis": 0,
+            "excluir_vis": 0,
+            "hist_note": false,
+            "text_snip": ""
+          }
+        ]
+      },
+      "global": {
+        "promover_vis": 4,
+        "ja_existe_vis": 1,
+        "tier3_vis": 0,
+        "equivale_vis": 1
+      }
+    },
+    "mobile_montar_landmarks": {
+      "Descoberta de estratégias swing": {
+        "count": 1,
+        "visible": 1
+      },
+      "Preflight": {
+        "count": 1,
+        "visible": 1
+      },
+      "Rascunho de varredura": {
+        "count": 1,
+        "visible": 1
+      }
+    },
+    "row_audit": {
+      "tables": [
+        {
+          "i": 0,
+          "vis": false,
+          "caption": "",
+          "id": "",
+          "class": "lb"
+        },
+        {
+          "i": 1,
+          "vis": true,
+          "caption": "",
+          "id": "",
+          "class": "lb"
+        }
+      ],
+      "decidir_rows": [
+        {
+          "name": "Médias Móveis: Tendência em Virada",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            }
+          ],
+          "txt": "1 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 | GO | + detalhes\t1,12\t84 | 100% velas | 52,4%\t+18,2%\t−14,1%\t8,40\t4,1%"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            }
+          ],
+          "txt": "2 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-EA2A508DBD · cobertura 100% · direction long · ema_short 8 | GO | + detalhes\t0,88\t60 | 100% velas | 49,1%\t+3,4%\t−10,8%\t12,93\t1,0%"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [
+            "Equivale ao favorito ativo 12"
+          ],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Já existe",
+              "disabled": true,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            }
+          ],
+          "txt": "3 | Médias Móveis: Tendência em Virada 1 | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-LIVE-DUP · cobertura 100% · direction long · ema_short 9 | NO-GO | Equivale ao favorito ativo 12 | + detalhes\t0,36\t40 | 100% velas"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            }
+          ],
+          "txt": "4 | Médias Móveis: Tendência em Virada 1 | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-B109ED2C80 · cobertura 100% · direction long · ema_short 8 | NO-GO | + detalhes\t0,31\t30 | 100% velas | 46,7%\t+12,8%\t−16,5%\t22,53\t3,7%"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [
+            "Amostra insuficiente"
+          ],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 156.140625,
+              "clipped": true
+            }
+          ],
+          "txt": "— | Médias Móveis: Tendência em Virada 1 | RS-916-INS · cobertura N/A · listagem cortada | Amostra insuficiente | + detalhes\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A | Excluir"
+        }
+      ],
+      "acomp_rows": [
+        {
+          "name": "Médias Móveis: Tendência em Virada",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            }
+          ],
+          "txt": "1 | Médias Móveis: Tendência em Virada | BTC/USDT · 1d · Long | GO | 1,12\t84 | 100% velas | 52,4%\t+18,2%\t−14,1%\t8,40\t4,1% | Promover"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            }
+          ],
+          "txt": "2 | Médias Móveis: Tendência em Virada | ETH/USDT · 1d · Long | GO | 0,88\t60 | 100% velas | 49,1%\t+3,4%\t−10,8%\t12,93\t1,0% | Promover"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [
+            "Equivale ao favorito ativo 12"
+          ],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "Já existe",
+              "disabled": true,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            }
+          ],
+          "txt": "3 | Médias Móveis: Tendência em Virada 1 | SOL/USDT · 1d · Long | NO-GO | Equivale ao favorito ativo 12 | 0,36\t40 | 100% velas | 17,5%\t+4,4%\t−7,5%\t16,90\t1,3%"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            }
+          ],
+          "txt": "4 | Médias Móveis: Tendência em Virada 1 | ALPHA/USDT · 1d · Long | NO-GO | 0,31\t30 | 100% velas | 46,7%\t+12,8%\t−16,5%\t22,53\t3,7% | Promover"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 167.3125,
+              "clipped": true
+            }
+          ],
+          "txt": "5 | Médias Móveis: Tendência em Virada 1 | ARPA/USDT · 1d · Long | NO-GO | 0,59\t30 | 100% velas | 63,3%\t+5,4%\t−8,5%\t19,03\t1,6% | Promover"
+        }
+      ],
+      "montar_headings": [
+        "Descoberta de estratégias swing",
+        "Rascunho de varredura",
+        "Preflight"
+      ],
+      "montar_tables_vis": 0,
+      "a11y": {
+        "lang": "pt-BR",
+        "tablist": 1,
+        "tabs": 3,
+        "tabpanels": 1,
+        "h1": 1,
+        "focus_css": true
+      },
+      "shell": {
+        "aside_w": 224
+      },
+      "mobile_decidir_rows": [
+        {
+          "name": "Médias Móveis: Tendência em Virada",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            }
+          ],
+          "txt": "1 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-E2FF8F9FEB · cobertura 100% · direction long · ema_short 8 | GO | + detalhes | 1,12 | 84"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            }
+          ],
+          "txt": "2 | Médias Móveis: Tendência em Virada | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-EA2A508DBD · cobertura 100% · direction long · ema_short 8 | GO | + detalhes | 0,88 | 60"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [
+            "Equivale ao favorito ativo 12"
+          ],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Já existe",
+              "disabled": true,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            }
+          ],
+          "txt": "3 | Médias Móveis: Tendência em Virada 1 | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-LIVE-DUP · cobertura 100% · direction long · ema_short 9 | NO-GO | Equivale ao favorito ativo 12 | + detalhes | 0,36"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Promover",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            }
+          ],
+          "txt": "4 | Médias Móveis: Tendência em Virada 1 | Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. | RS-B109ED2C80 · cobertura 100% · direction long · ema_short 8 | NO-GO | + detalhes | 0,31 | 30"
+        },
+        {
+          "name": "Médias Móveis: Tendência em Virada 1",
+          "meta": "",
+          "notes": [
+            "Amostra insuficiente"
+          ],
+          "actions": [
+            {
+              "tag": "BUTTON",
+              "text": "+ detalhes",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 67.03125,
+              "clipped": false
+            },
+            {
+              "tag": "BUTTON",
+              "text": "Excluir",
+              "disabled": false,
+              "minh": 44,
+              "h": 44,
+              "w": 128,
+              "clipped": false
+            }
+          ],
+          "txt": "— | Médias Móveis: Tendência em Virada 1 | RS-916-INS · cobertura N/A · listagem cortada | Amostra insuficiente | + detalhes | N/A | N/A | N/A"
+        }
+      ]
+    }
+  },
+  "live": {
+    "final_url": "https://dev.criptofarol.com.br/login",
+    "title": "frontend",
+    "h1": "Bem-vindo de volta",
+    "landmarks": {
+      "Descoberta de estratégias swing": {
+        "count": 0,
+        "visible": 0
+      },
+      "Preflight": {
+        "count": 0,
+        "visible": 0
+      },
+      "Rascunho de varredura": {
+        "count": 0,
+        "visible": 0
+      }
+    },
+    "has_login_copy": 1,
+    "password_inputs": 1
+  },
+  "console": {
+    "proto": [],
+    "live": [],
+    "proto_desktop": [],
+    "proto_mobile": []
+  },
+  "pageerror": {
+    "proto": [],
+    "live": [],
+    "proto_desktop": [],
+    "proto_mobile": []
+  }
+}

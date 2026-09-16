@@ -48,6 +48,10 @@ from app.services.walk_forward_revalidation import (
 )
 from app.services.oos_promotion_proof import promotion_payload, verify_oos_promotion_proof
 from app.services.favorite_uniqueness import lock_and_find_duplicate
+from app.services.discovery_favorite_metrics import (
+    flatten_discovery_grid_metrics,
+    overlay_snapshot_grid_metrics,
+)
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -110,7 +114,10 @@ def _favorite_response(
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
     if isinstance(payload.get("metrics"), dict):
-        payload["metrics"] = _safe_cached_metrics(payload["metrics"], str(row.timeframe))
+        payload["metrics"] = _safe_cached_metrics(
+            flatten_discovery_grid_metrics(payload["metrics"]),
+            str(row.timeframe),
+        )
     strategy_key = str(row.strategy_name)
     payload["strategy_description"] = (description_by_strategy or {}).get(
         strategy_key,
@@ -734,7 +741,7 @@ async def get_favorite_trades(
     favorite = _normalize_favorite_json_fields(favorite)
     metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     strategy_transparency = _favorite_transparency(db, favorite, metrics)
-    metrics = _safe_cached_metrics(metrics, str(favorite.timeframe))
+    metrics = _safe_cached_metrics(flatten_discovery_grid_metrics(metrics), str(favorite.timeframe))
     saved_trades = metrics.get("trades")
     saved_trade_count = _numeric_metric(metrics.get("total_trades"))
     history_cached = metrics.get("trades_history_cached") is True
@@ -845,6 +852,7 @@ async def get_favorite_trades(
             candles=analysis_candles,
             indicator_data=analysis_indicator_data,
         )
+    stored_metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     updated_metrics = {
         **metrics,
         **regenerated_metrics,
@@ -862,13 +870,14 @@ async def get_favorite_trades(
         updated_metrics["trades_previous_summary"] = _favorite_metric_summary(metrics)
         updated_metrics["trades_reconciled_summary"] = _favorite_metric_summary(regenerated_metrics)
         updated_metrics["trades_reconciled_at"] = datetime.now(timezone.utc).isoformat()
+    updated_metrics = overlay_snapshot_grid_metrics(updated_metrics, source=stored_metrics)
     favorite.metrics = updated_metrics
     db.commit()
 
     return FavoriteTradesResponse(
         favorite_id=favorite_id,
         trades=with_explanations(regenerated_trades, strategy_transparency),
-        metrics=updated_metrics,
+        metrics=flatten_discovery_grid_metrics(updated_metrics),
         metrics_match=True,
         metrics_deltas=metrics_deltas,
         regenerated=True,
@@ -935,7 +944,20 @@ def create_favorite(
             metrics = {**metrics, "oos_metrics": favorite.oos_metrics}
         if isinstance(verdict, dict):
             metrics = {**metrics, "oos_verdict": verdict}
-        payload["metrics"] = metrics
+
+        dedup_period_type = favorite.period_type
+        dedup_start_date = favorite.start_date
+        dedup_end_date = favorite.end_date
+        if has_oos_payload:
+            from app.services.favorite_operational_period import resolve_chosen_period
+
+            dedup_period_type, dedup_start_date, dedup_end_date = resolve_chosen_period(
+                period_type=favorite.period_type,
+                start_date=favorite.start_date,
+                end_date=favorite.end_date,
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+            )
 
         if lock_and_find_duplicate(
             db,
@@ -943,12 +965,35 @@ def create_favorite(
             strategy_name=favorite.strategy_name,
             symbol=favorite.symbol,
             timeframe=favorite.timeframe,
-            period_type=favorite.period_type,
-            start_date=favorite.start_date,
-            end_date=favorite.end_date,
+            period_type=dedup_period_type,
+            start_date=dedup_start_date,
+            end_date=dedup_end_date,
             parameters=favorite.parameters,
         ):
             raise HTTPException(status_code=409, detail="Estratégia já existe nos favoritos")
+
+        if has_oos_payload:
+            from app.services.favorite_operational_period import enrich_walk_forward_favorite_create
+
+            portrait = metrics.get("metrics_snapshot")
+            if not isinstance(portrait, dict):
+                portrait = metrics
+            ptype, op_start, op_end, metrics = enrich_walk_forward_favorite_create(
+                strategy_name=favorite.strategy_name,
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+                parameters=favorite.parameters if isinstance(favorite.parameters, dict) else {},
+                period_type=favorite.period_type,
+                start_date=favorite.start_date,
+                end_date=favorite.end_date,
+                metrics=metrics if isinstance(metrics, dict) else {},
+                portrait_metrics=portrait if isinstance(portrait, dict) else None,
+            )
+            payload["period_type"] = ptype
+            payload["start_date"] = op_start
+            payload["end_date"] = op_end
+
+        payload["metrics"] = metrics
 
         db_favorite = FavoriteStrategy(user_id=current_user_id, **payload)
         db.add(db_favorite)
@@ -1108,6 +1153,9 @@ def delete_favorite(
     )
     if not favorite:
         raise HTTPException(status_code=404, detail="Favorite not found")
+    from app.services.discovery_service import DiscoveryService
+
+    DiscoveryService().reclassify_discovery_results_for_deleted_favorite(favorite_id, db)
     db.delete(favorite)
     db.commit()
     return {"message": "Favorite deleted"}
