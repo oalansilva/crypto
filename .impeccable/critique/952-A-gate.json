@@ -1,0 +1,356 @@
+{
+  "console": {
+    "proto_desktop": [],
+    "proto_mobile": [],
+    "restore": [],
+    "live": []
+  },
+  "pageerror": {
+    "proto_desktop": [],
+    "proto_mobile": [],
+    "restore": [],
+    "live": []
+  },
+  "desktop_default": {
+    "url": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/",
+    "title": "Descoberta de estratégias swing",
+    "h1": "Descoberta de estratégias swing",
+    "lang": "pt-BR",
+    "landmarks": {
+      "Descoberta de estratégias swing": {
+        "count": 1,
+        "visible": 1
+      },
+      "Preflight": {
+        "count": 1,
+        "visible": 1
+      },
+      "Rascunho de varredura": {
+        "count": 1,
+        "visible": 1
+      }
+    },
+    "tabs": {
+      "Montar": {
+        "found": true,
+        "visible": true,
+        "aria_selected": "true",
+        "aria_pressed": null,
+        "disabled": false,
+        "text": "Montar"
+      },
+      "Acompanhando": {
+        "found": true,
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "disabled": true,
+        "text": "Acompanhando"
+      },
+      "Decidir": {
+        "found": true,
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "disabled": true,
+        "text": "Decidir"
+      }
+    },
+    "chips_templates": 0,
+    "chips_symbols": 0,
+    "tpl_checked": 0,
+    "sym_checked": 0,
+    "tf4h_checked": false,
+    "tf1d_checked": true,
+    "dir_long_checked": true,
+    "period": "all",
+    "period_label": "Todo o histórico",
+    "ranking": "calmar_ratio",
+    "ranking_label": "Calmar (recomendado)",
+    "falta_fazer_vis": true,
+    "impediments_text": "Falta fazer:\nEscolha ao menos 1 template.\nEscolha ao menos 1 símbolo.",
+    "impediments_hidden": false,
+    "start_disabled": true,
+    "start_text": "Iniciar varredura — —, —",
+    "a11y_cta": {
+      "h": 44,
+      "w": 288,
+      "minh": 44,
+      "disabled": true,
+      "text": "Iniciar varredura — —, —"
+    },
+    "tf_sizes": [
+      {
+        "id": "tf-4h",
+        "checked": false,
+        "h": 44,
+        "w": 166.5,
+        "minh": 44,
+        "bg": "rgb(24, 26, 32)",
+        "color": "rgb(146, 154, 165)"
+      },
+      {
+        "id": "tf-1d",
+        "checked": true,
+        "h": 44,
+        "w": 166.5,
+        "minh": 44,
+        "bg": "rgba(252, 213, 53, 0.1)",
+        "color": "rgb(252, 213, 53)"
+      }
+    ],
+    "legends": [
+      "Timeframes swing",
+      "Direção"
+    ],
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Descoberta de estratégias swing"
+      },
+      {
+        "tag": "H2",
+        "text": "Rascunho de varredura"
+      },
+      {
+        "tag": "H2",
+        "text": "Preflight"
+      }
+    ],
+    "antes_depois_vis_nodes": 0,
+    "antes_btn": 0,
+    "available_templates_vis": 0,
+    "favorites_vis": 1,
+    "table_vis": 0,
+    "aside_w": 224,
+    "tablist": 1,
+    "tabpanels_vis": 1
+  },
+  "desktop_empty_start": {
+    "click": false,
+    "nav": false,
+    "dialog": false,
+    "click_err": "TimeoutError",
+    "disabled_before": true,
+    "url_same": true,
+    "still_disabled": true
+  },
+  "desktop_after_4h": {
+    "tf4h_checked": true,
+    "tf1d_checked": true,
+    "start_disabled": true,
+    "falta": true
+  },
+  "desktop_after_select": {
+    "tpl_checked": 1,
+    "sym_checked": 1,
+    "tf4h_checked": true,
+    "tf1d_checked": true,
+    "falta_fazer_vis": false,
+    "impediments_hidden": true,
+    "start_disabled": false,
+    "chips_templates": 1,
+    "chips_symbols": 1,
+    "dir_long_checked": true,
+    "period_label": "Todo o histórico",
+    "ranking_label": "Calmar (recomendado)"
+  },
+  "desktop_after_new_draft": {
+    "tpl_checked": 0,
+    "sym_checked": 0,
+    "tf4h_checked": false,
+    "tf1d_checked": true,
+    "falta_fazer_vis": true,
+    "start_disabled": true,
+    "chips_templates": 0,
+    "chips_symbols": 0,
+    "dir_long_checked": true,
+    "period_label": "Todo o histórico",
+    "ranking_label": "Calmar (recomendado)"
+  },
+  "mobile_default": {
+    "url": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/",
+    "title": "Descoberta de estratégias swing",
+    "h1": "Descoberta de estratégias swing",
+    "lang": "pt-BR",
+    "landmarks": {
+      "Descoberta de estratégias swing": {
+        "count": 1,
+        "visible": 1
+      },
+      "Preflight": {
+        "count": 1,
+        "visible": 1
+      },
+      "Rascunho de varredura": {
+        "count": 1,
+        "visible": 1
+      }
+    },
+    "tabs": {
+      "Montar": {
+        "found": true,
+        "visible": true,
+        "aria_selected": "true",
+        "aria_pressed": null,
+        "disabled": false,
+        "text": "Montar"
+      },
+      "Acompanhando": {
+        "found": true,
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "disabled": true,
+        "text": "Acompanhando"
+      },
+      "Decidir": {
+        "found": true,
+        "visible": true,
+        "aria_selected": "false",
+        "aria_pressed": null,
+        "disabled": true,
+        "text": "Decidir"
+      }
+    },
+    "chips_templates": 0,
+    "chips_symbols": 0,
+    "tpl_checked": 0,
+    "sym_checked": 0,
+    "tf4h_checked": false,
+    "tf1d_checked": true,
+    "dir_long_checked": true,
+    "period": "all",
+    "period_label": "Todo o histórico",
+    "ranking": "calmar_ratio",
+    "ranking_label": "Calmar (recomendado)",
+    "falta_fazer_vis": true,
+    "impediments_text": "Falta fazer:\nEscolha ao menos 1 template.\nEscolha ao menos 1 símbolo.",
+    "impediments_hidden": false,
+    "start_disabled": true,
+    "start_text": "Iniciar varredura — —, —",
+    "a11y_cta": {
+      "h": 44,
+      "w": 316,
+      "minh": 44,
+      "disabled": true,
+      "text": "Iniciar varredura — —, —"
+    },
+    "tf_sizes": [
+      {
+        "id": "tf-4h",
+        "checked": false,
+        "h": 44,
+        "w": 139.5,
+        "minh": 44,
+        "bg": "rgb(24, 26, 32)",
+        "color": "rgb(146, 154, 165)"
+      },
+      {
+        "id": "tf-1d",
+        "checked": true,
+        "h": 44,
+        "w": 139.5,
+        "minh": 44,
+        "bg": "rgba(252, 213, 53, 0.1)",
+        "color": "rgb(252, 213, 53)"
+      }
+    ],
+    "legends": [
+      "Timeframes swing",
+      "Direção"
+    ],
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Descoberta de estratégias swing"
+      },
+      {
+        "tag": "H2",
+        "text": "Rascunho de varredura"
+      },
+      {
+        "tag": "H2",
+        "text": "Preflight"
+      }
+    ],
+    "antes_depois_vis_nodes": 0,
+    "antes_btn": 0,
+    "available_templates_vis": 0,
+    "favorites_vis": 0,
+    "table_vis": 0,
+    "aside_w": 0,
+    "tablist": 1,
+    "tabpanels_vis": 1
+  },
+  "mobile_after_select": {
+    "tpl_checked": 1,
+    "sym_checked": 1,
+    "start_disabled": false,
+    "falta_fazer_vis": false,
+    "chips_templates": 1,
+    "chips_symbols": 1
+  },
+  "mobile_after_new_draft": {
+    "tpl_checked": 0,
+    "sym_checked": 0,
+    "tf4h_checked": false,
+    "tf1d_checked": true,
+    "start_disabled": true,
+    "falta_fazer_vis": true,
+    "chips_templates": 0,
+    "chips_symbols": 0
+  },
+  "restore": {
+    "url": "https://dev.criptofarol.com.br/prototypes/card-952-discovery-rascunho-defaults/restore.html",
+    "tpl_checked": 3,
+    "sym_checked": 4,
+    "chips_templates": 3,
+    "chips_symbols": 3,
+    "tf4h_checked": true,
+    "tf1d_checked": true,
+    "falta_fazer_vis": false,
+    "impediments_hidden": true,
+    "start_disabled": false,
+    "dir_long_checked": true,
+    "period_label": "Todo o histórico",
+    "ranking_label": "Calmar (recomendado)",
+    "landmarks": {
+      "Descoberta de estratégias swing": {
+        "count": 1,
+        "visible": 1
+      },
+      "Preflight": {
+        "count": 1,
+        "visible": 1
+      },
+      "Rascunho de varredura": {
+        "count": 1,
+        "visible": 1
+      }
+    },
+    "canonical_note": "NOT canonical URL"
+  },
+  "live": {
+    "requested": "https://dev.criptofarol.com.br/combo/discovery",
+    "final_url": "https://dev.criptofarol.com.br/login",
+    "title": "frontend",
+    "h1": "Bem-vindo de volta",
+    "landmarks": {
+      "Descoberta de estratégias swing": {
+        "count": 0,
+        "visible": 0
+      },
+      "Preflight": {
+        "count": 0,
+        "visible": 0
+      },
+      "Rascunho de varredura": {
+        "count": 0,
+        "visible": 0
+      }
+    },
+    "has_login_copy": 1,
+    "password_inputs": 1
+  }
+}
