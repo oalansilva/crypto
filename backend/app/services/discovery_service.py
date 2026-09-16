@@ -2052,6 +2052,22 @@ class DiscoveryService:
                 if metrics.get("strategy_identity_key") == result.strategy_identity_key:
                     duplicate = fav
                     break
+        from app.models_discovery import DiscoverySweep
+        from app.services.favorite_operational_period import (
+            enrich_walk_forward_favorite_create,
+            resolve_chosen_period,
+        )
+
+        sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == result.sweep_id).first()
+        sweep_snapshot = sweep.snapshot if sweep and isinstance(sweep.snapshot, dict) else {}
+        op_period_type, op_start, op_end = resolve_chosen_period(
+            period_type=sweep_snapshot.get("period_type"),
+            start_date=sweep_snapshot.get("start_date"),
+            end_date=sweep_snapshot.get("end_date"),
+            symbol=result.symbol,
+            timeframe=result.timeframe,
+        )
+
         if duplicate is None:
             duplicate = lock_and_find_duplicate(
                 db,
@@ -2059,9 +2075,9 @@ class DiscoveryService:
                 strategy_name=result.template_id,
                 symbol=result.symbol,
                 timeframe=result.timeframe,
-                period_type="all",
-                start_date=result.start_at.date().isoformat(),
-                end_date=result.end_at.date().isoformat(),
+                period_type=op_period_type,
+                start_date=op_start,
+                end_date=op_end,
                 parameters=result.parameters,
             )
         if duplicate is not None:
@@ -2086,6 +2102,18 @@ class DiscoveryService:
                 409,
             )
 
+        _, op_start, op_end, operational_metrics = enrich_walk_forward_favorite_create(
+            strategy_name=result.template_id,
+            symbol=result.symbol,
+            timeframe=result.timeframe,
+            parameters=result.parameters if isinstance(result.parameters, dict) else {},
+            period_type=op_period_type,
+            start_date=op_start,
+            end_date=op_end,
+            metrics={},
+            portrait_metrics=result.metrics if isinstance(result.metrics, dict) else {},
+        )
+
         favorite = FavoriteStrategy(
             user_id=actor,
             name=f"{result.template_id} · {result.symbol} · {result.timeframe} · {result.direction}",
@@ -2095,10 +2123,14 @@ class DiscoveryService:
             parameters=result.parameters,
             tier=3,
             notes=f"descoberta via sweep {result.sweep_id} (result {result.id})",
-            start_date=result.start_at.date().isoformat(),
-            end_date=result.end_at.date().isoformat(),
-            period_type="all",
-            metrics=build_promoted_favorite_metrics(result, promoted_at=_utc_iso(_utcnow())),
+            start_date=op_start,
+            end_date=op_end,
+            period_type=op_period_type or "all",
+            metrics=build_promoted_favorite_metrics(
+                result,
+                promoted_at=_utc_iso(_utcnow()),
+                operational_metrics=operational_metrics,
+            ),
         )
         db.add(favorite)
         db.flush()

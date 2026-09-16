@@ -944,7 +944,20 @@ def create_favorite(
             metrics = {**metrics, "oos_metrics": favorite.oos_metrics}
         if isinstance(verdict, dict):
             metrics = {**metrics, "oos_verdict": verdict}
-        payload["metrics"] = metrics
+
+        dedup_period_type = favorite.period_type
+        dedup_start_date = favorite.start_date
+        dedup_end_date = favorite.end_date
+        if has_oos_payload:
+            from app.services.favorite_operational_period import resolve_chosen_period
+
+            dedup_period_type, dedup_start_date, dedup_end_date = resolve_chosen_period(
+                period_type=favorite.period_type,
+                start_date=favorite.start_date,
+                end_date=favorite.end_date,
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+            )
 
         if lock_and_find_duplicate(
             db,
@@ -952,12 +965,35 @@ def create_favorite(
             strategy_name=favorite.strategy_name,
             symbol=favorite.symbol,
             timeframe=favorite.timeframe,
-            period_type=favorite.period_type,
-            start_date=favorite.start_date,
-            end_date=favorite.end_date,
+            period_type=dedup_period_type,
+            start_date=dedup_start_date,
+            end_date=dedup_end_date,
             parameters=favorite.parameters,
         ):
             raise HTTPException(status_code=409, detail="Estratégia já existe nos favoritos")
+
+        if has_oos_payload:
+            from app.services.favorite_operational_period import enrich_walk_forward_favorite_create
+
+            portrait = metrics.get("metrics_snapshot")
+            if not isinstance(portrait, dict):
+                portrait = metrics
+            ptype, op_start, op_end, metrics = enrich_walk_forward_favorite_create(
+                strategy_name=favorite.strategy_name,
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+                parameters=favorite.parameters if isinstance(favorite.parameters, dict) else {},
+                period_type=favorite.period_type,
+                start_date=favorite.start_date,
+                end_date=favorite.end_date,
+                metrics=metrics if isinstance(metrics, dict) else {},
+                portrait_metrics=portrait if isinstance(portrait, dict) else None,
+            )
+            payload["period_type"] = ptype
+            payload["start_date"] = op_start
+            payload["end_date"] = op_end
+
+        payload["metrics"] = metrics
 
         db_favorite = FavoriteStrategy(user_id=current_user_id, **payload)
         db.add(db_favorite)

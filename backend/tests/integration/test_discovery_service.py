@@ -1563,7 +1563,7 @@ class TestPromotion:
         assert retry["favorite_id"] == favorite_id
         db.close()
 
-    def test_promote_copies_snapshot_onto_grid_keys(self, engine_factory):
+    def test_promote_copies_snapshot_onto_grid_keys(self, engine_factory, monkeypatch):
         engine = engine_factory()
         db = _session_factory(engine)()
         service = DiscoveryService()
@@ -1577,6 +1577,34 @@ class TestPromotion:
             "total_trades": 30,
             "profit_factor": 1.42,
         }
+
+        def _fake_enrich(**_kwargs):
+            return (
+                "all",
+                "2017-08-17",
+                "2026-09-15",
+                {"total_trades": 71, "sharpe_ratio": 0.38, "total_return_pct": 210.4},
+            )
+
+        monkeypatch.setattr(
+            "app.services.favorite_operational_period.enrich_walk_forward_favorite_create",
+            _fake_enrich,
+        )
+        from app.models_discovery import DiscoverySweep
+
+        db.add(
+            DiscoverySweep(
+                id="sw-promo-193",
+                actor="admin-1",
+                state="completed",
+                idempotency_key="idem-193",
+                payload_hash="hash",
+                snapshot_token="tok",
+                snapshot_hash="sh",
+                snapshot={"period_type": "all"},
+                total=1,
+            )
+        )
         result = DiscoveryResult(
             id="RS-B109ED2C80",
             sweep_id="sw-promo-193",
@@ -1623,12 +1651,12 @@ class TestPromotion:
         assert metrics["result_id"] == "RS-B109ED2C80"
         assert metrics["strategy_identity_key"] == "id-promo-193"
         assert metrics["metrics_snapshot"]["sharpe_ratio"] == 0.31
-        assert metrics["sharpe_ratio"] == 0.31
-        assert metrics["total_trades"] == 30
-        assert metrics["win_rate"] == 0.467
-        assert metrics["total_return_pct"] == 16951
-        assert metrics["max_drawdown"] == 0.165
-        assert metrics["profit_factor"] == 1.42
+        assert metrics["operational_period_after_walk_forward"] is True
+        assert metrics["sharpe_ratio"] == 0.38
+        assert metrics["total_trades"] == 71
+        assert favorite.start_date == "2017-08-17"
+        assert favorite.end_date == "2026-09-15"
+        assert favorite.end_date != result.end_at.date().isoformat()
         db.close()
 
     def test_promote_rejects_other_tier(self, engine_factory):

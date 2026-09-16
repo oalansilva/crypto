@@ -107,8 +107,15 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                 strategy_name: backtestResult.template_name,
                 parameters: backtestResult.parameters,
                 metrics: {
-                    ...(backtestResult.promotion_metrics ?? backtestResult.metrics),
-                    trades: backtestResult.promotion_metrics?.trades ?? backtestResult.trades
+                    ...(backtestResult.oos_verdict
+                        ? {
+                            ...backtestResult.metrics,
+                            metrics_snapshot: backtestResult.promotion_metrics ?? backtestResult.metrics,
+                        }
+                        : (backtestResult.promotion_metrics ?? backtestResult.metrics)),
+                    trades: backtestResult.oos_verdict
+                        ? (backtestResult.trades ?? backtestResult.promotion_metrics?.trades)
+                        : (backtestResult.promotion_metrics?.trades ?? backtestResult.trades),
                 },
                 notes: notes.trim() || undefined,
                 oos_verdict: backtestResult.oos_verdict ?? null,
