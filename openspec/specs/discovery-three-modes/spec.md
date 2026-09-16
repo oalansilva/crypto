@@ -28,13 +28,13 @@ O preflight SHALL mostrar `N combinações · ~T estimado · janela/período` em
 
 ### Requirement: Decidable leaderboard
 
-O leaderboard SHALL ter 1 controle de ordenação + 6 colunas de métrica visíveis por padrão (Calmar, Max DD, Trades/cobertura, Sharpe, Win%, CAGR), restante (B&H, Δ B&H, PF, mercado, janela) em expansão por linha; página SHALL ser 10–15 por página; filtros SHALL NOT re-perguntar o rascunho; evidência (janela, candles, fees) SHALL permanecer visível; rank global SHALL NOT renumerar sob filtro/paginação. Ordenação SHALL continuar Calmar (default) e CAGR vs B&H; Sharpe, Win% e CAGR SHALL NOT ser chaves de ordenação neste change.
+O leaderboard SHALL ter 1 controle de ordenação + 7 colunas de métrica visíveis por padrão (Sharpe, Trades, Win%, Return, Max DD, Calmar, CAGR anualizado), restante (B&H, Δ B&H, PF, mercado, janela) em expansão por linha; página SHALL ser 10–15 por página; filtros SHALL NOT re-perguntar o rascunho; evidência (janela, candles, fees) SHALL permanecer visível; rank global SHALL NOT renumerar sob filtro/paginação. Ordenação SHALL continuar Calmar (default) e CAGR vs B&H; Sharpe, Win%, Return e CAGR anualizado SHALL NOT ser chaves de ordenação neste change.
 
 #### Scenario: Compare candidates
 
 - **WHEN** comparo candidatos no leaderboard
-- **THEN** vejo 1 ordenação + 6 colunas de métrica por padrão, resto em expansão, paginando 10–15 por página, com rank global estável
-- **AND** Sharpe, Win% e CAGR estão nas colunas, não só atrás de «+ detalhes»
+- **THEN** vejo 1 ordenação + 7 colunas de métrica por padrão na ordem Sharpe → Trades → Win% → Return → Max DD → Calmar → CAGR anualizado, resto em expansão, paginando 10–15 por página, com rank global estável
+- **AND** Return e CAGR anualizado estão nas colunas, não só atrás de «+ detalhes»
 
 ### Requirement: Full-history default period (ajuste Alan 2026-09-07)
 
@@ -107,12 +107,12 @@ The Acompanhar progress line SHALL render `N processadas = X sucesso + Y falha +
 
 ### Requirement: Decidir row for amostra insuficiente
 
-The Decidir leaderboard SHALL show `insufficient_sample` rows in the list: rank displayed as `—`, visible seal `Amostra insuficiente` (same words as the progress bag; not `Baixa amostra`), Calmar / Max DD / Trades/cobertura / Sharpe / Win% / CAGR as `N/A`, and no Promover CTA. The row SHALL NOT appear in Acompanhar top-5 partials. Existing `Baixa amostra` rows SHALL keep their current promote-disabled control and MAY keep finite metric values.
+The Decidir leaderboard SHALL show `insufficient_sample` rows in the list: rank displayed as `—`, visible seal `Amostra insuficiente` (same words as the progress bag; not `Baixa amostra`), Sharpe / Trades / Win% / Return / Max DD / Calmar / CAGR anualizado as `N/A`, and no Promover CTA. The row SHALL NOT appear in Acompanhar top-5 partials. Existing `Baixa amostra` rows SHALL keep their current promote-disabled control and MAY keep finite metric values.
 
 #### Scenario: Operator reads which pairs lacked history
 
 - **WHEN** the operator opens Decidir after a sweep that cut short listings
-- **THEN** each cut combination has a list row with seal `Amostra insuficiente`, rank `—`, and N/A metrics including Sharpe, Win%, and CAGR
+- **THEN** each cut combination has a list row with seal `Amostra insuficiente`, rank `—`, and N/A metrics including Sharpe, Trades, Win%, Return, Max DD, Calmar, and CAGR anualizado
 - **AND** there is no Promover button on that row
 - **AND** an eligible neighbor still shows Promover
 
@@ -143,13 +143,13 @@ When a Discovery result has a persisted walk-forward verdict (`oos_verdict.statu
 
 ### Requirement: Acompanhar top-5 shows the same six metric columns
 
-Acompanhar parciais (top-5) SHALL show the same six metric columns as Decidir, visible without expanding a row: Calmar, Max DD, Trades/cobertura, Sharpe, Win%, and CAGR. CAGR SHALL be the scan's annualized return, not Favorites accumulated Return. Acompanhar SHALL NOT add a «+ detalhes» control in this change. Montar SHALL keep Preflight and Rascunho without a candidate grid and without this card's column delta.
+Acompanhar parciais (top-5) SHALL show the same metric columns as Decidir, visible without expanding a row, in this order: Sharpe, Trades, Win%, Return, Max DD, Calmar, CAGR anualizado. Return SHALL be the scan window compound return, not CAGR anualizado and not Favorites' stored Return. Acompanhar SHALL NOT add a «+ detalhes» control in this change. Montar SHALL keep Preflight and Rascunho without a candidate grid and without this card's column delta.
 
-#### Scenario: Partials show six columns
+#### Scenario: Partials show the shared order
 
 - **GIVEN** the operator is on Acompanhar with locked partials
 - **WHEN** they look at the top-5 without expanding a row
-- **THEN** each row shows Calmar, Max DD, Trades/cobertura, Sharpe, Win%, and CAGR in columns
+- **THEN** each row shows Sharpe, Trades, Win%, Return, Max DD, Calmar, and CAGR anualizado in columns
 - **AND** the set of metric columns matches Decidir
 
 #### Scenario: Montar has no candidate grid delta
@@ -185,4 +185,58 @@ Low-sample, duplicate, and already-promoted rows SHALL use the same visible bloc
 - **WHEN** they edit the draft or read Preflight
 - **THEN** rascunho and preflight are unchanged
 - **AND** there is no candidate action column in Montar
+
+### Requirement: New draft Time Frames default to 1 day only
+
+A new Discovery draft in modo Montar (first opening **or** «Novo rascunho») SHALL mark Time Frames **1 dia** and SHALL leave **4 horas** unmarked. The operator MAY still mark 4 horas afterwards. Direction, period, and ranking SHALL remain as they are today. Start SHALL remain blocked while Templates or Symbols are empty; the existing «Falta fazer» copy SHALL name the missing axes and SHALL NOT start an empty sweep.
+
+#### Scenario: First opening marks only 1 day
+
+- **WHEN** the administrator opens `/combo/discovery` on a new draft
+- **THEN** Time Frames has **1 dia** marked and **4 horas** unmarked
+- **AND** «Falta fazer» is visible because Templates and Symbols are empty
+- **AND** start does not create a sweep
+
+#### Scenario: Novo rascunho applies the same Time Frames default
+
+- **WHEN** the administrator activates «Novo rascunho»
+- **THEN** Time Frames has only **1 dia** marked
+- **AND** **4 horas** is unmarked and remains markable
+
+### Requirement: Restore does not overlay new-draft defaults
+
+Reopening a saved sweep SHALL restore the recorded template, symbol, and timeframe axes. The new-draft defaults SHALL NOT be applied on top of that restored selection. If the saved sweep has an empty timeframes axis, the client SHALL NOT fall back to 4 hours + 1 day.
+
+#### Scenario: Saved sweep keeps its marks
+
+- **WHEN** the administrator reopens a saved sweep whose snapshot has templates, symbols, and timeframes recorded
+- **THEN** the screen shows those recorded marks
+- **AND** it does not clear templates/symbols or force Time Frames to only 1 day
+
+#### Scenario: Saved sweep without timeframe does not invent 4h+1d
+
+- **WHEN** the administrator reopens a saved sweep whose snapshot has no timeframes
+- **THEN** Time Frames does not fall back to 4 hours + 1 day
+
+### Requirement: Acompanhar leaves when this run closes
+
+When the server marks **this** active Discovery sweep terminal, the Descoberta UI SHALL leave Acompanhar (no chip **EM CURSO**, no copy **Varredura em execução**, no counter frozen at 0 of N). Without a click and without a reload, the operator SHALL see the closed ranking in **Decidir of this sweep** (the candidate of this `sweep_id` visible). The UI SHALL NOT show a screen «Acompanhar já concluída». Opening Histórico / Decidir of a **different** sweep SHALL NOT count as this transition.
+
+Acompanhar SHALL remain available only while this run is still non-terminal (em curso or pausada), per the existing three-mode contract.
+
+#### Scenario: Server closes this one-combination run
+
+- **GIVEN** Acompanhar is following sweep `#00e9a4d28e114099bc18fc85d5500df3` and Histórico may display another run
+- **WHEN** the server marks that same sweep `completed` with its candidate persisted
+- **THEN** Acompanhar is no longer EM CURSO / «Varredura em execução» with 0 de 1
+- **AND** the operator sees Decidir of `#00e9a4d28e114099bc18fc85d5500df3` with that candidate
+- **AND** there is no screen «Acompanhar já concluída»
+- **AND** the operator did not click and did not reload
+
+#### Scenario: Other-run Histórico is not the fix
+
+- **GIVEN** Acompanhar is following the active sweep
+- **WHEN** Histórico is open on a different completed sweep
+- **THEN** that other ranking is not treated as the closed result of the active sweep
+- **AND** the copy that the active sweep is separado do Histórico exibido MAY remain while the active run still runs
 

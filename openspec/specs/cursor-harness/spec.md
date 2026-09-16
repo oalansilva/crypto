@@ -111,16 +111,23 @@ The agent SHALL NOT move a card to `Aprovação de Design` until a secret Gist (
 - **THEN** Design remains incomplete; the card MUST stay in `Design`
 
 ### Requirement: Card first; OpenSpec is the complete refinement for Dev
-The GitHub issue MAY originate the work. OpenSpec artifacts SHALL be a superset of every implementation-relevant decision on the issue. `/opsx:apply` SHALL use OpenSpec/Gist as the implementation contract, not the issue body as a parallel spec.
+The GitHub issue MAY originate the work. The grill SHALL remain the place the story is decided (who suffers, what entra/não entra). OpenSpec artifacts and the published Gist SHALL be a **superset** of the issue: history copied from the grilled body plus the *como* (mechanism, vocabulary, risks, tasks, observable harness behavior). `proposal.md` MUST contain `## Problema`, `## História`, and `## Entra` (or an observable equivalent) copied from the issue and MUST NOT invent a new story. `/opsx:apply` SHALL use OpenSpec/Gist as the implementation contract, not the issue body as a parallel spec. `G_design` SHALL continue to require the OpenSpec package files plus the clone gate plus a Gist comment on the card.
 
 #### Scenario: Issue richer than OpenSpec
-- **WHEN** the GitHub issue body contains design decisions missing from `design.md` / specs
-- **THEN** the agent SHALL merge those decisions into OpenSpec, republish the same Gist, and MUST NOT move to `Aprovação de Design` until the Gist is the superset
+- **WHEN** the GitHub issue body contains *como* / mechanism decisions missing from `design.md` / specs
+- **THEN** the agent SHALL merge those mechanism decisions into OpenSpec, republish the same Gist, and MUST NOT move to `Aprovação de Design` until the Gist is the superset
+- **AND** MUST copy Problema, História, and Entra into `proposal.md` from the grilled issue (MUST NOT invent)
 
 #### Scenario: Dev implements
 - **WHEN** `Status=Pronto para Dev` and `/opsx:apply` runs
 - **THEN** the agent SHALL follow `openspec/changes/<change>/` and the published Gist
 - **AND** SHALL NOT treat a richer issue body as authorization to skip a task missing from `tasks.md`
+
+#### Scenario: Gist is the superset
+- **WHEN** a Design package is published
+- **THEN** the Gist SHALL contain proposal, design, tasks, and specs
+- **AND** `proposal.md` SHALL contain `## Problema`, `## História`, and `## Entra` copied from the GitHub issue
+- **AND** a `proposal.md` without those headings SHALL fail the golden
 
 ### Requirement: Code Review happy path MUST use Composer execução model
 The versioned `diff-reviewer` and `code-reviewer` Tasks MUST use `composer-2.5` on both spawn paths (named `subagent_type` or `generalPurpose` with the agent-file body). They MUST NOT inherit the parent picker and MUST NOT use Grok or `composer-2.5-fast`. Cursor Bugbot (`/review-bugbot`) MUST NOT be part of the product or the Code Review happy path. `/review-security` MAY run when Alan explicitly asks; it MUST NOT replace the local reviewers as the gate. Review constraints SHALL live in the two agent files (and optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`. Agent-file YAML MAY pin `model: composer-2.5`; the law remains the Task parameter.
