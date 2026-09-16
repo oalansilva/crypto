@@ -255,6 +255,15 @@
       "evidence": "helper unit cases plus run_combination persistence with mocked optimizer, split_train_ratio=0.7, N/A sanitization, holdout ERROR enrich, IS coverage window"
     },
     {
+      "file": "backend/tests/unit/test_favorite_operational_period.py",
+      "protected_behavior": "favorite operational period resolution (all/2y/custom) and discovery flatten/overlay without clobbering portrait metrics",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "#949 resolve_chosen_period date bounds; flatten skips operational flag; apply_operational_period keeps metrics_snapshot portrait"
+    },
+    {
       "file": "backend/tests/unit/test_forgot_password_logging.py",
       "protected_behavior": "forgot-password INFO não contém e-mail, token nem reset link",
       "production_reachability": "POST /api/auth/forgot-password",

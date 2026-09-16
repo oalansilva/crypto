@@ -7,7 +7,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.services.combo_optimizer import ComboOptimizer
-from app.services.favorite_backtest_refresh_service import _fixed_optimization_ranges, _favorite_direction
+from app.services.favorite_backtest_refresh_service import (
+    _fixed_optimization_ranges,
+    _favorite_direction,
+)
 from app.services.market_data_providers import (
     get_market_data_provider,
     resolve_data_source_for_symbol,

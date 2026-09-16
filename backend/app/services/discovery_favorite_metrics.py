@@ -11,6 +11,7 @@ OPERATIONAL_PERIOD_FLAG = "operational_period_after_walk_forward"
 def uses_operational_period(metrics: Any) -> bool:
     return isinstance(metrics, dict) and metrics.get(OPERATIONAL_PERIOD_FLAG) is True
 
+
 GRID_METRIC_KEYS = (
     "sharpe_ratio",
     "win_rate",
