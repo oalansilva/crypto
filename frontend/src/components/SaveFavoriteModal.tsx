@@ -114,7 +114,7 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                         }
                         : (backtestResult.promotion_metrics ?? backtestResult.metrics)),
                     trades: backtestResult.oos_verdict
-                        ? (backtestResult.trades ?? backtestResult.metrics?.trades)
+                        ? (backtestResult.trades ?? backtestResult.promotion_metrics?.trades)
                         : (backtestResult.promotion_metrics?.trades ?? backtestResult.trades),
                 },
                 notes: notes.trim() || undefined,
