@@ -153,19 +153,16 @@ export function SelectionWorkbench({
   }, [items, query])
 
   const applySelection = useCallback(() => {
-    const tc = selectedCount(working.templates, templates)
-    const sc = selectedCount(working.symbols, symbols)
-    if (tc === 0) {
-      announce('Selecione ao menos um template.')
-      return
-    }
-    if (sc === 0) {
-      announce('Selecione ao menos um símbolo.')
+    const axisItems = activeAxis === 'templates' ? templates : symbols
+    if (selectedCount(working[activeAxis], axisItems) === 0) {
+      announce(
+        activeAxis === 'templates' ? 'Selecione ao menos um template.' : 'Selecione ao menos um símbolo.',
+      )
       return
     }
     onApply(copyState(working))
     onClose()
-  }, [working, templates, symbols, announce, onApply, onClose])
+  }, [working, templates, symbols, activeAxis, announce, onApply, onClose])
 
   const toggle = useCallback(
     (id: string) => {

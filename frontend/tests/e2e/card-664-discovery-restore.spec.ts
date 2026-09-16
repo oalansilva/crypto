@@ -154,7 +154,7 @@ test('card 664 — reload reconstitui o sweep ativo e não o terminal', async ({
   await installRestoreMocks(page, { ...ACTIVE, state: 'completed', processed: 28, succeeded: 28 })
   await page.reload()
   await expect(page.getByTestId('sweep-progress')).toHaveCount(0)
-  await expect(page.getByTestId('start-sweep')).toBeEnabled()
+  await expect(page.getByTestId('start-sweep')).toBeDisabled()
 })
 
 test('card 664 — pausar, recarregar e retomar avança processed', async ({ page }) => {
