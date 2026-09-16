@@ -29,7 +29,12 @@ import {
 } from './types';
 import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
-import { mergeStrategyTransparencySeries } from '@/lib/strategyTransparency';
+import {
+    alignStrategyTransparencyToLoadedCandles,
+    clipCandlesToTimestampWindow,
+    favoriteCandleWindowMs,
+    mergeStrategyTransparencySeries,
+} from '@/lib/strategyTransparency';
 import { SpotProtectStopPanel } from './SpotProtectStopPanel';
 
 interface ChartModalProps {
@@ -319,6 +324,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [analysisUsesSignalHistory, setAnalysisUsesSignalHistory] = React.useState(false);
     const [analysisMetrics, setAnalysisMetrics] = React.useState<StrategyTradeMetrics | null>(null);
     const [analysisStrategyTransparency, setAnalysisStrategyTransparency] = React.useState<Record<string, unknown> | null>(null);
+    const [analysisIndicatorData, setAnalysisIndicatorData] = React.useState<Record<string, number[]> | null>(null);
     const [analysisCandles, setAnalysisCandles] = React.useState<MarketCandle[]>([]);
     // The analysis request starts on mount; begin pending so viewport initialization
     // waits for the merged candle set instead of first applying to initialCandles.
@@ -371,13 +377,36 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         }
     }, [supportedTimeframes, timeframe, resolvedInitialTimeframe]);
 
+    const favoritePeriodCandles = React.useMemo(
+        () => (analysisCandles.length > 0 ? analysisCandles : initialCandles),
+        [analysisCandles, initialCandles],
+    );
+    const favoriteCandleWindow = React.useMemo(
+        () => favoriteCandleWindowMs(favoritePeriodCandles),
+        [favoritePeriodCandles],
+    );
     const mergedCandles = React.useMemo(
         () => timeframe === strategyTimeframe ? mergeAnalysisCandles(candles, analysisCandles) : candles,
         [analysisCandles, candles, strategyTimeframe, timeframe],
     );
-    const sortedCandles = React.useMemo(
-        () => [...mergedCandles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
-        [mergedCandles],
+    const sortedCandles = React.useMemo(() => {
+        const sorted = [...mergedCandles].sort(
+            (left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc),
+        );
+        if (timeframe !== strategyTimeframe) return sorted;
+        return clipCandlesToTimestampWindow(
+            sorted,
+            favoriteCandleWindow.startMs,
+            null,
+        );
+    }, [favoriteCandleWindow.endMs, favoriteCandleWindow.startMs, mergedCandles, strategyTimeframe, timeframe]);
+    const chartStrategyTransparency = React.useMemo(
+        () => alignStrategyTransparencyToLoadedCandles(
+            activeStrategyTransparency,
+            sortedCandles,
+            analysisIndicatorData,
+        ),
+        [activeStrategyTransparency, analysisIndicatorData, sortedCandles],
     );
     const latestCandle = sortedCandles[sortedCandles.length - 1] ?? null;
     const candleTimes = React.useMemo(
@@ -601,6 +630,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                         ? payload.strategy_transparency
                         : null,
                 );
+                setAnalysisIndicatorData(
+                    payload?.indicator_data && typeof payload.indicator_data === 'object'
+                        ? payload.indicator_data
+                        : null,
+                );
             } catch {
                 if (!disposed) {
                     setAnalysisTrades(signalHistoryTrades);
@@ -608,6 +642,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     setAnalysisCandles([]);
                     setAnalysisMetrics(null);
                     setAnalysisStrategyTransparency(null);
+                    setAnalysisIndicatorData(null);
                     setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponíveis.');
                 }
             } finally {
@@ -905,7 +940,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     timeframe={timeframe.toUpperCase()}
                     viewportResetKey={`${symbol}|${timeframe}`}
                     viewportReady={!loading && !analysisTradesLoading}
-                    strategyTransparency={activeStrategyTransparency}
+                    strategyTransparency={chartStrategyTransparency}
+                    favoritePeriodCandles={favoritePeriodCandles}
                     title={<span id="chart-modal-title">{symbol}</span>}
                     subtitle={`${strategyDisplayName} • ${timeframe.toUpperCase()} • ${sortedCandles.length} velas • candle ref ${formatTimestamp(opportunity.indicator_values_candle_time)}`}
                     headerMeta={(

@@ -15,6 +15,8 @@ import {
 import {
     buildIndicatorValueIndex,
     alignStrategyTransparencyToLoadedCandles,
+    favoriteCandleWindowMs,
+    isWholeMarketCandleLoad,
     latestAvailableSeriesTimestampMs,
     maPointsAheadOfLastCandle,
     normalizeStrategyTransparency,
@@ -106,6 +108,8 @@ interface StrategyChartSurfaceProps {
     viewportResetKey?: string
     /** When false, candle updates may render but the default viewport is deferred until ready. */
     viewportReady?: boolean
+    /** Operational favorite/backtest window used to detect whole-market candle loads (#949 / #953). */
+    favoritePeriodCandles?: StrategyChartCandle[]
 }
 
 const LOGICAL_RANGE_PADDING = 8
@@ -234,6 +238,7 @@ export function StrategyChartSurface({
     className = '',
     viewportResetKey,
     viewportReady = true,
+    favoritePeriodCandles,
 }: StrategyChartSurfaceProps) {
     const shellRef = React.useRef<HTMLDivElement>(null)
     const chartRef = React.useRef<HTMLDivElement>(null)
@@ -252,6 +257,7 @@ export function StrategyChartSurface({
     const userAdjustedViewportRef = React.useRef(false)
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null)
     const [viewportFromTimestamp, setViewportFromTimestamp] = React.useState('')
+    const [linesOnOld, setLinesOnOld] = React.useState('0')
     const [tooltip, setTooltip] = React.useState<StrategyChartSnapshot | null>(null)
     const resolvedViewportKey = viewportResetKey
         || [symbol, timeframe].filter(Boolean).join('|')
@@ -268,6 +274,14 @@ export function StrategyChartSurface({
     const maAheadCount = React.useMemo(
         () => maPointsAheadOfLastCandle(transparency, sortedCandles),
         [sortedCandles, transparency],
+    )
+    const favoriteWindow = React.useMemo(
+        () => favoriteCandleWindowMs(favoritePeriodCandles ?? []),
+        [favoritePeriodCandles],
+    )
+    const wholeMarketFlag = React.useMemo(
+        () => isWholeMarketCandleLoad(sortedCandles, favoritePeriodCandles ?? []),
+        [favoritePeriodCandles, sortedCandles],
     )
     const lastMaTimestamp = React.useMemo(() => {
         const latestMs = latestAvailableSeriesTimestampMs(transparency)
@@ -350,6 +364,7 @@ export function StrategyChartSurface({
             Math.max(0, Math.round(range.from)),
         )
         setViewportFromTimestamp(sortedCandles[fromIndex]?.timestamp_utc ?? '')
+        setLinesOnOld(Math.round(range.from) <= 0 ? '1' : '0')
     }, [sortedCandles])
 
     React.useEffect(() => {
@@ -364,13 +379,23 @@ export function StrategyChartSurface({
             ? Math.max(1, currentRange.to - currentRange.from)
             : Math.max(candlestickData.length, MIN_VISIBLE_BARS)
         const zoomMultiplier = direction === 'in' ? ZOOM_STEP_FACTOR : 1 / ZOOM_STEP_FACTOR
+        const maxSpan = candlestickData.length + LOGICAL_RANGE_PADDING * 2
         const nextSpan = direction === 'in'
             ? Math.max(MIN_VISIBLE_BARS, currentSpan * zoomMultiplier)
-            : Math.min(candlestickData.length + LOGICAL_RANGE_PADDING * 2, currentSpan * zoomMultiplier)
-        const center = currentRange
-            ? (currentRange.from + currentRange.to) / 2
-            : Math.max(candlestickData.length - 1, 0) / 2
-        const nextRange = clampLogicalRange(center, nextSpan, candlestickData.length)
+            : Math.min(maxSpan, currentSpan * zoomMultiplier)
+        const coversFullSeries = direction === 'out' && nextSpan >= candlestickData.length
+        const center = coversFullSeries
+            ? candlestickData.length / 2
+            : currentRange
+                ? (currentRange.from + currentRange.to) / 2
+                : Math.max(candlestickData.length - 1, 0) / 2
+        let nextRange = clampLogicalRange(center, nextSpan, candlestickData.length)
+        if (coversFullSeries) {
+            nextRange = {
+                from: 0,
+                to: candlestickData.length,
+            } as LogicalRange
+        }
         userAdjustedViewportRef.current = true
         chart.timeScale().setVisibleLogicalRange(nextRange)
         syncVisibleBars(nextRange)
@@ -749,6 +774,9 @@ export function StrategyChartSurface({
             data-last-candle-timestamp={sortedCandles.at(-1)?.timestamp_utc ?? ''}
             data-last-ma-timestamp={lastMaTimestamp}
             data-ma-ahead={String(maAheadCount)}
+            data-whole-market={wholeMarketFlag ? '1' : '0'}
+            data-lines-on-old={linesOnOld}
+            data-period-start={favoriteWindow.startMs == null ? '' : new Date(favoriteWindow.startMs).toISOString().slice(0, 10)}
         >
             <header className="border-b border-[#2b3139] bg-[#0b0e11] px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">

@@ -419,6 +419,86 @@ function computeEmaValues(closes: number[], period: number): Array<number | null
     return values
 }
 
+function indicatorDataColumnKeys(indicator: StrategyTransparencyIndicator): string[] {
+    const keys = new Set<string>()
+    if (indicator.key) keys.add(indicator.key)
+    const executionColumn = indicator.parameters?.execution_column
+    if (typeof executionColumn === 'string' && executionColumn.trim()) {
+        keys.add(executionColumn.trim())
+    }
+    const executionColumns = indicator.parameters?.execution_columns
+    if (Array.isArray(executionColumns)) {
+        executionColumns.forEach((item) => {
+            if (typeof item === 'string' && item.trim()) keys.add(item.trim())
+        })
+    }
+    return [...keys]
+}
+
+function seriesFromParallelValues(
+    rows: CandleCloseRow[],
+    values: unknown[],
+): StrategyIndicatorPoint[] {
+    if (values.length !== rows.length) return []
+    const points: StrategyIndicatorPoint[] = []
+    values.forEach((rawValue, index) => {
+        const numericValue = Number(rawValue)
+        if (!Number.isFinite(numericValue)) return
+        points.push({
+            timestamp_utc: rows[index].timestampUtc,
+            value: numericValue,
+        })
+    })
+    return points
+}
+
+/**
+ * Rebuild timestamped series from parallel indicator_data arrays when they match
+ * the loaded candle count (same contract as backend build_strategy_transparency_from_serialized).
+ */
+export function hydrateIndicatorSeriesFromIndicatorData(
+    value: StrategyTransparency | Record<string, unknown> | null | undefined,
+    candles: Array<{ timestamp_utc?: string; timestamp?: string; close?: number }>,
+    indicatorData: Record<string, unknown> | null | undefined,
+): StrategyTransparency | null {
+    const transparency = normalizeStrategyTransparency(value)
+    if (!transparency || !indicatorData || typeof indicatorData !== 'object' || candles.length === 0) {
+        return transparency
+    }
+
+    const rows = sortedCandleCloseRows(candles)
+    if (rows.length === 0) return transparency
+
+    const indicators = transparency.indicators.map((indicator) => {
+        const columns = indicatorDataColumnKeys(indicator)
+        let rebuilt: StrategyIndicatorPoint[] = []
+        for (const column of columns) {
+            const values = indicatorData[column]
+            if (!Array.isArray(values)) continue
+            const candidate = seriesFromParallelValues(rows, values)
+            if (candidate.length > rebuilt.length) rebuilt = candidate
+        }
+        if (rebuilt.length === 0) return indicator
+        const series = rebuilt.length >= indicator.series.length
+            ? rebuilt
+            : mergeIndicatorSeriesPoints(indicator.series, rebuilt)
+        return {
+            ...indicator,
+            series,
+            availability: normalizeAvailability('available', series.length > 0),
+            unavailable_reason: series.length > 0 ? '' : indicator.unavailable_reason,
+        }
+    })
+
+    return {
+        ...transparency,
+        indicators,
+        status: indicators.some((item) => item.availability === 'available' && item.series.length > 0)
+            ? 'available'
+            : transparency.status,
+    }
+}
+
 function movingAveragePointsFromCandles(
     indicator: StrategyTransparencyIndicator,
     rows: CandleCloseRow[],
@@ -458,27 +538,18 @@ export function extendMovingAverageSeriesToCandles(
     const rows = sortedCandleCloseRows(candles)
     if (rows.length === 0) return transparency
 
-    const lastCandleMs = rows[rows.length - 1].timestampMs
     const indicators = transparency.indicators.map((indicator) => {
         const type = indicator.type.toLowerCase()
         if (!['sma', 'ema'].includes(type) || indicator.panel !== 'price') return indicator
 
-        const latestMs = indicator.series.length > 0
-            ? Date.parse(indicator.series[indicator.series.length - 1].timestamp_utc)
-            : null
-        if (latestMs != null && Number.isFinite(latestMs) && latestMs >= lastCandleMs) {
-            return indicator
-        }
-
         const recomputed = movingAveragePointsFromCandles(indicator, rows)
         if (recomputed.length === 0) return indicator
 
-        const series = mergeIndicatorSeriesPoints(indicator.series, recomputed)
         return {
             ...indicator,
-            series,
-            availability: normalizeAvailability('available', series.length > 0),
-            unavailable_reason: series.length > 0 ? '' : indicator.unavailable_reason,
+            series: recomputed,
+            availability: normalizeAvailability('available', true),
+            unavailable_reason: '',
         }
     })
 
@@ -495,11 +566,56 @@ export function extendMovingAverageSeriesToCandles(
 export function alignStrategyTransparencyToLoadedCandles(
     value: StrategyTransparency | Record<string, unknown> | null | undefined,
     candles: Array<{ timestamp_utc?: string; timestamp?: string; close?: number }>,
+    indicatorData?: Record<string, unknown> | null,
 ): StrategyTransparency | null {
-    return clipStrategyTransparencyToLoadedCandles(
-        extendMovingAverageSeriesToCandles(value, candles),
+    const withMovingAverages = extendMovingAverageSeriesToCandles(value, candles)
+    const withParallelSeries = hydrateIndicatorSeriesFromIndicatorData(
+        withMovingAverages,
         candles,
+        indicatorData,
     )
+    return clipStrategyTransparencyToLoadedCandles(withParallelSeries, candles)
+}
+
+export function clipCandlesToTimestampWindow<T extends { timestamp_utc?: string; timestamp?: string }>(
+    candles: T[],
+    startMs: number | null,
+    endMs: number | null,
+): T[] {
+    if (startMs == null && endMs == null) return candles
+    const clipped = candles.filter((candle) => {
+        const ms = Date.parse(String(candle.timestamp_utc ?? candle.timestamp ?? ''))
+        if (!Number.isFinite(ms)) return false
+        if (startMs != null && ms < startMs) return false
+        if (endMs != null && ms > endMs) return false
+        return true
+    })
+    return clipped.length > 0 ? clipped : candles
+}
+
+export function favoriteCandleWindowMs(
+    favoriteCandles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+): { startMs: number | null; endMs: number | null } {
+    if (!favoriteCandles.length) return { startMs: null, endMs: null }
+    let startMs: number | null = null
+    let endMs: number | null = null
+    for (const candle of favoriteCandles) {
+        const ms = Date.parse(String(candle.timestamp_utc ?? candle.timestamp ?? ''))
+        if (!Number.isFinite(ms)) continue
+        startMs = startMs == null ? ms : Math.min(startMs, ms)
+        endMs = endMs == null ? ms : Math.max(endMs, ms)
+    }
+    return { startMs, endMs }
+}
+
+export function isWholeMarketCandleLoad(
+    loadedCandles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+    favoriteCandles: Array<{ timestamp_utc?: string; timestamp?: string }>,
+): boolean {
+    const window = favoriteCandleWindowMs(favoriteCandles)
+    if (window.startMs == null || loadedCandles.length === 0) return false
+    const firstMs = Date.parse(String(loadedCandles[0].timestamp_utc ?? loadedCandles[0].timestamp ?? ''))
+    return Number.isFinite(firstMs) && firstMs < window.startMs
 }
 
 export function lastLoadedCandleTimestampMs(
