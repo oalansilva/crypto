@@ -946,7 +946,6 @@ export function DiscoveryPage() {
     pollInFlightRef.current = true
     try {
       const res = await authFetch(`${API_BASE_URL}/combos/discovery/sweeps/${sweepId}`)
-      if (rev !== pollRevRef.current) return
       if (activeSweepRef.current?.sweep_id !== sweepId) return
       if (!res.ok) {
         if (res.status === 401) {
@@ -961,15 +960,19 @@ export function DiscoveryPage() {
         return
       }
       const data: Sweep = await res.json()
-      if (rev !== pollRevRef.current) return
       if (activeSweepRef.current?.sweep_id !== sweepId) return
+      const terminal = TERMINAL.has(data.state)
+      // Card 954: payload terminal desta sweep_id não é descartado por poll em voo.
+      if (!terminal && rev !== pollRevRef.current) return
       const prevApplied = appliedUpdatedAtRef.current[sweepId]
-      if (prevApplied && data.updated_at && data.updated_at < prevApplied) return
+      if (!terminal && prevApplied && data.updated_at && data.updated_at < prevApplied) return
       if (data.updated_at) appliedUpdatedAtRef.current[sweepId] = data.updated_at
-      if (TERMINAL.has(data.state)) {
+      if (terminal) {
         activeSweepRef.current = data
         setActiveSweep(data)
+        viewOriginRef.current = 'auto'
         setViewSweep(data)
+        setMode('decidir')
         setDraftFrozen(false)
         rotateDraftKey()
         setFSymbol('all')
@@ -978,16 +981,20 @@ export function DiscoveryPage() {
         setPage(1)
         await loadLeaderboard(data.sweep_id, metric, 'all', 'all', 'all', 1, true)
         void loadHistory()
+        window.setTimeout(() => leaderboardTitleRef.current?.focus(), 0)
         return
       }
+      if (activeSweepRef.current && TERMINAL.has(activeSweepRef.current.state)) return
       activeSweepRef.current = data
       setActiveSweep(data)
+      // Card 954: mesmo intervalo do progresso relê parciais top-5 desta sweep_id.
+      void loadPartials(sweepId, partialsMetricRef.current)
     } catch {
       /* poll continua */
     } finally {
       if (rev === pollRevRef.current) pollInFlightRef.current = false
     }
-  }, [metric, loadLeaderboard, loadHistory, rotateDraftKey])
+  }, [metric, loadLeaderboard, loadHistory, rotateDraftKey, loadPartials])
 
   useEffect(() => {
     if (!activeSweep || TERMINAL.has(activeSweep.state) || sessionExpired) {
