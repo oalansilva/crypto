@@ -12,6 +12,8 @@ import { buildComboResultsChartMarkers } from '@/lib/tradeMarkers'
 import { type MonitorSyncStatus } from '@/lib/signalHistory'
 import {
     alignStrategyTransparencyToLoadedCandles,
+    clipCandlesToTimestampWindow,
+    favoriteCandleWindowMs,
     normalizeStrategyTransparency,
     type StrategyTransparency,
 } from '@/lib/strategyTransparency'
@@ -222,6 +224,11 @@ export function ComboResultsPage() {
     }
 
     const [chartCandles, setChartCandles] = useState(result?.candles ?? [])
+    const favoritePeriodCandles = useMemo(() => result?.candles ?? [], [result?.candles])
+    const favoriteCandleWindow = useMemo(
+        () => favoriteCandleWindowMs(favoritePeriodCandles),
+        [favoritePeriodCandles],
+    )
 
     useEffect(() => {
         if (!result?.symbol || !result?.timeframe) {
@@ -266,8 +273,13 @@ export function ComboResultsPage() {
                 const marketCandles = Array.isArray(payload?.candles) ? payload.candles : []
                 if (marketCandles.length === 0) return
                 const merged = mergeCandlesByTimestamp(marketCandles, result.candles)
-                if (!disposed && merged.length > 0) {
-                    setChartCandles(merged)
+                const clipped = clipCandlesToTimestampWindow(
+                    merged,
+                    favoriteCandleWindow.startMs,
+                    null,
+                )
+                if (!disposed && clipped.length > 0) {
+                    setChartCandles(clipped)
                 }
             })
             .catch((error) => {
@@ -277,15 +289,16 @@ export function ComboResultsPage() {
         return () => {
             disposed = true
         }
-    }, [result?.candles, result?.symbol, result?.timeframe])
+    }, [favoriteCandleWindow.endMs, favoriteCandleWindow.startMs, result?.candles, result?.symbol, result?.timeframe])
 
     const trades = useMemo(() => result?.trades ?? [], [result?.trades])
     const strategyTransparency = useMemo(
         () => alignStrategyTransparencyToLoadedCandles(
             normalizeStrategyTransparency(result?.strategy_transparency),
             chartCandles,
+            result?.indicator_data,
         ),
-        [chartCandles, result?.strategy_transparency],
+        [chartCandles, result?.indicator_data, result?.strategy_transparency],
     )
 
     // Métricas derivadas dos MESMOS trades exibidos na tabela (fechados, ordenados)
@@ -513,6 +526,7 @@ export function ComboResultsPage() {
                             symbol={result.symbol}
                             timeframe={result.timeframe}
                             strategyTransparency={strategyTransparency}
+                            favoritePeriodCandles={favoritePeriodCandles}
                         />
                     ) : (
                         <div className="glass-strong rounded-[28px] p-8 text-center border border-zinc-200 mb-8">
