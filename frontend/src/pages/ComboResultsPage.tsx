@@ -22,6 +22,7 @@ import {
     discoveryTrainWindowLabel,
     favoriteGridMetrics,
     isDiscoveryOrigin,
+    usesOperationalPeriod,
 } from '@/lib/discoveryFavoriteMetrics'
 import { formatBoundedRatioPercent, formatCompoundReturn } from '@/lib/compoundReturn'
 
@@ -366,7 +367,7 @@ export function ComboResultsPage() {
     const metrics = isDiscovery
         ? baseMetrics
         : (derivedMetrics ? { ...baseMetrics, ...derivedMetrics } : baseMetrics)
-    const summaryWindowLabel = isDiscovery
+    const summaryWindowLabel = isDiscovery && !usesOperationalPeriod(result?.metrics)
         ? discoveryTrainWindowLabel(result.start_date, result.end_date, result.metrics)
         : null
     const tradesWindowLabel = isDiscovery && closedTrades.length > 0

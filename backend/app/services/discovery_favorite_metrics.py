@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 DISCOVERY_ORIGIN_TYPES = frozenset({"discovery_sweep", "discovery"})
+OPERATIONAL_PERIOD_FLAG = "operational_period_after_walk_forward"
+
+
+def uses_operational_period(metrics: Any) -> bool:
+    return isinstance(metrics, dict) and metrics.get(OPERATIONAL_PERIOD_FLAG) is True
 
 GRID_METRIC_KEYS = (
     "sharpe_ratio",
@@ -125,6 +130,8 @@ def flatten_discovery_grid_metrics(metrics: Any) -> Any:
     """Copy snapshot numbers onto the keys the Favorites grid already reads."""
     if not isinstance(metrics, dict) or not is_discovery_origin(metrics):
         return metrics
+    if uses_operational_period(metrics):
+        return metrics
     grid = grid_metrics_from_snapshot(snapshot_from_metrics(metrics))
     if not grid:
         return metrics
@@ -141,6 +148,8 @@ def overlay_snapshot_grid_metrics(
     """Restore snapshot grid keys after a regenerated-trades merge."""
     origin = source if isinstance(source, dict) else metrics
     if not is_discovery_origin(origin) and not is_discovery_origin(metrics):
+        return metrics
+    if uses_operational_period(origin) or uses_operational_period(metrics):
         return metrics
     if not isinstance(metrics, dict):
         return metrics
@@ -171,7 +180,12 @@ def result_metric_extras(result: Any) -> dict[str, Any]:
     return extras
 
 
-def build_promoted_favorite_metrics(result: Any, *, promoted_at: str) -> dict[str, Any]:
+def build_promoted_favorite_metrics(
+    result: Any,
+    *,
+    promoted_at: str,
+    operational_metrics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     snapshot = result.metrics if isinstance(result.metrics, dict) else {}
     payload: dict[str, Any] = {
         "origin_type": "discovery_sweep",
@@ -184,5 +198,13 @@ def build_promoted_favorite_metrics(result: Any, *, promoted_at: str) -> dict[st
         "metrics_snapshot": snapshot,
         "promoted_at": promoted_at,
     }
+    if operational_metrics:
+        from app.services.favorite_operational_period import apply_operational_period_to_metrics
+
+        return apply_operational_period_to_metrics(
+            payload,
+            operational=operational_metrics,
+            portrait=snapshot,
+        )
     payload.update(grid_metrics_from_snapshot(snapshot, extras=result_metric_extras(result)))
     return payload

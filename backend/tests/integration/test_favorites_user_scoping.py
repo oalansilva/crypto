@@ -1575,6 +1575,65 @@ def test_create_favorite_rejects_duplicate_functional_key(tmp_path: Path):
     assert exc_info.value.status_code == 409
 
 
+def test_create_favorite_oos_dedup_uses_operational_window_before_enrich(
+    tmp_path: Path, monkeypatch
+):
+    """OOS save: dedup on resolved window; enrich runs only after duplicate check."""
+    enrich_calls: list[str] = []
+
+    def _fake_enrich(**kwargs):
+        from app.services.favorite_operational_period import resolve_chosen_period
+
+        enrich_calls.append("enrich")
+        metrics = dict(kwargs.get("metrics") or {})
+        metrics["operational_period_after_walk_forward"] = True
+        ptype, start, end = resolve_chosen_period(
+            period_type=kwargs.get("period_type"),
+            start_date=kwargs.get("start_date"),
+            end_date=kwargs.get("end_date"),
+            symbol=kwargs.get("symbol"),
+            timeframe=kwargs.get("timeframe"),
+        )
+        return (ptype, start, end, metrics)
+
+    monkeypatch.setattr(
+        "app.services.favorite_operational_period._first_candle_iso",
+        lambda symbol, timeframe: "2017-08-17",
+    )
+    monkeypatch.setattr(
+        "app.services.favorite_operational_period.enrich_walk_forward_favorite_create",
+        _fake_enrich,
+    )
+
+    SessionLocal = _session_factory(tmp_path)
+    first = _favorite_payload("OOS operational")
+    first.period_type = "2y"
+    first.start_date = None
+    first.end_date = None
+    first.oos_metrics = {"total_trades": 30, "sharpe_ratio": 0.31}
+    first.oos_verdict = {"status": "GO", "reasons": ["ok"]}
+    _attach_oos_proof(first)
+
+    second = _favorite_payload("OOS duplicate attempt")
+    second.period_type = "2y"
+    second.start_date = "2020-10-10"
+    second.end_date = "2024-02-01"
+    second.oos_metrics = {"total_trades": 12, "sharpe_ratio": 0.2}
+    second.oos_verdict = {"status": "GO", "reasons": ["ok"]}
+    _attach_oos_proof(second)
+
+    with SessionLocal() as db:
+        created = favorites.create_favorite(first, current_user_id="user-a", db=db)
+        assert created.period_type == "2y"
+        assert created.start_date is not None
+        assert created.end_date is not None
+        assert enrich_calls == ["enrich"]
+        with pytest.raises(fastapi.HTTPException) as exc_info:
+            favorites.create_favorite(second, current_user_id="user-a", db=db)
+        assert exc_info.value.status_code == 409
+        assert enrich_calls == ["enrich"]
+
+
 def test_create_favorite_allows_distinct_custom_periods(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     first = _favorite_payload("Custom first")

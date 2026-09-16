@@ -1,0 +1,1286 @@
+{
+  "card": 949,
+  "utc": "2026-09-16T01:12Z",
+  "chrome": "/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux-arm64/chrome",
+  "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/",
+  "desktop_eq_mobile_index_dates": true,
+  "console": [],
+  "pageerrors": [],
+  "badhttp": [],
+  "shots": [
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-desktop-1440x900-index.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-desktop-1440x900-descoberta.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-desktop-1440x900-descoberta-promover.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-desktop-1440x900-analise.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-desktop-1440x900-combo.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-mobile-390x844-index.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-mobile-390x844-descoberta.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-mobile-390x844-descoberta-promover.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-mobile-390x844-analise.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-949-favorito-historico-inteiro/.impeccable/critique/949-B-mobile-390x844-combo.png"
+  ],
+  "viewports": [
+    {
+      "viewport": "desktop 1440x900",
+      "pass": false,
+      "n": 44,
+      "failed": [
+        "lm_symbol",
+        "lm_acoes",
+        "desc_lm_rascunho"
+      ],
+      "asserts": [
+        {
+          "id": "index_not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/"
+        },
+        {
+          "id": "index_proto_url",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/"
+        },
+        {
+          "id": "lm_fav_table",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "lm_estrategias_favoritas",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_symbol",
+          "ok": false,
+          "detail": null
+        },
+        {
+          "id": "lm_estrategia",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_acoes",
+          "ok": false,
+          "detail": null
+        },
+        {
+          "id": "index_antes_depois_btns",
+          "ok": true,
+          "detail": [
+            "Recolher menu",
+            "AS\nCONTA\nAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "ACOMPANHAR\n1\nMonitorar quando fizer sentido",
+            "INTERESSE ALTO\n1\nPrioridade intermediária",
+            "TOP PICKS\n1\nFila principal do Monitor",
+            "Todas 3",
+            "Top picks 1",
+            "Alto 1",
+            "Acompanhar 1",
+            "Sem estrela 0",
+            "Exportar",
+            "Nova estratégia",
+            "Revalidar",
+            "Delete",
+            "Analisar",
+            "Revalidar",
+            "Delete",
+            "Revalidar"
+          ]
+        },
+        {
+          "id": "index_no_monitor",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "index_no_available_templates",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "index_btc_full",
+          "ok": true,
+          "detail": [
+            "SEL TIER TELEGRAM SYMBOL ESTRATÉGIA TF PERÍODO STOP SHARPE TRADES WIN% RETURN MAX DD AÇÕES",
+            "On BTC BTC/USDT USDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10%",
+            "On SOL SOL/USDT USDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00%",
+            "On ETH ETH/USDT USDT Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026 1d 15/09/2024 → 15/09/2026 8,50% 0,50 22 59,1% +35,00% 12,2%"
+          ]
+        },
+        {
+          "id": "index_legado_2023",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "index_combo_2y",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "index_overflow",
+          "ok": true,
+          "detail": {
+            "sw": 1440,
+            "cw": 1440
+          }
+        },
+        {
+          "id": "index_lang",
+          "ok": true,
+          "detail": "pt-BR"
+        },
+        {
+          "id": "index_btc_not_train_end",
+          "ok": true,
+          "detail": [
+            "On BTC BTC/USDT USDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10%"
+          ]
+        },
+        {
+          "id": "index_btc_new_no_2023_period",
+          "ok": true,
+          "detail": [
+            "On BTC BTC/USDT USDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10%"
+          ]
+        },
+        {
+          "id": "index_btc_new_no_train_stats",
+          "ok": true,
+          "detail": [
+            "On BTC BTC/USDT USDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10%"
+          ]
+        },
+        {
+          "id": "index_legado_no_full_until_today_under_2023",
+          "ok": true,
+          "detail": [
+            "On SOL SOL/USDT USDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00%"
+          ]
+        },
+        {
+          "id": "index_no_mix_train_vs_full_under_2023",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "index_eth_not_todo_2017",
+          "ok": true,
+          "detail": [
+            "On ETH ETH/USDT USDT Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026 1d 15/09/2024 → 15/09/2026 8,50% 0,50 22 59,1% +35,00% 12,2%"
+          ]
+        },
+        {
+          "id": "index_sol_legado_intact",
+          "ok": true,
+          "detail": [
+            "On SOL SOL/USDT USDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00%"
+          ]
+        },
+        {
+          "id": "desc_lm_h1",
+          "ok": true,
+          "detail": "Descoberta de estratégias swing"
+        },
+        {
+          "id": "desc_lm_preflight",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "desc_lm_rascunho",
+          "ok": false,
+          "detail": null
+        },
+        {
+          "id": "desc_70_30",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "desc_train_window",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "desc_not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/descoberta.html"
+        },
+        {
+          "id": "desc_promover_clicked",
+          "ok": true,
+          "detail": "^Promover$"
+        },
+        {
+          "id": "desc_modal_no_preview",
+          "ok": true,
+          "detail": "Promover a favorito tier 3 Destino fixo deste fluxo. Revise a origem antes de confirmar. Médias Móveis: Tendência Confirmada RS-949-BTC · ma_tendencia BTC/USDT · 1d · Long Retorno (CAGR) 8,1% Queda máxima −22,00% Trades 48 Cobertura · janela 100% · 17/08/2017 → 24/12/2023 Varredura de origem #3d9bee8b4e4341eb8fcb0b60644a0579 Resultado RS-949-BTC Destino obrigatório Tier 3 · observação Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica. Elegibilidade"
+        },
+        {
+          "id": "analise_combo_page",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "analise_lista",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_aria",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_full_period",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_not_train_label",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_not_train_as_complete",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_no_monitor",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_combo_page",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "combo_2y",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_not_todo_2017",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_70_30",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_salvar",
+          "ok": true,
+          "detail": [
+            "Recolher menu",
+            "AS\nCONTA\nAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Salvar nos Favoritos",
+            "Exportar para Excel",
+            "Fechar",
+            "Voltar",
+            "Salvar nos Favoritos"
+          ]
+        },
+        {
+          "id": "combo_not_select",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_no_monitor",
+          "ok": true,
+          "detail": null
+        }
+      ],
+      "dumps": {
+        "index": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/",
+          "title": "Favoritos — período completo após 70/30",
+          "lang": "pt-BR",
+          "h1": "Estratégias favoritas",
+          "hasFavTable": true,
+          "hasComboPage": false,
+          "sw": 1440,
+          "cw": 1440,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "AS\nCONTA\nAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "ACOMPANHAR\n1\nMonitorar quando fizer sentido",
+            "INTERESSE ALTO\n1\nPrioridade intermediária",
+            "TOP PICKS\n1\nFila principal do Monitor",
+            "Todas 3",
+            "Top picks 1",
+            "Alto 1",
+            "Acompanhar 1",
+            "Sem estrela 0",
+            "Exportar",
+            "Nova estratégia",
+            "Revalidar",
+            "Delete",
+            "Analisar",
+            "Revalidar",
+            "Delete",
+            "Revalidar",
+            "Delete",
+            "Selecionar para comparar",
+            "On",
+            "Revalidar na janela recente",
+            "Selecionar para comparar",
+            "On",
+            "Ver análise completa",
+            "Revalidar na janela recente",
+            "Selecionar para comparar",
+            "On",
+            "Revalidar na janela recente"
+          ],
+          "rows": [
+            {
+              "text": "SEL TIER TELEGRAM SYMBOL ESTRATÉGIA TF PERÍODO STOP SHARPE TRADES WIN% RETURN MAX DD AÇÕES",
+              "cells": [
+                "SEL",
+                "TIER",
+                "TELEGRAM",
+                "SYMBOL",
+                "ESTRATÉGIA",
+                "Direção",
+                "TF",
+                "PERÍODO",
+                "STOP",
+                "SHARPE",
+                "TRADES",
+                "WIN%",
+                "RETURN",
+                "MAX DD",
+                "PF",
+                "SQN",
+                "Max L",
+                "ATR",
+                "AÇÕES"
+              ]
+            },
+            {
+              "text": "On BTC BTC/USDT USDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10%",
+              "cells": [
+                "",
+                "",
+                "On",
+                "BTC BTC/USDT USDT",
+                "Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje",
+                "Long",
+                "1d",
+                "17/08/2017 → 15/09/2026",
+                "-",
+                "0,38",
+                "71",
+                "54,9%",
+                "+210,40%",
+                "28,10%",
+                "1,38",
+                "0,91",
+                "-",
+                "-",
+                ""
+              ]
+            },
+            {
+              "text": "On SOL SOL/USDT USDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00%",
+              "cells": [
+                "",
+                "",
+                "On",
+                "SOL SOL/USDT USDT",
+                "Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023",
+                "Long",
+                "1d",
+                "17/08/2017 → 24/12/2023",
+                "-",
+                "0,42",
+                "48",
+                "55,0%",
+                "+120,00%",
+                "22,00%",
+                "1,28",
+                "0,74",
+                "-",
+                "-",
+                ""
+              ]
+            },
+            {
+              "text": "On ETH ETH/USDT USDT Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026 1d 15/09/2024 → 15/09/2026 8,50% 0,50 22 59,1% +35,00% 12,2%",
+              "cells": [
+                "",
+                "",
+                "On",
+                "ETH ETH/USDT USDT",
+                "Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026",
+                "Long",
+                "1d",
+                "15/09/2024 → 15/09/2026",
+                "8,50%",
+                "0,50",
+                "22",
+                "59,1%",
+                "+35,00%",
+                "12,2%",
+                "1,61",
+                "1,12",
+                "-",
+                "-",
+                ""
+              ]
+            }
+          ],
+          "body": "PAINEL Favoritos Ambiente DEV PRINCIPAL Favoritos Monitor ESTRATÉGIAS Descoberta Combo CARTEIRA Carteira Ajuda ADMIN Preferências do sistema Usuários Recolher menu WORKSPACE Favoritos Ambiente DEV AS CONTA Alan Silva Estratégias favoritas Catálogo operacional para escolher quais setups entram no Monitor por estrelas. SYSTEM OPERATIONAL 3 FILTRADAS 0 COMPARADAS ACOMPANHAR 1 Monitorar quando fizer sentido INTERESSE ALTO 1 Prioridade intermediária TOP PICKS 1 Fila principal do Monitor Todas 3 Top picks 1 Alto 1 Acompanhar 1 Sem estrela 0 SYMBOL Todos BTC/USDT SOL/USDT ETH/USDT STRATEGY Todas Médias Móveis: Tendência Confirmada Médias: Virada Inicial TIME Todos 1d DIREÇÃO Todas Long Short ORDENAR Ret/T % Return Sharpe Trades Exportar Nova estratégia SEL TIER TELEGRAM SYMBOL ESTRATÉGIA TF PERÍODO STOP SHARPE TRADES WIN% RETURN MAX DD AÇÕES On BTC BTC/USDT USDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10% On SOL SOL/USDT USDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00% On ETH ETH/USDT USDT Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026 1d 15/09/2024 → 15/09/2026 8,50% 0,50 22 59,1% +35,00% 12,2% 3 estratégias carregadas",
+          "dialogs": []
+        },
+        "descoberta": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/descoberta.html",
+          "title": "Descoberta de estratégias swing",
+          "lang": "pt-BR",
+          "h1": "Descoberta de estratégias swing",
+          "hasFavTable": false,
+          "hasComboPage": false,
+          "sw": 1440,
+          "cw": 1440,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "AS\nCONTA\nAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Histórico de varreduras",
+            "Montar",
+            "Acompanhando #3d9bee8b",
+            "Decidir",
+            "Pausar",
+            "Cancelar",
+            "Novo rascunho",
+            "novo rascunho",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Limpar filtros",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Excluir",
+            "Fechar",
+            "Voltar",
+            "Promover como tier 3",
+            "Fechar",
+            "Voltar",
+            "Confirmar exclusão"
+          ],
+          "rows": [],
+          "body": "PAINEL Descoberta de estratégias Ambiente DEV PRINCIPAL Favoritos Monitor ESTRATÉGIAS Descoberta Combo CARTEIRA Carteira Ajuda ADMIN Preferências do sistema Usuários Recolher menu WORKSPACE Descoberta de estratégias Ambiente DEV AS CONTA Alan Silva Combo / Varreduras Descoberta de estratégias swing Compare templates em 4h e 1d. Preflight, ranking e promoção usam evidência histórica; nenhum candidato é salvo sem revisão. Histórico de varreduras Montar Acompanhando #3d9bee8b Decidir Run exibido no leaderboard #3d9bee8b4e4341eb8fcb0b60644a0579 · em execução · 697 combinações Snapshot #PF-D1CC-697 · 697 válidas · 292 sucesso · 0 falhas · em execução. Separado do sweep ativo. Varredura ativa recuperada do servidor F5 não inicia outra run. O snapshot segue congelado enquanto o sweep continua. Leaderboard · Calmar Varredura #3d9bee8b4e4341eb8fcb0b60644a0579 · em execução · janela UTC [09 out. 2020, 31 jan. de 2024) · 1210/1209 candles ccxt · fees 0,1% · slippage 0,1% 309 de 309 candidatos · página 1 de 26 ORDENAR POR Calmar CAGR vs B&H SÍMBOLO Todos BTC/USDT ALPHA/USDT ETH/USDT TIMEFRAME Todos 4h 1d Limpar filtros Retrato 70/30 · treino 17/08/2017 → 24/12/2023. Ranking, cobertura, Calmar e GO/NO-GO desta grelha não mudam. Promover não mostra preview do histórico inteiro. Candidatos da varredura; ranks globais não renumeram sob filtro. Ordem das métricas: Sharpe, Trades, Win%, Return, Max DD, Calmar (CAGR ÷ Max DD), CAGR anualizado. Return é o composto da janela, não o CAGR. Trades são negócios fechados; cobertura de velas é subtexto. Rank global Candidato Sharpe Trades cobertura Win% acerto Return janela Max DD Calmar CAGR ÷ Max DD CAGR anualizado Ação 1 Médias Móveis: Tendência Confirmada BTC/USDT · 1d · Long. Grelha no treino 70/30 — não no histórico inteiro. RS-949-BTC · cobertura 100% · direction long · ema_short 8 GO + detalhes 0,42 48 100% velas 55,0% +120,00% −22,00% 18,40 8,1% Promover Excluir 1 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-B109ED2C80 · cobertura 100% · direction long · ema_short 8 NO-GO + detalhes 0,31 30 100% velas 46,7% +12,8% −16,5% 22,53 3,7% Promover Excluir 2 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-916-ARPA · cobertura 100% · direction long · ema_short 7 NO-GO + detalhes 0,59 30 100% velas 63,3% +5,4% −8,5% 19,03 1,6% Promover Excluir 3 Médias Móveis: Tendência em Virada 1 RS-916-CFX · cobertura 100% · direction long · ema_short 9 NO-GO + detalhes 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Promover Excluir — Médias Móveis: Tendência em Virada 1 RS-916-INS · cobertura N/A · listagem cortada Amostra insuficiente + detalhes N/A N/A N/A N/A N/A N/A N/A Excluir Conteúdo educacional. Rank global usa resultados elegíveis (≥30 trades, ≥90% cobertura); filtros não renumeram posições. Dados históricos não garantem retornos futuros. Ordem igual a Favoritos: Sharpe, Trades, Win%, Return, Max DD; depois Calmar (CAGR ÷ Max DD) e CAGR anualizado. Return é o composto da janela da varredura — não o CAGR e não o número de Favoritos. Trades = negócios fechados; 100% velas é cobertura, subtexto. Max DD permanece com sinal negativo desta tela.",
+          "dialogs": [
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Promover a favorito tier 3 Destino fixo deste fluxo. Revise a origem antes de confirmar. Médias Móveis: Tendência Confirmada RS-949-BTC · ma_tendencia BTC/USDT · 1d · Long Retorno (CAGR)8,1% Queda máxima−22,00% Trades48 Cobertura · janela100% · 17/08/2017 → 24/12/2023 Varredura de origem#3d9bee8b4e4341eb8fcb0b60644a0579 ResultadoRS-949-BTC Destino obrigatório Tier 3 · observação Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica. Elegibilidade e identidade de estratégia serão revalidadas sob lock. Evidência de outra janela não contorna duplicidade. Voltar Promover como tier 3"
+            },
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Excluir resultado Remove só este resultado do ranking desta varredura. Não cancela a varredura e não apaga favoritos. Médias Móveis: Tendência em Virada 1 RS-916-CFX Varredura#3d9bee8b4e4341eb8fcb0b60644a0579 ResultadoRS-916-CFX Voltar Confirmar exclusão"
+            }
+          ]
+        },
+        "descoberta_modal": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/descoberta.html",
+          "title": "Descoberta de estratégias swing",
+          "lang": "pt-BR",
+          "h1": "Descoberta de estratégias swing",
+          "hasFavTable": false,
+          "hasComboPage": false,
+          "sw": 1440,
+          "cw": 1440,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "AS\nCONTA\nAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Histórico de varreduras",
+            "Montar",
+            "Acompanhando #3d9bee8b",
+            "Decidir",
+            "Pausar",
+            "Cancelar",
+            "Novo rascunho",
+            "novo rascunho",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Limpar filtros",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Excluir",
+            "Fechar",
+            "Voltar",
+            "Promover como tier 3",
+            "Fechar",
+            "Voltar",
+            "Confirmar exclusão"
+          ],
+          "rows": [],
+          "body": "PAINEL Descoberta de estratégias Ambiente DEV PRINCIPAL Favoritos Monitor ESTRATÉGIAS Descoberta Combo CARTEIRA Carteira Ajuda ADMIN Preferências do sistema Usuários Recolher menu WORKSPACE Descoberta de estratégias Ambiente DEV AS CONTA Alan Silva Combo / Varreduras Descoberta de estratégias swing Compare templates em 4h e 1d. Preflight, ranking e promoção usam evidência histórica; nenhum candidato é salvo sem revisão. Histórico de varreduras Montar Acompanhando #3d9bee8b Decidir Run exibido no leaderboard #3d9bee8b4e4341eb8fcb0b60644a0579 · em execução · 697 combinações Snapshot #PF-D1CC-697 · 697 válidas · 292 sucesso · 0 falhas · em execução. Separado do sweep ativo. Varredura ativa recuperada do servidor F5 não inicia outra run. O snapshot segue congelado enquanto o sweep continua. Leaderboard · Calmar Varredura #3d9bee8b4e4341eb8fcb0b60644a0579 · em execução · janela UTC [09 out. 2020, 31 jan. de 2024) · 1210/1209 candles ccxt · fees 0,1% · slippage 0,1% 309 de 309 candidatos · página 1 de 26 ORDENAR POR Calmar CAGR vs B&H SÍMBOLO Todos BTC/USDT ALPHA/USDT ETH/USDT TIMEFRAME Todos 4h 1d Limpar filtros Retrato 70/30 · treino 17/08/2017 → 24/12/2023. Ranking, cobertura, Calmar e GO/NO-GO desta grelha não mudam. Promover não mostra preview do histórico inteiro. Candidatos da varredura; ranks globais não renumeram sob filtro. Ordem das métricas: Sharpe, Trades, Win%, Return, Max DD, Calmar (CAGR ÷ Max DD), CAGR anualizado. Return é o composto da janela, não o CAGR. Trades são negócios fechados; cobertura de velas é subtexto. Rank global Candidato Sharpe Trades cobertura Win% acerto Return janela Max DD Calmar CAGR ÷ Max DD CAGR anualizado Ação 1 Médias Móveis: Tendência Confirmada BTC/USDT · 1d · Long. Grelha no treino 70/30 — não no histórico inteiro. RS-949-BTC · cobertura 100% · direction long · ema_short 8 GO + detalhes 0,42 48 100% velas 55,0% +120,00% −22,00% 18,40 8,1% Promover Excluir 1 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-B109ED2C80 · cobertura 100% · direction long · ema_short 8 NO-GO + detalhes 0,31 30 100% velas 46,7% +12,8% −16,5% 22,53 3,7% Promover Excluir 2 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-916-ARPA · cobertura 100% · direction long · ema_short 7 NO-GO + detalhes 0,59 30 100% velas 63,3% +5,4% −8,5% 19,03 1,6% Promover Excluir 3 Médias Móveis: Tendência em Virada 1 RS-916-CFX · cobertura 100% · direction long · ema_short 9 NO-GO + detalhes 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Promover Excluir — Médias Móveis: Tendência em Virada 1 RS-916-INS · cobertura N/A · listagem cortada Amostra insuficiente + detalhes N/A N/A N/A N/A N/A N/A N/A Excluir Conteúdo educacional. Rank global usa resultados elegíveis (≥30 trades, ≥90% cobertura); filtros não renumeram posições. Dados históricos não garantem retornos futuros. Ordem igual a Favoritos: Sharpe, Trades, Win%, Return, Max DD; depois Calmar (CAGR ÷ Max DD) e CAGR anualizado. Return é o composto da janela da varredura — não o CAGR e não o número de Favoritos. Trades = negócios fechados; 100% velas é cobertura, subtexto. Max DD permanece com sinal negativo desta tela. Promover a favorito tier 3 Destino fixo deste fluxo. Revise a origem antes de confirmar. Médias Móveis: Tendência Confirmada RS-949-BTC · ma_tendencia BTC/USDT · 1d · Long Retorno (CAGR) 8,1% Queda máxima −22,00% Trades 48 Cobertura · janela 100% · 17/08/2017 → 24/12/2023 Varredura de origem #3d9bee8b4e4341eb8fcb0b60644a0579 Resultado RS-949-BTC Destino obrigatório Tier 3 · observação Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica. Elegibilidade e identidade de estratégia serão revalidadas sob lock. Evidência de outra janela não",
+          "dialogs": [
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Promover a favorito tier 3 Destino fixo deste fluxo. Revise a origem antes de confirmar. Médias Móveis: Tendência Confirmada RS-949-BTC · ma_tendencia BTC/USDT · 1d · Long Retorno (CAGR) 8,1% Queda máxima −22,00% Trades 48 Cobertura · janela 100% · 17/08/2017 → 24/12/2023 Varredura de origem #3d9bee8b4e4341eb8fcb0b60644a0579 Resultado RS-949-BTC Destino obrigatório Tier 3 · observação Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica. Elegibilidade e identidade de estratégia serão revalidadas sob lock. Evidência de outra janela não contorna duplicidade. Voltar Promover como tier 3"
+            },
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Excluir resultado Remove só este resultado do ranking desta varredura. Não cancela a varredura e não apaga favoritos. Médias Móveis: Tendência em Virada 1 RS-916-CFX Varredura#3d9bee8b4e4341eb8fcb0b60644a0579 ResultadoRS-916-CFX Voltar Confirmar exclusão"
+            }
+          ]
+        },
+        "analise": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/analise.html",
+          "title": "Análise — BTC/USDT histórico inteiro",
+          "lang": "pt-BR",
+          "h1": "Resumo · histórico inteiro · 17/08/2017 → 15/09/2026",
+          "hasFavTable": false,
+          "hasComboPage": true,
+          "sw": 1440,
+          "cw": 1440,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "AS\nCONTA\nAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Exportar para Excel"
+          ],
+          "rows": [],
+          "body": "PAINEL Favoritos Ambiente DEV PRINCIPAL Favoritos Monitor ESTRATÉGIAS Descoberta Combo CARTEIRA Carteira Ajuda ADMIN Preferências do sistema Usuários Recolher menu WORKSPACE Análise da estratégia Ambiente DEV AS CONTA Alan Silva Voltar aos favoritos BTC/USDT 1d Long / compra Resumo · histórico inteiro · 17/08/2017 → 15/09/2026 Médias Móveis: Tendência Confirmada BTC/USDT · 1d · Long. Números do período completo do favorito novo — não o treino 17/08/2017 → 24/12/2023. Retorno total +210,40% Taxa de acerto 54,9% Drawdown máximo 28,10% Operações 71 Gráfico da estratégia BTC/USDT 1d · 17/08/2017 → 15/09/2026 Lista de operações · histórico inteiro · 71 negócios Exportar para Excel OPERAÇÃO TIPO DATA SINAL PREÇO LUCRO/PREJUÍZO 33 Compra 12/09/2026 Comprar 150.20 USDT −2,30% 32 Compra 31/08/2026 Encerrar posição 148.50 USDT −1,20% 31 Compra 19/08/2026 Comprar 146.80 USDT −0,10% 30 Compra 07/08/2026 Encerrar posição 145.10 USDT +1,00% 29 Compra 26/07/2026 Comprar 143.40 USDT +2,10% 28 Compra 14/07/2026 Encerrar posição 141.70 USDT +3,20% 27 Compra 02/07/2026 Comprar 140.00 USDT −3,40% 26 Compra 20/06/2026 Encerrar posição 153.60 USDT −2,30% 25 Compra 08/06/2026 Comprar 151.90 USDT −1,20% 24 Compra 27/05/2026 Encerrar posição 150.20 USDT −0,10% 23 Compra 15/05/2026 Comprar 148.50 USDT +1,00% 22 Compra 03/05/2026 Encerrar posição 146.80 USDT +2,10% 21 Compra 21/04/2026 Comprar 145.10 USDT +3,20% 20 Compra 09/04/2026 Encerrar posição 143.40 USDT −3,40% 19 Compra 28/03/2026 Comprar 141.70 USDT −2,30% 18 Compra 16/03/2026 Encerrar posição 140.00 USDT −1,20% 17 Compra 04/03/2026 Comprar 153.60 USDT −0,10% 16 Compra 20/02/2026 Encerrar posição 151.90 USDT +1,00% 15 Compra 08/02/2026 Comprar 150.20 USDT +2,10% 14 Compra 27/01/2026 Encerrar posição 148.50 USDT +3,20% 13 Compra 15/01/2026 Comprar 146.80 USDT −3,40% 12 Compra 03/01/2026 Encerrar posição 145.10 USDT −2,30% 11 Compra 22/12/2025 Comprar 143.40 USDT −1,20% 10 Compra 10/12/2025 Encerrar posição 141.70 USDT −0,10% 9 Compra 28/11/2025 Comprar 140.00 USDT +1,00% 8 Compra 16/11/2025 Encerrar posição 153.60 USDT +2,10% 7 Compra 04/11/2025 Comprar 151.90 USDT +3,20% 6 Compra 23/10/2025 Encerrar posição 150.20 USDT −3,40% 5 Compra 11/10/2025 Comprar 148.50 USDT −2,30% 4 Compra 29/09/2025 Encerrar posição 146.80 USDT −1,20% 3 Compra 17/09/2025 Comprar 145.10 USDT −0,10% 2 Compra 05/09/2025 Encerrar posição 143.40 USDT +1,00% 1 Compra 17/08/2017 Comprar 4.280,00 USDT +2,10% Conteúdo educacional baseado em dados históricos. Resultados passados não garantem retornos futuros.",
+          "dialogs": []
+        },
+        "combo": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/combo.html",
+          "title": "Combo — ETH/USDT 2 anos completos",
+          "lang": "pt-BR",
+          "h1": "Período 2 anos completos · 15/09/2024 → 15/09/2026",
+          "hasFavTable": false,
+          "hasComboPage": true,
+          "sw": 1440,
+          "cw": 1440,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "AS\nCONTA\nAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Salvar nos Favoritos",
+            "Exportar para Excel",
+            "Fechar",
+            "Voltar",
+            "Salvar nos Favoritos"
+          ],
+          "rows": [],
+          "body": "PAINEL Combo Ambiente DEV PRINCIPAL Favoritos Monitor ESTRATÉGIAS Descoberta Combo CARTEIRA Carteira Ajuda ADMIN Preferências do sistema Usuários Recolher menu WORKSPACE Análise da estratégia Ambiente DEV AS CONTA Alan Silva Voltar Salvar nos Favoritos ETH/USDT 1d Long / compra 70/30 na busca Período 2 anos completos · 15/09/2024 → 15/09/2026 Médias Móveis: Tendência Confirmada ETH/USDT · 1d · Long. Depois de 70/30, o save cobre os 2 anos todos — não o treino (~até 02/2026) e não o histórico inteiro desde 2017. Retorno total +35,00% Taxa de acerto 59,1% Drawdown máximo 12,2% Operações 22 Gráfico da estratégia ETH/USDT 1d · 15/09/2024 → 15/09/2026 Lista de operações · 2 anos completos · 22 negócios Exportar para Excel OPERAÇÃO TIPO DATA SINAL PREÇO LUCRO/PREJUÍZO 22 Compra 12/09/2026 Comprar 3.420,00 USDT −2,30% 18 Compra 02/05/2026 Encerrar posição 2.980,00 USDT +2,10% 12 Compra 11/11/2025 Comprar 3.150,00 USDT −1,20% 8 Compra 03/04/2025 Encerrar posição 2.720,00 USDT +3,20% 4 Compra 18/12/2024 Comprar 3.010,00 USDT −0,10% 1 Compra 15/09/2024 Comprar 2.410,00 USDT +2,10% Conteúdo educacional baseado em dados históricos. Resultados passados não garantem retornos futuros.",
+          "dialogs": [
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Salvar nos Favoritos ETH/USDT · 1d · Médias Móveis: Tendência Confirmada Período a gravar: 15/09/2024 → 15/09/2026 (2 anos completos). O 70/30 da busca não entra neste número. Não amplia para o histórico inteiro. Voltar Salvar nos Favoritos"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "viewport": "mobile 390x844",
+      "pass": false,
+      "n": 44,
+      "failed": [
+        "lm_symbol",
+        "lm_acoes",
+        "desc_lm_rascunho"
+      ],
+      "asserts": [
+        {
+          "id": "index_not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/"
+        },
+        {
+          "id": "index_proto_url",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/"
+        },
+        {
+          "id": "lm_fav_table",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "lm_estrategias_favoritas",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_symbol",
+          "ok": false,
+          "detail": null
+        },
+        {
+          "id": "lm_estrategia",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "lm_acoes",
+          "ok": false,
+          "detail": null
+        },
+        {
+          "id": "index_antes_depois_btns",
+          "ok": true,
+          "detail": [
+            "Recolher menu",
+            "ASContaAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "ACOMPANHAR\n1\nMonitorar quando fizer sentido",
+            "INTERESSE ALTO\n1\nPrioridade intermediária",
+            "TOP PICKS\n1\nFila principal do Monitor",
+            "Todas 3",
+            "Top picks 1",
+            "Alto 1",
+            "Acompanhar 1",
+            "Sem estrela 0",
+            "Exportar",
+            "Nova estratégia",
+            "Revalidar",
+            "Delete",
+            "Analisar",
+            "Revalidar",
+            "Delete",
+            "Revalidar"
+          ]
+        },
+        {
+          "id": "index_no_monitor",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "index_no_available_templates",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "index_btc_full",
+          "ok": true,
+          "detail": [
+            "Sel Tier Telegram Symbol Estratégia Direção TF Período Stop Sharpe Trades Win% Return Max DD PF SQN Max L ATR Ações",
+            "On BTCBTC/USDTUSDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje Long 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10% 1,38 0,91 - -",
+            "On SOLSOL/USDTUSDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 Long 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00% 1,28 0,74 - -",
+            "On ETHETH/USDTUSDT Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026 Long 1d 15/09/2024 → 15/09/2026 8,50% 0,50 22 59,1% +35,00% 12,2% 1,61 1,12 - -"
+          ]
+        },
+        {
+          "id": "index_legado_2023",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "index_combo_2y",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "index_overflow",
+          "ok": true,
+          "detail": {
+            "sw": 390,
+            "cw": 390
+          }
+        },
+        {
+          "id": "index_lang",
+          "ok": true,
+          "detail": "pt-BR"
+        },
+        {
+          "id": "index_btc_not_train_end",
+          "ok": true,
+          "detail": [
+            "On BTCBTC/USDTUSDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje Long 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10% 1,38 0,91 - -"
+          ]
+        },
+        {
+          "id": "index_btc_new_no_2023_period",
+          "ok": true,
+          "detail": [
+            "On BTCBTC/USDTUSDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje Long 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10% 1,38 0,91 - -"
+          ]
+        },
+        {
+          "id": "index_btc_new_no_train_stats",
+          "ok": true,
+          "detail": [
+            "On BTCBTC/USDTUSDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje Long 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10% 1,38 0,91 - -"
+          ]
+        },
+        {
+          "id": "index_legado_no_full_until_today_under_2023",
+          "ok": true,
+          "detail": [
+            "On SOLSOL/USDTUSDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 Long 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00% 1,28 0,74 - -"
+          ]
+        },
+        {
+          "id": "index_no_mix_train_vs_full_under_2023",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "id": "index_eth_not_todo_2017",
+          "ok": true,
+          "detail": [
+            "On ETHETH/USDTUSDT Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026 Long 1d 15/09/2024 → 15/09/2026 8,50% 0,50 22 59,1% +35,00% 12,2% 1,61 1,12 - -"
+          ]
+        },
+        {
+          "id": "index_sol_legado_intact",
+          "ok": true,
+          "detail": [
+            "On SOLSOL/USDTUSDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 Long 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00% 1,28 0,74 - -"
+          ]
+        },
+        {
+          "id": "desc_lm_h1",
+          "ok": true,
+          "detail": "Descoberta de estratégias swing"
+        },
+        {
+          "id": "desc_lm_preflight",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "desc_lm_rascunho",
+          "ok": false,
+          "detail": null
+        },
+        {
+          "id": "desc_70_30",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "desc_train_window",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "desc_not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/descoberta.html"
+        },
+        {
+          "id": "desc_promover_clicked",
+          "ok": true,
+          "detail": "^Promover$"
+        },
+        {
+          "id": "desc_modal_no_preview",
+          "ok": true,
+          "detail": "Promover a favorito tier 3 Destino fixo deste fluxo. Revise a origem antes de confirmar. Médias Móveis: Tendência Confirmada RS-949-BTC · ma_tendencia BTC/USDT · 1d · Long Retorno (CAGR) 8,1% Queda máxima −22,00% Trades 48 Cobertura · janela 100% · 17/08/2017 → 24/12/2023 Varredura de origem #3d9bee8b4e4341eb8fcb0b60644a0579 Resultado RS-949-BTC Destino obrigatório Tier 3 · observação Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica. Elegibilidade"
+        },
+        {
+          "id": "analise_combo_page",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "analise_lista",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_aria",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_full_period",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_not_train_label",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_not_train_as_complete",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "analise_no_monitor",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_combo_page",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "combo_2y",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_not_todo_2017",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_70_30",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_salvar",
+          "ok": true,
+          "detail": [
+            "Recolher menu",
+            "ASContaAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Salvar nos Favoritos",
+            "Exportar para Excel",
+            "Fechar",
+            "Voltar",
+            "Salvar nos Favoritos"
+          ]
+        },
+        {
+          "id": "combo_not_select",
+          "ok": true,
+          "detail": null
+        },
+        {
+          "id": "combo_no_monitor",
+          "ok": true,
+          "detail": null
+        }
+      ],
+      "dumps": {
+        "index": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/",
+          "title": "Favoritos — período completo após 70/30",
+          "lang": "pt-BR",
+          "h1": "Estratégias favoritas",
+          "hasFavTable": true,
+          "hasComboPage": false,
+          "sw": 390,
+          "cw": 390,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "ASContaAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "ACOMPANHAR\n1\nMonitorar quando fizer sentido",
+            "INTERESSE ALTO\n1\nPrioridade intermediária",
+            "TOP PICKS\n1\nFila principal do Monitor",
+            "Todas 3",
+            "Top picks 1",
+            "Alto 1",
+            "Acompanhar 1",
+            "Sem estrela 0",
+            "Exportar",
+            "Nova estratégia",
+            "Revalidar",
+            "Delete",
+            "Analisar",
+            "Revalidar",
+            "Delete",
+            "Revalidar",
+            "Delete",
+            "Selecionar para comparar",
+            "On",
+            "Revalidar na janela recente",
+            "Selecionar para comparar",
+            "On",
+            "Ver análise completa",
+            "Revalidar na janela recente",
+            "Selecionar para comparar",
+            "On",
+            "Revalidar na janela recente"
+          ],
+          "rows": [
+            {
+              "text": "Sel Tier Telegram Symbol Estratégia Direção TF Período Stop Sharpe Trades Win% Return Max DD PF SQN Max L ATR Ações",
+              "cells": [
+                "Sel",
+                "Tier",
+                "Telegram",
+                "Symbol",
+                "Estratégia",
+                "Direção",
+                "TF",
+                "Período",
+                "Stop",
+                "Sharpe",
+                "Trades",
+                "Win%",
+                "Return",
+                "Max DD",
+                "PF",
+                "SQN",
+                "Max L",
+                "ATR",
+                "Ações"
+              ]
+            },
+            {
+              "text": "On BTCBTC/USDTUSDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje Long 1d 17/08/2017 → 15/09/2026 - 0,38 71 54,9% +210,40% 28,10% 1,38 0,91 - -",
+              "cells": [
+                "",
+                "",
+                "On",
+                "BTCBTC/USDTUSDT",
+                "Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje",
+                "Long",
+                "1d",
+                "17/08/2017 → 15/09/2026",
+                "-",
+                "0,38",
+                "71",
+                "54,9%",
+                "+210,40%",
+                "28,10%",
+                "1,38",
+                "0,91",
+                "-",
+                "-",
+                ""
+              ]
+            },
+            {
+              "text": "On SOLSOL/USDTUSDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 Long 1d 17/08/2017 → 24/12/2023 - 0,42 48 55,0% +120,00% 22,00% 1,28 0,74 - -",
+              "cells": [
+                "",
+                "",
+                "On",
+                "SOLSOL/USDTUSDT",
+                "Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023",
+                "Long",
+                "1d",
+                "17/08/2017 → 24/12/2023",
+                "-",
+                "0,42",
+                "48",
+                "55,0%",
+                "+120,00%",
+                "22,00%",
+                "1,28",
+                "0,74",
+                "-",
+                "-",
+                ""
+              ]
+            },
+            {
+              "text": "On ETHETH/USDTUSDT Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026 Long 1d 15/09/2024 → 15/09/2026 8,50% 0,50 22 59,1% +35,00% 12,2% 1,61 1,12 - -",
+              "cells": [
+                "",
+                "",
+                "On",
+                "ETHETH/USDTUSDT",
+                "Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026",
+                "Long",
+                "1d",
+                "15/09/2024 → 15/09/2026",
+                "8,50%",
+                "0,50",
+                "22",
+                "59,1%",
+                "+35,00%",
+                "12,2%",
+                "1,61",
+                "1,12",
+                "-",
+                "-",
+                ""
+              ]
+            }
+          ],
+          "body": "Favoritos Estratégias favoritas DEV AS Estratégias favoritas Catálogo operacional para escolher quais setups entram no Monitor por estrelas. SYSTEM OPERATIONAL 3 FILTRADAS 0 COMPARADAS ACOMPANHAR 1 Monitorar quando fizer sentido INTERESSE ALTO 1 Prioridade intermediária TOP PICKS 1 Fila principal do Monitor Todas 3 Top picks 1 Alto 1 Acompanhar 1 Sem estrela 0 SYMBOL Todos BTC/USDT SOL/USDT ETH/USDT STRATEGY Todas Médias Móveis: Tendência Confirmada Médias: Virada Inicial TIME Todos 1d DIREÇÃO Todas Long Short ORDENAR Ret/T % Return Sharpe Trades Exportar Nova estratégia BTC/USDT Médias Móveis: Tendência Confirmada Descoberta · período todo 17/08/2017 → 15/09/2026 · atualizado até hoje Long TF 1d SHARPE 0,38 TRADES 71 WIN% 54,9% RETURN +210,40% MAX DD 28,10% Analisar Revalidar Delete SOL/USDT Médias: Virada Inicial Já na lista · não migrado 17/08/2017 → 24/12/2023 Long TF 1d SHARPE 0,42 TRADES 48 WIN% 55,0% RETURN +120,00% MAX DD 22,00% Analisar Revalidar Delete ETH/USDT Médias Móveis: Tendência Confirmada Combo · 2 anos após 70/30 15/09/2024 → 15/09/2026 Long TF 1d SHARPE 0,50 TRADES 22 WIN% 59,1% RETURN +35,00% MAX DD 12,2% Analisar Revalidar Delete 3 estratégias carregadas",
+          "dialogs": []
+        },
+        "descoberta": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/descoberta.html",
+          "title": "Descoberta de estratégias swing",
+          "lang": "pt-BR",
+          "h1": "Descoberta de estratégias swing",
+          "hasFavTable": false,
+          "hasComboPage": false,
+          "sw": 390,
+          "cw": 390,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "ASContaAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Histórico de varreduras",
+            "Montar",
+            "Acompanhando #3d9bee8b",
+            "Decidir",
+            "Pausar",
+            "Cancelar",
+            "Novo rascunho",
+            "novo rascunho",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Limpar filtros",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Excluir",
+            "Fechar",
+            "Voltar",
+            "Promover como tier 3",
+            "Fechar",
+            "Voltar",
+            "Confirmar exclusão"
+          ],
+          "rows": [],
+          "body": "Descoberta de estratégias Combo · varreduras DEV AS Combo / Varreduras Descoberta de estratégias swing Compare templates em 4h e 1d. Preflight, ranking e promoção usam evidência histórica; nenhum candidato é salvo sem revisão. Histórico de varreduras Montar Acompanhando #3d9bee8b Decidir Run exibido no leaderboard #3d9bee8b4e4341eb8fcb0b60644a0579 · em execução · 697 combinações Snapshot #PF-D1CC-697 · 697 válidas · 292 sucesso · 0 falhas · em execução. Separado do sweep ativo. Varredura ativa recuperada do servidor F5 não inicia outra run. O snapshot segue congelado enquanto o sweep continua. Leaderboard · Calmar Varredura #3d9bee8b4e4341eb8fcb0b60644a0579 · em execução · janela UTC [09 out. 2020, 31 jan. de 2024) · 1210/1209 candles ccxt · fees 0,1% · slippage 0,1% 309 de 309 candidatos · página 1 de 26 ORDENAR POR Calmar CAGR vs B&H SÍMBOLO Todos BTC/USDT ALPHA/USDT ETH/USDT TIMEFRAME Todos 4h 1d Limpar filtros Retrato 70/30 · treino 17/08/2017 → 24/12/2023. Ranking, cobertura, Calmar e GO/NO-GO desta grelha não mudam. Promover não mostra preview do histórico inteiro. Candidatos da varredura; ranks globais não renumeram sob filtro. Ordem das métricas: Sharpe, Trades, Win%, Return, Max DD, Calmar (CAGR ÷ Max DD), CAGR anualizado. Return é o composto da janela, não o CAGR. Trades são negócios fechados; cobertura de velas é subtexto. Rank global Candidato Sharpe Trades cobertura Win% acerto Return janela Max DD Calmar CAGR ÷ Max DD CAGR anualizado Ação 1 Médias Móveis: Tendência Confirmada BTC/USDT · 1d · Long. Grelha no treino 70/30 — não no histórico inteiro. RS-949-BTC · cobertura 100% · direction long · ema_short 8 GO + detalhes 0,42 48 100% velas 55,0% +120,00% −22,00% 18,40 8,1% Promover Excluir 1 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-B109ED2C80 · cobertura 100% · direction long · ema_short 8 NO-GO + detalhes 0,31 30 100% velas 46,7% +12,8% −16,5% 22,53 3,7% Promover Excluir 2 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-916-ARPA · cobertura 100% · direction long · ema_short 7 NO-GO + detalhes 0,59 30 100% velas 63,3% +5,4% −8,5% 19,03 1,6% Promover Excluir 3 Médias Móveis: Tendência em Virada 1 RS-916-CFX · cobertura 100% · direction long · ema_short 9 NO-GO + detalhes 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Promover Excluir — Médias Móveis: Tendência em Virada 1 RS-916-INS · cobertura N/A · listagem cortada Amostra insuficiente + detalhes N/A N/A N/A N/A N/A N/A N/A Excluir Conteúdo educacional. Rank global usa resultados elegíveis (≥30 trades, ≥90% cobertura); filtros não renumeram posições. Dados históricos não garantem retornos futuros. Ordem igual a Favoritos: Sharpe, Trades, Win%, Return, Max DD; depois Calmar (CAGR ÷ Max DD) e CAGR anualizado. Return é o composto da janela da varredura — não o CAGR e não o número de Favoritos. Trades = negócios fechados; 100% velas é cobertura, subtexto. Max DD permanece com sinal negativo desta tela.",
+          "dialogs": [
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Promover a favorito tier 3 Destino fixo deste fluxo. Revise a origem antes de confirmar. Médias Móveis: Tendência Confirmada RS-949-BTC · ma_tendencia BTC/USDT · 1d · Long Retorno (CAGR)8,1% Queda máxima−22,00% Trades48 Cobertura · janela100% · 17/08/2017 → 24/12/2023 Varredura de origem#3d9bee8b4e4341eb8fcb0b60644a0579 ResultadoRS-949-BTC Destino obrigatório Tier 3 · observação Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica. Elegibilidade e identidade de estratégia serão revalidadas sob lock. Evidência de outra janela não contorna duplicidade. Voltar Promover como tier 3"
+            },
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Excluir resultado Remove só este resultado do ranking desta varredura. Não cancela a varredura e não apaga favoritos. Médias Móveis: Tendência em Virada 1 RS-916-CFX Varredura#3d9bee8b4e4341eb8fcb0b60644a0579 ResultadoRS-916-CFX Voltar Confirmar exclusão"
+            }
+          ]
+        },
+        "descoberta_modal": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/descoberta.html",
+          "title": "Descoberta de estratégias swing",
+          "lang": "pt-BR",
+          "h1": "Descoberta de estratégias swing",
+          "hasFavTable": false,
+          "hasComboPage": false,
+          "sw": 390,
+          "cw": 390,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "ASContaAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Histórico de varreduras",
+            "Montar",
+            "Acompanhando #3d9bee8b",
+            "Decidir",
+            "Pausar",
+            "Cancelar",
+            "Novo rascunho",
+            "novo rascunho",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Promover",
+            "Excluir",
+            "Limpar filtros",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Promover",
+            "Excluir",
+            "+ detalhes",
+            "Excluir",
+            "Fechar",
+            "Voltar",
+            "Promover como tier 3",
+            "Fechar",
+            "Voltar",
+            "Confirmar exclusão"
+          ],
+          "rows": [],
+          "body": "Descoberta de estratégias Combo · varreduras DEV AS Combo / Varreduras Descoberta de estratégias swing Compare templates em 4h e 1d. Preflight, ranking e promoção usam evidência histórica; nenhum candidato é salvo sem revisão. Histórico de varreduras Montar Acompanhando #3d9bee8b Decidir Run exibido no leaderboard #3d9bee8b4e4341eb8fcb0b60644a0579 · em execução · 697 combinações Snapshot #PF-D1CC-697 · 697 válidas · 292 sucesso · 0 falhas · em execução. Separado do sweep ativo. Varredura ativa recuperada do servidor F5 não inicia outra run. O snapshot segue congelado enquanto o sweep continua. Leaderboard · Calmar Varredura #3d9bee8b4e4341eb8fcb0b60644a0579 · em execução · janela UTC [09 out. 2020, 31 jan. de 2024) · 1210/1209 candles ccxt · fees 0,1% · slippage 0,1% 309 de 309 candidatos · página 1 de 26 ORDENAR POR Calmar CAGR vs B&H SÍMBOLO Todos BTC/USDT ALPHA/USDT ETH/USDT TIMEFRAME Todos 4h 1d Limpar filtros Retrato 70/30 · treino 17/08/2017 → 24/12/2023. Ranking, cobertura, Calmar e GO/NO-GO desta grelha não mudam. Promover não mostra preview do histórico inteiro. Candidatos da varredura; ranks globais não renumeram sob filtro. Ordem das métricas: Sharpe, Trades, Win%, Return, Max DD, Calmar (CAGR ÷ Max DD), CAGR anualizado. Return é o composto da janela, não o CAGR. Trades são negócios fechados; cobertura de velas é subtexto. Rank global Candidato Sharpe Trades cobertura Win% acerto Return janela Max DD Calmar CAGR ÷ Max DD CAGR anualizado Ação 1 Médias Móveis: Tendência Confirmada BTC/USDT · 1d · Long. Grelha no treino 70/30 — não no histórico inteiro. RS-949-BTC · cobertura 100% · direction long · ema_short 8 GO + detalhes 0,42 48 100% velas 55,0% +120,00% −22,00% 18,40 8,1% Promover Excluir 1 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-B109ED2C80 · cobertura 100% · direction long · ema_short 8 NO-GO + detalhes 0,31 30 100% velas 46,7% +12,8% −16,5% 22,53 3,7% Promover Excluir 2 Médias Móveis: Tendência em Virada 1 Compara médias de velocidades diferentes e entra quando a média curta assume a liderança sobre a tendência longa; encerra quando essa hierarquia se desfaz. RS-916-ARPA · cobertura 100% · direction long · ema_short 7 NO-GO + detalhes 0,59 30 100% velas 63,3% +5,4% −8,5% 19,03 1,6% Promover Excluir 3 Médias Móveis: Tendência em Virada 1 RS-916-CFX · cobertura 100% · direction long · ema_short 9 NO-GO + detalhes 0,36 40 100% velas 17,5% +4,4% −7,5% 16,90 1,3% Promover Excluir — Médias Móveis: Tendência em Virada 1 RS-916-INS · cobertura N/A · listagem cortada Amostra insuficiente + detalhes N/A N/A N/A N/A N/A N/A N/A Excluir Conteúdo educacional. Rank global usa resultados elegíveis (≥30 trades, ≥90% cobertura); filtros não renumeram posições. Dados históricos não garantem retornos futuros. Ordem igual a Favoritos: Sharpe, Trades, Win%, Return, Max DD; depois Calmar (CAGR ÷ Max DD) e CAGR anualizado. Return é o composto da janela da varredura — não o CAGR e não o número de Favoritos. Trades = negócios fechados; 100% velas é cobertura, subtexto. Max DD permanece com sinal negativo desta tela. Promover a favorito tier 3 Destino fixo deste fluxo. Revise a origem antes de confirmar. Médias Móveis: Tendência Confirmada RS-949-BTC · ma_tendencia BTC/USDT · 1d · Long Retorno (CAGR) 8,1% Queda máxima −22,00% Trades 48 Cobertura · janela 100% · 17/08/2017 → 24/12/2023 Varredura de origem #3d9bee8b4e4341eb8fcb0b60644a0579 Resultado RS-949-BTC Destino obrigatório Tier 3 · observação Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica. Elegibilidade e identidade de estratégia serão revalidadas sob lock. Evidência de outra janela não contorna duplicidade. Voltar Promover como tier 3",
+          "dialogs": [
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Promover a favorito tier 3 Destino fixo deste fluxo. Revise a origem antes de confirmar. Médias Móveis: Tendência Confirmada RS-949-BTC · ma_tendencia BTC/USDT · 1d · Long Retorno (CAGR) 8,1% Queda máxima −22,00% Trades 48 Cobertura · janela 100% · 17/08/2017 → 24/12/2023 Varredura de origem #3d9bee8b4e4341eb8fcb0b60644a0579 Resultado RS-949-BTC Destino obrigatório Tier 3 · observação Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica. Elegibilidade e identidade de estratégia serão revalidadas sob lock. Evidência de outra janela não contorna duplicidade. Voltar Promover como tier 3"
+            },
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Excluir resultado Remove só este resultado do ranking desta varredura. Não cancela a varredura e não apaga favoritos. Médias Móveis: Tendência em Virada 1 RS-916-CFX Varredura#3d9bee8b4e4341eb8fcb0b60644a0579 ResultadoRS-916-CFX Voltar Confirmar exclusão"
+            }
+          ]
+        },
+        "analise": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/analise.html",
+          "title": "Análise — BTC/USDT histórico inteiro",
+          "lang": "pt-BR",
+          "h1": "Resumo · histórico inteiro · 17/08/2017 → 15/09/2026",
+          "hasFavTable": false,
+          "hasComboPage": true,
+          "sw": 390,
+          "cw": 390,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "ASContaAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Exportar para Excel"
+          ],
+          "rows": [],
+          "body": "Análise da estratégia Favoritos · BTC/USDT 1d DEV AS Voltar aos favoritos BTC/USDT 1d Long / compra Resumo · histórico inteiro · 17/08/2017 → 15/09/2026 Médias Móveis: Tendência Confirmada BTC/USDT · 1d · Long. Números do período completo do favorito novo — não o treino 17/08/2017 → 24/12/2023. Retorno total +210,40% Taxa de acerto 54,9% Drawdown máximo 28,10% Operações 71 Gráfico da estratégia BTC/USDT 1d · 17/08/2017 → 15/09/2026 Lista de operações · histórico inteiro · 71 negócios Exportar para Excel 33 · Compra · 12/09/2026 −2,30% 32 · Compra · 31/08/2026 −1,20% 31 · Compra · 19/08/2026 −0,10% 30 · Compra · 07/08/2026 +1,00% 29 · Compra · 26/07/2026 +2,10% 28 · Compra · 14/07/2026 +3,20% 27 · Compra · 02/07/2026 −3,40% 26 · Compra · 20/06/2026 −2,30% 25 · Compra · 08/06/2026 −1,20% 24 · Compra · 27/05/2026 −0,10% 23 · Compra · 15/05/2026 +1,00% 22 · Compra · 03/05/2026 +2,10% 21 · Compra · 21/04/2026 +3,20% 20 · Compra · 09/04/2026 −3,40% 19 · Compra · 28/03/2026 −2,30% 18 · Compra · 16/03/2026 −1,20% 17 · Compra · 04/03/2026 −0,10% 16 · Compra · 20/02/2026 +1,00% 15 · Compra · 08/02/2026 +2,10% 14 · Compra · 27/01/2026 +3,20% 13 · Compra · 15/01/2026 −3,40% 12 · Compra · 03/01/2026 −2,30% 11 · Compra · 22/12/2025 −1,20% 10 · Compra · 10/12/2025 −0,10% 9 · Compra · 28/11/2025 +1,00% 8 · Compra · 16/11/2025 +2,10% 7 · Compra · 04/11/2025 +3,20% 6 · Compra · 23/10/2025 −3,40% 5 · Compra · 11/10/2025 −2,30% 4 · Compra · 29/09/2025 −1,20% 3 · Compra · 17/09/2025 −0,10% 2 · Compra · 05/09/2025 +1,00% 1 · Compra · 17/08/2017 +2,10% Conteúdo educacional baseado em dados históricos. Resultados passados não garantem retornos futuros.",
+          "dialogs": []
+        },
+        "combo": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-949-favorito-historico-inteiro/combo.html",
+          "title": "Combo — ETH/USDT 2 anos completos",
+          "lang": "pt-BR",
+          "h1": "Período 2 anos completos · 15/09/2024 → 15/09/2026",
+          "hasFavTable": false,
+          "hasComboPage": true,
+          "sw": 390,
+          "cw": 390,
+          "overflow": true,
+          "buttons": [
+            "Recolher menu",
+            "ASContaAlan Silva",
+            "Configurações",
+            "Abrir menu",
+            "Salvar nos Favoritos",
+            "Exportar para Excel",
+            "Fechar",
+            "Voltar",
+            "Salvar nos Favoritos"
+          ],
+          "rows": [],
+          "body": "Análise da estratégia Combo · ETH/USDT 1d · 2 anos DEV AS Voltar Salvar nos Favoritos ETH/USDT 1d Long / compra 70/30 na busca Período 2 anos completos · 15/09/2024 → 15/09/2026 Médias Móveis: Tendência Confirmada ETH/USDT · 1d · Long. Depois de 70/30, o save cobre os 2 anos todos — não o treino (~até 02/2026) e não o histórico inteiro desde 2017. Retorno total +35,00% Taxa de acerto 59,1% Drawdown máximo 12,2% Operações 22 Gráfico da estratégia ETH/USDT 1d · 15/09/2024 → 15/09/2026 Lista de operações · 2 anos completos · 22 negócios Exportar para Excel 22 · Compra · 12/09/2026 −2,30% 18 · Compra · 02/05/2026 +2,10% 12 · Compra · 11/11/2025 −1,20% 8 · Compra · 03/04/2025 +3,20% 4 · Compra · 18/12/2024 −0,10% 1 · Compra · 15/09/2024 +2,10% Conteúdo educacional baseado em dados históricos. Resultados passados não garantem retornos futuros.",
+          "dialogs": [
+            {
+              "tag": "DIV",
+              "open": true,
+              "hidden": false,
+              "display": "block",
+              "text": "Salvar nos Favoritos ETH/USDT · 1d · Médias Móveis: Tendência Confirmada Período a gravar: 15/09/2024 → 15/09/2026 (2 anos completos). O 70/30 da busca não entra neste número. Não amplia para o histórico inteiro. Voltar Salvar nos Favoritos"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

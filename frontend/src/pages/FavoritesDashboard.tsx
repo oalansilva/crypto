@@ -18,6 +18,7 @@ import type { MonitorSyncStatus } from '@/lib/signalHistory';
 import { OosMetricsTable, OosVerdictBadge } from '@/components/results/OosComparison';
 import {
     favoriteGridMetrics,
+    formatPtBrDate,
     isDiscoveryOrigin,
 } from '@/lib/discoveryFavoriteMetrics';
 import { formatCompoundReturn } from '@/lib/compoundReturn';
@@ -1146,9 +1147,12 @@ const FavoritesDashboard: React.FC = () => {
         const s = fav.start_date;
         const e = fav.end_date;
         if (!s && !e) return 'Todo';
-        if (s && e) return `${s} → ${e}`;
-        if (s) return `≥ ${s}`;
-        return `≤ ${e!}`;
+        const startLabel = formatPtBrDate(s);
+        const endLabel = formatPtBrDate(e);
+        if (startLabel && endLabel) return `${startLabel} → ${endLabel}`;
+        if (startLabel) return `≥ ${startLabel}`;
+        if (endLabel) return `≤ ${endLabel}`;
+        return 'Todo';
     };
 
     const formatRefreshStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } => {

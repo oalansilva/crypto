@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import AutoBacktestRun, FavoriteStrategy
 from app.services.combo_optimizer import ComboOptimizer
+from app.services.discovery_favorite_metrics import uses_operational_period
 from app.services.market_data_providers import (
     CCXT_SOURCE,
     get_market_data_provider,
@@ -552,6 +553,8 @@ class FavoriteBacktestRefreshService:
 
             completed_at = _utcnow()
             favorite.metrics = updated_metrics
+            if uses_operational_period(current_metrics) and favorite.period_type == "all":
+                favorite.end_date = completed_at.date().isoformat()
             favorite.auto_refresh_status = REFRESH_STATUS_SUCCESS
             favorite.auto_refresh_error = None
             favorite.auto_refresh_completed_at = completed_at
