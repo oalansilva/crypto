@@ -237,6 +237,15 @@
       "evidence": "#193 GET flatten, combo-saved passthrough, overlay after regenerated merge, promote copy"
     },
     {
+      "file": "backend/tests/unit/test_discovery_go_nogo_profile.py",
+      "protected_behavior": "Discovery GO/NO-GO profile vs Combo walk-forward; fail-closed; persist without OOS dict",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "evaluate_discovery_go_nogo vs evaluate_walk_forward fixtures; monkeypatched persist snapshot; low-sample oos_verdict strip; missing oos_metrics NO-GO"
+    },
+    {
       "file": "backend/tests/unit/test_discovery_insufficient_sample.py",
       "protected_behavior": "discovery listing gate cuts optimizer before grid; four-term reconcile; insufficient-only completed",
       "production_reachability": "reachable",
