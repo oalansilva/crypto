@@ -115,6 +115,43 @@ const OPERATIONAL_FAVORITE = {
   period_type: 'all',
 }
 
+const CARD_949_TRADES_CANDLES = [
+  {
+    timestamp_utc: '2026-01-01T00:00:00Z',
+    open: 90000,
+    high: 96000,
+    low: 89000,
+    close: 95000,
+    volume: 1200,
+  },
+]
+
+function buildCard949TradesPayload() {
+  const trades = Array.isArray(OPERATIONAL_FAVORITE.metrics.trades)
+    ? OPERATIONAL_FAVORITE.metrics.trades
+    : []
+  const metrics = {
+    ...OPERATIONAL_FAVORITE.metrics,
+    trades,
+    trades_history_cached: true,
+    trades_metrics_match: true,
+    analysis_candles: CARD_949_TRADES_CANDLES,
+    analysis_indicator_data: {},
+    analysis_execution_mode: 'favorite_regenerated',
+  }
+  return {
+    favorite_id: OPERATIONAL_FAVORITE.id,
+    trades,
+    metrics,
+    metrics_match: true,
+    metrics_deltas: {},
+    regenerated: true,
+    candles: CARD_949_TRADES_CANDLES,
+    indicator_data: {},
+    execution_mode: 'favorite_regenerated',
+  }
+}
+
 async function mockCard949LiveApi(page: Page) {
   await page.addInitScript((user) => {
     window.localStorage.setItem('auth_access_token', 'test-access-token')
@@ -139,6 +176,36 @@ async function mockCard949LiveApi(page: Page) {
       })
     }
     return route.continue()
+  })
+
+  await page.route(/\/api\/favorites\/\d+\/trades$/, (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(buildCard949TradesPayload()),
+    })
+  })
+
+  await page.route(/\/api\/market\/candles(?:\?.*)?$/, (route) => {
+    const url = new URL(route.request().url())
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        symbol: url.searchParams.get('symbol'),
+        timeframe: url.searchParams.get('timeframe'),
+        count: CARD_949_TRADES_CANDLES.length,
+        candles: CARD_949_TRADES_CANDLES,
+      }),
+    })
+  })
+
+  await page.route(/\/api\/opportunities\/?(?:\?.*)?$/, (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    })
   })
 }
 

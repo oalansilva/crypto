@@ -983,7 +983,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page.getByText(/Médias Móveis: Tendência em Virada - Ação de preço/i)).toBeVisible();
 });
 
-test('favorites analysis opens cached multi MA chart when trade recovery hangs', async ({ page }) => {
+test('favorites analysis stays on list while trade recovery hangs', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   const dialogs: string[] = [];
   page.on('dialog', async (dialog) => {
@@ -991,46 +991,22 @@ test('favorites analysis opens cached multi MA chart when trade recovery hangs',
     await dialog.dismiss();
   });
   await page.route('**/api/favorites/5/trades', () => {
-    // Simulates live full-history trade recovery taking too long.
+    // Simulates live full-history trade recovery that never completes (#970: no empty-cache fallback).
   });
 
   await page.goto('/favorites');
 
-  const analysis = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' })
-    .locator('button[title="Ver análise completa"]');
+  const hbarRow = page.locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' });
+  const analysis = hbarRow.locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();
 
-  await expect(page).toHaveURL(/\/combo\/results$/);
-  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
-  await expect(page.getByTestId('combo-result-parameters')).toHaveCount(0);
-  await expect(page.getByTestId('combo-result-summary')).toBeVisible();
-  await expect(page.getByTestId('combo-result-strategy-rules')).toBeVisible();
-  await expect(page.getByText('Proteção', { exact: true })).toBeVisible();
-
-  const technicalPanel = page.getByTestId('combo-result-strategy-transparency');
-  const technicalDisclosure = technicalPanel.getByText('Detalhes técnicos', { exact: true });
-  await expect(technicalDisclosure).toBeVisible();
-  await expect(technicalPanel.getByText('Parâmetros efetivos')).toBeHidden();
-  await technicalDisclosure.focus();
-  await expect(technicalDisclosure).toBeFocused();
-  await expect.poll(async () => Math.round((await technicalDisclosure.boundingBox())?.height ?? 0)).toBeGreaterThanOrEqual(44);
-  await page.keyboard.press('Enter');
-  await expect(technicalPanel.getByText('Parâmetros efetivos')).toBeVisible();
-  await expect(technicalPanel.getByText('Direção')).toBeVisible();
-  await expect(technicalPanel.getByText('Compra')).toBeVisible();
-  await expect(technicalPanel.getByText('EMA curta')).toBeVisible();
-  await expect(technicalPanel.getByText('SMA média')).toBeVisible();
-  await expect(technicalPanel.getByText('SMA longa')).toBeVisible();
-  await expect(technicalPanel.getByText('Stop de perda')).toBeVisible();
-  await expect(technicalPanel.getByText('9.00%')).toBeVisible();
-  await expect(technicalPanel.getByText('Fonte de dados')).toBeVisible();
-  await expect(technicalPanel.getByText('CCXT')).toBeVisible();
-  await expect(technicalPanel.getByText('Série disponível para o timeframe atual.')).toHaveCount(0);
-  await expect(page.getByText('Parâmetros efetivos')).toHaveCount(1);
-  await expect(page.getByText('HBAR/USDT • 1d • 120 velas')).toBeVisible();
-  await expectNoHorizontalOverflow(page);
+  await expect(page).toHaveURL(/\/favorites$/, { timeout: 5000 });
+  await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible();
+  await expect(analysis).toBeDisabled();
+  await expect(hbarRow.locator('.fav-spinner')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveCount(0);
+  await expect(page.getByTestId('combo-result-summary')).toHaveCount(0);
   expect(dialogs).toEqual([]);
 });
 
