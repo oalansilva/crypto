@@ -2232,8 +2232,7 @@ environments:
       - criptofarol-prod-telegram-alert-scan.service
 release:
   health_url: https://example.com/api/health
-""".strip()
-        + "\n",
+""".strip() + "\n",
         encoding="utf-8",
     )
 
