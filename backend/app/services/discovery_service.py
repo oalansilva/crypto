@@ -126,6 +126,8 @@ def _json_metric_float(metrics: Any, key: str) -> float | None:
 
 def _row_oos_verdict(row: DiscoveryResult) -> dict[str, Any] | None:
     """Top-level walk-forward verdict. Absent/invalid does not invent GO."""
+    if row.eligibility in ("low_sample", "insufficient_sample"):
+        return None
     metrics = row.metrics if isinstance(row.metrics, dict) else None
     if not metrics:
         return None

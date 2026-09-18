@@ -376,7 +376,9 @@ def run_combination(
 
     result_id = f"RS-{uuid.uuid4().hex[:10].upper()}"
     cagr_f, calmar_f, benchmark_cagr, delta = _ranking_columns(best_metrics, len(trades))
-    persisted_metrics = _persist_metrics_snapshot(best_metrics, result, len(trades))
+    persisted_metrics = _persist_metrics_snapshot(
+        best_metrics, result, len(trades), eligible=eligible
+    )
 
     db.add(
         DiscoveryResult(
@@ -614,7 +616,11 @@ def _ranking_columns(
 
 
 def _persist_metrics_snapshot(
-    best_metrics: dict[str, Any], result: dict[str, Any], trades_count: int
+    best_metrics: dict[str, Any],
+    result: dict[str, Any],
+    trades_count: int,
+    *,
+    eligible: bool,
 ) -> dict[str, Any]:
     metrics = dict(best_metrics)
     if trades_count == 0:
@@ -623,16 +629,35 @@ def _persist_metrics_snapshot(
         metrics.pop("benchmark", None)
     _drop_nonfinite_ranking_keys(metrics)
     oos_metrics = result.get("oos_metrics")
-    oos_verdict = result.get("oos_verdict")
-    split_applied = isinstance(oos_verdict, dict) or isinstance(oos_metrics, dict)
+    combo_verdict = result.get("oos_verdict")
+    split_applied = isinstance(combo_verdict, dict) or isinstance(oos_metrics, dict)
     metrics["split_train_ratio"] = DISCOVERY_SPLIT_TRAIN_RATIO
     metrics["split_applied"] = split_applied
     if isinstance(oos_metrics, dict):
         oos_copy = dict(oos_metrics)
         _drop_nonfinite_ranking_keys(oos_copy)
         metrics["oos_metrics"] = oos_copy
-    if isinstance(oos_verdict, dict):
-        metrics["oos_verdict"] = oos_verdict
+    if eligible:
+        from app.metrics.criteria import evaluate_discovery_go_nogo
+
+        oos_for_eval = oos_metrics if isinstance(oos_metrics, dict) else {}
+        discovery = evaluate_discovery_go_nogo(best_metrics, oos_for_eval)
+        base = combo_verdict if isinstance(combo_verdict, dict) else {}
+        verdict_payload: dict[str, Any] = {
+            "status": discovery.status,
+            "reasons": discovery.reasons,
+            "warnings": discovery.warnings,
+        }
+        for key in ("holdout_trades", "execution_mode", "split_train_ratio"):
+            if key in base:
+                verdict_payload[key] = base[key]
+        if "holdout_trades" not in verdict_payload:
+            holdout_trades = oos_for_eval.get("total_trades")
+            if holdout_trades is not None:
+                verdict_payload["holdout_trades"] = holdout_trades
+        if "split_train_ratio" not in verdict_payload:
+            verdict_payload["split_train_ratio"] = float(DISCOVERY_SPLIT_TRAIN_RATIO)
+        metrics["oos_verdict"] = verdict_payload
     return metrics
 
 

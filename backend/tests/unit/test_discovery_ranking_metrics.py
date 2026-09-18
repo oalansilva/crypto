@@ -173,6 +173,20 @@ class TestDiscoveryRankingPersistence:
 
         start = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end = datetime(2024, 12, 31, tzinfo=timezone.utc)
+        candles = []
+        close = 1.0
+        for i in range(365):
+            ts = start + pd.Timedelta(days=i)
+            candles.append(
+                {
+                    "timestamp_utc": ts.isoformat(),
+                    "open": close,
+                    "high": close,
+                    "low": close,
+                    "close": close,
+                    "volume": 1.0,
+                }
+            )
 
         captured: dict = {}
 
@@ -189,25 +203,8 @@ class TestDiscoveryRankingPersistence:
                         "calmar_ratio": 2.8,
                         "benchmark": {"cagr": 0.18},
                     },
-                    "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 22,
-                    "candles": [
-                        {
-                            "timestamp_utc": start.isoformat(),
-                            "open": 1.0,
-                            "high": 1.0,
-                            "low": 1.0,
-                            "close": 1.0,
-                            "volume": 1.0,
-                        },
-                        {
-                            "timestamp_utc": end.isoformat(),
-                            "open": 1.0,
-                            "high": 1.0,
-                            "low": 1.0,
-                            "close": 1.0,
-                            "volume": 1.0,
-                        },
-                    ],
+                    "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 40,
+                    "candles": candles,
                     "best_parameters": {"direction": "long"},
                     "data_source": "ccxt",
                     "oos_metrics": {"total_trades": 12, "sharpe_ratio": 0.4, "cagr": 0.11},
@@ -362,7 +359,7 @@ class TestDiscoveryWalkForwardPersistence:
         assert result.delta_cagr_vs_bh is None
         assert "cagr" not in result.metrics
         assert result.metrics["split_train_ratio"] == pytest.approx(0.7)
-        assert result.metrics["oos_verdict"]["status"] == "NO-GO"
+        assert "oos_verdict" not in result.metrics
         assert result.eligibility == "low_sample"
         db.close()
 
@@ -431,7 +428,8 @@ class TestDiscoveryWalkForwardPersistence:
         assert result.cagr is not None and math.isfinite(result.cagr)
         assert result.calmar_ratio is not None and math.isfinite(result.calmar_ratio)
         assert result.benchmark_cagr is not None and math.isfinite(result.benchmark_cagr)
-        assert result.metrics["oos_verdict"]["status"] == "ERROR"
+        assert "oos_verdict" not in result.metrics
+        assert result.eligibility == "low_sample"
         assert result.metrics["split_applied"] is True
         db.close()
 
@@ -501,7 +499,7 @@ class TestDiscoveryWalkForwardPersistence:
         assert result.observed_valid_candles == 2
         assert result.coverage == pytest.approx(2 / result.expected_candles)
         assert result.eligibility == "low_sample"
-        assert result.metrics["oos_verdict"]["status"] == "NO-GO"
+        assert "oos_verdict" not in result.metrics
         db.close()
 
     def test_nogo_holdout_does_not_override_discovery_eligibility(
