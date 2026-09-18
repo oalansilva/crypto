@@ -424,6 +424,31 @@ evidence_abbreviation_in_doc() {
   return 1
 }
 
+validate_prod_deploy_evidence_window() {
+  [[ -z "$prod_evidence" ]] && return 0
+  [[ ! -f "$overlay_file" ]] && return 0
+  local line msg
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    case "$line" in
+      BLOCKER:*)
+        msg="${line#BLOCKER: }"
+        issue "$msg"
+        ;;
+      WARN:*)
+        msg="${line#WARN: }"
+        warn "$msg"
+        ;;
+    esac
+  done < <(
+    python3 "${repo_root}/scripts/release_guard_prod_evidence.py" \
+      --repo-root "$repo_root" \
+      --overlay-file "$overlay_file" \
+      --evidence "$prod_evidence" \
+      --strict "$strict"
+  )
+}
+
 validate_prod_evidence_this_lote() {
   local token full path unpublished
   token="${prod_evidence%% *}"
@@ -633,6 +658,13 @@ if [[ "$release_published" -eq 1 ]]; then
   fi
 else
   printf 'PROD deploy evidence not required yet (release not published; checked in pre only after merge, required in post).\n'
+fi
+
+section "PROD deploy evidence publish window"
+if [[ "$release_published" -eq 1 && -n "$prod_evidence" ]]; then
+  validate_prod_deploy_evidence_window
+else
+  printf 'Skipped (overlay publish-window services check runs when release is published and PROD_DEPLOY_EVIDENCE is set).\n'
 fi
 
 section "Worktrees"
