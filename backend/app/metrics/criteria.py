@@ -85,9 +85,7 @@ def evaluate_discovery_go_nogo(
     if oos_sharpe is None:
         reasons.append("Holdout — Sharpe OOS ausente ou não finito (limiar > 0)")
     elif oos_sharpe <= 0:
-        reasons.append(
-            f"Holdout — Sharpe OOS {_format_pt_number(oos_sharpe)} ≤ 0 (limiar > 0)"
-        )
+        reasons.append(f"Holdout — Sharpe OOS {_format_pt_number(oos_sharpe)} ≤ 0 (limiar > 0)")
 
     calmar = _finite_or_none(is_metrics, "calmar_ratio")
     if calmar is None:
@@ -99,17 +97,13 @@ def evaluate_discovery_go_nogo(
     if profit_factor is None:
         reasons.append("Treino — Profit factor ausente ou não finito (limiar ≥ 1,5)")
     elif profit_factor < DISCOVERY_TRAIN_MIN_PROFIT_FACTOR:
-        reasons.append(
-            f"Treino — Profit factor {_format_pt_number(profit_factor)} < 1,5"
-        )
+        reasons.append(f"Treino — Profit factor {_format_pt_number(profit_factor)} < 1,5")
 
     max_dd_pct = _max_drawdown_pct(is_metrics)
     if max_dd_pct is None:
         reasons.append("Treino — Max drawdown ausente ou não finito (limiar ≤ 35%)")
     elif max_dd_pct > DISCOVERY_TRAIN_MAX_DRAWDOWN_PCT:
-        reasons.append(
-            f"Treino — Max drawdown {_format_pt_number(max_dd_pct, 1)}% > 35%"
-        )
+        reasons.append(f"Treino — Max drawdown {_format_pt_number(max_dd_pct, 1)}% > 35%")
 
     if reasons:
         return CriteriaResult(status="NO-GO", reasons=reasons, warnings=warnings)
