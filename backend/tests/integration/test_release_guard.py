@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 _AUTO_EVIDENCE = object()
 
 RELEASE_GUARD = Path(__file__).resolve().parents[3] / "scripts" / "release-guard"
+PROD_EVIDENCE_CHECK = (
+    Path(__file__).resolve().parents[3] / "scripts" / "release_guard_prod_evidence.py"
+)
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -2202,6 +2207,202 @@ def test_pre_release_branch_skips_local_develop_ahead_without_preserved(tmp_path
     assert "BLOCKER: local develop differs from origin/develop" not in result.stdout
     assert result.returncode == 0
     assert "Result: PASS" in result.stdout
+
+
+def _minimal_prod_overlay(repo: Path) -> None:
+    overlay_dir = repo / ".covenant-flow"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
+    (overlay_dir / "overlay.yaml").write_text(
+        """
+environments:
+  prod:
+    source: /srv/apps/prod/example/source
+    url: https://example.com
+    db: example
+    services:
+      - criptofarol-prod-backend.service
+      - criptofarol-prod-frontend.service
+      - criptofarol-prod-leads.service
+      - criptofarol-prod-runtime-worker.service
+      - criptofarol-prod-discovery-worker.service
+      - criptofarol-prod-candle-writer.service
+      - criptofarol-prod-telegram-alert-scan.service
+    oneshot_services:
+      - criptofarol-prod-candle-writer.service
+      - criptofarol-prod-telegram-alert-scan.service
+release:
+  health_url: https://example.com/api/health
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _run_prod_evidence_check(
+    repo: Path,
+    evidence: str,
+    *,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    env = dict(os.environ)
+    env["RELEASE_GUARD_SKIP_SYSTEMD"] = "1"
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        [
+            sys.executable,
+            str(PROD_EVIDENCE_CHECK),
+            "--repo-root",
+            str(repo),
+            "--evidence",
+            evidence,
+            "--strict",
+            "1",
+        ],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def test_prod_evidence_incomplete_publish_window_fails_sept16_style(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _minimal_prod_overlay(repo)
+    evidence = (
+        "deadbeef services=criptofarol-prod-backend,criptofarol-prod-frontend,"
+        "criptofarol-prod-leads,criptofarol-prod-runtime-worker url=https://example.com"
+    )
+    result = _run_prod_evidence_check(repo, evidence)
+    assert result.returncode == 1
+    assert "criptofarol-prod-discovery-worker.service" in result.stdout
+    assert "BLOCKER:" in result.stdout
+
+
+def test_prod_evidence_complete_publish_window_passes_services_gate(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _minimal_prod_overlay(repo)
+    evidence = (
+        "deadbeef services=criptofarol-prod-backend,criptofarol-prod-frontend,"
+        "criptofarol-prod-leads,criptofarol-prod-runtime-worker,"
+        "criptofarol-prod-discovery-worker url=https://example.com"
+    )
+    result = _run_prod_evidence_check(repo, evidence)
+    assert result.returncode == 0
+    assert "BLOCKER:" not in result.stdout
+
+
+def test_prod_evidence_extra_oneshot_names_warn_only(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _minimal_prod_overlay(repo)
+    evidence = (
+        "deadbeef services=criptofarol-prod-backend,criptofarol-prod-frontend,"
+        "criptofarol-prod-leads,criptofarol-prod-runtime-worker,"
+        "criptofarol-prod-discovery-worker,criptofarol-prod-candle-writer url=https://example.com"
+    )
+    result = _run_prod_evidence_check(repo, evidence)
+    assert result.returncode == 0
+    assert "WARN:" in result.stdout
+    assert "oneshot" in result.stdout.lower()
+
+
+def test_prod_evidence_active_stale_process_fails(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _minimal_prod_overlay(repo)
+    evidence = (
+        "deadbeef services=criptofarol-prod-backend,criptofarol-prod-frontend,"
+        "criptofarol-prod-leads,criptofarol-prod-runtime-worker,"
+        "criptofarol-prod-discovery-worker url=https://example.com"
+    )
+    fixtures = json.dumps(
+        {
+            "criptofarol-prod-backend.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Mon 2020-01-01 00:00:00 UTC",
+            },
+            "criptofarol-prod-frontend.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Wed 2026-09-18 12:00:00 UTC",
+            },
+            "criptofarol-prod-leads.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Wed 2026-09-18 12:00:00 UTC",
+            },
+            "criptofarol-prod-runtime-worker.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Wed 2026-09-18 12:00:00 UTC",
+            },
+            "criptofarol-prod-discovery-worker.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Wed 2026-09-18 12:00:00 UTC",
+            },
+        }
+    )
+    result = _run_prod_evidence_check(
+        repo,
+        evidence,
+        extra_env={
+            "RELEASE_GUARD_SKIP_SYSTEMD": "0",
+            "RELEASE_GUARD_SYSTEMD_FIXTURES": fixtures,
+            "RELEASE_GUARD_DEPLOY_WINDOW_START": "2026-09-18T11:00:00+00:00",
+            "RELEASE_GUARD_MOCK_HEALTH": "ok",
+        },
+    )
+    assert result.returncode == 1
+    assert "criptofarol-prod-backend.service started before this deploy window" in result.stdout
+    assert result.stdout.count("started before this deploy window") == 1
+
+
+def test_prod_evidence_inactive_unit_with_health_ok_passes(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _minimal_prod_overlay(repo)
+    evidence = (
+        "deadbeef services=criptofarol-prod-backend,criptofarol-prod-frontend,"
+        "criptofarol-prod-leads,criptofarol-prod-runtime-worker,"
+        "criptofarol-prod-discovery-worker url=https://example.com"
+    )
+    fixtures = json.dumps(
+        {
+            "criptofarol-prod-backend.service": {
+                "ActiveState": "inactive",
+                "ExecMainStartTimestamp": "n/a",
+            },
+            "criptofarol-prod-frontend.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Wed 2026-09-18 14:00:00 UTC",
+            },
+            "criptofarol-prod-leads.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Wed 2026-09-18 14:00:00 UTC",
+            },
+            "criptofarol-prod-runtime-worker.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Wed 2026-09-18 14:00:00 UTC",
+            },
+            "criptofarol-prod-discovery-worker.service": {
+                "ActiveState": "active",
+                "ExecMainStartTimestamp": "Wed 2026-09-18 14:00:00 UTC",
+            },
+        }
+    )
+    result = _run_prod_evidence_check(
+        repo,
+        evidence,
+        extra_env={
+            "RELEASE_GUARD_SKIP_SYSTEMD": "0",
+            "RELEASE_GUARD_SYSTEMD_FIXTURES": fixtures,
+            "RELEASE_GUARD_DEPLOY_WINDOW_START": "2026-09-18T11:00:00+00:00",
+            "RELEASE_GUARD_MOCK_HEALTH": "ok",
+        },
+    )
+    assert result.returncode == 0
+    assert "BLOCKER:" not in result.stdout
 
 
 def test_pre_release_branch_still_blocks_other_unmerged_local(tmp_path: Path):
