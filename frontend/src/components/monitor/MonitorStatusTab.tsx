@@ -172,6 +172,7 @@ export const MonitorStatusTab: React.FC = () => {
     const { user } = useAuth();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
+    const [opportunitiesLoadError, setOpportunitiesLoadError] = useState(false);
     const [openingChartOpportunityId, setOpeningChartOpportunityId] = useState<string | null>(null);
     const [activeChart, setActiveChart] = useState<{
         opportunity: Opportunity;
@@ -424,6 +425,7 @@ export const MonitorStatusTab: React.FC = () => {
     };
 
     const fetchOpportunities = async (tier?: TierFilter, options?: { refresh?: boolean }): Promise<boolean> => {
+        const hadOpportunities = opportunities.length > 0;
         setLoading(true);
         try {
             const tierParam = tier || tierFilter;
@@ -448,6 +450,7 @@ export const MonitorStatusTab: React.FC = () => {
             const data = await response.json();
             const opportunityRows = Array.isArray(data) ? data as Opportunity[] : [];
             setOpportunities(opportunityRows);
+            setOpportunitiesLoadError(false);
             await fetchSpotEligibility(opportunityRows);
             setLastUpdated(new Date());
 
@@ -458,6 +461,9 @@ export const MonitorStatusTab: React.FC = () => {
             return true;
         } catch (error) {
             console.error(error);
+            if (!hadOpportunities) {
+                setOpportunitiesLoadError(true);
+            }
             toast({
                 title: 'Erro',
                 description: 'Não foi possível carregar as estratégias.',
@@ -1102,8 +1108,23 @@ export const MonitorStatusTab: React.FC = () => {
                     </section>
 
                     <main className="monitor-board">
-                        {loading && opportunities.length === 0 ? (
+                        {loading && opportunities.length === 0 && !opportunitiesLoadError ? (
                             <div className="status-empty">Carregando sinais...</div>
+                        ) : opportunitiesLoadError && opportunities.length === 0 ? (
+                            <section className="monitor-empty-card">
+                                <div className="monitor-error" role="alert" data-testid="monitor-load-error">
+                                    <p>Não foi possível carregar as estratégias.</p>
+                                    <span>A lista de favoritos não chegou. Isto não significa que não há estratégias.</span>
+                                    <button
+                                        type="button"
+                                        className="monitor-retry"
+                                        onClick={() => void fetchOpportunities(tierFilter, { refresh: true })}
+                                        disabled={loading}
+                                    >
+                                        Tentar de novo
+                                    </button>
+                                </div>
+                            </section>
                         ) : opportunities.length === 0 && !loading ? (
                             <section className="monitor-empty-card">
                                 <p className="monitor-empty-text">Nenhum ativo disponível no monitor.</p>

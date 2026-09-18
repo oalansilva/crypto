@@ -541,7 +541,10 @@ def test_favorite_trades_removes_future_cached_exit_but_keeps_open_entry(
     assert response.regenerated is False
     assert _without_trade_explanations(response.trades) == expected
     assert all(trade["current_state_explanation"] for trade in response.trades)
-    assert listed[0].metrics["trades"] == expected
+    list_metrics = listed[0].metrics
+    assert "trades" not in list_metrics
+    assert "analysis_candles" not in list_metrics
+    assert list_metrics.get("total_trades") == 1
 
 
 def test_favorite_trades_preserves_history_before_partial_candle_window():

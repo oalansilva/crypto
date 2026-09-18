@@ -106,6 +106,7 @@ def _favorite_response(
     *,
     include_secrets: bool,
     include_details: bool = False,
+    for_list: bool = False,
     tier_override: int | None | object = _TIER_UNSET,
     description_by_strategy: dict[str, str] | None = None,
     display_name_by_strategy: dict[str, str] | None = None,
@@ -114,10 +115,11 @@ def _favorite_response(
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
     if isinstance(payload.get("metrics"), dict):
-        payload["metrics"] = _safe_cached_metrics(
-            flatten_discovery_grid_metrics(payload["metrics"]),
-            str(row.timeframe),
-        )
+        flattened = flatten_discovery_grid_metrics(payload["metrics"])
+        if for_list:
+            payload["metrics"] = _metrics_for_favorites_list(flattened)
+        else:
+            payload["metrics"] = _safe_cached_metrics(flattened, str(row.timeframe))
     strategy_key = str(row.strategy_name)
     payload["strategy_description"] = (description_by_strategy or {}).get(
         strategy_key,
@@ -313,6 +315,22 @@ def _safe_cached_metrics(metrics: dict[str, Any], timeframe: str) -> dict[str, A
         candles = _analysis_candles_from_metrics(metrics)
         safe_metrics["trades"] = _safe_cached_trades(metrics["trades"], candles, timeframe)
     return safe_metrics
+
+
+_LIST_GRADE_METRIC_SERIES_KEYS = (
+    "analysis_candles",
+    "analysis_indicator_data",
+    "analysis_strategy_transparency",
+    "trades",
+)
+
+
+def _metrics_for_favorites_list(metrics: dict[str, Any]) -> dict[str, Any]:
+    """Strip heavy historical series from list payloads; analysis loads via /trades."""
+    slim = dict(metrics)
+    for key in _LIST_GRADE_METRIC_SERIES_KEYS:
+        slim.pop(key, None)
+    return slim
 
 
 def _merge_chart_candles(
@@ -629,6 +647,7 @@ def list_favorites(
                 row,
                 include_secrets=include_secrets,
                 include_details=include_details,
+                for_list=True,
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
@@ -645,6 +664,7 @@ def list_favorites(
                 row,
                 include_secrets=include_secrets,
                 include_details=include_details,
+                for_list=True,
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
@@ -671,6 +691,7 @@ def list_favorites(
                 row,
                 include_secrets=include_secrets,
                 include_details=include_details,
+                for_list=True,
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
@@ -687,6 +708,7 @@ def list_favorites(
                 row,
                 include_secrets=include_secrets,
                 include_details=include_details,
+                for_list=True,
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
@@ -712,6 +734,7 @@ def list_favorites(
             row,
             include_secrets=False,
             include_details=include_details,
+            for_list=True,
             tier_override=tier_by_favorite_id.get(int(row.id)),
             description_by_strategy=descriptions,
             display_name_by_strategy=display_names,
