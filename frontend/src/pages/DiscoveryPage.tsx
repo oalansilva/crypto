@@ -165,10 +165,32 @@ function gridEasyMetrics(row: LeaderboardRow, calmarBlocked: boolean) {
   }
 }
 function walkForwardStatus(row: LeaderboardRow): 'GO' | 'NO-GO' | null {
+  if (row.eligibility === 'low_sample' || row.eligibility === 'insufficient_sample') {
+    return null
+  }
   const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics.oos_verdict : null
   const raw = String(row.oos_verdict?.status ?? nested?.status ?? '').trim().toUpperCase()
   if (raw === 'GO' || raw === 'NO-GO') return raw
   return null
+}
+function rowOosVerdict(row: LeaderboardRow): OosVerdict | null {
+  const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics.oos_verdict : null
+  return row.oos_verdict ?? nested ?? null
+}
+function discoverySealReason(row: LeaderboardRow): string | null {
+  if (walkForwardStatus(row) !== 'NO-GO') return null
+  const verdict = rowOosVerdict(row)
+  const reasons = verdict?.reasons
+  if (!Array.isArray(reasons) || !reasons.length) return null
+  const primary =
+    reasons.find((item) => typeof item === 'string' && (item.startsWith('Holdout') || item.startsWith('Treino')))
+    ?? reasons[0]
+  return typeof primary === 'string' ? primary : null
+}
+function sealReasonClass(reason: string): string {
+  if (reason.startsWith('Holdout')) return 'seal-reason holdout'
+  if (reason.startsWith('Treino')) return 'seal-reason treino'
+  return 'seal-reason'
 }
 function WalkForwardSeal({ status }: { status: 'GO' | 'NO-GO' | null }) {
   if (status !== 'GO' && status !== 'NO-GO') return null
@@ -178,6 +200,15 @@ function WalkForwardSeal({ status }: { status: 'GO' | 'NO-GO' | null }) {
       data-testid={status === 'GO' ? 'seal-go' : 'seal-nogo'}
     >
       {status}
+    </span>
+  )
+}
+function DiscoverySealReason({ row }: { row: LeaderboardRow }) {
+  const reason = discoverySealReason(row)
+  if (!reason) return null
+  return (
+    <span className={sealReasonClass(reason)} data-testid={reason.startsWith('Holdout') ? 'reason-holdout' : reason.startsWith('Treino') ? 'reason-treino' : 'reason-seal'}>
+      {reason}
     </span>
   )
 }
@@ -1987,6 +2018,7 @@ export function DiscoveryPage() {
                           <strong className="candidate-name">{row.display_name || row.template_id}</strong>
                           <span className="candidate-meta">{row.symbol} · {row.timeframe} · {row.direction === 'long' ? 'Long' : 'Short'}</span>
                           <WalkForwardSeal status={verdict} />
+                          <DiscoverySealReason row={row} />
                           {lowSample ? <span className="sample-badge">Baixa amostra</span> : null}
                           {duplicate ? (
                             <span className="dedup-note" title={`Promoção bloqueada: equivalente ao favorito ativo ${row.dedup_reference ?? ''}`}>
@@ -2613,6 +2645,7 @@ export function DiscoveryPage() {
                               {row.direction === 'short' ? ' · benchmark B&H long-only' : ''}
                             </span>
                             <WalkForwardSeal status={verdict} />
+                            <DiscoverySealReason row={row} />
                             {insufficient ? (
                               <span className="sample-badge" data-testid="seal-insufficient">Amostra insuficiente</span>
                             ) : null}

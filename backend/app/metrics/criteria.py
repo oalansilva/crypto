@@ -45,6 +45,81 @@ OOS_SHARPE_RETENTION_RATIO = 0.50
 # Aviso de amostra pequena no holdout (não bloqueia).
 OOS_SMALL_SAMPLE_MAX = 30
 
+# Perfil Discovery (card #969): selo na varredura, separado do Combo walk-forward.
+DISCOVERY_TRAIN_MIN_CALMAR = 1.0
+DISCOVERY_TRAIN_MIN_PROFIT_FACTOR = 1.5
+DISCOVERY_TRAIN_MAX_DRAWDOWN_PCT = 35.0
+
+
+def _format_pt_number(value: float, digits: int = 2) -> str:
+    return f"{value:.{digits}f}".replace(".", ",")
+
+
+def _max_drawdown_pct(metrics: Dict[str, any]) -> Optional[float]:
+    raw = metrics.get("max_drawdown")
+    if raw is None:
+        return None
+    try:
+        number = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return abs(number) * 100 if abs(number) <= 1 else abs(number)
+
+
+def evaluate_discovery_go_nogo(
+    is_metrics: Dict[str, any], oos_metrics: Dict[str, any]
+) -> CriteriaResult:
+    """Selo GO/NO-GO da Descoberta (treino decente + Sharpe OOS finito > 0).
+
+    Não usa pisos Combo (100 trades / Sharpe 0,8 / retenção 50%). Motivos
+    nomeiam Treino vs Holdout com valor observado e limiar.
+    """
+    is_metrics = is_metrics or {}
+    oos_metrics = oos_metrics or {}
+    reasons: List[str] = []
+    warnings: List[str] = []
+
+    oos_sharpe = _finite_or_none(oos_metrics, "sharpe_ratio")
+    if oos_sharpe is None:
+        reasons.append("Holdout — Sharpe OOS ausente ou não finito (limiar > 0)")
+    elif oos_sharpe <= 0:
+        reasons.append(
+            f"Holdout — Sharpe OOS {_format_pt_number(oos_sharpe)} ≤ 0 (limiar > 0)"
+        )
+
+    calmar = _finite_or_none(is_metrics, "calmar_ratio")
+    if calmar is None:
+        reasons.append("Treino — Calmar ausente ou não finito (limiar ≥ 1)")
+    elif calmar < DISCOVERY_TRAIN_MIN_CALMAR:
+        reasons.append(f"Treino — Calmar {_format_pt_number(calmar)} < 1")
+
+    profit_factor = _finite_or_none(is_metrics, "profit_factor")
+    if profit_factor is None:
+        reasons.append("Treino — Profit factor ausente ou não finito (limiar ≥ 1,5)")
+    elif profit_factor < DISCOVERY_TRAIN_MIN_PROFIT_FACTOR:
+        reasons.append(
+            f"Treino — Profit factor {_format_pt_number(profit_factor)} < 1,5"
+        )
+
+    max_dd_pct = _max_drawdown_pct(is_metrics)
+    if max_dd_pct is None:
+        reasons.append("Treino — Max drawdown ausente ou não finito (limiar ≤ 35%)")
+    elif max_dd_pct > DISCOVERY_TRAIN_MAX_DRAWDOWN_PCT:
+        reasons.append(
+            f"Treino — Max drawdown {_format_pt_number(max_dd_pct, 1)}% > 35%"
+        )
+
+    if reasons:
+        return CriteriaResult(status="NO-GO", reasons=reasons, warnings=warnings)
+
+    return CriteriaResult(
+        status="GO",
+        reasons=["GO Descoberta: treino decente e Sharpe OOS > 0."],
+        warnings=warnings,
+    )
+
 
 def _finite_or_none(metrics: Dict[str, any], key: str) -> Optional[float]:
     """Retorna o valor numérico finito da métrica ou None quando ausente/inválido."""
