@@ -1,0 +1,254 @@
+<!doctype html>
+<!-- Prototype irmão card-975 — clone da página viva /monitor + delta erro de carga (copy actual).
+     Fonte clone: mesmo index.html. DELTA: análise não devolveu sinais havendo favoritos.
+     Copy: erro de carga actual + Tentar de novo.
+     Ausente o texto de catálogo vazio. Sem extra /favorites. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Monitor — erro ao carregar as estratégias</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg">
+  <style>
+    /* COPIED:start tokens shell autenticado (AppNav + canvas DESIGN.md) */
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent:#fcd535; --accent-active:#f0b90b; --success:#0ecb81; --danger:#f6465d; --info:#3b82f6;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-md:6px; --radius-lg:8px;
+      --font:BinanceNova,BinancePlex,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --numbers:BinancePlex,ui-monospace,SFMono-Regular,Menlo,monospace;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    html{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--bg-primary);font-size:13px;line-height:1.5}
+    button,a,input,select{font:inherit} button{cursor:pointer}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97)}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:13px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}.compact-env{margin:0;font-size:13px;font-weight:700}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-top:1px solid rgba(43,49,57,.72);background:transparent;color:var(--text-tertiary)}
+    .app-topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94)}.app-topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:20px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:13px;letter-spacing:.15em;text-transform:uppercase}.top-env{margin:0}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}
+    @media(max-width:1023px){
+      .sidebar,.app-topbar{display:none}
+      .mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96)}
+      .menu-button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+      .mobile-title{min-width:0;flex:1}.mobile-title strong,.mobile-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-title span{color:var(--text-muted);font-size:13px}
+      .main{margin-left:0;padding-top:72px}
+    }
+    /* COPIED:end */
+
+    /* COPIED:start monitor-theme MonitorStatusTab (frontend/src/index.css) */
+    .monitor-theme {
+      --bg-0:#0b0e11; --bg-1:#181a20; --bg-2:#1e2329; --bg-3:#2b3139;
+      --line:#2b3139; --line-soft:rgba(43,49,57,.72);
+      --t-1:#ffffff; --t-2:#eaecef; --t-3:#929aa5; --t-4:#707a8a;
+      --accent:#fcd535; --accent-soft:rgba(252,213,53,.1); --accent-line:rgba(252,213,53,.32);
+      --hold:#0ecb81; --hold-soft:rgba(14,203,129,.1); --hold-line:rgba(14,203,129,.32);
+      --exit:#f6465d; --exit-soft:rgba(246,70,93,.1); --exit-line:rgba(246,70,93,.32);
+      color:var(--t-1); background:var(--bg-0);
+    }
+    .monitor-theme .monitor-page-shell{width:min(100%,1520px);margin:0 auto;padding:0}
+    .monitor-theme .topbar{height:56px;border-bottom:1px solid var(--line-soft);background:var(--bg-1);display:flex;align-items:center;gap:14px;padding:0 22px;position:sticky;top:0;z-index:10}
+    .monitor-theme .topbar-spacer{flex:1}
+    .monitor-theme .search{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--line-soft);border-radius:7px;padding:6px 10px;width:min(280px,38vw);color:var(--t-3)}
+    .monitor-theme .search input{background:transparent;border:0;outline:none;color:var(--t-1);font:inherit;width:100%}
+    .monitor-theme .search input::placeholder{color:var(--t-4)}
+    .monitor-theme .search svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.8;fill:none}
+    .monitor-theme .topbar-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;background:var(--bg-2);border:1px solid var(--line);border-radius:7px;color:var(--t-2);font:inherit;font-weight:500;cursor:pointer}
+    .monitor-theme .topbar-btn.primary{background:var(--accent);border-color:var(--accent-line);color:#181a20}
+    .monitor-theme .topbar-btn svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.8;fill:none}
+    .monitor-theme .page{padding:24px 22px 52px}
+    .monitor-theme .page-sub{color:var(--t-3);font-size:12.5px;margin:0 0 8px}
+    .monitor-theme .updated{color:var(--t-4);font-size:11.5px;margin-top:8px;display:flex;align-items:center;gap:6px}
+    .monitor-theme .updated .mono{color:var(--t-2)}
+    .monitor-theme .kpis{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:10px;overflow:hidden;margin:18px 0}
+    .monitor-theme .kpi{background:var(--bg-1);padding:14px 18px;display:flex;flex-direction:column;gap:4px}
+    .monitor-theme .kpi-label{font-size:11px;color:var(--t-3);font-weight:500;letter-spacing:.02em}
+    .monitor-theme .kpi-val{font-size:22px;font-weight:600;letter-spacing:-.02em;font-family:'JetBrains Mono',ui-monospace,monospace}
+    .monitor-theme .kpi-foot{font-size:11px;color:var(--t-3)}
+    .monitor-theme .kpi-foot.up{color:var(--hold)}
+    .monitor-theme .filterbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;background:var(--bg-1);border:1px solid var(--line-soft);border-radius:10px;margin-bottom:14px}
+    .monitor-theme .seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line-soft);border-radius:7px;padding:2px}
+    .monitor-theme .seg button{background:transparent;border:0;color:var(--t-3);font:inherit;padding:5px 11px;border-radius:5px;cursor:pointer;font-weight:500;font-size:12px}
+    .monitor-theme .seg button.on{background:var(--bg-3);color:var(--t-1)}
+    .monitor-theme .select{background:var(--bg-2);border:1px solid var(--line-soft);color:var(--t-2);padding:6px 26px 6px 10px;border-radius:7px;font:inherit;font-size:12px}
+    .monitor-theme .filter-divider{width:1px;height:18px;background:var(--line-soft);margin:0 4px}
+    .monitor-theme .filter-spacer{flex:1}
+    .monitor-theme .chip-count{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;color:var(--t-3);padding:1px 6px;background:var(--bg-2);border:1px solid var(--line-soft);border-radius:99px}
+    .monitor-theme .status-row{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+    .monitor-theme .status-row h3{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--t-2);margin:0;display:flex;align-items:center;gap:8px}
+    .monitor-theme .status-row .pip{width:7px;height:7px;border-radius:50%}
+    .monitor-theme .status-row .pip.hold{background:var(--hold)}
+    .monitor-theme .status-row .pip.exit{background:var(--exit)}
+    .monitor-theme .status-row .meta{color:var(--t-3);font-size:11.5px;font-weight:400}
+    .monitor-theme .status-row .desc{color:var(--t-4);font-size:11.5px;margin-left:auto}
+    .monitor-theme .table-wrap{background:var(--bg-1);border:1px solid var(--line-soft);border-radius:10px;overflow:hidden}
+    .monitor-theme .mobile-cards{display:none}
+    .monitor-theme table.signals{width:100%;border-collapse:collapse}
+    .monitor-theme .signals thead th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t-4);padding:10px 14px;border-bottom:1px solid var(--line-soft);background:var(--bg-1)}
+    .monitor-theme .signals td{padding:11px 14px;vertical-align:middle;font-size:12.5px;border-bottom:1px solid var(--line-soft);color:var(--t-2)}
+    .monitor-theme .pair-cell{display:flex;align-items:center;gap:10px;min-width:160px}
+    .monitor-theme .pair-icon{width:26px;height:26px;border-radius:50%;background:var(--bg-3);display:grid;place-items:center;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--t-1);flex:0 0 26px}
+    .monitor-theme .pair-icon.sol{background:linear-gradient(135deg,#9945ff 0%,#14f195 100%);color:#fff}
+    .monitor-theme .pair-icon.eth{background:linear-gradient(135deg,#627eea 0%,#2a3d8b 100%);color:#fff}
+    .monitor-theme .pair-name{font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
+    .monitor-theme .pair-tf{font-size:10px;font-family:'JetBrains Mono',ui-monospace,monospace;color:var(--t-3);background:var(--bg-3);padding:1px 5px;border-radius:3px}
+    .monitor-theme .pair-strat{font-size:11px;color:var(--t-3);margin-top:2px;font-family:'JetBrains Mono',ui-monospace,monospace}
+    .monitor-theme .status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:5px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-family:'JetBrains Mono',ui-monospace,monospace}
+    .monitor-theme .status-pill.hold{background:var(--hold-soft);color:var(--hold);border:1px solid var(--hold-line)}
+    .monitor-theme .status-pill.exit{background:var(--exit-soft);color:var(--exit);border:1px solid var(--exit-line)}
+    .monitor-theme .num.lg{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13.5px;font-weight:500;font-variant-numeric:tabular-nums}
+    .monitor-theme .risk-bar{width:120px;height:6px;background:var(--bg-3);border-radius:99px;overflow:hidden}
+    .monitor-theme .risk-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#3dd68c 0%,#e5b057 60%,#f26e7e 100%)}
+    .monitor-theme .risk-meta{display:flex;justify-content:space-between;margin-top:4px;font-size:10.5px;color:var(--t-3);font-family:'JetBrains Mono',ui-monospace,monospace}
+    .monitor-theme .tags{display:flex;gap:5px;flex-wrap:wrap}
+    .monitor-theme .tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;background:var(--bg-3);color:var(--t-2);border:1px solid var(--line-soft)}
+    .monitor-theme .tag.portfolio{background:rgba(94,169,255,.1);color:#9dc4ff;border-color:rgba(94,169,255,.22)}
+    .monitor-theme .tag.strategy{background:rgba(180,124,255,.08);color:#c7aaff;border-color:rgba(180,124,255,.22)}
+    .monitor-theme .row-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;min-width:210px}
+    .monitor-theme .row-action{background:var(--bg-2);border:1px solid var(--line);color:var(--t-3);min-height:30px;min-width:96px;padding:5px 9px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:600}
+    .monitor-theme .row-action.row-action-primary{background:var(--accent);border-color:var(--accent);color:#181a20}
+    .monitor-theme .row-action svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.6;fill:none}
+    .monitor-theme .spark{display:block;width:80px;height:22px}
+    .monitor-error{display:grid;justify-items:center;gap:12px;margin:0;padding:40px 18px;border:1px solid var(--border,#2b3139);border-radius:12px;background:var(--bg-elevated,#1e2329);text-align:center}
+    .monitor-error p{margin:0;color:var(--text-primary,#fff);font-size:.95rem;font-weight:600}
+    .monitor-error span{color:var(--text-tertiary,#929aa5);font-size:.8125rem}
+    .monitor-retry{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border:1px solid var(--accent,#fcd535);border-radius:6px;background:var(--accent,#fcd535);color:#181a20;font-weight:600;cursor:pointer}
+    .monitor-theme .mobile-card{border:1px solid var(--line-soft);border-radius:10px;background:var(--bg-1);padding:14px;display:grid;gap:8px}
+    .monitor-theme .mobile-card h4{margin:0;font-size:14px}
+    .monitor-theme .mobile-card p{margin:0;color:var(--t-3);font-size:12px}
+    @media(max-width:1080px){.monitor-theme .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:740px){
+      .monitor-theme .topbar{flex-wrap:wrap;height:auto;padding:10px 14px}
+      .monitor-theme .topbar-spacer,.monitor-theme .filter-spacer{display:none}
+      .monitor-theme .page{padding:16px 14px 40px}
+      .monitor-theme .kpis{grid-template-columns:1fr}
+      .monitor-theme .mobile-cards{display:grid;gap:12px}
+      .monitor-theme .table-wrap{display:none}
+    }
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+    /* COPIED:end */
+  </style>
+</head>
+<body>
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5M12 4v2M20 12h-2M12 20v-2M4 12h2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="m7 14 4-4 3 3 6-7"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+    <symbol id="i-dollar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c.6-.8 1.5-1.2 2.5-1.2 1.4 0 2.5.8 2.5 2s-1.1 2-2.5 2h-1c-1.4 0-2.5.8-2.5 2s1.1 2 2.5 2c1 0 1.9-.4 2.5-1.2"/></symbol>
+  </svg>
+
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px, Monitor active em /monitor) -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Monitor de sinais</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item active" href="index.html" aria-current="page"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-history"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+    <button class="collapse" type="button"><svg class="icon"><use href="#i-menu"/></svg>Recolher menu</button>
+  </aside>
+  <header class="app-topbar"><div class="app-topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Monitor de sinais</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env top-env">Ambiente DEV</span><button class="account" type="button" aria-label="Abrir conta"><span class="avatar">AS</span><span><small>Conta</small>Alan S</span></button><button class="icon-button" type="button" aria-label="Configurações"><svg class="icon"><use href="#i-settings"/></svg></button></div></div></header>
+  <header class="mobilebar"><button class="menu-button" type="button" aria-label="Abrir menu"><svg class="icon"><use href="#i-menu"/></svg></button><div class="mobile-title"><strong>Monitor de sinais</strong><span>SOL/USDT 1d</span></div><span class="env compact-env">DEV</span><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+
+  <main class="main">
+    <div class="monitor-page-shell monitor-theme monitor-theme--black" data-testid="monitor-status-tab">
+      <div class="monitor-main">
+        <!-- COPIED:start chrome MonitorStatusTab (topbar, page-sub, kpis, filterbar default Em portfólio) -->
+        <header class="topbar">
+          <div class="topbar-spacer"></div>
+          <label class="search">
+            <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" placeholder="Buscar par, estratégia, tag..." value="">
+          </label>
+          <button class="topbar-btn" type="button">Telegram: on</button>
+          <button class="topbar-btn" type="button">Tema</button>
+          <button class="topbar-btn primary" type="button">
+            <svg class="icon"><use href="#i-refresh"/></svg>
+            Atualizar
+          </button>
+        </header>
+        <section class="page">
+          <header class="page-head">
+            <h1 class="sr-only">Monitor de sinais</h1>
+            <p class="page-sub">Operações ativas e saídas acionáveis. Atualização contínua a cada 30s.</p>
+          </header>
+          <div class="kpis">
+            <div class="kpi"><div class="kpi-label">Em posição</div><div class="kpi-val">0</div><div class="kpi-foot up">média risco -</div></div>
+            <div class="kpi"><div class="kpi-label">Saída / cobertura</div><div class="kpi-val">0</div><div class="kpi-foot">média risco -</div></div>
+            <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">0</div><div class="kpi-foot">sinais filtrados</div></div>
+            <div class="kpi"><div class="kpi-label">Em carteira</div><div class="kpi-val">0</div><div class="kpi-foot">ativos rastreados</div></div>
+          </div>
+          <section class="filterbar" aria-label="Filtros do monitor">
+            <div class="seg" data-seg="list">
+              <button class="on" type="button" data-testid="monitor-filter-in-portfolio">Em portfólio</button>
+              <button type="button" data-testid="monitor-filter-all">Todos</button>
+            </div>
+            <div class="filter-divider"></div>
+            <select class="select" aria-label="Timeframe"><option selected>Timeframe: Todos</option><option>1d</option></select>
+            <select class="select" aria-label="Estrelas"><option selected>Estrelas: Todas</option><option>★★★ 3 estrelas</option></select>
+            <select class="select" aria-label="Estratégia"><option selected>Estratégia: Todas</option></select>
+            <div class="filter-spacer"></div>
+            <span class="chip-count">0 resultados</span>
+          </section>
+          <!-- COPIED:end -->
+
+          <div class="monitor-board">
+            <section class="monitor-empty-card">
+              <div class="monitor-error" role="alert" data-testid="monitor-load-error">
+                <p>Não foi possível carregar as estratégias.</p>
+                <span>A lista de favoritos não chegou. Isto não significa que não há estratégias.</span>
+                <button type="button" class="monitor-retry">Tentar de novo</button>
+              </div>
+            </section>
+            <div class="table-wrap" style="display:block">
+              <!-- COPIED:start table.signals chrome MonitorStatusTab -->
+              <table class="signals">
+                <thead>
+                  <tr>
+                    <th style="width:32px"></th>
+                    <th>Par / Estratégia</th>
+                    <th>Status</th>
+                    <th>Preço</th>
+                    <th>Distância</th>
+                    <th class="col-spark">7d</th>
+                    <th>Risco até stop</th>
+                    <th class="col-tags">Tags</th>
+                    <th>Operar</th>
+                  </tr>
+                </thead>
+                <!-- COPIED:end -->
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

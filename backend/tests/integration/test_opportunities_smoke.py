@@ -5,7 +5,19 @@ import os
 import time
 from time import perf_counter
 
+import pytest
+from fastapi import HTTPException
+
 from app.routes import opportunity_routes
+
+
+@pytest.fixture(autouse=True)
+def _default_no_crypto_favorites(monkeypatch):
+    monkeypatch.setattr(
+        opportunity_routes,
+        "_user_has_crypto_favorites",
+        lambda _service, _user_id: False,
+    )
 
 
 async def test_opportunities_tier_all_smoke_performance(monkeypatch):
@@ -352,3 +364,151 @@ async def test_opportunities_refresh_false_serves_stale_cache_within_window(monk
     )
     assert compute_calls["n"] == 2
     assert cold[0]["id"] == 9
+
+
+async def test_opportunities_empty_cache_recomputes_when_crypto_favorites(monkeypatch):
+    compute_calls = {"n": 0}
+    sample_payload = [
+        {
+            "id": 7,
+            "symbol": "SOL/USDT",
+            "asset_type": "crypto",
+            "timeframe": "1d",
+            "template_name": "ema_rsi",
+            "name": "SOL",
+            "notes": None,
+            "tier": 2,
+            "parameters": {},
+            "is_holding": True,
+            "distance_to_next_status": 1.0,
+            "next_status_label": "exit",
+            "indicator_values": None,
+            "indicator_values_candle_time": None,
+            "signal_history": [],
+            "entry_price": 100.0,
+            "stop_price": None,
+            "distance_to_stop_pct": None,
+            "status": "HOLD",
+            "badge": "info",
+            "message": "Em Hold",
+            "last_price": 101.0,
+            "timestamp": "2026-07-16T00:00:00Z",
+            "details": {},
+        }
+    ]
+
+    monkeypatch.setattr(
+        opportunity_routes,
+        "_user_has_crypto_favorites",
+        lambda _service, _user_id: True,
+    )
+
+    class _FakeOpportunityService:
+        def get_opportunities(self, user_id, tier_filter=None):
+            compute_calls["n"] += 1
+            return sample_payload
+
+    monkeypatch.setattr(opportunity_routes, "OpportunityService", _FakeOpportunityService)
+    monkeypatch.setattr(
+        opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: True
+    )
+    opportunity_routes._OPPORTUNITIES_CACHE.clear()
+    now = time.time()
+    opportunity_routes._OPPORTUNITIES_CACHE[("fav-user", "all")] = {
+        "payload": [],
+        "expires_at": now + 30.0,
+        "stale_until": now + 600.0,
+    }
+
+    response = await opportunity_routes.get_opportunities(
+        tier="all", refresh=False, current_user_id="fav-user", db=None
+    )
+    assert compute_calls["n"] == 1, "empty cache with crypto favorites must recompute"
+    assert response[0]["symbol"] == "SOL/USDT"
+
+
+async def test_opportunities_skip_all_returns_503_with_crypto_favorites(monkeypatch):
+    monkeypatch.setattr(
+        opportunity_routes,
+        "_user_has_crypto_favorites",
+        lambda _service, _user_id: True,
+    )
+
+    class _FakeOpportunityService:
+        def get_opportunities(self, user_id, tier_filter=None):
+            return []
+
+    monkeypatch.setattr(opportunity_routes, "OpportunityService", _FakeOpportunityService)
+    monkeypatch.setattr(
+        opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: True
+    )
+    opportunity_routes._OPPORTUNITIES_CACHE.clear()
+
+    with pytest.raises(HTTPException) as exc:
+        await opportunity_routes.get_opportunities(
+            tier="all", refresh=True, current_user_id="fav-user", db=None
+        )
+    assert exc.value.status_code == 503
+
+
+async def test_opportunities_nonempty_stale_cache_still_served(monkeypatch):
+    compute_calls = {"n": 0}
+    sample_payload = [
+        {
+            "id": 3,
+            "symbol": "BTC/USDT",
+            "asset_type": "crypto",
+            "timeframe": "1d",
+            "template_name": "ema_rsi",
+            "name": "BTC",
+            "notes": None,
+            "tier": 1,
+            "parameters": {},
+            "is_holding": True,
+            "distance_to_next_status": 0.5,
+            "next_status_label": "exit",
+            "indicator_values": None,
+            "indicator_values_candle_time": None,
+            "signal_history": [{"timestamp": "2026-07-10T00:00:00Z", "signal": 1, "type": "entry", "reason": "entry", "price": 1.0}],
+            "entry_price": 1.0,
+            "stop_price": None,
+            "distance_to_stop_pct": None,
+            "status": "HOLD",
+            "badge": "info",
+            "message": "Em Hold",
+            "last_price": 1.0,
+            "timestamp": "2026-07-16T00:00:00Z",
+            "details": {},
+        }
+    ]
+
+    monkeypatch.setattr(
+        opportunity_routes,
+        "_user_has_crypto_favorites",
+        lambda _service, _user_id: True,
+    )
+
+    class _FakeOpportunityService:
+        def get_opportunities(self, user_id, tier_filter=None):
+            compute_calls["n"] += 1
+            return sample_payload
+
+    monkeypatch.setattr(opportunity_routes, "OpportunityService", _FakeOpportunityService)
+    monkeypatch.setattr(
+        opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: True
+    )
+    opportunity_routes._OPPORTUNITIES_CACHE.clear()
+
+    await opportunity_routes.get_opportunities(
+        tier="all", refresh=True, current_user_id="fav-user", db=None
+    )
+    key = ("fav-user", "all")
+    cached = opportunity_routes._OPPORTUNITIES_CACHE[key]
+    cached["expires_at"] = time.time() - 1.0
+    cached["stale_until"] = time.time() + 120.0
+
+    stale = await opportunity_routes.get_opportunities(
+        tier="all", refresh=False, current_user_id="fav-user", db=None
+    )
+    assert compute_calls["n"] == 1
+    assert stale[0]["symbol"] == "BTC/USDT"

@@ -1,0 +1,96 @@
+[
+  {
+    "page": "index",
+    "viewport": "1280x800",
+    "url": "http://127.0.0.1:51429/prototypes/card-975-monitor-vazio-favoritos/",
+    "forbidden": false,
+    "error_p": false,
+    "error_s": false,
+    "retry": false,
+    "sol": true,
+    "eth": true,
+    "landmarks_missing": [
+      "Status",
+      "Preço",
+      "Distância",
+      "7d",
+      "Risco até stop",
+      "Tags",
+      "Par / Estratégia"
+    ],
+    "table_count": 2,
+    "console_errors": [],
+    "shot": "975-index-desktop-1280x800.png"
+  },
+  {
+    "page": "index",
+    "viewport": "390x844",
+    "url": "http://127.0.0.1:51429/prototypes/card-975-monitor-vazio-favoritos/",
+    "forbidden": false,
+    "error_p": false,
+    "error_s": false,
+    "retry": false,
+    "sol": true,
+    "eth": true,
+    "landmarks_missing": [
+      "Status",
+      "Preço",
+      "Distância",
+      "7d",
+      "Risco até stop",
+      "Tags",
+      "Par / Estratégia"
+    ],
+    "table_count": 2,
+    "console_errors": [],
+    "shot": "975-index-mobile-390x844.png"
+  },
+  {
+    "page": "erro",
+    "viewport": "1280x800",
+    "url": "http://127.0.0.1:51429/prototypes/card-975-monitor-vazio-favoritos/erro.html",
+    "forbidden": false,
+    "error_p": true,
+    "error_s": true,
+    "retry": true,
+    "sol": false,
+    "eth": false,
+    "landmarks_missing": [
+      "Status",
+      "Preço",
+      "Distância",
+      "7d",
+      "Risco até stop",
+      "Tags",
+      "Operar",
+      "Par / Estratégia"
+    ],
+    "table_count": 1,
+    "console_errors": [],
+    "shot": "975-erro-desktop-1280x800.png"
+  },
+  {
+    "page": "erro",
+    "viewport": "390x844",
+    "url": "http://127.0.0.1:51429/prototypes/card-975-monitor-vazio-favoritos/erro.html",
+    "forbidden": false,
+    "error_p": true,
+    "error_s": true,
+    "retry": true,
+    "sol": true,
+    "eth": false,
+    "landmarks_missing": [
+      "Status",
+      "Preço",
+      "Distância",
+      "7d",
+      "Risco até stop",
+      "Tags",
+      "Operar",
+      "Par / Estratégia"
+    ],
+    "table_count": 1,
+    "console_errors": [],
+    "shot": "975-erro-mobile-390x844.png"
+  }
+]

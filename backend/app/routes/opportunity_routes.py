@@ -114,6 +114,16 @@ def _write_cached_opportunities(
         }
 
 
+def _user_has_crypto_favorites(service: OpportunityService, user_id: str) -> bool:
+    favorites = service.get_favorites(user_id=user_id, tier_filter=None)
+    return any("/" in str(favorite.get("symbol") or "").strip() for favorite in favorites)
+
+
+_MONITOR_LOAD_ERROR_DETAIL = (
+    "A lista de favoritos não chegou. Isto não significa que não há estratégias."
+)
+
+
 def _common_user_tier_filter(tier: str | None) -> str:
     normalized = str(tier or "").strip().lower()
     if not normalized or normalized == "all":
@@ -179,6 +189,8 @@ async def get_opportunities(
         include_secrets = can_view_strategy_secrets(db, current_user_id)
         include_details = can_view_strategy_details(db, current_user_id)
         effective_tier = tier if include_secrets else _common_user_tier_filter(tier)
+        service = OpportunityService()
+        has_crypto_favorites = _user_has_crypto_favorites(service, current_user_id)
         if not refresh:
             # Prefer fresh cache; if expired but still within stale TTL, serve it so
             # Favoritos can read signal_history without waiting on a full recompute.
@@ -188,16 +200,18 @@ async def get_opportunities(
                 allow_stale=True,
             )
             if cached is not None:
-                return [
-                    redact_opportunity_payload(
-                        _normalize_monitor_status_payload(dict(item)),
-                        include_secrets=include_secrets,
-                        include_details=include_details,
-                    )
-                    for item in cached
-                ]
-        service = OpportunityService()
+                if cached or not has_crypto_favorites:
+                    return [
+                        redact_opportunity_payload(
+                            _normalize_monitor_status_payload(dict(item)),
+                            include_secrets=include_secrets,
+                            include_details=include_details,
+                        )
+                        for item in cached
+                    ]
         payload = service.get_opportunities(user_id=current_user_id, tier_filter=effective_tier)
+        if not payload and has_crypto_favorites:
+            raise HTTPException(status_code=503, detail=_MONITOR_LOAD_ERROR_DETAIL)
         _write_cached_opportunities(current_user_id, effective_tier, payload)
         return [
             redact_opportunity_payload(

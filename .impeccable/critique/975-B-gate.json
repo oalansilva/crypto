@@ -1,0 +1,1132 @@
+{
+  "card": 975,
+  "utc": "2026-09-18T23:26Z",
+  "chrome": "/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux-arm64/chrome",
+  "url": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/",
+  "console": [],
+  "pageerrors": [],
+  "badhttp": [],
+  "shots": [
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-975-monitor-vazio-favoritos/.impeccable/critique/975-B-desktop-1440x900-index.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-975-monitor-vazio-favoritos/.impeccable/critique/975-B-desktop-1440x900-erro.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-975-monitor-vazio-favoritos/.impeccable/critique/975-B-mobile-390x844-index.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-975-monitor-vazio-favoritos/.impeccable/critique/975-B-mobile-390x844-erro.png"
+  ],
+  "viewports": [
+    {
+      "viewport": "desktop 1440x900",
+      "pass": true,
+      "n": 45,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "index_proto_url",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/"
+        },
+        {
+          "id": "lm_table_signals",
+          "ok": true,
+          "detail": 2
+        },
+        {
+          "id": "not_chrome_only",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "lm_Status",
+          "ok": true,
+          "detail": "Status"
+        },
+        {
+          "id": "lm_Preço",
+          "ok": true,
+          "detail": "Preço"
+        },
+        {
+          "id": "lm_Distância",
+          "ok": true,
+          "detail": "Distância"
+        },
+        {
+          "id": "lm_7d",
+          "ok": true,
+          "detail": "7d"
+        },
+        {
+          "id": "lm_Risco até stop",
+          "ok": true,
+          "detail": "Risco até stop"
+        },
+        {
+          "id": "lm_Tags",
+          "ok": true,
+          "detail": "Tags"
+        },
+        {
+          "id": "lm_Operar",
+          "ok": true,
+          "detail": "Operar"
+        },
+        {
+          "id": "lm_Par / Estratégia",
+          "ok": true,
+          "detail": "Par / Estratégia"
+        },
+        {
+          "id": "happy_sol",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "happy_eth",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_empty_catalog",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_empty_in_html",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "index_not_error_p",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "zero_antes_depois_buttons",
+          "ok": true,
+          "detail": "antes=0 depois=0"
+        },
+        {
+          "id": "not_panel_antes_depois",
+          "ok": true,
+          "detail": "absent"
+        },
+        {
+          "id": "not_n_estados_gallery",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "default_em_portfolio",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "default_todos_present",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "no_h_overflow",
+          "ok": true,
+          "detail": {
+            "sw": 1440,
+            "cw": 1440
+          }
+        },
+        {
+          "id": "index_lang",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_proto_url",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+        },
+        {
+          "id": "erro_copy_p",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_copy_s",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_retry",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_no_empty_catalog",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_no_empty_in_html",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_chrome_monitor",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_table_signals",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "erro_lm_Status",
+          "ok": true,
+          "detail": "Status"
+        },
+        {
+          "id": "erro_lm_Preço",
+          "ok": true,
+          "detail": "Preço"
+        },
+        {
+          "id": "erro_lm_Distância",
+          "ok": true,
+          "detail": "Distância"
+        },
+        {
+          "id": "erro_lm_7d",
+          "ok": true,
+          "detail": "7d"
+        },
+        {
+          "id": "erro_lm_Risco até stop",
+          "ok": true,
+          "detail": "Risco até stop"
+        },
+        {
+          "id": "erro_lm_Tags",
+          "ok": true,
+          "detail": "Tags"
+        },
+        {
+          "id": "erro_lm_Operar",
+          "ok": true,
+          "detail": "Operar"
+        },
+        {
+          "id": "erro_lm_Par / Estratégia",
+          "ok": true,
+          "detail": "Par / Estratégia"
+        },
+        {
+          "id": "erro_not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+        },
+        {
+          "id": "erro_no_filter_empty_as_catalog",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_retry_min_height_note",
+          "ok": true,
+          "detail": {
+            "w": 126.21875,
+            "h": 44,
+            "text": "Tentar de novo"
+          }
+        },
+        {
+          "id": "console_zero",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "pageerror_zero",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "badhttp_zero",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "dumps": {
+        "index": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/",
+          "title": "Monitor de sinais — Cripto Farol",
+          "lang": "pt-BR",
+          "table_count": 2,
+          "thead": "\n                    \n                      \n                      Par / Estratégia\n                      Status\n                      Preço\n                      Distância\n                      7d\n                      Risco até stop\n                      Tags\n                      Operar\n                    \n                   \n                    \n                      \n                      Par / Estratégia\n                      Status\n                      Preço\n                      Distância\n                      7d\n                      Risco até stop\n                      Tags\n                      Operar\n                    \n                  ",
+          "sidebar": {
+            "display": "flex",
+            "width": "224px",
+            "offsetWidth": 224
+          },
+          "overflow": {
+            "sw": 1440,
+            "cw": 1440
+          },
+          "body": "PAINEL\nMonitor de sinais\nAmbiente DEV\nPRINCIPAL\nFavoritos\nMonitor\nESTRATÉGIAS\nDescoberta\nCombo\nCARTEIRA\nCarteira\nAjuda\nADMIN\nPreferências do sistema\nUsuários\nRecolher menu\nWORKSPACE\nMonitor de sinais\nAmbiente DEV\nAS\nCONTA\nAlan S\nTelegram: on\nTema\nAtualizar\nMonitor de sinais\n\nOperações ativas e saídas acionáveis. Atualização contínua a cada 30s.\n\nÚltima leitura\n18:07:00\n· BRT\nEm posição\n1\nmédia risco 4.20%\nSaída / cobertura\n1\nmédia risco 2.10%\nTotal\n2\nsinais filtrados\nEm carteira\n2\nativos rastreados\nEm portfólio\nTodos\nTimeframe: Todos\n1d\nEstrelas: Todas\n★★★ 3 estrelas\nEstratégia: Todas\n2 resultados\nEM POSIÇÃO\n(1)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\t7D\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nSOL\nSOL/USDT\n1d\nCruzamento EMA\n\tEM POSIÇÃO\t$148.22\t1.80%\t\n\t\n4.20%\nstop\n\t\n● Carteira\n★★★\n\t\nAbrir Gráfico\nVer Trades\nOperar\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\t7D\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nETH\nETH/USDT\n1d\nRSI swing\n\tSAÍDA / COBERTURA\t$3,412.50\t0.90%\t\n\t\n2.10%\nstop\n\t\n● Carteira\n★★\n\t\nAbrir Gráfico\nVer Trades\nOperar",
+          "h1": "Monitor de sinais"
+        },
+        "erro": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html",
+          "title": "Monitor — erro ao carregar as estratégias",
+          "table_count": 1,
+          "thead": "\n                  \n                    \n                    Par / Estratégia\n                    Status\n                    Preço\n                    Distância\n                    7d\n                    Risco até stop\n                    Tags\n                    Operar\n                  \n                ",
+          "retry_box": {
+            "w": 126.21875,
+            "h": 44,
+            "text": "Tentar de novo"
+          },
+          "overflow": {
+            "sw": 1440,
+            "cw": 1440
+          },
+          "body": "PAINEL\nMonitor de sinais\nAmbiente DEV\nPRINCIPAL\nFavoritos\nMonitor\nESTRATÉGIAS\nDescoberta\nCombo\nCARTEIRA\nCarteira\nAjuda\nADMIN\nPreferências do sistema\nUsuários\nRecolher menu\nWORKSPACE\nMonitor de sinais\nAmbiente DEV\nAS\nCONTA\nAlan S\nTelegram: on\nTema\nAtualizar\nMonitor de sinais\n\nOperações ativas e saídas acionáveis. Atualização contínua a cada 30s.\n\nEm posição\n0\nmédia risco -\nSaída / cobertura\n0\nmédia risco -\nTotal\n0\nsinais filtrados\nEm carteira\n0\nativos rastreados\nEm portfólio\nTodos\nTimeframe: Todos\n1d\nEstrelas: Todas\n★★★ 3 estrelas\nEstratégia: Todas\n0 resultados\n\nNão foi possível carregar as estratégias.\n\nA lista de favoritos não chegou. Isto não significa que não há estratégias.\nTentar de novo\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\t7D\tRISCO ATÉ STOP\tTAGS\tOPERAR"
+        }
+      }
+    },
+    {
+      "viewport": "mobile 390x844",
+      "pass": true,
+      "n": 45,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "index_proto_url",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/"
+        },
+        {
+          "id": "lm_table_signals",
+          "ok": true,
+          "detail": 2
+        },
+        {
+          "id": "not_chrome_only",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "lm_Status",
+          "ok": true,
+          "detail": "Status"
+        },
+        {
+          "id": "lm_Preço",
+          "ok": true,
+          "detail": "Preço"
+        },
+        {
+          "id": "lm_Distância",
+          "ok": true,
+          "detail": "Distância"
+        },
+        {
+          "id": "lm_7d",
+          "ok": true,
+          "detail": "7d"
+        },
+        {
+          "id": "lm_Risco até stop",
+          "ok": true,
+          "detail": "Risco até stop"
+        },
+        {
+          "id": "lm_Tags",
+          "ok": true,
+          "detail": "Tags"
+        },
+        {
+          "id": "lm_Operar",
+          "ok": true,
+          "detail": "Operar"
+        },
+        {
+          "id": "lm_Par / Estratégia",
+          "ok": true,
+          "detail": "Par / Estratégia"
+        },
+        {
+          "id": "happy_sol",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "happy_eth",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_empty_catalog",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_empty_in_html",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "index_not_error_p",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "zero_antes_depois_buttons",
+          "ok": true,
+          "detail": "antes=0 depois=0"
+        },
+        {
+          "id": "not_panel_antes_depois",
+          "ok": true,
+          "detail": "absent"
+        },
+        {
+          "id": "not_n_estados_gallery",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "default_em_portfolio",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "default_todos_present",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "no_h_overflow",
+          "ok": true,
+          "detail": {
+            "sw": 390,
+            "cw": 390
+          }
+        },
+        {
+          "id": "index_lang",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_proto_url",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+        },
+        {
+          "id": "erro_copy_p",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_copy_s",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_retry",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_no_empty_catalog",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_no_empty_in_html",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_chrome_monitor",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_table_signals",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "erro_lm_Status",
+          "ok": true,
+          "detail": "Status"
+        },
+        {
+          "id": "erro_lm_Preço",
+          "ok": true,
+          "detail": "Preço"
+        },
+        {
+          "id": "erro_lm_Distância",
+          "ok": true,
+          "detail": "Distância"
+        },
+        {
+          "id": "erro_lm_7d",
+          "ok": true,
+          "detail": "7d"
+        },
+        {
+          "id": "erro_lm_Risco até stop",
+          "ok": true,
+          "detail": "Risco até stop"
+        },
+        {
+          "id": "erro_lm_Tags",
+          "ok": true,
+          "detail": "Tags"
+        },
+        {
+          "id": "erro_lm_Operar",
+          "ok": true,
+          "detail": "Operar"
+        },
+        {
+          "id": "erro_lm_Par / Estratégia",
+          "ok": true,
+          "detail": "Par / Estratégia"
+        },
+        {
+          "id": "erro_not_login",
+          "ok": true,
+          "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+        },
+        {
+          "id": "erro_no_filter_empty_as_catalog",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "erro_retry_min_height_note",
+          "ok": true,
+          "detail": {
+            "w": 126.21875,
+            "h": 44,
+            "text": "Tentar de novo"
+          }
+        },
+        {
+          "id": "console_zero",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "pageerror_zero",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "badhttp_zero",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "dumps": {
+        "index": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/",
+          "title": "Monitor de sinais — Cripto Farol",
+          "lang": "pt-BR",
+          "table_count": 2,
+          "thead": "\n                    \n                      \n                      Par / Estratégia\n                      Status\n                      Preço\n                      Distância\n                      7d\n                      Risco até stop\n                      Tags\n                      Operar\n                    \n                   \n                    \n                      \n                      Par / Estratégia\n                      Status\n                      Preço\n                      Distância\n                      7d\n                      Risco até stop\n                      Tags\n                      Operar\n                    \n                  ",
+          "sidebar": {
+            "display": "none",
+            "width": "224px",
+            "offsetWidth": 0
+          },
+          "overflow": {
+            "sw": 390,
+            "cw": 390
+          },
+          "body": "Monitor de sinais\nSOL/USDT 1d\nDEV\nAS\nTelegram: on\nTema\nAtualizar\nMonitor de sinais\n\nOperações ativas e saídas acionáveis. Atualização contínua a cada 30s.\n\nÚltima leitura\n18:07:00\n· BRT\nEm posição\n1\nmédia risco 4.20%\nSaída / cobertura\n1\nmédia risco 2.10%\nTotal\n2\nsinais filtrados\nEm carteira\n2\nativos rastreados\nEm portfólio\nTodos\nTimeframe: Todos\n1d\nEstrelas: Todas\n★★★ 3 estrelas\nEstratégia: Todas\n2 resultados\nEM POSIÇÃO\n(1)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\nSOL/USDT 1d\n\nCruzamento EMA · Em posição\n\nEM POSIÇÃO\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\nETH/USDT 1d\n\nRSI swing · Saída / cobertura\n\nSAÍDA / COBERTURA\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar",
+          "h1": "Monitor de sinais"
+        },
+        "erro": {
+          "url": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html",
+          "title": "Monitor — erro ao carregar as estratégias",
+          "table_count": 1,
+          "thead": "\n                  \n                    \n                    Par / Estratégia\n                    Status\n                    Preço\n                    Distância\n                    7d\n                    Risco até stop\n                    Tags\n                    Operar\n                  \n                ",
+          "retry_box": {
+            "w": 126.21875,
+            "h": 44,
+            "text": "Tentar de novo"
+          },
+          "overflow": {
+            "sw": 390,
+            "cw": 390
+          },
+          "body": "Monitor de sinais\nSOL/USDT 1d\nDEV\nAS\nTelegram: on\nTema\nAtualizar\nMonitor de sinais\n\nOperações ativas e saídas acionáveis. Atualização contínua a cada 30s.\n\nEm posição\n0\nmédia risco -\nSaída / cobertura\n0\nmédia risco -\nTotal\n0\nsinais filtrados\nEm carteira\n0\nativos rastreados\nEm portfólio\nTodos\nTimeframe: Todos\n1d\nEstrelas: Todas\n★★★ 3 estrelas\nEstratégia: Todas\n0 resultados\n\nNão foi possível carregar as estratégias.\n\nA lista de favoritos não chegou. Isto não significa que não há estratégias.\nTentar de novo\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\t7D\tRISCO ATÉ STOP\tTAGS\tOPERAR"
+        }
+      }
+    }
+  ],
+  "digest": {
+    "index.html": {
+      "disk": "542974bc9333a62201dee9aef06c6cd4df3be7c372c31c6eea38f07e92142116",
+      "https": "542974bc9333a62201dee9aef06c6cd4df3be7c372c31c6eea38f07e92142116",
+      "bytes_disk": 31012,
+      "bytes_https": 31012,
+      "http": 200,
+      "identical": true,
+      "url": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/"
+    },
+    "erro.html": {
+      "disk": "fb2a77198c0cca52b270b3f75e40e499f56580116d98b850a6f0e22f68810b34",
+      "https": "fb2a77198c0cca52b270b3f75e40e499f56580116d98b850a6f0e22f68810b34",
+      "bytes_disk": 24112,
+      "bytes_https": 24112,
+      "http": 200,
+      "identical": true,
+      "url": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+    },
+    "index.html#explicit": {
+      "https": "542974bc9333a62201dee9aef06c6cd4df3be7c372c31c6eea38f07e92142116",
+      "bytes_https": 31012,
+      "http": 200,
+      "identical": true,
+      "url": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/index.html"
+    }
+  },
+  "copied": {
+    "index": {
+      "pairs_start": 7,
+      "pairs_end": 7,
+      "utf8_sum_incl_markers": 21481,
+      "total": 31012
+    },
+    "erro": {
+      "pairs_start": 5,
+      "pairs_end": 5,
+      "utf8_sum_incl_markers": 20678,
+      "total": 24112
+    }
+  },
+  "live": {
+    "curl": {
+      "status": 200,
+      "final": "https://dev.criptofarol.com.br/monitor",
+      "bytes": 455,
+      "sha16": "68acc3b4486efc88"
+    },
+    "browser": {
+      "url": "https://dev.criptofarol.com.br/login",
+      "is_login": true,
+      "body_prefix": "Bem-vindo de volta |  | Entre com suas credenciais para continuar |  | EMAIL | SENHA | Esqueci minha senha | Entrar"
+    }
+  },
+  "asserts": [
+    {
+      "id": "digest_index_expected",
+      "ok": true,
+      "detail": "542974bc9333a62201dee9aef06c6cd4df3be7c372c31c6eea38f07e92142116"
+    },
+    {
+      "id": "digest_erro_expected",
+      "ok": true,
+      "detail": "fb2a77198c0cca52b270b3f75e40e499f56580116d98b850a6f0e22f68810b34"
+    },
+    {
+      "id": "copied_utf8_gt_0",
+      "ok": true,
+      "detail": "7/7 sum=21481"
+    },
+    {
+      "id": "no_extra_favorites_disk",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "live_monitor_not_used_as_clone_proof",
+      "ok": true,
+      "detail": "url=https://dev.criptofarol.com.br/login login=True"
+    },
+    {
+      "id": "live_is_login_without_session",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/login"
+    },
+    {
+      "id": "index_proto_url",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/"
+    },
+    {
+      "id": "lm_table_signals",
+      "ok": true,
+      "detail": 2
+    },
+    {
+      "id": "not_chrome_only",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "lm_Status",
+      "ok": true,
+      "detail": "Status"
+    },
+    {
+      "id": "lm_Preço",
+      "ok": true,
+      "detail": "Preço"
+    },
+    {
+      "id": "lm_Distância",
+      "ok": true,
+      "detail": "Distância"
+    },
+    {
+      "id": "lm_7d",
+      "ok": true,
+      "detail": "7d"
+    },
+    {
+      "id": "lm_Risco até stop",
+      "ok": true,
+      "detail": "Risco até stop"
+    },
+    {
+      "id": "lm_Tags",
+      "ok": true,
+      "detail": "Tags"
+    },
+    {
+      "id": "lm_Operar",
+      "ok": true,
+      "detail": "Operar"
+    },
+    {
+      "id": "lm_Par / Estratégia",
+      "ok": true,
+      "detail": "Par / Estratégia"
+    },
+    {
+      "id": "happy_sol",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "happy_eth",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "absent_empty_catalog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "absent_empty_in_html",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "index_not_error_p",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "zero_antes_depois_buttons",
+      "ok": true,
+      "detail": "antes=0 depois=0"
+    },
+    {
+      "id": "not_panel_antes_depois",
+      "ok": true,
+      "detail": "absent"
+    },
+    {
+      "id": "not_n_estados_gallery",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "default_em_portfolio",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "default_todos_present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "no_h_overflow",
+      "ok": true,
+      "detail": {
+        "sw": 1440,
+        "cw": 1440
+      }
+    },
+    {
+      "id": "index_lang",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_proto_url",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+    },
+    {
+      "id": "erro_copy_p",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_copy_s",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_retry",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_no_empty_catalog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_no_empty_in_html",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_chrome_monitor",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_table_signals",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "id": "erro_lm_Status",
+      "ok": true,
+      "detail": "Status"
+    },
+    {
+      "id": "erro_lm_Preço",
+      "ok": true,
+      "detail": "Preço"
+    },
+    {
+      "id": "erro_lm_Distância",
+      "ok": true,
+      "detail": "Distância"
+    },
+    {
+      "id": "erro_lm_7d",
+      "ok": true,
+      "detail": "7d"
+    },
+    {
+      "id": "erro_lm_Risco até stop",
+      "ok": true,
+      "detail": "Risco até stop"
+    },
+    {
+      "id": "erro_lm_Tags",
+      "ok": true,
+      "detail": "Tags"
+    },
+    {
+      "id": "erro_lm_Operar",
+      "ok": true,
+      "detail": "Operar"
+    },
+    {
+      "id": "erro_lm_Par / Estratégia",
+      "ok": true,
+      "detail": "Par / Estratégia"
+    },
+    {
+      "id": "erro_not_login",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+    },
+    {
+      "id": "erro_no_filter_empty_as_catalog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_retry_min_height_note",
+      "ok": true,
+      "detail": {
+        "w": 126.21875,
+        "h": 44,
+        "text": "Tentar de novo"
+      }
+    },
+    {
+      "id": "console_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "pageerror_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "badhttp_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "index_proto_url",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/"
+    },
+    {
+      "id": "lm_table_signals",
+      "ok": true,
+      "detail": 2
+    },
+    {
+      "id": "not_chrome_only",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "lm_Status",
+      "ok": true,
+      "detail": "Status"
+    },
+    {
+      "id": "lm_Preço",
+      "ok": true,
+      "detail": "Preço"
+    },
+    {
+      "id": "lm_Distância",
+      "ok": true,
+      "detail": "Distância"
+    },
+    {
+      "id": "lm_7d",
+      "ok": true,
+      "detail": "7d"
+    },
+    {
+      "id": "lm_Risco até stop",
+      "ok": true,
+      "detail": "Risco até stop"
+    },
+    {
+      "id": "lm_Tags",
+      "ok": true,
+      "detail": "Tags"
+    },
+    {
+      "id": "lm_Operar",
+      "ok": true,
+      "detail": "Operar"
+    },
+    {
+      "id": "lm_Par / Estratégia",
+      "ok": true,
+      "detail": "Par / Estratégia"
+    },
+    {
+      "id": "happy_sol",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "happy_eth",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "absent_empty_catalog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "absent_empty_in_html",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "index_not_error_p",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "zero_antes_depois_buttons",
+      "ok": true,
+      "detail": "antes=0 depois=0"
+    },
+    {
+      "id": "not_panel_antes_depois",
+      "ok": true,
+      "detail": "absent"
+    },
+    {
+      "id": "not_n_estados_gallery",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "default_em_portfolio",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "default_todos_present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "no_h_overflow",
+      "ok": true,
+      "detail": {
+        "sw": 390,
+        "cw": 390
+      }
+    },
+    {
+      "id": "index_lang",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_proto_url",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+    },
+    {
+      "id": "erro_copy_p",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_copy_s",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_retry",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_no_empty_catalog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_no_empty_in_html",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_chrome_monitor",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_table_signals",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "id": "erro_lm_Status",
+      "ok": true,
+      "detail": "Status"
+    },
+    {
+      "id": "erro_lm_Preço",
+      "ok": true,
+      "detail": "Preço"
+    },
+    {
+      "id": "erro_lm_Distância",
+      "ok": true,
+      "detail": "Distância"
+    },
+    {
+      "id": "erro_lm_7d",
+      "ok": true,
+      "detail": "7d"
+    },
+    {
+      "id": "erro_lm_Risco até stop",
+      "ok": true,
+      "detail": "Risco até stop"
+    },
+    {
+      "id": "erro_lm_Tags",
+      "ok": true,
+      "detail": "Tags"
+    },
+    {
+      "id": "erro_lm_Operar",
+      "ok": true,
+      "detail": "Operar"
+    },
+    {
+      "id": "erro_lm_Par / Estratégia",
+      "ok": true,
+      "detail": "Par / Estratégia"
+    },
+    {
+      "id": "erro_not_login",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/prototypes/card-975-monitor-vazio-favoritos/erro.html"
+    },
+    {
+      "id": "erro_no_filter_empty_as_catalog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "erro_retry_min_height_note",
+      "ok": true,
+      "detail": {
+        "w": 126.21875,
+        "h": 44,
+        "text": "Tentar de novo"
+      }
+    },
+    {
+      "id": "console_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "pageerror_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "badhttp_zero",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "dumps": {},
+  "extras": {
+    "filtro.html": false,
+    "filtro.html_http": "HTTP Error 404: Not Found",
+    "favorites.html": false,
+    "favorites.html_http": "HTTP Error 404: Not Found",
+    "home.html": false,
+    "home.html_http": "HTTP Error 404: Not Found",
+    "inicio.html": false,
+    "inicio.html_http": "HTTP Error 404: Not Found"
+  },
+  "failed_ids": [],
+  "pass": true
+}
