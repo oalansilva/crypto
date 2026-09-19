@@ -1,0 +1,149 @@
+<!doctype html>
+<!-- Prototype extra card-983 — clone da página viva Início /home + delta janela de renovação.
+     Shell AppNav autenticado (não há item Início no nav vivo). Topbar fallback «Crypto».
+     DELTA: KPI «Melhor estratégia (7d)» mostra a estratégia; ausente o erro falso da lista. Sem redesign do Início. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Início — estratégia no KPI</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg">
+  <style>
+    /* COPIED:start tokens shell autenticado (AppNav + canvas DESIGN.md) */
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent:#fcd535; --accent-active:#f0b90b; --success:#0ecb81; --danger:#f6465d; --info:#3b82f6;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-md:6px; --radius-lg:8px;
+      --font:BinanceNova,BinancePlex,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    html{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--bg-primary);font-size:14px;line-height:1.5}
+    button,a{font:inherit} button{cursor:pointer}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97)}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:12px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}.compact-env{margin:0;font-size:10px;font-weight:700}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-top:1px solid rgba(43,49,57,.72);background:transparent;color:var(--text-tertiary)}
+    .topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94)}.topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:18px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:10px;letter-spacing:.15em;text-transform:uppercase}.top-env{margin:0}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}.page{width:min(100%,1544px);margin:0 auto;padding:24px 32px 52px}
+    @media(max-width:1023px){
+      .sidebar,.topbar{display:none}
+      .mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96)}
+      .menu-button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+      .mobile-title{min-width:0;flex:1}.mobile-title strong,.mobile-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-title span{color:var(--text-muted);font-size:12px}
+      .main{margin-left:0;padding-top:72px}.page{padding:18px 16px 40px}
+    }
+    /* COPIED:end */
+    .page-stack{display:flex;flex-direction:column;gap:24px}
+    .page-card{border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.03);padding:24px}
+    .hero-grid{display:grid;grid-template-columns:1.45fr .95fr;gap:24px}
+    .eyebrow{display:inline-block;margin-bottom:20px;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+    .section-title{margin:0;font-size:28px;font-weight:600;line-height:1.2}
+    .section-copy{margin:16px 0 0;color:var(--text-tertiary);font-size:14px}
+    .quick{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:32px}
+    .quick a{display:block;padding:16px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(255,255,255,.03);color:inherit;text-decoration:none}
+    .quick strong{display:block;font-size:14px}.quick span{display:block;margin-top:4px;color:var(--text-tertiary);font-size:12px}
+    .health h2,.kpi-label,.focus h2{margin:0;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .pill{display:inline-flex;border-radius:999px;padding:4px 12px;background:rgba(14,203,129,.12);color:#6ee7b7;font-size:10px;font-weight:700;letter-spacing:.12em}
+    .kv{margin:20px 0 0;display:grid;gap:12px}.kv div{display:flex;justify-content:space-between;gap:16px;border-radius:16px;background:rgba(255,255,255,.03);padding:12px 16px;color:var(--text-tertiary);font-size:14px}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .kpi{border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.03);padding:20px}
+    .kpi-val{margin-top:12px;font-size:22px;font-weight:600}
+    .kpi-foot{margin-top:4px;color:var(--text-tertiary);font-size:12px}
+    .focus-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+    .focus-item{margin-top:16px;border:1px solid rgba(14,203,129,.2);border-radius:16px;background:rgba(14,203,129,.06);padding:16px}
+    .focus-item strong{display:block;font-size:14px}.focus-item span{display:block;margin-top:4px;color:var(--text-tertiary);font-size:12px}
+    @media(max-width:1023px){
+      .hero-grid,.quick,.kpis,.focus-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body data-session-window="renewal">
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5M12 4v2M20 12h-2M12 20v-2M4 12h2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </svg>
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px; Início /home sem item de nav) -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Crypto</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="index.html"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item" href="monitor.html"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item" href="carteira.html"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-history"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+    <button class="collapse" type="button"><svg class="icon"><use href="#i-menu"/></svg>Recolher menu</button>
+  </aside>
+  <header class="topbar"><div class="topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Crypto</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env top-env">Ambiente DEV</span><button class="account" type="button" aria-label="Abrir conta"><span class="avatar">AS</span><span><small>Conta</small>Alan Silva</span></button><button class="icon-button" type="button" aria-label="Configurações"><svg class="icon"><use href="#i-settings"/></svg></button></div></div></header>
+  <header class="mobilebar"><button class="menu-button" type="button" aria-label="Abrir menu"><svg class="icon"><use href="#i-menu"/></svg></button><div class="mobile-title"><strong>Crypto</strong><span>Snapshot diário</span></div><span class="env compact-env">DEV</span><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+  <main class="main">
+    <div class="page page-stack">
+      <!-- COPIED:start chrome HomePage (cockpit + saúde) -->
+      <section class="hero-grid">
+        <div class="page-card">
+          <span class="eyebrow">Cockpit diário</span>
+          <h1 class="section-title">Seu snapshot diário de crypto</h1>
+          <p class="section-copy">Como estou indo, o que precisa atenção e qual o próximo passo mais rápido.</p>
+          <div class="quick">
+            <a href="#"><strong>Rodar um backtest</strong><span>Escolha estratégia · timeframe</span></a>
+            <a href="monitor.html"><strong>Abrir monitor</strong><span>Sinais · posições</span></a>
+          </div>
+        </div>
+        <aside class="page-card health">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <h2>Saúde do sistema</h2>
+            <span class="pill">OK</span>
+          </div>
+          <div class="kv">
+            <div><span>Último check</span><span>18 set, 23:37</span></div>
+            <div><span>API</span><span>crypto-backend</span></div>
+            <div><span>Carteira</span><span>External balances</span></div>
+          </div>
+        </aside>
+      </section>
+      <!-- COPIED:end -->
+      <section class="kpis" aria-label="KPIs do início">
+        <article class="kpi"><div class="kpi-label">Portfolio PnL (hoje)</div><div class="kpi-val" style="color:#6ee7b7">+0,42%</div><div class="kpi-foot">vs. BTC: +0,10%</div></article>
+        <article class="kpi"><div class="kpi-label">Drawdown (30d)</div><div class="kpi-val">4,10%</div><div class="kpi-foot">Pico: 2 set</div></article>
+        <article class="kpi" data-testid="home-kpi-best-strategy">
+          <div class="kpi-label">Melhor estratégia (7d)</div>
+          <div class="kpi-val">Médias Móveis: Tendência Confirmada</div>
+          <div class="kpi-foot">SOL/USDT · 1d · ROI +98,6%</div>
+        </article>
+        <article class="kpi"><div class="kpi-label">Data freshness</div><div class="kpi-val">agora</div><div class="kpi-foot">Snapshot em 18 set, 23:37</div></article>
+      </section>
+      <section class="focus-grid">
+        <div class="page-card focus">
+          <h2>Foco atual</h2>
+          <div class="focus-item"><strong>PROD: Favoritos mostra erro de carga com sessão válida</strong><span>Card #983</span></div>
+        </div>
+        <div class="page-card focus">
+          <h2>Runs recentes</h2>
+          <div class="focus-item" style="border-color:rgba(56,189,248,.2);background:rgba(56,189,248,.06)"><strong>Monitor vazio com favoritos</strong><span>Card #975</span></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -55,7 +55,7 @@ test('ProfilePage guards TelegramAlertsForm with Auth isLoading (card 749 Q4)', 
 test('authFetch encapsulates retry so transient 401 returns 200 (card 749 Q1=C)', async () => {
   const source = await readFile(authFetchPath, 'utf8')
   assert.match(source, /refreshAuthToken\(\)/)
-  assert.match(source, /if \(!refreshedToken\) \{\s*return response/)
+  assert.match(source, /if \(!refreshedToken\) \{\s*return staleResponse/)
   assert.match(source, /notifyAuthSessionCleared\('missing-refresh-token'\)/)
   assert.match(source, /notifyAuthSessionCleared\('refresh-failed'\)/)
 })

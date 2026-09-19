@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, RefreshCw, Search, WalletCards } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
+import { hasRecoverableAuthSession } from '@/lib/authJson'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/use-toast'
 import { BinanceCredentialsForm } from '@/components/binance/BinanceCredentialsForm'
@@ -158,6 +159,7 @@ export default function ExternalBalancesPage() {
   const [sortOverride, setSortOverride] = useState<SortSpec | null>(null)
 
   const lastFetchId = useRef(0)
+  const minUsdEffectReady = useRef(false)
 
   const load = async (/* opts?: { minUsdOverride?: string } */) => {
     const fetchId = ++lastFetchId.current
@@ -176,9 +178,13 @@ export default function ExternalBalancesPage() {
       setServerTotalUsd(typeof payload?.total_usd === 'number' ? payload.total_usd : null)
       setAsOf(typeof payload?.as_of === 'string' ? payload.as_of : null)
     } catch (e) {
+      if (fetchId !== lastFetchId.current) return
       const msg = e instanceof Error ? e.message : 'Falha ao carregar saldos.'
+      const suppressDestructiveToast = balances.length > 0 || hasRecoverableAuthSession()
       setError(msg)
-      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+      if (!suppressDestructiveToast) {
+        toast({ title: 'Erro', description: msg, variant: 'destructive' })
+      }
     } finally {
       if (fetchId === lastFetchId.current) setLoading(false)
     }
@@ -190,6 +196,10 @@ export default function ExternalBalancesPage() {
   }, [])
 
   useEffect(() => {
+    if (!minUsdEffectReady.current) {
+      minUsdEffectReady.current = true
+      return
+    }
     const t = setTimeout(() => {
       void load()
     }, 320)
@@ -308,7 +318,10 @@ export default function ExternalBalancesPage() {
     : view.items
 
   return (
-    <main className="app-page balances-page w-full bg-[#07111a] text-slate-100">
+    <main
+      className="app-page balances-page w-full bg-[#07111a] text-slate-100"
+      data-testid={balances.length > 0 && !error ? 'wallet-renewal-ok' : undefined}
+    >
       <div className="mx-auto w-[min(1180px,calc(100%-28px))] pb-10 pt-5 sm:pb-12">
         <section className="mb-4 flex flex-col gap-3 border-b border-white/5 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -435,9 +448,13 @@ export default function ExternalBalancesPage() {
             <div className="text-xs text-slate-500">{serverTotalUsd != null ? 'total_usd do servidor disponível' : 'total calculado das linhas visíveis'}</div>
           </div>
 
-          {error && !loading ? (
+          {error && !loading && balances.length === 0 ? (
             <div className="p-4">
-              <div className="rounded-lg border border-rose-300/25 bg-rose-400/10 p-4">
+              <div
+                className="rounded-lg border border-rose-300/25 bg-rose-400/10 p-4"
+                role="alert"
+                data-testid="wallet-load-error"
+              >
                 <div className="font-semibold text-rose-100">Erro ao carregar</div>
                 <div className="mt-1 text-sm text-rose-100/75">{error}</div>
                 <Button className="mt-3 h-9 rounded-md" variant="secondary" onClick={() => void load()}>

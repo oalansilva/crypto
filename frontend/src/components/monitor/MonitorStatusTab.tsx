@@ -27,7 +27,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/apiBase';
-import { authFetch } from '@/lib/authFetch';
+import { authFetch, isFetchAbortedError } from '@/lib/authFetch';
+import { hasRecoverableAuthSession } from '@/lib/authJson';
 import { useAuth } from '@/stores/authStore';
 import type { MarketCandle } from './MiniCandlesChart';
 import { fetchMarketCandles, type ChartTimeframe } from './chartData';
@@ -432,8 +433,9 @@ export const MonitorStatusTab: React.FC = () => {
         try {
             const response = await authFetch(`${API_BASE_URL}/favorites/`);
             if (!response.ok) {
-                setOpportunitiesLoadError(true);
-                setHasCryptoFavorites(false);
+                if (response.status === 401 && hasRecoverableAuthSession()) {
+                    return { hasCrypto: false, failed: false };
+                }
                 return { hasCrypto: false, failed: true };
             }
             const payload = await response.json();
@@ -441,9 +443,10 @@ export const MonitorStatusTab: React.FC = () => {
             const hasCrypto = rows.some((row) => String((row as { symbol?: string })?.symbol || '').includes('/'));
             setHasCryptoFavorites(hasCrypto);
             return { hasCrypto, failed: false };
-        } catch {
-            setOpportunitiesLoadError(true);
-            setHasCryptoFavorites(false);
+        } catch (error) {
+            if (isFetchAbortedError(error)) {
+                return { hasCrypto: false, failed: false };
+            }
             return { hasCrypto: false, failed: true };
         }
     };

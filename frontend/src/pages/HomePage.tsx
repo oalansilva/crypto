@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Activity, ArrowRight, FileText, Layers, Radar } from 'lucide-react'
-import { apiUrl } from '@/lib/apiBase'
+import { fetchAuthJson, AuthSessionExpiredError } from '@/lib/authJson'
 import PortfolioAllocation from '@/components/PortfolioAllocation'
 import { useAuth } from '@/stores/authStore'
 
@@ -69,21 +69,6 @@ type KanbanChange = {
 
 function cx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(' ')
-}
-
-async function fetchJson<T>(path: string): Promise<T> {
-  const token = localStorage.getItem('auth_access_token')
-  const headers: Record<string, string> = {}
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  const res = await fetch(apiUrl(path).toString(), { headers })
-  const payload = await res.json().catch(() => null)
-  if (!res.ok) {
-    const detail = payload && typeof payload === 'object' ? (payload as { detail?: string }).detail : undefined
-    throw new Error(detail || `Falha ao carregar ${path}`)
-  }
-  return payload as T
 }
 
 function formatDt(value: string | Date) {
@@ -213,42 +198,57 @@ export default function HomePage() {
 
   const healthQuery = useQuery<HealthState>({
     queryKey: ['home', 'health'],
-    queryFn: () => fetchJson<HealthState>('/health'),
+    queryFn: () => fetchAuthJson<HealthState>('/health'),
     refetchOnWindowFocus: false,
   })
 
   const favoritesQuery = useQuery<FavoriteStrategy[]>({
     queryKey: ['home', 'favorites', user?.id ?? 'anonymous'],
-    queryFn: () => fetchJson<FavoriteStrategy[]>('/favorites/'),
+    queryFn: () => fetchAuthJson<FavoriteStrategy[]>('/favorites/'),
+    placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
   })
 
   const balancesQuery = useQuery<BalancesSnapshot>({
     queryKey: ['home', 'balances', user?.id ?? 'anonymous'],
-    queryFn: () => fetchJson<BalancesSnapshot>('/external/binance/spot/balances'),
+    queryFn: () => fetchAuthJson<BalancesSnapshot>('/external/binance/spot/balances'),
     refetchOnWindowFocus: false,
   })
 
   const portfolioKpiQuery = useQuery<PortfolioKPI>({
     queryKey: ['home', 'portfolio-kpi', user?.id ?? 'anonymous'],
-    queryFn: () => fetchJson<PortfolioKPI>('/portfolio/kpi'),
+    queryFn: () => fetchAuthJson<PortfolioKPI>('/portfolio/kpi'),
     refetchOnWindowFocus: false,
   })
 
   const marketQuery = useQuery<MarketPricesResponse>({
     queryKey: ['home', 'market-prices'],
-    queryFn: () => fetchJson<MarketPricesResponse>('/market/prices'),
+    queryFn: () => fetchAuthJson<MarketPricesResponse>('/market/prices'),
     refetchOnWindowFocus: false,
     refetchInterval: 30_000,
   })
 
   const changesQuery = useQuery<{ items: KanbanChange[] }>({
     queryKey: ['home', 'workflow-changes', user?.id ?? 'anonymous'],
-    queryFn: () => fetchJson<{ items: KanbanChange[] }>('/workflow/kanban/changes?project_slug=crypto'),
+    queryFn: () => fetchAuthJson<{ items: KanbanChange[] }>('/workflow/kanban/changes?project_slug=crypto'),
     refetchOnWindowFocus: false,
   })
 
   const nowLabel = useMemo(() => formatDt(new Date()), [])
+  const favoritesKpiPending =
+    favoritesQuery.isLoading || (favoritesQuery.isFetching && favoritesQuery.data === undefined)
+  const favoritesKpiFailed =
+    Boolean(favoritesQuery.error)
+    && favoritesQuery.data === undefined
+    && !(favoritesQuery.error instanceof AuthSessionExpiredError)
+    && !favoritesKpiPending
+
+  useEffect(() => {
+    if (favoritesQuery.error instanceof AuthSessionExpiredError) {
+      navigate('/login', { replace: true, state: { returnTo: '/home' } })
+    }
+  }, [favoritesQuery.error, navigate])
+
   const bestFavorite = useMemo(() => getBestFavorite(favoritesQuery.data || []), [favoritesQuery.data])
   const bestFavoriteRoi = getReturnPct(bestFavorite?.metrics)
   const balancesFreshness = formatFreshness(balancesQuery.data?.as_of)
@@ -411,9 +411,9 @@ export default function HomePage() {
           </KpiCard>
 
           <KpiCard title="Melhor estratégia (7d)" testId="home-kpi-best-strategy">
-            {favoritesQuery.isLoading ? (
+            {favoritesKpiPending ? (
               <KpiSkeleton />
-            ) : favoritesQuery.error ? (
+            ) : favoritesKpiFailed ? (
               <>
                 <div className="mt-3 text-xl font-semibold text-[var(--text-primary)]">não disponível</div>
                 <div className="mt-1 text-[12px] text-rose-300">Não foi possível carregar `/api/favorites`.</div>
