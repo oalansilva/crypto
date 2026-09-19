@@ -118,28 +118,50 @@ The Decidir leaderboard SHALL show `insufficient_sample` rows in the list: rank 
 
 ### Requirement: Walk-forward GO/NO-GO seal on Acompanhar parciais and Decidir rows
 
-When a Discovery result has a persisted walk-forward verdict (`oos_verdict.status` of `GO` or `NO-GO`), Acompanhar locked top-5 parciais and the Decidir leaderboard row SHALL show that verdict as a visible seal on the line itself. The operator SHALL NOT need to open the chart, expand «+ detalhes», or click Promover to see it. Missing verdict SHALL omit the seal (no invented `GO`). `NO-GO` is not `Baixa amostra` and not `Amostra insuficiente`. Promover on an eligible `NO-GO` SHALL remain available (this card does not lock the click). Seals use distinct chips: `GO` informational, `NO-GO` danger — not the amber sample badges.
+When a Discovery result is ranking-eligible and has a persisted walk-forward verdict (`oos_verdict.status` of `GO` or `NO-GO`) from the Discovery criteria profile, Acompanhar locked top-5 parciais and the Decidir leaderboard row SHALL show that verdict as a visible seal on the line itself. The operator SHALL NOT need to open the chart, expand «+ detalhes», or click Promover to see it. Missing verdict SHALL omit the seal (no invented `GO`).
+
+A row with `eligibility=low_sample` (`Baixa amostra`) or `eligibility=insufficient_sample` (`Amostra insuficiente`) SHALL show only the sample badge: it SHALL NOT show `GO` or `NO-GO`, even if holdout Sharpe is ≤ 0 or a Combo-era `oos_verdict` is present. `NO-GO` is not `Baixa amostra` and not `Amostra insuficiente`.
+
+Promover on an eligible `NO-GO` SHALL remain available (this card does not lock the click). Seals use distinct chips: `GO` informational, `NO-GO` danger — not the amber sample badges. The same seal rule SHALL apply to every visible line (4h and 1d, long and short, any template).
+
+When the seal is `NO-GO`, the line SHALL also show a readable reason that names the segment (`Treino` vs `Holdout`), the observed value and the threshold. A training-portrait failure SHALL point at treino, not only holdout.
 
 #### Scenario: NO-GO visible on parciais without opening the chart
 
-- **GIVEN** ALPHA/USDT `RS-B109ED2C80` with `oos_verdict.status = NO-GO`
+- **GIVEN** an eligible row with Discovery `oos_verdict.status = NO-GO` because holdout Sharpe ≤ 0
 - **WHEN** the line appears in Acompanhar parciais
 - **THEN** the seal/text `NO-GO` is visible on that row
+- **AND** the reason identifies Holdout, observed Sharpe and threshold `> 0`
 - **AND** the operator did not open the graph and did not promote
 
 #### Scenario: GO and NO-GO visible on Decidir
 
-- **GIVEN** a completed sweep with at least one `GO` and one `NO-GO`
+- **GIVEN** a completed sweep with at least one Discovery `GO` (example BTC/USDT 1d long `RS-E0E30719CC`) and one `NO-GO`
 - **WHEN** the administrator opens Decidir
-- **THEN** each row with a verdict shows its `GO` or `NO-GO` seal
+- **THEN** each eligible row with a verdict shows its `GO` or `NO-GO` seal
 - **AND** Promover remains on the eligible `NO-GO` row
 
-#### Scenario: Sample badges stay distinct
+#### Scenario: Weak training portrait reason points at treino
 
-- **GIVEN** a `NO-GO` eligible row next to a `Baixa amostra` row
+- **GIVEN** an eligible Decidir row with holdout Sharpe > 0 whose in-sample portrait fails Calmar 1, profit factor 1,5 or max drawdown 35%
+- **WHEN** the operator reads the line
+- **THEN** the seal is `NO-GO`
+- **AND** the visible reason identifies Treino, the observed value and the threshold
+- **AND** the reason is not only Holdout
+
+#### Scenario: Sample badges stay distinct and have no GO/NO-GO
+
+- **GIVEN** a `NO-GO` eligible row next to a `Baixa amostra` row whose holdout Sharpe is ≤ 0
 - **WHEN** both are visible on Decidir
 - **THEN** the first seal is `NO-GO` and the second is `Baixa amostra`
+- **AND** the `Baixa amostra` row has no `GO` and no `NO-GO`
 - **AND** neither reuses the other's words
+
+#### Scenario: 4h and short use the same seal
+
+- **GIVEN** eligible 4h and short rows in the same Decidir grid
+- **WHEN** the operator reads the seals
+- **THEN** each row shows `GO` or `NO-GO` by the same Discovery profile as 1d long
 
 ### Requirement: Acompanhar top-5 shows the same six metric columns
 
@@ -239,4 +261,25 @@ Acompanhar SHALL remain available only while this run is still non-terminal (em 
 - **WHEN** Histórico is open on a different completed sweep
 - **THEN** that other ranking is not treated as the closed result of the active sweep
 - **AND** the copy that the active sweep is separado do Histórico exibido MAY remain while the active run still runs
+
+### Requirement: Acompanhar reconstitutes itself for the live sweep
+
+When an authenticated operator opens `/combo/discovery` and a Discovery sweep is still non-terminal on the server, the Descoberta UI SHALL reconstitute **by itself** the Acompanhar of that sweep: the mode tab SHALL show a real `sweep_id` prefix (not `Acompanhando #—`) and the progress of that run. The operator SHALL NOT need to click and SHALL NOT need to log out. The red verification-failure banner («Não foi possível verificar a varredura ativa») SHALL NOT be the happy path.
+
+Montar empty + «Acompanhando #—» SHALL NOT remain the stable state of this verification failure while the sweep is still live. The three modes remain Montar / Acompanhar / Decidir; this card SHALL NOT invent a new mode screen.
+
+#### Scenario: Live sweep reconstitutes Acompanhar without a click
+
+- **GIVEN** a non-terminal Discovery sweep exists for the authenticated operator and the screen would otherwise show the red verification banner, empty Montar, and «Acompanhando #—»
+- **WHEN** the automatic reconstitution runs
+- **THEN** the operator sees Acompanhar of that sweep with a real number and progress
+- **AND** they did not click «Tentar novamente»
+- **AND** they did not log out
+
+#### Scenario: Retry click is not the happy path
+
+- **GIVEN** the automatic reconstitution succeeded
+- **WHEN** the operator looks at Descoberta
+- **THEN** «Tentar novamente» is not required to see Acompanhar
+- **AND** the red banner «Não foi possível verificar a varredura ativa» is not shown
 
