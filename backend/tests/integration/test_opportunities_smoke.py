@@ -469,7 +469,15 @@ async def test_opportunities_nonempty_stale_cache_still_served(monkeypatch):
             "next_status_label": "exit",
             "indicator_values": None,
             "indicator_values_candle_time": None,
-            "signal_history": [{"timestamp": "2026-07-10T00:00:00Z", "signal": 1, "type": "entry", "reason": "entry", "price": 1.0}],
+            "signal_history": [
+                {
+                    "timestamp": "2026-07-10T00:00:00Z",
+                    "signal": 1,
+                    "type": "entry",
+                    "reason": "entry",
+                    "price": 1.0,
+                }
+            ],
             "entry_price": 1.0,
             "stop_price": None,
             "distance_to_stop_pct": None,

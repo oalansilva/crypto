@@ -221,6 +221,8 @@ async def get_opportunities(
             )
             for item in payload
         ]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting opportunities: {e}")
         raise HTTPException(status_code=500, detail=str(e))
