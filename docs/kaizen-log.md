@@ -1,5 +1,36 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-19 — Kaizen release (lote #967–#975)
+
+- **Release/card**: Homologado `#967` `#968` `#969` `#970` `#975` → `release-2026-09-19` → `main` PR #977 merged `65c8ffdc007084de781672e35cd6520e3268e4a6`. PROD bundle `index-CGPfcjC3.js`.
+- **Fontes**: Project 1, git, `RELEASE_CARDS=967,968,969,970,975 scripts/release-guard audit`, `openspec validate --all` 173, `gh pr checks 977`, health/bundle PROD, agent-transcripts. Filho `fecho-lote kaizen`.
+- **Grelha**: 2+3+2+2+3 = 12 spawns / 5 cards = média **2,4** (meta ≤1,5).
+
+#### Métricas
+
+- **Board**: 5 Homologado; campos pacote OK.
+- **Git**: archive bloqueado em `develop` → `release-*`; sync `main→develop` obrigatório no closeout.
+- **CI**: PR #977 all pass.
+- **OpenSpec**: 5 archives `2026-09-19-card-*`.
+- **PROD**: discovery-worker na janela de restart (#968).
+
+#### Achados
+
+- **F-1** homologado REST ausente no arraste → recidiva **#658** (comentários postados no pre deste lote).
+- **F-2** proxy REST parcial → **#909** / **#963**.
+- **F-3** OpenSpec completo sem archive no kaizen → **#978**.
+- **F-4** P1 residual + Homologado → **#979**.
+- **F-5** worktrees dirty/legado → **#759**; closeout com `RELEASE_BRANCHES`.
+- **F-6** grelha > meta → **#980**.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #978 | P1 | F-3 | Em Refinamento |
+| #979 | P1 | F-4 | Em Refinamento |
+| #980 | P2 | F-6 | Em Refinamento |
+
 ## 2026-09-16 — Kaizen release (lote #944–#955)
 
 - **Release/card**: 2026-09-16 — Homologado `#944` `#945` `#948` `#949` `#952` `#953` `#954` `#955` → `release-2026-09-16` → `main` PR #961 merged `cc5370c56d18504f854af702840333509848363e`. PROD bundle `index-ByCce8mR.js`.
