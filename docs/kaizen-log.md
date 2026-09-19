@@ -24,11 +24,13 @@
 
 ### Cards kaizen criados nesta release
 
+Sem novos cards neste pacote (teto 3/dia já usado no lote #967–#975 com #978–#980).
+
 | Card | Prioridade | Origem | Status |
 | --- | --- | --- | --- |
-| #986 | P1 | F-12 Drive DoD | Em Refinamento (criar no board) |
-| #987 | P2 | F-5 Impeccable dirty | Em Refinamento (criar no board) |
-| #988 | P2 | F-13 npm audit | Em Refinamento (criar no board) |
+| (não criado) Drive DoD release | P1 | F-12 | coberto por #978 |
+| (não criado) Impeccable dirty worktree | P2 | F-5 | coberto por #759 |
+| (não criado) npm audit frontend | P2 | F-13 | coberto por #978 |
 
 ## 2026-09-19 — Kaizen release (lote #967–#975)
 
