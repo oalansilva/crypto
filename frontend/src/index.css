@@ -2023,6 +2023,103 @@ textarea {
   animation: spin 0.8s linear infinite;
 }
 
+.favorites-workbench .fav-error {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 34px 18px;
+  color: var(--fav-down, #f6465d);
+  text-align: center;
+}
+
+.favorites-workbench .fav-error p {
+  margin: 0;
+  color: var(--fav-body, #eaecef);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.favorites-workbench .fav-error span {
+  color: var(--fav-muted-strong, #929aa5);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.favorites-workbench .fav-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--fav-primary-active, #f0b90b);
+  border-radius: 6px;
+  background: var(--fav-primary, #fcd535);
+  color: var(--fav-ink, #181a20);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.favorites-workbench .fav-retry:hover:not(:disabled) {
+  background: var(--fav-primary-active, #f0b90b);
+}
+
+.favorites-workbench .fav-retry:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.favorites-workbench .fav-error--cell {
+  padding: 24px 12px;
+}
+
+.monitor-error {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 40px 18px;
+  border: 1px solid var(--border, #2b3139);
+  border-radius: 12px;
+  background: var(--bg-elevated, #1e2329);
+  text-align: center;
+}
+
+.monitor-error p {
+  margin: 0;
+  color: var(--text-primary, #fff);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.monitor-error span {
+  color: var(--text-tertiary, #929aa5);
+  font-size: 0.8125rem;
+}
+
+.monitor-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--accent, #fcd535);
+  border-radius: 6px;
+  background: var(--accent, #fcd535);
+  color: #181a20;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.monitor-retry:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.monitor-retry:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .favorites-workbench .fav-empty,
 .favorites-workbench .fav-empty-cell {
   padding: 34px 18px !important;

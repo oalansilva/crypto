@@ -6,6 +6,10 @@ import {
 } from 'lucide-react'
 import { authFetch } from '../lib/authFetch'
 import { API_BASE_URL } from '../lib/apiBase'
+import {
+  ACTIVE_RESTORE_BACKOFF_MS,
+  ACTIVE_RESTORE_MAX_ATTEMPTS,
+} from '../lib/discoveryActiveRestoreConfig'
 import { formatCompoundReturn, type CompoundReturnSource } from '../lib/compoundReturn'
 import { SelectionWorkbench } from '../components/SelectionWorkbench'
 import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
@@ -161,10 +165,32 @@ function gridEasyMetrics(row: LeaderboardRow, calmarBlocked: boolean) {
   }
 }
 function walkForwardStatus(row: LeaderboardRow): 'GO' | 'NO-GO' | null {
+  if (row.eligibility === 'low_sample' || row.eligibility === 'insufficient_sample') {
+    return null
+  }
   const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics.oos_verdict : null
   const raw = String(row.oos_verdict?.status ?? nested?.status ?? '').trim().toUpperCase()
   if (raw === 'GO' || raw === 'NO-GO') return raw
   return null
+}
+function rowOosVerdict(row: LeaderboardRow): OosVerdict | null {
+  const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics.oos_verdict : null
+  return row.oos_verdict ?? nested ?? null
+}
+function discoverySealReason(row: LeaderboardRow): string | null {
+  if (walkForwardStatus(row) !== 'NO-GO') return null
+  const verdict = rowOosVerdict(row)
+  const reasons = verdict?.reasons
+  if (!Array.isArray(reasons) || !reasons.length) return null
+  const primary =
+    reasons.find((item) => typeof item === 'string' && (item.startsWith('Holdout') || item.startsWith('Treino')))
+    ?? reasons[0]
+  return typeof primary === 'string' ? primary : null
+}
+function sealReasonClass(reason: string): string {
+  if (reason.startsWith('Holdout')) return 'seal-reason holdout'
+  if (reason.startsWith('Treino')) return 'seal-reason treino'
+  return 'seal-reason'
 }
 function WalkForwardSeal({ status }: { status: 'GO' | 'NO-GO' | null }) {
   if (status !== 'GO' && status !== 'NO-GO') return null
@@ -174,6 +200,15 @@ function WalkForwardSeal({ status }: { status: 'GO' | 'NO-GO' | null }) {
       data-testid={status === 'GO' ? 'seal-go' : 'seal-nogo'}
     >
       {status}
+    </span>
+  )
+}
+function DiscoverySealReason({ row }: { row: LeaderboardRow }) {
+  const reason = discoverySealReason(row)
+  if (!reason) return null
+  return (
+    <span className={sealReasonClass(reason)} data-testid={reason.startsWith('Holdout') ? 'reason-holdout' : reason.startsWith('Treino') ? 'reason-treino' : 'reason-seal'}>
+      {reason}
     </span>
   )
 }
@@ -281,6 +316,11 @@ const START_FAILURE_FALLBACK =
   'Não foi possível iniciar a varredura. Confira a seleção e tente de novo — nada foi criado.'
 const LIVE_BLOCK_COPY =
   'Há outra varredura em curso — conclua ou cancele antes de iniciar esta.'
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
 
 function sameStringSet(a: string[], b: string[] | undefined): boolean {
   if (!b) return a.length === 0
@@ -362,6 +402,7 @@ export function DiscoveryPage() {
   const focusStartedSweepRef = useRef(false)
   const viewOriginRef = useRef<'auto' | 'user'>('auto')
   const pollRevRef = useRef(0)
+  const restoreGenRef = useRef(0)
   const pollInFlightRef = useRef(false)
   const activeSweepRef = useRef<Sweep | null>(null)
   const lbReqRef = useRef(0)
@@ -585,10 +626,12 @@ export function DiscoveryPage() {
       !(preflight != null && (draftStartDate !== liveStartDate || draftEndDate !== liveEndDate)),
   )
   const blockedOtherSelection = Boolean(liveSweep && liveAxes && !sameScopeAsLive)
+  const blockedLiveAwaitingSnapshot = Boolean(liveSweep && !liveAxes)
   const canStart =
     recoveryStatus === 'ready' &&
     !draftFrozen &&
     !blockedOtherSelection &&
+    !blockedLiveAwaitingSnapshot &&
     preflight !== null &&
     Object.keys(preflight.errors || {}).length === 0 &&
     !snapshotStale
@@ -852,53 +895,18 @@ export function DiscoveryPage() {
     [],
   )
 
-  const restoreSession = useCallback(async (opts?: { focus?: boolean }) => {    setRecoveryStatus('loading')
-    try {
-      const [activeRes] = await Promise.all([
-        authFetch(`${API_BASE_URL}/combos/discovery/sweeps/active`),
-        loadHistory(),
-      ])
-      if (!activeRes.ok) {
-        if (activeRes.status === 401) setSessionExpired(true)
-        if (activeRes.status === 403) setPermissionDenied(true)
-        setRecoveryStatus('error')
-        return
-      }
-      const data = await activeRes.json()
-      const sweeps: Sweep[] = Array.isArray(data?.sweeps) ? data.sweeps : []
-      const newest = sweeps[0]
-      if (!newest) {
-        pollRevRef.current += 1
-        activeSweepRef.current = null
-        setActiveSweep(null)
-        setReconnected(false)
-        setRecoveryStatus('ready')
-        return
-      }
-      if (TERMINAL.has(newest.state)) {
-        pollRevRef.current += 1
-        activeSweepRef.current = null
-        setActiveSweep(null)
-        setViewSweep(newest)
-        viewOriginRef.current = 'auto'
-        rotateDraftKey()
-        setRecoveryStatus('ready')
-        setPage(1)
-        setFSymbol('all')
-        setFTimeframe('all')
-        setFDirection('all')
-        await loadLeaderboard(newest.sweep_id, 'calmar_ratio', 'all', 'all', 'all', 1)
-        return
-      }
-      const ok = hydrateFromSweep(newest)
-      if (!ok) {
-        setRecoveryStatus('error')
-        return
-      }
+  const restoreSession = useCallback(async (opts?: { focus?: boolean }) => {
+    const gen = ++restoreGenRef.current
+    setRecoveryStatus('loading')
+
+    const bindNonTerminalLive = async (newest: Sweep) => {
+      if (gen !== restoreGenRef.current) return
+      const hydrated = hydrateFromSweep(newest)
       pollRevRef.current += 1
       activeSweepRef.current = newest
       setActiveSweep(newest)
       if (newest.updated_at) appliedUpdatedAtRef.current[newest.sweep_id] = newest.updated_at
+      if (newest.draft_key) setDraftKey(newest.draft_key)
       if (viewOriginRef.current === 'auto') {
         setViewSweep(newest)
         setMetric('calmar_ratio')
@@ -907,17 +915,79 @@ export function DiscoveryPage() {
         setFTimeframe('all')
         setFDirection('all')
         await loadLeaderboard(newest.sweep_id, 'calmar_ratio', 'all', 'all', 'all', 1)
+        if (gen !== restoreGenRef.current) return
       }
-      // Card 852: recuperação com live em curso abre no modo Acompanhar.
+      if (gen !== restoreGenRef.current) return
       setMode('acomp')
       void loadPartials(newest.sweep_id, 'calmar_ratio')
-      setReconnected(true)
+      setReconnected(hydrated)
       setRecoveryStatus('ready')
       if (opts?.focus) {
         window.setTimeout(() => progressHeadingRef.current?.focus(), 0)
       }
-    } catch {
-      setRecoveryStatus('error')
+    }
+
+    for (let attempt = 0; attempt < ACTIVE_RESTORE_MAX_ATTEMPTS; attempt += 1) {
+      if (gen !== restoreGenRef.current) return
+      if (attempt > 0) {
+        await sleep(ACTIVE_RESTORE_BACKOFF_MS[Math.min(attempt - 1, ACTIVE_RESTORE_BACKOFF_MS.length - 1)])
+        if (gen !== restoreGenRef.current) return
+      }
+      try {
+        const [activeRes] = await Promise.all([
+          authFetch(`${API_BASE_URL}/combos/discovery/sweeps/active`),
+          loadHistory(),
+        ])
+        if (gen !== restoreGenRef.current) return
+        if (!activeRes.ok) {
+          if (activeRes.status === 401) {
+            setSessionExpired(true)
+            setRecoveryStatus('ready')
+            return
+          }
+          if (activeRes.status === 403) {
+            setPermissionDenied(true)
+            setRecoveryStatus('ready')
+            return
+          }
+          if (attempt < ACTIVE_RESTORE_MAX_ATTEMPTS - 1) continue
+          setRecoveryStatus('error')
+          return
+        }
+        const data = await activeRes.json()
+        const sweeps: Sweep[] = Array.isArray(data?.sweeps) ? data.sweeps : []
+        const newest = sweeps[0]
+        if (!newest) {
+          pollRevRef.current += 1
+          activeSweepRef.current = null
+          setActiveSweep(null)
+          setReconnected(false)
+          setRecoveryStatus('ready')
+          return
+        }
+        if (TERMINAL.has(newest.state)) {
+          pollRevRef.current += 1
+          activeSweepRef.current = null
+          setActiveSweep(null)
+          setViewSweep(newest)
+          viewOriginRef.current = 'auto'
+          rotateDraftKey()
+          setRecoveryStatus('ready')
+          setPage(1)
+          setFSymbol('all')
+          setFTimeframe('all')
+          setFDirection('all')
+          await loadLeaderboard(newest.sweep_id, 'calmar_ratio', 'all', 'all', 'all', 1)
+          return
+        }
+        await bindNonTerminalLive(newest)
+        return
+      } catch {
+        if (attempt < ACTIVE_RESTORE_MAX_ATTEMPTS - 1) continue
+        if (gen !== restoreGenRef.current) return
+        setRecoveryStatus('error')
+        return
+      }
     }
   }, [hydrateFromSweep, loadHistory, loadLeaderboard, loadPartials, rotateDraftKey])
 
@@ -974,6 +1044,7 @@ export function DiscoveryPage() {
       if (activeSweepRef.current && TERMINAL.has(activeSweepRef.current.state)) return
       activeSweepRef.current = data
       setActiveSweep(data)
+      if (data.snapshot?.axes) hydrateFromSweep(data)
       // Card 954: mesmo intervalo do progresso relê parciais top-5 desta sweep_id.
       void loadPartials(sweepId, partialsMetricRef.current)
     } catch {
@@ -981,7 +1052,7 @@ export function DiscoveryPage() {
     } finally {
       if (rev === pollRevRef.current) pollInFlightRef.current = false
     }
-  }, [metric, loadLeaderboard, loadHistory, rotateDraftKey, loadPartials])
+  }, [metric, loadLeaderboard, loadHistory, rotateDraftKey, loadPartials, hydrateFromSweep])
 
   useEffect(() => {
     if (!activeSweep || TERMINAL.has(activeSweep.state) || sessionExpired) {
@@ -1947,6 +2018,7 @@ export function DiscoveryPage() {
                           <strong className="candidate-name">{row.display_name || row.template_id}</strong>
                           <span className="candidate-meta">{row.symbol} · {row.timeframe} · {row.direction === 'long' ? 'Long' : 'Short'}</span>
                           <WalkForwardSeal status={verdict} />
+                          <DiscoverySealReason row={row} />
                           {lowSample ? <span className="sample-badge">Baixa amostra</span> : null}
                           {duplicate ? (
                             <span className="dedup-note" title={`Promoção bloqueada: equivalente ao favorito ativo ${row.dedup_reference ?? ''}`}>
@@ -2573,6 +2645,7 @@ export function DiscoveryPage() {
                               {row.direction === 'short' ? ' · benchmark B&H long-only' : ''}
                             </span>
                             <WalkForwardSeal status={verdict} />
+                            <DiscoverySealReason row={row} />
                             {insufficient ? (
                               <span className="sample-badge" data-testid="seal-insufficient">Amostra insuficiente</span>
                             ) : null}

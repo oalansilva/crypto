@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { ACTIVE_RESTORE_MAX_ATTEMPTS } from '../../src/lib/discoveryActiveRestoreConfig'
 
 const ADMIN_USER = {
   id: 'discovery-admin',
@@ -183,7 +184,7 @@ test('card 664 — mobile sem overflow com sweep recuperado', async ({ page }) =
   expect(overflow).toBe(false)
 })
 
-test('card 664 — erro de recuperação com retry restaura o painel', async ({ page }) => {
+test('card 664 — falhas transitórias reconstituem sozinhas (card 967)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   let activeCalls = 0
   await page.addInitScript((user) => {
@@ -233,9 +234,71 @@ test('card 664 — erro de recuperação com retry restaura o painel', async ({ 
     }),
   )
   await page.goto('/combo/discovery')
-  await expect(page.getByTestId('recovery-retry')).toBeVisible()
-  await expect(page.getByTestId('start-sweep')).toBeDisabled()
-  await page.getByTestId('recovery-retry').click()
   await expect(page.getByTestId('sweep-progress')).toBeVisible()
+  await expect(page.getByTestId('recovery-retry')).toHaveCount(0)
+})
+
+test('card 664 — erro de recuperação com retry restaura o painel', async ({ page }) => {
+  test.setTimeout(90_000)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  let activeCalls = 0
+  await page.addInitScript((user) => {
+    localStorage.setItem('auth_access_token', 'discovery-admin-token')
+    localStorage.setItem('auth_refresh_token', 'discovery-admin-refresh')
+    localStorage.setItem('auth_user', JSON.stringify(user))
+    localStorage.setItem('cripto-farol-onboarding-dismissed', '1')
+  }, ADMIN_USER)
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
+  )
+  await page.route('**/api/auth/me', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ADMIN_USER) }),
+  )
+  await page.route('**/api/combos/templates', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ prebuilt: [{ name: 'multi_ma_crossover', display_name: 'Médias', description: 'x' }], examples: [], custom: [] }),
+    }),
+  )
+  await page.route('**/api/exchanges/binance/symbols', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ symbols: ['BTC/USDT'] }) }),
+  )
+  await page.route('**/api/combos/discovery/sweeps/preflight', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SNAPSHOT) }),
+  )
+  await page.route('**/api/combos/discovery/sweeps/history', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sweeps: [] }) }),
+  )
+  await page.route('**/api/combos/discovery/sweeps/active', (route) => {
+    activeCalls += 1
+    if (activeCalls <= ACTIVE_RESTORE_MAX_ATTEMPTS * 3) {
+      return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ detail: 'down' }) })
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ sweeps: [ACTIVE] }),
+    })
+  })
+  await page.route(`**/api/combos/discovery/sweeps/${ACTIVE.sweep_id}/leaderboard**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ results: [], total: 0, unfiltered_total: 0, offset: 0, limit: 3 }),
+    }),
+  )
+  await page.goto('/combo/discovery')
+  await expect(page.getByTestId('recovery-retry')).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByTestId('start-sweep')).toBeDisabled()
+  await page.route('**/api/combos/discovery/sweeps/active', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ sweeps: [ACTIVE] }),
+    }),
+  )
+  await page.getByTestId('recovery-retry').click()
+  await expect(page.getByTestId('sweep-progress')).toBeVisible({ timeout: 20_000 })
   await expect(page.locator('#progress-heading')).toBeFocused()
 })

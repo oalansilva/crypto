@@ -68,6 +68,10 @@ environments:
     - criptofarol-prod-frontend.service
     - criptofarol-prod-leads.service
     - criptofarol-prod-runtime-worker.service
+    - criptofarol-prod-discovery-worker.service
+    - criptofarol-prod-candle-writer.service
+    - criptofarol-prod-telegram-alert-scan.service
+    oneshot_services:
     - criptofarol-prod-candle-writer.service
     - criptofarol-prod-telegram-alert-scan.service
 release:

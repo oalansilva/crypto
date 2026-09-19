@@ -172,6 +172,8 @@ export const MonitorStatusTab: React.FC = () => {
     const { user } = useAuth();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
+    const [opportunitiesLoadError, setOpportunitiesLoadError] = useState(false);
+    const [hasCryptoFavorites, setHasCryptoFavorites] = useState<boolean | null>(null);
     const [openingChartOpportunityId, setOpeningChartOpportunityId] = useState<string | null>(null);
     const [activeChart, setActiveChart] = useState<{
         opportunity: Opportunity;
@@ -423,7 +425,34 @@ export const MonitorStatusTab: React.FC = () => {
         }
     };
 
+    const resolveHasCryptoFavorites = async (): Promise<{ hasCrypto: boolean; failed: boolean }> => {
+        if (hasCryptoFavorites !== null) {
+            return { hasCrypto: hasCryptoFavorites, failed: false };
+        }
+        try {
+            const response = await authFetch(`${API_BASE_URL}/favorites/`);
+            if (!response.ok) {
+                setOpportunitiesLoadError(true);
+                setHasCryptoFavorites(false);
+                return { hasCrypto: false, failed: true };
+            }
+            const payload = await response.json();
+            const rows = Array.isArray(payload) ? payload : [];
+            const hasCrypto = rows.some((row) => String((row as { symbol?: string })?.symbol || '').includes('/'));
+            setHasCryptoFavorites(hasCrypto);
+            return { hasCrypto, failed: false };
+        } catch {
+            setOpportunitiesLoadError(true);
+            setHasCryptoFavorites(false);
+            return { hasCrypto: false, failed: true };
+        }
+    };
+
     const fetchOpportunities = async (tier?: TierFilter, options?: { refresh?: boolean }): Promise<boolean> => {
+        const hadOpportunities = opportunities.length > 0;
+        if (options?.refresh) {
+            setHasCryptoFavorites(null);
+        }
         setLoading(true);
         try {
             const tierParam = tier || tierFilter;
@@ -444,10 +473,29 @@ export const MonitorStatusTab: React.FC = () => {
             const refreshParam = options?.refresh ? '&refresh=true' : '';
             const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}${refreshParam}`;
             const response = await authFetch(url);
-            if (!response.ok) throw new Error('Falha ao buscar oportunidades');
+            const { hasCrypto: sessionHasCryptoFavorites, failed: favoritesFailed } = await resolveHasCryptoFavorites();
+            if (!response.ok) {
+                if (!hadOpportunities) {
+                    setOpportunitiesLoadError(true);
+                }
+                throw new Error('Falha ao buscar oportunidades');
+            }
             const data = await response.json();
             const opportunityRows = Array.isArray(data) ? data as Opportunity[] : [];
+            if (favoritesFailed && opportunityRows.length === 0) {
+                setOpportunities([]);
+                setOpportunitiesLoadError(true);
+                return false;
+            }
+            if (opportunityRows.length === 0 && sessionHasCryptoFavorites) {
+                setOpportunities([]);
+                setOpportunitiesLoadError(true);
+                return false;
+            }
             setOpportunities(opportunityRows);
+            if (!favoritesFailed || opportunityRows.length > 0) {
+                setOpportunitiesLoadError(false);
+            }
             await fetchSpotEligibility(opportunityRows);
             setLastUpdated(new Date());
 
@@ -458,6 +506,9 @@ export const MonitorStatusTab: React.FC = () => {
             return true;
         } catch (error) {
             console.error(error);
+            if (!hadOpportunities) {
+                setOpportunitiesLoadError(true);
+            }
             toast({
                 title: 'Erro',
                 description: 'Não foi possível carregar as estratégias.',
@@ -842,18 +893,21 @@ export const MonitorStatusTab: React.FC = () => {
         return Object.values(portfolioStatusBySymbol).filter((item) => item.inPortfolio).length;
     }, [portfolioStatusBySymbol]);
 
-    const noResultsForInPortfolio =
+    const noResultsForFilters =
         !loading &&
         opportunities.length > 0 &&
-        filteredOpportunities.length === 0 &&
-        showTechnicalColumns &&
-        listFilter === 'in_portfolio';
+        filteredOpportunities.length === 0;
     const noActionableResults =
         !loading &&
         opportunities.length > 0 &&
         filteredOpportunities.length > 0 &&
         visibleOpportunityCount === 0;
-    const emptyFilterMessage = 'Nenhum ativo encontrado na lista de carteira.';
+    const emptyFilterMessage = 'Não há resultado com estes filtros.';
+    const showCatalogEmpty =
+        opportunities.length === 0 &&
+        !loading &&
+        !opportunitiesLoadError &&
+        hasCryptoFavorites === false;
 
     const sectionAverageRisk = useMemo(() => ({
         hold: averageDistance(resolvedSections.hold.map(({ opportunity }) => opportunity.distance_to_stop_pct)),
@@ -1102,17 +1156,34 @@ export const MonitorStatusTab: React.FC = () => {
                     </section>
 
                     <main className="monitor-board">
-                        {loading && opportunities.length === 0 ? (
+                        {loading && opportunities.length === 0 && !opportunitiesLoadError ? (
                             <div className="status-empty">Carregando sinais...</div>
-                        ) : opportunities.length === 0 && !loading ? (
+                        ) : !loading && opportunities.length === 0 && !opportunitiesLoadError && hasCryptoFavorites === null ? (
+                            <div className="status-empty">Carregando sinais...</div>
+                        ) : opportunitiesLoadError && opportunities.length === 0 ? (
+                            <section className="monitor-empty-card">
+                                <div className="monitor-error" role="alert" data-testid="monitor-load-error">
+                                    <p>Não foi possível carregar as estratégias.</p>
+                                    <span>A lista de favoritos não chegou. Isto não significa que não há estratégias.</span>
+                                    <button
+                                        type="button"
+                                        className="monitor-retry"
+                                        onClick={() => void fetchOpportunities(tierFilter, { refresh: true })}
+                                        disabled={loading}
+                                    >
+                                        Tentar de novo
+                                    </button>
+                                </div>
+                            </section>
+                        ) : showCatalogEmpty ? (
                             <section className="monitor-empty-card">
                                 <p className="monitor-empty-text">Nenhum ativo disponível no monitor.</p>
                                 <Button variant="secondary" onClick={() => (window.location.href = '/')}>
                                     Ir para Backtester
                                 </Button>
                             </section>
-                        ) : noResultsForInPortfolio ? (
-                            <section className="monitor-empty-card" data-testid="monitor-empty-in-portfolio">
+                        ) : noResultsForFilters ? (
+                            <section className="monitor-empty-card" data-testid="monitor-filter-empty">
                                                         <p className="monitor-empty-text">{emptyFilterMessage}</p>
                                 <Button variant="secondary" onClick={() => setListFilter('all')}>
                                     Mostrar todos

@@ -1,0 +1,163 @@
+<!doctype html>
+<!-- Prototype extra card-970 — clone da página viva /monitor + delta falha da lista (NOT canonical index).
+     Fonte clone: proto #935 monitor.html (landmarks table.signals).
+     DELTA: falha ao carregar a lista NÃO aparece como «Nenhum ativo disponível no monitor».
+     Erro explícito + Tentar de novo. Sem redesign de Status/Preço/Distância/tags/Operar. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Monitor — erro ao carregar a lista</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0e11'/%3E%3Crect x='3' y='3' width='10' height='10' fill='%23fcd535'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent:#fcd535; --accent-active:#f0b90b; --success:#0ecb81; --danger:#f6465d; --info:#3b82f6;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-md:6px; --radius-lg:8px;
+      --font:BinanceNova,BinancePlex,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --numbers:BinancePlex,ui-monospace,SFMono-Regular,Menlo,monospace;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    html{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--bg-primary);font-size:13px;line-height:1.5}
+    button,a{font:inherit} button{cursor:pointer}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97)}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:13px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}.compact-env{margin:0;font-size:13px;font-weight:700}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-top:1px solid rgba(43,49,57,.72);background:transparent;color:var(--text-tertiary)}
+    .topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94)}.topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:20px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:13px;letter-spacing:.15em;text-transform:uppercase}.top-env{margin:0}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}.page{width:min(100%,1544px);margin:0 auto;padding:24px 32px 52px}
+    .page-sub{margin:0 0 16px;color:var(--text-muted);font-size:13px}
+    table.signals{width:100%;border-collapse:collapse;background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    table.signals th{padding:10px 14px;border-bottom:1px solid var(--border);background:#181a20;color:var(--text-tertiary);font-size:13px;font-weight:650;text-align:left;text-transform:uppercase}
+    table.signals td{padding:12px 14px;border-bottom:1px solid rgba(43,49,57,.72);color:var(--text-secondary);font-size:13px;font-variant-numeric:tabular-nums}
+    table.signals tbody tr:hover{background:#11161c}
+    .status{color:var(--success);font-weight:700}
+    .row-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+    .row-action{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-secondary);font-size:13px;font-weight:650}
+    .row-action-primary{border-color:rgba(252,213,53,.55);background:rgba(252,213,53,.12);color:var(--accent)}
+    .row-action-primary:hover{background:var(--accent);color:#181a20}
+    .modal-root{position:fixed;inset:0;z-index:1000;display:flex;align-items:stretch;justify-content:center;padding:16px;background:rgba(11,14,17,.88)}
+    .modal{display:flex;flex-direction:column;width:min(100%,1680px);max-height:98vh;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg-primary);color:var(--text-secondary);box-shadow:0 30px 90px rgba(0,0,0,.62)}
+    .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border)}
+    .modal-head h2{margin:0;font-size:20px;font-weight:600;color:#eaecef}
+    .modal-head p{margin:4px 0 0;color:var(--text-muted);font-size:13px}
+    .modal-close{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated);color:var(--text-tertiary);font-size:22px;line-height:1}
+    .modal-close:hover{border-color:var(--accent);color:var(--text-secondary)}
+    .modal-body{padding:16px 20px 24px}
+    .metric-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:16px}
+    @media(min-width:768px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(min-width:1024px){.metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    .metric-card{padding:20px;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated)}
+    .metric-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .metric-card strong{font-family:var(--numbers);font-size:24px;font-weight:700;color:#eaecef;font-variant-numeric:tabular-nums}
+    .metric-card .up{color:var(--success)}
+    .metric-card p{margin:0;color:var(--text-tertiary);font-size:14px}
+    .trades{overflow:hidden;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated)}
+    .trade-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:#181a20}
+    .tab{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#181a20;font-size:13px;font-weight:650}
+    .trades-table{width:100%;border-collapse:collapse}
+    .trades-table th{padding:10px 14px;border-bottom:1px solid var(--border);background:#181a20;color:var(--text-tertiary);font-size:11px;font-weight:650;text-align:left;text-transform:uppercase}
+    .trades-table td{padding:12px 14px;border-bottom:1px solid rgba(43,49,57,.72);color:var(--text-secondary);font-size:13px;font-variant-numeric:tabular-nums}
+    .buy{color:var(--success);font-weight:700}
+    .profit{color:var(--success);font-family:var(--numbers)}
+    @media(max-width:1023px){
+      .sidebar,.topbar{display:none}
+      .mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96)}
+      .menu-button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+      .mobile-title{min-width:0;flex:1}.mobile-title strong,.mobile-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-title span{color:var(--text-muted);font-size:13px}
+      .main{margin-left:0;padding-top:72px}.page{padding:18px 16px 40px}
+      .table-wrap{overflow:auto}
+      .modal-root{padding:8px}
+      .modal-head,.modal-body{padding:14px}
+      .desk-trades{display:none}
+      .mobile-trades{display:grid;gap:10px;padding:12px}
+      .trade-card{border:1px solid var(--border);border-radius:8px;padding:12px;background:#181a20}
+      .trade-card p{margin:0}
+    }
+    @media(min-width:1024px){.mobile-trades{display:none}}
+    .monitor-error{display:grid;justify-items:center;gap:12px;padding:40px 18px;text-align:center}
+    .monitor-error p{margin:0;color:var(--text-primary);font-size:15px;font-weight:600}
+    .monitor-error span{color:var(--text-tertiary);font-size:13px}
+    .monitor-retry{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#181a20;font-weight:600}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5M12 4v2M20 12h-2M12 20v-2M4 12h2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  </svg>
+
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px, Monitor active em /monitor) -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Monitor de sinais</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="index.html"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item active" href="monitor.html" aria-current="page"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-history"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+    <button class="collapse" type="button"><svg class="icon"><use href="#i-menu"/></svg>Recolher menu</button>
+  </aside>
+  <header class="topbar"><div class="topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Monitor de sinais</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env top-env">Ambiente DEV</span><button class="account" type="button" aria-label="Abrir conta"><span class="avatar">AS</span><span><small>Conta</small>Alan S</span></button><button class="icon-button" type="button" aria-label="Configurações"><svg class="icon"><use href="#i-settings"/></svg></button></div></div></header>
+  <header class="mobilebar"><button class="menu-button" type="button" aria-label="Abrir menu"><svg class="icon"><use href="#i-menu"/></svg></button><div class="mobile-title"><strong>Monitor de sinais</strong><span>SOL/USDT 1d</span></div><span class="env compact-env">DEV</span><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+
+  <main class="main">
+    <div class="page">
+      <p class="page-sub">Operações ativas e saídas acionáveis. Atualização contínua a cada 30s.</p>
+      <div class="table-wrap">
+        <!-- COPIED:start table.signals chrome MonitorStatusTab -->
+        <table class="signals">
+          <thead>
+            <tr>
+              <th>Par / Estratégia</th>
+              <th>Status</th>
+              <th>Preço</th>
+              <th>Distância</th>
+              <th>7d</th>
+              <th>Risco até stop</th>
+              <th>Tags</th>
+              <th>Operar</th>
+            </tr>
+          </thead>
+          <!-- COPIED:end -->
+          <tbody>
+            <tr>
+              <td colspan="8">
+                <div class="monitor-error" role="alert" data-testid="monitor-load-error">
+                  <p>Não foi possível carregar as estratégias.</p>
+                  <span>A lista de favoritos não chegou. Isto não significa que não há estratégias.</span>
+                  <button class="monitor-retry" type="button">Tentar de novo</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

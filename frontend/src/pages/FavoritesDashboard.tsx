@@ -302,16 +302,26 @@ const FavoritesDashboard: React.FC = () => {
     const [loadingAnalysisId, setLoadingAnalysisId] = useState<number | null>(null);
 
     // Fetch favorites
-    const { data: favorites, isLoading } = useQuery({
+    const {
+        data: favorites,
+        isLoading,
+        isError,
+        refetch,
+        isFetching,
+    } = useQuery({
         queryKey: ['favorites', user?.id ?? 'anonymous'],
         queryFn: async () => {
             const res = await authFetch(`${API_BASE_URL}/favorites/`);
             if (!res.ok) throw new Error('Failed to fetch favorites');
-            const data = await res.json() as FavoriteStrategy[];
+            const data = await res.json();
+            if (!Array.isArray(data)) {
+                throw new Error('Invalid favorites payload');
+            }
             // Avoid logging large payloads in production/dev UI: can freeze browser on slower devices.
-            console.log(`📥 Loaded favorites: ${data?.length ?? 0} items`);
-            return data;
-        }
+            console.log(`📥 Loaded favorites: ${data.length} items`);
+            return data as FavoriteStrategy[];
+        },
+        retry: false,
     });
 
     // Delete mutation
@@ -862,22 +872,8 @@ const FavoritesDashboard: React.FC = () => {
     const handleViewAnalysis = async (fav: FavoriteStrategy) => {
         setLoadingAnalysisId(fav.id);
         try {
-            const cachedAnalysisFallback = {
-                trades: getSavedTrades(fav) || [],
-                metrics: fav.metrics || {},
-                candles: getSavedAnalysisCandles(fav),
-                indicatorData: fav.metrics?.analysis_indicator_data && typeof fav.metrics.analysis_indicator_data === 'object'
-                    ? fav.metrics.analysis_indicator_data
-                    : {},
-                executionMode: 'favorite_cache_timeout',
-                strategyTransparency: fav.metrics?.analysis_strategy_transparency ?? fav.strategy_transparency ?? null,
-            };
-            const recovered = await resolveWithTimeout(
-                loadTradesForAnalysis(fav),
-                cachedAnalysisFallback,
-                FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS,
-                () => console.warn(`Opening favorite analysis from saved summary for ${fav.symbol} ${fav.timeframe}; trade recovery timed out.`),
-            );
+            // List payloads strip trades/candles; wait for /favorites/{id}/trades instead of timing out to empty cache.
+            const recovered = await loadTradesForAnalysis(fav);
             const monitorSyncFallback: MonitorSignalSyncResult = {
                 trades: null,
                 signal_history: [],
@@ -1216,6 +1212,53 @@ const FavoritesDashboard: React.FC = () => {
         [favorites]
     );
 
+    const favoritesUsingDefaultFilters = searchTerm.trim() === ''
+        && tierFilter === 'all'
+        && selectedSymbol === 'ALL'
+        && selectedIndicator === 'ALL'
+        && selectedTimeframe === 'ALL'
+        && directionFilter === 'all';
+
+    const favoritesListFailed = isError;
+    const favoritesCatalogEmpty = !isLoading
+        && !favoritesListFailed
+        && favorites !== undefined
+        && cryptoFavorites.length === 0
+        && favoritesUsingDefaultFilters;
+    const favoritesFilterEmpty = !isLoading
+        && !favoritesListFailed
+        && !favoritesCatalogEmpty
+        && filteredFavorites.length === 0;
+
+    const renderFavoritesLoadError = (compactCell = false) => (
+        <div
+            className={compactCell ? 'fav-error fav-error--cell' : 'fav-error'}
+            role="alert"
+            data-testid="favorites-load-error"
+        >
+            <p>Não foi possível carregar as estratégias favoritas.</p>
+            <span>Isto não significa que o catálogo está vazio. A sessão continua válida.</span>
+            <button
+                type="button"
+                className="fav-retry"
+                onClick={() => void refetch()}
+                disabled={isFetching}
+            >
+                Tentar de novo
+            </button>
+        </div>
+    );
+
+    const renderFavoritesFilterEmpty = () => (
+        <div className="fav-empty" role="status" data-testid="favorites-filter-empty">
+            Não há resultado com estes filtros.
+        </div>
+    );
+
+    const renderFavoritesCatalogEmpty = () => (
+        <div className="fav-empty">Nenhuma estratégia favorita encontrada.</div>
+    );
+
     const tierCounts = React.useMemo(() => {
         return cryptoFavorites.reduce(
             (acc, fav) => {
@@ -1392,8 +1435,12 @@ const FavoritesDashboard: React.FC = () => {
                     <div className="fav-mobile-list">
                         {isLoading ? (
                             <div className="fav-empty">Carregando estratégias...</div>
-                        ) : filteredFavorites.length === 0 ? (
-                            <div className="fav-empty">Nenhuma estratégia favorita encontrada.</div>
+                        ) : favoritesListFailed ? (
+                            renderFavoritesLoadError()
+                        ) : favoritesCatalogEmpty ? (
+                            renderFavoritesCatalogEmpty()
+                        ) : favoritesFilterEmpty ? (
+                            renderFavoritesFilterEmpty()
                         ) : (
                             visibleFavorites.map((fav: FavoriteStrategy) => {
                                 const m = favoriteGridMetrics(fav.metrics);
@@ -1490,8 +1537,20 @@ const FavoritesDashboard: React.FC = () => {
                             <tbody>
                                 {isLoading ? (
                                     <tr><td colSpan={tableColumnCount} className="fav-empty-cell">Carregando estratégias...</td></tr>
-                                ) : filteredFavorites.length === 0 ? (
+                                ) : favoritesListFailed ? (
+                                    <tr>
+                                        <td colSpan={tableColumnCount} className="fav-empty-cell">
+                                            {renderFavoritesLoadError(true)}
+                                        </td>
+                                    </tr>
+                                ) : favoritesCatalogEmpty ? (
                                     <tr><td colSpan={tableColumnCount} className="fav-empty-cell">Nenhuma estratégia favorita encontrada.</td></tr>
+                                ) : favoritesFilterEmpty ? (
+                                    <tr>
+                                        <td colSpan={tableColumnCount} className="fav-empty-cell">
+                                            {renderFavoritesFilterEmpty()}
+                                        </td>
+                                    </tr>
                                 ) : (
                                     visibleFavorites.map((fav: FavoriteStrategy) => {
                                         const isSelected = selectedIds.includes(fav.id);
@@ -1601,9 +1660,13 @@ const FavoritesDashboard: React.FC = () => {
 
                     <div className="fav-footer">
                         <span>
-                            {hasMore
-                                ? `Mostrando ${visibleFavorites.length} de ${filteredFavorites.length}`
-                                : `${filteredFavorites.length} estratégias carregadas`}
+                            {isLoading
+                                ? 'Carregando estratégias...'
+                                : favoritesListFailed
+                                    ? 'Carga falhou'
+                                    : hasMore
+                                        ? `Mostrando ${visibleFavorites.length} de ${filteredFavorites.length}`
+                                        : `${filteredFavorites.length} estratégias carregadas`}
                         </span>
                         {isAdmin && selectedIds.length > 0 ? (
                             <button
