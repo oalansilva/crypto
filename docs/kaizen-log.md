@@ -1,5 +1,35 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-19 — Kaizen release (hotfix #983)
+
+- **Release/card**: Homologado `#983` → `release-2026-09-19-hotfix-983` → `main` PR #985 merged `563eccf4da4e36ea6fd921e340fc6d788ab96612`. PROD bundle `index-DofJWdfa.js`.
+- **Fontes**: Project 1, git, `RELEASE_CARDS=983 scripts/release-guard pre/post`, `openspec validate --all` 173, `gh pr checks 985`, health PROD, agent-transcripts. Filho `fecho-lote kaizen`.
+- **Grelha**: #983 com 4 spawns grill-card (proxy transcript).
+
+#### Métricas
+
+- **Board**: 1 Homologado no pacote; campos OK (Clara, P0, Produto).
+- **Git**: archive bloqueado em `develop` → `release-*`; sync `main→develop` obrigatório antes do `post`.
+- **CI**: PR #985 all pass.
+- **OpenSpec**: archive `2026-09-19-card-983-carga-sessao-valida`.
+- **PROD**: health 200; bundle `index-DofJWdfa.js`.
+
+#### Achados
+
+- **F-9** homologado sem comentário antes do closeout → corrigido no pre (`post-card-evidence-comment.sh`).
+- **F-12** Drive pendente no lote anterior → **#986**.
+- **F-5** worktree #983 dirty Impeccable → **#987** (+ **#759** legado).
+- **F-13** npm audit frontend → **#988**.
+- Demais: dedupe **#658**, **#978–#980**.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #986 | P1 | F-12 Drive DoD | Em Refinamento (criar no board) |
+| #987 | P2 | F-5 Impeccable dirty | Em Refinamento (criar no board) |
+| #988 | P2 | F-13 npm audit | Em Refinamento (criar no board) |
+
 ## 2026-09-19 — Kaizen release (lote #967–#975)
 
 - **Release/card**: Homologado `#967` `#968` `#969` `#970` `#975` → `release-2026-09-19` → `main` PR #977 merged `65c8ffdc007084de781672e35cd6520e3268e4a6`. PROD bundle `index-CGPfcjC3.js`.
