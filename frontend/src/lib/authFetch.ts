@@ -18,12 +18,28 @@ type RefreshResponse = {
 
 const ACCESS_TOKEN_KEY = 'auth_access_token'
 const REFRESH_TOKEN_KEY = 'auth_refresh_token'
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const API_BASE_URL = import.meta.env?.VITE_API_URL || '/api'
 
 const normalizedBase = String(API_BASE_URL || '').trim().replace(/\/$/, '')
 const REFRESH_ENDPOINT = `${normalizedBase}/auth/refresh`
 
 let refreshPromise: Promise<string | null> | null = null
+
+export function isFetchAbortedError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return true
+  }
+  return error instanceof Error && error.name === 'AbortError'
+}
+
+export function isAuthRefreshInFlight(): boolean {
+  return refreshPromise !== null
+}
+
+export function hasRecoverableAuthSession(): boolean {
+  const { refreshToken } = loadAuthTokens()
+  return Boolean(refreshToken)
+}
 
 function loadAuthTokens() {
   try {
@@ -139,24 +155,79 @@ async function refreshAuthToken(): Promise<string | null> {
   return refreshPromise
 }
 
-export async function authFetch(url: string, options: RequestInit = {}, isRetry = false): Promise<Response> {
-  const { accessToken } = loadAuthTokens()
-  const response = await fetch(url, {
+async function fetchWithAccessToken(
+  url: string,
+  options: RequestInit,
+  accessToken: string | null,
+): Promise<Response> {
+  return fetch(url, {
     ...options,
     headers: requestHeadersWithToken(options.headers, accessToken),
   })
+}
 
-  if (response.status !== 401 || isRetry || isAuthRefreshRequestUrl(url)) {
-    return response
+async function recoverUnauthorizedResponse(
+  url: string,
+  options: RequestInit,
+  staleResponse: Response,
+): Promise<Response> {
+  if (!hasRecoverableAuthSession()) {
+    return staleResponse
+  }
+
+  if (refreshPromise) {
+    const inFlightToken = await refreshPromise
+    if (inFlightToken) {
+      const retried = await fetchWithAccessToken(url, options, inFlightToken)
+      if (retried.status !== 401 || !hasRecoverableAuthSession()) {
+        return retried
+      }
+    }
   }
 
   const refreshedToken = await refreshAuthToken()
   if (!refreshedToken) {
+    return staleResponse
+  }
+
+  const retried = await fetchWithAccessToken(url, options, refreshedToken)
+  if (retried.status === 401 && hasRecoverableAuthSession()) {
+    return recoverUnauthorizedResponse(url, options, retried)
+  }
+  return retried
+}
+
+export async function authFetch(url: string, options: RequestInit = {}, isRetry = false): Promise<Response> {
+  let { accessToken } = loadAuthTokens()
+
+  if (!accessToken && refreshPromise) {
+    accessToken = await refreshPromise
+  }
+
+  let response: Response
+  try {
+    response = await fetchWithAccessToken(url, options, accessToken)
+  } catch (error) {
+    if (isFetchAbortedError(error)) {
+      if (refreshPromise) {
+        const refreshedToken = await refreshPromise
+        if (refreshedToken) {
+          return authFetch(url, options, true)
+        }
+      }
+      if (!isRetry && hasRecoverableAuthSession()) {
+        const refreshedToken = await refreshAuthToken()
+        if (refreshedToken) {
+          return authFetch(url, options, true)
+        }
+      }
+    }
+    throw error
+  }
+
+  if (response.status !== 401 || isAuthRefreshRequestUrl(url)) {
     return response
   }
 
-  return fetch(url, {
-    ...options,
-    headers: requestHeadersWithToken(options.headers, refreshedToken),
-  })
+  return recoverUnauthorizedResponse(url, options, response)
 }
