@@ -1,0 +1,147 @@
+<!doctype html>
+<!-- Prototype extra card-983 sibling — NÃO é o index canónico.
+     Clone da Carteira /external/balances + DELTA falha real de rede / resposta inválida.
+     Copy incumbente: «Erro ao carregar» / «Falha ao carregar saldos» + Tentar novamente.
+     Este estado NÃO é a janela de renovação. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Carteira — falha real de carga</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg">
+  <style>
+    /* COPIED:start tokens shell autenticado (AppNav + canvas DESIGN.md) */
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329;
+      --accent:#fcd535; --success:#0ecb81; --danger:#f6465d; --info:#3b82f6;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-lg:8px;
+      --font:BinanceNova,BinancePlex,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --canvas:#07111a; --panel:#101c2a; --hairline:rgba(255,255,255,.1);
+      --up:#6ee7b7; --down:#fda4af; --sky:#7dd3fc;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    html{background:var(--canvas);color:#e2e8f0;font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--canvas);font-size:14px;line-height:1.5}
+    button,a,input,select{font:inherit} button{cursor:pointer}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97);color:#fff}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:12px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}.compact-env{margin:0;font-size:10px;font-weight:700}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-top:1px solid rgba(43,49,57,.72);background:transparent;color:var(--text-tertiary)}
+    .topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94);color:#fff}.topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:18px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:10px;letter-spacing:.15em;text-transform:uppercase}.top-env{margin:0}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}
+    @media(max-width:1023px){
+      .sidebar,.topbar{display:none}
+      .mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96);color:#fff}
+      .menu-button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}
+      .mobile-title{min-width:0;flex:1}.mobile-title strong,.mobile-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-title span{color:var(--text-muted);font-size:12px}
+      .main{margin-left:0;padding-top:72px}
+      .desktop-table{display:none}.mobile-cards{display:grid !important}
+    }
+    /* COPIED:end */
+    /* COPIED:start chrome ExternalBalancesPage (título, KPIs, filtros, tabela) */
+    .page{width:min(1180px,calc(100% - 28px));margin:0 auto;padding:20px 0 40px}
+    .crumb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px;color:#94a3b8;font-size:12px}
+    .crumb strong{color:#e2e8f0}
+    .title-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--hairline)}
+    h1{margin:0;color:#f8fafc;font-size:30px;font-weight:700}
+    .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;color:#94a3b8;font-size:12px}
+    .mono{font-family:ui-monospace,Menlo,monospace;color:#f1f5f9}
+    .btn-sync{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(125,211,252,.2);border-radius:6px;padding:10px 16px;background:var(--sky);color:#0b1220;font-weight:600}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:16px;border:1px solid var(--hairline);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.06)}
+    .kpi{padding:20px;border-right:1px solid var(--hairline)}.kpi:last-child{border-right:0}
+    .kpi .label{color:#94a3b8;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+    .kpi .value{margin-top:8px;font-size:24px;font-weight:700}.kpi .value.big{font-size:30px}.kpi .value.up{color:var(--up)}
+    .kpi .sub{margin-top:4px;color:#64748b;font-size:12px}
+    .filters{display:grid;grid-template-columns:1.4fr .7fr .85fr auto;gap:12px;align-items:end;margin-bottom:16px;padding:16px;border:1px solid var(--hairline);border-radius:8px;background:var(--panel)}
+    .field{display:grid;gap:6px}.flabel{color:#64748b;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+    .input,.select{height:36px;border:1px solid var(--hairline);border-radius:6px;padding:0 12px;background:rgba(2,6,23,.35);color:#e2e8f0}
+    .panel{overflow:hidden;border:1px solid var(--hairline);border-radius:8px;background:var(--panel)}
+    .panel-head{display:flex;justify-content:space-between;gap:12px;padding:16px;border-bottom:1px solid var(--hairline)}
+    .panel-head h2{margin:0;color:#cbd5e1;font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+    .panel-head .count{font-weight:400;text-transform:none;color:#64748b}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th{padding:12px 16px;border-bottom:1px solid var(--hairline);color:#64748b;font-size:11px;letter-spacing:.04em;text-align:left;text-transform:uppercase}
+    td{padding:12px 16px} tbody tr:nth-child(even){background:#16243a}
+    .num{text-align:right;font-variant-numeric:tabular-nums}.up{color:var(--up)}.down{color:var(--down)}
+    .asset-cell{display:flex;align-items:center;gap:10px}
+    .tile{width:32px;height:32px;display:grid;place-items:center;border-radius:8px;color:#0b1220;font-size:10px;font-weight:700}
+    .mobile-cards{display:none}
+    @media(max-width:1023px){.kpis,.filters{grid-template-columns:1fr}.title-row{flex-direction:column;align-items:stretch}}
+    /* COPIED:end */
+  </style>
+</head>
+<body data-testid="wallet-real-error">
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5M12 4v2M20 12h-2M12 20v-2M4 12h2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </svg>
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px, Carteira active em /external/balances) -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Carteira</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="index.html"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item" href="monitor.html"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item active" href="carteira.html" aria-current="page"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-history"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+    <button class="collapse" type="button"><svg class="icon"><use href="#i-menu"/></svg>Recolher menu</button>
+  </aside>
+  <header class="topbar"><div class="topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Carteira</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env top-env">Ambiente DEV</span><button class="account" type="button" aria-label="Abrir conta"><span class="avatar">AS</span><span><small>Conta</small>Alan Silva</span></button><button class="icon-button" type="button" aria-label="Configurações"><svg class="icon"><use href="#i-settings"/></svg></button></div></div></header>
+  <header class="mobilebar"><button class="menu-button" type="button" aria-label="Abrir menu"><svg class="icon"><use href="#i-menu"/></svg></button><div class="mobile-title"><strong>Carteira</strong><span>Saldos Spot</span></div><span class="env compact-env">DEV</span><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+  <main class="main">
+    <div class="page">
+      <div class="crumb"><span>Workspace</span><span>/</span><span>Conta</span><span>/</span><strong>Carteira</strong></div>
+      <div class="title-row">
+        <div>
+          <h1>Carteira</h1>
+          <div class="meta"><span>Última sincronização</span><span class="mono">2026-09-18 23:37 UTC</span></div>
+        </div>
+        <button class="btn-sync" type="button">Sincronizar</button>
+      </div>
+      <section class="kpis" aria-label="Resumo da carteira">
+        <article class="kpi"><div class="label">Total da carteira <span class="mono">USD</span></div><div class="value big">$1,677.60</div><div class="sub">2 ativos · filtro min USD 0.02</div></article>
+        <article class="kpi"><div class="label">Total USD</div><div class="value">2</div><div class="sub">ativos visíveis</div></article>
+        <article class="kpi"><div class="label">PnL parcial</div><div class="value up">+$86.21</div><div class="sub">2 símbolos · com avg cost</div></article>
+        <article class="kpi"><div class="label">Performance</div><div class="value up">+5.42%</div><div class="sub">média ponderada</div></article>
+      </section>
+      <section class="filters" aria-label="Filtros">
+        <label class="field"><span class="flabel">Buscar</span><input class="input" placeholder="BTC, ETH, SOL..." value=""></label>
+        <label class="field"><span class="flabel">Dust threshold</span><input class="input mono" value="0.02"></label>
+        <label class="field"><span class="flabel">Ordenar</span><select class="select"><option>Maior valor</option></select></label>
+        <div class="mono" style="font-size:10px;color:#64748b">min USD: 0.02 · sort: value/desc</div>
+      </section>
+      <section class="panel" aria-label="Balances">
+        <div class="panel-head"><h2>Balances</h2></div>
+        <div style="padding:16px">
+          <div role="alert" data-testid="wallet-load-error" style="border:1px solid rgba(253,164,175,.25);border-radius:8px;background:rgba(244,63,94,.1);padding:16px">
+            <div style="color:#ffe4e6;font-weight:600">Erro ao carregar</div>
+            <div style="margin-top:4px;color:rgba(255,228,230,.75);font-size:14px">Falha ao carregar saldos</div>
+            <a class="btn-sync" href="carteira.html" style="display:inline-flex;margin-top:12px;text-decoration:none">Tentar novamente</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

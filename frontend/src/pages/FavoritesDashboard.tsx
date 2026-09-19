@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Search, List, Activity, BarChart3, Bell, Star, RefreshCw, X } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
+import { AuthSessionExpiredError, fetchAuthJson } from '@/lib/authJson';
 import { useAuth } from '@/stores/authStore';
 import { ScreenHelpPanel } from '@/components/onboarding/ScreenHelpPanel';
 import {
@@ -306,21 +307,21 @@ const FavoritesDashboard: React.FC = () => {
         data: favorites,
         isLoading,
         isError,
+        error: favoritesError,
         refetch,
         isFetching,
     } = useQuery({
         queryKey: ['favorites', user?.id ?? 'anonymous'],
         queryFn: async () => {
-            const res = await authFetch(`${API_BASE_URL}/favorites/`);
-            if (!res.ok) throw new Error('Failed to fetch favorites');
-            const data = await res.json();
+            const data = await fetchAuthJson<FavoriteStrategy[]>('/favorites/');
             if (!Array.isArray(data)) {
                 throw new Error('Invalid favorites payload');
             }
             // Avoid logging large payloads in production/dev UI: can freeze browser on slower devices.
             console.log(`📥 Loaded favorites: ${data.length} items`);
-            return data as FavoriteStrategy[];
+            return data;
         },
+        placeholderData: keepPreviousData,
         retry: false,
     });
 
@@ -1219,13 +1220,24 @@ const FavoritesDashboard: React.FC = () => {
         && selectedTimeframe === 'ALL'
         && directionFilter === 'all';
 
-    const favoritesListFailed = isError;
-    const favoritesCatalogEmpty = !isLoading
+    const favoritesListFailed =
+        isError
+        && favorites === undefined
+        && user != null
+        && !(favoritesError instanceof AuthSessionExpiredError);
+
+    useEffect(() => {
+        if (favoritesError instanceof AuthSessionExpiredError) {
+            navigate('/login', { replace: true, state: { returnTo: '/favorites' } });
+        }
+    }, [favoritesError, navigate]);
+    const favoritesListLoading = isLoading || (isFetching && favorites === undefined);
+    const favoritesCatalogEmpty = !favoritesListLoading
         && !favoritesListFailed
         && favorites !== undefined
         && cryptoFavorites.length === 0
         && favoritesUsingDefaultFilters;
-    const favoritesFilterEmpty = !isLoading
+    const favoritesFilterEmpty = !favoritesListLoading
         && !favoritesListFailed
         && !favoritesCatalogEmpty
         && filteredFavorites.length === 0;
@@ -1241,7 +1253,7 @@ const FavoritesDashboard: React.FC = () => {
             <button
                 type="button"
                 className="fav-retry"
-                onClick={() => void refetch()}
+                onClick={() => void refetch({ cancelRefetch: false })}
                 disabled={isFetching}
             >
                 Tentar de novo
@@ -1431,9 +1443,12 @@ const FavoritesDashboard: React.FC = () => {
                     </div>
                 </section>
 
-                <main className="fav-main">
+                <main
+                    className="fav-main"
+                    data-testid={cryptoFavorites.length > 0 ? 'favorites-renewal-ok' : undefined}
+                >
                     <div className="fav-mobile-list">
-                        {isLoading ? (
+                        {favoritesListLoading ? (
                             <div className="fav-empty">Carregando estratégias...</div>
                         ) : favoritesListFailed ? (
                             renderFavoritesLoadError()
@@ -1535,7 +1550,7 @@ const FavoritesDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {isLoading ? (
+                                {favoritesListLoading ? (
                                     <tr><td colSpan={tableColumnCount} className="fav-empty-cell">Carregando estratégias...</td></tr>
                                 ) : favoritesListFailed ? (
                                     <tr>
@@ -1646,7 +1661,7 @@ const FavoritesDashboard: React.FC = () => {
                                         );
                                     })
                                 )}
-                                {!isLoading && filteredFavorites.length > 0 && hasMore && (
+                                {!favoritesListLoading && filteredFavorites.length > 0 && hasMore && (
                                     <tr>
                                         <td colSpan={tableColumnCount} className="fav-empty-cell">
                                             <div ref={sentinelRef} />
@@ -1660,7 +1675,7 @@ const FavoritesDashboard: React.FC = () => {
 
                     <div className="fav-footer">
                         <span>
-                            {isLoading
+                            {favoritesListLoading
                                 ? 'Carregando estratégias...'
                                 : favoritesListFailed
                                     ? 'Carga falhou'
