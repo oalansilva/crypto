@@ -11,7 +11,40 @@ async function blockExternalNetwork(page: any) {
 }
 
 async function mockMonitorApi(page: any) {
+  await page.route('**/api/auth/refresh', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        id: 'test-user',
+        userId: 'test-user',
+        email: 'test@example.com',
+        name: 'Test User',
+        isAdmin: false,
+        mustChangePassword: false,
+        expiresIn: 3600,
+      }),
+    })
+  )
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'test-user',
+        email: 'test@example.com',
+        name: 'Test User',
+        isAdmin: false,
+        mustChangePassword: false,
+      }),
+    })
+  )
   await page.route('**/api/opportunities/?tier=*', (route: any) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+  )
+  await page.route('**/api/favorites/**', (route: any) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
   )
   await page.route('**/api/monitor/preferences', (route: any) =>

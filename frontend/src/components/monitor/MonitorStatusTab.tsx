@@ -515,35 +515,27 @@ export const MonitorStatusTab: React.FC = () => {
                         return false;
                     }
 
-                    if (response.status === 401 && !hasRecoverableAuthSession()) {
-                        redirectToLoginIfSessionDead();
-                        return false;
+                    if (response.status === 401) {
+                        if (redirectToLoginIfSessionDead()) {
+                            return false;
+                        }
                     }
 
                     if (!response.ok) {
                         if (!hadOpportunities) {
-                            if (redirectToLoginIfSessionDead()) {
-                                return false;
-                            }
                             setOpportunitiesLoadError(true);
                         }
-                        throw new Error('Falha ao buscar oportunidades');
+                        return false;
                     }
 
                     const data = await response.json();
                     const opportunityRows = Array.isArray(data) ? data as Opportunity[] : [];
                     if (favoritesFailed && opportunityRows.length === 0) {
-                        if (redirectToLoginIfSessionDead()) {
-                            return false;
-                        }
                         setOpportunities([]);
                         setOpportunitiesLoadError(true);
                         return false;
                     }
                     if (opportunityRows.length === 0 && sessionHasCryptoFavorites) {
-                        if (redirectToLoginIfSessionDead()) {
-                            return false;
-                        }
                         setOpportunities([]);
                         setOpportunitiesLoadError(true);
                         return false;
@@ -581,9 +573,6 @@ export const MonitorStatusTab: React.FC = () => {
                     }
 
                     console.error(error);
-                    if (redirectToLoginIfSessionDead()) {
-                        return false;
-                    }
                     if (!hadOpportunities) {
                         setOpportunitiesLoadError(true);
                     }

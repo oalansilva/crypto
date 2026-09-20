@@ -156,7 +156,10 @@ async function refreshAuthToken(): Promise<string | null> {
 
       persistAuthTokens(parsed.accessToken, parsed.refreshToken)
       return parsed.accessToken
-    } catch {
+    } catch (error) {
+      if (isNetworkFetchError(error)) {
+        return null
+      }
       persistAuthTokens(null, null)
       notifyAuthSessionCleared('refresh-error')
       return null
