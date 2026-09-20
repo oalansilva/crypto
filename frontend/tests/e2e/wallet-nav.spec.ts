@@ -12,6 +12,52 @@ async function setupApiMocks(page: any) {
     return route.abort('blockedbyclient')
   })
 
+  await page.route('**/api/auth/refresh', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        id: 'test-user',
+        userId: 'test-user',
+        email: 'test@example.com',
+        name: 'Test User',
+        isAdmin: false,
+        mustChangePassword: false,
+        expiresIn: 3600,
+      }),
+    })
+  )
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'test-user',
+        email: 'test@example.com',
+        name: 'Test User',
+        isAdmin: false,
+        mustChangePassword: false,
+      }),
+    })
+  )
+  await page.route('**/api/opportunities/?tier=*', (route: any) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+  )
+  await page.route('**/api/favorites/**', (route: any) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+  )
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+  )
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
   await page.route('**/api/external/binance/spot/balances**', (route: any) =>
     route.fulfill({
       status: 200,

@@ -1,0 +1,33 @@
+[
+  {
+    "file": "frontend/public/prototypes/card-995-monitor-retry-rede/index.html",
+    "exit": 0,
+    "findings": []
+  },
+  {
+    "file": "frontend/public/prototypes/card-995-monitor-retry-rede/carga.html",
+    "exit": 0,
+    "findings": []
+  },
+  {
+    "file": "frontend/public/prototypes/card-995-monitor-retry-rede/erro.html",
+    "exit": 0,
+    "findings": []
+  },
+  {
+    "file": "frontend/public/prototypes/card-995-monitor-retry-rede/sessao.html",
+    "exit": 2,
+    "findings": [
+      {
+        "antipattern": "flat-type-hierarchy",
+        "name": "Flat type hierarchy",
+        "description": "Font sizes are too close together — no clear visual hierarchy. Use fewer sizes with more contrast (aim for at least a 1.25 ratio between steps).",
+        "severity": "warning",
+        "category": "slop",
+        "file": "/srv/apps/dev/criptofarol/crypto-worktrees/card-995-monitor-retry-rede/frontend/public/prototypes/card-995-monitor-retry-rede/sessao.html",
+        "line": 36,
+        "snippet": "Sizes: 12px, 14px, 20px (ratio 1.7:1)"
+      }
+    ]
+  }
+]

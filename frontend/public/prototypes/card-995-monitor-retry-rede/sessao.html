@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- Irmão de estado card-995 — sessão morta → login (clone da página viva /login).
+     DELTA: o operador não fica no quadro de erro do Monitor; vai ao login.
+     Fonte clone: AuthLayout + LoginPage. Sem extra /favorites. Sem painel ANTES/DEPOIS. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Entrar — Cripto Farol</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg">
+  <style>
+    /* COPIED:start tokens AuthLayout + LoginPage (DESIGN.md / frontend/src/index.css) */
+    :root {
+      --bg-primary:#0b0e11; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent-primary:#fcd535; --accent-primary-hover:#f0b90b; --accent-primary-disabled:#3a3a1f;
+      --text-primary:#fff; --text-muted:#707a8a; --text-on-primary:#181a20;
+      --border-default:#2b3139; --border-subtle:rgba(43,49,57,.72);
+      --shadow-xl:0 18px 48px rgba(0,0,0,.28);
+      --font:BinanceNova,BinancePlex,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100vh;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    button,a,input{font:inherit}
+    :focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+    .auth-shell{position:relative;min-height:100vh;overflow:hidden}
+    .auth-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;background:var(--bg-primary)}
+    .auth-bg:after{content:"";position:absolute;inset:0 auto auto 0;height:14rem;width:100%;opacity:.8;background:linear-gradient(180deg,rgba(252,213,53,.16) 0%,rgba(11,14,17,0) 100%)}
+    .auth-header{position:fixed;top:0;inset-inline:0;z-index:50;border-bottom:1px solid var(--border-subtle);background:rgba(11,14,17,.92);backdrop-filter:blur(20px)}
+    .auth-header-inner{max-width:1480px;margin:0 auto;height:72px;display:flex;align-items:center;padding:0 24px}
+    .auth-header img{height:48px;width:176px;object-fit:contain;object-position:left center}
+    .auth-main{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:80px 16px 32px}
+    .login-card{width:100%;max-width:28rem;border:1px solid var(--border-default);border-radius:12px;background:var(--bg-elevated);padding:32px;box-shadow:var(--shadow-xl)}
+    .login-brand{margin-bottom:32px;display:flex;flex-direction:column;align-items:center;gap:12px}
+    .login-brand img{height:64px;width:220px;object-fit:contain}
+    .login-brand h1{margin:0;font-size:20px;font-weight:700}
+    .login-brand p{margin:0;text-align:center;font-size:14px;color:var(--text-muted)}
+    form{display:grid;gap:16px}
+    label{display:block;margin-bottom:6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+    input[type=email],input[type=password]{width:100%;border:1px solid var(--border-default);border-radius:6px;background:var(--bg-input);padding:12px 16px;color:var(--text-primary)}
+    input::placeholder{color:var(--text-muted)}
+    .forgot{text-align:right}
+    .forgot a{font-size:12px;font-weight:500;color:var(--accent-primary);text-decoration:none}
+    .forgot a:hover{text-decoration:underline}
+    .submit{width:100%;min-height:44px;border:0;border-radius:6px;background:var(--accent-primary);color:var(--text-on-primary);font-size:14px;font-weight:700;cursor:pointer}
+    .submit:hover{background:var(--accent-primary-hover)}
+    /* COPIED:end */
+  </style>
+</head>
+<body>
+  <div class="auth-shell" data-testid="login-dead-session">
+    <!-- COPIED:start AuthLayout chrome -->
+    <div class="auth-bg" aria-hidden="true"></div>
+    <header class="auth-header">
+      <div class="auth-header-inner">
+        <img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol">
+      </div>
+    </header>
+    <!-- COPIED:end -->
+    <main class="auth-main">
+      <!-- COPIED:start LoginPage card -->
+      <div class="login-card">
+        <div class="login-brand">
+          <img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol">
+          <h1>Bem-vindo de volta</h1>
+          <p>Entre com suas credenciais para continuar</p>
+        </div>
+        <form action="#" method="post" novalidate>
+          <div>
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="seu@email.com" autocomplete="email">
+          </div>
+          <div>
+            <label for="password">Senha</label>
+            <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <div class="forgot"><a href="#">Esqueci minha senha</a></div>
+          <button class="submit" type="submit">Entrar</button>
+        </form>
+      </div>
+      <!-- COPIED:end -->
+    </main>
+  </div>
+</body>
+</html>
