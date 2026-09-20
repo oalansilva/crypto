@@ -148,6 +148,25 @@ async function mockMonitorApis(
   await page.route('**/api/**', async (route) => {
     const url = route.request().url();
 
+    if (url.includes('/api/auth/refresh')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'test-access-token',
+          refreshToken: 'test-refresh-token',
+          id: AUTH_USER.id,
+          userId: AUTH_USER.id,
+          email: AUTH_USER.email,
+          name: AUTH_USER.name,
+          isAdmin: AUTH_USER.isAdmin,
+          mustChangePassword: AUTH_USER.mustChangePassword,
+          expiresIn: 3600,
+        }),
+      });
+      return;
+    }
+
     if (url.includes('/api/auth/me')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(AUTH_USER) });
       return;

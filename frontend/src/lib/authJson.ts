@@ -6,7 +6,12 @@ import {
   isFetchAbortedError,
 } from './authFetch'
 
-export { isFetchAbortedError, hasRecoverableAuthSession, isAuthRefreshInFlight } from './authFetch'
+export {
+  isFetchAbortedError,
+  isNetworkFetchError,
+  hasRecoverableAuthSession,
+  isAuthRefreshInFlight,
+} from './authFetch'
 
 const MAX_AUTH_RECOVERY_ATTEMPTS = 12
 const AUTH_RECOVERY_DELAY_MS = 50

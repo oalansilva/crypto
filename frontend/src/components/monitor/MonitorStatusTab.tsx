@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     getOpportunityAssetType,
     getOpportunityBaseAsset,
@@ -27,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/apiBase';
-import { authFetch, isFetchAbortedError } from '@/lib/authFetch';
+import { authFetch, isFetchAbortedError, isNetworkFetchError } from '@/lib/authFetch';
 import { hasRecoverableAuthSession } from '@/lib/authJson';
 import { useAuth } from '@/stores/authStore';
 import type { MarketCandle } from './MiniCandlesChart';
@@ -69,6 +70,8 @@ const DEFAULT_PREFERENCE: MonitorPreference = {
 };
 const BINANCE_MONITOR_PORTFOLIO_MIN_USD = 1;
 const SPARKLINE_LIMIT = 14;
+const MONITOR_LIST_ABSORPTION_BUDGET_MS = Number(import.meta.env.VITE_MONITOR_LIST_ABSORPTION_MS) || 45_000;
+const MONITOR_LIST_RETRY_DELAY_MS = Number(import.meta.env.VITE_MONITOR_LIST_RETRY_DELAY_MS) || 2_500;
 const symbolTestKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
 
 const getSparklineKey = (symbol: string, timeframe: ChartTimeframe): string => `${symbol}|${timeframe}`;
@@ -169,7 +172,12 @@ const averageDistance = (values: Array<number | null | undefined>): number | nul
     return filtered.reduce((acc, value) => acc + (value ?? 0), 0) / filtered.length;
 };
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => {
+    setTimeout(resolve, ms);
+});
+
 export const MonitorStatusTab: React.FC = () => {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
@@ -200,6 +208,7 @@ export const MonitorStatusTab: React.FC = () => {
     const [telegramAlertsEnabled, setTelegramAlertsEnabled] = useState(false);
     const [telegramAlertsSaving, setTelegramAlertsSaving] = useState(false);
     const telegramHasLoadedRef = useRef(false);
+    const opportunitiesFetchGenerationRef = useRef(0);
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
     const [sparklineByKey, setSparklineByKey] = useState<Record<string, number[]>>({});
     const [sparklineLoadingByKey, setSparklineLoadingByKey] = useState<Record<string, boolean>>({});
@@ -347,11 +356,6 @@ export const MonitorStatusTab: React.FC = () => {
             if (signal?.aborted) return
             if (error instanceof DOMException && error.name === 'AbortError') return
             console.error(error);
-            toast({
-                title: 'Erro',
-                description: 'Não foi possível carregar preferências do monitor.',
-                variant: 'destructive',
-            });
         }
 
         let configured = false;
@@ -451,75 +455,145 @@ export const MonitorStatusTab: React.FC = () => {
         }
     };
 
+    const redirectToLoginIfSessionDead = (): boolean => {
+        if (hasRecoverableAuthSession()) {
+            return false;
+        }
+        navigate('/login', { replace: true, state: { returnTo: '/monitor' } });
+        return true;
+    };
+
     const fetchOpportunities = async (tier?: TierFilter, options?: { refresh?: boolean }): Promise<boolean> => {
+        const generation = opportunitiesFetchGenerationRef.current + 1;
+        opportunitiesFetchGenerationRef.current = generation;
+        const isStale = () => opportunitiesFetchGenerationRef.current !== generation;
+
         const hadOpportunities = opportunities.length > 0;
+        const absorbTransient = !hadOpportunities;
+        const deadline = Date.now() + MONITOR_LIST_ABSORPTION_BUDGET_MS;
+
         if (options?.refresh) {
             setHasCryptoFavorites(null);
         }
+        if (absorbTransient) {
+            setOpportunitiesLoadError(false);
+        }
         setLoading(true);
+
+        const tierParam = tier || tierFilter;
+        let apiTier: string;
+        if (tierParam === 'rated') {
+            apiTier = '1,2,3';
+        } else if (tierParam === 'all') {
+            apiTier = 'all';
+        } else if (tierParam === '1_2') {
+            apiTier = '1,2';
+        } else if (tierParam === 'none') {
+            apiTier = 'none';
+        } else {
+            apiTier = tierParam;
+        }
+
+        const baseUrl = import.meta.env.VITE_API_URL || '/api';
+        const refreshParam = options?.refresh ? '&refresh=true' : '';
+        const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}${refreshParam}`;
+
         try {
-            const tierParam = tier || tierFilter;
-            let apiTier: string;
-            if (tierParam === 'rated') {
-                apiTier = '1,2,3';
-            } else if (tierParam === 'all') {
-                apiTier = 'all';
-            } else if (tierParam === '1_2') {
-                apiTier = '1,2';
-            } else if (tierParam === 'none') {
-                apiTier = 'none';
-            } else {
-                apiTier = tierParam;
-            }
-
-            const baseUrl = import.meta.env.VITE_API_URL || '/api';
-            const refreshParam = options?.refresh ? '&refresh=true' : '';
-            const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}${refreshParam}`;
-            const response = await authFetch(url);
-            const { hasCrypto: sessionHasCryptoFavorites, failed: favoritesFailed } = await resolveHasCryptoFavorites();
-            if (!response.ok) {
-                if (!hadOpportunities) {
-                    setOpportunitiesLoadError(true);
+            while (true) {
+                if (isStale()) {
+                    return false;
                 }
-                throw new Error('Falha ao buscar oportunidades');
-            }
-            const data = await response.json();
-            const opportunityRows = Array.isArray(data) ? data as Opportunity[] : [];
-            if (favoritesFailed && opportunityRows.length === 0) {
-                setOpportunities([]);
-                setOpportunitiesLoadError(true);
-                return false;
-            }
-            if (opportunityRows.length === 0 && sessionHasCryptoFavorites) {
-                setOpportunities([]);
-                setOpportunitiesLoadError(true);
-                return false;
-            }
-            setOpportunities(opportunityRows);
-            if (!favoritesFailed || opportunityRows.length > 0) {
-                setOpportunitiesLoadError(false);
-            }
-            await fetchSpotEligibility(opportunityRows);
-            setLastUpdated(new Date());
 
-            toast({
-                title: 'Atualizado',
-                description: `${opportunityRows.length} estratégias analisadas`,
-            });
-            return true;
-        } catch (error) {
-            console.error(error);
-            if (!hadOpportunities) {
-                setOpportunitiesLoadError(true);
+                try {
+                    const response = await authFetch(url);
+                    if (isStale()) {
+                        return false;
+                    }
+
+                    const { hasCrypto: sessionHasCryptoFavorites, failed: favoritesFailed } = await resolveHasCryptoFavorites();
+                    if (isStale()) {
+                        return false;
+                    }
+
+                    if (response.status === 401 && !hasRecoverableAuthSession()) {
+                        redirectToLoginIfSessionDead();
+                        return false;
+                    }
+
+                    if (!response.ok) {
+                        if (!hadOpportunities) {
+                            if (redirectToLoginIfSessionDead()) {
+                                return false;
+                            }
+                            setOpportunitiesLoadError(true);
+                        }
+                        throw new Error('Falha ao buscar oportunidades');
+                    }
+
+                    const data = await response.json();
+                    const opportunityRows = Array.isArray(data) ? data as Opportunity[] : [];
+                    if (favoritesFailed && opportunityRows.length === 0) {
+                        if (redirectToLoginIfSessionDead()) {
+                            return false;
+                        }
+                        setOpportunities([]);
+                        setOpportunitiesLoadError(true);
+                        return false;
+                    }
+                    if (opportunityRows.length === 0 && sessionHasCryptoFavorites) {
+                        if (redirectToLoginIfSessionDead()) {
+                            return false;
+                        }
+                        setOpportunities([]);
+                        setOpportunitiesLoadError(true);
+                        return false;
+                    }
+                    setOpportunities(opportunityRows);
+                    if (!favoritesFailed || opportunityRows.length > 0) {
+                        setOpportunitiesLoadError(false);
+                    }
+                    await fetchSpotEligibility(opportunityRows);
+                    if (isStale()) {
+                        return false;
+                    }
+                    setLastUpdated(new Date());
+
+                    toast({
+                        title: 'Atualizado',
+                        description: `${opportunityRows.length} estratégias analisadas`,
+                    });
+                    return true;
+                } catch (error) {
+                    if (isStale()) {
+                        return false;
+                    }
+                    if (isFetchAbortedError(error)) {
+                        return false;
+                    }
+
+                    const canAbsorb = absorbTransient
+                        && isNetworkFetchError(error)
+                        && Date.now() < deadline;
+
+                    if (canAbsorb) {
+                        await sleep(MONITOR_LIST_RETRY_DELAY_MS);
+                        continue;
+                    }
+
+                    console.error(error);
+                    if (redirectToLoginIfSessionDead()) {
+                        return false;
+                    }
+                    if (!hadOpportunities) {
+                        setOpportunitiesLoadError(true);
+                    }
+                    return false;
+                }
             }
-            toast({
-                title: 'Erro',
-                description: 'Não foi possível carregar as estratégias.',
-                variant: 'destructive',
-            });
-            return false;
         } finally {
-            setLoading(false);
+            if (!isStale()) {
+                setLoading(false);
+            }
         }
     };
 
@@ -1019,6 +1093,17 @@ export const MonitorStatusTab: React.FC = () => {
         avgExitRisk: formatPercent(sectionAverageRisk.exit),
     };
 
+    const kpiPending =
+        (opportunitiesLoadError && opportunities.length === 0)
+        || (loading && opportunities.length === 0 && !opportunitiesLoadError)
+        || (!loading && opportunities.length === 0 && !opportunitiesLoadError && hasCryptoFavorites === null);
+
+    const formatKpiCount = (value: number): string => (kpiPending ? '-' : String(value));
+
+    const boardLoading =
+        (loading && opportunities.length === 0 && !opportunitiesLoadError)
+        || (!loading && opportunities.length === 0 && !opportunitiesLoadError && hasCryptoFavorites === null);
+
     const theme: MonitorTheme = normalizeMonitorTheme(preferences[GLOBAL_MONITOR_PREFERENCE_KEY]?.theme);
     const effectiveSearchPlaceholder = 'Buscar par, estratégia, tag...';
     const toggleTheme = () => {
@@ -1058,6 +1143,8 @@ export const MonitorStatusTab: React.FC = () => {
                     <Button
                         variant="secondary"
                         className="topbar-btn primary"
+                        data-testid="monitor-refresh"
+                        data-load-mode="recompute"
                         onClick={() => {
                             void Promise.all([fetchOpportunities(undefined, { refresh: true }), fetchMonitorContext()]);
                         }}
@@ -1085,25 +1172,25 @@ export const MonitorStatusTab: React.FC = () => {
                         </div>
                     </header>
 
-                    <div className="kpis">
+                    <div className="kpis" aria-busy={kpiPending}>
                         <div className="kpi">
                             <div className="kpi-label">Em posição</div>
-                            <div className="kpi-val">{totalKpi.hold}</div>
-                            <div className="kpi-foot up">média risco {totalKpi.avgHoldRisk}</div>
+                            <div className="kpi-val" {...(kpiPending ? { 'data-kpi-pending': 'true' } : {})}>{formatKpiCount(totalKpi.hold)}</div>
+                            <div className="kpi-foot up">média risco {kpiPending ? '-' : totalKpi.avgHoldRisk}</div>
                         </div>
                         <div className="kpi">
                             <div className="kpi-label">Saída / cobertura</div>
-                            <div className="kpi-val">{totalKpi.exit}</div>
-                            <div className="kpi-foot">média risco {totalKpi.avgExitRisk}</div>
+                            <div className="kpi-val" {...(kpiPending ? { 'data-kpi-pending': 'true' } : {})}>{formatKpiCount(totalKpi.exit)}</div>
+                            <div className="kpi-foot">média risco {kpiPending ? '-' : totalKpi.avgExitRisk}</div>
                         </div>
                         <div className="kpi">
                             <div className="kpi-label">Total</div>
-                            <div className="kpi-val">{totalKpi.visible}</div>
+                            <div className="kpi-val" {...(kpiPending ? { 'data-kpi-pending': 'true' } : {})}>{formatKpiCount(totalKpi.visible)}</div>
                             <div className="kpi-foot">sinais filtrados</div>
                         </div>
                         <div className="kpi">
                             <div className="kpi-label">Em carteira</div>
-                            <div className="kpi-val">{totalKpi.inPortfolio}</div>
+                            <div className="kpi-val" {...(kpiPending ? { 'data-kpi-pending': 'true' } : {})}>{formatKpiCount(totalKpi.inPortfolio)}</div>
                             <div className="kpi-foot">ativos rastreados</div>
                         </div>
                     </div>
@@ -1153,16 +1240,17 @@ export const MonitorStatusTab: React.FC = () => {
                             ))}
                         </select>
                         <div className="filter-spacer" />
-                        <span className="chip-count">
-                            {visibleOpportunityCount} resultados
+                        <span className="chip-count" {...(kpiPending ? { 'data-kpi-pending': 'true' } : {})}>
+                            {kpiPending ? '-' : `${visibleOpportunityCount} resultados`}
                         </span>
                     </section>
 
-                    <main className="monitor-board">
-                        {loading && opportunities.length === 0 && !opportunitiesLoadError ? (
-                            <div className="status-empty">Carregando sinais...</div>
-                        ) : !loading && opportunities.length === 0 && !opportunitiesLoadError && hasCryptoFavorites === null ? (
-                            <div className="status-empty">Carregando sinais...</div>
+                    <main
+                        className="monitor-board"
+                        {...(boardLoading ? { 'data-testid': 'monitor-loading' } : {})}
+                    >
+                        {boardLoading ? (
+                            <div className="status-empty" role="status" aria-live="polite">Carregando sinais...</div>
                         ) : opportunitiesLoadError && opportunities.length === 0 ? (
                             <section className="monitor-empty-card">
                                 <div className="monitor-error" role="alert" data-testid="monitor-load-error">
@@ -1171,7 +1259,9 @@ export const MonitorStatusTab: React.FC = () => {
                                     <button
                                         type="button"
                                         className="monitor-retry"
-                                        onClick={() => void fetchOpportunities(tierFilter, { refresh: true })}
+                                        data-testid="monitor-retry"
+                                        data-load-mode="reread"
+                                        onClick={() => void fetchOpportunities(tierFilter)}
                                         disabled={loading}
                                     >
                                         Tentar de novo

@@ -1,0 +1,1405 @@
+{
+  "checks": [
+    {
+      "name": "no-favorites-html",
+      "pass": true,
+      "detail": "carga.html,erro.html,index.html,sessao.html"
+    },
+    {
+      "name": "canonical-set",
+      "pass": true,
+      "detail": "carga.html,erro.html,index.html,sessao.html"
+    },
+    {
+      "name": "https-404-recorded",
+      "pass": true,
+      "detail": "404 https://dev.criptofarol.com.br/prototypes/card-995-monitor-retry-rede/"
+    },
+    {
+      "name": "digest-index.html-local",
+      "pass": true,
+      "detail": "200 5c80aa4a01efa5fab1ca1a56cdc3461e0213b22d3bfd1056fa7762407c617b9a"
+    },
+    {
+      "name": "digest-index.html-expected",
+      "pass": true,
+      "detail": "5c80aa4a01efa5fab1ca1a56cdc3461e0213b22d3bfd1056fa7762407c617b9a"
+    },
+    {
+      "name": "copied-index.html-pairs",
+      "pass": true,
+      "detail": "{\"starts\": 7, \"ends\": 7, \"pairs_ok\": true, \"copied_utf8\": 22008, \"bytes\": 31568}"
+    },
+    {
+      "name": "digest-carga.html-local",
+      "pass": true,
+      "detail": "200 00f523eb23752b39ab27e439ccfad82b00da98097a671c5878696060209e5fd4"
+    },
+    {
+      "name": "digest-carga.html-expected",
+      "pass": true,
+      "detail": "00f523eb23752b39ab27e439ccfad82b00da98097a671c5878696060209e5fd4"
+    },
+    {
+      "name": "copied-carga.html-pairs",
+      "pass": true,
+      "detail": "{\"starts\": 4, \"ends\": 4, \"pairs_ok\": true, \"copied_utf8\": 20719, \"bytes\": 23657}"
+    },
+    {
+      "name": "digest-erro.html-local",
+      "pass": true,
+      "detail": "200 86d863acbb9318dfe9d5439a6e91d5fc5d1d6fde9a57065e1c464b69d40f6223"
+    },
+    {
+      "name": "digest-erro.html-expected",
+      "pass": true,
+      "detail": "86d863acbb9318dfe9d5439a6e91d5fc5d1d6fde9a57065e1c464b69d40f6223"
+    },
+    {
+      "name": "copied-erro.html-pairs",
+      "pass": true,
+      "detail": "{\"starts\": 5, \"ends\": 5, \"pairs_ok\": true, \"copied_utf8\": 21328, \"bytes\": 24773}"
+    },
+    {
+      "name": "digest-sessao.html-local",
+      "pass": true,
+      "detail": "200 7879cd2630a22d2929db07cdfc7c0da5e1ba4f37e22261782a3ac7547d09c584"
+    },
+    {
+      "name": "digest-sessao.html-expected",
+      "pass": true,
+      "detail": "7879cd2630a22d2929db07cdfc7c0da5e1ba4f37e22261782a3ac7547d09c584"
+    },
+    {
+      "name": "copied-sessao.html-pairs",
+      "pass": true,
+      "detail": "{\"starts\": 3, \"ends\": 3, \"pairs_ok\": true, \"copied_utf8\": 4169, \"bytes\": 4933}"
+    },
+    {
+      "name": "live-http-recorded",
+      "pass": true,
+      "detail": "200 https://dev.criptofarol.com.br/monitor"
+    },
+    {
+      "name": "desktop-index-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "desktop-index-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "desktop-index-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-no-empty-catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-no-toast",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-no-login-url",
+      "pass": true,
+      "detail": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/"
+    },
+    {
+      "name": "desktop-index-chrome-monitor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-sidebar-not-only-proof",
+      "pass": true,
+      "detail": "{\"x\": 0, \"y\": 0, \"width\": 224, \"height\": 800}"
+    },
+    {
+      "name": "desktop-index-table-present",
+      "pass": true,
+      "detail": "2"
+    },
+    {
+      "name": "desktop-index-landmarks-dom",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop-index-sol",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-eth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-no-error-copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-no-loading",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-no-kpi-zero-truth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-refresh-recompute",
+      "pass": true,
+      "detail": "recompute"
+    },
+    {
+      "name": "desktop-index-not-gallery",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-table-visible",
+      "pass": true,
+      "detail": "True"
+    },
+    {
+      "name": "desktop-index-rows",
+      "pass": true,
+      "detail": "2"
+    },
+    {
+      "name": "desktop-carga-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "desktop-carga-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "desktop-carga-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-no-empty-catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-no-toast",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-no-login-url",
+      "pass": true,
+      "detail": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/carga.html"
+    },
+    {
+      "name": "desktop-carga-chrome-monitor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-sidebar-not-only-proof",
+      "pass": true,
+      "detail": "{\"x\": 0, \"y\": 0, \"width\": 224, \"height\": 800}"
+    },
+    {
+      "name": "desktop-carga-loading",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-no-error",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-no-kpi-zero-truth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-kpi-pending",
+      "pass": true,
+      "detail": "{\"count\": 4, \"texts\": [\"-\", \"-\", \"-\", \"-\"], \"pending\": 4, \"zeros\": 0, \"ariaBusy\": \"true\"}"
+    },
+    {
+      "name": "desktop-carga-aria-busy",
+      "pass": true,
+      "detail": "true"
+    },
+    {
+      "name": "desktop-carga-status-live",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-no-login-copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-carga-refresh-recompute",
+      "pass": true,
+      "detail": "recompute"
+    },
+    {
+      "name": "desktop-erro-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "desktop-erro-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "desktop-erro-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-no-empty-catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-no-toast",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-no-login-url",
+      "pass": true,
+      "detail": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/erro.html"
+    },
+    {
+      "name": "desktop-erro-chrome-monitor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-sidebar-not-only-proof",
+      "pass": true,
+      "detail": "{\"x\": 0, \"y\": 0, \"width\": 224, \"height\": 800}"
+    },
+    {
+      "name": "desktop-erro-error-p",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-error-s",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-retry",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-no-login-copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-stays-monitor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-no-kpi-zero-truth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-retry-reread",
+      "pass": true,
+      "detail": "reread"
+    },
+    {
+      "name": "desktop-erro-refresh-recompute",
+      "pass": true,
+      "detail": "recompute"
+    },
+    {
+      "name": "desktop-erro-alert",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-no-signal-rows",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-retry-focusable",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-erro-retry-points-list",
+      "pass": true,
+      "detail": "{\"exists\": true, \"active\": true, \"disabled\": false, \"tag\": \"A\", \"href\": \"index.html\"}"
+    },
+    {
+      "name": "desktop-erro-retry-44",
+      "pass": true,
+      "detail": "{\"x\": 688.890625, \"y\": 513.046875, \"width\": 126.21875, \"height\": 44}"
+    },
+    {
+      "name": "desktop-sessao-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "desktop-sessao-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "desktop-sessao-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-sessao-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-sessao-no-empty-catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-sessao-no-toast",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-sessao-login-copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-sessao-no-error",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-sessao-no-monitor-table",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "desktop-sessao-h1",
+      "pass": true,
+      "detail": "Bem-vindo de volta"
+    },
+    {
+      "name": "desktop-sessao-entrar",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "mobile-index-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "mobile-index-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-no-empty-catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-no-toast",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-no-login-url",
+      "pass": true,
+      "detail": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/"
+    },
+    {
+      "name": "mobile-index-chrome-monitor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-table-present",
+      "pass": true,
+      "detail": "2"
+    },
+    {
+      "name": "mobile-index-landmarks-dom",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile-index-sol",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-eth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-no-error-copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-no-loading",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-no-kpi-zero-truth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-refresh-recompute",
+      "pass": true,
+      "detail": "recompute"
+    },
+    {
+      "name": "mobile-index-not-gallery",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-table-hidden-like-live",
+      "pass": true,
+      "detail": "False"
+    },
+    {
+      "name": "mobile-index-mobile-cards",
+      "pass": true,
+      "detail": "2"
+    },
+    {
+      "name": "mobile-carga-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "mobile-carga-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "mobile-carga-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-no-empty-catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-no-toast",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-no-login-url",
+      "pass": true,
+      "detail": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/carga.html"
+    },
+    {
+      "name": "mobile-carga-chrome-monitor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-loading",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-no-error",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-no-kpi-zero-truth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-kpi-pending",
+      "pass": true,
+      "detail": "{\"count\": 4, \"texts\": [\"-\", \"-\", \"-\", \"-\"], \"pending\": 4, \"zeros\": 0, \"ariaBusy\": \"true\"}"
+    },
+    {
+      "name": "mobile-carga-aria-busy",
+      "pass": true,
+      "detail": "true"
+    },
+    {
+      "name": "mobile-carga-status-live",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-no-login-copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-carga-refresh-recompute",
+      "pass": true,
+      "detail": "recompute"
+    },
+    {
+      "name": "mobile-erro-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "mobile-erro-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "mobile-erro-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-no-empty-catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-no-toast",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-no-login-url",
+      "pass": true,
+      "detail": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/erro.html"
+    },
+    {
+      "name": "mobile-erro-chrome-monitor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-error-p",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-error-s",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-retry",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-no-login-copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-stays-monitor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-no-kpi-zero-truth",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-retry-reread",
+      "pass": true,
+      "detail": "reread"
+    },
+    {
+      "name": "mobile-erro-refresh-recompute",
+      "pass": true,
+      "detail": "recompute"
+    },
+    {
+      "name": "mobile-erro-alert",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-no-signal-rows",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-retry-focusable",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-erro-retry-points-list",
+      "pass": true,
+      "detail": "{\"exists\": true, \"active\": true, \"disabled\": false, \"tag\": \"A\", \"href\": \"index.html\"}"
+    },
+    {
+      "name": "mobile-erro-retry-44",
+      "pass": true,
+      "detail": "{\"x\": 131.890625, \"y\": 953.09375, \"width\": 126.21875, \"height\": 44}"
+    },
+    {
+      "name": "mobile-sessao-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "mobile-sessao-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "mobile-sessao-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-sessao-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-sessao-no-empty-catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-sessao-no-toast",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-sessao-login-copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-sessao-no-error",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-sessao-no-monitor-table",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "mobile-sessao-h1",
+      "pass": true,
+      "detail": "Bem-vindo de volta"
+    },
+    {
+      "name": "mobile-sessao-entrar",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live-playwright-login",
+      "pass": true,
+      "detail": "https://dev.criptofarol.com.br/login"
+    },
+    {
+      "name": "live-playwright-not-monitor-table",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live-login-is-not-route",
+      "pass": true,
+      "detail": "discarded; /login is not /monitor"
+    }
+  ],
+  "pages": {
+    "desktop-index": {
+      "url": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/",
+      "title": "Monitor de sinais — Cripto Farol",
+      "h1": "Monitor de sinais",
+      "lang": "pt-BR",
+      "screenshot": "995-A-desktop-1280x800-index.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "login_in_url": false,
+      "console": [],
+      "pageerror": [],
+      "table_count": 2,
+      "table_visible": true,
+      "landmarks": {
+        "texts": [
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "7d",
+          "Risco até stop",
+          "Tags",
+          "Operar",
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "7d",
+          "Risco até stop",
+          "Tags",
+          "Operar"
+        ],
+        "found": {
+          "Status": true,
+          "Preço": true,
+          "Distância": true,
+          "7d": true,
+          "Risco até stop": true,
+          "Tags": true,
+          "Operar": true,
+          "Par / Estratégia": true
+        },
+        "tableCount": 2
+      },
+      "sidebar_box": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 800
+      },
+      "empty_catalog": false,
+      "toast": false,
+      "error_p": false,
+      "error_s": false,
+      "retry": false,
+      "loading": false,
+      "login_copy": false,
+      "kpi_zero_truth": false,
+      "kpi": {
+        "count": 4,
+        "texts": [
+          "1",
+          "1",
+          "2",
+          "2"
+        ],
+        "pending": 0,
+        "zeros": 0,
+        "ariaBusy": null
+      },
+      "refresh_mode": "recompute",
+      "retry_mode": null,
+      "mobile_subtitle": "SOL/USDT 1d"
+    },
+    "desktop-carga": {
+      "url": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/carga.html",
+      "title": "Monitor de sinais - carregando",
+      "h1": "Monitor de sinais",
+      "lang": "pt-BR",
+      "screenshot": "995-A-desktop-1280x800-carga.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "login_in_url": false,
+      "console": [],
+      "pageerror": [],
+      "table_count": 0,
+      "table_visible": false,
+      "landmarks": {
+        "texts": [],
+        "found": {
+          "Status": false,
+          "Preço": false,
+          "Distância": false,
+          "7d": false,
+          "Risco até stop": false,
+          "Tags": false,
+          "Operar": false,
+          "Par / Estratégia": false
+        },
+        "tableCount": 0
+      },
+      "sidebar_box": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 800
+      },
+      "empty_catalog": false,
+      "toast": false,
+      "error_p": false,
+      "error_s": false,
+      "retry": false,
+      "loading": true,
+      "login_copy": false,
+      "kpi_zero_truth": false,
+      "kpi": {
+        "count": 4,
+        "texts": [
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "pending": 4,
+        "zeros": 0,
+        "ariaBusy": "true"
+      },
+      "refresh_mode": "recompute",
+      "retry_mode": null,
+      "mobile_subtitle": "SOL/USDT 1d"
+    },
+    "desktop-erro": {
+      "url": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/erro.html",
+      "title": "Monitor - erro ao carregar as estratégias",
+      "h1": "Monitor de sinais",
+      "lang": "pt-BR",
+      "screenshot": "995-A-desktop-1280x800-erro.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "login_in_url": false,
+      "console": [],
+      "pageerror": [],
+      "table_count": 1,
+      "table_visible": true,
+      "landmarks": {
+        "texts": [
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "7d",
+          "Risco até stop",
+          "Tags",
+          "Operar"
+        ],
+        "found": {
+          "Status": true,
+          "Preço": true,
+          "Distância": true,
+          "7d": true,
+          "Risco até stop": true,
+          "Tags": true,
+          "Operar": true,
+          "Par / Estratégia": true
+        },
+        "tableCount": 1
+      },
+      "sidebar_box": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 800
+      },
+      "empty_catalog": false,
+      "toast": false,
+      "error_p": true,
+      "error_s": true,
+      "retry": true,
+      "loading": false,
+      "login_copy": false,
+      "kpi_zero_truth": false,
+      "kpi": {
+        "count": 4,
+        "texts": [
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "pending": 4,
+        "zeros": 0,
+        "ariaBusy": "true"
+      },
+      "refresh_mode": "recompute",
+      "retry_mode": "reread",
+      "mobile_subtitle": "SOL/USDT 1d",
+      "retry_box": {
+        "x": 688.890625,
+        "y": 513.046875,
+        "width": 126.21875,
+        "height": 44
+      },
+      "retry_focus": {
+        "exists": true,
+        "active": true,
+        "disabled": false,
+        "tag": "A",
+        "href": "index.html"
+      }
+    },
+    "desktop-sessao": {
+      "url": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/sessao.html",
+      "title": "Entrar — Cripto Farol",
+      "h1": "Bem-vindo de volta",
+      "lang": "pt-BR",
+      "screenshot": "995-A-desktop-1280x800-sessao.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "login_in_url": false,
+      "console": [],
+      "pageerror": [],
+      "table_count": 0,
+      "table_visible": false,
+      "landmarks": {
+        "texts": [],
+        "found": {
+          "Status": false,
+          "Preço": false,
+          "Distância": false,
+          "7d": false,
+          "Risco até stop": false,
+          "Tags": false,
+          "Operar": false,
+          "Par / Estratégia": false
+        },
+        "tableCount": 0
+      },
+      "sidebar_box": null,
+      "empty_catalog": false,
+      "toast": false,
+      "error_p": false,
+      "error_s": false,
+      "retry": false,
+      "loading": false,
+      "login_copy": true,
+      "kpi_zero_truth": false,
+      "kpi": {
+        "count": 0,
+        "texts": [],
+        "pending": 0,
+        "zeros": 0,
+        "ariaBusy": null
+      },
+      "refresh_mode": null,
+      "retry_mode": null,
+      "mobile_subtitle": ""
+    },
+    "mobile-index": {
+      "url": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/",
+      "title": "Monitor de sinais — Cripto Farol",
+      "h1": "Monitor de sinais",
+      "lang": "pt-BR",
+      "screenshot": "995-A-mobile-390x844-index.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "login_in_url": false,
+      "console": [],
+      "pageerror": [],
+      "table_count": 2,
+      "table_visible": false,
+      "landmarks": {
+        "texts": [
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "7d",
+          "Risco até stop",
+          "Tags",
+          "Operar",
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "7d",
+          "Risco até stop",
+          "Tags",
+          "Operar"
+        ],
+        "found": {
+          "Status": true,
+          "Preço": true,
+          "Distância": true,
+          "7d": true,
+          "Risco até stop": true,
+          "Tags": true,
+          "Operar": true,
+          "Par / Estratégia": true
+        },
+        "tableCount": 2
+      },
+      "sidebar_box": null,
+      "empty_catalog": false,
+      "toast": false,
+      "error_p": false,
+      "error_s": false,
+      "retry": false,
+      "loading": false,
+      "login_copy": false,
+      "kpi_zero_truth": false,
+      "kpi": {
+        "count": 4,
+        "texts": [
+          "1",
+          "1",
+          "2",
+          "2"
+        ],
+        "pending": 0,
+        "zeros": 0,
+        "ariaBusy": null
+      },
+      "refresh_mode": "recompute",
+      "retry_mode": null,
+      "mobile_subtitle": "SOL/USDT 1d"
+    },
+    "mobile-carga": {
+      "url": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/carga.html",
+      "title": "Monitor de sinais - carregando",
+      "h1": "Monitor de sinais",
+      "lang": "pt-BR",
+      "screenshot": "995-A-mobile-390x844-carga.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "login_in_url": false,
+      "console": [],
+      "pageerror": [],
+      "table_count": 0,
+      "table_visible": false,
+      "landmarks": {
+        "texts": [],
+        "found": {
+          "Status": false,
+          "Preço": false,
+          "Distância": false,
+          "7d": false,
+          "Risco até stop": false,
+          "Tags": false,
+          "Operar": false,
+          "Par / Estratégia": false
+        },
+        "tableCount": 0
+      },
+      "sidebar_box": null,
+      "empty_catalog": false,
+      "toast": false,
+      "error_p": false,
+      "error_s": false,
+      "retry": false,
+      "loading": true,
+      "login_copy": false,
+      "kpi_zero_truth": false,
+      "kpi": {
+        "count": 4,
+        "texts": [
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "pending": 4,
+        "zeros": 0,
+        "ariaBusy": "true"
+      },
+      "refresh_mode": "recompute",
+      "retry_mode": null,
+      "mobile_subtitle": "SOL/USDT 1d"
+    },
+    "mobile-erro": {
+      "url": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/erro.html",
+      "title": "Monitor - erro ao carregar as estratégias",
+      "h1": "Monitor de sinais",
+      "lang": "pt-BR",
+      "screenshot": "995-A-mobile-390x844-erro.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "login_in_url": false,
+      "console": [],
+      "pageerror": [],
+      "table_count": 1,
+      "table_visible": true,
+      "landmarks": {
+        "texts": [
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "7d",
+          "Risco até stop",
+          "Tags",
+          "Operar"
+        ],
+        "found": {
+          "Status": true,
+          "Preço": true,
+          "Distância": true,
+          "7d": true,
+          "Risco até stop": true,
+          "Tags": true,
+          "Operar": true,
+          "Par / Estratégia": true
+        },
+        "tableCount": 1
+      },
+      "sidebar_box": null,
+      "empty_catalog": false,
+      "toast": false,
+      "error_p": true,
+      "error_s": true,
+      "retry": true,
+      "loading": false,
+      "login_copy": false,
+      "kpi_zero_truth": false,
+      "kpi": {
+        "count": 4,
+        "texts": [
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "pending": 4,
+        "zeros": 0,
+        "ariaBusy": "true"
+      },
+      "refresh_mode": "recompute",
+      "retry_mode": "reread",
+      "mobile_subtitle": "SOL/USDT 1d",
+      "retry_box": {
+        "x": 131.890625,
+        "y": 953.09375,
+        "width": 126.21875,
+        "height": 44
+      },
+      "retry_focus": {
+        "exists": true,
+        "active": true,
+        "disabled": false,
+        "tag": "A",
+        "href": "index.html"
+      }
+    },
+    "mobile-sessao": {
+      "url": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede/sessao.html",
+      "title": "Entrar — Cripto Farol",
+      "h1": "Bem-vindo de volta",
+      "lang": "pt-BR",
+      "screenshot": "995-A-mobile-390x844-sessao.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "login_in_url": false,
+      "console": [],
+      "pageerror": [],
+      "table_count": 0,
+      "table_visible": false,
+      "landmarks": {
+        "texts": [],
+        "found": {
+          "Status": false,
+          "Preço": false,
+          "Distância": false,
+          "7d": false,
+          "Risco até stop": false,
+          "Tags": false,
+          "Operar": false,
+          "Par / Estratégia": false
+        },
+        "tableCount": 0
+      },
+      "sidebar_box": null,
+      "empty_catalog": false,
+      "toast": false,
+      "error_p": false,
+      "error_s": false,
+      "retry": false,
+      "loading": false,
+      "login_copy": true,
+      "kpi_zero_truth": false,
+      "kpi": {
+        "count": 0,
+        "texts": [],
+        "pending": 0,
+        "zeros": 0,
+        "ariaBusy": null
+      },
+      "refresh_mode": null,
+      "retry_mode": null,
+      "mobile_subtitle": ""
+    }
+  },
+  "live": {
+    "requested": "https://dev.criptofarol.com.br/monitor",
+    "http": 200,
+    "final": "https://dev.criptofarol.com.br/monitor",
+    "login_page": false,
+    "h1_login": false,
+    "table_signals": false,
+    "playwright_final": "https://dev.criptofarol.com.br/login",
+    "playwright_h1": "Bem-vindo de volta",
+    "screenshot": "995-A-live-monitor.png",
+    "table_count": 0
+  },
+  "digest": {
+    "index.html": {
+      "disk": "5c80aa4a01efa5fab1ca1a56cdc3461e0213b22d3bfd1056fa7762407c617b9a",
+      "https_public": "dda22bf326d8eeccd659182f85551b162deb683dd29dfd90d8cd40050eb51469",
+      "https_public_http": 404,
+      "local_http": 200,
+      "local_sha": "5c80aa4a01efa5fab1ca1a56cdc3461e0213b22d3bfd1056fa7762407c617b9a",
+      "bytes": 31568,
+      "identical_local": true,
+      "expected": "5c80aa4a01efa5fab1ca1a56cdc3461e0213b22d3bfd1056fa7762407c617b9a",
+      "matches_design": true
+    },
+    "carga.html": {
+      "disk": "00f523eb23752b39ab27e439ccfad82b00da98097a671c5878696060209e5fd4",
+      "https_public": null,
+      "https_public_http": null,
+      "local_http": 200,
+      "local_sha": "00f523eb23752b39ab27e439ccfad82b00da98097a671c5878696060209e5fd4",
+      "bytes": 23657,
+      "identical_local": true,
+      "expected": "00f523eb23752b39ab27e439ccfad82b00da98097a671c5878696060209e5fd4",
+      "matches_design": true
+    },
+    "erro.html": {
+      "disk": "86d863acbb9318dfe9d5439a6e91d5fc5d1d6fde9a57065e1c464b69d40f6223",
+      "https_public": null,
+      "https_public_http": null,
+      "local_http": 200,
+      "local_sha": "86d863acbb9318dfe9d5439a6e91d5fc5d1d6fde9a57065e1c464b69d40f6223",
+      "bytes": 24773,
+      "identical_local": true,
+      "expected": "86d863acbb9318dfe9d5439a6e91d5fc5d1d6fde9a57065e1c464b69d40f6223",
+      "matches_design": true
+    },
+    "sessao.html": {
+      "disk": "7879cd2630a22d2929db07cdfc7c0da5e1ba4f37e22261782a3ac7547d09c584",
+      "https_public": null,
+      "https_public_http": null,
+      "local_http": 200,
+      "local_sha": "7879cd2630a22d2929db07cdfc7c0da5e1ba4f37e22261782a3ac7547d09c584",
+      "bytes": 4933,
+      "identical_local": true,
+      "expected": "7879cd2630a22d2929db07cdfc7c0da5e1ba4f37e22261782a3ac7547d09c584",
+      "matches_design": true
+    }
+  },
+  "copied": {
+    "index.html": {
+      "starts": 7,
+      "ends": 7,
+      "pairs_ok": true,
+      "copied_utf8": 22008,
+      "bytes": 31568
+    },
+    "carga.html": {
+      "starts": 4,
+      "ends": 4,
+      "pairs_ok": true,
+      "copied_utf8": 20719,
+      "bytes": 23657
+    },
+    "erro.html": {
+      "starts": 5,
+      "ends": 5,
+      "pairs_ok": true,
+      "copied_utf8": 21328,
+      "bytes": 24773
+    },
+    "sessao.html": {
+      "starts": 3,
+      "ends": 3,
+      "pairs_ok": true,
+      "copied_utf8": 4169,
+      "bytes": 4933
+    }
+  },
+  "extras": {
+    "html": [
+      "carga.html",
+      "erro.html",
+      "index.html",
+      "sessao.html"
+    ]
+  },
+  "https_public": {
+    "url": "https://dev.criptofarol.com.br/prototypes/card-995-monitor-retry-rede/",
+    "http": 404,
+    "final": "https://dev.criptofarol.com.br/prototypes/card-995-monitor-retry-rede/",
+    "sha": "dda22bf326d8eeccd659182f85551b162deb683dd29dfd90d8cd40050eb51469",
+    "title_snippet": "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head><meta charset=\"utf-8\"><title>Protótipo não encontrado</title></head>\n<body style=\"font:16px/1.45 system-ui,sans-serif;max-width:42rem;ma",
+    "note": "criptofarol-dev-prototypes.service caches roots at boot; this worktree is absent from /prototypes/ listing. Critique uses worktree HTTP (same as autor).",
+    "playwright_h1": "Protótipo não encontrado",
+    "screenshot": "995-A-https-404.png",
+    "playwright_url": "https://dev.criptofarol.com.br/prototypes/card-995-monitor-retry-rede/"
+  },
+  "local_base": "http://127.0.0.1:35179/prototypes/card-995-monitor-retry-rede",
+  "chromium": "/usr/bin/chromium-browser",
+  "passed": 156,
+  "failed": 0,
+  "total": 156,
+  "fails": [],
+  "verdict_hint": "PASS"
+}

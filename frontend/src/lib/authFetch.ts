@@ -32,6 +32,19 @@ export function isFetchAbortedError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
 }
 
+export function isNetworkFetchError(error: unknown): boolean {
+  if (isFetchAbortedError(error)) {
+    return true
+  }
+  if (error instanceof TypeError) {
+    return true
+  }
+  if (error instanceof Error) {
+    return /failed to fetch|networkerror|load failed/i.test(error.message)
+  }
+  return false
+}
+
 export function isAuthRefreshInFlight(): boolean {
   return refreshPromise !== null
 }
