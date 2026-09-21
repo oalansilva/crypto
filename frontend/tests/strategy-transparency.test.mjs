@@ -473,7 +473,9 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
         /xl:h-\[calc\(100vh-330px\)\] xl:min-h-\[420px\] xl:max-h-\[720px\]/,
     )
     assert.doesNotMatch(monitorSource, /xl:h-full xl:min-h-\[calc\(100vh-330px\)\]/)
-    assert.match(monitorSource, /CHART_TIMEFRAMES/)
+    assert.match(monitorSource, /chart-strategy-tf/)
+    assert.match(monitorSource, /Estratégia ·/)
+    assert.doesNotMatch(monitorSource, /Selecionar timeframe do gráfico/)
 })
 
 test('chartData expõe 15m, 1h, 4h e 1d no Monitor', () => {
