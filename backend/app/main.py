@@ -68,6 +68,7 @@ from app.services.runtime_status import (
     should_start_binance_realtime_connector,
     should_start_ohlcv_ingestion,
 )
+from app.services.scalp_btcusdt_stream import stop_scalp_btcusdt_stream
 from app.services.scalp_loop import start_scalp_loop, stop_scalp_loop
 
 # Configure logging to file
@@ -244,6 +245,7 @@ async def lifespan(app: FastAPI):
             await startup_task
 
     await stop_scalp_loop()
+    await stop_scalp_btcusdt_stream()
     await asyncio.to_thread(stop_ohlcv_ingestion)
     await stop_binance_realtime_connector()
     await stop_signal_feed_snapshot_worker()

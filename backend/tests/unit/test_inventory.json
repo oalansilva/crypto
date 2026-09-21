@@ -579,6 +579,15 @@
       "evidence": "scalp_db uses postgres_isolation/unit_database_url; engine/JEV cases use FakeExchange"
     },
     {
+      "file": "backend/tests/unit/test_scalp_ws_fresh_state.py",
+      "protected_behavior": "scalp WS fresh state snapshot and reconnect semantics",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; WS/state cases use fakes and deterministic fixtures"
+    },
+    {
       "file": "backend/tests/unit/test_sentiment_binance_validation.py",
       "protected_behavior": "sentiment, Binance, workflow validation",
       "production_reachability": "reachable",

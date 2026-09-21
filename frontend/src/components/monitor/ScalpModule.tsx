@@ -17,6 +17,7 @@ export type ScalpStatus = {
   calibration?: { hits: number; signals: number; last_latency_s: number | null } | null
   pnl_quote?: string
   status_text?: string
+  book_available?: boolean
   kill_banner?: boolean
   inventory_clipped?: boolean
   enabled?: boolean
@@ -100,6 +101,8 @@ export function ScalpModule() {
     ? status.state
     : 'off'
   const checked = visual === 'on'
+  const bookUnavailable = visual === 'on' && status.book_available === false
+  const dataBook = visual === 'on' ? (bookUnavailable ? 'unavailable' : 'fresh') : 'fresh'
   const disabled = visual === 'nokey' || pending
   const pnl = parseNumber(status.pnl_quote)
   const pnlClass = pnl < 0 ? 'neg' : pnl > 0 ? 'pos' : ''
@@ -134,6 +137,7 @@ export function ScalpModule() {
       id="scalp-module"
       data-testid="scalp-module"
       data-state={visual}
+      data-book={dataBook}
       aria-labelledby="scalp-title"
     >
       <div className="scalp-head">
@@ -184,7 +188,12 @@ export function ScalpModule() {
           </dd>
         </div>
       </dl>
-      <p className="scalp-status" id="scalp-status" data-testid="scalp-status">
+      <p
+        className="scalp-status"
+        id="scalp-status"
+        data-testid="scalp-status"
+        aria-live="polite"
+      >
         {status.status_text || DEFAULT_STATUS.status_text}
         {visual === 'nokey' ? (
           <>

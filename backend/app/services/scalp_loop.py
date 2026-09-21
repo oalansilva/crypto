@@ -11,6 +11,7 @@ from pathlib import Path
 from app.database import SessionLocal
 from app.services.runtime_status import env_flag_enabled
 from app.services.scalp_engine import JEV_FLOOR_MS
+from app.services.scalp_btcusdt_stream import ensure_scalp_btcusdt_stream, stop_scalp_btcusdt_stream
 from app.services.scalp_service import list_enabled_user_ids, tick_user
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,10 @@ async def scalp_loop(stop_event: asyncio.Event | None = None) -> None:
         db = SessionLocal()
         try:
             user_ids = list_enabled_user_ids(db)
+            if user_ids:
+                await ensure_scalp_btcusdt_stream()
+            else:
+                await stop_scalp_btcusdt_stream()
             for user_id in user_ids:
                 try:
                     tick_user(db, user_id)
@@ -110,3 +115,4 @@ async def stop_scalp_loop() -> None:
             pass
         _task = None
     _release_lock()
+    await stop_scalp_btcusdt_stream()

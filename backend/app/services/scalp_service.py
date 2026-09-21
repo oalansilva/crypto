@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,10 +32,14 @@ from app.services.scalp_engine import (
     pnl_quote,
     unrealized_pnl,
 )
+from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
 from app.services.scalp_jev import jev_api_key, jev_available, request_jev
 from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
 logger = logging.getLogger(__name__)
+
+BOOK_UNAVAILABLE_COPY = "livro indisponível"
+BALANCE_CACHE_SECONDS = 5.0
 
 STATUS_COPY = {
     "off": "Desligado — não envia ordem deste scalp. Inventário e P&L ficam visíveis.",
@@ -111,6 +116,33 @@ class ExchangePort(Protocol):
     def query_order(
         self, *, api_key: str, api_secret: str, client_order_id: str
     ) -> dict[str, Any]: ...
+
+
+@dataclass
+class _BalanceCacheEntry:
+    usdt: Decimal
+    btc: Decimal
+    fetched_at: float
+
+
+_balance_cache: dict[str, _BalanceCacheEntry] = {}
+
+
+def invalidate_balance_cache(user_id: str) -> None:
+    _balance_cache.pop(str(user_id), None)
+
+
+def _cached_balances(
+    user_id: str, port: ExchangePort, cred: UserExchangeCredential
+) -> tuple[Decimal, Decimal]:
+    key = str(user_id)
+    now = time.time()
+    hit = _balance_cache.get(key)
+    if hit is not None and (now - hit.fetched_at) < BALANCE_CACHE_SECONDS:
+        return hit.usdt, hit.btc
+    live_usdt, live_btc = port.free_balances(cred.api_key, cred.api_secret)
+    _balance_cache[key] = _BalanceCacheEntry(usdt=live_usdt, btc=live_btc, fetched_at=now)
+    return live_usdt, live_btc
 
 
 class LiveExchange:
@@ -445,6 +477,7 @@ def apply_bot_fill(
     state.updated_at = _utcnow()
     db.add(state)
     db.commit()
+    invalidate_balance_cache(str(user_id))
 
 
 def tick_user(
@@ -467,7 +500,7 @@ def tick_user(
     if free_usdt is None or free_btc is None:
         if cred is not None:
             try:
-                live_usdt, live_btc = port.free_balances(cred.api_key, cred.api_secret)
+                live_usdt, live_btc = _cached_balances(str(user_id), port, cred)
             except BinanceOrderError:
                 live_usdt, live_btc = Decimal("0"), Decimal("0")
         else:
@@ -477,13 +510,32 @@ def tick_user(
         if free_btc is None:
             free_btc = live_btc
 
+    memory = get_scalp_btcusdt_memory()
+    book_from_memory = False
     if book is None:
-        try:
-            book = port.book()
-        except BinanceOrderError:
+        if not memory.book_available():
+            _cancel_resting(state, cred=cred, exchange=port, all_bot=True)
             intent = CycleIntent(
-                send=False, cancel_resting=False, fire_kill=False, skip_reason="no_book"
+                send=False, cancel_resting=True, fire_kill=False, skip_reason="no_book"
             )
+            state.updated_at = stamp
+            db.add(state)
+            db.commit()
+            return CycleResult(
+                user_id=str(user_id), intent=intent, sent=False, killed=False, skipped="no_book"
+            )
+        memory.read_touch()
+        memory.recent_trades()
+        book = memory.read_book()
+        book_from_memory = True
+        if book is None:
+            _cancel_resting(state, cred=cred, exchange=port, all_bot=True)
+            intent = CycleIntent(
+                send=False, cancel_resting=True, fire_kill=False, skip_reason="no_book"
+            )
+            state.updated_at = stamp
+            db.add(state)
+            db.commit()
             return CycleResult(
                 user_id=str(user_id), intent=intent, sent=False, killed=False, skipped="no_book"
             )
@@ -643,6 +695,33 @@ def tick_user(
         and live_send
         and not rest_open
     ):
+        if book_from_memory:
+            if not memory.book_available():
+                _cancel_resting(state, cred=cred, exchange=port, all_bot=True)
+                state.updated_at = stamp
+                db.add(state)
+                db.commit()
+                return CycleResult(
+                    user_id=str(user_id),
+                    intent=intent,
+                    sent=False,
+                    killed=False,
+                    skipped="no_book",
+                )
+            fresh_book = memory.read_book()
+            if fresh_book is None:
+                _cancel_resting(state, cred=cred, exchange=port, all_bot=True)
+                state.updated_at = stamp
+                db.add(state)
+                db.commit()
+                return CycleResult(
+                    user_id=str(user_id),
+                    intent=intent,
+                    sent=False,
+                    killed=False,
+                    skipped="no_book",
+                )
+            book = fresh_book
         client_order_id = f"cfscalp_{uuid.uuid4().hex[:16]}"
         try:
             result = port.place_post_only(
@@ -707,6 +786,8 @@ def tick_user(
     state.updated_at = stamp
     db.add(state)
     db.commit()
+    if sent:
+        invalidate_balance_cache(str(user_id))
     return CycleResult(
         user_id=str(user_id),
         intent=intent,
@@ -751,11 +832,15 @@ def status_payload(
         cred = _credential(db, user_id)
         if cred is not None:
             try:
-                live_usdt, live_btc = LiveExchange().free_balances(cred.api_key, cred.api_secret)
+                port = LiveExchange()
+                live_usdt, live_btc = _cached_balances(str(user_id), port, cred)
                 t = compute_t(live_usdt)
                 if free_btc is None:
                     free_btc = live_btc
-                mid = mid or LiveExchange().book().mid
+                if enabled and not killed:
+                    live_book = get_scalp_btcusdt_memory().read_book()
+                    if live_book is not None:
+                        mid = mid or live_book.mid
             except Exception:
                 pass
     mark = mid or Decimal("0")
@@ -789,15 +874,25 @@ def status_payload(
             "last_latency_s": latency_s,
         }
     jev_live = bool(jev_api_key())
+    memory = get_scalp_btcusdt_memory()
+    book_available = memory.book_available() if visual == "on" else True
     status_text = STATUS_COPY[visual]
-    if visual == "on" and not jev_live:
+    if visual == "on" and not book_available:
+        status_text = BOOK_UNAVAILABLE_COPY
+    elif visual == "on" and not jev_live:
         status_text = "Jev indisponível — sem envio live"
+    if visual == "on" and mark <= 0:
+        live_book = memory.read_book()
+        if live_book is not None:
+            mark = live_book.mid
     return {
         "symbol": SYMBOL,
         "state": visual,
         "has_spot_key": key_ok,
         "jev_available": jev_live,
         "jev_unavailable": visual == "on" and not jev_live,
+        "book_available": book_available,
+        "book_age_ms": memory.age_ms(),
         "t_quote": str(t),
         "clip_quote": "10",
         "inventory_btc": str(inventory),

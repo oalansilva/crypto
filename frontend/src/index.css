@@ -3491,6 +3491,10 @@ select.input option {
   color: var(--t-2);
   font-size: 12.5px;
 }
+.monitor-theme .scalp-module[data-book="unavailable"] .scalp-status {
+  color: var(--exit);
+  font-weight: 600;
+}
 .monitor-theme .scalp-status a {
   color: var(--accent);
   text-decoration: underline;
