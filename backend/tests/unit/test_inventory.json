@@ -579,6 +579,15 @@
       "evidence": "scalp_db uses postgres_isolation/unit_database_url; engine/JEV cases use FakeExchange"
     },
     {
+      "file": "backend/tests/unit/test_scalp_jev_horizonte.py",
+      "protected_behavior": "scalp JEV horizon constants, hurdle, exit/hold cycles, entry timeout and tick hold",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; engine/JEV/timeout cases use FakeExchange and in-memory BTC window"
+    },
+    {
       "file": "backend/tests/unit/test_scalp_ws_fresh_state.py",
       "protected_behavior": "scalp WS fresh state snapshot and reconnect semantics",
       "production_reachability": "reachable",

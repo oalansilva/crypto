@@ -81,7 +81,7 @@ def _hold_signal(latency_ms: int) -> JevSignal:
     return JevSignal(
         side=None,
         confidence=Decimal("0"),
-        edge_after_fees=False,
+        expected_move_bp=Decimal("0"),
         book_toxic=False,
         latency_ms=latency_ms,
         cost_quote=Decimal("0"),
@@ -96,12 +96,16 @@ def stand_in_signal(*, latency_ms: int = 1) -> JevSignal:
         confidence = Decimal(confidence_raw)
     except Exception:
         confidence = Decimal("0")
-    edge = (os.getenv("JEV_STAND_IN_EDGE") or "").strip().lower() in {"1", "true", "yes", "on"}
+    move_raw = (os.getenv("JEV_STAND_IN_MOVE_BP") or os.getenv("JEV_STAND_IN_EDGE") or "25").strip()
+    try:
+        expected_move_bp = Decimal(move_raw)
+    except Exception:
+        expected_move_bp = Decimal("25")
     toxic = (os.getenv("JEV_STAND_IN_TOXIC") or "").strip().lower() in {"1", "true", "yes", "on"}
     return JevSignal(
         side=side,
         confidence=confidence,
-        edge_after_fees=edge,
+        expected_move_bp=expected_move_bp,
         book_toxic=toxic,
         latency_ms=latency_ms,
         cost_quote=Decimal("0"),
@@ -109,14 +113,9 @@ def stand_in_signal(*, latency_ms: int = 1) -> JevSignal:
 
 
 def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    state = payload.get("state") if isinstance(payload.get("state"), dict) else payload
     return {
-        "state": {
-            "symbol": SYMBOL,
-            "bid": payload.get("bid"),
-            "ask": payload.get("ask"),
-            "inventory_btc": payload.get("inventory_btc"),
-            "t": payload.get("t"),
-        },
+        "state": state,
         "model": _JEV_MODEL,
         "questions": {
             "side": {
@@ -131,9 +130,12 @@ def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
                     "HOLD": "Do not send",
                 },
             },
-            "edge_after_fees": {
-                "type": "noul",
-                "instructions": "After spot fees, is there an edge for the chosen side in the next ~2s?",
+            "expected_move_bp": {
+                "type": "number",
+                "instructions": (
+                    "Expected absolute price move in basis points over the next 900 s "
+                    "lookback horizon for the chosen side."
+                ),
             },
             "book_toxic": {
                 "type": "noul",
@@ -160,6 +162,16 @@ def _side_confidence(side_answer: dict[str, Any]) -> Decimal:
     return Decimal("0")
 
 
+def _expected_move_bp(answers: dict[str, Any]) -> Decimal:
+    raw = answers.get("expected_move_bp")
+    if isinstance(raw, dict):
+        if raw.get("number") is not None:
+            return _decimal(raw.get("number"))
+        if raw.get("value") is not None:
+            return _decimal(raw.get("value"))
+    return _decimal(raw)
+
+
 def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
     data = _as_dict(parsed)
     answers = _as_dict(data.get("answers"))
@@ -169,7 +181,7 @@ def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
     return JevSignal(
         side=_parse_side(side_answer.get("choice")),
         confidence=_side_confidence(side_answer),
-        edge_after_fees=_noul_yes(answers.get("edge_after_fees")),
+        expected_move_bp=_expected_move_bp(answers),
         book_toxic=_noul_yes(answers.get("book_toxic")),
         latency_ms=latency_ms,
         cost_quote=Decimal("0"),
@@ -177,7 +189,7 @@ def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
 
 
 def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -> JevSignal:
-    """One HTTP call. Timeout defaults to the 800 ms late gate."""
+    """One HTTP call. Timeout defaults to the 1.5 s late gate."""
     started = time.perf_counter()
     timeout = float(timeout_s if timeout_s is not None else (JEV_LATE_MS / 1000.0))
     key = jev_api_key()

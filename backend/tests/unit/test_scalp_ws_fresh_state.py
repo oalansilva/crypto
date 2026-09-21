@@ -52,6 +52,7 @@ def _isolated_scalp_btcusdt_snapshot(tmp_path, monkeypatch):
 def _seed_fresh_touch(memory, *, bid: str = "65000", ask: str = "65010") -> None:
     memory.reset_for_tests()
     memory.set_ws_connected(True)
+    now_ms = int(time.time() * 1000)
     memory.ingest_book_ticker(
         {
             "s": "BTCUSDT",
@@ -59,9 +60,10 @@ def _seed_fresh_touch(memory, *, bid: str = "65000", ask: str = "65010") -> None
             "a": ask,
             "B": "1.2",
             "A": "0.8",
-            "E": int(time.time() * 1000),
+            "E": now_ms,
         }
     )
+    memory.ingest_agg_trade({"s": "BTCUSDT", "p": bid, "q": "0.01", "T": now_ms, "m": False})
 
 
 def _age_touch(memory, age_ms: int) -> None:
