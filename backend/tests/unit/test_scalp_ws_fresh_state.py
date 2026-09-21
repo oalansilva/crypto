@@ -25,7 +25,7 @@ from app.services.scalp_btcusdt_stream import (
 )
 from app.services.binance_spot_orders import BinanceOrderError
 from app.services.scalp_engine import Book
-from app.services.scalp_loop import scalp_loop
+from app.services.scalp_loop import scalp_loop, _tick_user_blocking
 from app.services.scalp_service import (
     BOOK_UNAVAILABLE_COPY,
     get_or_create_state,
@@ -251,7 +251,7 @@ async def test_scalp_loop_two_enabled_users_share_one_stream(scalp_db, monkeypat
             return getattr(self._db, name)
 
     monkeypatch.setattr("app.services.scalp_loop.SessionLocal", lambda: _DbSession(scalp_db))
-    monkeypatch.setattr("app.services.scalp_loop.tick_user", lambda _db, _uid: None)
+    monkeypatch.setattr("app.services.scalp_loop._tick_user_blocking", lambda _uid: None)
 
     stop = asyncio.Event()
 
@@ -826,3 +826,125 @@ def test_local_stale_stream_wins_over_fresh_snapshot(scalp_db):
     payload = status_payload(scalp_db, user_id, free_usdt=Decimal("80"), mid=Decimal("65005"))
     assert payload["book_available"] is False
     assert payload["status_text"] == BOOK_UNAVAILABLE_COPY
+
+
+def _loop_db_session(scalp_db):
+    class _DbSession:
+        def __init__(self, db):
+            self._db = db
+
+        def close(self) -> None:
+            pass
+
+        def __getattr__(self, name):
+            return getattr(self._db, name)
+
+    return _DbSession(scalp_db)
+
+
+@pytest.mark.asyncio
+async def test_scalp_loop_slow_jev_keeps_book_fresh(scalp_db, monkeypatch):
+    """Slow Jev HTTP must not block the shared WS task from refreshing book age."""
+    await stop_scalp_btcusdt_stream()
+    memory = get_scalp_btcusdt_memory()
+    _seed_fresh_touch(memory)
+    peak_ages: list[int] = []
+
+    async def fake_consume_with_ticks(stop_event: asyncio.Event) -> None:
+        memory.set_ws_connected(True)
+        memory.record_connect()
+        try:
+            while not stop_event.is_set():
+                memory.ingest_book_ticker(
+                    {
+                        "s": "BTCUSDT",
+                        "b": "65000",
+                        "a": "65010",
+                        "B": "1",
+                        "A": "1",
+                        "E": int(time.time() * 1000),
+                    }
+                )
+                age = memory.age_ms()
+                if age is not None:
+                    peak_ages.append(age)
+                await asyncio.sleep(0.05)
+        finally:
+            memory.set_ws_connected(False)
+
+    monkeypatch.setattr(
+        "app.services.scalp_btcusdt_stream._consume_stream",
+        fake_consume_with_ticks,
+    )
+
+    def slow_jev(_payload):
+        time.sleep(1.0)
+        return _buy_signal()
+
+    monkeypatch.setattr("app.services.scalp_service.request_jev", slow_jev)
+    monkeypatch.setattr("app.services.scalp_service.jev_api_key", lambda: "test-key")
+
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    fx = FakeExchange()
+    set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
+    monkeypatch.setattr("app.services.scalp_loop.SessionLocal", lambda: _loop_db_session(scalp_db))
+
+    stop = asyncio.Event()
+    loop_task = asyncio.create_task(scalp_loop(stop_event=stop))
+    await asyncio.sleep(1.4)
+    payload = status_payload(scalp_db, user_id, free_usdt=Decimal("80"), mid=Decimal("65005"))
+    stop.set()
+    await loop_task
+    await stop_scalp_btcusdt_stream()
+
+    assert peak_ages, "shared stream should keep ingesting bookTicker while Jev runs"
+    assert max(peak_ages) <= FRESH_AGE_MS
+    assert payload["book_available"] is True
+    assert payload["status_text"] != BOOK_UNAVAILABLE_COPY
+
+
+@pytest.mark.asyncio
+async def test_tick_user_blocking_matches_to_thread_contract(scalp_db, monkeypatch):
+    memory = get_scalp_btcusdt_memory()
+    _seed_fresh_touch(memory)
+    stop_ingest = asyncio.Event()
+    peak_ages: list[int] = []
+
+    async def ingest_loop() -> None:
+        while not stop_ingest.is_set():
+            memory.ingest_book_ticker(
+                {
+                    "s": "BTCUSDT",
+                    "b": "65001",
+                    "a": "65011",
+                    "B": "1",
+                    "A": "1",
+                    "E": int(time.time() * 1000),
+                }
+            )
+            age = memory.age_ms()
+            if age is not None:
+                peak_ages.append(age)
+            await asyncio.sleep(0.05)
+
+    ingest_task = asyncio.create_task(ingest_loop())
+
+    def slow_jev(_payload):
+        time.sleep(1.0)
+        return _buy_signal()
+
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    fx = FakeExchange()
+    set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
+    monkeypatch.setattr("app.services.scalp_loop.SessionLocal", lambda: _loop_db_session(scalp_db))
+    monkeypatch.setattr("app.services.scalp_service.request_jev", slow_jev)
+    monkeypatch.setattr("app.services.scalp_service.jev_api_key", lambda: "test-key")
+
+    await asyncio.to_thread(_tick_user_blocking, user_id)
+    stop_ingest.set()
+    await ingest_task
+
+    assert peak_ages
+    assert max(peak_ages) <= FRESH_AGE_MS

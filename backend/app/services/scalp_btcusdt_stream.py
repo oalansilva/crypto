@@ -65,6 +65,7 @@ class ScalpBtcusdtMemory:
             self._touch = None
             self._trades.clear()
             self._ws_connected = False
+            self._connect_count = 0
 
     def set_ws_connected(self, connected: bool) -> None:
         with self._lock:
