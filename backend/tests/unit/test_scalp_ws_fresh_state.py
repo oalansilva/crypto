@@ -4,6 +4,7 @@ import asyncio
 import time
 import uuid
 from decimal import Decimal
+
 import pytest
 
 from app.services.scalp_btcusdt_stream import (
@@ -22,7 +23,13 @@ from app.services.scalp_service import (
     status_payload,
     tick_user,
 )
-from tests.unit.test_scalp_direcional_jev import FakeExchange, _add_key, _buy_signal, scalp_db, set_switch
+from tests.unit.test_scalp_direcional_jev import (
+    FakeExchange,
+    _add_key,
+    _buy_signal,
+    scalp_db,
+    set_switch,
+)
 
 
 def _seed_fresh_touch(memory, *, bid: str = "65000", ask: str = "65010") -> None:
@@ -70,7 +77,9 @@ def test_cycle_uses_memory_not_rest_book(scalp_db, monkeypatch):
         free_btc=Decimal("0.01"),
     )
     assert fetch_calls == []
-    assert result.skipped in {None, "hold", "jev_floor", "jev_target", "jev_in_flight"} or result.sent
+    assert (
+        result.skipped in {None, "hold", "jev_floor", "jev_target", "jev_in_flight"} or result.sent
+    )
 
 
 def test_stale_book_after_jev_skips_send(scalp_db):
