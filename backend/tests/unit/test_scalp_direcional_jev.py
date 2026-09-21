@@ -52,13 +52,30 @@ def _buy_signal(**overrides) -> JevSignal:
     values = dict(
         side="BUY",
         confidence=Decimal("0.8"),
-        edge_after_fees=True,
+        expected_move_bp=Decimal("30"),
         book_toxic=False,
         latency_ms=50,
         cost_quote=Decimal("0"),
     )
     values.update(overrides)
     return JevSignal(**values)
+
+
+def _seed_stream_for_jev() -> None:
+    import time
+
+    from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
+
+    mem = get_scalp_btcusdt_memory()
+    mem.reset_for_tests()
+    mem.set_ws_connected(True)
+    now_ms = int(time.time() * 1000)
+    mem.ingest_book_ticker(
+        {"s": "BTCUSDT", "b": "65000", "a": "65010", "B": "1.2", "A": "0.8", "E": now_ms}
+    )
+    mem.ingest_agg_trade(
+        {"s": "BTCUSDT", "p": "65000", "q": "0.01", "T": now_ms, "m": False}
+    )
 
 
 def _book() -> Book:
@@ -173,7 +190,7 @@ def test_late_jev_and_in_flight_and_book_move():
         day_pnl=Decimal("0"),
         book=_book(),
         resting=None,
-        jev=_buy_signal(latency_ms=801),
+        jev=_buy_signal(latency_ms=1501),
     )
     assert late.send is False
     assert late.skip_reason == "jev_late"
@@ -313,7 +330,7 @@ def _systemone_response(
     *,
     side: str = "BUY",
     confidence: float | None = 0.75,
-    edge: float = 0.8,
+    move_bp: float = 25.0,
     toxic: float = 0.1,
     probabilities: dict[str, float] | None = None,
 ) -> dict:
@@ -328,7 +345,7 @@ def _systemone_response(
         "model": "jev-1.13.0",
         "answers": {
             "side": side_answer,
-            "edge_after_fees": {"type": "noul", "noul": edge},
+            "expected_move_bp": {"type": "number", "number": move_bp},
             "book_toxic": {"type": "noul", "noul": toxic},
         },
         "usage": {"input_tokens": 296, "output_tokens": 20},
@@ -401,24 +418,29 @@ def test_request_jev_posts_systemone_not_signal(monkeypatch):
         return _FakeHttpResponse(_systemone_response())
 
     captured = _capture_urlopen(monkeypatch, ok)
-    signal = request_jev({"bid": "65000", "ask": "65010", "inventory_btc": "0", "t": "80"})
+    payload = {
+        "state": {
+            "symbol": "BTCUSDT",
+            "horizon_s": 900,
+            "touch": {"bid": "65000", "ask": "65010", "spread_bp": "1.5"},
+            "window": {"horizon_s": 900, "trade_count": 1},
+            "account": {"inventory_btc": "0", "t": "80", "fee_bp": "10"},
+            "resting": None,
+        }
+    }
+    signal = request_jev(payload)
     assert captured["url"] == "https://api.typesafe.ai/v1/systemone"
     assert "/v1/signal" not in captured["url"]
     assert captured["method"] == "POST"
     assert captured["timeout"] == JEV_LATE_MS / 1000.0
     body = captured["body"]
     assert body["model"] == "jev-latest"
-    assert set(body["questions"]) == {"side", "edge_after_fees", "book_toxic"}
+    assert set(body["questions"]) == {"side", "expected_move_bp", "book_toxic"}
     assert body["questions"]["side"]["type"] == "choice"
-    assert body["questions"]["edge_after_fees"]["type"] == "noul"
+    assert body["questions"]["expected_move_bp"]["type"] == "number"
     assert body["questions"]["book_toxic"]["type"] == "noul"
-    assert body["state"] == {
-        "symbol": "BTCUSDT",
-        "bid": "65000",
-        "ask": "65010",
-        "inventory_btc": "0",
-        "t": "80",
-    }
+    assert body["state"]["symbol"] == "BTCUSDT"
+    assert "edge_after_fees" not in body["questions"]
     assert captured["headers"]["authorization"] == "Bearer super-secret-jev-token"
     assert signal.side == "BUY"
 
@@ -429,16 +451,16 @@ def test_request_jev_maps_systemone_buy(monkeypatch):
 
     def ok(_req, _timeout, _captured):
         return _FakeHttpResponse(
-            _systemone_response(side="BUY", confidence=0.75, edge=0.8, toxic=0.1)
+            _systemone_response(side="BUY", confidence=0.75, move_bp=25.0, toxic=0.1)
         )
 
     captured = _capture_urlopen(monkeypatch, ok)
-    signal = request_jev({"bid": "1", "ask": "2", "inventory_btc": "0", "t": "10"})
+    signal = request_jev({"state": {"symbol": "BTCUSDT"}})
     assert captured["url"] == "https://api.typesafe.ai/v1/systemone"
     assert signal.side == "BUY"
     assert signal.confidence == Decimal("0.75")
     assert signal.confidence >= Decimal("0.7")
-    assert signal.edge_after_fees is True
+    assert signal.expected_move_bp == Decimal("25")
     assert signal.book_toxic is False
     assert signal.cost_quote == Decimal("0")
 
@@ -448,7 +470,7 @@ def test_request_jev_hold_and_http_404_are_none(monkeypatch):
 
     def hold(_req, _timeout, _captured):
         return _FakeHttpResponse(
-            _systemone_response(side="HOLD", confidence=0.91, edge=0.2, toxic=0.1)
+            _systemone_response(side="HOLD", confidence=0.91, move_bp=5.0, toxic=0.1)
         )
 
     _capture_urlopen(monkeypatch, hold)
@@ -483,7 +505,7 @@ def test_request_jev_hold_and_http_404_are_none(monkeypatch):
     missing = request_jev({"bid": "1"})
     assert missing.side is None
     assert missing.confidence == Decimal("0")
-    assert missing.edge_after_fees is False
+    assert missing.expected_move_bp == Decimal("0")
     assert missing.book_toxic is False
 
 
@@ -549,6 +571,15 @@ class FakeExchange:
             "cummulativeQuoteQty": "0",
             "clientOrderId": cid,
         }
+
+
+@pytest.fixture(autouse=True)
+def _scalp_stream_memory():
+    _seed_stream_for_jev()
+    yield
+    from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
+
+    get_scalp_btcusdt_memory().reset_for_tests()
 
 
 @pytest.fixture

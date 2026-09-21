@@ -12,9 +12,15 @@ CLIP_CAP = Decimal("10")
 KILL_RATIO = Decimal("0.02")
 CONFIDENCE_MIN = Decimal("0.7")
 FEE_HEADROOM = Decimal("0.001")
-JEV_LATE_MS = 800
+HORIZON_S = 900
+JEV_LATE_MS = 1500
 JEV_FLOOR_MS = 400
 JEV_TARGET_MS = 1000
+ENTRY_REST_TIMEOUT_S = 10
+EXIT_TARGET_BP = Decimal("35")
+EXIT_STOP_BP = Decimal("-28")
+HOLD_AFTER_FILL_S = 900
+STUCK_AFTER_FILL_S = 930
 CLIENT_ORDER_PREFIX = "cfscalp_"
 ORDER_TYPE = "LIMIT"
 TIME_IN_FORCE = "GTX"
@@ -115,18 +121,22 @@ class Book:
         return (self.bid + self.ask) / Decimal("2")
 
 
+RestRole = Literal["entry", "exit"]
+
+
 @dataclass(frozen=True)
 class RestingOrder:
     client_order_id: str
     side: Side
     price: Decimal
+    role: RestRole = "entry"
 
 
 @dataclass(frozen=True)
 class JevSignal:
     side: Optional[Side]
     confidence: Decimal
-    edge_after_fees: bool
+    expected_move_bp: Decimal
     book_toxic: bool
     latency_ms: int
     cost_quote: Decimal = Decimal("0")
@@ -148,6 +158,9 @@ class CycleIntent:
     call_jev: bool = False
 
 
+from app.services.scalp_window import passes_entry_hurdle  # noqa: E402
+
+
 def decide_cycle(
     *,
     enabled: bool,
@@ -164,6 +177,10 @@ def decide_cycle(
     book: Book,
     resting: Optional[RestingOrder],
     jev: Optional[JevSignal] = None,
+    fee_bp: Decimal = Decimal("10"),
+    spread_bp: Decimal = Decimal("0"),
+    has_open_position: bool = False,
+    has_exit_resting: bool = False,
 ) -> CycleIntent:
     """Hold is the default. Live send is opt-in after every gate."""
     clipped = clip_inventory(bot_inventory=inventory_btc, free_btc=free_btc, floor_btc=floor_btc)
@@ -200,6 +217,16 @@ def decide_cycle(
         touch = post_only_price(resting.side, bid=book.bid, ask=book.ask)
         if resting.price != touch:
             cancel_stale = True
+
+    if has_open_position or has_exit_resting:
+        return CycleIntent(
+            send=False,
+            cancel_resting=cancel_stale,
+            fire_kill=False,
+            skip_reason="position_open",
+            call_jev=False,
+            clipped_inventory=clipped if inventory_changed else None,
+        )
 
     if jev_in_flight:
         return CycleIntent(
@@ -263,12 +290,12 @@ def decide_cycle(
             skip_reason="low_confidence",
             clipped_inventory=clipped if inventory_changed else None,
         )
-    if not jev.edge_after_fees:
+    if not passes_entry_hurdle(jev.expected_move_bp, fee_bp, spread_bp):
         return CycleIntent(
             send=False,
             cancel_resting=cancel_stale,
             fire_kill=False,
-            skip_reason="no_edge",
+            skip_reason="hurdle",
             clipped_inventory=clipped if inventory_changed else None,
         )
     if jev.book_toxic:
@@ -354,6 +381,109 @@ def decide_cycle(
         fire_kill=False,
         skip_reason=None,
         side=side,
+        price=price,
+        quote_qty=quote_qty,
+        quantity=quantity,
+        order_type=ORDER_TYPE,
+        time_in_force=TIME_IN_FORCE,
+        clipped_inventory=clipped if inventory_changed else None,
+    )
+
+
+def position_ret_bp(avg_entry: Decimal, mid: Decimal) -> Decimal:
+    if avg_entry <= 0 or mid <= 0:
+        return Decimal("0")
+    return (mid / avg_entry - Decimal("1")) * Decimal("10000")
+
+
+def should_post_exit(
+    *,
+    ret_bp: Decimal,
+    seconds_since_fill: float,
+) -> bool:
+    if ret_bp >= EXIT_TARGET_BP:
+        return True
+    if ret_bp <= EXIT_STOP_BP:
+        return True
+    return seconds_since_fill >= float(HOLD_AFTER_FILL_S)
+
+
+def should_mark_stuck(seconds_since_fill: float) -> bool:
+    return seconds_since_fill >= float(STUCK_AFTER_FILL_S)
+
+
+def decide_exit_cycle(
+    *,
+    enabled: bool,
+    killed: bool,
+    has_spot_key: bool,
+    inventory_btc: Decimal,
+    free_btc: Decimal,
+    floor_btc: Decimal,
+    avg_entry: Optional[Decimal],
+    book: Book,
+    resting: Optional[RestingOrder],
+    seconds_since_fill: float,
+    stuck: bool,
+) -> CycleIntent:
+    clipped = clip_inventory(bot_inventory=inventory_btc, free_btc=free_btc, floor_btc=floor_btc)
+    inventory_changed = clipped != inventory_btc
+    if killed or not enabled or not has_spot_key or clipped <= 0 or avg_entry is None:
+        cancel = resting is not None
+        return CycleIntent(
+            send=False,
+            cancel_resting=cancel,
+            fire_kill=False,
+            skip_reason="halted" if killed else "switch_off",
+            clipped_inventory=clipped if inventory_changed else None,
+        )
+    cancel_stale = False
+    if resting is not None:
+        touch = post_only_price(resting.side, bid=book.bid, ask=book.ask)
+        if resting.price != touch:
+            cancel_stale = True
+    if resting is not None:
+        return CycleIntent(
+            send=False,
+            cancel_resting=cancel_stale,
+            fire_kill=False,
+            skip_reason="exit_resting",
+            clipped_inventory=clipped if inventory_changed else None,
+        )
+    if stuck:
+        return CycleIntent(
+            send=False,
+            cancel_resting=False,
+            fire_kill=False,
+            skip_reason="stuck",
+            clipped_inventory=clipped if inventory_changed else None,
+        )
+    ret_bp = position_ret_bp(avg_entry, book.mid)
+    if not should_post_exit(ret_bp=ret_bp, seconds_since_fill=seconds_since_fill):
+        return CycleIntent(
+            send=False,
+            cancel_resting=False,
+            fire_kill=False,
+            skip_reason="hold_position",
+            clipped_inventory=clipped if inventory_changed else None,
+        )
+    price = post_only_price("SELL", bid=book.bid, ask=book.ask)
+    quantity = clipped
+    quote_qty = quantity * price
+    if quantity <= 0 or would_cross("SELL", price, bid=book.bid, ask=book.ask):
+        return CycleIntent(
+            send=False,
+            cancel_resting=cancel_stale,
+            fire_kill=False,
+            skip_reason="would_cross",
+            clipped_inventory=clipped if inventory_changed else None,
+        )
+    return CycleIntent(
+        send=True,
+        cancel_resting=False,
+        fire_kill=False,
+        skip_reason=None,
+        side="SELL",
         price=price,
         quote_qty=quote_qty,
         quantity=quantity,

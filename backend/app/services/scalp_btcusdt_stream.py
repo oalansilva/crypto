@@ -21,7 +21,8 @@ from app.services.scalp_engine import SYMBOL, Book
 logger = logging.getLogger(__name__)
 
 FRESH_AGE_MS = 500
-TRADE_WINDOW_SECONDS = 5.0
+LOOKBACK_SECONDS = 900.0
+TRADE_WINDOW_SECONDS = LOOKBACK_SECONDS
 _SYMBOL = SYMBOL.lower()
 
 
@@ -50,6 +51,12 @@ class _TouchState:
     received_at: float
 
 
+@dataclass(frozen=True)
+class SpreadSample:
+    spread_bp: Decimal
+    sampled_at: float
+
+
 class ScalpBtcusdtMemory:
     """Thread-safe in-process cache fed by a single WS per process."""
 
@@ -57,6 +64,8 @@ class ScalpBtcusdtMemory:
         self._lock = threading.Lock()
         self._touch: _TouchState | None = None
         self._trades: deque[AggTradeTick] = deque()
+        self._spread_ring: deque[SpreadSample] = deque()
+        self._last_spread_sample_at: float = 0.0
         self._ws_connected = False
         self._connect_count = 0
 
@@ -64,6 +73,8 @@ class ScalpBtcusdtMemory:
         with self._lock:
             self._touch = None
             self._trades.clear()
+            self._spread_ring.clear()
+            self._last_spread_sample_at = 0.0
             self._ws_connected = False
             self._connect_count = 0
 
@@ -95,7 +106,21 @@ class ScalpBtcusdtMemory:
                 event_time_ms=event_time_ms,
                 received_at=now,
             )
+            self._maybe_sample_spread(bid=bid, ask=ask, now=now)
         self._publish_cross_process_snapshot()
+
+    def _maybe_sample_spread(self, *, bid: Decimal, ask: Decimal, now: float) -> None:
+        if now - self._last_spread_sample_at < 1.0:
+            return
+        mid = (bid + ask) / Decimal("2")
+        if mid <= 0:
+            return
+        spread_bp = (ask - bid) / mid * Decimal("10000")
+        self._spread_ring.append(SpreadSample(spread_bp=spread_bp, sampled_at=now))
+        self._last_spread_sample_at = now
+        cutoff = now - LOOKBACK_SECONDS
+        while self._spread_ring and self._spread_ring[0].sampled_at < cutoff:
+            self._spread_ring.popleft()
 
     def ingest_agg_trade(self, payload: dict[str, Any]) -> None:
         symbol = str(payload.get("s") or "").strip().upper()
@@ -153,6 +178,11 @@ class ScalpBtcusdtMemory:
         cutoff_ms = int((time.time() - TRADE_WINDOW_SECONDS) * 1000)
         with self._lock:
             return [t for t in self._trades if t.trade_time_ms >= cutoff_ms]
+
+    def spread_samples_bp(self) -> list[Decimal]:
+        cutoff = time.time() - LOOKBACK_SECONDS
+        with self._lock:
+            return [s.spread_bp for s in self._spread_ring if s.sampled_at >= cutoff]
 
     def connection_count(self) -> int:
         with self._lock:

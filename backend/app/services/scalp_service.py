@@ -16,6 +16,10 @@ from app.models import ScalpFill, ScalpUserState, UserExchangeCredential
 from app.services.binance_spot_orders import BinanceOrderError
 from app.services.scalp_engine import (
     CROSS_REJECT_CODES,
+    ENTRY_REST_TIMEOUT_S,
+    EXIT_STOP_BP,
+    EXIT_TARGET_BP,
+    HORIZON_S,
     JEV_FLOOR_MS,
     JEV_TARGET_MS,
     SYMBOL,
@@ -27,11 +31,16 @@ from app.services.scalp_engine import (
     clip_inventory,
     compute_t,
     decide_cycle,
+    decide_exit_cycle,
     is_bot_client_order_id,
     panel_state,
     pnl_quote,
+    position_ret_bp,
+    should_mark_stuck,
     unrealized_pnl,
 )
+from app.services.scalp_jev_payload import build_jev_payload
+from app.services.scalp_window import entry_hurdle_bp, touch_metrics
 from app.services.scalp_btcusdt_snapshot_store import (
     resolve_scalp_btcusdt_book,
     resolve_scalp_btcusdt_freshness,
@@ -46,10 +55,13 @@ BOOK_UNAVAILABLE_COPY = "livro indisponível"
 BALANCE_CACHE_SECONDS = 5.0
 
 STATUS_COPY = {
-    "off": "Desligado — não envia ordem deste scalp. Inventário e P&L ficam visíveis.",
+    "off": (
+        "Desligado: não envia ordem deste scalp. Lookback últimos 15 min. "
+        "Inventário e P&L ficam visíveis."
+    ),
     "on": (
-        "Ligado — o primeiro ciclo (livro + Jev a tempo) pode enviar post-only "
-        "sem confirmar cada ordem. Operar continua ao lado."
+        "Ligado: pergunta ao Jev com o toque fresco. Lookback últimos 15 min. "
+        "Operar continua ao lado."
     ),
     "kill": "Parado por kill — sem envio. Inventário e P&L ficam visíveis. Religar é o interruptor.",
     "nokey": "Sem chave Spot em Meu Perfil — não envia. Configure a chave Spot (a mesma do Operar).",
@@ -223,7 +235,42 @@ def _resting(state: ScalpUserState) -> Optional[RestingOrder]:
     side = str(state.rest_side or "").upper()
     if not cid or side not in {"BUY", "SELL"} or state.rest_price is None:
         return None
-    return RestingOrder(client_order_id=cid, side=side, price=_dec(state.rest_price))  # type: ignore[arg-type]
+    role_raw = str(state.rest_role or "entry").lower()
+    role = "exit" if role_raw == "exit" else "entry"
+    return RestingOrder(
+        client_order_id=cid,
+        side=side,  # type: ignore[arg-type]
+        price=_dec(state.rest_price),
+        role=role,  # type: ignore[arg-type]
+    )
+
+
+def _fee_terms(_user_id: str) -> tuple[Decimal, bool]:
+    """BNB burn + free BNB; failure → 10 bp without discount."""
+    return Decimal("10"), False
+
+
+def _seconds_since(stamp: Optional[datetime], now: datetime) -> float:
+    if stamp is None:
+        return 0.0
+    return max(0.0, (now - stamp).total_seconds())
+
+
+def _maybe_cancel_entry_timeout(
+    state: ScalpUserState,
+    *,
+    cred: Optional[UserExchangeCredential],
+    exchange: ExchangePort,
+    now: datetime,
+) -> None:
+    resting = _resting(state)
+    if resting is None or resting.role != "entry" or state.rest_opened_at is None:
+        return
+    if _seconds_since(state.rest_opened_at, now) < ENTRY_REST_TIMEOUT_S:
+        return
+    _cancel_resting(state, cred=cred, exchange=exchange, all_bot=False)
+    state.rest_opened_at = None
+    state.rest_role = None
 
 
 def _elapsed_ms(state: ScalpUserState, now: datetime) -> Optional[int]:
@@ -246,16 +293,24 @@ def _apply_fill(
         if new_inv > 0:
             state.avg_entry_quote = ((avg * prev) + (price * qty)) / new_inv
         state.inventory_btc = new_inv
+        if prev <= 0 and new_inv > 0:
+            state.position_opened_at = _utcnow()
+            state.stuck = False
     else:
         prev = _dec(state.inventory_btc)
         sell_qty = min(qty, prev)
         avg = _dec(state.avg_entry_quote) if state.avg_entry_quote is not None else price
         realized = (price - avg) * sell_qty
         state.realized_pnl_quote = _dec(state.realized_pnl_quote) + realized
+        if avg > 0 and sell_qty > 0:
+            state.last_trade_bp = position_ret_bp(avg, price)
+            state.last_trade_quote = realized
         remaining = prev - sell_qty
         state.inventory_btc = remaining
         if remaining <= 0:
             state.avg_entry_quote = None
+            state.position_opened_at = None
+            state.stuck = False
     state.fees_quote = _dec(state.fees_quote) + max(Decimal("0"), fee)
 
 
@@ -286,6 +341,8 @@ def _cancel_resting(
         state.rest_client_order_id = None
         state.rest_side = None
         state.rest_price = None
+        state.rest_role = None
+        state.rest_opened_at = None
         return
     try:
         if all_bot:
@@ -301,6 +358,8 @@ def _cancel_resting(
     state.rest_client_order_id = None
     state.rest_side = None
     state.rest_price = None
+    state.rest_role = None
+    state.rest_opened_at = None
 
 
 _OPEN_ORDER_STATUSES = frozenset({"NEW", "PARTIALLY_FILLED", "PENDING_CANCEL"})
@@ -556,6 +615,25 @@ def tick_user(
             state.avg_entry_quote = None
 
     state = _sync_resting_order(db, state, cred=cred, exchange=port)
+    _maybe_cancel_entry_timeout(state, cred=cred, exchange=port, now=stamp)
+
+    resting_now = _resting(state)
+    fee_bp, bnb_fee_active = _fee_terms(str(user_id))
+    spread_bp = Decimal("0")
+    touch_row = memory.read_touch()
+    touch_age = memory.age_ms()
+    if touch_row is not None and touch_age is not None:
+        bid, ask, bq, aq = touch_row
+        spread_bp = touch_metrics(
+            bid=bid, ask=ask, bid_qty=bq, ask_qty=aq, age_ms=touch_age
+        ).spread_bp
+
+    inventory_live = _dec(state.inventory_btc)
+    has_open_position = inventory_live > Decimal("0.00000001")
+    has_exit_resting = resting_now is not None and resting_now.role == "exit"
+    if has_open_position and state.position_opened_at is not None:
+        if should_mark_stuck(_seconds_since(state.position_opened_at, stamp)):
+            state.stuck = True
 
     day_pnl = _refresh_day_pnl(state, mid=book.mid)
     live_jev = bool(jev_api_key()) or jev_fn is not None or jev_available()
@@ -568,22 +646,41 @@ def tick_user(
     if state.jev_in_flight and elapsed is not None and elapsed > max(JEV_FLOOR_MS * 5, 2000):
         state.jev_in_flight = False
 
-    intent = decide_cycle(
-        enabled=bool(state.enabled),
-        killed=bool(state.killed),
-        has_spot_key=key_ok,
-        jev_available=live_jev,
-        jev_in_flight=bool(state.jev_in_flight),
-        last_jev_elapsed_ms=elapsed,
-        inventory_btc=_dec(state.inventory_btc),
-        floor_btc=_dec(state.floor_btc),
-        free_usdt=_dec(free_usdt),
-        free_btc=_dec(free_btc),
-        day_pnl=day_pnl,
-        book=book,
-        resting=_resting(state),
-        jev=None,
-    )
+    if has_open_position:
+        intent = decide_exit_cycle(
+            enabled=bool(state.enabled),
+            killed=bool(state.killed),
+            has_spot_key=key_ok,
+            inventory_btc=inventory_live,
+            free_btc=_dec(free_btc),
+            floor_btc=_dec(state.floor_btc),
+            avg_entry=_dec(state.avg_entry_quote) if state.avg_entry_quote is not None else None,
+            book=book,
+            resting=resting_now if resting_now and resting_now.role == "exit" else None,
+            seconds_since_fill=_seconds_since(state.position_opened_at, stamp),
+            stuck=bool(state.stuck),
+        )
+    else:
+        intent = decide_cycle(
+            enabled=bool(state.enabled),
+            killed=bool(state.killed),
+            has_spot_key=key_ok,
+            jev_available=live_jev,
+            jev_in_flight=bool(state.jev_in_flight),
+            last_jev_elapsed_ms=elapsed,
+            inventory_btc=inventory_live,
+            floor_btc=_dec(state.floor_btc),
+            free_usdt=_dec(free_usdt),
+            free_btc=_dec(free_btc),
+            day_pnl=day_pnl,
+            book=book,
+            resting=resting_now,
+            jev=None,
+            fee_bp=fee_bp,
+            spread_bp=spread_bp,
+            has_open_position=False,
+            has_exit_resting=has_exit_resting,
+        )
 
     if intent.fire_kill:
         state.killed = True
@@ -613,81 +710,129 @@ def tick_user(
             skipped=intent.skip_reason,
         )
 
-    if intent.skip_reason == "jev_unavailable" or not live_jev:
-        state.updated_at = stamp
+    if has_open_position:
+        if not intent.send:
+            state.updated_at = stamp
+            db.add(state)
+            db.commit()
+            return CycleResult(
+                user_id=str(user_id),
+                intent=intent,
+                sent=False,
+                killed=False,
+                skipped=intent.skip_reason,
+            )
+    else:
+        if intent.skip_reason == "jev_unavailable" or not live_jev:
+            state.updated_at = stamp
+            db.add(state)
+            db.commit()
+            return CycleResult(
+                user_id=str(user_id),
+                intent=intent,
+                sent=False,
+                killed=False,
+                skipped="jev_unavailable",
+            )
+
+        if intent.skip_reason in {"jev_in_flight", "jev_floor", "jev_target", "position_open"}:
+            state.updated_at = stamp
+            db.add(state)
+            db.commit()
+            return CycleResult(
+                user_id=str(user_id),
+                intent=intent,
+                sent=False,
+                killed=False,
+                skipped=intent.skip_reason,
+            )
+
+        if not intent.call_jev:
+            state.updated_at = stamp
+            db.add(state)
+            db.commit()
+            return CycleResult(
+                user_id=str(user_id),
+                intent=intent,
+                sent=False,
+                killed=False,
+                skipped=intent.skip_reason,
+            )
+
+        jev_body, window_skip = build_jev_payload(
+            inventory_btc=inventory_live,
+            free_usdt=_dec(free_usdt),
+            fee_bp=fee_bp,
+            bnb_fee_active=bnb_fee_active,
+            resting=resting_now,
+            rest_opened_at=state.rest_opened_at,
+            now=stamp,
+            memory=memory,
+        )
+        if window_skip:
+            state.updated_at = stamp
+            db.add(state)
+            db.commit()
+            return CycleResult(
+                user_id=str(user_id),
+                intent=intent,
+                sent=False,
+                killed=False,
+                skipped=window_skip,
+            )
+
+        caller = jev_fn or request_jev
+        state.jev_in_flight = True
         db.add(state)
         db.commit()
-        return CycleResult(
-            user_id=str(user_id), intent=intent, sent=False, killed=False, skipped="jev_unavailable"
-        )
+        try:
+            signal = caller(jev_body or {})
+        finally:
+            state.jev_in_flight = False
+            state.last_jev_at = stamp
+            state.last_jev_latency_ms = None
 
-    if intent.skip_reason in {"jev_in_flight", "jev_floor", "jev_target"}:
-        state.updated_at = stamp
-        db.add(state)
-        db.commit()
-        return CycleResult(
-            user_id=str(user_id),
-            intent=intent,
-            sent=False,
-            killed=False,
-            skipped=intent.skip_reason,
-        )
+        state.last_jev_latency_ms = int(signal.latency_ms)
+        state.jev_cost_quote = _dec(state.jev_cost_quote) + _dec(signal.cost_quote)
+        state.calibration_signals = int(state.calibration_signals or 0) + 1
 
-    caller = jev_fn or request_jev
-    state.jev_in_flight = True
-    db.add(state)
-    db.commit()
-    try:
-        signal = caller(
-            {
-                "bid": str(book.bid),
-                "ask": str(book.ask),
-                "inventory_btc": str(state.inventory_btc),
-                "t": str(compute_t(_dec(free_usdt))),
-            }
-        )
-    finally:
-        state.jev_in_flight = False
-        state.last_jev_at = stamp
-        state.last_jev_latency_ms = None
+        enabled_now, killed_now = _live_switch_flags(db, str(user_id))
+        state.enabled = enabled_now
+        state.killed = killed_now
+        if not enabled_now or killed_now:
+            skip = "halted" if killed_now else "switch_off"
+            _cancel_resting(state, cred=cred, exchange=port, all_bot=True)
+            state.updated_at = stamp
+            db.add(state)
+            db.commit()
+            return CycleResult(
+                user_id=str(user_id),
+                intent=intent,
+                sent=False,
+                killed=killed_now,
+                skipped=skip,
+            )
 
-    state.last_jev_latency_ms = int(signal.latency_ms)
-    state.jev_cost_quote = _dec(state.jev_cost_quote) + _dec(signal.cost_quote)
-    state.calibration_signals = int(state.calibration_signals or 0) + 1
-
-    enabled_now, killed_now = _live_switch_flags(db, str(user_id))
-    state.enabled = enabled_now
-    state.killed = killed_now
-    if not enabled_now or killed_now:
-        skip = "halted" if killed_now else "switch_off"
-        _cancel_resting(state, cred=cred, exchange=port, all_bot=True)
-        state.updated_at = stamp
-        db.add(state)
-        db.commit()
-        return CycleResult(
-            user_id=str(user_id),
-            intent=intent,
-            sent=False,
+        intent = decide_cycle(
+            enabled=enabled_now,
             killed=killed_now,
-            skipped=skip,
+            has_spot_key=key_ok,
+            jev_available=True,
+            jev_in_flight=False,
+            last_jev_elapsed_ms=max(JEV_TARGET_MS, int(signal.latency_ms)),
+            inventory_btc=_dec(state.inventory_btc),
+            floor_btc=_dec(state.floor_btc),
+            free_usdt=_dec(free_usdt),
+            free_btc=_dec(free_btc),
+            day_pnl=_refresh_day_pnl(state, mid=book.mid),
+            book=book,
+            resting=_resting(state),
+            jev=signal,
+            fee_bp=fee_bp,
+            spread_bp=spread_bp,
+            has_open_position=False,
+            has_exit_resting=has_exit_resting,
         )
-
-    intent = decide_cycle(
-        enabled=enabled_now,
-        killed=killed_now,
-        has_spot_key=key_ok,
-        jev_available=True,
-        jev_in_flight=False,
-        last_jev_elapsed_ms=max(JEV_TARGET_MS, int(signal.latency_ms)),
-        inventory_btc=_dec(state.inventory_btc),
-        floor_btc=_dec(state.floor_btc),
-        free_usdt=_dec(free_usdt),
-        free_btc=_dec(free_btc),
-        day_pnl=_refresh_day_pnl(state, mid=book.mid),
-        book=book,
-        resting=_resting(state),
-        jev=signal,
-    )
     sent = False
     rest_open = bool(state.rest_client_order_id)
     if (
@@ -696,7 +841,7 @@ def tick_user(
         and intent.price is not None
         and intent.quantity is not None
         and cred is not None
-        and live_send
+        and (live_send or has_open_position)
         and not rest_open
     ):
         if book_from_memory:
@@ -774,6 +919,8 @@ def tick_user(
                 state.rest_client_order_id = client_order_id
                 state.rest_side = intent.side
                 state.rest_price = intent.price
+                state.rest_opened_at = stamp
+                state.rest_role = "exit" if intent.side == "SELL" else "entry"
             else:
                 state.rest_client_order_id = None
                 state.rest_side = None
@@ -901,6 +1048,35 @@ def status_payload(
         )
         if live_book is not None:
             mark = live_book.mid
+    fee_bp, bnb_fee_active = _fee_terms(str(user_id))
+    spread_bp = Decimal("0.1")
+    if mark > 0 and visual == "on":
+        touch_row = memory.read_touch()
+        age = memory.age_ms()
+        if touch_row and age is not None:
+            bid, ask, bq, aq = touch_row
+            spread_bp = touch_metrics(
+                bid=bid, ask=ask, bid_qty=bq, ask_qty=aq, age_ms=age
+            ).spread_bp
+    hurdle_bp = entry_hurdle_bp(fee_bp, spread_bp)
+    position = None
+    stuck = False
+    if state is not None:
+        stuck = bool(state.stuck)
+        if inventory > 0 and state.avg_entry_quote is not None:
+            position = {
+                "entry_quote": str(state.avg_entry_quote),
+                "age_s": int(_seconds_since(state.position_opened_at, _utcnow())),
+                "target_bp": str(EXIT_TARGET_BP),
+                "stop_bp": str(EXIT_STOP_BP),
+            }
+    if visual == "on" and key_ok and book_available:
+        status_text = (
+            f"Ligado: pergunta ao Jev com o toque fresco. Lookback últimos 15 min. "
+            f"Hurdle {hurdle_bp.quantize(Decimal('0.1'))} bp com taxa "
+            f"{'7,5' if bnb_fee_active else '10'} bp. Alvo 35 bp. Stop −28 bp depois do fill. "
+            "Operar continua ao lado."
+        )
     return {
         "symbol": SYMBOL,
         "state": visual,
@@ -909,6 +1085,8 @@ def status_payload(
         "jev_unavailable": visual == "on" and not jev_live,
         "book_available": book_available,
         "book_age_ms": book_age_ms if visual == "on" else memory.age_ms(),
+        "horizon_s": HORIZON_S,
+        "lookback_label": "últimos 15 min",
         "t_quote": str(t),
         "clip_quote": "10",
         "inventory_btc": str(inventory),
@@ -918,4 +1096,13 @@ def status_payload(
         "kill_banner": visual == "kill",
         "inventory_clipped": bool(state.inventory_clipped) if state is not None else False,
         "enabled": enabled and not killed and key_ok,
+        "fee_bp": str(fee_bp),
+        "bnb_fee_active": bnb_fee_active,
+        "hurdle_bp": str(hurdle_bp),
+        "exit_target_bp": str(EXIT_TARGET_BP),
+        "exit_stop_bp": str(EXIT_STOP_BP),
+        "position": position,
+        "last_trade_bp": str(state.last_trade_bp) if state and state.last_trade_bp is not None else None,
+        "last_trade_quote": str(state.last_trade_quote) if state and state.last_trade_quote is not None else None,
+        "stuck": stuck,
     }
