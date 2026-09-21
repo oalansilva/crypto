@@ -190,8 +190,8 @@ Pai: `pedir_review` (Code Review), materializa o intervalo em `.cursor/tmp/revie
 
 Antes de spawnar `diff-reviewer` / `code-reviewer`, o **pai** materializa o intervalo (nunca o filho):
 
-- Pré-commit: `git diff HEAD` (staged+unstaged vs HEAD) **mais** untracked de `git ls-files --others --exclude-standard` como hunks de ficheiro novo.
-- Fecho: `git diff origin/develop...HEAD` (`integration_branch` do overlay).
+- Pré-commit: `python scripts/process-fsm/materialize_review_diff.py --mode pre-commit` (`git diff HEAD` + untracked de `git ls-files --others --exclude-standard`, **excluindo** `.impeccable/critique/` JSON/MD/PY/PNG — artefacto de processo, não produto).
+- Fecho: `python scripts/process-fsm/materialize_review_diff.py --mode closing` (`git diff origin/develop...HEAD`, mesma exclusão de `.impeccable/critique/`).
 - Grava `.cursor/tmp/review-diff.patch` (já gitignored via `.cursor/*`).
 - No spawn: linha `review_diff_path:` apontando esse ficheiro. MAY colar bytes sob `## Diff`.
 - MAY spawnar como Task `generalPurpose` (prompt = corpo do agent file) **ou** como `subagent_type` nomeado `diff-reviewer` / `code-reviewer`. O matcher do destape cobre os dois.
