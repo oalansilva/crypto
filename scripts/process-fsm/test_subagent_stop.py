@@ -426,11 +426,40 @@ def test_skill_s1_parent_materializes_diff() -> None:
     assert "MAY spawnar" in text
     assert "subagent_type` nomeado" in text
     assert ".cursor/tmp/review-diff.patch" in text
+    assert "materialize_review_diff.py" in text
+    assert ".impeccable/critique/" in text
     assert "git diff HEAD" in text
     assert "git ls-files --others --exclude-standard" in text
     assert "git diff origin/develop...HEAD" in text
     assert "MUST NOT pedir git ao filho" in text
     assert "v1.1.16" in text
+
+
+def test_materialize_review_diff_excludes_impeccable_critique(tmp_path: Path) -> None:
+    from materialize_review_diff import is_critique_artifact, materialize
+
+    repo = tmp_path
+    critique = repo / ".impeccable" / "critique" / "snap.md"
+    critique.parent.mkdir(parents=True)
+    critique.write_text("design snapshot\n", encoding="utf-8")
+    product = repo / "backend" / "app.py"
+    product.parent.mkdir(parents=True)
+    product.write_text("print('ok')\n", encoding="utf-8")
+
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "add", "backend/app.py"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e.com", "-c", "user.name=t", "commit", "-m", "base"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    product.write_text("print('changed')\n", encoding="utf-8")
+
+    patch = materialize(repo, "pre-commit", "develop")
+    assert "backend/app.py" in patch or "app.py" in patch
+    assert "design snapshot" not in patch
+    assert is_critique_artifact(".impeccable/critique/snap.md")
 
 
 def test_skill_s2_sidecar_and_order() -> None:
