@@ -110,7 +110,7 @@ export default function ProfilePage() {
             </div>
             <h1 className="section-title mt-2">Meu Perfil</h1>
             <p className="section-copy mt-2">
-              Dados da conta e acesso à API da Binance em um só lugar: leitura para Home/Carteira; Spot Trade (sem saque) opcional para Operar no Monitor.
+              Dados da conta e acesso à API da Binance em um só lugar: leitura para Home/Carteira; Spot Trade (sem saque) opcional para Operar no Monitor. A mesma chave Spot também alimenta o scalp BTCUSDT se você ligar o interruptor no Monitor.
             </p>
           </div>
         </div>

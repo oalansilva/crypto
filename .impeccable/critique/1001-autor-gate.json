@@ -1,0 +1,538 @@
+{
+  "pass": true,
+  "viewports": [
+    {
+      "width": 1280,
+      "height": 800,
+      "prefix": "1001-autor-desktop-1280x800"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "prefix": "1001-autor-mobile-390x844"
+    }
+  ],
+  "asserts": [
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state off"
+    },
+    {
+      "ok": true,
+      "msg": "label Desligado"
+    },
+    {
+      "ok": true,
+      "msg": "status desligado"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state on"
+    },
+    {
+      "ok": true,
+      "msg": "label Ligado"
+    },
+    {
+      "ok": true,
+      "msg": "status ligado"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state kill"
+    },
+    {
+      "ok": true,
+      "msg": "kill banner"
+    },
+    {
+      "ok": true,
+      "msg": "pnl visible negative −US$ 2,00"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state on"
+    },
+    {
+      "ok": true,
+      "msg": "label Ligado"
+    },
+    {
+      "ok": true,
+      "msg": "status ligado"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state off"
+    },
+    {
+      "ok": true,
+      "msg": "label Desligado"
+    },
+    {
+      "ok": true,
+      "msg": "status desligado"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state off"
+    },
+    {
+      "ok": true,
+      "msg": "label Desligado"
+    },
+    {
+      "ok": true,
+      "msg": "status desligado"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state on"
+    },
+    {
+      "ok": true,
+      "msg": "label Ligado"
+    },
+    {
+      "ok": true,
+      "msg": "status ligado"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state kill"
+    },
+    {
+      "ok": true,
+      "msg": "kill banner"
+    },
+    {
+      "ok": true,
+      "msg": "pnl visible negative −US$ 2,00"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state on"
+    },
+    {
+      "ok": true,
+      "msg": "label Ligado"
+    },
+    {
+      "ok": true,
+      "msg": "status ligado"
+    },
+    {
+      "ok": true,
+      "msg": "no banned copy"
+    },
+    {
+      "ok": true,
+      "msg": "table.signals"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Status"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Preço"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Distância"
+    },
+    {
+      "ok": true,
+      "msg": "landmark 7d"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Risco até stop"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Tags"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Operar"
+    },
+    {
+      "ok": true,
+      "msg": "landmark Par / Estratégia"
+    },
+    {
+      "ok": true,
+      "msg": "state off"
+    },
+    {
+      "ok": true,
+      "msg": "label Desligado"
+    },
+    {
+      "ok": true,
+      "msg": "status desligado"
+    }
+  ],
+  "console": []
+}

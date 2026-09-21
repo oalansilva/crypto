@@ -16,6 +16,7 @@ import {
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { ChartModal } from '@/components/monitor/ChartModal';
 import { SpotMarketTradePanel } from '@/components/monitor/SpotMarketTradePanel';
+import { ScalpModule } from '@/components/monitor/ScalpModule';
 import { Button } from '@/components/ui/Button';
 import {
     ChevronRight,
@@ -1170,6 +1171,8 @@ export const MonitorStatusTab: React.FC = () => {
                             ) : null}
                         </div>
                     </header>
+
+                    <ScalpModule />
 
                     <div className="kpis" aria-busy={kpiPending}>
                         <div className="kpi">

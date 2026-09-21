@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/use-toast'
 
 const BINANCE_API_KEY_HELP =
-  'Use uma API Key da Binance (leitura para Carteira; Spot Trading para proteger stop ou operar no Monitor). Não use e-mail ou senha.'
+  'Use uma API Key da Binance (leitura para Carteira; Spot Trading para proteger stop, Operar no Monitor, e o scalp BTCUSDT se você ligar). Não use e-mail ou senha.'
 const BINANCE_API_SECRET_HELP =
   'Use o API Secret da mesma chave. O Cripto Farol não pede sua senha da Binance.'
 
@@ -175,7 +175,8 @@ export function BinanceCredentialsForm({
           <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
             Chave API vinculada à sua conta. Home e Carteira precisam só de leitura. Para usar{' '}
             <span className="text-[var(--text-primary)]">Proteger stop ou comprar/vender</span> no Monitor, habilite também{' '}
-            <span className="text-[var(--text-primary)]">Spot Trading</span> (sem withdraw). Mantenha IP whitelist
+            <span className="text-[var(--text-primary)]">Spot Trading</span> (sem withdraw). A mesma chave Spot também
+            alimenta o scalp BTCUSDT se você ligar o interruptor no Monitor. Mantenha IP whitelist
             na Binance.
           </p>
         </div>
