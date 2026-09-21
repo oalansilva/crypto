@@ -71,6 +71,7 @@ class ScalpBtcusdtMemory:
             self._ws_connected = connected
             if not connected:
                 self._touch = None
+        self._publish_cross_process_snapshot()
 
     def ingest_book_ticker(self, payload: dict[str, Any]) -> None:
         symbol = str(payload.get("s") or "").strip().upper()
@@ -93,6 +94,7 @@ class ScalpBtcusdtMemory:
                 event_time_ms=event_time_ms,
                 received_at=now,
             )
+        self._publish_cross_process_snapshot()
 
     def ingest_agg_trade(self, payload: dict[str, Any]) -> None:
         symbol = str(payload.get("s") or "").strip().upper()
@@ -158,6 +160,22 @@ class ScalpBtcusdtMemory:
     def record_connect(self) -> None:
         with self._lock:
             self._connect_count += 1
+
+    def _publish_cross_process_snapshot(self) -> None:
+        from app.services.scalp_btcusdt_snapshot_store import publish_scalp_btcusdt_snapshot
+
+        with self._lock:
+            touch = self._touch
+            ws_connected = self._ws_connected
+        received_at = touch.received_at if touch is not None else None
+        bid = str(touch.bid) if touch is not None else None
+        ask = str(touch.ask) if touch is not None else None
+        publish_scalp_btcusdt_snapshot(
+            ws_connected=ws_connected,
+            received_at=received_at,
+            bid=bid,
+            ask=ask,
+        )
 
 
 _memory = ScalpBtcusdtMemory()
