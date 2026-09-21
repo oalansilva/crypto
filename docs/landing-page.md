@@ -60,7 +60,7 @@ Link ancora: **Como funciona ↓**
 - Backtest dos ativos usando todo o periodo disponivel na Binance.
 - Beta gratuito nos primeiros 6 meses para os participantes iniciais.
 - Comparacao de estrategias com metricas: Sharpe, Trades, Win%, Return, Max DD, PF, SQN, Max L e ATR.
-- Conexao com carteira Binance para acompanhar saldos e resultados (leitura); com permissao Spot Trade (sem saque, opcional) permite enviar comprar / stop / vender Spot no Farol apos confirmacao — nunca saque, nao e bot 24/7.
+- Conexao com carteira Binance para acompanhar saldos e resultados (leitura); com permissao Spot Trade (sem saque, opcional) permite enviar comprar / stop / vender Spot no Farol apos confirmacao no Operar — nunca saque. Nao opera sozinho por omissao. Ha um scalp direcional BTCUSDT que o utilizador pode ligar no Monitor (default desligado; ligado, envia limitadoras post-only sem confirmar cada ordem, ate desligar ou o kill).
 - As metricas devem ter explicacao via hover/tooltips quando exibidas como chips.
 
 ### Dois Sinais
@@ -72,12 +72,14 @@ Link ancora: **Como funciona ↓**
 
 - Leitura objetiva em linguagem simples.
 - Menos complexidade para nao depender de interpretacao de grafico ou indicador tecnico.
-- API Binance com leitura para acompanhar carteira e Home; com permissao Spot Trade (sem saque, opcional) e possivel enviar ordens Spot no Farol apos confirmacao. O Cripto Farol nunca pede sua senha e nunca faz saque.
+- API Binance com leitura para acompanhar carteira e Home; com permissao Spot Trade (sem saque, opcional) o Operar confirma cada clique. Se ligar o scalp BTCUSDT no Monitor, esse loop envia limitadoras post-only sem confirmar cada ordem, ate desligar ou o kill. O Cripto Farol nunca pede sua senha e nunca faz saque.
 
 ### Prova Social E FAQ
 
 - Prova social segue a copy enviada em `refazer.txt` ate haver depoimentos reais definitivos.
 - FAQ deve responder: necessidade de saber operar, se e robo, acesso ao dinheiro, motivo dos 6 meses gratis, pos-beta e exchanges suportadas.
+- FAQ do robo: nao opera sozinho por omissao (default desligado; Operar confirma cada clique); se ligar o scalp BTCUSDT no Monitor, envia post-only sem confirmar cada ordem ate desligar ou o kill. Nunca saque. Nao e formador de mercado nem estrategia lucrativa. Nao afirmar «nao e bot 24/7» como absoluto.
+- FAQ do dinheiro: leitura para acompanhar; Spot opcional para o Operar (com confirmacao) e, se ligar, o scalp no Monitor; nunca senha, nunca saque.
 
 ### Formulario
 

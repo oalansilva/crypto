@@ -1,0 +1,395 @@
+{
+  "pass": true,
+  "asserts": [
+    {
+      "ok": true,
+      "msg": "live /monitor probe",
+      "extra": {
+        "final_url": "https://dev.criptofarol.com.br/login",
+        "title": "frontend",
+        "h1": "Bem-vindo de volta"
+      }
+    },
+    {
+      "ok": true,
+      "msg": "desktop title='Monitor de sinais — Cripto Farol'"
+    },
+    {
+      "ok": true,
+      "msg": "desktop table.signals count=2"
+    },
+    {
+      "ok": true,
+      "msg": "desktop landmark Status count=2"
+    },
+    {
+      "ok": true,
+      "msg": "desktop landmark Preço count=2"
+    },
+    {
+      "ok": true,
+      "msg": "desktop landmark Distância count=2"
+    },
+    {
+      "ok": true,
+      "msg": "desktop landmark Risco até stop count=2"
+    },
+    {
+      "ok": true,
+      "msg": "desktop landmark Tags count=2"
+    },
+    {
+      "ok": true,
+      "msg": "desktop landmark Operar count=6"
+    },
+    {
+      "ok": true,
+      "msg": "desktop landmark Par / Estratégia count=2"
+    },
+    {
+      "ok": true,
+      "msg": "desktop data-landmark=7d count=1 text='GRÁFICO'"
+    },
+    {
+      "ok": true,
+      "msg": "desktop Operar control present"
+    },
+    {
+      "ok": true,
+      "msg": "desktop one scalp-module"
+    },
+    {
+      "ok": true,
+      "msg": "desktop scalp above KPIs",
+      "extra": {
+        "scalp_y": 220,
+        "kpi_y": 564.5
+      }
+    },
+    {
+      "ok": true,
+      "msg": "desktop no ANTES/DEPOIS visible"
+    },
+    {
+      "ok": true,
+      "msg": "desktop no Antes/Depois buttons"
+    },
+    {
+      "ok": true,
+      "msg": "desktop nav Monitor active"
+    },
+    {
+      "ok": true,
+      "msg": "desktop role=switch"
+    },
+    {
+      "ok": true,
+      "msg": "desktop aria-labelledby scalp-title"
+    },
+    {
+      "ok": true,
+      "msg": "desktop named Scalp BTCUSDT"
+    },
+    {
+      "ok": true,
+      "msg": "desktop switch min-height",
+      "extra": {
+        "x": 1148.875,
+        "y": 235,
+        "width": 92.125,
+        "height": 44
+      }
+    },
+    {
+      "ok": true,
+      "msg": "desktop switch in tab order"
+    },
+    {
+      "ok": true,
+      "msg": "desktop default off"
+    },
+    {
+      "ok": true,
+      "msg": "desktop aria-checked false"
+    },
+    {
+      "ok": true,
+      "msg": "desktop label Desligado"
+    },
+    {
+      "ok": true,
+      "msg": "desktop status desligado"
+    },
+    {
+      "ok": true,
+      "msg": "desktop index no banned product copy"
+    },
+    {
+      "ok": true,
+      "msg": "desktop module not lab"
+    },
+    {
+      "ok": true,
+      "msg": "desktop nunca saque"
+    },
+    {
+      "ok": true,
+      "msg": "desktop Meu Perfil mentioned"
+    },
+    {
+      "ok": true,
+      "msg": "desktop calibração slot visible"
+    },
+    {
+      "ok": true,
+      "msg": "desktop switch focusable"
+    },
+    {
+      "ok": true,
+      "msg": "desktop Space toggles on"
+    },
+    {
+      "ok": true,
+      "msg": "desktop aria-checked true"
+    },
+    {
+      "ok": true,
+      "msg": "desktop label Ligado"
+    },
+    {
+      "ok": true,
+      "msg": "desktop status ligado"
+    },
+    {
+      "ok": true,
+      "msg": "desktop pnl negative visible"
+    },
+    {
+      "ok": true,
+      "msg": "desktop pnl has neg class"
+    },
+    {
+      "ok": true,
+      "msg": "desktop calibração filled when on"
+    },
+    {
+      "ok": true,
+      "msg": "desktop Operar still after on"
+    },
+    {
+      "ok": true,
+      "msg": "desktop Operar not all-disabled (no mutex)"
+    },
+    {
+      "ok": true,
+      "msg": "desktop state kill"
+    },
+    {
+      "ok": true,
+      "msg": "desktop kill banner visible"
+    },
+    {
+      "ok": true,
+      "msg": "desktop kill banner copy"
+    },
+    {
+      "ok": true,
+      "msg": "desktop kill switch acts off"
+    },
+    {
+      "ok": true,
+      "msg": "desktop pnl −US$ 2,00"
+    },
+    {
+      "ok": true,
+      "msg": "desktop status has no aria-live"
+    },
+    {
+      "ok": true,
+      "msg": "desktop kill has no aria-live"
+    },
+    {
+      "ok": true,
+      "msg": "desktop kill has no role=status/alert"
+    },
+    {
+      "ok": true,
+      "msg": "desktop religar after kill via same switch"
+    },
+    {
+      "ok": true,
+      "msg": "desktop desligar"
+    },
+    {
+      "ok": true,
+      "msg": "desktop nokey state"
+    },
+    {
+      "ok": true,
+      "msg": "desktop nokey switch disabled"
+    },
+    {
+      "ok": true,
+      "msg": "desktop nokey points Meu Perfil"
+    },
+    {
+      "ok": true,
+      "msg": "desktop nokey não envia"
+    },
+    {
+      "ok": true,
+      "msg": "desktop nokey cannot turn on"
+    },
+    {
+      "ok": true,
+      "msg": "desktop nokey stays unchecked"
+    },
+    {
+      "ok": true,
+      "msg": "desktop restore off"
+    },
+    {
+      "ok": true,
+      "msg": "mobile default off"
+    },
+    {
+      "ok": true,
+      "msg": "mobile cards visible"
+    },
+    {
+      "ok": true,
+      "msg": "mobile table hidden"
+    },
+    {
+      "ok": true,
+      "msg": "mobile Operar on cards"
+    },
+    {
+      "ok": true,
+      "msg": "mobile switch size",
+      "extra": {
+        "x": 31,
+        "y": 358.75,
+        "width": 328,
+        "height": 44
+      }
+    },
+    {
+      "ok": true,
+      "msg": "mobile on"
+    },
+    {
+      "ok": true,
+      "msg": "mobile pnl neg"
+    },
+    {
+      "ok": true,
+      "msg": "mobile Operar after on"
+    },
+    {
+      "ok": true,
+      "msg": "mobile kill banner"
+    },
+    {
+      "ok": true,
+      "msg": "mobile pnl kill"
+    },
+    {
+      "ok": true,
+      "msg": "mobile nokey disabled"
+    },
+    {
+      "ok": true,
+      "msg": "mobile nokey Meu Perfil"
+    },
+    {
+      "ok": true,
+      "msg": "landing no absolute não é bot 24/7"
+    },
+    {
+      "ok": true,
+      "msg": "landing admite omissão"
+    },
+    {
+      "ok": true,
+      "msg": "landing admits scalp BTCUSDT"
+    },
+    {
+      "ok": true,
+      "msg": "landing admits unconfirmed post-only"
+    },
+    {
+      "ok": true,
+      "msg": "landing never withdraw"
+    },
+    {
+      "ok": true,
+      "msg": "landing residual quem decide é sempre você PRESENT"
+    },
+    {
+      "ok": true,
+      "msg": "landing trust heading residual"
+    },
+    {
+      "ok": true,
+      "msg": "landing faq-section"
+    },
+    {
+      "ok": true,
+      "msg": "landing CTA"
+    },
+    {
+      "ok": true,
+      "msg": "landing hero landmark"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda no absolute bot 24/7"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda admits scalp"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda admits Operar"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda never saque"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda OnboardingGuide present"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda OnboardingGuide does not name Operar (Q7=B)"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda OnboardingGuide does not name scalp"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda intro mentions carteira"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda intro omits Spot/scalp distinction"
+    },
+    {
+      "ok": true,
+      "msg": "ajuda grid omits while-on unconfirmed post-only"
+    }
+  ],
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    }
+  ],
+  "pageerrors": [],
+  "n_ok": 90,
+  "n": 90
+}

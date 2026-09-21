@@ -570,6 +570,15 @@
       "evidence": "workflow schema case uses postgres_isolation/unit_workflow_database_url; URL/worker cases use mocks"
     },
     {
+      "file": "backend/tests/unit/test_scalp_direcional_jev.py",
+      "protected_behavior": "scalp direcional JEV post-only, switch isolation and kill",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; engine/JEV cases use FakeExchange"
+    },
+    {
       "file": "backend/tests/unit/test_sentiment_binance_validation.py",
       "protected_behavior": "sentiment, Binance, workflow validation",
       "production_reachability": "reachable",

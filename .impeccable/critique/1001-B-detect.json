@@ -1,0 +1,50 @@
+{
+  "files": {
+    "index.html": {
+      "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/frontend/public/prototypes/card-1001-scalp-direcional-jev/index.html",
+      "exit": 0,
+      "findings": [],
+      "count": 0
+    },
+    "landing.html": {
+      "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/frontend/public/prototypes/card-1001-scalp-direcional-jev/landing.html",
+      "exit": 2,
+      "findings": [
+        {
+          "antipattern": "overused-font",
+          "name": "Overused font",
+          "description": "Inter, Roboto, Fraunces, Geist, Plus Jakarta Sans, and Space Grotesk are used on so many sites they no longer feel distinctive. Each new wave of AI-generated UIs converges on the same handful of faces. Choose a face that gives your interface personality.",
+          "severity": "warning",
+          "category": "slop",
+          "file": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/frontend/public/prototypes/card-1001-scalp-direcional-jev/landing.html",
+          "line": 15,
+          "snippet": "Google Fonts: inter"
+        }
+      ],
+      "count": 1
+    },
+    "ajuda.html": {
+      "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/frontend/public/prototypes/card-1001-scalp-direcional-jev/ajuda.html",
+      "exit": 2,
+      "findings": [
+        {
+          "antipattern": "overused-font",
+          "name": "Overused font",
+          "description": "Inter, Roboto, Fraunces, Geist, Plus Jakarta Sans, and Space Grotesk are used on so many sites they no longer feel distinctive. Each new wave of AI-generated UIs converges on the same handful of faces. Choose a face that gives your interface personality.",
+          "severity": "warning",
+          "category": "slop",
+          "file": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/frontend/public/prototypes/card-1001-scalp-direcional-jev/ajuda.html",
+          "line": 32,
+          "snippet": "font-family: 'Inter"
+        }
+      ],
+      "count": 1
+    }
+  },
+  "summary": {
+    "total_findings": 2,
+    "index_exit": 0,
+    "landing_exit": 2,
+    "ajuda_exit": 2
+  }
+}

@@ -39,6 +39,7 @@ from app.routes.user_profile import router as user_profile_router
 from app.routes.user_credentials import router as user_credentials_router
 from app.routes.monitor_spot_stop import router as monitor_spot_stop_router
 from app.routes.monitor_spot_market import router as monitor_spot_market_router
+from app.routes.scalp import router as scalp_router
 from app.routes.system_preferences import router as system_preferences_router
 from app.routes.retrospectives import router as retrospectives_router
 from app.routes.admin_users import router as admin_users_router
@@ -67,6 +68,7 @@ from app.services.runtime_status import (
     should_start_binance_realtime_connector,
     should_start_ohlcv_ingestion,
 )
+from app.services.scalp_loop import start_scalp_loop, stop_scalp_loop
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -134,6 +136,11 @@ async def _start_noncritical_services() -> None:
             logger.exception("Failed to start OHLCV backfill scheduler")
     else:
         logger.info("OHLCV backfill scheduler disabled by runtime flags")
+
+    try:
+        await start_scalp_loop()
+    except Exception:
+        logger.exception("Failed to start scalp BTCUSDT loop")
 
 
 @asynccontextmanager
@@ -236,6 +243,7 @@ async def lifespan(app: FastAPI):
         with suppress(asyncio.CancelledError):
             await startup_task
 
+    await stop_scalp_loop()
     await asyncio.to_thread(stop_ohlcv_ingestion)
     await stop_binance_realtime_connector()
     await stop_signal_feed_snapshot_worker()
@@ -318,6 +326,7 @@ app.include_router(telegram_webhook_router)
 app.include_router(user_credentials_router)
 app.include_router(monitor_spot_stop_router)
 app.include_router(monitor_spot_market_router)
+app.include_router(scalp_router)
 app.include_router(system_preferences_router)
 app.include_router(retrospectives_router)
 app.include_router(admin_users_router)

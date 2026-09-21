@@ -438,6 +438,55 @@ class MonitorSpotOrderRequest(Base):
     )
 
 
+class ScalpUserState(Base):
+    """Per-user directional scalp switch and run inventory (card #1001)."""
+
+    __tablename__ = "scalp_user_states"
+
+    user_id = Column(String, primary_key=True)
+    enabled = Column(Boolean, nullable=False, default=False)
+    killed = Column(Boolean, nullable=False, default=False)
+    inventory_btc = Column(Numeric(36, 18), nullable=False, default=0)
+    floor_btc = Column(Numeric(36, 18), nullable=False, default=0)
+    avg_entry_quote = Column(Numeric(36, 18), nullable=True)
+    realized_pnl_quote = Column(Numeric(36, 18), nullable=False, default=0)
+    fees_quote = Column(Numeric(36, 18), nullable=False, default=0)
+    jev_cost_quote = Column(Numeric(36, 18), nullable=False, default=0)
+    day_pnl_quote = Column(Numeric(36, 18), nullable=False, default=0)
+    day_started_at = Column(DateTime, nullable=True)
+    calibration_hits = Column(Integer, nullable=False, default=0)
+    calibration_signals = Column(Integer, nullable=False, default=0)
+    last_jev_latency_ms = Column(Integer, nullable=True)
+    last_jev_at = Column(DateTime, nullable=True)
+    jev_in_flight = Column(Boolean, nullable=False, default=False)
+    rest_client_order_id = Column(String(36), nullable=True)
+    rest_side = Column(String(8), nullable=True)
+    rest_price = Column(Numeric(36, 18), nullable=True)
+    inventory_clipped = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class ScalpFill(Base):
+    """Fills belonging only to this scalp loop (never Operar / outside)."""
+
+    __tablename__ = "scalp_fills"
+
+    id = Column(UUIDType, primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, nullable=False, index=True)
+    client_order_id = Column(String(36), nullable=False)
+    side = Column(String(8), nullable=False)
+    quantity = Column(Numeric(36, 18), nullable=False)
+    price = Column(Numeric(36, 18), nullable=False)
+    fee_quote = Column(Numeric(36, 18), nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("client_order_id", "side", "quantity", "price", name="uq_scalp_fills_leg"),
+        Index("ix_scalp_fills_user_created", "user_id", "created_at"),
+    )
+
+
 class SystemPreference(Base):
     __tablename__ = "system_preferences"
 

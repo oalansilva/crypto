@@ -1,0 +1,1191 @@
+{
+  "pass": true,
+  "url": "https://dev.criptofarol.com.br/prototypes/card-1001-scalp-direcional-jev/",
+  "assert_count": 210,
+  "fail_count": 0,
+  "failed": [],
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "tag": "desktop-1280x800"
+      },
+      "asserts": [
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 canonical HTTP 200"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default state off"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default aria-checked false"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default label Desligado"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default status desligado"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default kill hidden"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default pnl US$ 0,00"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default switch enabled"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default document overflow 0"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 switch min-height 44 {'w': 92.125, 'h': 44, 'x': 1148.875, 'y': 235}"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default table.signals count=2"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark table.signals"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark Status"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark Preço"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark Distância"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark 7d"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark Risco até stop"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark Tags"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark Operar"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default landmark Par / Estratégia"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default no Antes/Depois buttons"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default body without ANTES/DEPOIS panel"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default no banned copy []"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default scalp title"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default scalp module visible h={'w': 1012, 'h': 326.5, 'x': 246, 'y': 220, 'top': 220}"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 default Operar landmark kept"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 after toggle state on"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on aria-checked true"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on label Ligado"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on status ligado"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on pnl negative −US$ 0,42"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on pnl class neg"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on calibration 4/9 · 2s"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 sim kill visible"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on copy Operar continua"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on table.signals count=2"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark table.signals"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark Status"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark Preço"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark Distância"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark 7d"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark Risco até stop"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark Tags"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark Operar"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on landmark Par / Estratégia"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on no Antes/Depois buttons"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on body without ANTES/DEPOIS panel"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on no banned copy []"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on scalp title"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on scalp module visible h={'w': 1012, 'h': 326.5, 'x': 246, 'y': 220, 'top': 220}"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 on Operar landmark kept"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill state"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill banner visible"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill banner copy"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill pnl −US$ 2,00"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill pnl class neg"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill switch aria false"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill label Desligado"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill status religar"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill switch still enabled"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill table.signals count=2"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark table.signals"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark Status"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark Preço"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark Distância"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark 7d"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark Risco até stop"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark Tags"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark Operar"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill landmark Par / Estratégia"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill no Antes/Depois buttons"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill body without ANTES/DEPOIS panel"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill no banned copy []"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill scalp title"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill scalp module visible h={'w': 1012, 'h': 375.25, 'x': 246, 'y': 220, 'top': 220}"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 kill Operar landmark kept"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 religar state on"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 religar label Ligado"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 religar kill banner gone"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 desligar state off"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 desligar label"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 desligar pnl reset"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 desligar aria false"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 nokey state"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 nokey switch disabled"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 nokey Meu Perfil copy"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 nokey cannot click"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 landing HTTP 200"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 landing FAQ not-by-omission (HTML)"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 landing mentions scalp"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 landing no absolute 24/7"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 landing ban copy (HTML)"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 landing FAQ robot question present"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 landing FAQ open visible"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 landing FAQ ban visible"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 ajuda HTTP 200"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 ajuda scalp copy"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 ajuda default off"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 ajuda no 24/7"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 ajuda Operar"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 pageerror=[]"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 console errors=1 (recorded)"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 proto HTTP>=400 except posthog []"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 posthog-config.js 404 recorded P3 n=1"
+        },
+        {
+          "ok": true,
+          "msg": "desktop-1280x800 screenshots non-empty []"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "page_errors": [],
+      "bad_resp": [
+        {
+          "status": 404,
+          "url": "https://dev.criptofarol.com.br/prototypes/card-1001-scalp-direcional-jev/posthog-config.js"
+        }
+      ],
+      "shots": [
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-off.png",
+          "bytes": 174393,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-on.png",
+          "bytes": 178927,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-kill.png",
+          "bytes": 182508,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-reon.png",
+          "bytes": 178927,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-off-final.png",
+          "bytes": 174393,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-nokey.png",
+          "bytes": 175351,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-landing-faq.png",
+          "bytes": 30667,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-landing.png",
+          "bytes": 2240583,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-desktop-1280x800-ajuda.png",
+          "bytes": 157683,
+          "empty": false
+        }
+      ],
+      "last_state": {
+        "state": "nokey",
+        "aria": "false",
+        "disabled": true,
+        "label": "Desligado",
+        "status": "Sem chave Spot em Meu Perfil — não envia. Configure a chave Spot (a mesma do Operar).",
+        "killHidden": true,
+        "killText": "Parado por kill (−2% de T). Não religa sozinho. Ordens deste bot canceladas.",
+        "killDisplay": "none",
+        "pnl": "US$ 0,00",
+        "pnlClass": "",
+        "pnlColor": "rgb(255, 255, 255)",
+        "cal": "—",
+        "inv": "0 BTC",
+        "tableCount": 2,
+        "htmlHasTableClass": true,
+        "landmarks": {
+          "table.signals": 2,
+          "Status": true,
+          "Preço": true,
+          "Distância": true,
+          "7d": true,
+          "Risco até stop": true,
+          "Tags": true,
+          "Operar": true,
+          "Par / Estratégia": true
+        },
+        "bodyHasAntes": false,
+        "antesButtons": 0,
+        "bannedInBody": [],
+        "title": "Monitor de sinais — Cripto Farol",
+        "scalpTitle": "Scalp BTCUSDT",
+        "swBox": {
+          "w": 92.125,
+          "h": 44,
+          "x": 1148.875,
+          "y": 235
+        },
+        "modBox": {
+          "w": 1012,
+          "h": 326.5,
+          "x": 246,
+          "y": 220,
+          "top": 220
+        },
+        "killBox": {
+          "w": 0,
+          "h": 0
+        },
+        "operateClip": [
+          {
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "right": 0,
+            "overflow": false
+          },
+          {
+            "x": 1220.609375,
+            "y": 902,
+            "w": 96,
+            "h": 30,
+            "right": 1316.609375,
+            "overflow": true
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "right": 0,
+            "overflow": false
+          },
+          {
+            "x": 1226.1875,
+            "y": 1222.75,
+            "w": 96,
+            "h": 30,
+            "right": 1322.1875,
+            "overflow": true
+          }
+        ],
+        "searchPh": "Buscar par, estratégia, tag...",
+        "tableWrapDisplay": "block",
+        "mobileCardsDisplay": "none",
+        "kpis": [
+          "1",
+          "1",
+          "2",
+          "2"
+        ],
+        "overflow": 0,
+        "scrollW": 1280,
+        "clientW": 1280,
+        "pairs": [
+          "BTC/USDT 4h",
+          "BTC/USDT4h",
+          "ETH/USDT 1d",
+          "ETH/USDT1d"
+        ]
+      }
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "tag": "mobile-390x844"
+      },
+      "asserts": [
+        {
+          "ok": true,
+          "msg": "mobile-390x844 canonical HTTP 200"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default state off"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default aria-checked false"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default label Desligado"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default status desligado"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default kill hidden"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default pnl US$ 0,00"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default switch enabled"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default document overflow 0"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 switch min-height 44 {'w': 328, 'h': 44, 'x': 31, 'y': 358.75}"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default table.signals count=2"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark table.signals"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark Status"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark Preço"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark Distância"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark 7d"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark Risco até stop"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark Tags"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark Operar"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default landmark Par / Estratégia"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default no Antes/Depois buttons"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default body without ANTES/DEPOIS panel"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default no banned copy []"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default scalp title"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default scalp module visible h={'w': 362, 'h': 545, 'x': 14, 'y': 270.75, 'top': 270.75}"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 default Operar landmark kept"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 after toggle state on"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on aria-checked true"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on label Ligado"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on status ligado"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on pnl negative −US$ 0,42"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on pnl class neg"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on calibration 4/9 · 2s"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 sim kill visible"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on copy Operar continua"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on table.signals count=2"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark table.signals"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark Status"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark Preço"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark Distância"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark 7d"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark Risco até stop"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark Tags"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark Operar"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on landmark Par / Estratégia"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on no Antes/Depois buttons"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on body without ANTES/DEPOIS panel"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on no banned copy []"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on scalp title"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on scalp module visible h={'w': 362, 'h': 563.75, 'x': 14, 'y': 270.75, 'top': 270.75}"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 on Operar landmark kept"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill state"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill banner visible"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill banner copy"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill pnl −US$ 2,00"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill pnl class neg"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill switch aria false"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill label Desligado"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill status religar"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill switch still enabled"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill table.signals count=2"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark table.signals"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark Status"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark Preço"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark Distância"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark 7d"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark Risco até stop"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark Tags"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark Operar"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill landmark Par / Estratégia"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill no Antes/Depois buttons"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill body without ANTES/DEPOIS panel"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill no banned copy []"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill scalp title"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill scalp module visible h={'w': 362, 'h': 612.5, 'x': 14, 'y': 270.75, 'top': 270.75}"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 kill Operar landmark kept"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 religar state on"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 religar label Ligado"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 religar kill banner gone"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 desligar state off"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 desligar label"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 desligar pnl reset"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 desligar aria false"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 nokey state"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 nokey switch disabled"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 nokey Meu Perfil copy"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 nokey cannot click"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 landing HTTP 200"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 landing FAQ not-by-omission (HTML)"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 landing mentions scalp"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 landing no absolute 24/7"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 landing ban copy (HTML)"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 landing FAQ robot question present"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 landing FAQ open visible"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 landing FAQ ban visible"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 ajuda HTTP 200"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 ajuda scalp copy"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 ajuda default off"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 ajuda no 24/7"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 ajuda Operar"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 pageerror=[]"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 console errors=1 (recorded)"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 proto HTTP>=400 except posthog []"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 posthog-config.js 404 recorded P3 n=1"
+        },
+        {
+          "ok": true,
+          "msg": "mobile-390x844 screenshots non-empty []"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "page_errors": [],
+      "bad_resp": [
+        {
+          "status": 404,
+          "url": "https://dev.criptofarol.com.br/prototypes/card-1001-scalp-direcional-jev/posthog-config.js"
+        }
+      ],
+      "shots": [
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-off.png",
+          "bytes": 113389,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-on.png",
+          "bytes": 117034,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-kill.png",
+          "bytes": 120838,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-reon.png",
+          "bytes": 117034,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-off-final.png",
+          "bytes": 113386,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-nokey.png",
+          "bytes": 114352,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-landing-faq.png",
+          "bytes": 35799,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-landing.png",
+          "bytes": 1382341,
+          "empty": false
+        },
+        {
+          "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1001-scalp-direcional-jev/.impeccable/critique/1001-B-mobile-390x844-ajuda.png",
+          "bytes": 164264,
+          "empty": false
+        }
+      ],
+      "last_state": {
+        "state": "nokey",
+        "aria": "false",
+        "disabled": true,
+        "label": "Desligado",
+        "status": "Sem chave Spot em Meu Perfil — não envia. Configure a chave Spot (a mesma do Operar).",
+        "killHidden": true,
+        "killText": "Parado por kill (−2% de T). Não religa sozinho. Ordens deste bot canceladas.",
+        "killDisplay": "none",
+        "pnl": "US$ 0,00",
+        "pnlClass": "",
+        "pnlColor": "rgb(255, 255, 255)",
+        "cal": "—",
+        "inv": "0 BTC",
+        "tableCount": 2,
+        "htmlHasTableClass": true,
+        "landmarks": {
+          "table.signals": 2,
+          "Status": true,
+          "Preço": true,
+          "Distância": true,
+          "7d": true,
+          "Risco até stop": true,
+          "Tags": true,
+          "Operar": true,
+          "Par / Estratégia": true
+        },
+        "bodyHasAntes": false,
+        "antesButtons": 0,
+        "bannedInBody": [],
+        "title": "Monitor de sinais — Cripto Farol",
+        "scalpTitle": "Scalp BTCUSDT",
+        "swBox": {
+          "w": 328,
+          "h": 44,
+          "x": 31,
+          "y": 358.75
+        },
+        "modBox": {
+          "w": 362,
+          "h": 545,
+          "x": 14,
+          "y": 270.75,
+          "top": 270.75
+        },
+        "killBox": {
+          "w": 0,
+          "h": 0
+        },
+        "operateClip": [
+          {
+            "x": 29,
+            "y": 1682.75,
+            "w": 332,
+            "h": 30,
+            "right": 361,
+            "overflow": false
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "right": 0,
+            "overflow": false
+          },
+          {
+            "x": 29,
+            "y": 2024,
+            "w": 332,
+            "h": 30,
+            "right": 361,
+            "overflow": false
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "right": 0,
+            "overflow": false
+          }
+        ],
+        "searchPh": "Buscar par, estratégia, tag...",
+        "tableWrapDisplay": "none",
+        "mobileCardsDisplay": "grid",
+        "kpis": [
+          "1",
+          "1",
+          "2",
+          "2"
+        ],
+        "overflow": 0,
+        "scrollW": 390,
+        "clientW": 390,
+        "pairs": [
+          "BTC/USDT 4h",
+          "BTC/USDT4h",
+          "ETH/USDT 1d",
+          "ETH/USDT1d"
+        ]
+      }
+    }
+  ]
+}
