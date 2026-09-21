@@ -1,5 +1,44 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-20 — Kaizen release (pacote #995)
+
+- **Release/card**: Homologado `#995` → `release-2026-09-20` → `main` PR #997 merged `dc3830a9776e8c08095213b991e6da829fa60200`. PROD bundle `index-CJP6s_v3.js`.
+- **Fontes**: Project 1, git, `RELEASE_CARDS=995 scripts/release-guard pre`, `openspec validate --all` 174, `gh pr checks 997`, health/bundle PROD, agent-transcripts. Filho `fecho-lote kaizen`.
+- **Grelha**: #995 com 2 spawns grill-card (média 2,0; meta contínua ≤1,5). Design: `design-autor` + Assessment A/B.
+
+#### Métricas
+
+- **Board**: 1 Homologado no pacote; campos OK (Clara, P1, Produto, Monitor).
+- **Git**: archive bloqueado em `develop` → `release-*`; sync `main→develop` obrigatório antes do `post`.
+- **CI**: PR #997 all pass (`e2e-playwright` 7m32s; `backend-unit-tests` 11m3s).
+- **OpenSpec**: archive `2026-09-20-card-995-monitor-retry-rede`.
+- **PROD**: health 200; `/monitor` bundle `index-CJP6s_v3.js`.
+
+#### Achados
+
+- **F-1** homologado canónico só no closeout → recidiva **#658**.
+- **F-2** `proxy modelo:` ausente no REST → recidiva **#909** / **#963**.
+- **F-3** `item-list --limit 200` trunca o board → recidiva **#911**.
+- **F-4** dirty/extra worktrees → recidiva **#759**.
+- **F-5** comentário Done incompleto vs template → **#998**.
+- **F-6** OpenSpec Complete ainda activa em `origin/develop` no pre-archive → **#978**.
+- **F-7** grelha 2,0 > meta 1,5 — ritual de 5 Qs; sem card novo.
+- **F-11** issues kaizen GitHub CLOSED com Status Em Refinamento → **#999**.
+
+Transcript Cursor 34eacb2e (pacote #995; 13 subagents): Task description `grill-card 995` ×2 (model cursor-grok-4.6-high); `design-autor 995`; `Assessment A 995`; `Assessment B 995`; `apply-coluna 995`; `diff-reviewer` ×4; `code-reviewer` ×2; `qa-gate` ×2 (execução composer-2.5). REST: grill fronteira vazia 5746821065; OpenSpec Spawns:3 sem `proxy modelo:` 5747047610; Done stub 5753347850; Homologado canónico 5753682556 (closeout). Sem opencode.db.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #998 | P2 | F-5 | Em Refinamento |
+| #999 | P2 | F-11 | Em Refinamento |
+| (não criado) Homologado sem comentário no arraste | P1 | F-1 | coberto por #658 |
+| (não criado) proxy modelo REST | P1 | F-2 | coberto por #909 |
+| (não criado) fotografia board pagina até totalCount | P1 | F-3 | coberto por #911 |
+| (não criado) dirty/PRESERVED worktrees | P2 | F-4 | coberto por #759 |
+| (não criado) OpenSpec Complete antes do archive | P1 | F-6 | coberto por #978 |
+
 ## 2026-09-19 — Kaizen release (hotfix #983)
 
 - **Release/card**: Homologado `#983` → `release-2026-09-19-hotfix-983` → `main` PR #985 merged `563eccf4da4e36ea6fd921e340fc6d788ab96612`. PROD bundle `index-DofJWdfa.js`.

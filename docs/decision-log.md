@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-09-20 - Monitor reabsorve corte transitório de rede (card #995)
+
+**Decisão:** com sessão válida e favoritos crypto no servidor, um corte `Failed to fetch` na carga autenticada de `/monitor` não pinta o erro #975 à primeira. O quadro espera dezenas de segundos em «Carregando sinais...»; sucesso na mesma abertura lista os pares. Falha persistente mantém o copy #975 + «Tentar de novo» (releitura, sem `refresh=true`). Sessão morta vai ao login. Sem mudar Caddy, backend, TTL ou layout.
+
+**Motivo:** no proxy corporativo a primeira request autenticada caía e o operador via erro de carga / catálogo vazio com as estratégias já gravadas.
+
+**Onde:** `MonitorStatusTab.tsx`, `authFetch.ts`, proto `card-995-monitor-retry-rede`, spec `monitor-transient-load`. Card #995.
+
 ## 2026-09-14 - Retorno composto canónico em três sítios (card #935)
 
 **Decisão:** na mesma linha já preenchida, Favoritos (RETURN), resumo da análise (`Retorno total`) e Ver Trades no Monitor mostram o mesmo percentual composto grande (ex. +98.591,56%, não 985,85%). `total_return` é sempre razão decimal.
