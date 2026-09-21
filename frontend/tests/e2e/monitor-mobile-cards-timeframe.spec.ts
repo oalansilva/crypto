@@ -181,10 +181,14 @@ test('monitor mobile uses single cards view without horizontal overflow', async 
 
   await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
   await expect(page.locator('.mobile-cards').first()).toBeVisible()
-  await expect(page.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTitle('Timeframe da estratégia')).toHaveText('1d')
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveCount(0)
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-15m')).toHaveCount(0)
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-1h')).toHaveCount(0)
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveCount(0)
+  await expect(page.getByTitle('Timeframe do gráfico de preço')).toHaveCount(0)
+  await expect(page.getByText('Gráfico 1d')).toHaveCount(0)
+  await expect(page.getByText('tf 1d')).toHaveCount(0)
   const viewportFits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
   expect(viewportFits).toBe(true)
 })
@@ -292,7 +296,10 @@ test('monitor card keeps strategy timeframe visible when chart timeframe differs
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByTitle('Timeframe da estratégia')).toHaveText('1d')
-  await expect(card.getByTitle('Timeframe do gráfico de preço')).toHaveText('Gráfico 1d')
+  await expect(card.getByTitle('Timeframe do gráfico de preço')).toHaveCount(0)
+  await expect(card.getByText('Gráfico 1d')).toHaveCount(0)
+  await expect(card.getByText('tf 1d')).toHaveCount(0)
+  await expect(card.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveCount(0)
 })
 
 test('monitor renders exited strategies separately from stopped out ones', async ({ page }) => {

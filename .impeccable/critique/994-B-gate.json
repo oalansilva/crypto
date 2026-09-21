@@ -1,0 +1,3798 @@
+{
+  "card": 994,
+  "utc": "2026-09-21T00:17Z",
+  "model": "Grok 4.6 (grok-4.6)",
+  "role": "Assessment B",
+  "proxy": "Assessment B → Grok 4.6 (grok-4.6)",
+  "chrome": "/home/ubuntu/.cache/ms-playwright/chromium-1243/chrome-linux-arm64/chrome",
+  "console": [],
+  "pageerrors": [],
+  "badhttp": [],
+  "shots": [
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-desktop-1440x900-index.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-desktop-1440x900-filtro-4h.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-desktop-1440x900-filtro-1d.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-desktop-1440x900-grafico-readonly.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-desktop-1440x900-overlay.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-mobile-390x844-index.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-mobile-390x844-filtro-4h.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-mobile-390x844-filtro-1d.png",
+    "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.impeccable/critique/994-B-mobile-390x844-grafico-readonly.png"
+  ],
+  "viewports": [
+    {
+      "viewport": "desktop 1440x900",
+      "pass": true,
+      "n": 56,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "mutation_available",
+          "ok": true,
+          "detail": {
+            "title": "impeccable-mutation-preflight",
+            "restored_possible": true,
+            "script": true,
+            "flag": true
+          }
+        },
+        {
+          "id": "index_local_proto_url",
+          "ok": true,
+          "detail": "http://127.0.0.1:38917/prototypes/card-994-monitor-multiplos-timeframes/"
+        },
+        {
+          "id": "lm_table_signals",
+          "ok": true,
+          "detail": 2
+        },
+        {
+          "id": "not_chrome_only",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "lm_Status",
+          "ok": true,
+          "detail": "Status"
+        },
+        {
+          "id": "lm_Preço",
+          "ok": true,
+          "detail": "Preço"
+        },
+        {
+          "id": "lm_Distância",
+          "ok": true,
+          "detail": "Distância"
+        },
+        {
+          "id": "lm_Tags",
+          "ok": true,
+          "detail": "Tags"
+        },
+        {
+          "id": "lm_Operar",
+          "ok": true,
+          "detail": "Operar"
+        },
+        {
+          "id": "lm_Par / Estratégia",
+          "ok": true,
+          "detail": "Par / Estratégia"
+        },
+        {
+          "id": "happy_btc",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "happy_eth_witness",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "happy_strategy",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "pair_tf_btc_4h",
+          "ok": true,
+          "detail": "4h"
+        },
+        {
+          "id": "filter_has_todos",
+          "ok": true,
+          "detail": [
+            "Timeframe: Todos",
+            "4h",
+            "1d"
+          ]
+        },
+        {
+          "id": "filter_has_4h",
+          "ok": true,
+          "detail": [
+            "Timeframe: Todos",
+            "4h",
+            "1d"
+          ]
+        },
+        {
+          "id": "filter_has_1d",
+          "ok": true,
+          "detail": [
+            "Timeframe: Todos",
+            "4h",
+            "1d"
+          ]
+        },
+        {
+          "id": "spark_btc_4h",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "spark_eth_1d",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "col_grafico_visible",
+          "ok": true,
+          "detail": [
+            "",
+            "PAR / ESTRATÉGIA",
+            "STATUS",
+            "PREÇO",
+            "DISTÂNCIA",
+            "GRÁFICO",
+            "RISCO ATÉ STOP",
+            "TAGS",
+            "OPERAR",
+            "",
+            "PAR / ESTRATÉGIA",
+            "STATUS",
+            "PREÇO",
+            "DISTÂNCIA",
+            "GRÁFICO",
+            "RISCO ATÉ STOP",
+            "TAGS",
+            "OPERAR"
+          ]
+        },
+        {
+          "id": "ficha_one_tf",
+          "ok": true,
+          "detail": [
+            "4h"
+          ]
+        },
+        {
+          "id": "absent_grafico_1d_body",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_tf_1d_body",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_grafico_1d_html",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_tf_1d_html",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_data_chart_tf",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_aria_select_chart_tf",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_chart_tf_buttons",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_btn_15m",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_btn_1h",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_btn_1d_chart",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_btn_estrategia_4h",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_estrategia_4h_copy",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "present_chart_strategy_tf_readonly",
+          "ok": true,
+          "detail": {
+            "text": "Estratégia ·\n4h",
+            "tag": "P",
+            "role": null
+          }
+        },
+        {
+          "id": "chart_open_strategy_4h",
+          "ok": true,
+          "detail": {
+            "subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+            "bars": "42 velas · 4h"
+          }
+        },
+        {
+          "id": "chart_modal_present",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "default_em_portfolio",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "zero_antes_depois_buttons",
+          "ok": true,
+          "detail": "antes=0 depois=0"
+        },
+        {
+          "id": "not_panel_antes_depois",
+          "ok": true,
+          "detail": "absent"
+        },
+        {
+          "id": "not_n_estados_gallery",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "no_h_overflow",
+          "ok": true,
+          "detail": {
+            "sw": 1440,
+            "cw": 1440
+          }
+        },
+        {
+          "id": "index_lang",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "sidebar_224",
+          "ok": true,
+          "detail": {
+            "display": "flex",
+            "width": "224px",
+            "offsetWidth": 224
+          }
+        },
+        {
+          "id": "filter_4h_keeps_btc",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": "",
+            "btc_card_hidden": null,
+            "eth_card_hidden": "",
+            "count": "1 resultados",
+            "pair_tf": "4h",
+            "body_has_eth": false,
+            "body_has_btc": true
+          }
+        },
+        {
+          "id": "filter_4h_hides_eth",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": "",
+            "btc_card_hidden": null,
+            "eth_card_hidden": "",
+            "count": "1 resultados",
+            "pair_tf": "4h",
+            "body_has_eth": false,
+            "body_has_btc": true
+          }
+        },
+        {
+          "id": "filter_4h_hides_eth_card",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": "",
+            "btc_card_hidden": null,
+            "eth_card_hidden": "",
+            "count": "1 resultados",
+            "pair_tf": "4h",
+            "body_has_eth": false,
+            "body_has_btc": true
+          }
+        },
+        {
+          "id": "filter_4h_pair_tf_still_4h",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "filter_1d_hides_btc",
+          "ok": true,
+          "detail": {
+            "btc_hidden": "",
+            "eth_hidden": null,
+            "count": "1 resultados",
+            "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nETH\nETH/USDT\n1d\nMACD: Mudança de Ritmo\n\tSAÍDA / COBERTURA\t$3,412.50\t0.90%\t\n\t\n2.10%\nstop\n\t\n● Carteira\n★★\n\t\nAbrir Gráfico\nVer Trades\nOperar"
+          }
+        },
+        {
+          "id": "filter_1d_keeps_eth",
+          "ok": true,
+          "detail": {
+            "btc_hidden": "",
+            "eth_hidden": null,
+            "count": "1 resultados",
+            "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nETH\nETH/USDT\n1d\nMACD: Mudança de Ritmo\n\tSAÍDA / COBERTURA\t$3,412.50\t0.90%\t\n\t\n2.10%\nstop\n\t\n● Carteira\n★★\n\t\nAbrir Gráfico\nVer Trades\nOperar"
+          }
+        },
+        {
+          "id": "filter_todos_shows_btc",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": null
+          }
+        },
+        {
+          "id": "filter_todos_shows_eth",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": null
+          }
+        },
+        {
+          "id": "chart_readonly_after_filter",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "overlay_path_declared",
+          "ok": true,
+          "detail": "injected"
+        },
+        {
+          "id": "console_zero",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "pageerror_zero",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "badhttp_zero",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "dumps": {
+        "mutation_preflight": {
+          "title": "impeccable-mutation-preflight",
+          "restored_possible": true,
+          "script": true,
+          "flag": true
+        },
+        "index": {
+          "url": "http://127.0.0.1:38917/prototypes/card-994-monitor-multiplos-timeframes/",
+          "title": "Monitor de sinais — Cripto Farol",
+          "lang": "pt-BR",
+          "table_count": 2,
+          "thead": "\n                    \n                      \n                      Par / Estratégia\n                      Status\n                      Preço\n                      Distância\n                      \n                      Gráfico\n                      \n                      Risco até stop\n                      Tags\n                      Operar\n                    \n                   \n                    \n                      \n                      Par / Estratégia\n                      Status\n                      Preço\n                      Distância\n                      Gráfico\n                      Risco até stop\n                      Tags\n                      Operar\n                    \n                  ",
+          "th_visible": [
+            "",
+            "PAR / ESTRATÉGIA",
+            "STATUS",
+            "PREÇO",
+            "DISTÂNCIA",
+            "GRÁFICO",
+            "RISCO ATÉ STOP",
+            "TAGS",
+            "OPERAR",
+            "",
+            "PAR / ESTRATÉGIA",
+            "STATUS",
+            "PREÇO",
+            "DISTÂNCIA",
+            "GRÁFICO",
+            "RISCO ATÉ STOP",
+            "TAGS",
+            "OPERAR"
+          ],
+          "sidebar": {
+            "display": "flex",
+            "width": "224px",
+            "offsetWidth": 224
+          },
+          "overflow": {
+            "sw": 1440,
+            "cw": 1440
+          },
+          "pair_tf_btc": "4h",
+          "tf_options": [
+            "Timeframe: Todos",
+            "4h",
+            "1d"
+          ],
+          "detail_tf": [
+            "4h"
+          ],
+          "spark_btc": 1,
+          "spark_eth": 1,
+          "chart_subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+          "visible_bars": "42 velas · 4h",
+          "chart_tf_text": "Estratégia ·\n4h",
+          "chart_tf_tag": "P",
+          "chart_tf_role": null,
+          "btn_15m": 0,
+          "btn_1h": 0,
+          "btn_1d": 0,
+          "btn_estrategia_4h": 0,
+          "aria_select": 0,
+          "data_chart_tf": 0,
+          "chart_tf_buttons": 0,
+          "body": "PAINEL\nMonitor de sinais\nAmbiente DEV\nPRINCIPAL\nFavoritos\nMonitor\nESTRATÉGIAS\nDescoberta\nCombo\nCARTEIRA\nCarteira\nAjuda\nADMIN\nPreferências do sistema\nUsuários\nRecolher menu\nWORKSPACE\nMonitor de sinais\nAmbiente DEV\nAS\nCONTA\nAlan S\nTelegram: on\nTema\nAtualizar\nMonitor de sinais\n\nOperações ativas e saídas acionáveis. Atualização contínua a cada 30s.\n\nÚltima leitura\n18:07:00\n· BRT\nEm posição\n1\nmédia risco 4.20%\nSaída / cobertura\n1\nmédia risco 2.10%\nTotal\n2\nsinais filtrados\nEm carteira\n2\nativos rastreados\nEm portfólio\nTodos\nTimeframe: Todos\n4h\n1d\nEstrelas: Todas\n★★★ 3 estrelas\nEstratégia: Todas\n2 resultados\nEM POSIÇÃO\n(1)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nBTC\nBTC/USDT\n4h\nMédias Móveis: Tendência em Virada\n\tEM POSIÇÃO\t$64,215.40\t1.80%\t\n\t\n4.20%\nstop\n\t\n● Carteira\n★★★\n\t\nAbrir Gráfico\nVer Trades\nOperar\n\n\nBTC/USDT\nEM POSIÇÃO\n4h\nMédias Móveis: Tendência em Virada\ncandle 2026-09-19 12:00 UTC\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nETH\nETH/USDT\n1d\nMACD: Mudança de Ritmo\n\tSAÍDA / COBERTURA\t$3,412.50\t0.90%\t\n\t\n2.10%\nstop\n\t\n● Carteira\n★★\n\t\nAbrir Gráfico\nVer Trades\nOperar\nBTC/USDT\n\nMédias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00\n\nEstratégia ·\n4h\n\n42 velas · 4h",
+          "h1": "Monitor de sinais"
+        },
+        "filter_4h": {
+          "btc_hidden": null,
+          "eth_hidden": "",
+          "btc_card_hidden": null,
+          "eth_card_hidden": "",
+          "count": "1 resultados",
+          "pair_tf": "4h",
+          "body_has_eth": false,
+          "body_has_btc": true
+        },
+        "filter_1d": {
+          "btc_hidden": "",
+          "eth_hidden": null,
+          "count": "1 resultados",
+          "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nETH\nETH/USDT\n1d\nMACD: Mudança de Ritmo\n\tSAÍDA / COBERTURA\t$3,412.50\t0.90%\t\n\t\n2.10%\nstop\n\t\n● Carteira\n★★\n\t\nAbrir Gráfico\nVer Trades\nOperar"
+        },
+        "filter_all": {
+          "btc_hidden": null,
+          "eth_hidden": null
+        },
+        "overlay": {
+          "status": "injected",
+          "via": "add_script_tag(path=detect-antipatterns-browser.js) after contract shots",
+          "dom": {
+            "overlays": 52,
+            "scripts": [
+              "impeccable-preflight"
+            ],
+            "windowKeys": [
+              "__impeccablePreflight",
+              "impeccableDetect",
+              "impeccableDetectAsync",
+              "impeccableScan",
+              "impeccableScanAsync",
+              "impeccableMeasureHiddenText",
+              "impeccableCollectVisualContrastCandidates",
+              "impeccableAnalyzeVisualContrast",
+              "impeccableGetLastVisualContrastAnalyses"
+            ]
+          },
+          "logs": [
+            "startGroup: %c[impeccable] 52 anti-patterns found color: oklch(84% 0.19 80.46); font-weight: bold"
+          ],
+          "findings_count": 55,
+          "rule_names": []
+        }
+      }
+    },
+    {
+      "viewport": "mobile 390x844",
+      "pass": true,
+      "n": 59,
+      "failed": [],
+      "asserts": [
+        {
+          "id": "mutation_available",
+          "ok": true,
+          "detail": {
+            "title": "impeccable-mutation-preflight",
+            "restored_possible": true,
+            "script": true,
+            "flag": true
+          }
+        },
+        {
+          "id": "index_local_proto_url",
+          "ok": true,
+          "detail": "http://127.0.0.1:38917/prototypes/card-994-monitor-multiplos-timeframes/"
+        },
+        {
+          "id": "lm_table_signals",
+          "ok": true,
+          "detail": 2
+        },
+        {
+          "id": "not_chrome_only",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "lm_Status",
+          "ok": true,
+          "detail": "Status"
+        },
+        {
+          "id": "lm_Preço",
+          "ok": true,
+          "detail": "Preço"
+        },
+        {
+          "id": "lm_Distância",
+          "ok": true,
+          "detail": "Distância"
+        },
+        {
+          "id": "lm_Tags",
+          "ok": true,
+          "detail": "Tags"
+        },
+        {
+          "id": "lm_Operar",
+          "ok": true,
+          "detail": "Operar"
+        },
+        {
+          "id": "lm_Par / Estratégia",
+          "ok": true,
+          "detail": "Par / Estratégia"
+        },
+        {
+          "id": "happy_btc",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "happy_eth_witness",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "happy_strategy",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "pair_tf_btc_4h",
+          "ok": true,
+          "detail": "4h"
+        },
+        {
+          "id": "filter_has_todos",
+          "ok": true,
+          "detail": [
+            "Timeframe: Todos",
+            "4h",
+            "1d"
+          ]
+        },
+        {
+          "id": "filter_has_4h",
+          "ok": true,
+          "detail": [
+            "Timeframe: Todos",
+            "4h",
+            "1d"
+          ]
+        },
+        {
+          "id": "filter_has_1d",
+          "ok": true,
+          "detail": [
+            "Timeframe: Todos",
+            "4h",
+            "1d"
+          ]
+        },
+        {
+          "id": "spark_btc_4h",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "spark_eth_1d",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "id": "col_grafico_visible",
+          "ok": true,
+          "detail": [
+            "",
+            "Par / Estratégia",
+            "Status",
+            "Preço",
+            "Distância",
+            "Gráfico",
+            "Risco até stop",
+            "Tags",
+            "Operar",
+            "",
+            "Par / Estratégia",
+            "Status",
+            "Preço",
+            "Distância",
+            "Gráfico",
+            "Risco até stop",
+            "Tags",
+            "Operar"
+          ]
+        },
+        {
+          "id": "ficha_one_tf",
+          "ok": true,
+          "detail": [
+            "4h"
+          ]
+        },
+        {
+          "id": "absent_grafico_1d_body",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_tf_1d_body",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_grafico_1d_html",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_tf_1d_html",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "absent_data_chart_tf",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_aria_select_chart_tf",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_chart_tf_buttons",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_btn_15m",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_btn_1h",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_btn_1d_chart",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_btn_estrategia_4h",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "id": "absent_estrategia_4h_copy",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "present_chart_strategy_tf_readonly",
+          "ok": true,
+          "detail": {
+            "text": "Estratégia ·\n4h",
+            "tag": "P",
+            "role": null
+          }
+        },
+        {
+          "id": "chart_open_strategy_4h",
+          "ok": true,
+          "detail": {
+            "subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+            "bars": "42 velas · 4h"
+          }
+        },
+        {
+          "id": "chart_modal_present",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "default_em_portfolio",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "zero_antes_depois_buttons",
+          "ok": true,
+          "detail": "antes=0 depois=0"
+        },
+        {
+          "id": "not_panel_antes_depois",
+          "ok": true,
+          "detail": "absent"
+        },
+        {
+          "id": "not_n_estados_gallery",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "no_h_overflow",
+          "ok": true,
+          "detail": {
+            "sw": 390,
+            "cw": 390
+          }
+        },
+        {
+          "id": "index_lang",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "filter_4h_keeps_btc",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": "",
+            "btc_card_hidden": null,
+            "eth_card_hidden": "",
+            "count": "1 resultados",
+            "pair_tf": "4h",
+            "body_has_eth": false,
+            "body_has_btc": true
+          }
+        },
+        {
+          "id": "filter_4h_hides_eth",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": "",
+            "btc_card_hidden": null,
+            "eth_card_hidden": "",
+            "count": "1 resultados",
+            "pair_tf": "4h",
+            "body_has_eth": false,
+            "body_has_btc": true
+          }
+        },
+        {
+          "id": "filter_4h_hides_eth_card",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": "",
+            "btc_card_hidden": null,
+            "eth_card_hidden": "",
+            "count": "1 resultados",
+            "pair_tf": "4h",
+            "body_has_eth": false,
+            "body_has_btc": true
+          }
+        },
+        {
+          "id": "filter_4h_pair_tf_still_4h",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "filter_4h_mobile_eth_not_in_body",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "filter_4h_mobile_btc_in_body",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "filter_1d_hides_btc",
+          "ok": true,
+          "detail": {
+            "btc_hidden": "",
+            "eth_hidden": null,
+            "count": "1 resultados",
+            "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\nETH/USDT 1d\n\nMACD: Mudança de Ritmo · Saída / cobertura\n\nSAÍDA / COBERTURA\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar"
+          }
+        },
+        {
+          "id": "filter_1d_keeps_eth",
+          "ok": true,
+          "detail": {
+            "btc_hidden": "",
+            "eth_hidden": null,
+            "count": "1 resultados",
+            "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\nETH/USDT 1d\n\nMACD: Mudança de Ritmo · Saída / cobertura\n\nSAÍDA / COBERTURA\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar"
+          }
+        },
+        {
+          "id": "filter_1d_mobile_btc_not_in_board",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "filter_1d_mobile_eth_in_board",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "filter_todos_shows_btc",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": null
+          }
+        },
+        {
+          "id": "filter_todos_shows_eth",
+          "ok": true,
+          "detail": {
+            "btc_hidden": null,
+            "eth_hidden": null
+          }
+        },
+        {
+          "id": "chart_readonly_after_filter",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "overlay_path_declared",
+          "ok": true,
+          "detail": "injected_other_viewport_only"
+        },
+        {
+          "id": "console_zero",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "pageerror_zero",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "id": "badhttp_zero",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "dumps": {
+        "mutation_preflight": {
+          "title": "impeccable-mutation-preflight",
+          "restored_possible": true,
+          "script": true,
+          "flag": true
+        },
+        "index": {
+          "url": "http://127.0.0.1:38917/prototypes/card-994-monitor-multiplos-timeframes/",
+          "title": "Monitor de sinais — Cripto Farol",
+          "lang": "pt-BR",
+          "table_count": 2,
+          "thead": "\n                    \n                      \n                      Par / Estratégia\n                      Status\n                      Preço\n                      Distância\n                      \n                      Gráfico\n                      \n                      Risco até stop\n                      Tags\n                      Operar\n                    \n                   \n                    \n                      \n                      Par / Estratégia\n                      Status\n                      Preço\n                      Distância\n                      Gráfico\n                      Risco até stop\n                      Tags\n                      Operar\n                    \n                  ",
+          "th_visible": [
+            "",
+            "Par / Estratégia",
+            "Status",
+            "Preço",
+            "Distância",
+            "Gráfico",
+            "Risco até stop",
+            "Tags",
+            "Operar",
+            "",
+            "Par / Estratégia",
+            "Status",
+            "Preço",
+            "Distância",
+            "Gráfico",
+            "Risco até stop",
+            "Tags",
+            "Operar"
+          ],
+          "sidebar": {
+            "display": "none",
+            "width": "224px",
+            "offsetWidth": 0
+          },
+          "overflow": {
+            "sw": 390,
+            "cw": 390
+          },
+          "pair_tf_btc": "4h",
+          "tf_options": [
+            "Timeframe: Todos",
+            "4h",
+            "1d"
+          ],
+          "detail_tf": [
+            "4h"
+          ],
+          "spark_btc": 1,
+          "spark_eth": 1,
+          "chart_subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+          "visible_bars": "42 velas · 4h",
+          "chart_tf_text": "Estratégia ·\n4h",
+          "chart_tf_tag": "P",
+          "chart_tf_role": null,
+          "btn_15m": 0,
+          "btn_1h": 0,
+          "btn_1d": 0,
+          "btn_estrategia_4h": 0,
+          "aria_select": 0,
+          "data_chart_tf": 0,
+          "chart_tf_buttons": 0,
+          "body": "Monitor de sinais\nBTC/USDT 4h\nDEV\nAS\nTelegram: on\nTema\nAtualizar\nMonitor de sinais\n\nOperações ativas e saídas acionáveis. Atualização contínua a cada 30s.\n\nÚltima leitura\n18:07:00\n· BRT\nEm posição\n1\nmédia risco 4.20%\nSaída / cobertura\n1\nmédia risco 2.10%\nTotal\n2\nsinais filtrados\nEm carteira\n2\nativos rastreados\nEm portfólio\nTodos\nTimeframe: Todos\n4h\n1d\nEstrelas: Todas\n★★★ 3 estrelas\nEstratégia: Todas\n2 resultados\nEM POSIÇÃO\n(1)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\nBTC/USDT 4h\n\nMédias Móveis: Tendência em Virada · Em posição\n\nEM POSIÇÃO\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\nETH/USDT 1d\n\nMACD: Mudança de Ritmo · Saída / cobertura\n\nSAÍDA / COBERTURA\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar\nBTC/USDT\n\nMédias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00\n\nEstratégia ·\n4h\n\n42 velas · 4h",
+          "h1": "Monitor de sinais"
+        },
+        "filter_4h": {
+          "btc_hidden": null,
+          "eth_hidden": "",
+          "btc_card_hidden": null,
+          "eth_card_hidden": "",
+          "count": "1 resultados",
+          "pair_tf": "4h",
+          "body_has_eth": false,
+          "body_has_btc": true
+        },
+        "filter_1d": {
+          "btc_hidden": "",
+          "eth_hidden": null,
+          "count": "1 resultados",
+          "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\nETH/USDT 1d\n\nMACD: Mudança de Ritmo · Saída / cobertura\n\nSAÍDA / COBERTURA\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar"
+        },
+        "filter_all": {
+          "btc_hidden": null,
+          "eth_hidden": null
+        },
+        "overlay": {
+          "status": "injected_other_viewport_only"
+        }
+      }
+    }
+  ],
+  "digest": {
+    "index.html": {
+      "disk": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b",
+      "https": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b",
+      "bytes_disk": 39552,
+      "bytes_https": 39552,
+      "http": 200,
+      "identical": true,
+      "url": "https://dev.criptofarol.com.br/prototypes/card-994-monitor-multiplos-timeframes/"
+    },
+    "index.html#explicit": {
+      "disk": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b",
+      "https": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b",
+      "bytes_disk": 39552,
+      "bytes_https": 39552,
+      "http": 200,
+      "identical": true,
+      "url": "https://dev.criptofarol.com.br/prototypes/card-994-monitor-multiplos-timeframes/index.html"
+    }
+  },
+  "copied": {
+    "index": {
+      "pairs_start": 9,
+      "pairs_end": 9,
+      "utf8_sum_incl_markers": 21255,
+      "utf8_sum_excl_markers": 21057,
+      "total": 39552,
+      "delta_start": 0
+    }
+  },
+  "live": {
+    "curl": {
+      "status": 200,
+      "final": "https://dev.criptofarol.com.br/monitor",
+      "bytes": 455,
+      "sha16": "7bb2f89afc31e123"
+    },
+    "browser": {
+      "url": "https://dev.criptofarol.com.br/login",
+      "is_login": true,
+      "table_signals": 0,
+      "body_prefix": "Bem-vindo de volta |  | Entre com suas credenciais para continuar |  | EMAIL | SENHA | Esqueci minha senha | Entrar"
+    }
+  },
+  "asserts": [
+    {
+      "id": "digest_index_expected",
+      "ok": true,
+      "detail": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b"
+    },
+    {
+      "id": "digest_disk_eq_https",
+      "ok": true,
+      "detail": {
+        "disk": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b",
+        "https": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b",
+        "stale": false
+      }
+    },
+    {
+      "id": "copied_utf8_gt_0",
+      "ok": true,
+      "detail": "9/9 incl=21255 excl=21057"
+    },
+    {
+      "id": "no_extra_favorites_disk",
+      "ok": true,
+      "detail": {
+        "erro.html": false,
+        "erro.html_http": 404,
+        "favorites.html": false,
+        "favorites.html_http": 404,
+        "filtro.html": false,
+        "filtro.html_http": 404,
+        "home.html": false,
+        "home.html_http": 404,
+        "inicio.html": false,
+        "inicio.html_http": 404,
+        "grafico.html": false,
+        "grafico.html_http": 404
+      }
+    },
+    {
+      "id": "html_absent_grafico_1d",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_absent_tf_1d",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_absent_data_chart_tf",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_absent_aria_select_chart_tf",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_absent_estrategia_4h_button_copy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_has_readonly_estrategia_dot_4h",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_has_tf_filter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_has_btc",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_has_eth_witness",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_th_grafico",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_landmark_7d_in_copied_comment",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_no_chart_timeframe_testid",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "html_js_does_not_switch_chart_tf",
+      "ok": true,
+      "detail": "filter JS only"
+    },
+    {
+      "id": "detector_exit_0_or_2",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "detector_clean",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "not_n_estados_gallery_source",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "live_monitor_not_used_as_clone_proof",
+      "ok": true,
+      "detail": "url=https://dev.criptofarol.com.br/login login=True tables=0"
+    },
+    {
+      "id": "live_is_login_without_session",
+      "ok": true,
+      "detail": "https://dev.criptofarol.com.br/login"
+    },
+    {
+      "id": "live_login_not_treated_as_monitor_landmarks",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "desktop-mutation_available",
+      "ok": true,
+      "detail": {
+        "title": "impeccable-mutation-preflight",
+        "restored_possible": true,
+        "script": true,
+        "flag": true
+      }
+    },
+    {
+      "id": "desktop-index_local_proto_url",
+      "ok": true,
+      "detail": "http://127.0.0.1:38917/prototypes/card-994-monitor-multiplos-timeframes/"
+    },
+    {
+      "id": "desktop-lm_table_signals",
+      "ok": true,
+      "detail": 2
+    },
+    {
+      "id": "desktop-not_chrome_only",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-lm_Status",
+      "ok": true,
+      "detail": "Status"
+    },
+    {
+      "id": "desktop-lm_Preço",
+      "ok": true,
+      "detail": "Preço"
+    },
+    {
+      "id": "desktop-lm_Distância",
+      "ok": true,
+      "detail": "Distância"
+    },
+    {
+      "id": "desktop-lm_Tags",
+      "ok": true,
+      "detail": "Tags"
+    },
+    {
+      "id": "desktop-lm_Operar",
+      "ok": true,
+      "detail": "Operar"
+    },
+    {
+      "id": "desktop-lm_Par / Estratégia",
+      "ok": true,
+      "detail": "Par / Estratégia"
+    },
+    {
+      "id": "desktop-happy_btc",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-happy_eth_witness",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-happy_strategy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-pair_tf_btc_4h",
+      "ok": true,
+      "detail": "4h"
+    },
+    {
+      "id": "desktop-filter_has_todos",
+      "ok": true,
+      "detail": [
+        "Timeframe: Todos",
+        "4h",
+        "1d"
+      ]
+    },
+    {
+      "id": "desktop-filter_has_4h",
+      "ok": true,
+      "detail": [
+        "Timeframe: Todos",
+        "4h",
+        "1d"
+      ]
+    },
+    {
+      "id": "desktop-filter_has_1d",
+      "ok": true,
+      "detail": [
+        "Timeframe: Todos",
+        "4h",
+        "1d"
+      ]
+    },
+    {
+      "id": "desktop-spark_btc_4h",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "id": "desktop-spark_eth_1d",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "id": "desktop-col_grafico_visible",
+      "ok": true,
+      "detail": [
+        "",
+        "PAR / ESTRATÉGIA",
+        "STATUS",
+        "PREÇO",
+        "DISTÂNCIA",
+        "GRÁFICO",
+        "RISCO ATÉ STOP",
+        "TAGS",
+        "OPERAR",
+        "",
+        "PAR / ESTRATÉGIA",
+        "STATUS",
+        "PREÇO",
+        "DISTÂNCIA",
+        "GRÁFICO",
+        "RISCO ATÉ STOP",
+        "TAGS",
+        "OPERAR"
+      ]
+    },
+    {
+      "id": "desktop-ficha_one_tf",
+      "ok": true,
+      "detail": [
+        "4h"
+      ]
+    },
+    {
+      "id": "desktop-absent_grafico_1d_body",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-absent_tf_1d_body",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-absent_grafico_1d_html",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-absent_tf_1d_html",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-absent_data_chart_tf",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "desktop-absent_aria_select_chart_tf",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "desktop-absent_chart_tf_buttons",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "desktop-absent_btn_15m",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "desktop-absent_btn_1h",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "desktop-absent_btn_1d_chart",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "desktop-absent_btn_estrategia_4h",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "desktop-absent_estrategia_4h_copy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-present_chart_strategy_tf_readonly",
+      "ok": true,
+      "detail": {
+        "text": "Estratégia ·\n4h",
+        "tag": "P",
+        "role": null
+      }
+    },
+    {
+      "id": "desktop-chart_open_strategy_4h",
+      "ok": true,
+      "detail": {
+        "subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+        "bars": "42 velas · 4h"
+      }
+    },
+    {
+      "id": "desktop-chart_modal_present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-default_em_portfolio",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-zero_antes_depois_buttons",
+      "ok": true,
+      "detail": "antes=0 depois=0"
+    },
+    {
+      "id": "desktop-not_panel_antes_depois",
+      "ok": true,
+      "detail": "absent"
+    },
+    {
+      "id": "desktop-not_n_estados_gallery",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-no_h_overflow",
+      "ok": true,
+      "detail": {
+        "sw": 1440,
+        "cw": 1440
+      }
+    },
+    {
+      "id": "desktop-index_lang",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-sidebar_224",
+      "ok": true,
+      "detail": {
+        "display": "flex",
+        "width": "224px",
+        "offsetWidth": 224
+      }
+    },
+    {
+      "id": "desktop-filter_4h_keeps_btc",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": "",
+        "btc_card_hidden": null,
+        "eth_card_hidden": "",
+        "count": "1 resultados",
+        "pair_tf": "4h",
+        "body_has_eth": false,
+        "body_has_btc": true
+      }
+    },
+    {
+      "id": "desktop-filter_4h_hides_eth",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": "",
+        "btc_card_hidden": null,
+        "eth_card_hidden": "",
+        "count": "1 resultados",
+        "pair_tf": "4h",
+        "body_has_eth": false,
+        "body_has_btc": true
+      }
+    },
+    {
+      "id": "desktop-filter_4h_hides_eth_card",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": "",
+        "btc_card_hidden": null,
+        "eth_card_hidden": "",
+        "count": "1 resultados",
+        "pair_tf": "4h",
+        "body_has_eth": false,
+        "body_has_btc": true
+      }
+    },
+    {
+      "id": "desktop-filter_4h_pair_tf_still_4h",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-filter_1d_hides_btc",
+      "ok": true,
+      "detail": {
+        "btc_hidden": "",
+        "eth_hidden": null,
+        "count": "1 resultados",
+        "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nETH\nETH/USDT\n1d\nMACD: Mudança de Ritmo\n\tSAÍDA / COBERTURA\t$3,412.50\t0.90%\t\n\t\n2.10%\nstop\n\t\n● Carteira\n★★\n\t\nAbrir Gráfico\nVer Trades\nOperar"
+      }
+    },
+    {
+      "id": "desktop-filter_1d_keeps_eth",
+      "ok": true,
+      "detail": {
+        "btc_hidden": "",
+        "eth_hidden": null,
+        "count": "1 resultados",
+        "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\n\tPAR / ESTRATÉGIA\tSTATUS\tPREÇO\tDISTÂNCIA\tGRÁFICO\tRISCO ATÉ STOP\tTAGS\tOPERAR\n\t\nETH\nETH/USDT\n1d\nMACD: Mudança de Ritmo\n\tSAÍDA / COBERTURA\t$3,412.50\t0.90%\t\n\t\n2.10%\nstop\n\t\n● Carteira\n★★\n\t\nAbrir Gráfico\nVer Trades\nOperar"
+      }
+    },
+    {
+      "id": "desktop-filter_todos_shows_btc",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": null
+      }
+    },
+    {
+      "id": "desktop-filter_todos_shows_eth",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": null
+      }
+    },
+    {
+      "id": "desktop-chart_readonly_after_filter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-overlay_path_declared",
+      "ok": true,
+      "detail": "injected"
+    },
+    {
+      "id": "desktop-console_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-pageerror_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "desktop-badhttp_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-mutation_available",
+      "ok": true,
+      "detail": {
+        "title": "impeccable-mutation-preflight",
+        "restored_possible": true,
+        "script": true,
+        "flag": true
+      }
+    },
+    {
+      "id": "mobile-index_local_proto_url",
+      "ok": true,
+      "detail": "http://127.0.0.1:38917/prototypes/card-994-monitor-multiplos-timeframes/"
+    },
+    {
+      "id": "mobile-lm_table_signals",
+      "ok": true,
+      "detail": 2
+    },
+    {
+      "id": "mobile-not_chrome_only",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-lm_Status",
+      "ok": true,
+      "detail": "Status"
+    },
+    {
+      "id": "mobile-lm_Preço",
+      "ok": true,
+      "detail": "Preço"
+    },
+    {
+      "id": "mobile-lm_Distância",
+      "ok": true,
+      "detail": "Distância"
+    },
+    {
+      "id": "mobile-lm_Tags",
+      "ok": true,
+      "detail": "Tags"
+    },
+    {
+      "id": "mobile-lm_Operar",
+      "ok": true,
+      "detail": "Operar"
+    },
+    {
+      "id": "mobile-lm_Par / Estratégia",
+      "ok": true,
+      "detail": "Par / Estratégia"
+    },
+    {
+      "id": "mobile-happy_btc",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-happy_eth_witness",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-happy_strategy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-pair_tf_btc_4h",
+      "ok": true,
+      "detail": "4h"
+    },
+    {
+      "id": "mobile-filter_has_todos",
+      "ok": true,
+      "detail": [
+        "Timeframe: Todos",
+        "4h",
+        "1d"
+      ]
+    },
+    {
+      "id": "mobile-filter_has_4h",
+      "ok": true,
+      "detail": [
+        "Timeframe: Todos",
+        "4h",
+        "1d"
+      ]
+    },
+    {
+      "id": "mobile-filter_has_1d",
+      "ok": true,
+      "detail": [
+        "Timeframe: Todos",
+        "4h",
+        "1d"
+      ]
+    },
+    {
+      "id": "mobile-spark_btc_4h",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "id": "mobile-spark_eth_1d",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "id": "mobile-col_grafico_visible",
+      "ok": true,
+      "detail": [
+        "",
+        "Par / Estratégia",
+        "Status",
+        "Preço",
+        "Distância",
+        "Gráfico",
+        "Risco até stop",
+        "Tags",
+        "Operar",
+        "",
+        "Par / Estratégia",
+        "Status",
+        "Preço",
+        "Distância",
+        "Gráfico",
+        "Risco até stop",
+        "Tags",
+        "Operar"
+      ]
+    },
+    {
+      "id": "mobile-ficha_one_tf",
+      "ok": true,
+      "detail": [
+        "4h"
+      ]
+    },
+    {
+      "id": "mobile-absent_grafico_1d_body",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-absent_tf_1d_body",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-absent_grafico_1d_html",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-absent_tf_1d_html",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-absent_data_chart_tf",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "mobile-absent_aria_select_chart_tf",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "mobile-absent_chart_tf_buttons",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "mobile-absent_btn_15m",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "mobile-absent_btn_1h",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "mobile-absent_btn_1d_chart",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "mobile-absent_btn_estrategia_4h",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "id": "mobile-absent_estrategia_4h_copy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-present_chart_strategy_tf_readonly",
+      "ok": true,
+      "detail": {
+        "text": "Estratégia ·\n4h",
+        "tag": "P",
+        "role": null
+      }
+    },
+    {
+      "id": "mobile-chart_open_strategy_4h",
+      "ok": true,
+      "detail": {
+        "subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+        "bars": "42 velas · 4h"
+      }
+    },
+    {
+      "id": "mobile-chart_modal_present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-default_em_portfolio",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-zero_antes_depois_buttons",
+      "ok": true,
+      "detail": "antes=0 depois=0"
+    },
+    {
+      "id": "mobile-not_panel_antes_depois",
+      "ok": true,
+      "detail": "absent"
+    },
+    {
+      "id": "mobile-not_n_estados_gallery",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-no_h_overflow",
+      "ok": true,
+      "detail": {
+        "sw": 390,
+        "cw": 390
+      }
+    },
+    {
+      "id": "mobile-index_lang",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-filter_4h_keeps_btc",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": "",
+        "btc_card_hidden": null,
+        "eth_card_hidden": "",
+        "count": "1 resultados",
+        "pair_tf": "4h",
+        "body_has_eth": false,
+        "body_has_btc": true
+      }
+    },
+    {
+      "id": "mobile-filter_4h_hides_eth",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": "",
+        "btc_card_hidden": null,
+        "eth_card_hidden": "",
+        "count": "1 resultados",
+        "pair_tf": "4h",
+        "body_has_eth": false,
+        "body_has_btc": true
+      }
+    },
+    {
+      "id": "mobile-filter_4h_hides_eth_card",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": "",
+        "btc_card_hidden": null,
+        "eth_card_hidden": "",
+        "count": "1 resultados",
+        "pair_tf": "4h",
+        "body_has_eth": false,
+        "body_has_btc": true
+      }
+    },
+    {
+      "id": "mobile-filter_4h_pair_tf_still_4h",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-filter_4h_mobile_eth_not_in_body",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-filter_4h_mobile_btc_in_body",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-filter_1d_hides_btc",
+      "ok": true,
+      "detail": {
+        "btc_hidden": "",
+        "eth_hidden": null,
+        "count": "1 resultados",
+        "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\nETH/USDT 1d\n\nMACD: Mudança de Ritmo · Saída / cobertura\n\nSAÍDA / COBERTURA\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar"
+      }
+    },
+    {
+      "id": "mobile-filter_1d_keeps_eth",
+      "ok": true,
+      "detail": {
+        "btc_hidden": "",
+        "eth_hidden": null,
+        "count": "1 resultados",
+        "body_board": "EM POSIÇÃO\n(0)\n\nPosição ativa com gestão em acompanhamento contínuo.\n\nSAÍDA / COBERTURA\n(1)\n\nSaída ou cobertura acionável para nova análise.\n\nETH/USDT 1d\n\nMACD: Mudança de Ritmo · Saída / cobertura\n\nSAÍDA / COBERTURA\n● Carteira\nAbrir Gráfico\nVer Trades\nOperar"
+      }
+    },
+    {
+      "id": "mobile-filter_1d_mobile_btc_not_in_board",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-filter_1d_mobile_eth_in_board",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-filter_todos_shows_btc",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": null
+      }
+    },
+    {
+      "id": "mobile-filter_todos_shows_eth",
+      "ok": true,
+      "detail": {
+        "btc_hidden": null,
+        "eth_hidden": null
+      }
+    },
+    {
+      "id": "mobile-chart_readonly_after_filter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-overlay_path_declared",
+      "ok": true,
+      "detail": "injected_other_viewport_only"
+    },
+    {
+      "id": "mobile-console_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-pageerror_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "mobile-badhttp_zero",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "dumps": {},
+  "detector": {
+    "exit": 0,
+    "findings": [],
+    "raw_type": "list",
+    "stderr": "",
+    "count": 0,
+    "rule_names": [],
+    "browser": {
+      "count": 55,
+      "rule_names": [],
+      "findings": [
+        {
+          "selector": "div.workspace-card > div.meta-label",
+          "tagName": "div",
+          "rect": {
+            "x": 27,
+            "y": 84,
+            "width": 169,
+            "height": 19.5,
+            "top": 84,
+            "right": 196,
+            "bottom": 103.5,
+            "left": 27
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            }
+          ]
+        },
+        {
+          "selector": "div.nav-section:nth-of-type(1) > div.nav-title",
+          "tagName": "div",
+          "rect": {
+            "x": 10,
+            "y": 183.5,
+            "width": 203,
+            "height": 26.5,
+            "top": 183.5,
+            "right": 213,
+            "bottom": 210,
+            "left": 10
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            }
+          ]
+        },
+        {
+          "selector": "div.nav-section:nth-of-type(2) > div.nav-title",
+          "tagName": "div",
+          "rect": {
+            "x": 10,
+            "y": 316,
+            "width": 203,
+            "height": 26.5,
+            "top": 316,
+            "right": 213,
+            "bottom": 342.5,
+            "left": 10
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            }
+          ]
+        },
+        {
+          "selector": "div.nav-section:nth-of-type(3) > div.nav-title",
+          "tagName": "div",
+          "rect": {
+            "x": 10,
+            "y": 448.5,
+            "width": 203,
+            "height": 26.5,
+            "top": 448.5,
+            "right": 213,
+            "bottom": 475,
+            "left": 10
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            }
+          ]
+        },
+        {
+          "selector": "div.nav-section:nth-of-type(4) > div.nav-title",
+          "tagName": "div",
+          "rect": {
+            "x": 10,
+            "y": 581,
+            "width": 203,
+            "height": 26.5,
+            "top": 581,
+            "right": 213,
+            "bottom": 607.5,
+            "left": 10
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            }
+          ]
+        },
+        {
+          "selector": "div:nth-of-type(1) > div.meta-label",
+          "tagName": "div",
+          "rect": {
+            "x": 256,
+            "y": 14.75,
+            "width": 164.46875,
+            "height": 19.5,
+            "top": 14.75,
+            "right": 420.46875,
+            "bottom": 34.25,
+            "left": 256
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            }
+          ]
+        },
+        {
+          "selector": "small",
+          "tagName": "small",
+          "rect": {
+            "x": 1286.703125,
+            "y": 20,
+            "width": 54.296875,
+            "height": 19.5,
+            "top": 20,
+            "right": 1341,
+            "bottom": 39.5,
+            "left": 1286.703125
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "3.6:1 (need 4.5:1) — text #707a8a on #1e2329",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            }
+          ]
+        },
+        {
+          "selector": "#result-count",
+          "tagName": "span",
+          "rect": {
+            "x": 1315.140625,
+            "y": -209.875,
+            "width": 89.859375,
+            "height": 19.75,
+            "top": -209.875,
+            "right": 1405,
+            "bottom": -190.125,
+            "left": 1315.140625
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"2 resultados\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.status-row > p.desc",
+          "tagName": "p",
+          "rect": {
+            "x": 1122.015625,
+            "y": -138.5,
+            "width": 295.984375,
+            "height": 17.25,
+            "top": -138.5,
+            "right": 1418,
+            "bottom": -121.25,
+            "left": 1122.015625
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "tiny-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "11.5px body text",
+              "ignoreValue": "",
+              "name": "Tiny body text",
+              "description": "Body text below 12px is hard to read, especially on high-DPI screens. Use at least 14px for body content, 16px is ideal."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.mobile-cards > article.mobile-card > h4 > span.pair-tf",
+          "tagName": "span",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "isPageLevel": false,
+          "isHidden": true,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"4h\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "article.mobile-card > span.status-pill.hold",
+          "tagName": "span",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "isPageLevel": false,
+          "isHidden": true,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Em posição\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.mobile-cards > article.mobile-card > span.tag.portfolio",
+          "tagName": "span",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "isPageLevel": false,
+          "isHidden": true,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"● Carteira\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap",
+          "tagName": "div",
+          "rect": {
+            "x": 246,
+            "y": -99.75,
+            "width": 1172,
+            "height": 246,
+            "top": -99.75,
+            "right": 1418,
+            "bottom": 146.25,
+            "left": 246
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "cramped-padding",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "<div> \"table-wrap\": children flush against border+bg on top/right (no inset)",
+              "ignoreValue": "",
+              "name": "Cramped padding",
+              "description": "Text is too close to the edge of its container. Two shapes: (1) an element with its own text where the padding is too low for the font size, and (2) a wrapper with text-bearing children and near-zero padding against a visible boundary (border, outline, or non-transparent background) — children land flush against the boundary line. Add at least 8px (ideally 12–16px) of padding inside bordered, outlined, or colored containers."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(2)",
+          "tagName": "th",
+          "rect": {
+            "x": 279,
+            "y": -98.75,
+            "width": 217.734375,
+            "height": 36.25,
+            "top": -98.75,
+            "right": 496.734375,
+            "bottom": -62.5,
+            "left": 279
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Par / Estratégia\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(3)",
+          "tagName": "th",
+          "rect": {
+            "x": 496.734375,
+            "y": -98.75,
+            "width": 99.953125,
+            "height": 36.25,
+            "top": -98.75,
+            "right": 596.6875,
+            "bottom": -62.5,
+            "left": 496.734375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Status\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(4)",
+          "tagName": "th",
+          "rect": {
+            "x": 596.6875,
+            "y": -98.75,
+            "width": 109.28125,
+            "height": 36.25,
+            "top": -98.75,
+            "right": 705.96875,
+            "bottom": -62.5,
+            "left": 596.6875
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Preço\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(5)",
+          "tagName": "th",
+          "rect": {
+            "x": 705.96875,
+            "y": -98.75,
+            "width": 90.84375,
+            "height": 36.25,
+            "top": -98.75,
+            "right": 796.8125,
+            "bottom": -62.5,
+            "left": 705.96875
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Distância\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th.col-spark",
+          "tagName": "th",
+          "rect": {
+            "x": 796.8125,
+            "y": -98.75,
+            "width": 108,
+            "height": 36.25,
+            "top": -98.75,
+            "right": 904.8125,
+            "bottom": -62.5,
+            "left": 796.8125
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Gráfico\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(7)",
+          "tagName": "th",
+          "rect": {
+            "x": 904.8125,
+            "y": -98.75,
+            "width": 148,
+            "height": 36.25,
+            "top": -98.75,
+            "right": 1052.8125,
+            "bottom": -62.5,
+            "left": 904.8125
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Risco até stop\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th.col-tags",
+          "tagName": "th",
+          "rect": {
+            "x": 1052.8125,
+            "y": -98.75,
+            "width": 96.234375,
+            "height": 36.25,
+            "top": -98.75,
+            "right": 1149.046875,
+            "bottom": -62.5,
+            "left": 1052.8125
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Tags\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(9)",
+          "tagName": "th",
+          "rect": {
+            "x": 1149.046875,
+            "y": -98.75,
+            "width": 267.953125,
+            "height": 36.25,
+            "top": -98.75,
+            "right": 1417,
+            "bottom": -62.5,
+            "left": 1149.046875
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Operar\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "div.pair-icon.btc",
+          "tagName": "div",
+          "rect": {
+            "x": 293,
+            "y": -31,
+            "width": 26,
+            "height": 26,
+            "top": -31,
+            "right": 319,
+            "bottom": -5,
+            "left": 293
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "2.3:1 (need 4.5:1) — text #ffffff on #f7931a",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"BTC\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "tr.head-row.expanded > td:nth-of-type(2) > div.pair-cell > div.pair-meta > div.pair-name > span.pair-tf",
+          "tagName": "span",
+          "rect": {
+            "x": 400.71875,
+            "y": -44,
+            "width": 22.046875,
+            "height": 17,
+            "top": -44,
+            "right": 422.765625,
+            "bottom": -27,
+            "left": 400.71875
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"4h\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "td:nth-of-type(3) > span.status-pill.hold",
+          "tagName": "span",
+          "rect": {
+            "x": 510.734375,
+            "y": -37.75,
+            "width": 71.953125,
+            "height": 39.5,
+            "top": -37.75,
+            "right": 582.6875,
+            "bottom": 1.75,
+            "left": 510.734375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Em posição\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "tr.head-row.expanded > td:nth-of-type(7) > div.risk-meta > span:nth-of-type(1)",
+          "tagName": "span",
+          "rect": {
+            "x": 918.8125,
+            "y": -20.875,
+            "width": 31.609375,
+            "height": 15.75,
+            "top": -20.875,
+            "right": 950.421875,
+            "bottom": -5.125,
+            "left": 918.8125
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"4.20%\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "tr.head-row.expanded > td:nth-of-type(7) > div.risk-meta > span:nth-of-type(2)",
+          "tagName": "span",
+          "rect": {
+            "x": 1013.515625,
+            "y": -20.875,
+            "width": 25.296875,
+            "height": 15.75,
+            "top": -20.875,
+            "right": 1038.8125,
+            "bottom": -5.125,
+            "left": 1013.515625
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"stop\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "tr.head-row.expanded > td.col-tags > div.tags > span.tag.portfolio",
+          "tagName": "span",
+          "rect": {
+            "x": 1066.8125,
+            "y": -41.5,
+            "width": 60.390625,
+            "height": 21,
+            "top": -41.5,
+            "right": 1127.203125,
+            "bottom": -20.5,
+            "left": 1066.8125
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"● Carteira\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "tr.head-row.expanded > td.col-tags > div.tags > span.tag.strategy",
+          "tagName": "span",
+          "rect": {
+            "x": 1066.8125,
+            "y": -15.5,
+            "width": 42.90625,
+            "height": 21,
+            "top": -15.5,
+            "right": 1109.71875,
+            "bottom": 5.5,
+            "left": 1066.8125
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "ai-color-palette",
+              "category": "slop",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "Purple/violet neon text on dark background",
+              "ignoreValue": "",
+              "name": "AI color palette",
+              "description": "Purple/violet gradients and cyan-on-dark are the most recognizable tells of AI-generated UIs. Choose a distinctive, intentional palette."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"★★★\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "div.detail-pair-summary > span.status-pill.hold",
+          "tagName": "span",
+          "rect": {
+            "x": 373.625,
+            "y": 42,
+            "width": 86.46875,
+            "height": 23.75,
+            "top": 42,
+            "right": 460.09375,
+            "bottom": 65.75,
+            "left": 373.625
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Em posição\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.status-row > p.desc",
+          "tagName": "p",
+          "rect": {
+            "x": 1171.21875,
+            "y": 179.75,
+            "width": 246.78125,
+            "height": 17.25,
+            "top": 179.75,
+            "right": 1418,
+            "bottom": 197,
+            "left": 1171.21875
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "tiny-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "11.5px body text",
+              "ignoreValue": "",
+              "name": "Tiny body text",
+              "description": "Body text below 12px is hard to read, especially on high-DPI screens. Use at least 14px for body content, 16px is ideal."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.mobile-cards > article.mobile-card > h4 > span.pair-tf",
+          "tagName": "span",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "isPageLevel": false,
+          "isHidden": true,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"1d\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "article.mobile-card > span.status-pill.exit",
+          "tagName": "span",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "isPageLevel": false,
+          "isHidden": true,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Saída / cobertura\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.mobile-cards > article.mobile-card > span.tag.portfolio",
+          "tagName": "span",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "isPageLevel": false,
+          "isHidden": true,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"● Carteira\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap",
+          "tagName": "div",
+          "rect": {
+            "x": 246,
+            "y": 218.5,
+            "width": 1172,
+            "height": 127.75,
+            "top": 218.5,
+            "right": 1418,
+            "bottom": 346.25,
+            "left": 246
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "cramped-padding",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "<div> \"table-wrap\": children flush against border+bg on top/right/bottom (no inset)",
+              "ignoreValue": "",
+              "name": "Cramped padding",
+              "description": "Text is too close to the edge of its container. Two shapes: (1) an element with its own text where the padding is too low for the font size, and (2) a wrapper with text-bearing children and near-zero padding against a visible boundary (border, outline, or non-transparent background) — children land flush against the boundary line. Add at least 8px (ideally 12–16px) of padding inside bordered, outlined, or colored containers."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(2)",
+          "tagName": "th",
+          "rect": {
+            "x": 279,
+            "y": 219.5,
+            "width": 195.359375,
+            "height": 36.25,
+            "top": 219.5,
+            "right": 474.359375,
+            "bottom": 255.75,
+            "left": 279
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Par / Estratégia\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(3)",
+          "tagName": "th",
+          "rect": {
+            "x": 474.359375,
+            "y": 219.5,
+            "width": 126.234375,
+            "height": 36.25,
+            "top": 219.5,
+            "right": 600.59375,
+            "bottom": 255.75,
+            "left": 474.359375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Status\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(4)",
+          "tagName": "th",
+          "rect": {
+            "x": 600.59375,
+            "y": 219.5,
+            "width": 101.15625,
+            "height": 36.25,
+            "top": 219.5,
+            "right": 701.75,
+            "bottom": 255.75,
+            "left": 600.59375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Preço\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(5)",
+          "tagName": "th",
+          "rect": {
+            "x": 701.75,
+            "y": 219.5,
+            "width": 90.84375,
+            "height": 36.25,
+            "top": 219.5,
+            "right": 792.59375,
+            "bottom": 255.75,
+            "left": 701.75
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Distância\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th.col-spark",
+          "tagName": "th",
+          "rect": {
+            "x": 792.59375,
+            "y": 219.5,
+            "width": 108,
+            "height": 36.25,
+            "top": 219.5,
+            "right": 900.59375,
+            "bottom": 255.75,
+            "left": 792.59375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Gráfico\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(7)",
+          "tagName": "th",
+          "rect": {
+            "x": 900.59375,
+            "y": 219.5,
+            "width": 148,
+            "height": 36.25,
+            "top": 219.5,
+            "right": 1048.59375,
+            "bottom": 255.75,
+            "left": 900.59375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Risco até stop\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th.col-tags",
+          "tagName": "th",
+          "rect": {
+            "x": 1048.59375,
+            "y": 219.5,
+            "width": 95.78125,
+            "height": 36.25,
+            "top": 219.5,
+            "right": 1144.375,
+            "bottom": 255.75,
+            "left": 1048.59375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Tags\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(9)",
+          "tagName": "th",
+          "rect": {
+            "x": 1144.375,
+            "y": 219.5,
+            "width": 272.625,
+            "height": 36.25,
+            "top": 219.5,
+            "right": 1417,
+            "bottom": 255.75,
+            "left": 1144.375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Operar\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "div.pair-icon.eth",
+          "tagName": "div",
+          "rect": {
+            "x": 293,
+            "y": 287.25,
+            "width": 26,
+            "height": 26,
+            "top": 287.25,
+            "right": 319,
+            "bottom": 313.25,
+            "left": 293
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "3.7:1 (need 4.5:1) — text #ffffff on #627eea",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"ETH\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td:nth-of-type(2) > div.pair-cell > div.pair-meta > div.pair-name > span.pair-tf",
+          "tagName": "span",
+          "rect": {
+            "x": 400,
+            "y": 274.25,
+            "width": 22.046875,
+            "height": 17,
+            "top": 274.25,
+            "right": 422.046875,
+            "bottom": 291.25,
+            "left": 400
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"1d\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "td:nth-of-type(3) > span.status-pill.exit",
+          "tagName": "span",
+          "rect": {
+            "x": 488.359375,
+            "y": 280.5,
+            "width": 98.234375,
+            "height": 39.5,
+            "top": 280.5,
+            "right": 586.59375,
+            "bottom": 320,
+            "left": 488.359375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"Saída / cobertura\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td:nth-of-type(7) > div.risk-meta > span:nth-of-type(1)",
+          "tagName": "span",
+          "rect": {
+            "x": 914.59375,
+            "y": 297.375,
+            "width": 31.609375,
+            "height": 15.75,
+            "top": 297.375,
+            "right": 946.203125,
+            "bottom": 313.125,
+            "left": 914.59375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"2.10%\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td:nth-of-type(7) > div.risk-meta > span:nth-of-type(2)",
+          "tagName": "span",
+          "rect": {
+            "x": 1009.296875,
+            "y": 297.375,
+            "width": 25.296875,
+            "height": 15.75,
+            "top": 297.375,
+            "right": 1034.59375,
+            "bottom": 313.125,
+            "left": 1009.296875
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10.5px functional text \"stop\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td.col-tags > div.tags > span.tag.portfolio",
+          "tagName": "span",
+          "rect": {
+            "x": 1062.59375,
+            "y": 276.75,
+            "width": 60.390625,
+            "height": 21,
+            "top": 276.75,
+            "right": 1122.984375,
+            "bottom": 297.75,
+            "left": 1062.59375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"● Carteira\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td.col-tags > div.tags > span.tag.strategy",
+          "tagName": "span",
+          "rect": {
+            "x": 1062.59375,
+            "y": 302.75,
+            "width": 33.9375,
+            "height": 21,
+            "top": 302.75,
+            "right": 1096.53125,
+            "bottom": 323.75,
+            "left": 1062.59375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "ai-color-palette",
+              "category": "slop",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "Purple/violet neon text on dark background",
+              "ignoreValue": "",
+              "name": "AI color palette",
+              "description": "Purple/violet gradients and cyan-on-dark are the most recognizable tells of AI-generated UIs. Choose a distinctive, intentional palette."
+            },
+            {
+              "type": "undersized-ui-text",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "10px functional text \"★★\" (below 11px floor)",
+              "ignoreValue": "",
+              "name": "Undersized functional text",
+              "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+            }
+          ]
+        },
+        {
+          "selector": "div.chart-modal",
+          "tagName": "div",
+          "rect": {
+            "x": 240,
+            "y": 410.25,
+            "width": 1184,
+            "height": 466.1875,
+            "top": 410.25,
+            "right": 1424,
+            "bottom": 876.4375,
+            "left": 240
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "gpt-thin-border-wide-shadow",
+              "category": "slop",
+              "severity": "advisory",
+              "advisory": false,
+              "detail": "1px border + 90px shadow blur",
+              "ignoreValue": "",
+              "name": "Hairline border with wide shadow",
+              "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one — a defined edge or a soft elevation — rather than both at once."
+            }
+          ]
+        },
+        {
+          "selector": "#chart-subtitle",
+          "tagName": "p",
+          "rect": {
+            "x": 257,
+            "y": 456.25,
+            "width": 457.390625,
+            "height": 18.75,
+            "top": 456.25,
+            "right": 714.390625,
+            "bottom": 475,
+            "left": 257
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "low-contrast",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11",
+              "ignoreValue": "",
+              "name": "Low contrast text",
+              "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+            }
+          ]
+        },
+        {
+          "selector": "div:nth-of-type(44) > div > span:nth-of-type(2)",
+          "tagName": "span",
+          "rect": {
+            "x": 314.09375,
+            "y": 265.25,
+            "width": 121.796875,
+            "height": 20,
+            "top": 265.25,
+            "right": 435.890625,
+            "bottom": 285.25,
+            "left": 314.09375
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "text-occlusion",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "span \"low contrast text\" is 90% covered by overlapping text (div.pair-name)",
+              "ignoreValue": "",
+              "name": "Text occluded by an overlapping element",
+              "description": "Text is painted under an opaque element or a second text run, so part of it cannot be read. A decorative box, a stacked layer, or an inline element with leaked padding lands on the words instead of beside them. Give overlapping layers room, or move the text out from under the layer above it."
+            }
+          ]
+        },
+        {
+          "selector": "div:nth-of-type(51) > div > span",
+          "tagName": "span",
+          "rect": {
+            "x": 236,
+            "y": 388.25,
+            "width": 244.4375,
+            "height": 20,
+            "top": 388.25,
+            "right": 480.4375,
+            "bottom": 408.25,
+            "left": 236
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "text-occlusion",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "span \"✦ hairline border with w\" is 100% covered by an opaque element (div.chart-modal-backdrop)",
+              "ignoreValue": "",
+              "name": "Text occluded by an overlapping element",
+              "description": "Text is painted under an opaque element or a second text run, so part of it cannot be read. A decorative box, a stacked layer, or an inline element with leaked padding lands on the words instead of beside them. Give overlapping layers room, or move the text out from under the layer above it."
+            }
+          ]
+        },
+        {
+          "selector": "div:nth-of-type(52) > div > span",
+          "tagName": "span",
+          "rect": {
+            "x": 253,
+            "y": 434.25,
+            "width": 125.796875,
+            "height": 20,
+            "top": 434.25,
+            "right": 378.796875,
+            "bottom": 454.25,
+            "left": 253
+          },
+          "isPageLevel": false,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "text-occlusion",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "span \"low contrast text\" is 100% covered by overlapping text (h2)",
+              "ignoreValue": "",
+              "name": "Text occluded by an overlapping element",
+              "description": "Text is painted under an opaque element or a second text run, so part of it cannot be read. A decorative box, a stacked layer, or an inline element with leaked padding lands on the words instead of beside them. Give overlapping layers room, or move the text out from under the layer above it."
+            }
+          ]
+        },
+        {
+          "selector": "body",
+          "tagName": "body",
+          "rect": null,
+          "isPageLevel": true,
+          "isHidden": false,
+          "findings": [
+            {
+              "type": "skipped-heading",
+              "category": "quality",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "<h1> \"Monitor de sinais\" followed by <h3> \"Em posição(1)\" (missing h2)",
+              "ignoreValue": "",
+              "name": "Skipped heading level",
+              "description": "Heading levels should not skip (e.g. h1 then h3 with no h2). Screen readers use heading hierarchy for navigation. Skipping levels breaks the document outline."
+            },
+            {
+              "type": "gradient-text",
+              "category": "slop",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "background-clip: text + gradient",
+              "ignoreValue": "",
+              "name": "Gradient text",
+              "description": "Gradient text is decorative rather than meaningful — a common AI tell, especially on headings and metrics. Use solid colors for text."
+            },
+            {
+              "type": "marquee",
+              "category": "slop",
+              "severity": "warning",
+              "advisory": false,
+              "detail": "<marquee> element",
+              "ignoreValue": "",
+              "name": "Auto-scrolling marquee",
+              "description": "Continuously auto-scrolling content demands attention it has not earned and hides half its content at any moment. Reserve motion for content that changes; let readers move at their own pace."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "overlay": {
+    "live_server": {
+      "skipped": true,
+      "reason": "write fence: Assessment B may only write .impeccable/critique/**; live-server would touch .impeccable/live/. Overlay injects detector JS in-page from skill file.",
+      "detect_js": "/srv/apps/dev/criptofarol/crypto-worktrees/card-994-monitor-multiplos-timeframes/.agents/skills/impeccable/scripts/detector/detect-antipatterns-browser.js",
+      "detect_js_exists": true
+    },
+    "viewports": {
+      "desktop": {
+        "status": "injected",
+        "via": "add_script_tag(path=detect-antipatterns-browser.js) after contract shots",
+        "dom": {
+          "overlays": 52,
+          "scripts": [
+            "impeccable-preflight"
+          ],
+          "windowKeys": [
+            "__impeccablePreflight",
+            "impeccableDetect",
+            "impeccableDetectAsync",
+            "impeccableScan",
+            "impeccableScanAsync",
+            "impeccableMeasureHiddenText",
+            "impeccableCollectVisualContrastCandidates",
+            "impeccableAnalyzeVisualContrast",
+            "impeccableGetLastVisualContrastAnalyses"
+          ]
+        },
+        "logs": [
+          "startGroup: %c[impeccable] 52 anti-patterns found color: oklch(84% 0.19 80.46); font-weight: bold"
+        ],
+        "findings_count": 55,
+        "rule_names": []
+      },
+      "mobile": {
+        "status": "injected_other_viewport_only"
+      }
+    },
+    "stop": "live-server not started (write fence)"
+  },
+  "served": {
+    "mode": "local-static frontend/public",
+    "url": "http://127.0.0.1:38917/prototypes/card-994-monitor-multiplos-timeframes/",
+    "port": 38917,
+    "https_measured": true,
+    "https_stale": false,
+    "reason": "prompt: serve disk locally even when HTTPS matches; Chrome /login is not evidence"
+  },
+  "extras": {
+    "erro.html": false,
+    "erro.html_http": 404,
+    "favorites.html": false,
+    "favorites.html_http": 404,
+    "filtro.html": false,
+    "filtro.html_http": 404,
+    "home.html": false,
+    "home.html_http": 404,
+    "inicio.html": false,
+    "inicio.html_http": 404,
+    "grafico.html": false,
+    "grafico.html_http": 404
+  },
+  "removed_stale_inspect_pngs": [],
+  "failed_ids": [],
+  "pass": true
+}
