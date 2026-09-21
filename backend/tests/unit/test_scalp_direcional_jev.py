@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
+import urllib.error
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -20,6 +22,7 @@ from app.services.scalp_engine import (
     CLIENT_ORDER_PREFIX,
     CROSS_REJECT_CODES,
     JEV_FLOOR_MS,
+    JEV_LATE_MS,
     JEV_TARGET_MS,
     ORDER_TYPE,
     TIME_IN_FORCE,
@@ -292,6 +295,61 @@ def test_near_ceiling_only_reducing_side():
     assert intent.skip_reason == "ceiling_reduce_only"
 
 
+class _FakeHttpResponse:
+    def __init__(self, payload: dict | bytes):
+        self._raw = payload if isinstance(payload, bytes) else json.dumps(payload).encode("utf-8")
+
+    def read(self):
+        return self._raw
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+def _systemone_response(
+    *,
+    side: str = "BUY",
+    confidence: float | None = 0.75,
+    edge: float = 0.8,
+    toxic: float = 0.1,
+    probabilities: dict[str, float] | None = None,
+) -> dict:
+    side_answer: dict = {
+        "type": "choice",
+        "choice": side,
+        "probabilities": probabilities or {"BUY": 0.82, "SELL": 0.10, "HOLD": 0.08},
+    }
+    if confidence is not None:
+        side_answer["confidence"] = confidence
+    return {
+        "model": "jev-1.13.0",
+        "answers": {
+            "side": side_answer,
+            "edge_after_fees": {"type": "noul", "noul": edge},
+            "book_toxic": {"type": "noul", "noul": toxic},
+        },
+        "usage": {"input_tokens": 296, "output_tokens": 20},
+    }
+
+
+def _capture_urlopen(monkeypatch, responder):
+    captured: dict = {}
+
+    def fake_urlopen(req, timeout=None):
+        captured["url"] = req.get_full_url()
+        captured["method"] = req.get_method()
+        captured["timeout"] = timeout
+        captured["body"] = json.loads(req.data.decode("utf-8"))
+        captured["headers"] = {key.lower(): value for key, value in req.header_items()}
+        return responder(req, timeout, captured)
+
+    monkeypatch.setattr("app.services.scalp_jev.urllib.request.urlopen", fake_urlopen)
+    return captured
+
+
 def test_jev_secret_never_appears_in_logs(monkeypatch):
     monkeypatch.setenv("JEV_API_KEY", "super-secret-jev-token")
     monkeypatch.setenv("JEV_BASE_URL", "http://127.0.0.1:1")
@@ -306,7 +364,127 @@ def test_jev_secret_never_appears_in_logs(monkeypatch):
         logger.removeHandler(handler)
     text = stream.getvalue()
     assert "super-secret-jev-token" not in text
+    assert "Bearer" not in text
     assert signal.side is None
+
+    stream.truncate(0)
+    stream.seek(0)
+    logger.addHandler(handler)
+    try:
+
+        def boom(_req, _timeout, _captured):
+            raise urllib.error.HTTPError(
+                "https://api.typesafe.ai/v1/systemone",
+                404,
+                "Not Found",
+                hdrs=None,
+                fp=io.BytesIO(b"{}"),
+            )
+
+        _capture_urlopen(monkeypatch, boom)
+        four_oh_four = request_jev({"bid": "1"})
+    finally:
+        logger.removeHandler(handler)
+    logged = stream.getvalue()
+    assert "Jev HTTP error status=404" in logged
+    assert "super-secret-jev-token" not in logged
+    assert "Bearer" not in logged
+    assert four_oh_four.side is None
+    assert four_oh_four.confidence == Decimal("0")
+
+
+def test_request_jev_posts_systemone_not_signal(monkeypatch):
+    monkeypatch.setenv("JEV_API_KEY", "super-secret-jev-token")
+    monkeypatch.delenv("JEV_BASE_URL", raising=False)
+
+    def ok(_req, _timeout, _captured):
+        return _FakeHttpResponse(_systemone_response())
+
+    captured = _capture_urlopen(monkeypatch, ok)
+    signal = request_jev({"bid": "65000", "ask": "65010", "inventory_btc": "0", "t": "80"})
+    assert captured["url"] == "https://api.typesafe.ai/v1/systemone"
+    assert "/v1/signal" not in captured["url"]
+    assert captured["method"] == "POST"
+    assert captured["timeout"] == JEV_LATE_MS / 1000.0
+    body = captured["body"]
+    assert body["model"] == "jev-latest"
+    assert set(body["questions"]) == {"side", "edge_after_fees", "book_toxic"}
+    assert body["questions"]["side"]["type"] == "choice"
+    assert body["questions"]["edge_after_fees"]["type"] == "noul"
+    assert body["questions"]["book_toxic"]["type"] == "noul"
+    assert body["state"] == {
+        "symbol": "BTCUSDT",
+        "bid": "65000",
+        "ask": "65010",
+        "inventory_btc": "0",
+        "t": "80",
+    }
+    assert captured["headers"]["authorization"] == "Bearer super-secret-jev-token"
+    assert signal.side == "BUY"
+
+
+def test_request_jev_maps_systemone_buy(monkeypatch):
+    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("JEV_BASE_URL", "https://api.typesafe.ai/")
+
+    def ok(_req, _timeout, _captured):
+        return _FakeHttpResponse(
+            _systemone_response(side="BUY", confidence=0.75, edge=0.8, toxic=0.1)
+        )
+
+    captured = _capture_urlopen(monkeypatch, ok)
+    signal = request_jev({"bid": "1", "ask": "2", "inventory_btc": "0", "t": "10"})
+    assert captured["url"] == "https://api.typesafe.ai/v1/systemone"
+    assert signal.side == "BUY"
+    assert signal.confidence == Decimal("0.75")
+    assert signal.confidence >= Decimal("0.7")
+    assert signal.edge_after_fees is True
+    assert signal.book_toxic is False
+    assert signal.cost_quote == Decimal("0")
+
+
+def test_request_jev_hold_and_http_404_are_none(monkeypatch):
+    monkeypatch.setenv("JEV_API_KEY", "k")
+
+    def hold(_req, _timeout, _captured):
+        return _FakeHttpResponse(
+            _systemone_response(side="HOLD", confidence=0.91, edge=0.2, toxic=0.1)
+        )
+
+    _capture_urlopen(monkeypatch, hold)
+    held = request_jev({"bid": "1"})
+    assert held.side is None
+    assert held.cost_quote == Decimal("0")
+
+    def missing_confidence(_req, _timeout, _captured):
+        return _FakeHttpResponse(
+            _systemone_response(
+                side="BUY",
+                confidence=None,
+                probabilities={"BUY": 0.71, "SELL": 0.2, "HOLD": 0.09},
+            )
+        )
+
+    _capture_urlopen(monkeypatch, missing_confidence)
+    fallback = request_jev({"bid": "1"})
+    assert fallback.side == "BUY"
+    assert fallback.confidence == Decimal("0.71")
+
+    def not_found(_req, _timeout, _captured):
+        raise urllib.error.HTTPError(
+            "https://api.typesafe.ai/v1/systemone",
+            404,
+            "Not Found",
+            hdrs=None,
+            fp=io.BytesIO(b"{}"),
+        )
+
+    _capture_urlopen(monkeypatch, not_found)
+    missing = request_jev({"bid": "1"})
+    assert missing.side is None
+    assert missing.confidence == Decimal("0")
+    assert missing.edge_after_fees is False
+    assert missing.book_toxic is False
 
 
 class FakeExchange:

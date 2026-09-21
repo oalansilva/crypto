@@ -16,6 +16,9 @@ from app.services.scalp_engine import JEV_LATE_MS, JevSignal, Side, SYMBOL
 logger = logging.getLogger(__name__)
 
 _SECRET_ENV_NAMES = ("JEV_API_KEY", "TYPESAFE_API_KEY")
+_DEFAULT_BASE_URL = "https://api.typesafe.ai"
+_SYSTEMONE_PATH = "/v1/systemone"
+_JEV_MODEL = "jev-latest"
 
 
 def jev_api_key() -> Optional[str]:
@@ -40,6 +43,10 @@ def _base_url() -> str:
     return (os.getenv("JEV_BASE_URL") or "").strip().rstrip("/")
 
 
+def _endpoint_url() -> str:
+    return f"{_base_url() or _DEFAULT_BASE_URL}{_SYSTEMONE_PATH}"
+
+
 def _redact(message: str) -> str:
     text = str(message or "")
     key = jev_api_key()
@@ -57,6 +64,28 @@ def _parse_side(value: Any) -> Optional[Side]:
     if token in {"BUY", "SELL"}:
         return token  # type: ignore[return-value]
     return None
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _decimal(value: Any, default: str = "0") -> Decimal:
+    try:
+        return Decimal(str(value if value is not None else default))
+    except Exception:
+        return Decimal(default)
+
+
+def _hold_signal(latency_ms: int) -> JevSignal:
+    return JevSignal(
+        side=None,
+        confidence=Decimal("0"),
+        edge_after_fees=False,
+        book_toxic=False,
+        latency_ms=latency_ms,
+        cost_quote=Decimal("0"),
+    )
 
 
 def stand_in_signal(*, latency_ms: int = 1) -> JevSignal:
@@ -79,6 +108,74 @@ def stand_in_signal(*, latency_ms: int = 1) -> JevSignal:
     )
 
 
+def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "state": {
+            "symbol": SYMBOL,
+            "bid": payload.get("bid"),
+            "ask": payload.get("ask"),
+            "inventory_btc": payload.get("inventory_btc"),
+            "t": payload.get("t"),
+        },
+        "model": _JEV_MODEL,
+        "questions": {
+            "side": {
+                "type": "choice",
+                "instructions": (
+                    "Directional BTCUSDT scalp this cycle: post-only BUY at best bid, "
+                    "SELL at best ask, or HOLD (send nothing)."
+                ),
+                "criteria": {
+                    "BUY": "Post-only buy",
+                    "SELL": "Post-only sell",
+                    "HOLD": "Do not send",
+                },
+            },
+            "edge_after_fees": {
+                "type": "noul",
+                "instructions": "After spot fees, is there an edge for the chosen side in the next ~2s?",
+            },
+            "book_toxic": {
+                "type": "noul",
+                "instructions": "Is the book toxic so we must not post?",
+            },
+        },
+    }
+
+
+def _noul_yes(answer: Any) -> bool:
+    return _decimal(_as_dict(answer).get("noul")) >= Decimal("0.5")
+
+
+def _side_confidence(side_answer: dict[str, Any]) -> Decimal:
+    if side_answer.get("confidence") is not None:
+        return _decimal(side_answer.get("confidence"))
+    choice = str(side_answer.get("choice") or "").strip()
+    probs = _as_dict(side_answer.get("probabilities"))
+    if choice and choice in probs:
+        return _decimal(probs.get(choice))
+    upper = choice.upper()
+    if upper and upper in probs:
+        return _decimal(probs.get(upper))
+    return Decimal("0")
+
+
+def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
+    data = _as_dict(parsed)
+    answers = _as_dict(data.get("answers"))
+    if not answers:
+        return _hold_signal(latency_ms)
+    side_answer = _as_dict(answers.get("side"))
+    return JevSignal(
+        side=_parse_side(side_answer.get("choice")),
+        confidence=_side_confidence(side_answer),
+        edge_after_fees=_noul_yes(answers.get("edge_after_fees")),
+        book_toxic=_noul_yes(answers.get("book_toxic")),
+        latency_ms=latency_ms,
+        cost_quote=Decimal("0"),
+    )
+
+
 def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -> JevSignal:
     """One HTTP call. Timeout defaults to the 800 ms late gate."""
     started = time.perf_counter()
@@ -89,16 +186,10 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
             elapsed_ms = int((time.perf_counter() - started) * 1000)
             return stand_in_signal(latency_ms=max(1, elapsed_ms))
         elapsed_ms = int((time.perf_counter() - started) * 1000)
-        return JevSignal(
-            side=None,
-            confidence=Decimal("0"),
-            edge_after_fees=False,
-            book_toxic=False,
-            latency_ms=elapsed_ms,
-        )
+        return _hold_signal(elapsed_ms)
 
-    url = f"{_base_url() or 'https://api.typesafe.invalid'}/v1/signal"
-    body = json.dumps({"symbol": SYMBOL, **payload}, separators=(",", ":")).encode("utf-8")
+    url = _endpoint_url()
+    body = json.dumps(_systemone_payload(payload), separators=(",", ":")).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", f"Bearer {key}")
@@ -109,43 +200,16 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
     except urllib.error.HTTPError as exc:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.warning("Jev HTTP error status=%s latency_ms=%s", int(exc.code or 0), elapsed_ms)
-        return JevSignal(
-            side=None,
-            confidence=Decimal("0"),
-            edge_after_fees=False,
-            book_toxic=False,
-            latency_ms=elapsed_ms,
-        )
+        return _hold_signal(elapsed_ms)
     except Exception as exc:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.warning("Jev request failed latency_ms=%s err=%s", elapsed_ms, _redact(str(exc)))
-        return JevSignal(
-            side=None,
-            confidence=Decimal("0"),
-            edge_after_fees=False,
-            book_toxic=False,
-            latency_ms=max(
-                elapsed_ms, JEV_LATE_MS + 1 if elapsed_ms >= JEV_LATE_MS else elapsed_ms
-            ),
+        return _hold_signal(
+            max(elapsed_ms, JEV_LATE_MS + 1 if elapsed_ms >= JEV_LATE_MS else elapsed_ms)
         )
 
     elapsed_ms = int((time.perf_counter() - started) * 1000)
-    data = parsed if isinstance(parsed, dict) else {}
     try:
-        confidence = Decimal(str(data.get("confidence") or "0"))
+        return _map_systemone(parsed, latency_ms=elapsed_ms)
     except Exception:
-        confidence = Decimal("0")
-    try:
-        cost = Decimal(str(data.get("cost") or data.get("cost_quote") or "0"))
-    except Exception:
-        cost = Decimal("0")
-    toxic = bool(data.get("toxic") or data.get("book_toxic"))
-    edge = bool(data.get("edge_after_fees") if "edge_after_fees" in data else data.get("edge"))
-    return JevSignal(
-        side=_parse_side(data.get("side")),
-        confidence=confidence,
-        edge_after_fees=edge,
-        book_toxic=toxic,
-        latency_ms=elapsed_ms,
-        cost_quote=cost,
-    )
+        return _hold_signal(elapsed_ms)
