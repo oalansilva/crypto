@@ -61,7 +61,7 @@ Dar ao investidor uma leitura simples de oportunidade e risco para acompanhar es
 
 - Login funciona para usuario autorizado.
 - Usuario chega ao Monitor sem confusao.
-- Monitor carrega estrategias/oportunidades sem travar.
+- Monitor carrega estrategias/oportunidades sem travar. Corte transitório de rede na carga autenticada é reabsorvido na mesma abertura (card #995); só falha persistente usa o erro de carga.
 - Grafico abre a partir do Monitor.
 - Disclaimer esta visivel.
 - Fluxo ponta a ponta foi validado.
