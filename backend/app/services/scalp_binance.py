@@ -41,7 +41,9 @@ def fetch_free_usdt_btc(
     api_secret: str,
     base_url: Optional[str] = None,
 ) -> tuple[Decimal, Decimal]:
-    usdt = fetch_free_balance(api_key=api_key, api_secret=api_secret, asset="USDT", base_url=base_url)
+    usdt = fetch_free_balance(
+        api_key=api_key, api_secret=api_secret, asset="USDT", base_url=base_url
+    )
     btc = fetch_free_balance(api_key=api_key, api_secret=api_secret, asset="BTC", base_url=base_url)
     return usdt, btc
 
@@ -52,7 +54,9 @@ def list_bot_open_orders(
     api_secret: str,
     base_url: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    orders = list_open_orders(api_key=api_key, api_secret=api_secret, symbol=SYMBOL, base_url=base_url)
+    orders = list_open_orders(
+        api_key=api_key, api_secret=api_secret, symbol=SYMBOL, base_url=base_url
+    )
     return [row for row in orders if is_bot_client_order_id(str(row.get("clientOrderId") or ""))]
 
 

@@ -76,7 +76,9 @@ def pnl_quote(
     return realized + unrealized - fees - jev_cost
 
 
-def unrealized_pnl(*, inventory_btc: Decimal, avg_entry: Optional[Decimal], mid: Decimal) -> Decimal:
+def unrealized_pnl(
+    *, inventory_btc: Decimal, avg_entry: Optional[Decimal], mid: Decimal
+) -> Decimal:
     if inventory_btc <= 0 or avg_entry is None:
         return Decimal("0")
     return (mid - avg_entry) * inventory_btc
@@ -164,9 +166,7 @@ def decide_cycle(
     jev: Optional[JevSignal] = None,
 ) -> CycleIntent:
     """Hold is the default. Live send is opt-in after every gate."""
-    clipped = clip_inventory(
-        bot_inventory=inventory_btc, free_btc=free_btc, floor_btc=floor_btc
-    )
+    clipped = clip_inventory(bot_inventory=inventory_btc, free_btc=free_btc, floor_btc=floor_btc)
     inventory_changed = clipped != inventory_btc
     t = compute_t(free_usdt)
     if killed or not enabled:

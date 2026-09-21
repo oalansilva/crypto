@@ -511,7 +511,9 @@ def test_kill_stops_sending_and_does_not_flatten(scalp_db):
         book=_book(),
     )
     assert result.killed is True
-    payload = status_payload(scalp_db, user_id, free_usdt=Decimal("80"), free_btc=Decimal("0.011"), mid=Decimal("65000"))
+    payload = status_payload(
+        scalp_db, user_id, free_usdt=Decimal("80"), free_btc=Decimal("0.011"), mid=Decimal("65000")
+    )
     assert payload["state"] == "kill"
     state = get_or_create_state(scalp_db, user_id)
     assert Decimal(str(state.inventory_btc)) == Decimal("0.001")
@@ -742,6 +744,7 @@ def test_switch_off_during_jev_does_not_place(scalp_db):
     OtherSession = sessionmaker(bind=engine, autoflush=False)
     loop_db = LoopSession()
     try:
+
         def jev_fn(_payload):
             other = OtherSession()
             try:

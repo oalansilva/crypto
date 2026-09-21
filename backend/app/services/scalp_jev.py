@@ -124,7 +124,9 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
             confidence=Decimal("0"),
             edge_after_fees=False,
             book_toxic=False,
-            latency_ms=max(elapsed_ms, JEV_LATE_MS + 1 if elapsed_ms >= JEV_LATE_MS else elapsed_ms),
+            latency_ms=max(
+                elapsed_ms, JEV_LATE_MS + 1 if elapsed_ms >= JEV_LATE_MS else elapsed_ms
+            ),
         )
 
     elapsed_ms = int((time.perf_counter() - started) * 1000)

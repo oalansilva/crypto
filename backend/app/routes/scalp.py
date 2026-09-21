@@ -12,6 +12,7 @@ from app.services.scalp_service import set_switch, status_payload
 
 router = APIRouter(prefix="/api/scalp", tags=["scalp"])
 
+
 class ScalpSwitchPayload(BaseModel):
     enabled: bool
 

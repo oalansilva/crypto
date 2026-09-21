@@ -108,7 +108,9 @@ class ExchangePort(Protocol):
 
     def cancel_bot_order(self, *, api_key: str, api_secret: str, client_order_id: str) -> None: ...
 
-    def query_order(self, *, api_key: str, api_secret: str, client_order_id: str) -> dict[str, Any]: ...
+    def query_order(
+        self, *, api_key: str, api_secret: str, client_order_id: str
+    ) -> dict[str, Any]: ...
 
 
 class LiveExchange:
@@ -195,7 +197,9 @@ def _elapsed_ms(state: ScalpUserState, now: datetime) -> Optional[int]:
     return int(delta.total_seconds() * 1000)
 
 
-def _apply_fill(state: ScalpUserState, *, side: Side, quantity: Decimal, price: Decimal, fee: Decimal) -> None:
+def _apply_fill(
+    state: ScalpUserState, *, side: Side, quantity: Decimal, price: Decimal, fee: Decimal
+) -> None:
     qty = max(Decimal("0"), quantity)
     if qty <= 0:
         return
@@ -480,7 +484,9 @@ def tick_user(
             intent = CycleIntent(
                 send=False, cancel_resting=False, fire_kill=False, skip_reason="no_book"
             )
-            return CycleResult(user_id=str(user_id), intent=intent, sent=False, killed=False, skipped="no_book")
+            return CycleResult(
+                user_id=str(user_id), intent=intent, sent=False, killed=False, skipped="no_book"
+            )
 
     clipped = clip_inventory(
         bot_inventory=_dec(state.inventory_btc),
@@ -530,7 +536,9 @@ def tick_user(
         state.updated_at = stamp
         db.add(state)
         db.commit()
-        return CycleResult(user_id=str(user_id), intent=intent, sent=False, killed=True, skipped="kill")
+        return CycleResult(
+            user_id=str(user_id), intent=intent, sent=False, killed=True, skipped="kill"
+        )
 
     if intent.cancel_resting:
         _cancel_resting(state, cred=cred, exchange=port, all_bot=False)
@@ -562,7 +570,11 @@ def tick_user(
         db.add(state)
         db.commit()
         return CycleResult(
-            user_id=str(user_id), intent=intent, sent=False, killed=False, skipped=intent.skip_reason
+            user_id=str(user_id),
+            intent=intent,
+            sent=False,
+            killed=False,
+            skipped=intent.skip_reason,
         )
 
     caller = jev_fn or request_jev
@@ -643,7 +655,9 @@ def tick_user(
             )
         except BinanceOrderError as exc:
             if exc.code in CROSS_REJECT_CODES:
-                logger.info("scalp cross-reject user=%s code=%s — wait next cycle", state.user_id, exc.code)
+                logger.info(
+                    "scalp cross-reject user=%s code=%s — wait next cycle", state.user_id, exc.code
+                )
             else:
                 logger.warning("scalp post failed user=%s code=%s", state.user_id, exc.code)
             result = None
@@ -653,10 +667,14 @@ def tick_user(
             status = str(result.get("status") or "").upper()
             executed = _dec(result.get("executedQty"))
             if executed > 0:
-                avg = _dec(result.get("cummulativeQuoteQty")) / executed if executed else intent.price
+                avg = (
+                    _dec(result.get("cummulativeQuoteQty")) / executed if executed else intent.price
+                )
                 fee = Decimal("0")
                 apply_side: Side = intent.side
-                _apply_fill(state, side=apply_side, quantity=executed, price=avg or intent.price, fee=fee)
+                _apply_fill(
+                    state, side=apply_side, quantity=executed, price=avg or intent.price, fee=fee
+                )
                 db.add(
                     ScalpFill(
                         id=uuid.uuid4(),
@@ -721,7 +739,9 @@ def status_payload(
     killed = bool(state.killed) if state is not None else False
     visual = panel_state(has_spot_key=key_ok, enabled=enabled, killed=killed)
     inventory = _dec(state.inventory_btc) if state is not None else Decimal("0")
-    t = compute_t(_dec(free_usdt) if free_usdt is not None else Decimal("100") if key_ok else Decimal("0"))
+    t = compute_t(
+        _dec(free_usdt) if free_usdt is not None else Decimal("100") if key_ok else Decimal("0")
+    )
     if free_usdt is not None:
         t = compute_t(_dec(free_usdt))
     elif not key_ok:
