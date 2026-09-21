@@ -5,12 +5,21 @@ import { authFetch } from '@/lib/authFetch'
 
 export type ScalpPanelState = 'off' | 'on' | 'kill' | 'nokey'
 
+export type ScalpPosition = {
+  entry_quote?: string
+  age_s?: number
+  target_bp?: string
+  stop_bp?: string
+}
+
 export type ScalpStatus = {
   symbol?: string
   state?: ScalpPanelState
   has_spot_key?: boolean
   jev_available?: boolean
   jev_unavailable?: boolean
+  horizon_s?: number
+  lookback_label?: string
   t_quote?: string
   clip_quote?: string
   inventory_btc?: string
@@ -21,19 +30,36 @@ export type ScalpStatus = {
   kill_banner?: boolean
   inventory_clipped?: boolean
   enabled?: boolean
+  fee_bp?: string
+  bnb_fee_active?: boolean
+  hurdle_bp?: string
+  exit_target_bp?: string
+  exit_stop_bp?: string
+  position?: ScalpPosition | null
+  last_trade_bp?: string | null
+  last_trade_quote?: string | null
+  stuck?: boolean
 }
 
 const DEFAULT_STATUS: ScalpStatus = {
   state: 'off',
   has_spot_key: true,
+  lookback_label: 'últimos 15 min',
+  horizon_s: 900,
   t_quote: '100',
   clip_quote: '10',
   inventory_btc: '0',
   calibration: null,
   pnl_quote: '0',
-  status_text: 'Desligado — não envia ordem deste scalp. Inventário e P&L ficam visíveis.',
+  status_text:
+    'Desligado: não envia ordem deste scalp. Lookback últimos 15 min. Inventário e P&L ficam visíveis.',
   kill_banner: false,
   inventory_clipped: false,
+  fee_bp: '10',
+  hurdle_bp: '20.1',
+  exit_target_bp: '35',
+  exit_stop_bp: '-28',
+  stuck: false,
 }
 
 function parseNumber(value: string | undefined): number {
@@ -72,6 +98,32 @@ function formatCalibration(cal: ScalpStatus['calibration']): string {
   return `${cal.hits}/${cal.signals}${latency}`
 }
 
+function formatBp(value: string | undefined): string {
+  if (!value) return '—'
+  const n = parseNumber(value)
+  if (n > 0) return `+${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} bp`
+  return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} bp`
+}
+
+function formatAge(seconds: number | undefined): string {
+  if (seconds == null || seconds < 0) return '—'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  if (m <= 0) return `${s} s`
+  return `${m} min ${s} s`
+}
+
+function formatFeeBp(status: ScalpStatus): string {
+  const n = parseNumber(status.fee_bp)
+  if (status.bnb_fee_active) return '7,5 bp'
+  return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} bp`
+}
+
+function formatHurdle(value: string | undefined): string {
+  const n = parseNumber(value)
+  return `${n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} bp`
+}
+
 export function ScalpModule() {
   const [status, setStatus] = useState<ScalpStatus>(DEFAULT_STATUS)
   const [pending, setPending] = useState(false)
@@ -97,15 +149,20 @@ export function ScalpModule() {
     return () => window.clearInterval(id)
   }, [load])
 
-  const visual: ScalpPanelState = status.state === 'nokey' || status.state === 'on' || status.state === 'kill'
-    ? status.state
-    : 'off'
+  const visual: ScalpPanelState =
+    status.state === 'nokey' || status.state === 'on' || status.state === 'kill' ? status.state : 'off'
   const checked = visual === 'on'
   const bookUnavailable = visual === 'on' && status.book_available === false
   const dataBook = visual === 'on' ? (bookUnavailable ? 'unavailable' : 'fresh') : 'fresh'
   const disabled = visual === 'nokey' || pending
   const pnl = parseNumber(status.pnl_quote)
   const pnlClass = pnl < 0 ? 'neg' : pnl > 0 ? 'pos' : ''
+  const lookback = status.lookback_label || 'últimos 15 min'
+  const hasPosition = Boolean(status.position && status.position.entry_quote)
+  const lastBp = parseNumber(status.last_trade_bp ?? undefined)
+  const lastUsd = parseNumber(status.last_trade_quote ?? undefined)
+  const lastBpClass = lastBp < 0 ? 'neg' : lastBp > 0 ? 'pos' : ''
+  const lastUsdClass = lastUsd < 0 ? 'neg' : lastUsd > 0 ? 'pos' : ''
 
   const toggle = async () => {
     if (disabled) return
@@ -138,14 +195,16 @@ export function ScalpModule() {
       data-testid="scalp-module"
       data-state={visual}
       data-book={dataBook}
+      data-horizon="15"
+      data-horizon-s={String(status.horizon_s ?? 900)}
       aria-labelledby="scalp-title"
     >
       <div className="scalp-head">
         <div>
           <h2 id="scalp-title">Scalp BTCUSDT</h2>
           <p className="scalp-sub">
-            À vista · limitadora post-only que não cruza · a sua conta Binance. Um lado de cada vez. Calibração, não
-            meta.
+            À vista · limitadora post-only que não cruza · lookback {lookback} · a sua conta Binance. Um lado de cada
+            vez. Resultado por trade, não meta.
           </p>
         </div>
         <button
@@ -174,6 +233,10 @@ export function ScalpModule() {
           <dd>≤ US$ 10</dd>
         </div>
         <div>
+          <dt>Lookback</dt>
+          <dd id="scalp-horizon" data-testid="scalp-horizon">{lookback}</dd>
+        </div>
+        <div>
           <dt>Inventário</dt>
           <dd id="scalp-inv">{formatBtc(status.inventory_btc)}</dd>
         </div>
@@ -188,12 +251,55 @@ export function ScalpModule() {
           </dd>
         </div>
       </dl>
-      <p
-        className="scalp-status"
-        id="scalp-status"
-        data-testid="scalp-status"
-        aria-live="polite"
-      >
+      <dl className="scalp-kpis scalp-trade-kpis">
+        <div>
+          <dt>Hurdle</dt>
+          <dd id="scalp-hurdle" data-testid="scalp-hurdle">{formatHurdle(status.hurdle_bp)}</dd>
+        </div>
+        <div>
+          <dt>Taxa em uso</dt>
+          <dd id="scalp-fee" data-testid="scalp-fee">{formatFeeBp(status)}</dd>
+        </div>
+        <div>
+          <dt>Alvo</dt>
+          <dd id="scalp-exit-target" data-testid="scalp-exit-target">+35 bp</dd>
+        </div>
+        <div>
+          <dt>Stop</dt>
+          <dd id="scalp-exit-stop" data-testid="scalp-exit-stop">−28 bp</dd>
+        </div>
+        <div>
+          <dt>Último trade</dt>
+          <dd id="scalp-last-bp" className={lastBpClass} data-testid="scalp-last-bp">
+            {status.last_trade_bp ? formatBp(status.last_trade_bp) : '—'}
+          </dd>
+        </div>
+        <div>
+          <dt>Último trade US$</dt>
+          <dd id="scalp-last-usd" className={lastUsdClass} data-testid="scalp-last-usd">
+            {status.last_trade_quote ? formatUsd(status.last_trade_quote) : '—'}
+          </dd>
+        </div>
+      </dl>
+      <dl className="scalp-position" id="scalp-position" data-testid="scalp-position" hidden={!hasPosition}>
+        <div>
+          <dt>Entrada</dt>
+          <dd id="scalp-entry">{hasPosition ? formatUsd(status.position?.entry_quote) : '—'}</dd>
+        </div>
+        <div>
+          <dt>Idade</dt>
+          <dd id="scalp-age">{hasPosition ? formatAge(status.position?.age_s) : '—'}</dd>
+        </div>
+        <div>
+          <dt>Alvo</dt>
+          <dd id="scalp-target">+35 bp</dd>
+        </div>
+        <div>
+          <dt>Stop</dt>
+          <dd id="scalp-stop">−28 bp</dd>
+        </div>
+      </dl>
+      <p className="scalp-status" id="scalp-status" data-testid="scalp-status" aria-live="polite">
         {status.status_text || DEFAULT_STATUS.status_text}
         {visual === 'nokey' ? (
           <>
@@ -205,14 +311,18 @@ export function ScalpModule() {
       <p className="scalp-banner" id="scalp-kill" data-testid="scalp-kill" hidden={visual !== 'kill'}>
         Parado por kill (−2% de T). Não religa sozinho. Ordens deste bot canceladas.
       </p>
+      <p className="scalp-stuck" id="scalp-stuck" data-testid="scalp-stuck" hidden={!status.stuck}>
+        posição presa: saída post-only não preencheu até 15:30. O utilizador decide. Operar continua disponível. Sem
+        ordem a mercado.
+      </p>
       {status.inventory_clipped ? (
         <p className="scalp-note" data-testid="scalp-clip-note">
           Inventário clipado ao BTC livre acima do piso (fill fora deste loop não entra no P&amp;L).
         </p>
       ) : (
         <p className="scalp-note">
-          Mesma chave Spot de Meu Perfil que o Operar. O Operar (clique a mercado) continua ao lado. Nunca saque. P&amp;L
-          negativo tão visível quanto o positivo.
+          Mesma chave Spot de Meu Perfil que o Operar. O Operar (clique a mercado) continua ao lado. Nunca saque.
+          P&amp;L e perda por trade tão visíveis quanto o ganho.
         </p>
       )}
     </section>

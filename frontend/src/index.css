@@ -3451,7 +3451,7 @@ select.input option {
 }
 .monitor-theme .scalp-kpis {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 1px;
   background: var(--line-soft);
   border: 1px solid var(--line-soft);
@@ -3479,6 +3479,58 @@ select.input option {
   font-size: 15px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+.monitor-theme #scalp-horizon {
+  font-size: 13px;
+  line-height: 1.25;
+  font-variant-numeric: normal;
+}
+.monitor-theme .scalp-kpis.scalp-trade-kpis {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.monitor-theme .scalp-position {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.monitor-theme .scalp-position[hidden] {
+  display: none !important;
+}
+.monitor-theme .scalp-position div {
+  background: var(--bg-2);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.monitor-theme .scalp-position dt {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--t-3);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.monitor-theme .scalp-position dd {
+  margin: 0;
+  font-family: var(--numbers);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.monitor-theme .scalp-stuck {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 600;
 }
 .monitor-theme .scalp-kpis .neg {
   color: var(--exit);
@@ -3525,6 +3577,12 @@ select.input option {
 }
 @media (max-width: 740px) {
   .monitor-theme .scalp-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .monitor-theme .scalp-kpis.scalp-trade-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .monitor-theme .scalp-position {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .monitor-theme .scalp-head {
