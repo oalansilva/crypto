@@ -64,11 +64,11 @@ def build_jev_payload(
 ) -> tuple[Optional[dict[str, Any]], Optional[str]]:
     mem = memory or get_scalp_btcusdt_memory()
     touch = build_touch(mem)
+    if touch is None:
+        return None, "no_book"
     window = build_window(mem)
     if window is None or window.trade_count <= 0:
         return None, "window_empty"
-    if touch is None:
-        return None, "no_book"
     t = compute_t(free_usdt)
     inv_quote = inventory_btc * touch.mid
     remaining = t - inv_quote

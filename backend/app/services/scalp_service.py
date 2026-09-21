@@ -629,7 +629,7 @@ def tick_user(
         ).spread_bp
 
     inventory_live = _dec(state.inventory_btc)
-    has_open_position = inventory_live > Decimal("0.00000001")
+    has_open_position = inventory_live > Decimal("0.00000001") and state.avg_entry_quote is not None
     has_exit_resting = resting_now is not None and resting_now.role == "exit"
     if has_open_position and state.position_opened_at is not None:
         if should_mark_stuck(_seconds_since(state.position_opened_at, stamp)):
@@ -769,7 +769,7 @@ def tick_user(
             now=stamp,
             memory=memory,
         )
-        if window_skip:
+        if window_skip and book_from_memory:
             state.updated_at = stamp
             db.add(state)
             db.commit()

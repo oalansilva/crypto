@@ -68,8 +68,22 @@ def test_hurdle_10_bp_move_does_not_pass():
 
 
 def test_empty_window_skips_jev_payload():
+    import time
+
     mem = get_scalp_btcusdt_memory()
     mem.reset_for_tests()
+    mem.set_ws_connected(True)
+    now_ms = int(time.time() * 1000)
+    mem.ingest_book_ticker(
+        {
+            "s": "BTCUSDT",
+            "b": "65000",
+            "a": "65010",
+            "B": "1.2",
+            "A": "0.8",
+            "E": now_ms,
+        }
+    )
     body, skip = build_jev_payload(
         inventory_btc=Decimal("0"),
         free_usdt=Decimal("100"),
