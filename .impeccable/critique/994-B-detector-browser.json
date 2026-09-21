@@ -1,0 +1,1777 @@
+{
+  "count": 55,
+  "rule_names": [],
+  "findings": [
+    {
+      "selector": "div.workspace-card > div.meta-label",
+      "tagName": "div",
+      "rect": {
+        "x": 27,
+        "y": 84,
+        "width": 169,
+        "height": 19.5,
+        "top": 84,
+        "right": 196,
+        "bottom": 103.5,
+        "left": 27
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        }
+      ]
+    },
+    {
+      "selector": "div.nav-section:nth-of-type(1) > div.nav-title",
+      "tagName": "div",
+      "rect": {
+        "x": 10,
+        "y": 183.5,
+        "width": 203,
+        "height": 26.5,
+        "top": 183.5,
+        "right": 213,
+        "bottom": 210,
+        "left": 10
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        }
+      ]
+    },
+    {
+      "selector": "div.nav-section:nth-of-type(2) > div.nav-title",
+      "tagName": "div",
+      "rect": {
+        "x": 10,
+        "y": 316,
+        "width": 203,
+        "height": 26.5,
+        "top": 316,
+        "right": 213,
+        "bottom": 342.5,
+        "left": 10
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        }
+      ]
+    },
+    {
+      "selector": "div.nav-section:nth-of-type(3) > div.nav-title",
+      "tagName": "div",
+      "rect": {
+        "x": 10,
+        "y": 448.5,
+        "width": 203,
+        "height": 26.5,
+        "top": 448.5,
+        "right": 213,
+        "bottom": 475,
+        "left": 10
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        }
+      ]
+    },
+    {
+      "selector": "div.nav-section:nth-of-type(4) > div.nav-title",
+      "tagName": "div",
+      "rect": {
+        "x": 10,
+        "y": 581,
+        "width": 203,
+        "height": 26.5,
+        "top": 581,
+        "right": 213,
+        "bottom": 607.5,
+        "left": 10
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        }
+      ]
+    },
+    {
+      "selector": "div:nth-of-type(1) > div.meta-label",
+      "tagName": "div",
+      "rect": {
+        "x": 256,
+        "y": 14.75,
+        "width": 164.46875,
+        "height": 19.5,
+        "top": 14.75,
+        "right": 420.46875,
+        "bottom": 34.25,
+        "left": 256
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        }
+      ]
+    },
+    {
+      "selector": "small",
+      "tagName": "small",
+      "rect": {
+        "x": 1286.703125,
+        "y": 20,
+        "width": 54.296875,
+        "height": 19.5,
+        "top": 20,
+        "right": 1341,
+        "bottom": 39.5,
+        "left": 1286.703125
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "3.6:1 (need 4.5:1) — text #707a8a on #1e2329",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        }
+      ]
+    },
+    {
+      "selector": "#result-count",
+      "tagName": "span",
+      "rect": {
+        "x": 1315.140625,
+        "y": -209.875,
+        "width": 89.859375,
+        "height": 19.75,
+        "top": -209.875,
+        "right": 1405,
+        "bottom": -190.125,
+        "left": 1315.140625
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"2 resultados\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.status-row > p.desc",
+      "tagName": "p",
+      "rect": {
+        "x": 1122.015625,
+        "y": -138.5,
+        "width": 295.984375,
+        "height": 17.25,
+        "top": -138.5,
+        "right": 1418,
+        "bottom": -121.25,
+        "left": 1122.015625
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "tiny-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "11.5px body text",
+          "ignoreValue": "",
+          "name": "Tiny body text",
+          "description": "Body text below 12px is hard to read, especially on high-DPI screens. Use at least 14px for body content, 16px is ideal."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.mobile-cards > article.mobile-card > h4 > span.pair-tf",
+      "tagName": "span",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "isPageLevel": false,
+      "isHidden": true,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"4h\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "article.mobile-card > span.status-pill.hold",
+      "tagName": "span",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "isPageLevel": false,
+      "isHidden": true,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Em posição\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.mobile-cards > article.mobile-card > span.tag.portfolio",
+      "tagName": "span",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "isPageLevel": false,
+      "isHidden": true,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"● Carteira\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap",
+      "tagName": "div",
+      "rect": {
+        "x": 246,
+        "y": -99.75,
+        "width": 1172,
+        "height": 246,
+        "top": -99.75,
+        "right": 1418,
+        "bottom": 146.25,
+        "left": 246
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "cramped-padding",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "<div> \"table-wrap\": children flush against border+bg on top/right (no inset)",
+          "ignoreValue": "",
+          "name": "Cramped padding",
+          "description": "Text is too close to the edge of its container. Two shapes: (1) an element with its own text where the padding is too low for the font size, and (2) a wrapper with text-bearing children and near-zero padding against a visible boundary (border, outline, or non-transparent background) — children land flush against the boundary line. Add at least 8px (ideally 12–16px) of padding inside bordered, outlined, or colored containers."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(2)",
+      "tagName": "th",
+      "rect": {
+        "x": 279,
+        "y": -98.75,
+        "width": 217.734375,
+        "height": 36.25,
+        "top": -98.75,
+        "right": 496.734375,
+        "bottom": -62.5,
+        "left": 279
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Par / Estratégia\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(3)",
+      "tagName": "th",
+      "rect": {
+        "x": 496.734375,
+        "y": -98.75,
+        "width": 99.953125,
+        "height": 36.25,
+        "top": -98.75,
+        "right": 596.6875,
+        "bottom": -62.5,
+        "left": 496.734375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Status\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(4)",
+      "tagName": "th",
+      "rect": {
+        "x": 596.6875,
+        "y": -98.75,
+        "width": 109.28125,
+        "height": 36.25,
+        "top": -98.75,
+        "right": 705.96875,
+        "bottom": -62.5,
+        "left": 596.6875
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Preço\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(5)",
+      "tagName": "th",
+      "rect": {
+        "x": 705.96875,
+        "y": -98.75,
+        "width": 90.84375,
+        "height": 36.25,
+        "top": -98.75,
+        "right": 796.8125,
+        "bottom": -62.5,
+        "left": 705.96875
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Distância\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th.col-spark",
+      "tagName": "th",
+      "rect": {
+        "x": 796.8125,
+        "y": -98.75,
+        "width": 108,
+        "height": 36.25,
+        "top": -98.75,
+        "right": 904.8125,
+        "bottom": -62.5,
+        "left": 796.8125
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Gráfico\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(7)",
+      "tagName": "th",
+      "rect": {
+        "x": 904.8125,
+        "y": -98.75,
+        "width": 148,
+        "height": 36.25,
+        "top": -98.75,
+        "right": 1052.8125,
+        "bottom": -62.5,
+        "left": 904.8125
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Risco até stop\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th.col-tags",
+      "tagName": "th",
+      "rect": {
+        "x": 1052.8125,
+        "y": -98.75,
+        "width": 96.234375,
+        "height": 36.25,
+        "top": -98.75,
+        "right": 1149.046875,
+        "bottom": -62.5,
+        "left": 1052.8125
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Tags\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(1) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(9)",
+      "tagName": "th",
+      "rect": {
+        "x": 1149.046875,
+        "y": -98.75,
+        "width": 267.953125,
+        "height": 36.25,
+        "top": -98.75,
+        "right": 1417,
+        "bottom": -62.5,
+        "left": 1149.046875
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Operar\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "div.pair-icon.btc",
+      "tagName": "div",
+      "rect": {
+        "x": 293,
+        "y": -31,
+        "width": 26,
+        "height": 26,
+        "top": -31,
+        "right": 319,
+        "bottom": -5,
+        "left": 293
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "2.3:1 (need 4.5:1) — text #ffffff on #f7931a",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"BTC\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "tr.head-row.expanded > td:nth-of-type(2) > div.pair-cell > div.pair-meta > div.pair-name > span.pair-tf",
+      "tagName": "span",
+      "rect": {
+        "x": 400.71875,
+        "y": -44,
+        "width": 22.046875,
+        "height": 17,
+        "top": -44,
+        "right": 422.765625,
+        "bottom": -27,
+        "left": 400.71875
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"4h\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "td:nth-of-type(3) > span.status-pill.hold",
+      "tagName": "span",
+      "rect": {
+        "x": 510.734375,
+        "y": -37.75,
+        "width": 71.953125,
+        "height": 39.5,
+        "top": -37.75,
+        "right": 582.6875,
+        "bottom": 1.75,
+        "left": 510.734375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Em posição\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "tr.head-row.expanded > td:nth-of-type(7) > div.risk-meta > span:nth-of-type(1)",
+      "tagName": "span",
+      "rect": {
+        "x": 918.8125,
+        "y": -20.875,
+        "width": 31.609375,
+        "height": 15.75,
+        "top": -20.875,
+        "right": 950.421875,
+        "bottom": -5.125,
+        "left": 918.8125
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"4.20%\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "tr.head-row.expanded > td:nth-of-type(7) > div.risk-meta > span:nth-of-type(2)",
+      "tagName": "span",
+      "rect": {
+        "x": 1013.515625,
+        "y": -20.875,
+        "width": 25.296875,
+        "height": 15.75,
+        "top": -20.875,
+        "right": 1038.8125,
+        "bottom": -5.125,
+        "left": 1013.515625
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"stop\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "tr.head-row.expanded > td.col-tags > div.tags > span.tag.portfolio",
+      "tagName": "span",
+      "rect": {
+        "x": 1066.8125,
+        "y": -41.5,
+        "width": 60.390625,
+        "height": 21,
+        "top": -41.5,
+        "right": 1127.203125,
+        "bottom": -20.5,
+        "left": 1066.8125
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"● Carteira\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "tr.head-row.expanded > td.col-tags > div.tags > span.tag.strategy",
+      "tagName": "span",
+      "rect": {
+        "x": 1066.8125,
+        "y": -15.5,
+        "width": 42.90625,
+        "height": 21,
+        "top": -15.5,
+        "right": 1109.71875,
+        "bottom": 5.5,
+        "left": 1066.8125
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "ai-color-palette",
+          "category": "slop",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "Purple/violet neon text on dark background",
+          "ignoreValue": "",
+          "name": "AI color palette",
+          "description": "Purple/violet gradients and cyan-on-dark are the most recognizable tells of AI-generated UIs. Choose a distinctive, intentional palette."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"★★★\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "div.detail-pair-summary > span.status-pill.hold",
+      "tagName": "span",
+      "rect": {
+        "x": 373.625,
+        "y": 42,
+        "width": 86.46875,
+        "height": 23.75,
+        "top": 42,
+        "right": 460.09375,
+        "bottom": 65.75,
+        "left": 373.625
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Em posição\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.status-row > p.desc",
+      "tagName": "p",
+      "rect": {
+        "x": 1171.21875,
+        "y": 179.75,
+        "width": 246.78125,
+        "height": 17.25,
+        "top": 179.75,
+        "right": 1418,
+        "bottom": 197,
+        "left": 1171.21875
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "tiny-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "11.5px body text",
+          "ignoreValue": "",
+          "name": "Tiny body text",
+          "description": "Body text below 12px is hard to read, especially on high-DPI screens. Use at least 14px for body content, 16px is ideal."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.mobile-cards > article.mobile-card > h4 > span.pair-tf",
+      "tagName": "span",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "isPageLevel": false,
+      "isHidden": true,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"1d\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "article.mobile-card > span.status-pill.exit",
+      "tagName": "span",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "isPageLevel": false,
+      "isHidden": true,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Saída / cobertura\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.mobile-cards > article.mobile-card > span.tag.portfolio",
+      "tagName": "span",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "isPageLevel": false,
+      "isHidden": true,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"● Carteira\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap",
+      "tagName": "div",
+      "rect": {
+        "x": 246,
+        "y": 218.5,
+        "width": 1172,
+        "height": 127.75,
+        "top": 218.5,
+        "right": 1418,
+        "bottom": 346.25,
+        "left": 246
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "cramped-padding",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "<div> \"table-wrap\": children flush against border+bg on top/right/bottom (no inset)",
+          "ignoreValue": "",
+          "name": "Cramped padding",
+          "description": "Text is too close to the edge of its container. Two shapes: (1) an element with its own text where the padding is too low for the font size, and (2) a wrapper with text-bearing children and near-zero padding against a visible boundary (border, outline, or non-transparent background) — children land flush against the boundary line. Add at least 8px (ideally 12–16px) of padding inside bordered, outlined, or colored containers."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(2)",
+      "tagName": "th",
+      "rect": {
+        "x": 279,
+        "y": 219.5,
+        "width": 195.359375,
+        "height": 36.25,
+        "top": 219.5,
+        "right": 474.359375,
+        "bottom": 255.75,
+        "left": 279
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Par / Estratégia\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(3)",
+      "tagName": "th",
+      "rect": {
+        "x": 474.359375,
+        "y": 219.5,
+        "width": 126.234375,
+        "height": 36.25,
+        "top": 219.5,
+        "right": 600.59375,
+        "bottom": 255.75,
+        "left": 474.359375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Status\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(4)",
+      "tagName": "th",
+      "rect": {
+        "x": 600.59375,
+        "y": 219.5,
+        "width": 101.15625,
+        "height": 36.25,
+        "top": 219.5,
+        "right": 701.75,
+        "bottom": 255.75,
+        "left": 600.59375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Preço\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(5)",
+      "tagName": "th",
+      "rect": {
+        "x": 701.75,
+        "y": 219.5,
+        "width": 90.84375,
+        "height": 36.25,
+        "top": 219.5,
+        "right": 792.59375,
+        "bottom": 255.75,
+        "left": 701.75
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Distância\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th.col-spark",
+      "tagName": "th",
+      "rect": {
+        "x": 792.59375,
+        "y": 219.5,
+        "width": 108,
+        "height": 36.25,
+        "top": 219.5,
+        "right": 900.59375,
+        "bottom": 255.75,
+        "left": 792.59375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Gráfico\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(7)",
+      "tagName": "th",
+      "rect": {
+        "x": 900.59375,
+        "y": 219.5,
+        "width": 148,
+        "height": 36.25,
+        "top": 219.5,
+        "right": 1048.59375,
+        "bottom": 255.75,
+        "left": 900.59375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Risco até stop\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th.col-tags",
+      "tagName": "th",
+      "rect": {
+        "x": 1048.59375,
+        "y": 219.5,
+        "width": 95.78125,
+        "height": 36.25,
+        "top": 219.5,
+        "right": 1144.375,
+        "bottom": 255.75,
+        "left": 1048.59375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Tags\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > thead > tr > th:nth-of-type(9)",
+      "tagName": "th",
+      "rect": {
+        "x": 1144.375,
+        "y": 219.5,
+        "width": 272.625,
+        "height": 36.25,
+        "top": 219.5,
+        "right": 1417,
+        "bottom": 255.75,
+        "left": 1144.375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.0:1 (need 4.5:1) — text #707a8a on #181a20",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Operar\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "div.pair-icon.eth",
+      "tagName": "div",
+      "rect": {
+        "x": 293,
+        "y": 287.25,
+        "width": 26,
+        "height": 26,
+        "top": 287.25,
+        "right": 319,
+        "bottom": 313.25,
+        "left": 293
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "3.7:1 (need 4.5:1) — text #ffffff on #627eea",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"ETH\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td:nth-of-type(2) > div.pair-cell > div.pair-meta > div.pair-name > span.pair-tf",
+      "tagName": "span",
+      "rect": {
+        "x": 400,
+        "y": 274.25,
+        "width": 22.046875,
+        "height": 17,
+        "top": 274.25,
+        "right": 422.046875,
+        "bottom": 291.25,
+        "left": 400
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"1d\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "td:nth-of-type(3) > span.status-pill.exit",
+      "tagName": "span",
+      "rect": {
+        "x": 488.359375,
+        "y": 280.5,
+        "width": 98.234375,
+        "height": 39.5,
+        "top": 280.5,
+        "right": 586.59375,
+        "bottom": 320,
+        "left": 488.359375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"Saída / cobertura\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td:nth-of-type(7) > div.risk-meta > span:nth-of-type(1)",
+      "tagName": "span",
+      "rect": {
+        "x": 914.59375,
+        "y": 297.375,
+        "width": 31.609375,
+        "height": 15.75,
+        "top": 297.375,
+        "right": 946.203125,
+        "bottom": 313.125,
+        "left": 914.59375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"2.10%\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td:nth-of-type(7) > div.risk-meta > span:nth-of-type(2)",
+      "tagName": "span",
+      "rect": {
+        "x": 1009.296875,
+        "y": 297.375,
+        "width": 25.296875,
+        "height": 15.75,
+        "top": 297.375,
+        "right": 1034.59375,
+        "bottom": 313.125,
+        "left": 1009.296875
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10.5px functional text \"stop\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td.col-tags > div.tags > span.tag.portfolio",
+      "tagName": "span",
+      "rect": {
+        "x": 1062.59375,
+        "y": 276.75,
+        "width": 60.390625,
+        "height": 21,
+        "top": 276.75,
+        "right": 1122.984375,
+        "bottom": 297.75,
+        "left": 1062.59375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"● Carteira\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "section:nth-of-type(2) > div.table-wrap > table.signals > tbody > tr.head-row > td.col-tags > div.tags > span.tag.strategy",
+      "tagName": "span",
+      "rect": {
+        "x": 1062.59375,
+        "y": 302.75,
+        "width": 33.9375,
+        "height": 21,
+        "top": 302.75,
+        "right": 1096.53125,
+        "bottom": 323.75,
+        "left": 1062.59375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "ai-color-palette",
+          "category": "slop",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "Purple/violet neon text on dark background",
+          "ignoreValue": "",
+          "name": "AI color palette",
+          "description": "Purple/violet gradients and cyan-on-dark are the most recognizable tells of AI-generated UIs. Choose a distinctive, intentional palette."
+        },
+        {
+          "type": "undersized-ui-text",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "10px functional text \"★★\" (below 11px floor)",
+          "ignoreValue": "",
+          "name": "Undersized functional text",
+          "description": "Interactive and content-bearing UI text (links, buttons, nav items, labels, table cells, meta rows, timecodes) below 11px is a legibility failure, not a style choice. WCAG sets no absolute pixel floor, but functional text under 11px is a defensible quality bar: it fails on high-DPI and small viewports and it degrades tap and read targets. The 11px floor holds even inside a footer; only non-interactive legal smallprint gets the softer 10px floor. Being ON the DESIGN.md size ramp does not exempt a value here: adding 8px to the ramp launders the token but not the legibility problem, and that is exactly the escape hatch this rule closes. Exempts sup/sub, visually-hidden (sr-only) text, and code/terminal contexts. Decorative letterspaced micro-labels are still functional and stay in scope."
+        }
+      ]
+    },
+    {
+      "selector": "div.chart-modal",
+      "tagName": "div",
+      "rect": {
+        "x": 240,
+        "y": 410.25,
+        "width": 1184,
+        "height": 466.1875,
+        "top": 410.25,
+        "right": 1424,
+        "bottom": 876.4375,
+        "left": 240
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "gpt-thin-border-wide-shadow",
+          "category": "slop",
+          "severity": "advisory",
+          "advisory": false,
+          "detail": "1px border + 90px shadow blur",
+          "ignoreValue": "",
+          "name": "Hairline border with wide shadow",
+          "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one — a defined edge or a soft elevation — rather than both at once."
+        }
+      ]
+    },
+    {
+      "selector": "#chart-subtitle",
+      "tagName": "p",
+      "rect": {
+        "x": 257,
+        "y": 456.25,
+        "width": 457.390625,
+        "height": 18.75,
+        "top": 456.25,
+        "right": 714.390625,
+        "bottom": 475,
+        "left": 257
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "low-contrast",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "4.46:1 (need 4.5:1) — text #707a8a on #0b0e11",
+          "ignoreValue": "",
+          "name": "Low contrast text",
+          "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background."
+        }
+      ]
+    },
+    {
+      "selector": "div:nth-of-type(44) > div > span:nth-of-type(2)",
+      "tagName": "span",
+      "rect": {
+        "x": 314.09375,
+        "y": 265.25,
+        "width": 121.796875,
+        "height": 20,
+        "top": 265.25,
+        "right": 435.890625,
+        "bottom": 285.25,
+        "left": 314.09375
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "text-occlusion",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "span \"low contrast text\" is 90% covered by overlapping text (div.pair-name)",
+          "ignoreValue": "",
+          "name": "Text occluded by an overlapping element",
+          "description": "Text is painted under an opaque element or a second text run, so part of it cannot be read. A decorative box, a stacked layer, or an inline element with leaked padding lands on the words instead of beside them. Give overlapping layers room, or move the text out from under the layer above it."
+        }
+      ]
+    },
+    {
+      "selector": "div:nth-of-type(51) > div > span",
+      "tagName": "span",
+      "rect": {
+        "x": 236,
+        "y": 388.25,
+        "width": 244.4375,
+        "height": 20,
+        "top": 388.25,
+        "right": 480.4375,
+        "bottom": 408.25,
+        "left": 236
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "text-occlusion",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "span \"✦ hairline border with w\" is 100% covered by an opaque element (div.chart-modal-backdrop)",
+          "ignoreValue": "",
+          "name": "Text occluded by an overlapping element",
+          "description": "Text is painted under an opaque element or a second text run, so part of it cannot be read. A decorative box, a stacked layer, or an inline element with leaked padding lands on the words instead of beside them. Give overlapping layers room, or move the text out from under the layer above it."
+        }
+      ]
+    },
+    {
+      "selector": "div:nth-of-type(52) > div > span",
+      "tagName": "span",
+      "rect": {
+        "x": 253,
+        "y": 434.25,
+        "width": 125.796875,
+        "height": 20,
+        "top": 434.25,
+        "right": 378.796875,
+        "bottom": 454.25,
+        "left": 253
+      },
+      "isPageLevel": false,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "text-occlusion",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "span \"low contrast text\" is 100% covered by overlapping text (h2)",
+          "ignoreValue": "",
+          "name": "Text occluded by an overlapping element",
+          "description": "Text is painted under an opaque element or a second text run, so part of it cannot be read. A decorative box, a stacked layer, or an inline element with leaked padding lands on the words instead of beside them. Give overlapping layers room, or move the text out from under the layer above it."
+        }
+      ]
+    },
+    {
+      "selector": "body",
+      "tagName": "body",
+      "rect": null,
+      "isPageLevel": true,
+      "isHidden": false,
+      "findings": [
+        {
+          "type": "skipped-heading",
+          "category": "quality",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "<h1> \"Monitor de sinais\" followed by <h3> \"Em posição(1)\" (missing h2)",
+          "ignoreValue": "",
+          "name": "Skipped heading level",
+          "description": "Heading levels should not skip (e.g. h1 then h3 with no h2). Screen readers use heading hierarchy for navigation. Skipping levels breaks the document outline."
+        },
+        {
+          "type": "gradient-text",
+          "category": "slop",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "background-clip: text + gradient",
+          "ignoreValue": "",
+          "name": "Gradient text",
+          "description": "Gradient text is decorative rather than meaningful — a common AI tell, especially on headings and metrics. Use solid colors for text."
+        },
+        {
+          "type": "marquee",
+          "category": "slop",
+          "severity": "warning",
+          "advisory": false,
+          "detail": "<marquee> element",
+          "ignoreValue": "",
+          "name": "Auto-scrolling marquee",
+          "description": "Continuously auto-scrolling content demands attention it has not earned and hides half its content at any moment. Reserve motion for content that changes; let readers move at their own pace."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,803 @@
+{
+  "checks": [
+    {
+      "name": "no-favorites-html",
+      "pass": true,
+      "detail": "index.html"
+    },
+    {
+      "name": "canonical-set",
+      "pass": true,
+      "detail": "index.html"
+    },
+    {
+      "name": "digest-disk-expected",
+      "pass": true,
+      "detail": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b"
+    },
+    {
+      "name": "copied-pairs-9",
+      "pass": true,
+      "detail": "{\"starts\": 9, \"ends\": 9, \"pairs_ok\": true, \"copied_utf8\": 21255, \"bytes\": 39552, \"has_7d_copied\": true, \"visible_th_grafico\": true, \"has_tf_filter\": true, \"has_readonly\": true, \"no_data_chart_tf\": true, \"no_role_group\": true, \"no_select_tf\": true, \"no_estrategia_4H_btn\": true, \"no_grafico_1d\": true, \"no_tf_1d\": true, \"no_15m\": true}"
+    },
+    {
+      "name": "column-not-deleted",
+      "pass": true,
+      "detail": "{\"starts\": 9, \"ends\": 9, \"pairs_ok\": true, \"copied_utf8\": 21255, \"bytes\": 39552, \"has_7d_copied\": true, \"visible_th_grafico\": true, \"has_tf_filter\": true, \"has_readonly\": true, \"no_data_chart_tf\": true, \"no_role_group\": true, \"no_select_tf\": true, \"no_estrategia_4H_btn\": true, \"no_grafico_1d\": true, \"no_tf_1d\": true, \"no_15m\": true}"
+    },
+    {
+      "name": "html-no-chart-selector",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "html-list-filter",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "html-readonly-label",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "html-no-grafico-1d",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "digest-https-recorded",
+      "pass": true,
+      "detail": "200 f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b"
+    },
+    {
+      "name": "digest-https-vs-disk",
+      "pass": true,
+      "detail": "https=f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b disk=f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b"
+    },
+    {
+      "name": "live-http-recorded",
+      "pass": true,
+      "detail": "200 https://dev.criptofarol.com.br/monitor 455B"
+    },
+    {
+      "name": "desktop-index-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "desktop-index-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "desktop-index-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-table-present",
+      "pass": true,
+      "detail": "2"
+    },
+    {
+      "name": "desktop-index-h1-monitor",
+      "pass": true,
+      "detail": "Monitor de sinais"
+    },
+    {
+      "name": "desktop-index-not-gallery",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-btc",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-strategy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-eth-witness",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-pair-tf-4h",
+      "pass": true,
+      "detail": "4h"
+    },
+    {
+      "name": "desktop-index-filter-options",
+      "pass": true,
+      "detail": "[\"Timeframe: Todos\", \"4h\", \"1d\"]"
+    },
+    {
+      "name": "desktop-index-no-grafico-1d",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-no-tf-1d",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-readonly-estrategia-4h",
+      "pass": true,
+      "detail": "Estratégia · 4h"
+    },
+    {
+      "name": "desktop-index-no-data-chart-tf",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "desktop-index-no-role-group",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop-index-no-chart-tf-buttons",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop-index-no-select-tf-label",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop-index-selector-needles-invisible",
+      "pass": true,
+      "detail": "{\"15m\": 0, \"Estratégia (4H)\": 0, \"Selecionar timeframe do gráfico\": 0}"
+    },
+    {
+      "name": "desktop-index-chart-dialog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-spark-btc-4h",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-nav",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-filter-aria",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-default-in-portfolio",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-index-landmarks-dom",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop-index-coluna-grafico",
+      "pass": true,
+      "detail": "[\"\", \"Par / Estratégia\", \"Status\", \"Preço\", \"Distância\", \"Gráfico\", \"Risco até stop\", \"Tags\", \"Operar\", \"\", \"Par / Estratégia\", \"Status\", \"Preço\", \"Distância\", \"Gráfico\", \"Risco até stop\", \"Tags\", \"Operar\"]"
+    },
+    {
+      "name": "desktop-index-table-visible",
+      "pass": true,
+      "detail": "True"
+    },
+    {
+      "name": "desktop-index-sidebar-224",
+      "pass": true,
+      "detail": "{\"x\": 0, \"y\": 0, \"width\": 224, \"height\": 900}"
+    },
+    {
+      "name": "desktop-index-overflow-x",
+      "pass": true,
+      "detail": "False"
+    },
+    {
+      "name": "desktop-filter-4h-btc-visible",
+      "pass": true,
+      "detail": "None"
+    },
+    {
+      "name": "desktop-filter-4h-eth-hidden",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-filter-1d-btc-hidden",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-filter-1d-eth-visible",
+      "pass": true,
+      "detail": "None"
+    },
+    {
+      "name": "desktop-filter-all-both",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-open-chart-visible-click",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-click-chart-no-data-chart-tf",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-click-chart-no-role-group",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-click-chart-no-tf-buttons",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop-click-chart-readonly-stays",
+      "pass": true,
+      "detail": "Estratégia · 4h"
+    },
+    {
+      "name": "desktop-click-chart-filter-intact",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop-click-keeps-list-4h",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-lang",
+      "pass": true,
+      "detail": "pt-BR"
+    },
+    {
+      "name": "mobile-index-no-antes",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "mobile-index-console",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-table-present",
+      "pass": true,
+      "detail": "2"
+    },
+    {
+      "name": "mobile-index-h1-monitor",
+      "pass": true,
+      "detail": "Monitor de sinais"
+    },
+    {
+      "name": "mobile-index-not-gallery",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-btc",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-strategy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-eth-witness",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-pair-tf-4h",
+      "pass": true,
+      "detail": "4h"
+    },
+    {
+      "name": "mobile-index-filter-options",
+      "pass": true,
+      "detail": "[\"Timeframe: Todos\", \"4h\", \"1d\"]"
+    },
+    {
+      "name": "mobile-index-no-grafico-1d",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-no-tf-1d",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-readonly-estrategia-4h",
+      "pass": true,
+      "detail": "Estratégia · 4h"
+    },
+    {
+      "name": "mobile-index-no-data-chart-tf",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "mobile-index-no-role-group",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile-index-no-chart-tf-buttons",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile-index-no-select-tf-label",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile-index-selector-needles-invisible",
+      "pass": true,
+      "detail": "{\"15m\": 0, \"Estratégia (4H)\": 0, \"Selecionar timeframe do gráfico\": 0}"
+    },
+    {
+      "name": "mobile-index-chart-dialog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-spark-btc-4h",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-nav",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-filter-aria",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-default-in-portfolio",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-index-landmarks-dom",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile-index-coluna-grafico",
+      "pass": true,
+      "detail": "[\"\", \"Par / Estratégia\", \"Status\", \"Preço\", \"Distância\", \"Gráfico\", \"Risco até stop\", \"Tags\", \"Operar\", \"\", \"Par / Estratégia\", \"Status\", \"Preço\", \"Distância\", \"Gráfico\", \"Risco até stop\", \"Tags\", \"Operar\"]"
+    },
+    {
+      "name": "mobile-index-table-hidden-like-live",
+      "pass": true,
+      "detail": "False"
+    },
+    {
+      "name": "mobile-index-mobile-cards",
+      "pass": true,
+      "detail": "2"
+    },
+    {
+      "name": "mobile-index-overflow-x",
+      "pass": true,
+      "detail": "False"
+    },
+    {
+      "name": "mobile-index-mobile-btc-4h",
+      "pass": true,
+      "detail": "4h"
+    },
+    {
+      "name": "mobile-filter-4h-btc-visible",
+      "pass": true,
+      "detail": "None"
+    },
+    {
+      "name": "mobile-filter-4h-eth-hidden",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-filter-4h-eth-card-hidden",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-filter-1d-btc-hidden",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-filter-1d-eth-visible",
+      "pass": true,
+      "detail": "None"
+    },
+    {
+      "name": "mobile-filter-all-both",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-open-chart-visible-click",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-click-chart-no-data-chart-tf",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-click-chart-no-role-group",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-click-chart-no-tf-buttons",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile-click-chart-readonly-stays",
+      "pass": true,
+      "detail": "Estratégia · 4h"
+    },
+    {
+      "name": "mobile-click-chart-filter-intact",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile-click-keeps-list-4h",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live-playwright-login",
+      "pass": true,
+      "detail": "https://dev.criptofarol.com.br/login"
+    },
+    {
+      "name": "live-playwright-not-monitor-table",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live-login-is-not-route",
+      "pass": true,
+      "detail": "discarded; /login is not /monitor"
+    }
+  ],
+  "pages": {
+    "desktop-index": {
+      "url": "http://127.0.0.1:43857/prototypes/card-994-monitor-multiplos-timeframes/",
+      "title": "Monitor de sinais — Cripto Farol",
+      "h1": "Monitor de sinais",
+      "lang": "pt-BR",
+      "screenshot": "994-A-desktop-1440x900-index.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "console": [],
+      "pageerror": [],
+      "table_count": 2,
+      "table_visible": true,
+      "landmarks": {
+        "texts": [
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "Gráfico",
+          "Risco até stop",
+          "Tags",
+          "Operar",
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "Gráfico",
+          "Risco até stop",
+          "Tags",
+          "Operar"
+        ],
+        "found": {
+          "Status": true,
+          "Preço": true,
+          "Distância": true,
+          "Tags": true,
+          "Operar": true,
+          "Par / Estratégia": true
+        },
+        "tableCount": 2,
+        "hasGrafico": true,
+        "has7dVisible": false,
+        "sparkColPresent": true
+      },
+      "sidebar_box": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 900
+      },
+      "pair_tf": "4h",
+      "probe": {
+        "dataChartTf": 0,
+        "roleGroup": [],
+        "chartTfButtons": 0,
+        "selectTfLabel": [],
+        "buttonHits": [],
+        "readonly": "Estratégia · 4h",
+        "bars": "42 velas · 4h",
+        "subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+        "tfFilter": true,
+        "tfFilterOptions": [
+          "Timeframe: Todos",
+          "4h",
+          "1d"
+        ]
+      },
+      "forbidden": {
+        "Gráfico 1d": 0,
+        "tf 1d": 0
+      },
+      "selector_visible": {
+        "15m": 0,
+        "Estratégia (4H)": 0,
+        "Selecionar timeframe do gráfico": 0
+      },
+      "btc": true,
+      "strategy": true,
+      "eth": true,
+      "readonly_label": true,
+      "dialog": 1,
+      "filter_label": "Timeframe",
+      "nav": 1,
+      "close_box": {
+        "x": 1363,
+        "y": 997.25,
+        "width": 44,
+        "height": 44
+      },
+      "readonly_box": {
+        "x": 257,
+        "y": 1077.75,
+        "width": 98.171875,
+        "height": 20.5
+      },
+      "mobile_cards": 2,
+      "gallery": 0,
+      "in_portfolio_on": true,
+      "filter_4h_shot": "994-A-desktop-1440x900-filter-4h.png",
+      "filter_1d_shot": "994-A-desktop-1440x900-filter-1d.png",
+      "chart_click_shot": "994-A-desktop-1440x900-chart-click.png",
+      "after_click": {
+        "dataChartTf": 0,
+        "roleGroup": [],
+        "chartTfButtons": 0,
+        "selectTfLabel": [],
+        "buttonHits": [],
+        "readonly": "Estratégia · 4h",
+        "bars": "42 velas · 4h",
+        "subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+        "tfFilter": true,
+        "tfFilterOptions": [
+          "Timeframe: Todos",
+          "4h",
+          "1d"
+        ]
+      }
+    },
+    "mobile-index": {
+      "url": "http://127.0.0.1:43857/prototypes/card-994-monitor-multiplos-timeframes/",
+      "title": "Monitor de sinais — Cripto Farol",
+      "h1": "Monitor de sinais",
+      "lang": "pt-BR",
+      "screenshot": "994-A-mobile-390x844-index.png",
+      "overflow_x": false,
+      "antes_depois": 0,
+      "console": [],
+      "pageerror": [],
+      "table_count": 2,
+      "table_visible": false,
+      "landmarks": {
+        "texts": [
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "Gráfico",
+          "Risco até stop",
+          "Tags",
+          "Operar",
+          "",
+          "Par / Estratégia",
+          "Status",
+          "Preço",
+          "Distância",
+          "Gráfico",
+          "Risco até stop",
+          "Tags",
+          "Operar"
+        ],
+        "found": {
+          "Status": true,
+          "Preço": true,
+          "Distância": true,
+          "Tags": true,
+          "Operar": true,
+          "Par / Estratégia": true
+        },
+        "tableCount": 2,
+        "hasGrafico": true,
+        "has7dVisible": false,
+        "sparkColPresent": true
+      },
+      "sidebar_box": null,
+      "pair_tf": "4h",
+      "probe": {
+        "dataChartTf": 0,
+        "roleGroup": [],
+        "chartTfButtons": 0,
+        "selectTfLabel": [],
+        "buttonHits": [],
+        "readonly": "Estratégia · 4h",
+        "bars": "42 velas · 4h",
+        "subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+        "tfFilter": true,
+        "tfFilterOptions": [
+          "Timeframe: Todos",
+          "4h",
+          "1d"
+        ]
+      },
+      "forbidden": {
+        "Gráfico 1d": 0,
+        "tf 1d": 0
+      },
+      "selector_visible": {
+        "15m": 0,
+        "Estratégia (4H)": 0,
+        "Selecionar timeframe do gráfico": 0
+      },
+      "btc": true,
+      "strategy": true,
+      "eth": true,
+      "readonly_label": true,
+      "dialog": 1,
+      "filter_label": "Timeframe",
+      "nav": 1,
+      "close_box": {
+        "x": 328.171875,
+        "y": 1573,
+        "width": 32.828125,
+        "height": 44
+      },
+      "readonly_box": {
+        "x": 29,
+        "y": 1672.25,
+        "width": 98.171875,
+        "height": 20.5
+      },
+      "mobile_cards": 2,
+      "gallery": 0,
+      "in_portfolio_on": true,
+      "filter_4h_shot": "994-A-mobile-390x844-filter-4h.png",
+      "filter_1d_shot": "994-A-mobile-390x844-filter-1d.png",
+      "chart_click_shot": "994-A-mobile-390x844-chart-click.png",
+      "after_click": {
+        "dataChartTf": 0,
+        "roleGroup": [],
+        "chartTfButtons": 0,
+        "selectTfLabel": [],
+        "buttonHits": [],
+        "readonly": "Estratégia · 4h",
+        "bars": "42 velas · 4h",
+        "subtitle": "Médias Móveis: Tendência em Virada • 4H • 42 velas 4h • candle ref Sep 19, 12:00",
+        "tfFilter": true,
+        "tfFilterOptions": [
+          "Timeframe: Todos",
+          "4h",
+          "1d"
+        ]
+      }
+    }
+  },
+  "live": {
+    "requested": "https://dev.criptofarol.com.br/monitor",
+    "http": 200,
+    "final": "https://dev.criptofarol.com.br/monitor",
+    "bytes": 455,
+    "table_signals": false,
+    "playwright_final": "https://dev.criptofarol.com.br/login",
+    "playwright_h1": "Bem-vindo de volta",
+    "screenshot": "994-A-live-monitor.png",
+    "table_count": 0
+  },
+  "digest": {
+    "https": {
+      "http": 200,
+      "final": "https://dev.criptofarol.com.br/prototypes/card-994-monitor-multiplos-timeframes/",
+      "sha256": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b",
+      "bytes": 39552,
+      "identical": true
+    },
+    "disk": {
+      "sha256": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b",
+      "bytes": 39552,
+      "expected": "f79ceb83f3d16a0cd03d2facf0937234170206da2996897796050c3f8e18628b"
+    }
+  },
+  "copied": {
+    "index.html": {
+      "starts": 9,
+      "ends": 9,
+      "pairs_ok": true,
+      "copied_utf8": 21255,
+      "bytes": 39552,
+      "has_7d_copied": true,
+      "visible_th_grafico": true,
+      "has_tf_filter": true,
+      "has_readonly": true,
+      "no_data_chart_tf": true,
+      "no_role_group": true,
+      "no_select_tf": true,
+      "no_estrategia_4H_btn": true,
+      "no_grafico_1d": true,
+      "no_tf_1d": true,
+      "no_15m": true
+    }
+  },
+  "extras": {
+    "html": [
+      "index.html"
+    ]
+  },
+  "served": "http://127.0.0.1:43857/prototypes/card-994-monitor-multiplos-timeframes/",
+  "chromium": "/usr/bin/chromium-browser",
+  "passed": 101,
+  "failed": 0,
+  "total": 101,
+  "fails": [],
+  "verdict_hint": "PASS"
+}

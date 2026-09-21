@@ -27,7 +27,7 @@ import {
     type Opportunity,
     type OpportunitySignalHistoryItem,
 } from './types';
-import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
+import { fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
 import {
     alignStrategyTransparencyToLoadedCandles,
@@ -45,13 +45,6 @@ interface ChartModalProps {
     viewMode: 'chart' | 'trades';
     onClose: () => void;
 }
-
-type TimeframePickerSource = 'algorithmic' | 'manual';
-type TimeframePickerItem = {
-    value: ChartTimeframe;
-    label: string;
-    source: TimeframePickerSource;
-};
 
 const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -287,34 +280,14 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => toChartTimeframe(opportunity.timeframe),
         [opportunity.timeframe],
     );
-    const timeframeOptions = React.useMemo(() => {
-        const options: TimeframePickerItem[] = [];
-        const addOption = (value: ChartTimeframe, label: string, source: TimeframePickerSource) => {
-            if (!options.some((item) => item.value === value)) {
-                options.push({ value, label, source });
-            }
-        };
-
-        addOption(strategyTimeframe, `Estratégia (${strategyTimeframe.toUpperCase()})`, 'algorithmic');
-        CHART_TIMEFRAMES.forEach((item) => {
-            addOption(item, item, 'manual');
-        });
-
-        if (isStockAsset) {
-            return options.filter((item) => item.value === '1d');
-        }
-        return options;
-    }, [isStockAsset, strategyTimeframe]);
+    const lockedTimeframe: ChartTimeframe = isStockAsset ? '1d' : strategyTimeframe;
     const supportedTimeframes = React.useMemo(
-        () => timeframeOptions.map((item) => item.value),
-        [timeframeOptions],
+        () => [lockedTimeframe],
+        [lockedTimeframe],
     );
-    const defaultRequestedTimeframe = isStockAsset ? '1d' : initialTimeframe;
-    const resolvedInitialTimeframe = React.useMemo(() => (
-        supportedTimeframes.includes(defaultRequestedTimeframe)
-            ? defaultRequestedTimeframe
-            : supportedTimeframes[0] ?? '1d'
-    ), [defaultRequestedTimeframe, supportedTimeframes]);
+    const resolvedInitialTimeframe = supportedTimeframes.includes(initialTimeframe)
+        ? initialTimeframe
+        : lockedTimeframe;
 
     const [timeframe, setTimeframe] = React.useState<ChartTimeframe>(resolvedInitialTimeframe);
     const [candles, setCandles] = React.useState<MarketCandle[]>(initialCandles);
@@ -714,28 +687,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     ];
     const timeframeToolbar = (
         <div className="flex w-full flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Selecionar timeframe do gráfico">
-                {timeframeOptions.map((item) => {
-                    const active = item.value === timeframe;
-                    return (
-                        <button
-                            key={item.value}
-                            type="button"
-                            className={`min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] ${
-                                active
-                                    ? 'border-[#fcd535] bg-[#fcd535]/16 text-[#eaecef]'
-                                    : 'border-[#2b3139] bg-[#0b0e11] text-[#929aa5] hover:border-[#fcd535] hover:text-[#eaecef]'
-                            }`}
-                            onClick={() => setTimeframe(item.value)}
-                            aria-pressed={active}
-                            title={item.source === 'algorithmic' ? 'Timeframe da estratégia' : 'Timeframe manual'}
-                            data-testid={`chart-timeframe-${item.value}`}
-                        >
-                            {item.label}
-                        </button>
-                    );
-                })}
-            </div>
+            <p
+                className="m-0 inline-flex items-center gap-2 text-[12.5px] font-medium text-[#929aa5]"
+                data-testid="chart-strategy-tf"
+            >
+                Estratégia · <span className="rounded-[3px] bg-[#1e2329] px-[7px] py-0.5 font-mono text-[11px] text-[#b7bdc6]">{timeframe}</span>
+            </p>
             <SpotProtectStopPanel
                 opportunity={opportunity}
                 showEntryStopRows={showEntryStopRows}
