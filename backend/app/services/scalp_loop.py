@@ -60,6 +60,17 @@ def _release_lock() -> None:
     _lock_fh = None
 
 
+def _tick_user_blocking(user_id: str) -> None:
+    """Run one scalp tick off the asyncio loop so Jev HTTP cannot block the WS stream."""
+    db = SessionLocal()
+    try:
+        tick_user(db, user_id)
+    except Exception:
+        logger.exception("scalp tick failed user=%s", user_id)
+    finally:
+        db.close()
+
+
 async def scalp_loop(stop_event: asyncio.Event | None = None) -> None:
     interval = max(JEV_FLOOR_MS / 1000.0, 0.4)
     logger.info("Scalp BTCUSDT loop started (interval=%.2fs)", interval)
@@ -74,10 +85,7 @@ async def scalp_loop(stop_event: asyncio.Event | None = None) -> None:
             else:
                 await stop_scalp_btcusdt_stream()
             for user_id in user_ids:
-                try:
-                    tick_user(db, user_id)
-                except Exception:
-                    logger.exception("scalp tick failed user=%s", user_id)
+                await asyncio.to_thread(_tick_user_blocking, str(user_id))
         except Exception:
             logger.exception("scalp loop listing users failed")
         finally:

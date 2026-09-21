@@ -29,3 +29,8 @@
 
 - [x] 5.1 — Fonte única de frescura: o livro que `/api/scalp/status` expõe (`book_available`, `age_ms`, copy «livro indisponível») MUST ser a mesma memória/frescura que o ciclo usa para enviar/bloquear. Snapshot partilhado escrito pelo processo que consome o WS; API lê snapshot quando não tem stream local.
 - [x] 5.2 — Testes unitários do split-brain: status não fica `book_available=false` só porque o loop lock vive noutro processo se o livro do ciclo está fresco; painel fail-closed quando stream do ciclo caído/`age_ms`>500.
+
+## 6. Jev fora do event loop do stream (2º pós-T18)
+
+- [x] 6.1 — O consumo WS `bookTicker`/`aggTrade` e o publish do snapshot **não** podem parar enquanto o Jev HTTP corre. HTTP do Jev (e outro I/O bloqueante do tick) fora do event loop do stream (ex. `asyncio.to_thread` no `tick_user` / `request_jev`, ou equivalente). NÃO alargues o limiar 500 ms do ciclo para «esconder» o bloqueio. NÃO voltes REST `/api/v3/ticker/bookTicker`. NÃO abras segundo WS só para o painel. Fail-closed real (WS caído / toque >500 ms) mantém a copy e o switch Ligado.
+- [x] 6.2 — Com o stream vivo, `/api/scalp/status` (`book_available`, `status_text`) não fica «livro indisponível» só porque um Jev síncrono de ~1 s corre no mesmo processo. Snapshot (ou memória) continua a actualizar-se. Teste unitário que injeta um Jev lento (~1 s) e prova que o ingest/publish do livro continua (idade do snapshot ou memória ≤500 ms durante o call). Teste fail-closed intacto. pytest focado + black. Se ficheiro de teste novo: `test_inventory.json`. Diff coverage ≥70%.
