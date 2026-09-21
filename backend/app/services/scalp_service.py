@@ -32,6 +32,10 @@ from app.services.scalp_engine import (
     pnl_quote,
     unrealized_pnl,
 )
+from app.services.scalp_btcusdt_snapshot_store import (
+    resolve_scalp_btcusdt_book,
+    resolve_scalp_btcusdt_freshness,
+)
 from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
 from app.services.scalp_jev import jev_api_key, jev_available, request_jev
 from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
@@ -875,14 +879,26 @@ def status_payload(
         }
     jev_live = bool(jev_api_key())
     memory = get_scalp_btcusdt_memory()
-    book_available = memory.book_available() if visual == "on" else True
+    local_age = memory.age_ms()
+    book_available = True
+    book_age_ms: int | None = None
+    if visual == "on":
+        book_available, book_age_ms = resolve_scalp_btcusdt_freshness(
+            local_connected=memory.stream_connected(),
+            local_age_ms=local_age,
+            local_book_available=memory.book_available(),
+        )
     status_text = STATUS_COPY[visual]
     if visual == "on" and not book_available:
         status_text = BOOK_UNAVAILABLE_COPY
     elif visual == "on" and not jev_live:
         status_text = "Jev indisponível — sem envio live"
     if visual == "on" and mark <= 0:
-        live_book = memory.read_book()
+        live_book = resolve_scalp_btcusdt_book(
+            local_connected=memory.stream_connected(),
+            local_age_ms=local_age,
+            local_book=memory.read_book(),
+        )
         if live_book is not None:
             mark = live_book.mid
     return {
@@ -892,7 +908,7 @@ def status_payload(
         "jev_available": jev_live,
         "jev_unavailable": visual == "on" and not jev_live,
         "book_available": book_available,
-        "book_age_ms": memory.age_ms(),
+        "book_age_ms": book_age_ms if visual == "on" else memory.age_ms(),
         "t_quote": str(t),
         "clip_quote": "10",
         "inventory_btc": str(inventory),

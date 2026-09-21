@@ -10,6 +10,7 @@ from decimal import Decimal
 import pytest
 import websockets
 
+from app.services.scalp_btcusdt_snapshot_store import publish_scalp_btcusdt_snapshot
 from app.services.scalp_btcusdt_stream import (
     FRESH_AGE_MS,
     TRADE_WINDOW_SECONDS,
@@ -39,6 +40,13 @@ from tests.unit.test_scalp_direcional_jev import (
     scalp_db,
     set_switch,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolated_scalp_btcusdt_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv(
+        "CRYPTO_SCALP_BTCUSDT_SNAPSHOT_PATH", str(tmp_path / "scalp-btcusdt-snapshot.json")
+    )
 
 
 def _seed_fresh_touch(memory, *, bid: str = "65000", ask: str = "65010") -> None:
@@ -732,3 +740,89 @@ async def test_scalp_loop_stops_stream_without_enabled_users(scalp_db, monkeypat
     assert stop_calls >= 1
     stop.set()
     await loop_task
+
+
+def test_status_reads_cross_process_snapshot_when_api_memory_empty(scalp_db):
+    """Split-brain: loop lock elsewhere but worker snapshot is fresh → panel must not lie."""
+    memory = get_scalp_btcusdt_memory()
+    memory.reset_for_tests()
+
+    now = time.time()
+    publish_scalp_btcusdt_snapshot(
+        ws_connected=True,
+        received_at=now,
+        bid="65000",
+        ask="65010",
+    )
+
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    set_switch(scalp_db, user_id, enabled=True, exchange=FakeExchange(), free_btc=Decimal("0.01"))
+
+    payload = status_payload(scalp_db, user_id, free_usdt=Decimal("80"), mid=Decimal("0"))
+    assert payload["state"] == "on"
+    assert payload["book_available"] is True
+    assert payload["book_age_ms"] is not None
+    assert payload["book_age_ms"] <= FRESH_AGE_MS
+    assert payload["status_text"] != BOOK_UNAVAILABLE_COPY
+
+
+def test_status_fail_closed_when_snapshot_stale_and_no_local_stream(scalp_db):
+    memory = get_scalp_btcusdt_memory()
+    memory.reset_for_tests()
+
+    publish_scalp_btcusdt_snapshot(
+        ws_connected=True,
+        received_at=time.time() - 2.0,
+        bid="65000",
+        ask="65010",
+    )
+
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    set_switch(scalp_db, user_id, enabled=True, exchange=FakeExchange(), free_btc=Decimal("0.01"))
+
+    payload = status_payload(scalp_db, user_id, free_usdt=Decimal("80"), mid=Decimal("65005"))
+    assert payload["book_available"] is False
+    assert payload["status_text"] == BOOK_UNAVAILABLE_COPY
+
+
+def test_status_fail_closed_when_snapshot_ws_down(scalp_db):
+    memory = get_scalp_btcusdt_memory()
+    memory.reset_for_tests()
+
+    publish_scalp_btcusdt_snapshot(
+        ws_connected=False,
+        received_at=None,
+        bid=None,
+        ask=None,
+    )
+
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    set_switch(scalp_db, user_id, enabled=True, exchange=FakeExchange(), free_btc=Decimal("0.01"))
+
+    payload = status_payload(scalp_db, user_id, free_usdt=Decimal("80"), mid=Decimal("65005"))
+    assert payload["book_available"] is False
+    assert payload["status_text"] == BOOK_UNAVAILABLE_COPY
+
+
+def test_local_stale_stream_wins_over_fresh_snapshot(scalp_db):
+    memory = get_scalp_btcusdt_memory()
+    _seed_fresh_touch(memory)
+    _age_touch(memory, 900)
+
+    publish_scalp_btcusdt_snapshot(
+        ws_connected=True,
+        received_at=time.time(),
+        bid="65000",
+        ask="65010",
+    )
+
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    set_switch(scalp_db, user_id, enabled=True, exchange=FakeExchange(), free_btc=Decimal("0.01"))
+
+    payload = status_payload(scalp_db, user_id, free_usdt=Decimal("80"), mid=Decimal("65005"))
+    assert payload["book_available"] is False
+    assert payload["status_text"] == BOOK_UNAVAILABLE_COPY

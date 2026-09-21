@@ -24,3 +24,8 @@
 - [x] 4.1 — Testes dos critérios: nenhuma REST bookTicker por ciclo com scalp ligado; ordem só com `age_ms` ≤ 500; queda WS cancela resting deste bot; dois utilizadores = um stream; painel «livro indisponível».
 - [x] 4.2 — Playwright desktop+mobile do proto (ligado+livro fresco; stream caído / livro indisponível; off/kill/nokey como no clone).
 - [x] 4.3 — `openspec verify` desta change.
+
+## 5. Fonte única de frescura (pós-T18)
+
+- [x] 5.1 — Fonte única de frescura: o livro que `/api/scalp/status` expõe (`book_available`, `age_ms`, copy «livro indisponível») MUST ser a mesma memória/frescura que o ciclo usa para enviar/bloquear. Snapshot partilhado escrito pelo processo que consome o WS; API lê snapshot quando não tem stream local.
+- [x] 5.2 — Testes unitários do split-brain: status não fica `book_available=false` só porque o loop lock vive noutro processo se o livro do ciclo está fresco; painel fail-closed quando stream do ciclo caído/`age_ms`>500.
