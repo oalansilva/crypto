@@ -47,9 +47,7 @@ def upgrade() -> None:
     for name, ddl in _NEW_COLUMNS:
         if _has_column(TABLE, name):
             continue
-        bind.execute(
-            sa.text(f"ALTER TABLE {TABLE} ADD COLUMN IF NOT EXISTS {name} {ddl}")
-        )
+        bind.execute(sa.text(f"ALTER TABLE {TABLE} ADD COLUMN IF NOT EXISTS {name} {ddl}"))
 
 
 def downgrade() -> None:

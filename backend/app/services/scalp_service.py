@@ -1102,7 +1102,11 @@ def status_payload(
         "exit_target_bp": str(EXIT_TARGET_BP),
         "exit_stop_bp": str(EXIT_STOP_BP),
         "position": position,
-        "last_trade_bp": str(state.last_trade_bp) if state and state.last_trade_bp is not None else None,
-        "last_trade_quote": str(state.last_trade_quote) if state and state.last_trade_quote is not None else None,
+        "last_trade_bp": (
+            str(state.last_trade_bp) if state and state.last_trade_bp is not None else None
+        ),
+        "last_trade_quote": (
+            str(state.last_trade_quote) if state and state.last_trade_quote is not None else None
+        ),
         "stuck": stuck,
     }

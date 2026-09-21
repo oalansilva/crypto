@@ -73,9 +73,7 @@ def _seed_stream_for_jev() -> None:
     mem.ingest_book_ticker(
         {"s": "BTCUSDT", "b": "65000", "a": "65010", "B": "1.2", "A": "0.8", "E": now_ms}
     )
-    mem.ingest_agg_trade(
-        {"s": "BTCUSDT", "p": "65000", "q": "0.01", "T": now_ms, "m": False}
-    )
+    mem.ingest_agg_trade({"s": "BTCUSDT", "p": "65000", "q": "0.01", "T": now_ms, "m": False})
 
 
 def _book() -> Book:
