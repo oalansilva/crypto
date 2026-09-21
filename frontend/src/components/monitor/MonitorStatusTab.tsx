@@ -11,7 +11,6 @@ import {
     GLOBAL_MONITOR_PREFERENCE_KEY,
     type MonitorCardMode,
     type MonitorPreference,
-    type MonitorPriceTimeframe,
     type MonitorTheme,
 } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
@@ -32,14 +31,14 @@ import { authFetch, isFetchAbortedError, isNetworkFetchError } from '@/lib/authF
 import { hasRecoverableAuthSession } from '@/lib/authJson';
 import { useAuth } from '@/stores/authStore';
 import type { MarketCandle } from './MiniCandlesChart';
-import { fetchMarketCandles, type ChartTimeframe } from './chartData';
+import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { boardStateLabel, resolveOpportunitySignal } from './signalResolution';
 
 type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
 type TierFilter = 'rated' | 'all' | '1_2' | '1' | '2' | '3' | 'none';
 type ListFilter = 'in_portfolio' | 'all';
 type StrategyFilter = 'all' | string;
-type TimeframeFilter = 'all' | '1d';
+type TimeframeFilter = 'all' | string;
 type StarFilter = 'all' | '3' | '2' | '1';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 type SpotEligibilityState = { eligible: boolean; reason: string | null };
@@ -211,7 +210,7 @@ export const MonitorStatusTab: React.FC = () => {
     const opportunitiesFetchGenerationRef = useRef(0);
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
     const [sparklineByKey, setSparklineByKey] = useState<Record<string, number[]>>({});
-    const [sparklineLoadingByKey, setSparklineLoadingByKey] = useState<Record<string, boolean>>({});
+    const [, setSparklineLoadingByKey] = useState<Record<string, boolean>>({});
     const [sparklineErrorByKey, setSparklineErrorByKey] = useState<Record<string, boolean>>({});
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>(
         {}
@@ -641,17 +640,11 @@ export const MonitorStatusTab: React.FC = () => {
         void persistPreference(symbol, { card_mode: nextMode });
     };
 
-    const handleToggleTimeframe = (symbol: string, nextTimeframe: MonitorPriceTimeframe) => {
-        void nextTimeframe;
-        void persistPreference(symbol, { price_timeframe: '1d' });
-        void fetchMarketCandles(symbol, '1d', undefined, SPARKLINE_LIMIT).catch((error) => {
-            console.error(`Falha ao pré-carregar velas para ${symbol} (1d)`, error);
-        });
-    };
-
     const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
-        void opportunity;
-        return '1d';
+        if (getOpportunityAssetType(opportunity) === 'stock') {
+            return '1d';
+        }
+        return toChartTimeframe(opportunity.timeframe);
     };
 
     const getOpeningChartKey = (opportunity: Opportunity): string => String(opportunity.id);
@@ -862,6 +855,25 @@ export const MonitorStatusTab: React.FC = () => {
         return ['all', ...Array.from(next).sort((a, b) => a.localeCompare(b))];
     }, [sortedOpportunities]);
 
+    const visibleTimeframeOptions = useMemo(() => {
+        const next = new Set<string>();
+        for (const opp of sortedOpportunities) {
+            if (!String(opp.symbol || '').trim()) continue;
+            if (getOpportunityAssetType(opp) !== 'crypto') continue;
+            if (!isRatedOpportunity(opp)) continue;
+            const timeframe = String(opp.timeframe || '').trim();
+            if (timeframe) next.add(timeframe);
+        }
+        return Array.from(next).sort((left, right) => {
+            const leftIndex = CHART_TIMEFRAMES.indexOf(left as ChartTimeframe);
+            const rightIndex = CHART_TIMEFRAMES.indexOf(right as ChartTimeframe);
+            if (leftIndex !== -1 && rightIndex !== -1) return leftIndex - rightIndex;
+            if (leftIndex !== -1) return -1;
+            if (rightIndex !== -1) return 1;
+            return left.localeCompare(right);
+        });
+    }, [sortedOpportunities]);
+
     const filteredOpportunities = useMemo(() => {
         const normalizedSearch = toStringSearch(searchTerm);
 
@@ -981,8 +993,7 @@ export const MonitorStatusTab: React.FC = () => {
     }), [resolvedSections]);
 
     useEffect(() => {
-        const shouldLoadSparklines = false;
-        if (!shouldLoadSparklines) {
+        if (!showTechnicalColumns) {
             return;
         }
 
@@ -995,7 +1006,6 @@ export const MonitorStatusTab: React.FC = () => {
                 if (
                     !rowsToFetch.has(key)
                     && !sparklineByKey[key]
-                    && !sparklineLoadingByKey[key]
                     && !sparklineErrorByKey[key]
                 ) {
                     rowsToFetch.set(key, { symbol: opportunity.symbol, timeframe });
@@ -1071,7 +1081,7 @@ export const MonitorStatusTab: React.FC = () => {
                 controller.abort();
             }
         };
-    }, [resolvedSections, sparklineByKey, sparklineErrorByKey, sparklineLoadingByKey]);
+    }, [resolvedSections, showTechnicalColumns, sparklineByKey, sparklineErrorByKey]);
 
     const totalKpi = {
         hold: sectionCountByType.hold,
@@ -1202,9 +1212,20 @@ export const MonitorStatusTab: React.FC = () => {
                             </button>
                         </div> : null}
                         {showTechnicalColumns ? <div className="filter-divider" /> : null}
-                        <select className="select" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value as TimeframeFilter)}>
+                        <select
+                            className="select"
+                            id="tf-filter"
+                            aria-label="Timeframe"
+                            data-testid="monitor-filter-timeframe"
+                            value={timeframeFilter}
+                            onChange={(e) => setTimeframeFilter(e.target.value as TimeframeFilter)}
+                        >
                             <option value="all">Timeframe: Todos</option>
-                            <option value="1d">1d</option>
+                            {visibleTimeframeOptions.map((timeframe) => (
+                                <option key={timeframe} value={timeframe}>
+                                    {timeframe}
+                                </option>
+                            ))}
                         </select>
                         <select
                             className="select"
@@ -1322,7 +1343,6 @@ export const MonitorStatusTab: React.FC = () => {
                                                             isAdmin={showTechnicalColumns}
                                                             onToggleInPortfolio={handleToggleInPortfolio}
                                                             onToggleCardMode={handleToggleCardMode}
-                                                            onToggleTimeframe={handleToggleTimeframe}
                                                             onOpenChart={handleOpenChart}
                                                             onOpenTrade={handleOpenTrade}
                                                         />
@@ -1340,7 +1360,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                         <th>Status</th>
                                                         <th>Preço</th>
                                                         {showTechnicalColumns ? <th>Distância</th> : null}
-                                                        {showTechnicalColumns ? <th className="col-spark">7d</th> : null}
+                                                        {showTechnicalColumns ? <th className="col-spark" data-landmark="7d">Gráfico</th> : null}
                                                         <th>Risco até stop</th>
                                                         <th className="col-tags">Tags</th>
                                                         <th className="actions-cell" />
@@ -1393,7 +1413,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 <div className="pair-meta">
                                                                                     <div className="pair-name">
                                                                                         {opportunity.symbol}
-                                                                                        <span className="pair-tf">{chartTimeframe}</span>
+                                                                                        <span className="pair-tf" data-testid={`monitor-pair-tf-${symbolTestKey(opportunity.symbol)}`}>{chartTimeframe}</span>
                                                                                     </div>
                                                                                     <div className="pair-strat">{getStrategyDisplayName(opportunity)}</div>
                                                                                     {opportunity.strategy_description ? (
@@ -1419,7 +1439,8 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                         className="spark"
                                                                                         viewBox="0 0 80 22"
                                                                                         preserveAspectRatio="none"
-                                                                                        aria-hidden
+                                                                                        role="img"
+                                                                                        aria-label={`Minigráfico ${opportunity.symbol} ${chartTimeframe}`}
                                                                                     >
                                                                                         <path d={spark.area} fill={sparkColor} fillOpacity={0.12} />
                                                                                         <path
@@ -1547,7 +1568,6 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 isAdmin={showTechnicalColumns}
                                                                                 onToggleInPortfolio={handleToggleInPortfolio}
                                                                                 onToggleCardMode={handleToggleCardMode}
-                                                                                onToggleTimeframe={handleToggleTimeframe}
                                                                                 onOpenChart={handleOpenChart}
                                                                                 onOpenTrade={handleOpenTrade}
                                                                             />

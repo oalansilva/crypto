@@ -345,8 +345,11 @@ test('monitor exposes safe functional strategy details for common user', async (
   await expect(card.getByRole('button', { name: 'Ver Trades' })).toBeVisible()
   await expect(card.getByText('Confirmar gestão')).toBeVisible()
   await expect(card.getByTestId('mode-toggle-btc-usdt')).toBeVisible()
-  await expect(card.getByTestId('timeframe-toggle-btc-usdt-1d')).toBeVisible()
-  await expect(card.getByTitle('Timeframe do gráfico de preço')).toHaveText('Gráfico 1d')
+  await expect(card.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveCount(0)
+  await expect(card.getByTitle('Timeframe da estratégia')).toHaveText('4h')
+  await expect(card.getByTitle('Timeframe do gráfico de preço')).toHaveCount(0)
+  await expect(card.getByText('Gráfico 1d')).toHaveCount(0)
+  await expect(card.getByText('tf 1d')).toHaveCount(0)
   await expect(card.getByText('ema_rsi')).toHaveCount(0)
   await expect(card.getByText('ema_short')).toHaveCount(0)
 })
@@ -676,12 +679,14 @@ test('per-card keeps the supported chart timeframe across reload', async ({ page
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTitle('Timeframe da estratégia')).toHaveText('4h')
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveCount(0)
   await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveCount(0)
 
   await page.reload()
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTitle('Timeframe da estratégia')).toHaveText('4h')
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveCount(0)
 })
 
 test('portfolio controls stay interactive while preferences are saved', async ({ page }) => {
@@ -689,7 +694,7 @@ test('portfolio controls stay interactive while preferences are saved', async ({
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
-  await expect(visibleMonitorCard(page, 'btc-usdt').getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
+  await expect(visibleMonitorCard(page, 'btc-usdt').getByTitle('Timeframe da estratégia')).toHaveText('4h')
   await expect(monitorCardControl(page, 'btc-usdt', 'portfolio-toggle')).toBeEnabled()
 
   await monitorCardControl(page, 'btc-usdt', 'portfolio-toggle').click()

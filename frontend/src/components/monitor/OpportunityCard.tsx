@@ -11,7 +11,6 @@ import {
     type Opportunity,
     type MonitorCardMode,
     type MonitorPreference,
-    type MonitorPriceTimeframe,
 } from './types';
 
 interface OpportunityCardProps {
@@ -28,7 +27,6 @@ interface OpportunityCardProps {
     isAdmin?: boolean;
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
-    onToggleTimeframe: (symbol: string, nextTimeframe: MonitorPriceTimeframe) => void;
     onOpenChart: (opportunity: Opportunity, mode?: 'chart' | 'trades') => void;
     onOpenTrade: (opportunity: Opportunity) => void;
 }
@@ -68,7 +66,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     isAdmin = false,
     onToggleInPortfolio,
     onToggleCardMode,
-    onToggleTimeframe,
     onOpenChart,
     onOpenTrade,
 }) => {
@@ -93,7 +90,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     ).trim().toLowerCase() === 'short';
     const showFunctionalDetails = isAdmin || !strategyProtected || Boolean(opportunity.strategy_transparency);
     const showManagementControls = isAdmin || !strategyProtected;
-    const effectiveTimeframe: MonitorPriceTimeframe = '1d';
     const UNAVAILABLE = 'indisponível — dado não confiável';
     const TIMEFRAME_TO_MS: Record<string, number> = {
         '15m': 15 * 60 * 1000,
@@ -132,8 +128,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     }, [opportunity.notes]);
 
     const computedResolvedSignal = React.useMemo(
-        () => resolveOpportunitySignal(opportunity, { selectedTimeframe: effectiveTimeframe }),
-        [effectiveTimeframe, opportunity],
+        () => resolveOpportunitySignal(opportunity, { selectedTimeframe: timeframe }),
+        [opportunity, timeframe],
     );
     const resolvedSignal = resolvedSignalOverride ?? computedResolvedSignal;
     const statusMessage = resolvedSignal.statusMessage;
@@ -235,7 +231,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         onToggleInPortfolio(symbol, true);
     };
     const nextMode: MonitorCardMode = preference.card_mode === 'price' ? 'strategy' : 'price';
-    const timeframeOptions: MonitorPriceTimeframe[] = ['1d'];
 
     return (
         <div
@@ -259,7 +254,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         {boardStateLabel(resolvedSignal.section)}
                     </span>
                     <span title="Timeframe da estratégia" className="detail-timeframe">{timeframe || '-'}</span>
-                    <span title="Timeframe do gráfico de preço" className="detail-timeframe">Gráfico {effectiveTimeframe}</span>
                 </div>
                 {showManagementControls ? (
                     <div className="detail-controls">
@@ -284,24 +278,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                                 {preference.card_mode === 'price' ? 'Preço' : 'Estratégia'}
                             </span>
                         </button>
-                        <div className="timeframe-toggle-group" aria-label={`Timeframe ${symbol}`}>
-                            {timeframeOptions.map((option) => {
-                                const active = effectiveTimeframe === option;
-                                return (
-                                    <button
-                                        key={option}
-                                        type="button"
-                                        className={`btn ghost ${active ? 'active' : ''}`}
-                                        data-testid={`timeframe-toggle-${symbolTestKey}-${option}`}
-                                        aria-pressed={active}
-                                        disabled={isSavingPreference}
-                                        onClick={() => onToggleTimeframe(symbol, option)}
-                                    >
-                                        {option}
-                                    </button>
-                                );
-                            })}
-                        </div>
                     </div>
                 ) : null}
             </div>
@@ -343,9 +319,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                                 {opportunity.strategy_description}
                             </span>
                         ) : null}
-                        <span>
-                            tf <b>{effectiveTimeframe}</b>
-                        </span>
                         <span>
                             candle <b>{opportunity.indicator_values_candle_time || '-'}</b>
                         </span>

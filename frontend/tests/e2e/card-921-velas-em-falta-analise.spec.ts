@@ -226,11 +226,9 @@ async function assertMonitorAlignedChart(page: Page) {
   const dialog = page.getByTestId('chart-modal')
   const chart = dialog.getByTestId('chart-modal-surface')
   await expect(chart).toBeVisible()
+  await expect(page.getByTestId('chart-strategy-tf')).toContainText('1d')
+  await expect(page.getByRole('group', { name: 'Selecionar timeframe do gráfico' })).toHaveCount(0)
   await expect.poll(async () => chart.getAttribute('data-ma-ahead'), { timeout: 15_000 }).toBe('0')
-  for (const timeframe of ['15m', '1h', '4h', '1d']) {
-    await dialog.getByTestId(`chart-timeframe-${timeframe}`).click()
-    await expect.poll(async () => chart.getAttribute('data-ma-ahead'), { timeout: 15_000 }).toBe('0')
-  }
 }
 
 test.describe('card-921 velas e médias alinhadas', () => {
@@ -247,14 +245,14 @@ test.describe('card-921 velas e médias alinhadas', () => {
     await assertAlignedChart(page)
   })
 
-  test('desktop /monitor alinha média em 15m, 1h, 4h e 1d', async ({ page }) => {
+  test('desktop /monitor alinha média no TF da estratégia sem seletor', async ({ page }) => {
     test.setTimeout(60_000)
     await page.setViewportSize({ width: 1440, height: 900 })
     await seedMonitorChart(page)
     await assertMonitorAlignedChart(page)
   })
 
-  test('mobile /monitor alinha média em 15m, 1h, 4h e 1d', async ({ page }) => {
+  test('mobile /monitor alinha média no TF da estratégia sem seletor', async ({ page }) => {
     test.setTimeout(60_000)
     await page.setViewportSize({ width: 390, height: 844 })
     await seedMonitorChart(page)
