@@ -3,10 +3,13 @@ from __future__ import annotations
 import io
 import json
 import logging
+import logging.handlers
+import os
 import urllib.error
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -40,8 +43,21 @@ from app.services.scalp_engine import (
 from app.services.scalp_jev import (
     _EXPECTED_MOVE_BP_LEVELS_BP,
     _bp_from_score,
+    _error_body,
     _expected_move_bp,
     request_jev,
+)
+from app.services.scalp_jev_log import (
+    ERROR_BODY_CHARS,
+    ERROR_BODY_READ_BYTES,
+    MAX_LOG_BYTES,
+    TailTruncatingFileHandler,
+    install_diagnostic_log,
+    log_call_entry,
+    log_call_error,
+    log_cycle_refusal,
+    logger as diagnostic_logger,
+    summarize_account,
 )
 
 
@@ -1088,3 +1104,610 @@ def test_jev_requests_wait_target_ms_stale_cancel_does_not():
         jev=_buy_signal(),
     )
     assert with_signal.send is True
+
+
+# --- card #1015: scalp Jev diagnostic log ---------------------------------
+
+
+def _diagnostic_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _diagnostic_lines(path: Path) -> list[str]:
+    return [line for line in _diagnostic_text(path).splitlines() if line.strip()]
+
+
+def _call_id(line: str) -> str:
+    return line.split("id=", 1)[1].split(" ", 1)[0]
+
+
+def _diagnostic_call_payload(
+    *,
+    inventory_btc: str = "0.0005",
+    t: str = "80",
+    remaining_to_t: str = "47.5",
+    resting: dict | None = None,
+) -> dict:
+    return {
+        "state": {
+            "symbol": "BTCUSDT",
+            "horizon_s": 900,
+            "touch": {
+                "bid": "65000",
+                "ask": "65010",
+                "mid": "65005",
+                "spread_bp": "1.5",
+                "age_ms": 10,
+            },
+            "window": {"horizon_s": 900, "trade_count": 3, "ret_bp": "1.0", "vol_bp": "2.0"},
+            "account": {
+                "inventory_btc": inventory_btc,
+                "t": t,
+                "remaining_to_t": remaining_to_t,
+                "fee_bp": "10",
+                "bnb_fee_active": False,
+            },
+            "resting": resting,
+        }
+    }
+
+
+@pytest.fixture
+def diagnostic_log(tmp_path):
+    """Dedicated file handler on the diagnostic logger (always one file)."""
+    path = tmp_path / "scalp_jev_diagnostic.log"
+    handler = TailTruncatingFileHandler(path)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    previous_level = diagnostic_logger.level
+    diagnostic_logger.addHandler(handler)
+    diagnostic_logger.setLevel(logging.INFO)
+    try:
+        yield path
+    finally:
+        diagnostic_logger.removeHandler(handler)
+        diagnostic_logger.setLevel(previous_level)
+        handler.close()
+
+
+def test_diagnostic_log_records_entry_and_return_of_one_call(monkeypatch, diagnostic_log):
+    monkeypatch.setenv("JEV_API_KEY", "super-secret-jev-token")
+
+    def ok(_req, _timeout, _captured):
+        response = _FakeHttpResponse(
+            _systemone_response(side="BUY", confidence=0.75, move_bp=25.0, toxic=0.1)
+        )
+        response.status = 200
+        return response
+
+    captured = _capture_urlopen(monkeypatch, ok)
+    signal = request_jev(_diagnostic_call_payload(resting=None))
+    assert signal.side == "BUY"
+
+    # The wire body is the criterion: summarization happens only when the log
+    # record is formatted, so the exact account sent to Jev survives untouched
+    # (an in-place summary would replace it in ``captured["body"]`` too).
+    assert captured["body"]["state"]["account"] == {
+        "inventory_btc": "0.0005",
+        "t": "80",
+        "remaining_to_t": "47.5",
+        "fee_bp": "10",
+        "bnb_fee_active": False,
+    }
+
+    lines = _diagnostic_lines(diagnostic_log)
+    entries = [line for line in lines if "call entry" in line]
+    returns = [line for line in lines if "call return" in line]
+    assert len(entries) == 1, "propagate=False: exactly one entry per call"
+    assert len(returns) == 1, "propagate=False: exactly one return per call"
+    entry = entries[0]
+    returned = returns[0]
+    assert _call_id(entry) == _call_id(returned)
+
+    assert '"symbol":"BTCUSDT"' in entry
+    assert '"touch":{"bid":"65000"' in entry
+    assert '"window":{"horizon_s":900' in entry
+    assert '"resting":null' in entry
+    assert '"account":{"has_position":true,"has_balance":true}' in entry
+    assert 'questions={"side":"choice","expected_move_bp":"score","book_toxic":"noul"}' in entry
+
+    assert "status=200" in returned
+    assert "side=BUY" in returned
+    assert "expected_move_bp=25" in returned
+    assert f"score={_move_bp_to_score(25.0)}" in returned
+    assert "book_toxic=False" in returned
+    assert "confidence=0.75" in returned
+    assert "latency_ms=" in returned
+
+
+def test_diagnostic_log_account_summary_is_booleans_only():
+    assert summarize_account({"inventory_btc": "0", "t": "0"}) == {
+        "has_position": False,
+        "has_balance": False,
+    }
+    assert summarize_account({"inventory_btc": "0.00000001", "t": "0.01"}) == {
+        "has_position": True,
+        "has_balance": True,
+    }
+    assert summarize_account({}) == {"has_position": False, "has_balance": False}
+    assert summarize_account({"inventory_btc": "n/a", "t": None}) == {
+        "has_position": False,
+        "has_balance": False,
+    }
+
+
+def test_diagnostic_log_return_carries_the_http_status(monkeypatch, diagnostic_log):
+    monkeypatch.setenv("JEV_API_KEY", "secret-status-token")
+
+    def ok(_req, _timeout, _captured):
+        response = _FakeHttpResponse(_systemone_response())
+        response.status = 207
+        return response
+
+    _capture_urlopen(monkeypatch, ok)
+    request_jev(_diagnostic_call_payload())
+    returned = next(line for line in _diagnostic_lines(diagnostic_log) if "call return" in line)
+    assert "status=207" in returned
+
+
+def test_diagnostic_log_never_carries_secrets_or_exact_account_values(monkeypatch, diagnostic_log):
+    monkeypatch.setenv("JEV_API_KEY", "super-secret-jev-token")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "second-secret-token")
+
+    def ok(_req, _timeout, _captured):
+        response = _FakeHttpResponse(_systemone_response())
+        response.status = 200
+        return response
+
+    captured = _capture_urlopen(monkeypatch, ok)
+    request_jev(
+        _diagnostic_call_payload(inventory_btc="0.12345678", t="77.5", remaining_to_t="69.473")
+    )
+    assert captured["body"]["state"]["account"]["inventory_btc"] == "0.12345678"
+    assert captured["body"]["state"]["account"]["t"] == "77.5"
+    assert captured["body"]["state"]["account"]["remaining_to_t"] == "69.473"
+
+    def boom(_req, _timeout, _captured):
+        raise urllib.error.HTTPError(
+            "https://api.typesafe.ai/v1/systemone",
+            500,
+            "Server Error",
+            hdrs=None,
+            fp=io.BytesIO(b'{"error":"invalid key super-secret-jev-token second-secret-token"}'),
+        )
+
+    _capture_urlopen(monkeypatch, boom)
+    assert request_jev(_diagnostic_call_payload()).side is None
+
+    text = _diagnostic_text(diagnostic_log)
+    assert text.strip()
+    for forbidden in (
+        "super-secret-jev-token",
+        "second-secret-token",
+        "Bearer",
+        "0.12345678",
+        "77.5",
+        "69.473",
+        "Authorization",
+    ):
+        assert forbidden not in text
+    assert "<redacted>" in text
+
+
+def test_diagnostic_log_error_body_is_summarized_redacted_and_compact(monkeypatch, diagnostic_log):
+    monkeypatch.setenv("JEV_API_KEY", "super-secret-jev-token")
+    body = b'{"error":"bad key super-secret-jev-token",\n "trace":"' + b"z" * 600 + b'"}'
+
+    def boom(_req, _timeout, _captured):
+        raise urllib.error.HTTPError(
+            "https://api.typesafe.ai/v1/systemone",
+            500,
+            "Server Error",
+            hdrs=None,
+            fp=io.BytesIO(body),
+        )
+
+    _capture_urlopen(monkeypatch, boom)
+    hold = request_jev(_diagnostic_call_payload())
+    assert hold.side is None
+
+    line = next(line for line in _diagnostic_lines(diagnostic_log) if "call error" in line)
+    assert "WARNING" in line
+    assert "status=500" in line
+    assert "latency_ms=" in line
+    assert "super-secret-jev-token" not in line
+    assert "<redacted>" in line
+    summarized = line.split("body=", 1)[1]
+    assert len(summarized) <= ERROR_BODY_CHARS + 1
+    assert summarized.endswith("…")
+    assert "\n" not in summarized
+
+
+def test_diagnostic_log_transport_error_is_recorded(monkeypatch, diagnostic_log):
+    monkeypatch.setenv("JEV_API_KEY", "super-secret-jev-token")
+
+    def boom(_req, _timeout, _captured):
+        raise urllib.error.URLError("connection refused super-secret-jev-token")
+
+    _capture_urlopen(monkeypatch, boom)
+    hold = request_jev(_diagnostic_call_payload())
+    assert hold.side is None
+    line = next(line for line in _diagnostic_lines(diagnostic_log) if "call error" in line)
+    assert "status=transport_error" in line
+    assert "super-secret-jev-token" not in line
+
+
+def test_diagnostic_log_bad_reply_keeps_the_http_status(monkeypatch, diagnostic_log):
+    monkeypatch.setenv("JEV_API_KEY", "secret-bad-reply")
+
+    def bad_json(_req, _timeout, _captured):
+        response = _FakeHttpResponse(b"{not json")
+        response.status = 200
+        return response
+
+    _capture_urlopen(monkeypatch, bad_json)
+    assert request_jev(_diagnostic_call_payload()).side is None
+
+    def bad_encoding(_req, _timeout, _captured):
+        response = _FakeHttpResponse(b"\xff\xfe\xfa")
+        response.status = 206
+        return response
+
+    _capture_urlopen(monkeypatch, bad_encoding)
+    assert request_jev(_diagnostic_call_payload()).side is None
+
+    errors = [line for line in _diagnostic_lines(diagnostic_log) if "call error" in line]
+    assert len(errors) == 2
+    # The request left and a status came back: it is a bad reply, not a lost
+    # transport, so the real HTTP status is kept in the record.
+    assert "status=200" in errors[0]
+    assert "status=206" in errors[1]
+    assert all("bad_reply" in line for line in errors)
+    assert all("transport_error" not in line for line in errors)
+
+
+def test_error_body_read_fallback_is_bounded(monkeypatch):
+    from app.services import scalp_jev
+
+    seen: dict = {}
+
+    def spy(body, *, limit=ERROR_BODY_CHARS):
+        seen["length"] = len(str(body))
+        return "summarized"
+
+    monkeypatch.setattr(scalp_jev, "summarize_body", spy)
+
+    class _NoSizeBody:
+        def read(self):  # no size argument: the bounded read raises TypeError
+            return b"y" * (ERROR_BODY_READ_BYTES * 4)
+
+        def close(self):
+            return None
+
+    exc = urllib.error.HTTPError(
+        "https://api.typesafe.ai/v1/systemone", 500, "Server Error", hdrs=None, fp=_NoSizeBody()
+    )
+    assert _error_body(exc) == "summarized"
+    assert seen["length"] <= ERROR_BODY_READ_BYTES
+
+
+def test_diagnostic_log_no_call_is_recorded_for_the_keyless_stand_in(monkeypatch, diagnostic_log):
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setenv("JEV_STAND_IN", "1")
+    monkeypatch.setenv("JEV_STAND_IN_SIDE", "BUY")
+    request_jev(_diagnostic_call_payload())
+    text = _diagnostic_text(diagnostic_log)
+    assert "call entry" not in text
+    assert "call return" not in text
+
+
+def test_diagnostic_log_level_is_configurable(monkeypatch, tmp_path):
+    path = tmp_path / "level.log"
+    monkeypatch.setenv("RUN_SCALP_LOOP", "1")
+    monkeypatch.delenv("SCALP_JEV_LOG_ENABLED", raising=False)
+    monkeypatch.setenv("SCALP_JEV_LOG_LEVEL", "WARNING")
+    monkeypatch.setenv("SCALP_JEV_LOG_FILE", str(path))
+    handler = install_diagnostic_log()
+    try:
+        assert isinstance(handler, TailTruncatingFileHandler)
+        log_call_entry(call_id="deadbeef", systemone=_diagnostic_call_payload())
+        assert _diagnostic_text(path) == ""
+        log_call_error(call_id="deadbeef", status=500, latency_ms=7, body="boom")
+        text = _diagnostic_text(path)
+        assert "call error" in text
+        assert "call entry" not in text
+        assert "WARNING" in text
+    finally:
+        if handler is not None:
+            diagnostic_logger.removeHandler(handler)
+            handler.close()
+        diagnostic_logger.setLevel(logging.NOTSET)
+
+    monkeypatch.setenv("SCALP_JEV_LOG_LEVEL", "INFO")
+    assert install_diagnostic_log(path=path) is not None
+    handler = diagnostic_logger.handlers[-1]
+    try:
+        log_call_entry(call_id="deadbeef", systemone=_diagnostic_call_payload())
+        assert "call entry" in _diagnostic_text(path)
+    finally:
+        diagnostic_logger.removeHandler(handler)
+        handler.close()
+        diagnostic_logger.setLevel(logging.NOTSET)
+
+
+def test_diagnostic_log_installs_one_handler_and_defaults(monkeypatch, tmp_path):
+    from app.services import scalp_jev_log
+
+    monkeypatch.setenv("RUN_SCALP_LOOP", "1")
+    monkeypatch.delenv("SCALP_JEV_LOG_ENABLED", raising=False)
+    monkeypatch.delenv("SCALP_JEV_LOG_FILE", raising=False)
+    monkeypatch.delenv("SCALP_JEV_LOG_LEVEL", raising=False)
+    default_path = scalp_jev_log.log_file_path()
+    assert default_path.name == "scalp_jev_diagnostic.log"
+    assert default_path.parent.name == "backend"
+    assert scalp_jev_log.log_level() == logging.INFO
+    monkeypatch.setenv("SCALP_JEV_LOG_LEVEL", "not-a-level")
+    assert scalp_jev_log.log_level() == logging.INFO
+
+    installed = install_diagnostic_log(path=tmp_path / "one.log")
+    try:
+        assert isinstance(installed, TailTruncatingFileHandler)
+        assert scalp_jev_log.installed_handler() is installed
+        assert install_diagnostic_log(path=tmp_path / "two.log") is installed
+        assert (
+            sum(isinstance(h, TailTruncatingFileHandler) for h in diagnostic_logger.handlers) == 1
+        )
+        assert not (tmp_path / "two.log").exists()
+    finally:
+        if installed is not None:
+            diagnostic_logger.removeHandler(installed)
+            installed.close()
+        diagnostic_logger.setLevel(logging.NOTSET)
+
+
+def test_diagnostic_log_is_single_file_with_a_200mb_ceiling(tmp_path):
+    assert MAX_LOG_BYTES == 209_715_200
+    assert not issubclass(TailTruncatingFileHandler, logging.handlers.RotatingFileHandler)
+    assert not issubclass(TailTruncatingFileHandler, logging.handlers.TimedRotatingFileHandler)
+
+    path = tmp_path / "ceiling.log"
+    handler = TailTruncatingFileHandler(path, max_bytes=600)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    previous_level = diagnostic_logger.level
+    diagnostic_logger.addHandler(handler)
+    diagnostic_logger.setLevel(logging.INFO)
+    try:
+        for index in range(40):
+            diagnostic_logger.info("record %03d %s", index, "x" * 40)
+        handler.flush()
+    finally:
+        diagnostic_logger.removeHandler(handler)
+        diagnostic_logger.setLevel(previous_level)
+        handler.close()
+
+    lines = _diagnostic_lines(path)
+    assert path.stat().st_size <= 600
+    assert lines, "the newest records stay in the file"
+    assert all(line.startswith("record ") for line in lines), "cut on a line boundary"
+    assert "record 039" in lines[-1]
+    assert not any("record 000" in line for line in lines), "the oldest records fall"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["ceiling.log"]
+
+
+def test_diagnostic_log_keeps_an_oversized_record_whole(tmp_path):
+    path = tmp_path / "oversize.log"
+    handler = TailTruncatingFileHandler(path, max_bytes=64)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    previous_level = diagnostic_logger.level
+    diagnostic_logger.addHandler(handler)
+    diagnostic_logger.setLevel(logging.INFO)
+    oversized = "record-over-ceiling " + "y" * 200
+    try:
+        diagnostic_logger.info(oversized)
+        handler.flush()
+    finally:
+        diagnostic_logger.removeHandler(handler)
+        diagnostic_logger.setLevel(previous_level)
+        handler.close()
+
+    assert _diagnostic_text(path).strip() == oversized, "the newest record stays whole"
+    size = path.stat().st_size
+    # ceiling promise: size <= max(ceiling, largest single record)
+    assert size == len(oversized) + 1
+    assert size > 64
+
+
+def test_diagnostic_log_rejects_a_non_positive_ceiling(tmp_path):
+    for bad in (0, -1):
+        with pytest.raises(ValueError):
+            TailTruncatingFileHandler(tmp_path / f"bad-{bad}.log", max_bytes=bad)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_diagnostic_log_ignores_an_empty_refusal_token(diagnostic_log):
+    log_cycle_refusal(user_id="u-1", skip_reason="")
+    log_cycle_refusal(user_id="u-1", skip_reason=None)
+    log_cycle_refusal(user_id="u-1", skip_reason="   ")
+    assert _diagnostic_text(diagnostic_log) == ""
+
+
+def test_diagnostic_log_shift_retries_partial_writes(monkeypatch, tmp_path):
+    real_pwrite = os.pwrite
+    calls = {"count": 0}
+
+    def partial_pwrite(fd, data, offset):
+        calls["count"] += 1
+        return real_pwrite(fd, data[:7], offset)
+
+    monkeypatch.setattr(os, "pwrite", partial_pwrite)
+    path = tmp_path / "partial.log"
+    handler = TailTruncatingFileHandler(path, max_bytes=600)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    previous_level = diagnostic_logger.level
+    diagnostic_logger.addHandler(handler)
+    diagnostic_logger.setLevel(logging.INFO)
+    try:
+        for index in range(40):
+            diagnostic_logger.info("record %03d %s", index, "x" * 40)
+        handler.flush()
+    finally:
+        diagnostic_logger.removeHandler(handler)
+        diagnostic_logger.setLevel(previous_level)
+        handler.close()
+
+    lines = _diagnostic_lines(path)
+    assert calls["count"] > 1, "the shift retried the bytes left by the partial write"
+    assert path.stat().st_size <= 600
+    assert lines and all(line.startswith("record ") for line in lines)
+    assert "record 039" in lines[-1]
+
+
+def test_diagnostic_log_records_pre_call_refusal(scalp_db, diagnostic_log):
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    result = tick_user(
+        scalp_db,
+        user_id,
+        exchange=FakeExchange(),
+        free_usdt=Decimal("80"),
+        free_btc=Decimal("0.01"),
+        book=_book(),
+    )
+    assert result.sent is False
+    assert result.skipped == "switch_off"
+    assert f"scalp cycle refused user={user_id} skip_reason=switch_off" in _diagnostic_text(
+        diagnostic_log
+    )
+
+
+def test_diagnostic_log_records_post_call_refusal(scalp_db, diagnostic_log):
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    fx = FakeExchange()
+    set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
+    result = tick_user(
+        scalp_db,
+        user_id,
+        exchange=fx,
+        jev_fn=lambda _payload: _buy_signal(expected_move_bp=Decimal("15")),
+        free_usdt=Decimal("80"),
+        free_btc=Decimal("0.01"),
+        book=_book(),
+    )
+    assert result.sent is False
+    assert result.skipped == "hurdle"
+    assert f"scalp cycle refused user={user_id} skip_reason=hurdle" in _diagnostic_text(
+        diagnostic_log
+    )
+    # the panel stays untouched: the reason lives only in the diagnostic file
+    panel = status_payload(scalp_db, user_id, free_usdt=Decimal("80"), mid=Decimal("65005"))
+    assert "skip_reason" not in panel
+    assert not any("skip" in str(key) for key in panel)
+
+
+def test_diagnostic_log_ignores_closes_without_a_gate_token(scalp_db, diagnostic_log):
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    fx = FakeExchange()
+    fx.reject_code = -1013
+    set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
+    result = tick_user(
+        scalp_db,
+        user_id,
+        exchange=fx,
+        jev_fn=lambda _payload: _buy_signal(),
+        free_usdt=Decimal("80"),
+        free_btc=Decimal("0.01"),
+        book=_book(),
+    )
+    assert result.sent is False
+    assert result.skipped is None
+    assert "skip_reason" not in _diagnostic_text(diagnostic_log)
+
+
+def test_diagnostic_log_ignores_rest_open_blocking_the_send(scalp_db, diagnostic_log):
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    fx = FakeExchange()
+    set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
+    t0 = datetime(2026, 9, 21, 12, 0, 0)
+    first = tick_user(
+        scalp_db,
+        user_id,
+        exchange=fx,
+        jev_fn=lambda _payload: _buy_signal(),
+        free_usdt=Decimal("80"),
+        free_btc=Decimal("0.01"),
+        book=_book(),
+        now=t0,
+    )
+    assert first.sent is True
+    assert get_or_create_state(scalp_db, user_id).rest_client_order_id is not None
+
+    # second cycle: the decided send is blocked by the resting order (no gate token)
+    second = tick_user(
+        scalp_db,
+        user_id,
+        exchange=fx,
+        jev_fn=lambda _payload: _buy_signal(),
+        free_usdt=Decimal("80"),
+        free_btc=Decimal("0.01"),
+        book=_book(),
+        now=t0 + timedelta(milliseconds=JEV_TARGET_MS + 50),
+    )
+    assert second.sent is False
+    assert second.skipped is None
+    assert len(fx.placed) == 1, "no second order: the send was blocked, not decided away"
+    assert "skip_reason" not in _diagnostic_text(diagnostic_log)
+
+
+def test_diagnostic_log_ignores_keyless_stand_in_send(scalp_db, diagnostic_log, monkeypatch):
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setenv("JEV_STAND_IN", "1")
+    monkeypatch.setenv("JEV_STAND_IN_SIDE", "BUY")
+    monkeypatch.setenv("JEV_STAND_IN_CONFIDENCE", "0.9")
+    monkeypatch.setenv("JEV_STAND_IN_MOVE_BP", "25")
+    fx = FakeExchange()
+    set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
+
+    # live_jev is true (stand-in) but live_send is false (no key): decided send, no order
+    result = tick_user(
+        scalp_db,
+        user_id,
+        exchange=fx,
+        free_usdt=Decimal("80"),
+        free_btc=Decimal("0.01"),
+        book=_book(),
+    )
+    assert result.sent is False
+    assert result.skipped is None
+    assert fx.placed == []
+    text = _diagnostic_text(diagnostic_log)
+    assert "skip_reason" not in text
+    assert "call entry" not in text
+
+
+def test_diagnostic_log_ships_dev_only(monkeypatch):
+    from app.services import scalp_jev_log
+
+    root = Path(__file__).resolve().parents[3]
+    dev_unit = (root / "ops/systemd/criptofarol-dev-runtime-worker.service").read_text(
+        encoding="utf-8"
+    )
+    prod_unit = (root / "ops/systemd/criptofarol-prod-runtime-worker.service").read_text(
+        encoding="utf-8"
+    )
+    assert "RUN_SCALP_LOOP=1" in dev_unit
+    assert "RUN_SCALP_LOOP" not in prod_unit
+    assert "SCALP_JEV_LOG" not in prod_unit
+
+    monkeypatch.delenv("RUN_SCALP_LOOP", raising=False)
+    monkeypatch.delenv("SCALP_JEV_LOG_ENABLED", raising=False)
+    assert scalp_jev_log.diagnostic_enabled() is False
+    monkeypatch.setenv("RUN_SCALP_LOOP", "1")
+    assert scalp_jev_log.diagnostic_enabled() is True
+    monkeypatch.setenv("SCALP_JEV_LOG_ENABLED", "0")
+    assert scalp_jev_log.diagnostic_enabled() is False
