@@ -37,7 +37,19 @@ from app.services.scalp_engine import (
     pnl_quote,
     should_kill,
 )
-from app.services.scalp_jev import request_jev
+from app.services.scalp_jev import (
+    _EXPECTED_MOVE_BP_LEVELS_BP,
+    _bp_from_score,
+    _expected_move_bp,
+    request_jev,
+)
+
+
+def _move_bp_to_score(move_bp: float) -> float:
+    for index, level_bp in enumerate(_EXPECTED_MOVE_BP_LEVELS_BP):
+        if level_bp == move_bp:
+            return float(index)
+    raise ValueError(f"move_bp {move_bp} not on expected_move_bp score ladder")
 from app.services.scalp_service import (
     apply_bot_fill,
     get_or_create_state,
@@ -343,7 +355,7 @@ def _systemone_response(
         "model": "jev-1.13.0",
         "answers": {
             "side": side_answer,
-            "expected_move_bp": {"type": "number", "number": move_bp},
+            "expected_move_bp": {"type": "score", "score": _move_bp_to_score(move_bp)},
             "book_toxic": {"type": "noul", "noul": toxic},
         },
         "usage": {"input_tokens": 296, "output_tokens": 20},
@@ -435,12 +447,25 @@ def test_request_jev_posts_systemone_not_signal(monkeypatch):
     assert body["model"] == "jev-latest"
     assert set(body["questions"]) == {"side", "expected_move_bp", "book_toxic"}
     assert body["questions"]["side"]["type"] == "choice"
-    assert body["questions"]["expected_move_bp"]["type"] == "number"
+    move_q = body["questions"]["expected_move_bp"]
+    assert move_q["type"] == "score"
+    assert isinstance(move_q["criteria"], list)
+    assert 2 <= len(move_q["criteria"]) <= 10
+    assert "35 bp" in move_q["criteria"][7]
+    assert "20 bp" in move_q["criteria"][4]
     assert body["questions"]["book_toxic"]["type"] == "noul"
     assert body["state"]["symbol"] == "BTCUSDT"
     assert "edge_after_fees" not in body["questions"]
     assert captured["headers"]["authorization"] == "Bearer super-secret-jev-token"
     assert signal.side == "BUY"
+
+
+def test_expected_move_bp_score_interpolation_and_legacy_number():
+    assert _bp_from_score(5.0) == Decimal("25")
+    assert _bp_from_score(4.5) == Decimal("22.5")
+    assert _expected_move_bp({"expected_move_bp": {"type": "score", "score": 5.0}}) == Decimal("25")
+    assert _expected_move_bp({"expected_move_bp": {"type": "number", "number": 18}}) == Decimal("18")
+    assert _expected_move_bp({"expected_move_bp": {"type": "score"}}) == Decimal("0")
 
 
 def test_request_jev_maps_systemone_buy(monkeypatch):

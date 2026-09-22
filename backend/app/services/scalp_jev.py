@@ -20,6 +20,37 @@ _DEFAULT_BASE_URL = "https://api.typesafe.ai"
 _SYSTEMONE_PATH = "/v1/systemone"
 _JEV_MODEL = "jev-latest"
 
+# Ordered Score criteria (2–10 levels). Index i maps to these bp values (linear interp between).
+_EXPECTED_MOVE_BP_LEVELS_BP: tuple[int, ...] = (0, 5, 10, 15, 20, 25, 30, 35, 50, 80)
+
+
+def _expected_move_bp_criteria() -> list[str]:
+    return [
+        f"{bp} bp — negligible expected absolute move over the next 900 s for the chosen side"
+        if bp == 0
+        else f"{bp} bp — expected absolute move over the next 900 s for the chosen side"
+        for bp in _EXPECTED_MOVE_BP_LEVELS_BP
+    ]
+
+
+def _bp_from_score(score: float) -> Decimal:
+    levels = _EXPECTED_MOVE_BP_LEVELS_BP
+    if not levels:
+        return Decimal("0")
+    if score <= 0:
+        return Decimal(str(levels[0]))
+    max_idx = len(levels) - 1
+    if score >= max_idx:
+        return Decimal(str(levels[max_idx]))
+    lo = int(score)
+    if lo >= max_idx:
+        return Decimal(str(levels[max_idx]))
+    hi = lo + 1
+    frac = Decimal(str(score)) - Decimal(lo)
+    lo_bp = Decimal(str(levels[lo]))
+    hi_bp = Decimal(str(levels[hi]))
+    return lo_bp + frac * (hi_bp - lo_bp)
+
 
 def jev_api_key() -> Optional[str]:
     for name in _SECRET_ENV_NAMES:
@@ -131,11 +162,12 @@ def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 },
             },
             "expected_move_bp": {
-                "type": "number",
+                "type": "score",
                 "instructions": (
                     "Expected absolute price move in basis points over the next 900 s "
                     "lookback horizon for the chosen side."
                 ),
+                "criteria": _expected_move_bp_criteria(),
             },
             "book_toxic": {
                 "type": "noul",
@@ -165,10 +197,18 @@ def _side_confidence(side_answer: dict[str, Any]) -> Decimal:
 def _expected_move_bp(answers: dict[str, Any]) -> Decimal:
     raw = answers.get("expected_move_bp")
     if isinstance(raw, dict):
+        if raw.get("score") is not None:
+            try:
+                return _bp_from_score(float(raw["score"]))
+            except (TypeError, ValueError):
+                return Decimal("0")
         if raw.get("number") is not None:
             return _decimal(raw.get("number"))
         if raw.get("value") is not None:
             return _decimal(raw.get("value"))
+        return Decimal("0")
+    if raw is None:
+        return Decimal("0")
     return _decimal(raw)
 
 
