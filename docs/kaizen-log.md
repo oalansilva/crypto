@@ -1,5 +1,40 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-22 — Kaizen release (release 2026-09-22, cards 1017)
+
+- **Release/card**: Homologado `#1017` → `release-2026-09-22` (cherry-picks `be689c33` de `dc772725` + archive `bc6382d5`) → `main` PR #1019 merged `3b0ebdf5ab3036be4e427f14f01ccb838a6ba97b`. PROD bundle `index-CJP6s_v3.js`.
+- **Fontes**: Project 1 (fotografia 375 itens), git/worktrees/stash + `release-guard audit`, `openspec validate --all` 174/174, `gh pr checks 1019` (13 pass + qa-gate/deploy-staging skipping), run push main 35773410230 success, agent-transcripts, npm audit; pip-audit indisponível (bloqueio). Filho `fecho-lote kaizen`.
+- **Grelha**: #1017 com 0 sessões de grelha (comentário `card nítido; sem grill`); Design: `design-autor` + `design-critic` (2 spawns); Assessment A/B 0. Razão 0,0 vs meta ≤1,5.
+- **Proxy modelo**: filho `fecho-lote` executou na sessão (`xiaomi/mimo-v2.6-flash`, mesma sessão do pai); o mapa versionado `.cursor/model-map.yaml` declara `execucao=composer-2.5` / `juizo=cursor-grok-4.6-high` — divergência mapa vs runtime real; correção (slugs xiaomi) preservada no patch (ver F-2).
+
+#### Métricas
+
+- **Board**: 1 Homologado no pacote; campos #1017 (Alan, P1, Operacao); 3 cards kaizen criados em Em Refinamento.
+- **Git**: stash 0 (drop `f4e32606`, patch em `.cursor/tmp/2026-09-22-model-map-xiaomi.patch`, ver F-2); 10 worktrees (2 WARN mergeada, 2 dirty); ref nova `card-1006-jev-horizonte-preserve` (renomeada de `preserve/…` para não cair no check de orphan refs do guard).
+- **CI**: PR #1019 verde; falhas do dia (35761004326, 35677150618) resolvidas em runs seguintes success.
+- **OpenSpec**: archive `2026-09-22-card-1017-mapa-juizo-execucao`; 0 changes ativas.
+- **PROD**: source `3b0ebdf5`, services − oneshot reiniciados (5 units), `https://criptofarol.com.br/api/health` 200 e `/monitor` 200.
+
+#### Achados
+
+- **F-1** guard `fail_closed` nega `openspec/changes/**` em `release-*` → archive via worktree do card + cherry-pick (recorrência `docs/kaizen-log.md:717`; deny real `q_git=release-2026-08-26`) — **novo**, P1 mecanico → card **#1022**.
+- **F-2** `release-guard` sem variável de classificação de stash; drop `f4e32606` sem reflog; artefato gravado em worktree herdada e copiado para `source/.cursor/tmp/` no closeout (cópia residual na worktree do #1006) — **novo**, P1 mecanico → card **#1020**.
+- **F-3** pip-audit ausente → tech debt backend não auditado — **novo**, P2 mecanico → card **#1021**.
+- **F-4** npm audit 23 vulns (15 high) → recidiva **#988**.
+- **F-5** dirty worktrees: 128 `.impeccable/critique/**` + preserve ref `d6c00e97`/`5df6ec0b` + `.local_backups` → **#987** (+ #999 divergência).
+- **F-6** worktrees extras em branch mergeada → recidiva **#759**.
+- **F-7** proxy por estágio, não por spawn (1 `apply-coluna`/4 spawns Apply) → recidiva **#909**.
+
+Transcript Cursor `f2d86873` (pacote #1017; 20 filhos). Evidência local de recorrência F-1: `db8bccf2-008c-47bc-9805-449756d07f29` (`deny reason=fail_closed q=None q_git=release-2026-08-26 bound_card=⊥`). Sem opencode.db.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #1022 | P1 | F-1 guard release-* | Em Refinamento |
+| #1020 | P1 | F-2 stash guard | Em Refinamento |
+| #1021 | P2 | F-3 pip-audit | Em Refinamento |
+
 ## 2026-09-20 — Kaizen release (pacote #995)
 
 - **Release/card**: Homologado `#995` → `release-2026-09-20` → `main` PR #997 merged `dc3830a9776e8c08095213b991e6da829fa60200`. PROD bundle `index-CJP6s_v3.js`.
