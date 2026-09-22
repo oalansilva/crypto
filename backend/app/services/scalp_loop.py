@@ -12,6 +12,7 @@ from app.database import SessionLocal
 from app.services.runtime_status import env_flag_enabled
 from app.services.scalp_engine import JEV_FLOOR_MS
 from app.services.scalp_btcusdt_stream import ensure_scalp_btcusdt_stream, stop_scalp_btcusdt_stream
+from app.services.scalp_jev_log import install_diagnostic_log
 from app.services.scalp_service import list_enabled_user_ids, tick_user
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,13 @@ def _tick_user_blocking(user_id: str) -> None:
 
 async def scalp_loop(stop_event: asyncio.Event | None = None) -> None:
     interval = max(JEV_FLOOR_MS / 1000.0, 0.4)
+    # DEV-only diagnostic file (card #1015): installed when this loop runs in
+    # the runtime-worker started with RUN_SCALP_LOOP=1. PROD sets no flag.
+    # Logging is a side effect: it must never stop the loop.
+    try:
+        install_diagnostic_log()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Scalp JEV diagnostic log unavailable: %s", exc)
     logger.info("Scalp BTCUSDT loop started (interval=%.2fs)", interval)
     while True:
         if stop_event is not None and stop_event.is_set():

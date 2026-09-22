@@ -47,6 +47,7 @@ from app.services.scalp_btcusdt_snapshot_store import (
 )
 from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
 from app.services.scalp_jev import jev_api_key, jev_available, request_jev
+from app.services.scalp_jev_log import log_cycle_refusal
 from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
 logger = logging.getLogger(__name__)
@@ -544,6 +545,39 @@ def apply_bot_fill(
 
 
 def tick_user(
+    db: Session,
+    user_id: str,
+    *,
+    exchange: Optional[ExchangePort] = None,
+    jev_fn: Optional[JevFn] = None,
+    now: Optional[datetime] = None,
+    book: Optional[Book] = None,
+    free_usdt: Optional[Decimal] = None,
+    free_btc: Optional[Decimal] = None,
+) -> CycleResult:
+    """One cycle; every gate refusal (non-null ``skip_reason``) goes to the log.
+
+    The refusal record is written here — the single close of the cycle — so
+    pre-call and post-reply gates are covered identically. Closes without a
+    gate token (broker rejection, keyless stand-in ``send`` without
+    ``live_send``, ``rest_open`` blocking the send) leave no diagnostic record.
+    """
+    result = _run_cycle(
+        db,
+        user_id,
+        exchange=exchange,
+        jev_fn=jev_fn,
+        now=now,
+        book=book,
+        free_usdt=free_usdt,
+        free_btc=free_btc,
+    )
+    if result.skipped:
+        log_cycle_refusal(user_id=str(user_id), skip_reason=result.skipped)
+    return result
+
+
+def _run_cycle(
     db: Session,
     user_id: str,
     *,

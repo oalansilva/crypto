@@ -8,13 +8,23 @@ import os
 import time
 import urllib.error
 import urllib.request
+import uuid
 from decimal import Decimal
 from typing import Any, Optional
 
 from app.services.scalp_engine import JEV_LATE_MS, JevSignal, Side, SYMBOL
+from app.services.scalp_jev_log import (
+    ERROR_BODY_READ_BYTES,
+    log_call_entry,
+    log_call_error,
+    log_call_return,
+    redact,
+    summarize_body,
+)
 
 logger = logging.getLogger(__name__)
 
+# Key lookup (first name wins). Redaction uses the wider list in scalp_jev_log.
 _SECRET_ENV_NAMES = ("JEV_API_KEY", "TYPESAFE_API_KEY")
 _DEFAULT_BASE_URL = "https://api.typesafe.ai"
 _SYSTEMONE_PATH = "/v1/systemone"
@@ -81,15 +91,8 @@ def _endpoint_url() -> str:
 
 
 def _redact(message: str) -> str:
-    text = str(message or "")
-    key = jev_api_key()
-    if key:
-        text = text.replace(key, "<redacted>")
-    for name in _SECRET_ENV_NAMES:
-        raw = (os.getenv(name) or "").strip()
-        if raw:
-            text = text.replace(raw, "<redacted>")
-    return text
+    """Never log a secret: replace every configured env value and bearer token."""
+    return redact(message)
 
 
 def _parse_side(value: Any) -> Optional[Side]:
@@ -230,12 +233,47 @@ def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
     )
 
 
+def _move_score(parsed: Any) -> Optional[float]:
+    """Raw ``expected_move_bp`` score of the reply, for the diagnostic record."""
+    answers = _as_dict(_as_dict(parsed).get("answers"))
+    raw = answers.get("expected_move_bp")
+    if isinstance(raw, dict) and raw.get("score") is not None:
+        try:
+            return float(raw["score"])
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _error_body(exc: urllib.error.HTTPError) -> str:
+    """Summarized error body: read bounded, redacted and truncated."""
+    try:
+        raw = exc.read(ERROR_BODY_READ_BYTES)
+    except TypeError:  # body object without a size argument
+        try:
+            raw = exc.read()
+        except Exception:
+            return ""
+        # Keep the fallback bounded too: never feed more than the byte budget.
+        if isinstance(raw, str):
+            raw = raw[:ERROR_BODY_READ_BYTES]
+        elif isinstance(raw, (bytes, bytearray)):
+            raw = bytes(raw)[:ERROR_BODY_READ_BYTES]
+    except Exception:
+        return ""
+    if isinstance(raw, bytes):
+        return summarize_body(raw.decode("utf-8", errors="replace"))
+    return summarize_body(raw)
+
+
 def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -> JevSignal:
     """One HTTP call. Timeout defaults to the 1.5 s late gate."""
     started = time.perf_counter()
     timeout = float(timeout_s if timeout_s is not None else (JEV_LATE_MS / 1000.0))
     key = jev_api_key()
     if not key:
+        # No key: no HTTP call leaves the process, so no diagnostic record —
+        # the stand-in is not a Jev call.
         if _stand_in_enabled():
             elapsed_ms = int((time.perf_counter() - started) * 1000)
             return stand_in_signal(latency_ms=max(1, elapsed_ms))
@@ -243,27 +281,67 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
         return _hold_signal(elapsed_ms)
 
     url = _endpoint_url()
-    body = json.dumps(_systemone_payload(payload), separators=(",", ":")).encode("utf-8")
+    systemone = _systemone_payload(payload)
+    call_id = uuid.uuid4().hex[:12]
+    log_call_entry(call_id=call_id, systemone=systemone)
+    body = json.dumps(systemone, separators=(",", ":")).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", f"Bearer {key}")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read().decode("utf-8")
-        parsed = json.loads(raw) if raw else {}
+            status = int(getattr(resp, "status", 200) or 200)
+            raw_bytes = resp.read()
     except urllib.error.HTTPError as exc:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
-        logger.warning("Jev HTTP error status=%s latency_ms=%s", int(exc.code or 0), elapsed_ms)
+        status = int(exc.code or 0)
+        logger.warning("Jev HTTP error status=%s latency_ms=%s", status, elapsed_ms)
+        log_call_error(call_id=call_id, status=status, latency_ms=elapsed_ms, body=_error_body(exc))
         return _hold_signal(elapsed_ms)
     except Exception as exc:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.warning("Jev request failed latency_ms=%s err=%s", elapsed_ms, _redact(str(exc)))
+        log_call_error(
+            call_id=call_id, status="transport_error", latency_ms=elapsed_ms, body=str(exc)
+        )
+        return _hold_signal(
+            max(elapsed_ms, JEV_LATE_MS + 1 if elapsed_ms >= JEV_LATE_MS else elapsed_ms)
+        )
+
+    # The request already left the process and a status came back: a body that
+    # fails to decode/parse is a bad reply, not a transport error, so the real
+    # HTTP status is kept in the record.
+    try:
+        raw = raw_bytes.decode("utf-8")
+        parsed = json.loads(raw) if raw else {}
+    except Exception as exc:
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        logger.warning(
+            "Jev bad reply status=%s latency_ms=%s err=%s", status, elapsed_ms, _redact(str(exc))
+        )
+        log_call_error(
+            call_id=call_id,
+            status=status,
+            latency_ms=elapsed_ms,
+            body=f"bad_reply {type(exc).__name__}: {exc}",
+        )
         return _hold_signal(
             max(elapsed_ms, JEV_LATE_MS + 1 if elapsed_ms >= JEV_LATE_MS else elapsed_ms)
         )
 
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     try:
-        return _map_systemone(parsed, latency_ms=elapsed_ms)
+        signal = _map_systemone(parsed, latency_ms=elapsed_ms)
     except Exception:
-        return _hold_signal(elapsed_ms)
+        signal = _hold_signal(elapsed_ms)
+    log_call_return(
+        call_id=call_id,
+        status=status,
+        latency_ms=signal.latency_ms,
+        side=signal.side,
+        expected_move_bp=signal.expected_move_bp,
+        score=_move_score(parsed),
+        book_toxic=signal.book_toxic,
+        confidence=signal.confidence,
+    )
+    return signal
