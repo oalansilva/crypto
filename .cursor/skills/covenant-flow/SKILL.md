@@ -14,18 +14,16 @@ Prioridade (δ e Guard > overlay > skill > wording):
 3. **Esta skill** (runbook).
 4. **Wording** do chat (`implemente`, `autorizo`, `gostaria sempre`).
 
-Cliente: **Cursor Agent**. Lei = parâmetro `model` do Task nos dois caminhos de spawn (tipo nomeado **ou** `generalPurpose` com o corpo do agent file colado). **lista fechada isolada** (**sem** transcript do pai): `grill-card`, Design-autor, Apply-coluna, QA checks, Assessment A/B, `diff-reviewer`, `code-reviewer`. Review = diff **exato** (não “Codex review”). Mapa (rótulo no handoff; slug no parâmetro `model`):
+Cliente: **Cursor Agent**. Lei = parâmetro `model` do Task nos dois caminhos de spawn (tipo nomeado **ou** `generalPurpose` com o corpo do agent file colado). **lista fechada isolada** (**sem** transcript do pai): `grill-card`, Design-autor, Apply-coluna, QA checks, Assessment A/B, `diff-reviewer`, `code-reviewer`. Review = diff **exato** (não “Codex review”). Mapa (rótulo no handoff; slug no parâmetro `model`): slugs em `.cursor/model-map.yaml` (rótulo + slug por faixa; não é mapa por papel).
 
-| Papel | Rótulo | Slug |
-| --- | --- | --- |
-| grill-card, design-autor, design-critic, Assessment A, Assessment B | Grok 4.6 | `cursor-grok-4.6-high` |
-| apply-coluna, qa-gate, diff-reviewer, code-reviewer, explore/busca no mesmo card, fecho-lote | Composer 2.5 | `composer-2.5` |
+- **juízo** (lê `juizo`): grill-card, design-autor, design-critic, Assessment A, Assessment B
+- **execução** (lê `execucao`): apply-coluna, qa-gate, diff-reviewer, code-reviewer, busca no mesmo card, fecho-lote
 
 `composer-2.5-fast` MUST NOT aparecer no mapa, no spawn, em destape/resume/follow-up nem como fallback (inclusive quando o host auto-retoma um filho Composer). Revisores no Grok MUST NOT neste card. Slug inválido: recusa visível; sem `inherit` silencioso; sem retry com `composer-2.5-fast`. Troca de modelo = sessão nova (#430).
 
-**Destape/resume mantém slug Composer:** resume, destape (`subagentStop` followup) ou follow-up de filho de execução (Apply-coluna, QA, os dois revisores, busca no mesmo card, `fecho-lote`) MUST permanecer `composer-2.5`. Se o host retomar ou facturar `composer-2.5-fast`, o pai MUST NOT aceitar esse run (aborto): MUST NOT `resume` quando cair em fast; spawn **novo** com `model: composer-2.5` e prompt autocontido (`resume` não aceita `model`). Busca no mesmo card: `generalPurpose` + `model: composer-2.5`; MUST NOT `subagent_type` `explore` se o host mapear `explore` a fast. `fecho-lote`: sem sidecar/destape; auto-resume do host = ignorar.
+**Destape/resume mantém slug de execução:** resume, destape (`subagentStop` followup) ou follow-up de filho de execução (Apply-coluna, QA, os dois revisores, busca no mesmo card, `fecho-lote`) MUST permanecer o slug vigente de `execucao` em `.cursor/model-map.yaml`. Se o host retomar ou facturar `composer-2.5-fast`, o pai MUST NOT aceitar esse run (aborto): MUST NOT `resume` quando cair em fast; spawn **novo** com `model` igual a `execucao.slug` e prompt autocontido (`resume` não aceita `model`). Busca no mesmo card: `generalPurpose` + `model` igual a `execucao.slug`; MUST NOT `subagent_type` `explore` se o host mapear `explore` a fast. `fecho-lote`: sem sidecar/destape; auto-resume do host = ignorar.
 
-**Release/lote — chat pai Composer 2.5 (única excepção ao silêncio do picker):** pedido explícito fechar lote / subir release / T16 (`process_event fechar_release`) + filho `fecho-lote` exige chat pai `composer-2.5`. Se o pai é Grok 4.6 ou outro ≠ `composer-2.5`, recusa visível: MUST NOT T16 nem `fecho-lote` neste chat; sessão nova em Composer 2.5. Grok 4.6 só juízo (mapa). MUST NOT forçar picker via git / `AGENTS.md` / overlay `clients.*.auto`. MUST NOT recomendar picker noutros chats `#<id>`.
+**Release/lote — chat pai execução (única excepção ao silêncio do picker):** pedido explícito fechar lote / subir release / T16 (`process_event fechar_release`) + filho `fecho-lote` exige chat pai com o slug vigente de `execucao` em `.cursor/model-map.yaml`. Se o pai é juízo (`juizo`) ou outro slug ≠ `execucao.slug`, recusa visível: MUST NOT T16 nem `fecho-lote` neste chat; sessão nova com o rótulo/slug vigente de `execucao`. Juízo só papéis da faixa `juizo`. MUST NOT forçar picker via git / `AGENTS.md` / overlay `clients.*.auto`. MUST NOT recomendar picker noutros chats `#<id>`.
 
 Overlay humano: `Read` o path `overlay_doc` de `.covenant-flow/overlay.yaml` quando a tarefa precisar de portas/Drive/banco/release.
 
@@ -227,14 +225,14 @@ Homologado: no **mesmo turno** do arraste/confirmação, `scripts/post-card-evid
 
 ## Release
 
-Pedido explícito de Alan (`subir lote`, `fechar release`, …). **Pré-requisito (T18):** chat pai MUST ser Composer 2.5 (`composer-2.5`); chat Grok 4.6 ou outro modelo ⇒ recusa visível e sessão nova em Composer — única excepção ao silêncio sobre picker do pai nos chats de card. Overlay de ambiente em `covenant-flow-environments`. Detalhe humano: `overlay_doc`. `bound_card=⊥` / `enabled_events: (unbound)` são display do paging, não deny de T16; pedido explícito unbound em `develop`/`release-*` carrega overlay + `covenant-flow-environments` e segue T16; Write de produto continua deny. Guard: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
+Pedido explícito de Alan (`subir lote`, `fechar release`, …). **Pré-requisito (T18):** chat pai MUST ser o slug vigente de `execucao` em `.cursor/model-map.yaml`; chat juízo (`juizo`) ou outro modelo ⇒ recusa visível e sessão nova com `execucao` — única excepção ao silêncio sobre picker do pai nos chats de card. Overlay de ambiente em `covenant-flow-environments`. Detalhe humano: `overlay_doc`. `bound_card=⊥` / `enabled_events: (unbound)` são display do paging, não deny de T16; pedido explícito unbound em `develop`/`release-*` carrega overlay + `covenant-flow-environments` e segue T16; Write de produto continua deny. Guard: `scripts/release-guard pre` / `post`; `RELEASE_CARDS` nos exemplos de `pre` de lote; `PRESERVED_BRANCHES` no `pre` quando houver worktree in-flight. Homologação não autoriza `main`. Antes do `post`: `/kaizen release` no log **e** materialização Kaizen (1–3 cards em Em Refinamento, dedupe `coberto por #N` em fluxo, ou `Sem achados acionáveis`) — skill `kaizen` é read-only; o orquestrador cria os cards (#661).
 
 ### Filho isolado `fecho-lote` (Cursor)
 
 No **mesmo turno** do pedido explícito de fechar lote / subir release, o pai spawna **um** filho isolado antes de T16:
 
 - `description` MUST conter `fecho-lote` e MUST NOT conter needles do classificador de destape (`grill-card`, `apply-coluna`, `diff-reviewer`, `code-reviewer`, `qa-gate`, `design-autor`, `design-critic`, `Assessment A`, `Assessment B`, nem `\bqa\b` / `\bgrill\b` soltos). Título canónico: `fecho-lote kaizen`.
-- Caminho: `generalPurpose` com `model: composer-2.5`.
+- Caminho: `generalPurpose` com `model` igual a `execucao.slug` em `.cursor/model-map.yaml`.
 - Prompt autocontido: és o filho `fecho-lote`; MUST NOT `process_event`; MUST NOT arrastar Status; MUST NOT commit/push; MUST NOT `move_agent_to_root`; Read overlay + `covenant-flow-environments`; corre `/kaizen release` (skill `kaizen`, read-only); devolve o relatório. O **pai** chama `process_event fechar_release` no mesmo turno após host `completed`.
 - MUST NOT gravar `.cursor/tmp/awaiting-task.json` para este spawn. Destape MUST NOT disparar. MUST NOT needle novo no classificador. Shell do fluxo: `required_permissions: ["all"]` no primeiro attempt.
 

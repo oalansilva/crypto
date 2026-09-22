@@ -1,0 +1,9 @@
+juizo:
+  label: Grok 4.6
+  slug: cursor-grok-4.6-high
+execucao:
+  label: Composer 2.5
+  slug: composer-2.5
+forbid:
+  - composer-2.5-fast
+  - inherit
