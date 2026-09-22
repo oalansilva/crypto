@@ -201,9 +201,9 @@ async function seedMonitorChartModal(page: Page) {
   })
 
   await page.goto('/monitor')
-  const cardButton = page.getByTestId('monitor-card-btc-usdt').getByRole('button', { name: 'Abrir Gráfico' })
-  if (await cardButton.count()) {
-    await cardButton.click()
+  const viewport = page.viewportSize()
+  if (viewport && viewport.width < 768) {
+    await page.getByTestId('monitor-card-btc-usdt').getByRole('button', { name: 'Abrir Gráfico' }).click()
   } else {
     await page.getByRole('button', { name: /Abrir Gráfico BTC\/USDT/i }).first().click()
   }

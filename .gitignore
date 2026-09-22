@@ -39,6 +39,7 @@ data/*.parquet
 !.cursor/hooks/
 !.cursor/hooks/**
 !.cursor/process-fsm.yaml
+!.cursor/model-map.yaml
 *.swp
 *.swo
 
