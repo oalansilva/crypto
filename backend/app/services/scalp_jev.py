@@ -26,9 +26,11 @@ _EXPECTED_MOVE_BP_LEVELS_BP: tuple[int, ...] = (0, 5, 10, 15, 20, 25, 30, 35, 50
 
 def _expected_move_bp_criteria() -> list[str]:
     return [
-        f"{bp} bp — negligible expected absolute move over the next 900 s for the chosen side"
-        if bp == 0
-        else f"{bp} bp — expected absolute move over the next 900 s for the chosen side"
+        (
+            f"{bp} bp — negligible expected absolute move over the next 900 s for the chosen side"
+            if bp == 0
+            else f"{bp} bp — expected absolute move over the next 900 s for the chosen side"
+        )
         for bp in _EXPECTED_MOVE_BP_LEVELS_BP
     ]
 

@@ -50,6 +50,8 @@ def _move_bp_to_score(move_bp: float) -> float:
         if level_bp == move_bp:
             return float(index)
     raise ValueError(f"move_bp {move_bp} not on expected_move_bp score ladder")
+
+
 from app.services.scalp_service import (
     apply_bot_fill,
     get_or_create_state,
@@ -464,7 +466,9 @@ def test_expected_move_bp_score_interpolation_and_legacy_number():
     assert _bp_from_score(5.0) == Decimal("25")
     assert _bp_from_score(4.5) == Decimal("22.5")
     assert _expected_move_bp({"expected_move_bp": {"type": "score", "score": 5.0}}) == Decimal("25")
-    assert _expected_move_bp({"expected_move_bp": {"type": "number", "number": 18}}) == Decimal("18")
+    assert _expected_move_bp({"expected_move_bp": {"type": "number", "number": 18}}) == Decimal(
+        "18"
+    )
     assert _expected_move_bp({"expected_move_bp": {"type": "score"}}) == Decimal("0")
 
 
