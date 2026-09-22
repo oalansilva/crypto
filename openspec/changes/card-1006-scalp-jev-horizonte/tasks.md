@@ -29,3 +29,7 @@
 - [x] 5.1 — Testes dos critérios observáveis do issue #1006 (cadência toque fresco sem teto 1×/15 min, espera/teto 1,5 s: resposta a tempo + gates → pode enviar; > 1,5 s ou timeout → não envia; livro revalidado `age_ms` ≤ 500 depois da resposta; payload, hurdle 10 bp, posição presa 15:30 após fill, nunca duas compras, inventário 0 + SELL, kill, sem TypeSafe, sem rádio 1/2/5, painel sem «1 vez / 15 min» e sem copy «1,5 s»).
 - [x] 5.2 — Playwright desktop+mobile do delta no `/monitor` contra o proto (lookback facto «últimos 15 min», toque fresco no ligado, hurdle/taxa, alvo 35, stop −28, posição após fill, último resultado negativo, «posição presa» 15:30).
 - [x] 5.3 — `openspec verify` desta change.
+
+## 6. T18 — SystemOne `expected_move_bp` como Score
+
+- [x] 6.1 — Payload SystemOne: `expected_move_bp.type=score` com `criteria` ordenados (2–10 níveis em bp; hurdle ~20 e alvo 35 representáveis). Resposta: mapear `answers.expected_move_bp.score` → bp por interpolação linear entre índices; fallback legado `number`/`value`; sem score → 0. Testes unitários scalp Jev actualizados.
