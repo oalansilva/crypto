@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parents[1]
@@ -28,7 +29,13 @@ from subagent_stop import (  # noqa: E402
 )
 
 SKILL = REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md"
+MODEL_MAP = REPO / ".cursor" / "model-map.yaml"
 HOOKS = REPO / ".cursor" / "hooks.json"
+
+
+def _execucao_slug() -> str:
+    data = yaml.safe_load(MODEL_MAP.read_text(encoding="utf-8")) or {}
+    return str((data.get("execucao") or {}).get("slug") or "")
 STOP_SH = REPO / ".cursor" / "hooks" / "process-fsm-subagent-stop.sh"
 DIFF_AGENT = REPO / ".cursor" / "agents" / "diff-reviewer.md"
 CODE_AGENT = REPO / ".cursor" / "agents" / "code-reviewer.md"
@@ -388,7 +395,7 @@ def test_agents_require_review_diff_and_forbid_git_transcripts() -> None:
     for path in (DIFF_AGENT, CODE_AGENT):
         text = path.read_text(encoding="utf-8")
         assert "readonly: true" in text
-        assert "model: composer-2.5" in text
+        assert f"model: {_execucao_slug()}" in text
         assert "ERROR: review-diff missing" in text
         assert "MUST NOT git" in text
         assert "MUST NOT transcripts" in text
@@ -399,7 +406,8 @@ def test_agents_require_review_diff_and_forbid_git_transcripts() -> None:
 
 def test_skill_t18_destape_resume_keeps_composer_slug() -> None:
     text = SKILL.read_text(encoding="utf-8")
-    assert "Destape/resume mantém slug Composer" in text
+    assert "Destape/resume mantém slug de execução" in text
+    assert ".cursor/model-map.yaml" in text
     assert "composer-2.5-fast" in text
     assert "MUST NOT `resume`" in text or "MUST NOT resume" in text
     assert "spawn **novo**" in text or "spawn novo" in text
@@ -413,8 +421,8 @@ def test_skill_t18_release_refuses_grok_parent() -> None:
     text = SKILL.read_text(encoding="utf-8")
     release = text.split("## Release", 1)[1]
     assert "chat pai" in release or "chat pai MUST" in text
-    assert "composer-2.5" in release
-    assert "Grok" in release
+    assert "execucao" in release or _execucao_slug() in release
+    assert "juizo" in release.lower() or "juízo" in release
     assert "process_event fechar_release" in text or "T16" in release
 
 
