@@ -45,12 +45,12 @@ For a Codex card marked `UI impact: affected`, the Design stage MUST run context
 - **AND** the agent MUST NOT run unrelated visual commands merely to increase activity
 
 ### Requirement: Independent critics MUST use juízo Grok 4.6 model
-Assessment A and Assessment B MUST run in isolated subagents using Grok 4.6 (`cursor-grok-4.6-high`), the same juízo identifier as the Design-autor child. They MUST receive a self-contained prompt and MUST NOT inherit the parent transcript. They MUST NOT inherit the parent chat picker. They MAY write only `.impeccable/critique/**`. They MUST NOT edit `design.md`, prototype files, or product code. Isolation is process (no shared transcript, instruction not to edit product), not a plugin. Model equality SHALL be between Design-autor and A/B, not between A/B and the parent picker.
+Assessment A and Assessment B MUST run in isolated subagents using the `juizo.slug` from `.cursor/model-map.yaml`, the same juízo identifier as the Design-autor child. They MUST receive a self-contained prompt and MUST NOT inherit the parent transcript. They MUST NOT inherit the parent chat picker. They MAY write only `.impeccable/critique/**`. They MUST NOT edit `design.md`, prototype files, or product code. Isolation is process (no shared transcript, instruction not to edit product), not a plugin. Model equality SHALL be between Design-autor and A/B, not between A/B and the parent picker.
 
 #### Scenario: Same-model dual critique
 - **WHEN** the Impeccable critique is executed with subagent support available
 - **THEN** Assessment A MUST review product/UX/heuristics and Assessment B MUST review detector/browser evidence in separate contexts
-- **AND** both subagents MUST report Grok 4.6 (`cursor-grok-4.6-high`) before synthesis
+- **AND** both subagents MUST report the vigente `juizo` label/slug from `.cursor/model-map.yaml` before synthesis
 - **AND** neither spawn includes the parent Design transcript
 - **AND** neither spawn inherits the parent picker
 
