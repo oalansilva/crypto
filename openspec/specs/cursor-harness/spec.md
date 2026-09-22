@@ -275,14 +275,16 @@ The repository root `AGENTS.md` SHALL be a stub of at most 40 non-empty lines th
 - **AND** it states that chat wording is not authorization
 - **AND** it does not claim OpenCode Auto or Grok Auto
 
-### Requirement: Always-on harness rule is 8-15 body lines
-`.cursor/rules/harness.mdc` SHALL remain `alwaysApply: true`. Its body (non-empty lines after the YAML frontmatter) MUST contain between 4 and 12 lines. The body SHALL identify the Cursor client: hooks under `.cursor/hooks.json`, juízo = Grok 4.6 and execução = Composer 2.5 without inheriting the picker, a pointer to skill `covenant-flow` for the table, and that the always-on δ lives in `AGENTS.md`. It MUST NOT include the Code Review reviewer procedure, the OpenSpec Gist republication helper, the release closeout, a T0–T17 table, a restatement of I1–I9, or the role table itself.
+### Requirement: Always-on harness rule is 4-12 body lines
+`.cursor/rules/harness.mdc` SHALL remain `alwaysApply: true`. Its body (non-empty lines after the YAML frontmatter) MUST contain between 4 and 12 lines. The body SHALL identify the Cursor client: hooks under `.cursor/hooks.json`, juízo and execução via `.cursor/model-map.yaml` without inheriting the picker, a pointer to skill `covenant-flow` for roles, and that the always-on δ lives in `AGENTS.md`. It MUST NOT embed juízo or execução model slugs. It MUST NOT include `diff-reviewer`, `release-guard`, the Code Review reviewer procedure, the release closeout, a T0–T17 table, a restatement of I1–I9, or the role table itself.
 
 #### Scenario: harness.mdc body budget
 - **WHEN** `.cursor/rules/harness.mdc` is counted excluding the YAML frontmatter
 - **THEN** non-empty body lines are between 4 and 12 inclusive
-- **AND** the body mentions juízo/execução or Cursor hooks
+- **AND** the body mentions `.cursor/hooks.json` and `.cursor/model-map.yaml` or juízo/execução
+- **AND** the body points to skill `covenant-flow` and that always-on δ lives in `AGENTS.md`
 - **AND** the body does not mention `diff-reviewer` or `release-guard`
+- **AND** the body does not embed juízo or execução slugs
 - **AND** the body does not claim Grok Auto
 - **AND** the body does not say that every Task inherits the parent picker
 
