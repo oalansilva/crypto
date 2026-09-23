@@ -24,8 +24,8 @@
 
 - [x] 3.1 — Registo **opt-in por env** (no log do #1015) do payload cru das respostas: `side_answer.confidence`, `probabilities[choice]`, `score` cru e `noul`; sem segredos e sem valores exactos de conta; desligado, os registos do #1015 ficam como estão.
 - [x] 3.2 — `CONFIDENCE_MIN` configurável por env (o motor puro recebe o valor; `scalp_engine` não lê env).
-- [x] 3.3 — Aplicar o resultado do Card A: valor = menor bucket com expectancy líquida positiva, **nunca acima do alcance observado**; **se a confiança não separar trades bons de maus, remover o gate** — a decisão passa a previsão × custo × regime e `low_confidence` desaparece do caminho.
-- [x] 3.4 — Testes: limiar calibrado; gate removido (sem `low_confidence`); relatório ausente/insuficiente → mantém o default e a evidência registra o motivo; nenhum bucket negativo passa o gate.
+- [x] 3.3 — Aplicar o resultado do Card A: valor = menor bucket com expectancy líquida positiva, **nunca acima do alcance observado**; **se a confiança não separar trades bons de maus, remover o gate** — a decisão passa a previsão × custo × regime e `low_confidence` desaparece do caminho. **Fecho:** o Card A declarou amostra insuficiente (§1 da evidência), pelo que o valor ficou no default de produto (`0,7`, env `SCALP_CONFIDENCE_MIN`); o caminho **explícito** de remoção existe (`SCALP_CONFIDENCE_MIN=none|off|disabled` → o motor recebe `None` e não produz `low_confidence`), pronto a ser armado quando o relatório o justificar. Nenhum limiar inventado sem régua.
+- [x] 3.4 — Testes: limiar calibrado; gate removido (sem `low_confidence`); relatório ausente/insuficiente → mantém o default e a evidência registra o motivo; nenhum bucket negativo passa o gate; env inválido (incl. `nan`/`inf`) cai no default conservador (falha fechada, N2).
 
 ## 4. D — Gate de regime e geometria alvo/stop
 

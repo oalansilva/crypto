@@ -473,3 +473,117 @@ def test_the_retried_escape_keeps_one_client_order_id(monkeypatch, scalp_db, dia
     assert len(fx.escape_attempts) == 3
     assert len(set(fx.escape_attempts)) == 1, "o id não é renovado a cada tentativa"
     assert fx.escape_attempts[0].startswith("cfscalp_")
+
+
+def _resting_exit(scalp_db, user_id: str) -> None:
+    state = get_or_create_state(scalp_db, user_id)
+    state.rest_client_order_id = "cfscalp_passive_exit"
+    state.rest_side = "SELL"
+    state.rest_price = Decimal("65300")
+    state.rest_role = "exit"
+    state.rest_opened_at = datetime.utcnow() - timedelta(seconds=HOLD_AFTER_FILL_S)
+    scalp_db.commit()
+
+
+class _CancelFailingExchange(FakeExchange):
+    """Passive cancel rejected until ``fail_cancel`` is turned off."""
+
+    def __init__(self, *, fail_cancel: bool = True):
+        super().__init__()
+        self.fail_cancel = fail_cancel
+
+    def cancel_bot_order(self, **kwargs):
+        if self.fail_cancel:
+            from app.services.binance_spot_orders import BinanceOrderError
+
+            raise BinanceOrderError("cancel refused", code=-2011)
+        return super().cancel_bot_order(**kwargs)
+
+
+def test_escape_is_deferred_when_the_passive_cancel_fails(monkeypatch, scalp_db, caplog):
+    """E3: cancelar a passiva que falha não envia a agressiva no mesmo ciclo.
+
+    A ordem passiva pode continuar viva e preencher; uma MARKET enviada na
+    mesma podia vender duas vezes (oversell). O escape é adiado (mesma chave de
+    reconciliação e backoff) e o estado resting é mantido para reconciliação.
+    """
+    caplog.set_level(logging.WARNING)
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    fx = _CancelFailingExchange()
+    set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
+    _open_position(scalp_db, user_id, seconds=HOLD_AFTER_FILL_S + 1)
+    _resting_exit(scalp_db, user_id)
+
+    first = _escape_cycle(scalp_db, fx, user_id)
+    assert first.sent is False
+    assert fx.aggressive == [], "sem agressiva enquanto a passiva pode estar viva"
+    state = get_or_create_state(scalp_db, user_id)
+    assert state.rest_client_order_id == "cfscalp_passive_exit"
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("scalp aggressive exit deferred" in message for message in messages)
+
+    # Cancel ack + backoff elapsed -> the escape goes out in the next cycle.
+    monkeypatch.setattr("app.services.scalp_service.AGGRESSIVE_RETRY_SECONDS", 0.0)
+    fx.fail_cancel = False
+    second = _escape_cycle(scalp_db, fx, user_id)
+    assert second.sent is True
+    assert "cfscalp_passive_exit" in fx.cancelled
+    assert len(fx.aggressive) == 1
+    state = get_or_create_state(scalp_db, user_id)
+    assert Decimal(str(state.inventory_btc)) == Decimal("0")
+
+
+class _DustExchange(FakeExchange):
+    """Escape always rejected by the symbol filter: the remainder is dust."""
+
+    def __init__(self):
+        super().__init__()
+        self.escape_attempts: list[str] = []
+
+    def place_aggressive_exit(self, **kwargs):
+        from app.services.binance_spot_orders import (
+            ORDER_FILTER_REJECTED_CODE,
+            BinanceOrderError,
+        )
+
+        self.escape_attempts.append(str(kwargs["client_order_id"]))
+        raise BinanceOrderError(
+            "Notional abaixo do filtro da Binance", code=ORDER_FILTER_REJECTED_CODE
+        )
+
+
+def test_dust_remainder_closes_the_position_instead_of_retrying_forever(scalp_db, caplog):
+    """N3: resto abaixo do MIN_NOTIONAL é dust — não fica a re-tentar para sempre."""
+    caplog.set_level(logging.WARNING)
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    fx = _DustExchange()
+    set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
+    state = get_or_create_state(scalp_db, user_id)
+    state.floor_btc = Decimal("0")
+    # 0.00001 BTC × ~65000 = 0.65 USDT < MIN_NOTIONAL (5): não é executável.
+    state.inventory_btc = Decimal("0.00001")
+    # Entrada acima do realizável (bid 65000): a perda do dust tem de ser
+    # lançada, não evaporar com o `unrealized`.
+    state.avg_entry_quote = Decimal("66000")
+    state.position_opened_at = datetime.utcnow() - timedelta(seconds=HOLD_AFTER_FILL_S + 1)
+    scalp_db.commit()
+
+    result = _escape_cycle(scalp_db, fx, user_id)
+    assert result.sent is False
+    assert len(fx.escape_attempts) == 1
+    state = get_or_create_state(scalp_db, user_id)
+    assert Decimal(str(state.inventory_btc)) == Decimal("0"), "posição encerrada como dust"
+    assert state.avg_entry_quote is None
+    assert state.position_opened_at is None
+    expected_loss = (Decimal("65000") - Decimal("66000")) * Decimal("0.00001")
+    assert Decimal(str(state.realized_pnl_quote)) == expected_loss, "perda do dust lançada"
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("scalp aggressive exit dust" in message for message in messages)
+
+    # No next attempt and the bot is no longer holding an open position.
+    _escape_cycle(scalp_db, fx, user_id)
+    assert len(fx.escape_attempts) == 1
+    state = get_or_create_state(scalp_db, user_id)
+    assert state.position_opened_at is None

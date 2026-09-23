@@ -207,6 +207,49 @@ def test_maybe_cancel_entry_timeout_clears_stale_rest(scalp_db):
     assert "cfscalp_entry_timeout" in fx.cancelled
 
 
+class _CancelFailingExchange(FakeExchange):
+    def cancel_bot_order(self, **kwargs):
+        from app.services.binance_spot_orders import BinanceOrderError
+
+        raise BinanceOrderError("cancel refused", code=-2011)
+
+
+def test_maybe_cancel_entry_timeout_keeps_state_when_cancel_fails(scalp_db):
+    """E3 fail-soft: cancelamento falhado mantém o estado resting e o timeout.
+
+    A ordem pode continuar viva; limpar ``rest_opened_at``/``rest_role`` aqui
+    deixaria o id vivo com o timeout silenciado (nunca voltaria a disparar).
+    """
+    user_id = str(uuid.uuid4())
+    _add_key(scalp_db, user_id)
+    state = get_or_create_state(scalp_db, user_id)
+    cred = (
+        scalp_db.query(UserExchangeCredential)
+        .filter(UserExchangeCredential.user_id == user_id)
+        .one()
+    )
+    now = datetime.utcnow()
+    state.rest_client_order_id = "cfscalp_entry_timeout"
+    state.rest_side = "BUY"
+    state.rest_price = Decimal("65000")
+    state.rest_role = "entry"
+    state.rest_opened_at = now - timedelta(seconds=ENTRY_REST_TIMEOUT_S + 1)
+    scalp_db.commit()
+
+    _maybe_cancel_entry_timeout(state, cred=cred, exchange=_CancelFailingExchange(), now=now)
+    assert state.rest_client_order_id == "cfscalp_entry_timeout"
+    assert state.rest_role == "entry"
+    assert state.rest_opened_at is not None, "o timeout volta a disparar no ciclo seguinte"
+
+    # O ciclo seguinte re-tenta; com o cancelamento aceite o estado é limpo.
+    fx = FakeExchange()
+    _maybe_cancel_entry_timeout(state, cred=cred, exchange=fx, now=now)
+    assert state.rest_client_order_id is None
+    assert state.rest_role is None
+    assert state.rest_opened_at is None
+    assert "cfscalp_entry_timeout" in fx.cancelled
+
+
 def test_tick_user_with_open_position_holds_without_jev(scalp_db, monkeypatch):
     monkeypatch.setattr(
         "app.services.scalp_btcusdt_snapshot_store.publish_scalp_btcusdt_snapshot",
