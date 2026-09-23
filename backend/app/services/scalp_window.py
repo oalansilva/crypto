@@ -121,3 +121,22 @@ def entry_hurdle_bp(fee_bp: Decimal, spread_bp: Decimal) -> Decimal:
 
 def passes_entry_hurdle(expected_move_bp: Decimal, fee_bp: Decimal, spread_bp: Decimal) -> bool:
     return expected_move_bp > entry_hurdle_bp(fee_bp, spread_bp)
+
+
+# Card #1025, regime gate: maker cost plus 50% of slack (P3 placement).
+REGIME_SLACK = Decimal("1.5")
+
+
+def entry_hurdle_bp_with_slack(fee_bp: Decimal, spread_bp: Decimal) -> Decimal:
+    """The entry hurdle the regime gate demands: maker cost + 50% slack."""
+    return entry_hurdle_bp(fee_bp, spread_bp) * REGIME_SLACK
+
+
+def passes_regime_gate(expected_move_bp: Decimal, fee_bp: Decimal, spread_bp: Decimal) -> bool:
+    """The forecast covers the maker cost with 50% slack.
+
+    The forecast (``expected_move_bp``) is the **primary and only** input:
+    σ of the window (``vol_bp``) is not read here (the Card A ruler did not
+    justify it as a secondary condition).
+    """
+    return expected_move_bp >= entry_hurdle_bp_with_slack(fee_bp, spread_bp)

@@ -16,6 +16,7 @@ from app.services.binance_spot_orders import (
     signed_request,
 )
 from app.services.scalp_engine import (
+    AGGRESSIVE_ORDER_TYPE,
     CLIENT_ORDER_PREFIX,
     ORDER_TYPE,
     SYMBOL,
@@ -24,6 +25,55 @@ from app.services.scalp_engine import (
     Side,
     is_bot_client_order_id,
 )
+
+ACCOUNT_PATH = "/api/v3/account"
+BNB_BURN_PATH = "/sapi/v1/bnbBurn"
+_BP_PER_RATE = Decimal("10000")
+
+
+def fetch_maker_fee_bp(
+    *,
+    api_key: str,
+    api_secret: str,
+    base_url: Optional[str] = None,
+) -> Decimal:
+    """Real maker commission of the account, in basis points **per leg**.
+
+    ``commissionRates.maker`` already reflects the account's effective rate
+    (VIP tier and BNB discount when active).
+    """
+    payload = signed_request(
+        method="GET",
+        path=ACCOUNT_PATH,
+        api_key=api_key,
+        api_secret=api_secret,
+        base_url=base_url,
+    )
+    rates = payload.get("commissionRates") if isinstance(payload, dict) else None
+    maker = (rates or {}).get("maker") if isinstance(rates, dict) else None
+    if maker is None:
+        raise BinanceOrderError("commissionRates.maker ausente")
+    fee_bp = Decimal(str(maker)) * _BP_PER_RATE
+    if fee_bp <= 0:
+        raise BinanceOrderError("commissionRates.maker inválido")
+    return fee_bp
+
+
+def fetch_spot_bnb_burn(
+    *,
+    api_key: str,
+    api_secret: str,
+    base_url: Optional[str] = None,
+) -> bool:
+    """Whether the account pays Spot fees with BNB (``spotBNBBurn``)."""
+    payload = signed_request(
+        method="GET",
+        path=BNB_BURN_PATH,
+        api_key=api_key,
+        api_secret=api_secret,
+        base_url=base_url,
+    )
+    return bool((payload or {}).get("spotBNBBurn")) if isinstance(payload, dict) else False
 
 
 def fetch_book(*, base_url: Optional[str] = None) -> Book:
@@ -145,6 +195,62 @@ def place_post_only(
             "timeInForce": TIME_IN_FORCE,
             "quantity": format_decimal(qty),
             "price": format_decimal(px),
+            "newClientOrderId": client_order_id,
+        },
+        base_url=base_url,
+    )
+
+
+def place_aggressive_exit(
+    *,
+    api_key: str,
+    api_secret: str,
+    quantity: Decimal,
+    client_order_id: str,
+    reference_price: Decimal,
+    side: Side = "SELL",
+    base_url: Optional[str] = None,
+) -> dict[str, Any]:
+    """Aggressive exit: MARKET with **no price ceiling** and no slippage guard.
+
+    The escape exists to close a position the passive target/stop did not
+    close; a price cap or guard would leave the position stuck again. MARKET
+    carries no price and no ``timeInForce`` on Spot.
+
+    ``reference_price`` is **only** the reference for the symbol's
+    NOTIONAL/MIN_NOTIONAL filter — the same one ``place_post_only`` validates.
+    A MARKET order carries no price of its own, so without a reference the
+    notional filter cannot be checked and Binance would reject the escape
+    exactly when it is needed. It never enters the order.
+    """
+    if not is_bot_client_order_id(client_order_id):
+        raise BinanceOrderError("clientOrderId deste scalp inválido")
+    info = get_symbol_info(SYMBOL, base_url=base_url)
+    filters = {str(item.get("filterType") or ""): item for item in (info.get("filters") or [])}
+    step = Decimal(str((filters.get("LOT_SIZE") or {}).get("stepSize") or "0.00001"))
+    min_qty = Decimal(str((filters.get("LOT_SIZE") or {}).get("minQty") or "0"))
+    min_notional = Decimal(
+        str(
+            (filters.get("MIN_NOTIONAL") or {}).get("minNotional")
+            or (filters.get("NOTIONAL") or {}).get("minNotional")
+            or "0"
+        )
+    )
+    qty = decimal_floor(quantity, step)
+    if qty < min_qty or qty <= 0:
+        raise BinanceOrderError("Quantidade abaixo do filtro da Binance")
+    if min_notional > 0 and (qty * reference_price) < min_notional:
+        raise BinanceOrderError("Notional abaixo do filtro da Binance")
+    return signed_request(
+        method="POST",
+        path="/api/v3/order",
+        api_key=api_key,
+        api_secret=api_secret,
+        params={
+            "symbol": SYMBOL,
+            "side": side,
+            "type": AGGRESSIVE_ORDER_TYPE,
+            "quantity": format_decimal(qty),
             "newClientOrderId": client_order_id,
         },
         base_url=base_url,
