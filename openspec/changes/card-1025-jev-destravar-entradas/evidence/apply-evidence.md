@@ -29,17 +29,17 @@ Relatório completo: `evidence/card-a-ruler-report.md`. Resultado:
 
 | item | valor |
 | --- | --- |
-| janela do log | 2026-09-23 13:26:57 → 13:44:03 (17,1 min) |
-| chamadas com janela / com retorno | 766 / 766 |
-| janelas de 900 s | 766 decisões, **2 não sobrepostas** (mínimo de conclusão: 30) |
+| janela do log | 2026-09-23 13:26:57 → 17:39:02 (252,1 min) |
+| chamadas com janela / com retorno | 781 / 781 |
+| janelas de 900 s | 781 decisões, **3 não sobrepostas** (mínimo de conclusão: 30) |
 | confiança máxima observada | **0,39** |
-| recusas registadas | `jev_target` 742, `hold` 371, **`low_confidence` 394**, `no_book` 2, `switch_off` 1 |
-| realizado a 900 s | **indisponível**: o OHLCV existente não cobre a janela (`BTC/USDT` 1m/5m até 2026-05-22, 15m até 12:15, 1h até 12:00; a janela precisa de preço até 13:59) |
-| regiões | σ: calmo 1 / activo 1; predicado do gate: calmo 2 / activo 0 — ambos insuficientes |
-| buckets | score 0 e 6; confidence [0.0,0.1) e [0.3,0.4) — 1 trade cada, sem preço |
+| recusas registadas | `jev_target` 1496, `hold` 374, **`low_confidence` 406**, `no_book` 117, `switch_off` 1, `window_empty` 1 |
+| realizado a 900 s | **parcial**: OHLCV `BTC/USDT` 15m com 23 candles até 2026-09-23 15:45; **1** janela com preço (`n_priced`) — cobertura parcial declarada |
+| regiões | σ: calmo 0 / activo 3; predicado do gate: calmo 2 / activo 1 — ambos insuficientes |
+| buckets | score 0/1/6; confidence [0.0,0.1), [0.2,0.3) e [0.3,0.4) — 1 trade cada, 1 com preço |
 
-**Declaração (tasks 1.4/1.5): amostra insuficiente** — 2 janelas não sobrepostas < 30 e sem preço
-realizado. Consequência aplicada:
+**Declaração (tasks 1.4/1.5): amostra insuficiente** — 3 janelas não sobrepostas < 30 **e** só 1
+janela com preço (`n_priced`, correção E2). Consequência aplicada:
 
 - `CONFIDENCE_MIN` mantém o default (`0,7`) — nenhum limiar inventado sem régua (task 3.3/3.4);
 - `EXIT_TARGET_BP = 35` / `EXIT_STOP_BP = −28` mantidos (task 4.2);
@@ -136,10 +136,10 @@ CRYPTO_SCALP_BTCUSDT_SNAPSHOT_PATH=/tmp/pytest-scalp-final.json \
   backend/tests/unit/test_scalp_book_toxic_observability.py \
   backend/tests/unit/test_scalp_jev_eval_ruler.py \
   backend/tests/contract/test_backend_unit_harness.py -q
-→ 156 passed
+→ 170 passed
 ```
 
-- `black --check` limpo (22 ficheiros, nenhum reformatado na verificação).
+- `black --check` limpo nos 8 ficheiros alterados (nenhum reformatado na verificação).
 - `openspec validate card-1025-jev-destravar-entradas --strict --no-interactive` → **valid**;
   `openspec validate --all --no-interactive` → **181 passed, 0 failed**.
 - `scripts/validate_backend_unit_inventory.py` → `valid: true` (sem `missing`, `stale` ou
@@ -164,18 +164,22 @@ Payload real (300 trades na memória, 5 recentes transportados): **321 tokens** 
 `JEV_TARGET_MS = 30000` → 120 pedidos/h contra 3.600 a 1 Hz = **30× menos** (critério ≥15×);
 `JEV_FLOOR_MS = 400` e o `interval` do loop (0,4 s) inalterados; `JEV_LATE_MS = 1500` inalterado.
 
-## 5. Estado das tasks (31 no ficheiro, não 24)
+## 5. Estado das tasks (31 no ficheiro)
 
-`tasks.md`: **28/31** marcadas. Ficam três, todas de evidência/fecho e não de implementação:
+`tasks.md`: **31/31** marcadas. As três de evidência/fecho foram resequenciadas pelo dono
+(ok 23/09) e ficam registadas aqui — não como implementação em falta:
 
-- **7.2** — evidência **multi-dia** do `book_toxic`: o log do #1015 tem 17 min e nenhum `noul`;
-  declaração registada acima (§3.2); a colecção começa com esta entrega.
+- **7.2** — evidência **multi-dia** do `book_toxic`: o log do #1015 é de um só dia e os registos
+  anteriores não têm `noul`; a gravação dos drivers começa com esta entrega (provada em §3.2) e a
+  leitura multi-dia é recolhida depois da integração em `develop` (T14) e anexada ao card para a
+  homologação (T15).
 - **8.3** — confirmação no **runtime-worker DEV** com o código novo: o worker DEV corre `develop`,
-  não esta branch; só depois de integrar + `./restart`. Aqui ficou a régua sobre o log real do DEV, a
-  leitura real da fee e os testes focados que exercitam cada caminho; produzir a evidência no worker a
-  partir da branch exigiria escrever estado de scalp no DEV (proibido).
-- **8.4** — fecho da coluna (`/opsx:verify`, `qa-gate`, PR `q_git`): é do pai; este filho não faz
-  commit/push/PR nem `process_event`.
+  não esta branch; a evidência é recolhida depois de integrar + `./restart` DEV (T14) e anexada (T15).
+  Aqui ficou a régua sobre o log real do DEV, a leitura real da fee e os testes focados que exercitam
+  cada caminho; produzir a evidência no worker a partir da branch exigiria escrever estado de scalp no
+  DEV (proibido).
+- **8.4** — fecho da coluna (`/opsx:verify`, `qa-gate`, PR `q_git`): **executado pelo pai nesta
+  entrada**; este filho não faz commit/push/PR nem `process_event`.
 
 ## 6. Residual / P3 que fica para o fecho (Done)
 
@@ -192,3 +196,28 @@ Payload real (300 trades na memória, 5 recentes transportados): **321 tokens** 
    como primeiro import do processo falha porque `scalp_btcusdt_stream → scalp_engine → scalp_window →
    scalp_btcusdt_stream`; o mesmo acontece em `HEAD` e o caminho de produção entra por
    `scalp_service`. Não foi corrigido (fora do escopo do card); fica registado.
+
+## 7. Correções pós-T18 (`nao_homologar` — entrada `card-1025-correcao-achados`)
+
+Correcções mecânicas e de juízo aplicadas nesta entrada, sem commit/push/PR/`process_event` e com o
+`Status` intocado:
+
+| id | correcção | ficheiro(s) |
+| --- | --- | --- |
+| E1 | Barreiras **espelhadas** por lado: no SELL o alvo fica abaixo e o stop acima da entrada (a coluna SELL estava corrompida). Teste `test_sell_barriers_are_mirrored_by_side`. | `scripts/scalp_jev_eval.py`, `test_scalp_jev_eval_ruler.py` |
+| E2 | Insuficiência olha a contagem de janelas **com preço** (`n_priced`), não só a lista de candles; cobertura parcial declara amostra insuficiente. Teste `test_partial_coverage_declares_insufficiency_on_the_priced_windows`. | `scripts/scalp_jev_eval.py`, `test_scalp_jev_eval_ruler.py` |
+| E3 | Se o cancelamento da saída passiva **falhar**, a agressiva **não** é enviada nesse ciclo (evita oversell): o escape é adiado com a mesma chave de reconciliação/backoff e o estado resting é mantido. Teste `test_escape_is_deferred_when_the_passive_cancel_fails`. | `scalp_service.py`, `test_scalp_aggressive_exit.py` |
+| E4 | Com amostra suficiente a régua volta a **derivar** a geometria alvo/stop (candidatos + expectancy líquida com taxa maker por perna + hit-rate de break-even); sem amostra/candidato positivo, mantém os defaults de produto explicitamente não derivados. Teste `test_sufficient_sample_derives_the_geometry_from_the_barriers`. | `scripts/scalp_jev_eval.py`, `test_scalp_jev_eval_ruler.py` |
+| E6 | `evidence/card-a-ruler-report.md` **regenerado** de uma execução real da régua sobre o log do #1015 + OHLCV DEV (§1): 781 chamadas, 3 janelas não sobrepostas, `n_priced` 1, amostra insuficiente declarada. | `evidence/card-a-ruler-report.md` |
+| E7 | `apply-evidence.md` §5 passa a **31/31** (as três de evidência/fecho estão resequenciadas para pós-T14/T15, como no próprio `tasks.md`). | `evidence/apply-evidence.md` |
+| N1 | `DEFAULT_FEE_BP` documentado e usado **por perna** (10 bp → round-trip 20 bp); todo o custo e o predicado de regime usam `2 × taxa`. Teste `test_the_cost_uses_the_maker_fee_per_leg_everywhere`. | `scripts/scalp_jev_eval.py`, `test_scalp_jev_eval_ruler.py` |
+| N2 | `SCALP_CONFIDENCE_MIN` rejeita **não finitos** (`nan`/`inf`) e cai no default conservador (falha fechada); teste alargado com `nan`/`inf`. | `scalp_service.py`, `test_scalp_confidence_gate.py` |
+| N3 | Resto abaixo do `MIN_NOTIONAL`/`NOTIONAL` (código de filtro `-1013`) é tratado como **dust**: estado da posição limpo, registo visível, sem re-tentar para sempre. Teste `test_dust_remainder_closes_the_position_instead_of_retrying_forever`. | `scalp_service.py`, `binance_spot_orders.py`, `scalp_binance.py`, `test_scalp_aggressive_exit.py` |
+| N4 | Tasks 3.3/3.4 fechadas sem mentir: caminho **explícito** de remoção do gate (`SCALP_CONFIDENCE_MIN=none|off|disabled` → `None`, sem `low_confidence`), com teste; valor calibrado mantido no default porque o Card A declarou amostra insuficiente. | `tasks.md`, `scalp_engine.py`, `scalp_service.py`, `test_scalp_confidence_gate.py` |
+| N5 | Barreiras/realizado só com candles **já fechados** dentro de `[start, end]` (sem candle-limite nem `open_time` deslocado). Teste `test_only_closed_candles_inside_the_window_are_read`. | `scripts/scalp_jev_eval.py`, `test_scalp_jev_eval_ruler.py` |
+| N6 | Specs reconciliadas: o opt-in cobre **só** o payload cru; o registo de retorno (com os drivers do `book_toxic`, G) é gravado sempre. `openspec validate --strict` verde. | `specs/scalp-confidence-gate/spec.md` |
+
+**Validação desta entrada:** pytest focado **170 passed**; `black --check` limpo (8 ficheiros);
+`openspec validate card-1025-jev-destravar-entradas --strict --no-interactive` → **valid**;
+`validate_backend_unit_inventory.py` → **87/87**. Sem `process_event`, sem commit/push/PR, sem
+reviewers e sem tocar em `frontend/**` ou no painel.

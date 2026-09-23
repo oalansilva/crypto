@@ -2,7 +2,7 @@
 
 ### Requirement: The raw Jev reply payload can be logged opt-in without secrets
 
-The Farol SHALL be able to record the **raw** reply payload of the Jev call when enabled by environment configuration (opt-in), in the #1015 diagnostic log, so that the origin of `confidence` can be established — `side_answer.confidence` versus `probabilities[choice]` — together with the raw `expected_move_bp` score and the `noul` value. The record SHALL NOT contain any secret (no Jev/TypeSafe key, no token, no `Authorization` header) and SHALL NOT contain exact balance or position values. With the opt-in disabled, the records of the #1015 log SHALL stay exactly as they are.
+The Farol SHALL be able to record the **raw** reply payload of the Jev call when enabled by environment configuration (opt-in), in the #1015 diagnostic log, so that the origin of `confidence` can be established — `side_answer.confidence` versus `probabilities[choice]` — together with the raw `expected_move_bp` score and the `noul` value. The record SHALL NOT contain any secret (no Jev/TypeSafe key, no token, no `Authorization` header) and SHALL NOT contain exact balance or position values. The opt-in covers **only** the raw-payload record: the #1015 return record keeps being written as always, including the always-on drivers of `book_toxic` required by the `scalp-book-toxic-observability` spec (`noul`, the window features and the resulting flag). With the opt-in disabled, no raw reply payload SHALL be written.
 
 #### Scenario: Opt-in record shows the origin of confidence
 
@@ -10,11 +10,11 @@ The Farol SHALL be able to record the **raw** reply payload of the Jev call when
 - **THEN** the log SHALL contain the raw answer fields that carry the confidence (`side_answer.confidence`, `probabilities[choice]`), the raw score and the `noul`
 - **AND** the operator SHALL be able to tell whether `confidence` comes from a different field or scale than expected
 
-#### Scenario: Opt-in disabled keeps today's records
+#### Scenario: Opt-in disabled writes no raw payload while the return record stays
 
 - **WHEN** the raw-payload record is disabled
-- **THEN** the diagnostic log SHALL contain only the #1015 records as they are today
-- **AND** no raw reply payload SHALL be written
+- **THEN** no raw reply payload SHALL be written
+- **AND** the #1015 return record SHALL keep being written with its fields, including the always-on `book_toxic` drivers of the `scalp-book-toxic-observability` spec
 
 #### Scenario: No secret and no exact account value in the raw record
 

@@ -102,7 +102,7 @@ def _windows(
         at = base + timedelta(seconds=start_s + 900 * index)
         decisions.append(
             ruler.Decision(
-                call_id=f"w{index}",
+                call_id=f"w{start_s}_{index}",
                 at=at,
                 side="BUY",
                 confidence=Decimal(confidence),
@@ -114,18 +114,21 @@ def _windows(
             )
         )
         price = Decimal(base_bp) * (Decimal("1") + Decimal(realized_bp) / Decimal("10000"))
-        high = max(price, Decimal(base_bp) * Decimal("1.004"))
-        low = min(price, Decimal(base_bp) * Decimal("0.996"))
-        candles.append(
-            {
-                "timestamp_utc": (at + timedelta(seconds=900)).isoformat(),
-                "open": str(Decimal(base_bp)),
-                "high": str(high),
-                "low": str(low),
-                "close": str(price),
-            }
-        )
-    return decisions, ruler.CandleSeries(candles)
+        # Candles de 60 s inteiramente dentro da janela e fechados no horizonte:
+        # o percurso é plano no preço realizado (N5), pelo que a barreira
+        # avaliada depende só do valor final e não de oscilações do fixture.
+        for step in range(60, 901, 60):
+            stamp = at + timedelta(seconds=step)
+            candles.append(
+                {
+                    "timestamp_utc": stamp.isoformat(),
+                    "open": str(price),
+                    "high": str(price),
+                    "low": str(price),
+                    "close": str(price),
+                }
+            )
+    return decisions, ruler.CandleSeries(candles, step=timedelta(seconds=60))
 
 
 def test_insufficient_sample_is_declared_and_no_threshold_is_proposed(tmp_path):
@@ -166,14 +169,16 @@ def test_sufficient_sample_proposes_the_lowest_positive_bucket(tmp_path):
         fee_bp=Decimal("14"),
     )
     assert summary["windows_non_overlapping"] == 40
+    assert summary["stats"]["n_priced"] == 40, "todas as janelas têm preço (E2)"
     assert summary["insufficient"] is False
     assert summary["insufficient_reasons"] == []
     assert summary["suggested_confidence_min"] == "0.3"
     # No negative-expectancy bucket passes the gate.
     assert Decimal(summary["suggested_confidence_min"]) >= Decimal("0.2")
     assert "HOLD_AFTER_FILL_S" in report
-    # Correção pós-CR (item 2): a régua não propõe geometria nenhuma — 35/−28 bp
-    # são defaults de produto, não um valor confirmado por esta tabela.
+    # E4: a régua deriva geometria quando um candidato paga o round-trip; nesta
+    # amostra mista (20 janelas a −10 bp, 20 a +40 bp) nenhum candidato limpa o
+    # custo, logo 35/−28 bp mantêm-se como defaults de produto, não derivados.
     assert summary["suggested_exit_target_bp"] is None
     assert summary["suggested_exit_stop_bp"] is None
     assert summary["exit_geometry_derived"] is False
@@ -254,3 +259,122 @@ def test_missing_log_file_is_declared(monkeypatch, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "Log ausente" in out
     assert "Amostra insuficiente" in out
+
+
+def test_partial_coverage_declares_insufficiency_on_the_priced_windows(tmp_path):
+    """E2: 40 janelas não sobrepostas sem preço não são amostra suficiente.
+
+    O OHLCV pode cobrir só parte da janela do log: a lista de candles existe,
+    mas ``n_priced`` é 0 — e é a contagem **com preço** que decide a
+    insuficiência, não a existência da lista.
+    """
+    decisions, _series = _windows(40, confidence="0.35", realized_bp=40)
+    stale = ruler.CandleSeries(
+        [
+            {
+                "timestamp_utc": (datetime(2026, 8, 1, 0, 0) + timedelta(minutes=i)).isoformat(),
+                "open": "85000",
+                "high": "85000",
+                "low": "85000",
+                "close": "85000",
+            }
+            for i in range(60)
+        ]
+    )
+    report, summary = ruler.build_report(
+        log_path=tmp_path / "diag.log",
+        decisions=decisions,
+        refusals={},
+        malformed=0,
+        series=stale,
+        ohlcv_note="OHLCV com cobertura parcial",
+        fee_bp=Decimal("5"),
+    )
+    assert summary["windows_non_overlapping"] == 40
+    assert summary["stats"]["n_priced"] == 0
+    assert summary["insufficient"] is True
+    assert summary["suggested_confidence_min"] is None
+    assert summary["exit_geometry_derived"] is False
+    assert "n_priced" in summary["insufficient_reasons"][-1]
+    assert "Amostra insuficiente" in report
+
+
+def test_sufficient_sample_derives_the_geometry_from_the_barriers(tmp_path):
+    """E4: com amostra suficiente a régua volta a derivar alvo/stop.
+
+    40 janelas que fecham a +40 bp sem tocar o stop: nenhum candidato acima do
+    realizado é atingido (sai-se ao preço do horizonte) e o melhor par é o de
+    maior expectancy líquida com a taxa maker **por perna**.
+    """
+    decisions, series = _windows(40, confidence="0.35", realized_bp=40)
+    report, summary = ruler.build_report(
+        log_path=tmp_path / "diag.log",
+        decisions=decisions,
+        refusals={},
+        malformed=0,
+        series=series,
+        ohlcv_note="OHLCV BTC/USDT 1m",
+        fee_bp=Decimal("5"),
+    )
+    assert summary["stats"]["n_priced"] == 40
+    assert summary["insufficient"] is False
+    assert summary["exit_geometry_derived"] is True
+    assert Decimal(summary["suggested_exit_target_bp"]) == Decimal("50")
+    assert Decimal(summary["suggested_exit_stop_bp"]) == Decimal("-14")
+    # +40 bp de realizado contra 2 × 5 bp de round-trip.
+    assert Decimal(summary["exit_geometry_expectancy_bp"]) == Decimal("30")
+    break_even = Decimal(summary["exit_geometry_break_even_hit_rate"])
+    assert Decimal("0") < break_even < Decimal("1")
+    assert "derivada" in report
+    assert "break-even" in report
+
+
+def test_the_cost_uses_the_maker_fee_per_leg_everywhere():
+    """N1: a taxa é **por perna**; todo o custo é ``2 × taxa`` (nunca somado)."""
+    assert ruler.DEFAULT_FEE_BP == Decimal("10")
+    assert ruler.hurdle_bp(fee_bp=Decimal("10"), spread_bp=Decimal("0")) == Decimal("20")
+    for leg in (Decimal("7.5"), Decimal("10")):
+        assert ruler.hurdle_bp(fee_bp=leg, spread_bp=Decimal("0")) == 2 * leg
+    at_threshold = ruler.Decision(
+        call_id="c", at=datetime(2026, 9, 23, 12, 0, 0), expected_move_bp=Decimal("30")
+    )
+    below = ruler.Decision(
+        call_id="b", at=datetime(2026, 9, 23, 12, 0, 0), expected_move_bp=Decimal("29.9")
+    )
+    assert ruler.regime_gate_predicate(decision=at_threshold, fee_bp=Decimal("10")) is True
+    assert ruler.regime_gate_predicate(decision=below, fee_bp=Decimal("10")) is False
+
+
+def test_sell_barriers_are_mirrored_by_side():
+    """E1: no SELL o alvo fica **abaixo** e o stop **acima** da entrada."""
+    entry = Decimal("100")
+    up = [(Decimal("100.39"), Decimal("100.1"))]  # +40 bp: toca o stop do short
+    down = [(Decimal("100.2"), Decimal("99.6"))]  # −40 bp: toca o alvo do short
+    assert ruler._barrier_for(side="SELL", entry=entry, path=up) == "stop"
+    assert ruler._barrier_for(side="SELL", entry=entry, path=down) == "target"
+    assert ruler._barrier_for(side="BUY", entry=entry, path=up) == "target"
+    assert ruler._barrier_for(side="BUY", entry=entry, path=down) == "stop"
+
+
+def test_only_closed_candles_inside_the_window_are_read():
+    """N5: só candles **já fechados** dentro de ``[start, end]`` contam."""
+    start = datetime(2026, 9, 23, 12, 0, 0)
+    end = start + timedelta(seconds=900)
+    series = ruler.CandleSeries(
+        [
+            {
+                "timestamp_utc": (start + timedelta(seconds=60 * k)).isoformat(),
+                "open": "100",
+                "high": "100",
+                "low": "100",
+                "close": "100",
+            }
+            for k in range(16)  # inclui a candle que abre exactamente em ``end``
+        ],
+        step=timedelta(seconds=60),
+    )
+    # k=0 (abre na decisão) entra; a candle que abre em ``end`` ainda não fechou.
+    assert len(series.path(start, end)) == 15
+    assert series.price_at(end) == Decimal("100")
+    # A cobertura termina bem antes do horizonte: nada de realização inventada.
+    assert series.price_at(end + timedelta(hours=3)) is None

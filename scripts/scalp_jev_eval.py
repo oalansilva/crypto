@@ -19,10 +19,11 @@ O relatório agrega:
 Amostra insuficiente é **declarada** (por bucket, por regime e no total) em vez
 de concluída — e nesse caso nenhum valor de `CONFIDENCE_MIN`,
 `EXIT_TARGET_BP`, `EXIT_STOP_BP` ou `HOLD_AFTER_FILL_S` é proposto. Com amostra
-suficiente a régua propõe **só** `CONFIDENCE_MIN`; a geometria de barreiras não
-é derivada aqui (não há curva de break-even por barreira) e `EXIT_TARGET_BP` /
-`EXIT_STOP_BP` são apresentados como *defaults de produto*, nunca como proposta
-confirmada pela régua.
+suficiente a régua propõe `CONFIDENCE_MIN` (bucket positivo mais baixo) e a
+**geometria** de alvo/stop derivada das barreiras reais da amostra (break-even
+das barreiras + expectancy líquida por candidato, com a taxa maker **por
+perna**); sem amostra, `EXIT_TARGET_BP` / `EXIT_STOP_BP` ficam como *defaults de
+produto*, explicitamente não derivados.
 
 Uso (do worktree do card, venv do source)::
 
@@ -58,13 +59,32 @@ OHLCV_TIMEFRAMES = ("1m", "5m", "15m", "1h")
 HORIZON_S = 900
 TARGET_BP = Decimal("35")
 STOP_BP = Decimal("-28")
-# Banda da taxa maker real (soma das duas pernas) observada no #1015: 12–16 bp.
-DEFAULT_FEE_BP = Decimal("14")
+# Taxa maker **por perna** em bp — a mesma unidade de `_fee_terms` (#1025 B).
+# O default é o fallback conservador de `_fee_terms` (10 bp/perna → 20 bp de
+# round-trip). A banda 12–16 bp do #1015 pressupõe o desconto BNB (≈7,5 bp por
+# perna → 15 bp); usa-se `--fee-bp 7.5` nesse caso. Custo e predicado de regime
+# usam sempre `2 × taxa` (nunca uma taxa já somada).
+DEFAULT_FEE_BP = Decimal("10")
 REGIME_SLACK = Decimal("1.5")
 # Tecto de conclusão (P3): abaixo disto o relatório declara insuficiência.
 MIN_NON_OVERLAPPING_WINDOWS = 30
 MIN_BUCKET_TRADES = 20
 CONFIDENCE_BUCKET_WIDTH = Decimal("0.1")
+# Candidatos de alvo/stop (bp) avaliados na derivação da geometria. O par de
+# produto (+35/−28) entra primeiro: em empate, a geometria de produto prevalece.
+GEOMETRY_TARGET_CANDIDATES_BP = (
+    Decimal("20"),
+    Decimal("25"),
+    Decimal("30"),
+    Decimal("35"),
+    Decimal("50"),
+)
+GEOMETRY_STOP_CANDIDATES_BP = (
+    Decimal("-14"),
+    Decimal("-20"),
+    Decimal("-28"),
+    Decimal("-35"),
+)
 _OHLCV_MAX_1M_CANDLES = 20160  # 14 dias de candles de 1 min
 
 EntryRe = re.compile(r"\sscalp jev call entry id=(\S+) state=(\{.*\}) questions=")
@@ -187,9 +207,17 @@ def parse_log(path: Path) -> tuple[list[Decision], dict[str, int], int]:
 
 
 class CandleSeries:
-    """Read-only view over already-stored OHLCV candles."""
+    """Read-only view over already-stored OHLCV candles.
 
-    def __init__(self, candles: Sequence[dict[str, Any]]) -> None:
+    ``timestamp_utc`` is the candle **open** time: a candle covers
+    ``[stamp, stamp + step)``.  Every accessor indexes by that covered
+    interval, so the ruler only reads candles that were already **closed** at
+    the horizon and never counts the boundary candle (correção N5).
+    """
+
+    def __init__(
+        self, candles: Sequence[dict[str, Any]], *, step: Optional[timedelta] = None
+    ) -> None:
         self.candles: list[tuple[datetime, Decimal, Decimal, Decimal, Decimal]] = []
         for row in candles:
             raw = row.get("timestamp_utc")
@@ -209,6 +237,17 @@ class CandleSeries:
                 )
             )
         self.candles.sort(key=lambda item: item[0])
+        if step is not None:
+            self.step = step
+        else:
+            gaps = sorted(
+                {
+                    later[0] - earlier[0]
+                    for earlier, later in zip(self.candles, self.candles[1:])
+                    if later[0] > earlier[0]
+                }
+            )
+            self.step = gaps[0] if gaps else timedelta(minutes=1)
 
     def __len__(self) -> int:
         return len(self.candles)
@@ -219,20 +258,42 @@ class CandleSeries:
             return None
         return self.candles[0][0], self.candles[-1][0]
 
-    def price_at(self, moment: datetime) -> Optional[Decimal]:
-        """Close of the last candle at or before ``moment``."""
-        found: Optional[Decimal] = None
+    def last_closed(self, moment: datetime) -> Optional[tuple[datetime, Decimal]]:
+        """``(open_time, close)`` of the last candle closed at or before ``moment``."""
+        found: Optional[tuple[datetime, Decimal]] = None
         for stamp, _open, _high, _low, close in self.candles:
-            if stamp <= moment:
-                found = close
+            if stamp + self.step <= moment:
+                found = (stamp, close)
             else:
                 break
         return found
 
+    def price_at(self, moment: datetime) -> Optional[Decimal]:
+        """Close of the last candle already **closed** at ``moment``.
+
+        Returns ``None`` when the stored coverage ends well before ``moment``
+        (a live log can outrun the OHLCV store): a stale candle is never
+        reported as the realized price of a later horizon.
+        """
+        found = self.last_closed(moment)
+        if found is None:
+            return None
+        stamp, close = found
+        if moment - (stamp + self.step) > self.step:
+            return None
+        return close
+
     def path(self, start: datetime, end: datetime) -> list[tuple[Decimal, Decimal]]:
-        """(high, low) of every candle with ``start < stamp <= end``."""
+        """(high, low) of the candles fully **inside** ``[start, end]``.
+
+        A candle only counts when it opened at/after ``start`` (no pre-decision
+        movement leaks in) and closed at/before ``end`` (the boundary candle is
+        not counted before it closes).
+        """
         return [
-            (high, low) for stamp, _open, high, low, _close in self.candles if start < stamp <= end
+            (high, low)
+            for stamp, _open, high, low, _close in self.candles
+            if stamp >= start and stamp + self.step <= end
         ]
 
 
@@ -268,11 +329,22 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
     need_to_naive = _naive(need_to) or need_to
     need_from_naive = _naive(need_from) or need_from
     chosen: Optional[str] = None
+    partial = False
     for timeframe in OHLCV_TIMEFRAMES:
         latest = latest_by_timeframe.get(timeframe)
         if latest is not None and latest >= need_to_naive:
             chosen = timeframe
             break
+    if chosen is None:
+        # A live log outruns the OHLCV store: keep the finest timeframe that
+        # at least reaches the log start and let the per-window pricing
+        # declare the windows the store does not cover (partial sample, E2).
+        for timeframe in OHLCV_TIMEFRAMES:
+            latest = latest_by_timeframe.get(timeframe)
+            if latest is not None and latest >= need_from_naive:
+                chosen = timeframe
+                partial = True
+                break
     if chosen is None:
         detail = ", ".join(
             f"{tf}: {'—' if latest_by_timeframe.get(tf) is None else latest_by_timeframe[tf].isoformat(sep=' ')}"
@@ -292,20 +364,44 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
         return CandleSeries([]), f"OHLCV falhou na leitura ({type(exc).__name__})"
     if not candles:
         return CandleSeries([]), f"OHLCV sem candles {OHLCV_SYMBOL} {chosen}"
-    return (
-        CandleSeries(candles),
+    note = (
         f"OHLCV {OHLCV_SYMBOL} {chosen} (granularidade {step_minutes} min): "
-        f"{len(candles)} candles (limit={limit})",
+        f"{len(candles)} candles (limit={limit})"
     )
+    if partial:
+        latest = latest_by_timeframe.get(chosen)
+        note += (
+            "; cobertura parcial da janela: o último candle "
+            f"{'—' if latest is None else latest.isoformat(sep=' ')} não chega ao fim "
+            f"{need_to_naive.isoformat(sep=' ')}"
+        )
+    return CandleSeries(candles, step=timedelta(minutes=step_minutes)), note
 
 
 def _barrier_for(
-    *, side: Optional[str], entry: Decimal, path: Sequence[tuple[Decimal, Decimal]]
+    *,
+    side: Optional[str],
+    entry: Decimal,
+    path: Sequence[tuple[Decimal, Decimal]],
+    target_bp: Decimal = TARGET_BP,
+    stop_bp: Decimal = STOP_BP,
 ) -> str:
+    """First barrier touched, mirrored by side.
+
+    For a BUY the target sits above the entry and the stop below it; for a
+    SELL (short) the geometry is **mirrored**: the target sits below the entry
+    and the stop above it (correção E1 — the SELL column was corrupt because
+    the levels were not mirrored). The stop counts first on an ambiguous
+    candle.
+    """
     if side not in {"BUY", "SELL"} or entry <= 0 or not path:
         return "unknown"
-    target = entry * (Decimal("1") + TARGET_BP / Decimal("10000"))
-    stop = entry * (Decimal("1") + STOP_BP / Decimal("10000"))
+    if side == "BUY":
+        target = entry * (Decimal("1") + target_bp / Decimal("10000"))
+        stop = entry * (Decimal("1") + stop_bp / Decimal("10000"))
+    else:
+        target = entry * (Decimal("1") - target_bp / Decimal("10000"))
+        stop = entry * (Decimal("1") - stop_bp / Decimal("10000"))
     for high, low in path:
         if side == "BUY":
             hit_stop = low <= stop
@@ -313,7 +409,6 @@ def _barrier_for(
         else:
             hit_stop = high >= stop
             hit_target = low <= target
-        # Conservative on the ambiguous candle: the stop counts first.
         if hit_stop:
             return "stop"
         if hit_target:
@@ -441,6 +536,82 @@ def _bucket_table(title: str, rows: list[tuple[str, dict[str, Any]]]) -> list[st
     return lines
 
 
+def _geometry_expectancy(
+    rows: Sequence[tuple[Decision, Realized]],
+    paths: dict[str, Sequence[tuple[Decimal, Decimal]]],
+    *,
+    target_bp: Decimal,
+    stop_bp: Decimal,
+    fee_bp: Decimal,
+) -> tuple[Optional[Decimal], int]:
+    """Net expectancy of a candidate geometry over the priced windows."""
+    pnls: list[Decimal] = []
+    for decision, realized in rows:
+        path = paths.get(decision.call_id)
+        if path is None or decision.entry_mid is None or decision.entry_mid <= 0:
+            continue
+        barrier = _barrier_for(
+            side=decision.side,
+            entry=decision.entry_mid,
+            path=path,
+            target_bp=target_bp,
+            stop_bp=stop_bp,
+        )
+        if barrier == "target":
+            pnls.append(target_bp)
+        elif barrier == "stop":
+            pnls.append(stop_bp)
+        elif barrier == "none" and realized.signed_bp is not None:
+            pnls.append(realized.signed_bp)
+    if not pnls:
+        return None, 0
+    gross = sum(pnls, Decimal("0")) / Decimal(len(pnls))
+    return gross - Decimal("2") * fee_bp, len(pnls)
+
+
+def _derive_geometry(
+    rows: Sequence[tuple[Decision, Realized]],
+    paths: dict[str, Sequence[tuple[Decimal, Decimal]]],
+    *,
+    fee_bp: Decimal,
+) -> Optional[tuple[Decimal, Decimal, Decimal]]:
+    """Best candidate geometry with positive net expectancy, or ``None``.
+
+    Evaluated only on a sufficient sample (``MIN_NON_OVERLAPPING_WINDOWS``
+    priced windows); the product geometry (+35/−28) is tried first so a tie
+    keeps it. Without a candidate that clears the round-trip cost the ruler
+    declares the geometry not derived.
+    """
+    if len(rows) < MIN_NON_OVERLAPPING_WINDOWS:
+        return None
+    candidates = [(TARGET_BP, STOP_BP)] + [
+        (target, stop)
+        for target in GEOMETRY_TARGET_CANDIDATES_BP
+        for stop in GEOMETRY_STOP_CANDIDATES_BP
+    ]
+    best: Optional[tuple[Decimal, Decimal, Decimal]] = None
+    for target_bp, stop_bp in candidates:
+        expectancy, n = _geometry_expectancy(
+            rows, paths, target_bp=target_bp, stop_bp=stop_bp, fee_bp=fee_bp
+        )
+        if expectancy is None or n < MIN_NON_OVERLAPPING_WINDOWS:
+            continue
+        if best is None or expectancy > best[2]:
+            best = (target_bp, stop_bp, expectancy)
+    if best is None or best[2] <= 0:
+        return None
+    return best
+
+
+def _break_even_hit_rate(*, target_bp: Decimal, stop_bp: Decimal, fee_bp: Decimal) -> Decimal:
+    """Target hit rate a barrier pair needs just to pay the round-trip cost."""
+    risk = abs(stop_bp)
+    gain = abs(target_bp)
+    if gain + risk <= 0:
+        return Decimal("1")
+    return (Decimal("2") * fee_bp + risk) / (gain + risk)
+
+
 def build_report(
     *,
     log_path: Path,
@@ -455,6 +626,12 @@ def build_report(
     windows = non_overlapping(decisions)
     window_ids = {decision.call_id for decision in windows}
     realized_windows = [(d, r) for d, r in realized if d.call_id in window_ids]
+    # Percurso high/low de cada janela não sobreposta — usado para reavaliar as
+    # barreiras de cada candidato de geometria (E4).
+    paths = {
+        decision.call_id: series.path(decision.at, decision.at + timedelta(seconds=HORIZON_S))
+        for decision in windows
+    }
     span = None
     if decisions:
         span = (min(d.at for d in decisions), max(d.at for d in decisions))
@@ -477,8 +654,10 @@ def build_report(
         "suggested_confidence_min": None,
         "suggested_exit_target_bp": None,
         "suggested_exit_stop_bp": None,
-        # A régua não deriva a geometria de barreiras: os valores actuais são
-        # defaults de produto (item 2 da correção pós-CR).
+        # A geometria é derivada da régua **só** com amostra suficiente (>= 30
+        # janelas com preço) e um candidato com expectancy líquida positiva;
+        # sem isso, os valores actuais são *defaults de produto* explicitamente
+        # não derivados (E4).
         "exit_geometry_derived": False,
         "product_exit_target_bp": str(TARGET_BP),
         "product_exit_stop_bp": str(STOP_BP),
@@ -497,6 +676,15 @@ def build_report(
         )
     insufficient_regimes = False
     stats_all = _stats(realized_windows, fee_bp=fee_bp)
+    if stats_all["n_priced"] < MIN_NON_OVERLAPPING_WINDOWS:
+        # E2: a insuficiência tem de olhar a contagem de janelas **com preço**
+        # (`n_priced`), não só a lista de candles — com cobertura parcial
+        # (OHLCV que não chega ao fim da janela) a lista pode existir e a
+        # amostra não ter preço nenhum.
+        reasons.append(
+            f"{stats_all['n_priced']} janela(s) com preço (`n_priced`) "
+            f"< mínimo de {MIN_NON_OVERLAPPING_WINDOWS}"
+        )
 
     # Regime segmentation: window sigma (vol_bp) median split and gate predicate.
     vol_values = [
@@ -556,17 +744,34 @@ def build_report(
         and stats["expectancy_net_bp"] > 0
     ]
     confidence_max = Decimal(summary["confidence_max"])
-    if positive and len(windows) >= MIN_NON_OVERLAPPING_WINDOWS:
+    # E2: uma amostra só é suficiente quando as **janelas com preço**
+    # (`n_priced`) chegam ao mínimo, não apenas as janelas não sobrepostas.
+    sample_sufficient = (
+        len(windows) >= MIN_NON_OVERLAPPING_WINDOWS
+        and stats_all["n_priced"] >= MIN_NON_OVERLAPPING_WINDOWS
+    )
+    if positive and sample_sufficient:
         label = positive[0][0]
         threshold = Decimal(label.split(",")[0].strip("[ "))
         if threshold <= confidence_max:
             summary["suggested_confidence_min"] = str(threshold)
-    # Correção pós-CR (item 2): com >= MIN_NON_OVERLAPPING_WINDOWS janelas a
-    # régua «propunha» a geometria actual (TARGET_BP/STOP_BP) sem derivação
-    # nenhuma, o que se lia como se a régua a tivesse confirmado. A régua não
-    # deriva barreiras (não calcula a curva de break-even por barreira): os
-    # valores actuais são *defaults de produto*, explicitamente não derivados
-    # daqui, e ``suggested_exit_*`` fica sempre a `None`.
+    # E4: com amostra suficiente a régua volta a **derivar** a geometria
+    # alvo/stop das barreiras reais — candidatos avaliados por expectancy
+    # líquida com a taxa maker **por perna** (round-trip = 2 × taxa). Sem
+    # candidato que pague o round-trip, ou sem amostra, `suggested_exit_*`
+    # fica a `None` e a geometria são os defaults de produto, explicitamente
+    # não derivados.
+    if sample_sufficient:
+        geometry = _derive_geometry(realized_windows, paths, fee_bp=fee_bp)
+        if geometry is not None:
+            target_bp, stop_bp, expectancy = geometry
+            summary["suggested_exit_target_bp"] = str(target_bp)
+            summary["suggested_exit_stop_bp"] = str(stop_bp)
+            summary["exit_geometry_derived"] = True
+            summary["exit_geometry_expectancy_bp"] = str(expectancy)
+            summary["exit_geometry_break_even_hit_rate"] = str(
+                _break_even_hit_rate(target_bp=target_bp, stop_bp=stop_bp, fee_bp=fee_bp)
+            )
     summary["insufficient"] = bool(reasons)
     summary["insufficient_regimes"] = insufficient_regimes
     summary["stats"] = stats_all
@@ -670,12 +875,24 @@ def build_report(
                 f"{MIN_BUCKET_TRADES}+ trades com preço tem expectancy líquida positiva "
                 "— default de produto mantido"
             )
-        lines.append(
-            f"- geometria: `EXIT_TARGET_BP` = {_fmt(TARGET_BP)} e `EXIT_STOP_BP` = "
-            f"{_fmt(STOP_BP)} são **defaults de produto** (`EXIT_TARGET_BP`/`EXIT_STOP_BP`), "
-            "**não derivados desta régua** — a régua não calcula a curva de break-even "
-            "por barreira, logo não propõe geometria"
-        )
+        if summary["exit_geometry_derived"]:
+            target_bp = Decimal(summary["suggested_exit_target_bp"])
+            stop_bp = Decimal(summary["suggested_exit_stop_bp"])
+            break_even = Decimal(summary["exit_geometry_break_even_hit_rate"])
+            expectancy = Decimal(summary["exit_geometry_expectancy_bp"])
+            lines.append(
+                f"- geometria: `EXIT_TARGET_BP` = {_fmt(target_bp)} e `EXIT_STOP_BP` = "
+                f"{_fmt(stop_bp)} — **derivada** da amostra (candidato com expectancy líquida "
+                f"de {_fmt(expectancy)} bp e hit-rate de break-even "
+                f"{_fmt(break_even * Decimal('100'))}% com a taxa maker de {_fmt(fee_bp)} bp/perna)"
+            )
+        else:
+            lines.append(
+                f"- geometria: `EXIT_TARGET_BP` = {_fmt(TARGET_BP)} e `EXIT_STOP_BP` = "
+                f"{_fmt(STOP_BP)} são **defaults de produto** (`EXIT_TARGET_BP`/`EXIT_STOP_BP`), "
+                "**não derivados desta régua** — nenhum candidato de barreira paga o "
+                "round-trip com esta amostra"
+            )
         lines.append("- `HOLD_AFTER_FILL_S` = 900 s (valor de produto, fora da recalibração)")
     lines.append("")
     return "\n".join(lines), summary

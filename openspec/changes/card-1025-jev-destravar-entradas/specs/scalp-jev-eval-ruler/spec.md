@@ -22,6 +22,12 @@ The Farol SHALL provide `scripts/scalp_jev_eval.py`, a **read-only** evaluation 
 - **THEN** the report from this requirement SHALL exist for the sample in question
 - **AND** without it the current `CONFIDENCE_MIN`, `EXIT_TARGET_BP`, `EXIT_STOP_BP` and `HOLD_AFTER_FILL_S` SHALL stay unchanged
 
+#### Scenario: A sufficient sample derives the barrier geometry
+
+- **WHEN** the ruler has a sufficient sample of priced non-overlapping windows
+- **THEN** it SHALL derive the candidate target/stop pair from the sample's barrier paths by net expectancy, charging the maker fee **per leg**
+- **AND** the current product pair SHALL stay when the sample is insufficient or when no candidate clears the round-trip cost
+
 #### Scenario: The instrument is read-only
 
 - **WHEN** the ruler runs

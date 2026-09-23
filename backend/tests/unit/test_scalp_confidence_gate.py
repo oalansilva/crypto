@@ -42,7 +42,7 @@ def _signal(*, confidence: Decimal, expected_move_bp: Decimal = Decimal("60")) -
     )
 
 
-def _cycle(*, confidence_min: Decimal, confidence: Decimal):
+def _cycle(*, confidence_min, confidence: Decimal):
     return decide_cycle(
         enabled=True,
         killed=False,
@@ -87,9 +87,22 @@ def test_gate_threshold_is_configurable_by_env_and_applied_by_the_engine(monkeyp
 def test_invalid_or_absent_env_keeps_the_default(monkeypatch):
     monkeypatch.delenv("SCALP_CONFIDENCE_MIN", raising=False)
     assert _confidence_min() == CONFIDENCE_MIN
-    for raw in ("", "abc", "-1", "1.5", "2"):
+    # N2: não finitos («nan»/«inf») comparam False contra tudo e desligavam o
+    # gate em silêncio — têm de cair no default conservador (falha fechada).
+    for raw in ("", "abc", "-1", "1.5", "2", "nan", "NaN", "-nan", "inf", "-inf", "Infinity"):
         monkeypatch.setenv("SCALP_CONFIDENCE_MIN", raw)
-        assert _confidence_min() == CONFIDENCE_MIN
+        assert _confidence_min() == CONFIDENCE_MIN, raw
+
+
+def test_gate_can_be_removed_explicitly_with_no_low_confidence(monkeypatch):
+    """3.3/3.4: caminho explícito de remoção do gate (confiança não separa)."""
+    for raw in ("none", "off", "disabled", "NONE", "Off"):
+        monkeypatch.setenv("SCALP_CONFIDENCE_MIN", raw)
+        assert _confidence_min() is None, raw
+    monkeypatch.setenv("SCALP_CONFIDENCE_MIN", "none")
+    allowed = _cycle(confidence_min=_confidence_min(), confidence=Decimal("0.01"))
+    assert allowed.send is True
+    assert allowed.skip_reason is None, "sem limiar, nenhum low_confidence"
 
 
 def test_engine_default_threshold_does_not_read_the_environment(monkeypatch):

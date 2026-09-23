@@ -14,7 +14,7 @@ from typing import Any, Callable, Optional, Protocol
 from sqlalchemy.orm import Session
 
 from app.models import ScalpFill, ScalpUserState, UserExchangeCredential
-from app.services.binance_spot_orders import BinanceOrderError
+from app.services.binance_spot_orders import ORDER_FILTER_REJECTED_CODE, BinanceOrderError
 from app.services.scalp_engine import (
     CONFIDENCE_MIN,
     CROSS_REJECT_CODES,
@@ -57,6 +57,12 @@ logger = logging.getLogger(__name__)
 BOOK_UNAVAILABLE_COPY = "livro indisponível"
 BALANCE_CACHE_SECONDS = 5.0
 
+# Valores de ``SCALP_CONFIDENCE_MIN`` que removem o gate de confiança (card
+# #1025 C): a decisão passa a previsão × custo × regime e ``low_confidence``
+# desaparece do caminho. Qualquer outro valor fora de [0, 1] ou não finito cai
+# no default conservador.
+CONFIDENCE_GATE_OFF = frozenset({"none", "off", "disabled"})
+
 STATUS_COPY = {
     "off": (
         "Desligado: não envia ordem deste scalp. Lookback últimos 15 min. "
@@ -86,22 +92,29 @@ def has_spot_key(db: Session, user_id: str) -> bool:
     return bool(cred and str(cred.api_key or "").strip() and str(cred.api_secret or "").strip())
 
 
-def _confidence_min() -> Decimal:
+def _confidence_min() -> Optional[Decimal]:
     """Confidence gate threshold, configurable by env (card #1025).
 
     The pure engine receives the value; it never reads the environment. With
     no ruler report (or with the ruler declaring an insufficient sample) the
     value stays at the current default — the decision recorded in the apply
-    evidence (task 3.3/3.4).
+    evidence (task 3.3/3.4). ``none``/``off`` removes the gate explicitly (the
+    ruler outcome "confidence does not separate"): the engine then gets
+    ``None`` and no ``low_confidence`` refusal is produced.
     """
     raw = (os.getenv("SCALP_CONFIDENCE_MIN") or "").strip()
     if not raw:
         return CONFIDENCE_MIN
+    if raw.lower() in CONFIDENCE_GATE_OFF:
+        return None
     try:
         value = Decimal(raw)
     except Exception:
         return CONFIDENCE_MIN
-    if value < 0 or value > 1:
+    # Fail closed (N2): ``nan``/``inf`` compare ``False`` against everything, so
+    # an invalid env would silently disable the gate. Any non-finite value
+    # falls back to the conservative product default.
+    if not value.is_finite() or value < 0 or value > 1:
         return CONFIDENCE_MIN
     return value
 
@@ -456,7 +469,13 @@ def _maybe_cancel_entry_timeout(
         return
     if _seconds_since(state.rest_opened_at, now) < ENTRY_REST_TIMEOUT_S:
         return
-    _cancel_resting(state, cred=cred, exchange=exchange, all_bot=False)
+    if not _cancel_resting(state, cred=cred, exchange=exchange, all_bot=False):
+        # E3 fail-soft: o cancelamento falhou e a ordem pode continuar viva e
+        # preencher. Mantém `rest_opened_at`/`rest_role` armados para o
+        # timeout voltar a disparar no ciclo seguinte (`_sync_resting_order`
+        # reconcilia primeiro) em vez de deixar o estado semi-limpo com o id
+        # vivo e o timeout silenciado.
+        return
     state.rest_opened_at = None
     state.rest_role = None
 
@@ -502,6 +521,38 @@ def _apply_fill(
     state.fees_quote = _dec(state.fees_quote) + max(Decimal("0"), fee)
 
 
+def _settle_dust_position(state: ScalpUserState, *, price: Decimal) -> None:
+    """Close the local position when the remainder cannot be liquidated (N3).
+
+    A leftover position whose notional is below the symbol's
+    ``MIN_NOTIONAL``/``NOTIONAL`` filter can never be sent to the exchange: the
+    aggressive exit would be rejected on every cycle and, because the escape
+    branch precedes the ``stuck`` mark, the position would stay open forever
+    (and the bot would never enter again). The remainder is treated as dust —
+    the local position is cleared and the unsellable dust stays in the account.
+
+    Clearing the position without booking the loss would make ``day_pnl_quote``
+    rise silently by the dust's cost (its negative unrealized disappears while
+    the cost leaves no trace), hiding it from the kill/drawdown guard. The
+    write-down is realized at the realizable reference price — the same price
+    the rejected escape used for the symbol filter — mirroring the sell leg of
+    :func:`_apply_fill`.
+    """
+    qty = _dec(state.inventory_btc)
+    avg = _dec(state.avg_entry_quote) if state.avg_entry_quote is not None else None
+    if qty > 0 and avg is not None:
+        state.realized_pnl_quote = _dec(state.realized_pnl_quote) + (price - avg) * qty
+    state.inventory_btc = Decimal("0")
+    state.avg_entry_quote = None
+    state.position_opened_at = None
+    state.stuck = False
+    state.rest_client_order_id = None
+    state.rest_side = None
+    state.rest_price = None
+    state.rest_role = None
+    state.rest_opened_at = None
+
+
 def _refresh_day_pnl(state: ScalpUserState, *, mid: Decimal) -> Decimal:
     unrealized = unrealized_pnl(
         inventory_btc=_dec(state.inventory_btc),
@@ -524,18 +575,33 @@ def _cancel_resting(
     cred: Optional[UserExchangeCredential],
     exchange: ExchangePort,
     all_bot: bool = False,
-) -> None:
+) -> bool:
+    """Cancel the not-yet-filled bot resting order.
+
+    Returns ``True`` when there is nothing left to cancel or the exchange
+    acknowledged the cancellation, and ``False`` when the cancel attempt
+    failed. On failure the resting bookkeeping is **kept** — the order may
+    still be live and fill — so the caller can reconcile/retry instead of
+    stacking an aggressive order on top of a passive one that may still take
+    the position (E3, oversell guard).
+    """
     if cred is None:
         state.rest_client_order_id = None
         state.rest_side = None
         state.rest_price = None
         state.rest_role = None
         state.rest_opened_at = None
-        return
+        return True
+    if not all_bot and not state.rest_client_order_id:
+        state.rest_side = None
+        state.rest_price = None
+        state.rest_role = None
+        state.rest_opened_at = None
+        return True
     try:
         if all_bot:
             exchange.cancel_bot_orders(api_key=cred.api_key, api_secret=cred.api_secret)
-        elif state.rest_client_order_id:
+        else:
             exchange.cancel_bot_order(
                 api_key=cred.api_key,
                 api_secret=cred.api_secret,
@@ -543,11 +609,13 @@ def _cancel_resting(
             )
     except BinanceOrderError as exc:
         logger.warning("scalp cancel failed user=%s code=%s", state.user_id, exc.code)
+        return False
     state.rest_client_order_id = None
     state.rest_side = None
     state.rest_price = None
     state.rest_role = None
     state.rest_opened_at = None
+    return True
 
 
 _OPEN_ORDER_STATUSES = frozenset({"NEW", "PARTIALLY_FILLED", "PENDING_CANCEL"})
@@ -1094,6 +1162,18 @@ def _run_cycle(
                 client_order_id,
             )
             result = None
+        elif rest_open and not _cancel_resting(state, cred=cred, exchange=port, all_bot=False):
+            # E3: o cancelamento da passiva falhou — a ordem pode continuar
+            # viva e preencher; enviar a MARKET no mesmo ciclo podia vender
+            # duas vezes. Adia o escape (mesma chave de reconciliação e
+            # backoff) e mantém o estado resting para o próximo ciclo
+            # reconciliar/repetir.
+            logger.warning(
+                "scalp aggressive exit deferred: passive cancel failed user=%s client_order_id=%s",
+                state.user_id,
+                state.rest_client_order_id,
+            )
+            result = None
         else:
             try:
                 result = port.place_aggressive_exit(
@@ -1104,9 +1184,25 @@ def _run_cycle(
                     reference_price=reference_price,
                 )
             except BinanceOrderError as exc:
-                logger.warning(
-                    "scalp aggressive exit failed user=%s code=%s", state.user_id, exc.code
-                )
+                if exc.code == ORDER_FILTER_REJECTED_CODE:
+                    # N3: o resto está abaixo do filtro (MIN_NOTIONAL/NOTIONAL)
+                    # ou do lote mínimo — nunca é executável. Tratá-lo como
+                    # dust encerrado em vez de re-tentar para sempre (o ramo do
+                    # escape precede o `stuck`: a posição e o bot ficariam
+                    # presos indefinidamente).
+                    _aggressive_attempts.pop(str(state.user_id), None)
+                    _settle_dust_position(state, price=reference_price)
+                    logger.warning(
+                        "scalp aggressive exit dust user=%s quantity=%s reference_price=%s code=%s",
+                        state.user_id,
+                        intent.quantity,
+                        reference_price,
+                        exc.code,
+                    )
+                else:
+                    logger.warning(
+                        "scalp aggressive exit failed user=%s code=%s", state.user_id, exc.code
+                    )
                 result = None
         if result is not None:
             # A Binance-accepted order consumes the id: a leftover position (a
