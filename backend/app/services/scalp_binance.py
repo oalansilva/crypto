@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Any, Optional
 
 from app.services.binance_spot_orders import (
+    ORDER_FILTER_REJECTED_CODE,
     BinanceOrderError,
     decimal_floor,
     fetch_free_balance,
@@ -238,9 +239,13 @@ def place_aggressive_exit(
     )
     qty = decimal_floor(quantity, step)
     if qty < min_qty or qty <= 0:
-        raise BinanceOrderError("Quantidade abaixo do filtro da Binance")
+        raise BinanceOrderError(
+            "Quantidade abaixo do filtro da Binance", code=ORDER_FILTER_REJECTED_CODE
+        )
     if min_notional > 0 and (qty * reference_price) < min_notional:
-        raise BinanceOrderError("Notional abaixo do filtro da Binance")
+        raise BinanceOrderError(
+            "Notional abaixo do filtro da Binance", code=ORDER_FILTER_REJECTED_CODE
+        )
     return signed_request(
         method="POST",
         path="/api/v3/order",

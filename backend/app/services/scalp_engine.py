@@ -186,7 +186,9 @@ def decide_cycle(
     spread_bp: Decimal = Decimal("0"),
     has_open_position: bool = False,
     has_exit_resting: bool = False,
-    confidence_min: Decimal = CONFIDENCE_MIN,
+    # ``None`` removes the confidence gate (card #1025 C): no ``low_confidence``
+    # refusal is produced and the decision becomes forecast × cost × regime.
+    confidence_min: Optional[Decimal] = CONFIDENCE_MIN,
     jev_target_ms: int = JEV_TARGET_MS,
 ) -> CycleIntent:
     """Hold is the default. Live send is opt-in after every gate."""
@@ -290,7 +292,7 @@ def decide_cycle(
             skip_reason="hold",
             clipped_inventory=clipped if inventory_changed else None,
         )
-    if jev.confidence < confidence_min:
+    if confidence_min is not None and jev.confidence < confidence_min:
         return CycleIntent(
             send=False,
             cancel_resting=cancel_stale,
