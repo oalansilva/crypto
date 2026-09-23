@@ -759,6 +759,15 @@
       "evidence": "scalp_db uses postgres_isolation/unit_database_url; payload cases use the in-memory BTC window; HTTP cases fake urlopen"
     },
     {
+      "file": "backend/tests/unit/test_scalp_jev_entry_verdicts.py",
+      "protected_behavior": "card #1028 entry-gate verdicts (every reply-fed gate in one record), confidence origin, answered model version, toxicity band label and the 1.5 s late refusal",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; reply cases fake urlopen and use the tail-truncating diagnostic log; pure mapping/decide_cycle cases reuse the JEV fixtures"
+    },
+    {
       "file": "backend/tests/unit/test_scalp_jev_eval_ruler.py",
       "protected_behavior": "card #1025 read-only Jev ruler (non-overlapping windows, insufficiency declaration, bucket proposal)",
       "production_reachability": "operator script over the DEV log",

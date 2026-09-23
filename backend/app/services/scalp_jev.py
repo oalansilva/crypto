@@ -12,9 +12,19 @@ import uuid
 from decimal import Decimal
 from typing import Any, Optional
 
-from app.services.scalp_engine import JEV_LATE_MS, JevSignal, Side, SYMBOL
+from app.services.scalp_engine import (
+    JEV_CALL_TIMEOUT_MS,
+    JEV_LATE_MS,
+    TOXIC_NOUL_DECISION,
+    TOXIC_NOUL_NOT_TOXIC_BELOW,
+    TOXIC_NOUL_TOXIC_ABOVE,
+    JevSignal,
+    Side,
+    SYMBOL,
+)
 from app.services.scalp_jev_log import (
     ERROR_BODY_READ_BYTES,
+    RECORD_TOKEN_CHARS,
     log_call_entry,
     log_call_error,
     log_call_raw,
@@ -30,7 +40,13 @@ logger = logging.getLogger(__name__)
 _SECRET_ENV_NAMES = ("JEV_API_KEY", "TYPESAFE_API_KEY")
 _DEFAULT_BASE_URL = "https://api.typesafe.ai"
 _SYSTEMONE_PATH = "/v1/systemone"
-_JEV_MODEL = "jev-latest"
+# Card #1028: the call requests a fixed model version, never the moving alias
+# ``jev-latest`` that changes when the provider publishes. The pinned default
+# is the version observed in the repo's DEV evidence (test fixture of the reply,
+# ``backend/tests/unit/test_scalp_direcional_jev.py``); it is overridable by
+# ``SCALP_JEV_MODEL`` and the alias never comes back through configuration.
+_DEFAULT_JEV_MODEL = "jev-1.13.0"
+_MOVING_JEV_ALIAS = "jev-latest"
 
 # Ordered Score criteria (2–10 levels). Index i maps to these bp values (linear interp between).
 _EXPECTED_MOVE_BP_LEVELS_BP: tuple[int, ...] = (0, 5, 10, 15, 20, 25, 30, 35, 50, 80)
@@ -83,6 +99,18 @@ def _stand_in_enabled() -> bool:
     return (os.getenv("JEV_STAND_IN") or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def jev_model() -> str:
+    """Fixed model version requested by the call (card #1028).
+
+    Never returns the moving alias: an empty/alias override falls back to the
+    pinned default, so ``jev-latest`` cannot come back through configuration.
+    """
+    raw = (os.getenv("SCALP_JEV_MODEL") or "").strip()
+    if not raw or raw.lower() == _MOVING_JEV_ALIAS:
+        return _DEFAULT_JEV_MODEL
+    return raw
+
+
 def _base_url() -> str:
     return (os.getenv("JEV_BASE_URL") or "").strip().rstrip("/")
 
@@ -114,7 +142,7 @@ def _decimal(value: Any, default: str = "0") -> Decimal:
         return Decimal(default)
 
 
-def _hold_signal(latency_ms: int) -> JevSignal:
+def _hold_signal(latency_ms: int, *, model: Optional[str] = None) -> JevSignal:
     return JevSignal(
         side=None,
         confidence=Decimal("0"),
@@ -122,6 +150,7 @@ def _hold_signal(latency_ms: int) -> JevSignal:
         book_toxic=False,
         latency_ms=latency_ms,
         cost_quote=Decimal("0"),
+        model=model,
     )
 
 
@@ -153,7 +182,7 @@ def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
     state = payload.get("state") if isinstance(payload.get("state"), dict) else payload
     return {
         "state": state,
-        "model": _JEV_MODEL,
+        "model": jev_model(),
         "questions": {
             "side": {
                 "type": "choice",
@@ -202,20 +231,54 @@ def systemone_input_tokens(payload: dict[str, Any]) -> int:
 
 
 def _noul_yes(answer: Any) -> bool:
-    return _decimal(_as_dict(answer).get("noul")) >= Decimal("0.5")
+    """Decision boolean only: today's single cut-off (>= 0.5), unchanged."""
+    return _decimal(_as_dict(answer).get("noul")) >= TOXIC_NOUL_DECISION
 
 
-def _side_confidence(side_answer: dict[str, Any]) -> Decimal:
+def noul_label(noul: Optional[Decimal]) -> str:
+    """Record-only toxicity label with two cut-offs and a band (card #1028).
+
+    Never feeds the decision: ``not_toxic`` (< 0.4), ``indeterminate``
+    (0.4..0.6 inclusive), ``toxic`` (> 0.6) and ``unknown`` without a value.
+    """
+    if noul is None:
+        return "unknown"
+    if noul < TOXIC_NOUL_NOT_TOXIC_BELOW:
+        return "not_toxic"
+    if noul > TOXIC_NOUL_TOXIC_ABOVE:
+        return "toxic"
+    return "indeterminate"
+
+
+def _side_confidence(side_answer: dict[str, Any]) -> tuple[Decimal, str]:
+    """Confidence value the decision consumes, with the origin it came from.
+
+    Card #1028: one reading, two returns — ``reply_field`` when the reply
+    carries the field, ``choice_probability`` when it only carries the chosen
+    option's probability, ``none`` when neither exists. The value returned is
+    exactly the one the entry gate compares against the threshold.
+    """
     if side_answer.get("confidence") is not None:
-        return _decimal(side_answer.get("confidence"))
+        return _decimal(side_answer.get("confidence")), "reply_field"
     choice = str(side_answer.get("choice") or "").strip()
     probs = _as_dict(side_answer.get("probabilities"))
     if choice and choice in probs:
-        return _decimal(probs.get(choice))
+        return _decimal(probs.get(choice)), "choice_probability"
     upper = choice.upper()
     if upper and upper in probs:
-        return _decimal(probs.get(upper))
-    return Decimal("0")
+        return _decimal(probs.get(upper)), "choice_probability"
+    return Decimal("0"), "none"
+
+
+def _reply_model(parsed: Any) -> Optional[str]:
+    """Model version that answered (card #1028); ``None`` when absent.
+
+    The identifier is a free vendor field, so it is flattened to a single
+    bounded token (whitespace collapsed, secrets redacted) before it can reach
+    a record or the cycle suffix.
+    """
+    token = summarize_body(_as_dict(parsed).get("model"), limit=RECORD_TOKEN_CHARS)
+    return token or None
 
 
 def _expected_move_bp(answers: dict[str, Any]) -> Decimal:
@@ -240,15 +303,22 @@ def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
     data = _as_dict(parsed)
     answers = _as_dict(data.get("answers"))
     if not answers:
-        return _hold_signal(latency_ms)
+        return _hold_signal(latency_ms, model=_reply_model(parsed))
     side_answer = _as_dict(answers.get("side"))
+    confidence, confidence_origin = _side_confidence(side_answer)
+    noul = _noul_value(parsed)
     return JevSignal(
         side=_parse_side(side_answer.get("choice")),
-        confidence=_side_confidence(side_answer),
+        confidence=confidence,
         expected_move_bp=_expected_move_bp(answers),
         book_toxic=_noul_yes(answers.get("book_toxic")),
         latency_ms=latency_ms,
         cost_quote=Decimal("0"),
+        # Card #1028: diagnostics only; the decision reads `confidence`/`book_toxic`.
+        model=_reply_model(parsed),
+        confidence_origin=confidence_origin,
+        noul=noul,
+        noul_label=noul_label(noul),
     )
 
 
@@ -301,8 +371,13 @@ def _error_body(exc: urllib.error.HTTPError) -> str:
 
 
 def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -> JevSignal:
-    """One HTTP call. Timeout defaults to the 1.5 s late gate."""
-    timeout = float(timeout_s if timeout_s is not None else (JEV_LATE_MS / 1000.0))
+    """One HTTP call. Timeout defaults to the 3 s call timeout (card #1028).
+
+    The late refusal stays at ``JEV_LATE_MS`` (1.5 s): a reply between 1.5 s and
+    3 s now arrives, is mapped and recorded, and the cycle is still refused as
+    late. The explicit ``timeout_s`` override keeps working for tools/tests.
+    """
+    timeout = float(timeout_s if timeout_s is not None else (JEV_CALL_TIMEOUT_MS / 1000.0))
     key = jev_api_key()
     if not key:
         # No key: no HTTP call leaves the process, so no diagnostic record —
@@ -387,5 +462,10 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
         # Card #1025 (G): noul + the window features the flag was derived from.
         noul=_noul_value(parsed),
         window=_window_features(payload),
+        # Card #1028: version that answered, confidence origin and the
+        # record-only toxicity label; not gated by SCALP_JEV_RAW_PAYLOAD.
+        model=signal.model,
+        confidence_origin=signal.confidence_origin,
+        noul_label=signal.noul_label,
     )
     return signal

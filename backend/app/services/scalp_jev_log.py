@@ -29,7 +29,7 @@ import os
 import re
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from app.services.runtime_status import env_flag_enabled
 
@@ -43,6 +43,10 @@ MAX_LOG_BYTES = 200 * 1024 * 1024
 # Summarized (truncated) error body kept in the error record.
 ERROR_BODY_CHARS = 300
 ERROR_BODY_READ_BYTES = 4096
+
+# Card #1028: bounded single-token rendering for a free reply field written as
+# ``k=v`` (the model version that answered). Short: the value is a version id.
+RECORD_TOKEN_CHARS = 64
 
 # When the ceiling is hit the file is trimmed back to this share of the
 # ceiling, so trimming stays rare at ~1 record/s. A record is never split;
@@ -124,6 +128,17 @@ def summarize_body(body: Any, *, limit: int = ERROR_BODY_CHARS) -> str:
     if len(flat) > limit:
         return flat[:limit] + "…"
     return flat
+
+
+def record_token(value: Any, *, default: str = "unknown") -> str:
+    """Single-line, redacted, bounded token for a free ``k=v`` record field.
+
+    Card #1028: the reply ``model`` is the only free vendor field that reached
+    a record without a summarizer. Flattening it here keeps one record per line
+    and the ``\\S+`` shape the suffix declares, so a reply can inject neither a
+    newline (a false line to the read-only ruler) nor a configured secret.
+    """
+    return summarize_body(value, limit=RECORD_TOKEN_CHARS) or str(default)
 
 
 class TailTruncatingFileHandler(logging.FileHandler):
@@ -294,11 +309,17 @@ def _compact(value: Any) -> str:
 
 
 def log_call_entry(*, call_id: str, systemone: Any) -> None:
+    """Entry record.
+
+    Card #1028: the entry is written before the reply, so it carries the fixed
+    version **requested** (``model_requested=``), not the one that answered.
+    """
     logger.info(
-        "scalp jev call entry id=%s state=%s questions=%s",
+        "scalp jev call entry id=%s state=%s questions=%s model_requested=%s",
         call_id,
         _compact(summarize_state(systemone)),
         _compact(summarize_questions(systemone)),
+        _as_dict(systemone).get("model"),
     )
 
 
@@ -314,6 +335,9 @@ def log_call_return(
     confidence: Any = None,
     noul: Any = None,
     window: Any = None,
+    model: Any = None,
+    confidence_origin: Any = None,
+    noul_label: Any = None,
 ) -> None:
     """Return record: the reply plus the drivers of the ``book_toxic`` flag.
 
@@ -321,12 +345,18 @@ def log_call_return(
     the decision used (``ret_bp``, ``vol_bp``, ``aggressor_flow``,
     ``spread_bp_mean``, ``trade_count``) go into the same #1015 record, so the
     model's own opinion can be told apart from a wrong mapping. Log only.
+
+    Card #1028: the same record carries the version that **answered**
+    (``model=``, ``unknown`` when the reply has no identifier), the origin of
+    the confidence used (``confidence_origin=``) and the record-only toxicity
+    label (``noul_label=``), independent of ``SCALP_JEV_RAW_PAYLOAD``.
     """
     features = _as_dict(window)
     logger.info(
         "scalp jev call return id=%s status=%s latency_ms=%s side=%s "
         "expected_move_bp=%s score=%s book_toxic=%s confidence=%s "
-        "noul=%s window_ret_bp=%s window_vol_bp=%s window_aggressor_flow=%s "
+        "noul=%s model=%s confidence_origin=%s noul_label=%s "
+        "window_ret_bp=%s window_vol_bp=%s window_aggressor_flow=%s "
         "window_spread_bp_mean=%s window_trade_count=%s",
         call_id,
         status,
@@ -337,6 +367,9 @@ def log_call_return(
         book_toxic,
         confidence,
         noul,
+        record_token(model),
+        confidence_origin,
+        noul_label,
         features.get("ret_bp"),
         features.get("vol_bp"),
         features.get("aggressor_flow"),
@@ -355,12 +388,106 @@ def log_call_error(*, call_id: str, status: Any, latency_ms: Any, body: Any) -> 
     )
 
 
-def log_cycle_refusal(*, user_id: Any, skip_reason: Any) -> None:
-    """Raw gate token of a cycle closed without an order (never rewritten)."""
+def _cycle_suffix(
+    *,
+    gate_verdicts: Optional[Mapping[str, str]] = None,
+    model: Any = None,
+    confidence: Any = None,
+    confidence_origin: Any = None,
+    noul: Any = None,
+    noul_label: Any = None,
+    book_toxic: Any = None,
+) -> str:
+    """Additive ``k=v`` fields of a cycle record; empty when there is no reply.
+
+    The fields come **after** ``user=``/``skip_reason=`` so the #1025 read-only
+    ruler (``RefusalRe`` / ``KVRe``) keeps matching the prefix and tolerates
+    the extra keys. Values are single tokens (``\\S+``).
+    """
+    parts: list[str] = []
+    if gate_verdicts:
+        parts.extend(f"{name}={verdict}" for name, verdict in gate_verdicts.items())
+    if model is not None:
+        parts.append(f"model={record_token(model)}")
+    if confidence is not None:
+        parts.append(f"confidence={confidence}")
+    if confidence_origin is not None:
+        parts.append(f"confidence_origin={confidence_origin}")
+    if noul_label is not None:
+        parts.append(f"noul={'unknown' if noul is None else noul}")
+        parts.append(f"noul_label={noul_label}")
+    if book_toxic is not None:
+        parts.append(f"book_toxic={book_toxic}")
+    return (" " + " ".join(parts)) if parts else ""
+
+
+def log_cycle_refusal(
+    *,
+    user_id: Any,
+    skip_reason: Any,
+    gate_verdicts: Optional[Mapping[str, str]] = None,
+    model: Any = None,
+    confidence: Any = None,
+    confidence_origin: Any = None,
+    noul: Any = None,
+    noul_label: Any = None,
+    book_toxic: Any = None,
+) -> None:
+    """A cycle closed without an order.
+
+    ``skip_reason`` is the raw token of the **first** gate that closed the
+    cycle and stays immediately after ``user=`` (card #1015 contract). Card
+    #1028 appends, in the same record, the verdict of every reply-fed gate plus
+    the reply diagnostics when the cycle had a model reply.
+    """
     token = str(skip_reason or "").strip()
     if not token:
         return
-    logger.info("scalp cycle refused user=%s skip_reason=%s", user_id, token)
+    logger.info(
+        "scalp cycle refused user=%s skip_reason=%s%s",
+        user_id,
+        token,
+        _cycle_suffix(
+            gate_verdicts=gate_verdicts,
+            model=model,
+            confidence=confidence,
+            confidence_origin=confidence_origin,
+            noul=noul,
+            noul_label=noul_label,
+            book_toxic=book_toxic,
+        ),
+    )
+
+
+def log_cycle_sent(
+    *,
+    user_id: Any,
+    gate_verdicts: Optional[Mapping[str, str]] = None,
+    model: Any = None,
+    confidence: Any = None,
+    confidence_origin: Any = None,
+    noul: Any = None,
+    noul_label: Any = None,
+    book_toxic: Any = None,
+) -> None:
+    """A cycle that passed every entry gate and sent an order (card #1028).
+
+    Same record shape as the refusal, with ``skip_reason=none`` and the same
+    additive fields; the #1025 ruler ignores this prefix, so it is additive.
+    """
+    logger.info(
+        "scalp cycle sent user=%s skip_reason=none%s",
+        user_id,
+        _cycle_suffix(
+            gate_verdicts=gate_verdicts,
+            model=model,
+            confidence=confidence,
+            confidence_origin=confidence_origin,
+            noul=noul,
+            noul_label=noul_label,
+            book_toxic=book_toxic,
+        ),
+    )
 
 
 def log_aggressive_exit(
