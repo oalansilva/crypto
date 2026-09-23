@@ -99,6 +99,15 @@ def diagnostic_enabled() -> bool:
     return env_flag_enabled("RUN_SCALP_LOOP")
 
 
+def raw_payload_enabled() -> bool:
+    """Opt-in (card #1025): record the raw reply fields that carry confidence.
+
+    Disabled by default, so with the flag off the #1015 record set stays
+    exactly as it is.
+    """
+    return env_flag_enabled("SCALP_JEV_RAW_PAYLOAD")
+
+
 def redact(message: Any) -> str:
     """Replace every configured secret and any bearer token by ``<redacted>``."""
     text = str(message or "")
@@ -303,10 +312,22 @@ def log_call_return(
     score: Any = None,
     book_toxic: Any = None,
     confidence: Any = None,
+    noul: Any = None,
+    window: Any = None,
 ) -> None:
+    """Return record: the reply plus the drivers of the ``book_toxic`` flag.
+
+    Card #1025 (G): the ``noul`` returned by the model and the window features
+    the decision used (``ret_bp``, ``vol_bp``, ``aggressor_flow``,
+    ``spread_bp_mean``, ``trade_count``) go into the same #1015 record, so the
+    model's own opinion can be told apart from a wrong mapping. Log only.
+    """
+    features = _as_dict(window)
     logger.info(
         "scalp jev call return id=%s status=%s latency_ms=%s side=%s "
-        "expected_move_bp=%s score=%s book_toxic=%s confidence=%s",
+        "expected_move_bp=%s score=%s book_toxic=%s confidence=%s "
+        "noul=%s window_ret_bp=%s window_vol_bp=%s window_aggressor_flow=%s "
+        "window_spread_bp_mean=%s window_trade_count=%s",
         call_id,
         status,
         latency_ms,
@@ -315,6 +336,12 @@ def log_call_return(
         score,
         book_toxic,
         confidence,
+        noul,
+        features.get("ret_bp"),
+        features.get("vol_bp"),
+        features.get("aggressor_flow"),
+        features.get("spread_bp_mean"),
+        features.get("trade_count"),
     )
 
 
@@ -334,3 +361,83 @@ def log_cycle_refusal(*, user_id: Any, skip_reason: Any) -> None:
     if not token:
         return
     logger.info("scalp cycle refused user=%s skip_reason=%s", user_id, token)
+
+
+def log_aggressive_exit(
+    *,
+    user_id: Any,
+    side: Any,
+    quantity: Any,
+    order_type: Any = "MARKET",
+    reason: Any = "hold_window_end",
+    status: Any = None,
+    executed_qty: Any = None,
+    avg_price: Any = None,
+    client_order_id: Any = None,
+    order_id: Any = None,
+) -> None:
+    """Visible WARNING for the aggressive exit (card #1025).
+
+    Its own reason token (``hold_window_end``), never the ``stuck`` token, and
+    it carries the exit data: side, order type, quantity, status, executed
+    quantity, the price the escape actually got and the order identifiers.
+    Log only — the Monitor panel and the scalp status gain nothing.
+    """
+    logger.warning(
+        "scalp aggressive exit user=%s reason=%s side=%s order_type=%s price_cap=none "
+        "quantity=%s status=%s executed_qty=%s avg_price=%s client_order_id=%s order_id=%s",
+        user_id,
+        reason,
+        side,
+        order_type,
+        quantity,
+        status,
+        executed_qty,
+        avg_price,
+        client_order_id,
+        order_id,
+    )
+
+
+_RAW_PROBABILITY_LIMIT = 8
+
+
+def _raw_value(value: Any) -> str:
+    """Compact, redacted, truncated rendering of one raw reply field."""
+    return summarize_body(_compact(value), limit=200)
+
+
+def log_call_raw(*, call_id: str, raw: Any) -> None:
+    """Opt-in raw reply fields (card #1025): where ``confidence`` comes from.
+
+    Whitelisted fields only — the model's own answer values
+    (``side_answer.confidence`` and ``probabilities[choice]``, the raw
+    ``expected_move_bp`` score and the ``noul``) — so no secret, no
+    ``Authorization`` header and no exact account value can reach the record.
+    """
+    replies = _as_dict(raw)
+    answers = _as_dict(replies.get("answers"))
+    side_answer = _as_dict(answers.get("side"))
+    choice = str(side_answer.get("choice") or "")
+    probabilities = _as_dict(side_answer.get("probabilities"))
+    probabilities = {
+        str(name): probabilities[name] for name in list(probabilities)[:_RAW_PROBABILITY_LIMIT]
+    }
+    choice_probability = probabilities.get(choice)
+    if choice_probability is None and choice:
+        upper = choice.upper()
+        choice_probability = probabilities.get(upper)
+    move_answer = _as_dict(answers.get("expected_move_bp"))
+    noul = _as_dict(answers.get("book_toxic")).get("noul")
+    logger.info(
+        "scalp jev call raw id=%s model=%s choice=%s side_confidence=%s "
+        "probabilities=%s choice_probability=%s expected_move_score=%s noul=%s",
+        call_id,
+        _raw_value(replies.get("model")),
+        _raw_value(choice),
+        _raw_value(side_answer.get("confidence")),
+        _raw_value(probabilities),
+        _raw_value(choice_probability),
+        _raw_value(move_answer.get("score")),
+        _raw_value(noul),
+    )

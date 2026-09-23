@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.models import ScalpFill, ScalpUserState, UserExchangeCredential
 from app.services.binance_spot_orders import BinanceOrderError
 from app.services.scalp_engine import (
+    CONFIDENCE_MIN,
     CROSS_REJECT_CODES,
     ENTRY_REST_TIMEOUT_S,
     EXIT_STOP_BP,
@@ -47,7 +49,7 @@ from app.services.scalp_btcusdt_snapshot_store import (
 )
 from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
 from app.services.scalp_jev import jev_api_key, jev_available, request_jev
-from app.services.scalp_jev_log import log_cycle_refusal
+from app.services.scalp_jev_log import log_aggressive_exit, log_cycle_refusal
 from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
 logger = logging.getLogger(__name__)
@@ -84,6 +86,42 @@ def has_spot_key(db: Session, user_id: str) -> bool:
     return bool(cred and str(cred.api_key or "").strip() and str(cred.api_secret or "").strip())
 
 
+def _confidence_min() -> Decimal:
+    """Confidence gate threshold, configurable by env (card #1025).
+
+    The pure engine receives the value; it never reads the environment. With
+    no ruler report (or with the ruler declaring an insufficient sample) the
+    value stays at the current default — the decision recorded in the apply
+    evidence (task 3.3/3.4).
+    """
+    raw = (os.getenv("SCALP_CONFIDENCE_MIN") or "").strip()
+    if not raw:
+        return CONFIDENCE_MIN
+    try:
+        value = Decimal(raw)
+    except Exception:
+        return CONFIDENCE_MIN
+    if value < 0 or value > 1:
+        return CONFIDENCE_MIN
+    return value
+
+
+def _jev_target_ms() -> int:
+    """Jev consult cadence in ms (card #1025): env, default 30 s.
+
+    Injected into the pure engine from here; the loop interval (0.4 s) and the
+    fail-closed ``JEV_LATE_MS`` are untouched.
+    """
+    raw = (os.getenv("SCALP_JEV_TARGET_MS") or "").strip()
+    if not raw:
+        return JEV_TARGET_MS
+    try:
+        value = int(Decimal(raw))
+    except Exception:
+        return JEV_TARGET_MS
+    return value if value > 0 else JEV_TARGET_MS
+
+
 def get_or_create_state(db: Session, user_id: str) -> ScalpUserState:
     row = db.query(ScalpUserState).filter(ScalpUserState.user_id == str(user_id)).first()
     if row is not None:
@@ -115,6 +153,8 @@ class ExchangePort(Protocol):
 
     def free_balances(self, api_key: str, api_secret: str) -> tuple[Decimal, Decimal]: ...
 
+    def fee_terms(self, api_key: str, api_secret: str) -> tuple[Decimal, bool]: ...
+
     def place_post_only(
         self,
         *,
@@ -124,6 +164,17 @@ class ExchangePort(Protocol):
         price: Decimal,
         quantity: Decimal,
         client_order_id: str,
+    ) -> dict[str, Any]: ...
+
+    def place_aggressive_exit(
+        self,
+        *,
+        api_key: str,
+        api_secret: str,
+        quantity: Decimal,
+        client_order_id: str,
+        reference_price: Decimal,
+        side: Side = "SELL",
     ) -> dict[str, Any]: ...
 
     def cancel_bot_orders(self, *, api_key: str, api_secret: str) -> int: ...
@@ -162,6 +213,50 @@ def _cached_balances(
     return live_usdt, live_btc
 
 
+# Card #1025 (correção pós-CR, item 3): uma agressiva `MARKET` rejeitada pela
+# Binance era reenviada a cada ciclo (~0,4 s) com um `clientOrderId` novo, sem
+# backoff — uma tempestade de pedidos assinados quando a rejeição é persistente
+# (p. ex. filtro de notional). A agressiva passa a ter **um** `clientOrderId`
+# por posição, mantido entre tentativas (chave de reconciliação) e um intervalo
+# mínimo entre elas; um pedido que a Binance aceitou fica «consumido» — se
+# sobrar posição, a tentativa seguinte usa um id novo.
+AGGRESSIVE_RETRY_SECONDS = 5.0
+
+
+@dataclass
+class _AggressiveAttempt:
+    client_order_id: str
+    position_opened_at: Optional[datetime]
+    attempted_at: datetime
+
+
+# Uma entrada por utilizador; o processo do loop do scalp é o único que a usa.
+_aggressive_attempts: dict[str, _AggressiveAttempt] = {}
+
+
+def _aggressive_attempt(state: ScalpUserState, *, stamp: datetime) -> tuple[str, bool]:
+    """Return ``(client_order_id, allowed)`` for one aggressive-exit attempt.
+
+    The id is stable for the whole position so a rejected MARKET keeps the same
+    reconciliation key instead of being re-filed with a fresh id every cycle;
+    ``allowed`` is false while the retry window has not elapsed.
+    """
+    key = str(state.user_id)
+    attempt = _aggressive_attempts.get(key)
+    if attempt is None or attempt.position_opened_at != state.position_opened_at:
+        attempt = _AggressiveAttempt(
+            client_order_id=f"cfscalp_{uuid.uuid4().hex[:16]}",
+            position_opened_at=state.position_opened_at,
+            attempted_at=stamp,
+        )
+        _aggressive_attempts[key] = attempt
+        return attempt.client_order_id, True
+    if (stamp - attempt.attempted_at).total_seconds() < AGGRESSIVE_RETRY_SECONDS:
+        return attempt.client_order_id, False
+    attempt.attempted_at = stamp
+    return attempt.client_order_id, True
+
+
 class LiveExchange:
     def book(self) -> Book:
         from app.services.scalp_binance import fetch_book
@@ -172,6 +267,9 @@ class LiveExchange:
         from app.services.scalp_binance import fetch_free_usdt_btc
 
         return fetch_free_usdt_btc(api_key=api_key, api_secret=api_secret)
+
+    def fee_terms(self, api_key: str, api_secret: str) -> tuple[Decimal, bool]:
+        return _live_fee_terms(api_key, api_secret)
 
     def place_post_only(
         self,
@@ -192,6 +290,27 @@ class LiveExchange:
             price=price,
             quantity=quantity,
             client_order_id=client_order_id,
+        )
+
+    def place_aggressive_exit(
+        self,
+        *,
+        api_key: str,
+        api_secret: str,
+        quantity: Decimal,
+        client_order_id: str,
+        reference_price: Decimal,
+        side: Side = "SELL",
+    ) -> dict[str, Any]:
+        from app.services.scalp_binance import place_aggressive_exit
+
+        return place_aggressive_exit(
+            api_key=api_key,
+            api_secret=api_secret,
+            quantity=quantity,
+            client_order_id=client_order_id,
+            reference_price=reference_price,
+            side=side,
         )
 
     def cancel_bot_orders(self, *, api_key: str, api_secret: str) -> int:
@@ -246,9 +365,77 @@ def _resting(state: ScalpUserState) -> Optional[RestingOrder]:
     )
 
 
-def _fee_terms(_user_id: str) -> tuple[Decimal, bool]:
-    """BNB burn + free BNB; failure → 10 bp without discount."""
-    return Decimal("10"), False
+FALLBACK_FEE_BP = Decimal("10")
+# Per-user fee cache TTL (card #1025, P3): no signed request per cycle.
+FEE_CACHE_TTL_SECONDS = 900.0
+
+
+@dataclass
+class _FeeCacheEntry:
+    fee_bp: Decimal
+    bnb_fee_active: bool
+    fetched_at: float
+
+
+_fee_cache: dict[str, _FeeCacheEntry] = {}
+
+
+def invalidate_fee_cache(user_id: str) -> None:
+    _fee_cache.pop(str(user_id), None)
+
+
+def _live_fee_terms(api_key: str, api_secret: str) -> tuple[Decimal, bool]:
+    """Real maker rate per leg + BNB-burn state, through the signed client."""
+    from app.services.scalp_binance import fetch_maker_fee_bp, fetch_spot_bnb_burn
+
+    return (
+        fetch_maker_fee_bp(api_key=api_key, api_secret=api_secret),
+        fetch_spot_bnb_burn(api_key=api_key, api_secret=api_secret),
+    )
+
+
+def _fee_terms(
+    user_id: str,
+    *,
+    cred: Optional[UserExchangeCredential] = None,
+    fetcher: Optional[Callable[[str, str], tuple[Decimal, bool]]] = None,
+) -> tuple[Decimal, bool]:
+    """Maker fee per leg and BNB-burn state, cached per user.
+
+    Any failure of the signed reads (transport, timeout, bad payload) falls
+    back to the conservative ``(10 bp, False)``: failing to the more expensive
+    side is the safe one. The result — fallback included — is cached for the
+    TTL so the lookup never issues a signed request on every cycle.
+    """
+    key = str(user_id)
+    now = time.time()
+    hit = _fee_cache.get(key)
+    if hit is not None and (now - hit.fetched_at) < FEE_CACHE_TTL_SECONDS:
+        return hit.fee_bp, hit.bnb_fee_active
+    if cred is None or fetcher is None:
+        return FALLBACK_FEE_BP, False
+    try:
+        fee_bp, bnb_fee_active = fetcher(cred.api_key, cred.api_secret)
+        fee_bp = _dec(fee_bp)
+        if fee_bp <= 0:
+            raise ValueError("fee_bp não positivo")
+        active = bool(bnb_fee_active)
+    except Exception as exc:
+        logger.warning("scalp fee terms fallback user=%s err=%s", key, type(exc).__name__)
+        fee_bp, active = FALLBACK_FEE_BP, False
+    _fee_cache[key] = _FeeCacheEntry(fee_bp=fee_bp, bnb_fee_active=active, fetched_at=now)
+    return fee_bp, active
+
+
+def _fee_bp_label(fee_bp: Decimal) -> str:
+    """`7,5` / `10` / `8,2` — the rate in use, in pt-BR punctuation."""
+    value = Decimal(fee_bp).quantize(Decimal("0.1"))
+    return format(value.normalize(), "f").replace(".", ",")
+
+
+def _bp_label(value: Decimal) -> str:
+    """`35` / `−28` — barrier bp with the typographic minus used in the copy."""
+    return format(Decimal(value).normalize(), "f").replace("-", "−")
 
 
 def _seconds_since(stamp: Optional[datetime], now: datetime) -> float:
@@ -652,7 +839,11 @@ def _run_cycle(
     _maybe_cancel_entry_timeout(state, cred=cred, exchange=port, now=stamp)
 
     resting_now = _resting(state)
-    fee_bp, bnb_fee_active = _fee_terms(str(user_id))
+    # Real maker fee (card #1025): injected from the exchange port when it
+    # offers the signed reads, otherwise the conservative fallback applies.
+    fee_bp, bnb_fee_active = _fee_terms(
+        str(user_id), cred=cred, fetcher=getattr(port, "fee_terms", None)
+    )
     spread_bp = Decimal("0")
     touch_row = memory.read_touch()
     touch_age = memory.age_ms()
@@ -714,6 +905,8 @@ def _run_cycle(
             spread_bp=spread_bp,
             has_open_position=False,
             has_exit_resting=has_exit_resting,
+            confidence_min=_confidence_min(),
+            jev_target_ms=_jev_target_ms(),
         )
 
     if intent.fire_kill:
@@ -853,7 +1046,7 @@ def _run_cycle(
             has_spot_key=key_ok,
             jev_available=True,
             jev_in_flight=False,
-            last_jev_elapsed_ms=max(JEV_TARGET_MS, int(signal.latency_ms)),
+            last_jev_elapsed_ms=max(_jev_target_ms(), int(signal.latency_ms)),
             inventory_btc=_dec(state.inventory_btc),
             floor_btc=_dec(state.floor_btc),
             free_usdt=_dec(free_usdt),
@@ -866,10 +1059,101 @@ def _run_cycle(
             spread_bp=spread_bp,
             has_open_position=False,
             has_exit_resting=has_exit_resting,
+            confidence_min=_confidence_min(),
+            jev_target_ms=_jev_target_ms(),
         )
     sent = False
     rest_open = bool(state.rest_client_order_id)
+    # Card #1025: the escape (MARKET, no price ceiling) is sent in the same
+    # cycle that cancels the unfilled passive exit. It does not wait for a
+    # fresh book: it must exit whatever the price.
     if (
+        intent.send
+        and intent.aggressive_exit
+        and intent.quantity is not None
+        and cred is not None
+        and (live_send or has_open_position)
+    ):
+        if rest_open:
+            # Any unfilled bot order still standing — the passive exit or a
+            # leftover entry remainder — goes before the aggressive order takes
+            # the position: the escape is never blocked by a resting order.
+            _cancel_resting(state, cred=cred, exchange=port, all_bot=False)
+        client_order_id, attempt_allowed = _aggressive_attempt(state, stamp=stamp)
+        # The reference price only feeds the symbol's NOTIONAL/MIN_NOTIONAL
+        # filter (a MARKET order carries no price of its own); for a SELL the
+        # bid is the conservative realizable side. It never enters the order.
+        reference_price = book.bid if (intent.side or "SELL") == "SELL" else book.ask
+        if not attempt_allowed:
+            # Item 3 da correção pós-CR: nada de reenviar a rejeitada a cada
+            # ciclo com um id novo — mesma chave de reconciliação e backoff
+            # (o registo fica em DEBUG para não inundar o log a cada ciclo).
+            logger.debug(
+                "scalp aggressive exit backoff user=%s client_order_id=%s",
+                state.user_id,
+                client_order_id,
+            )
+            result = None
+        else:
+            try:
+                result = port.place_aggressive_exit(
+                    api_key=cred.api_key,
+                    api_secret=cred.api_secret,
+                    quantity=intent.quantity,
+                    client_order_id=client_order_id,
+                    reference_price=reference_price,
+                )
+            except BinanceOrderError as exc:
+                logger.warning(
+                    "scalp aggressive exit failed user=%s code=%s", state.user_id, exc.code
+                )
+                result = None
+        if result is not None:
+            # A Binance-accepted order consumes the id: a leftover position (a
+            # partial fill) gets a fresh id on the next attempt.
+            _aggressive_attempts.pop(str(state.user_id), None)
+            sent = True
+            status = str(result.get("status") or "").upper()
+            executed = _dec(result.get("executedQty"))
+            avg = (_dec(result.get("cummulativeQuoteQty")) / executed) if executed > 0 else None
+            log_aggressive_exit(
+                user_id=state.user_id,
+                reason="hold_window_end",
+                side=intent.side or "SELL",
+                order_type=intent.order_type,
+                quantity=intent.quantity,
+                status=status,
+                executed_qty=executed,
+                avg_price=avg,
+                client_order_id=client_order_id,
+                order_id=result.get("orderId"),
+            )
+            if executed > 0:
+                _apply_fill(
+                    state,
+                    side="SELL",
+                    quantity=executed,
+                    price=avg or book.mid,
+                    fee=Decimal("0"),
+                )
+                db.add(
+                    ScalpFill(
+                        id=uuid.uuid4(),
+                        user_id=str(user_id),
+                        client_order_id=client_order_id,
+                        side="SELL",
+                        quantity=executed,
+                        price=avg or book.mid,
+                        fee_quote=Decimal("0"),
+                        created_at=stamp,
+                    )
+                )
+            state.rest_client_order_id = None
+            state.rest_side = None
+            state.rest_price = None
+            state.rest_role = None
+            state.rest_opened_at = None
+    elif (
         intent.send
         and intent.side
         and intent.price is not None
@@ -1005,6 +1289,7 @@ def status_payload(
     killed = bool(state.killed) if state is not None else False
     visual = panel_state(has_spot_key=key_ok, enabled=enabled, killed=killed)
     inventory = _dec(state.inventory_btc) if state is not None else Decimal("0")
+    fee_fetcher: Optional[Callable[[str, str], tuple[Decimal, bool]]] = None
     t = compute_t(
         _dec(free_usdt) if free_usdt is not None else Decimal("100") if key_ok else Decimal("0")
     )
@@ -1019,6 +1304,7 @@ def status_payload(
             try:
                 port = LiveExchange()
                 live_usdt, live_btc = _cached_balances(str(user_id), port, cred)
+                fee_fetcher = getattr(port, "fee_terms", None)
                 t = compute_t(live_usdt)
                 if free_btc is None:
                     free_btc = live_btc
@@ -1082,7 +1368,9 @@ def status_payload(
         )
         if live_book is not None:
             mark = live_book.mid
-    fee_bp, bnb_fee_active = _fee_terms(str(user_id))
+    fee_bp, bnb_fee_active = _fee_terms(
+        str(user_id), cred=_credential(db, user_id), fetcher=fee_fetcher
+    )
     spread_bp = Decimal("0.1")
     if mark > 0 and visual == "on":
         touch_row = memory.read_touch()
@@ -1108,7 +1396,9 @@ def status_payload(
         status_text = (
             f"Ligado: pergunta ao Jev com o toque fresco. Lookback últimos 15 min. "
             f"Hurdle {hurdle_bp.quantize(Decimal('0.1'))} bp com taxa "
-            f"{'7,5' if bnb_fee_active else '10'} bp. Alvo 35 bp. Stop −28 bp depois do fill. "
+            f"{_fee_bp_label(fee_bp)} bp"
+            f"{' (BNB)' if bnb_fee_active else ''}. "
+            f"Alvo {_bp_label(EXIT_TARGET_BP)} bp. Stop {_bp_label(EXIT_STOP_BP)} bp depois do fill. "
             "Operar continua ao lado."
         )
     return {

@@ -17,7 +17,9 @@ from app.services.scalp_jev_log import (
     ERROR_BODY_READ_BYTES,
     log_call_entry,
     log_call_error,
+    log_call_raw,
     log_call_return,
+    raw_payload_enabled,
     redact,
     summarize_body,
 )
@@ -35,14 +37,13 @@ _EXPECTED_MOVE_BP_LEVELS_BP: tuple[int, ...] = (0, 5, 10, 15, 20, 25, 30, 35, 50
 
 
 def _expected_move_bp_criteria() -> list[str]:
-    return [
-        (
-            f"{bp} bp — negligible expected absolute move over the next 900 s for the chosen side"
-            if bp == 0
-            else f"{bp} bp — expected absolute move over the next 900 s for the chosen side"
-        )
-        for bp in _EXPECTED_MOVE_BP_LEVELS_BP
-    ]
+    """The ten ladder levels, compact: the bp value is the criterion.
+
+    The level list and its meaning (score index → bp of expected absolute move
+    over the next 900 s) are unchanged; the shared explanation moved to the
+    question instructions (card #1025: input per call ≤ ~500 tokens).
+    """
+    return [f"{bp} bp" for bp in _EXPECTED_MOVE_BP_LEVELS_BP]
 
 
 def _bp_from_score(score: float) -> Decimal:
@@ -157,8 +158,8 @@ def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "side": {
                 "type": "choice",
                 "instructions": (
-                    "Directional BTCUSDT scalp this cycle: post-only BUY at best bid, "
-                    "SELL at best ask, or HOLD (send nothing)."
+                    "Directional BTCUSDT scalp this cycle: post-only BUY at the best bid, "
+                    "SELL at the best ask, or HOLD (send nothing)."
                 ),
                 "criteria": {
                     "BUY": "Post-only buy",
@@ -170,7 +171,7 @@ def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 "type": "score",
                 "instructions": (
                     "Expected absolute price move in basis points over the next 900 s "
-                    "lookback horizon for the chosen side."
+                    "for the chosen side; the criteria are the ten levels."
                 ),
                 "criteria": _expected_move_bp_criteria(),
             },
@@ -180,6 +181,24 @@ def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
             },
         },
     }
+
+
+def estimate_input_tokens(payload: Any) -> int:
+    """Heuristic input size of one call: compact JSON bytes / 4.
+
+    The instrument of measurement is P3 (card #1025); the budget it checks is
+    contract: input per call ≤ ~500 tokens.
+    """
+    try:
+        raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str)
+    except Exception:  # pragma: no cover - defensive
+        raw = str(payload)
+    return (len(raw.encode("utf-8")) + 3) // 4
+
+
+def systemone_input_tokens(payload: dict[str, Any]) -> int:
+    """Input tokens of the wire body built from ``payload``."""
+    return estimate_input_tokens(_systemone_payload(payload))
 
 
 def _noul_yes(answer: Any) -> bool:
@@ -245,6 +264,21 @@ def _move_score(parsed: Any) -> Optional[float]:
     return None
 
 
+def _noul_value(parsed: Any) -> Optional[Decimal]:
+    """Raw ``noul`` of the reply, for the diagnostic record (card #1025, G)."""
+    answers = _as_dict(_as_dict(parsed).get("answers"))
+    raw = _as_dict(answers.get("book_toxic")).get("noul")
+    if raw is None:
+        return None
+    return _decimal(raw)
+
+
+def _window_features(payload: Any) -> dict[str, Any]:
+    """Window features the ``book_toxic`` decision used (card #1025, G)."""
+    state = _as_dict(_as_dict(payload).get("state"))
+    return _as_dict(state.get("window"))
+
+
 def _error_body(exc: urllib.error.HTTPError) -> str:
     """Summarized error body: read bounded, redacted and truncated."""
     try:
@@ -268,12 +302,12 @@ def _error_body(exc: urllib.error.HTTPError) -> str:
 
 def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -> JevSignal:
     """One HTTP call. Timeout defaults to the 1.5 s late gate."""
-    started = time.perf_counter()
     timeout = float(timeout_s if timeout_s is not None else (JEV_LATE_MS / 1000.0))
     key = jev_api_key()
     if not key:
         # No key: no HTTP call leaves the process, so no diagnostic record —
         # the stand-in is not a Jev call.
+        started = time.perf_counter()
         if _stand_in_enabled():
             elapsed_ms = int((time.perf_counter() - started) * 1000)
             return stand_in_signal(latency_ms=max(1, elapsed_ms))
@@ -284,6 +318,10 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
     systemone = _systemone_payload(payload)
     call_id = uuid.uuid4().hex[:12]
     log_call_entry(call_id=call_id, systemone=systemone)
+    # Card #1025: the clock opens AFTER the entry registration, so `latency_ms`
+    # measures the call and the fail-closed `jev_late` no longer trips on the
+    # cost of writing the #1015 entry record.
+    started = time.perf_counter()
     body = json.dumps(systemone, separators=(",", ":")).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
@@ -334,6 +372,9 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
         signal = _map_systemone(parsed, latency_ms=elapsed_ms)
     except Exception:
         signal = _hold_signal(elapsed_ms)
+    if raw_payload_enabled():
+        # Opt-in (card #1025): where the confidence comes from, raw reply only.
+        log_call_raw(call_id=call_id, raw=parsed)
     log_call_return(
         call_id=call_id,
         status=status,
@@ -343,5 +384,8 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
         score=_move_score(parsed),
         book_toxic=signal.book_toxic,
         confidence=signal.confidence,
+        # Card #1025 (G): noul + the window features the flag was derived from.
+        noul=_noul_value(parsed),
+        window=_window_features(payload),
     )
     return signal

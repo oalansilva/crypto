@@ -15,7 +15,8 @@ FEE_HEADROOM = Decimal("0.001")
 HORIZON_S = 900
 JEV_LATE_MS = 1500
 JEV_FLOOR_MS = 400
-JEV_TARGET_MS = 1000
+# Card #1025: 30 s default, injected by the service (the engine reads no env).
+JEV_TARGET_MS = 30000
 ENTRY_REST_TIMEOUT_S = 10
 EXIT_TARGET_BP = Decimal("35")
 EXIT_STOP_BP = Decimal("-28")
@@ -24,6 +25,8 @@ STUCK_AFTER_FILL_S = 930
 CLIENT_ORDER_PREFIX = "cfscalp_"
 ORDER_TYPE = "LIMIT"
 TIME_IN_FORCE = "GTX"
+# Aggressive exit (card #1025): MARKET, no price ceiling and no slippage guard.
+AGGRESSIVE_ORDER_TYPE = "MARKET"
 CROSS_REJECT_CODES = frozenset({-5022, -2010})
 
 Side = Literal["BUY", "SELL"]
@@ -156,9 +159,11 @@ class CycleIntent:
     time_in_force: str = TIME_IN_FORCE
     clipped_inventory: Optional[Decimal] = None
     call_jev: bool = False
+    # Card #1025: MARKET escape with no price ceiling (exit path only).
+    aggressive_exit: bool = False
 
 
-from app.services.scalp_window import passes_entry_hurdle  # noqa: E402
+from app.services.scalp_window import passes_entry_hurdle, passes_regime_gate  # noqa: E402
 
 
 def decide_cycle(
@@ -181,6 +186,8 @@ def decide_cycle(
     spread_bp: Decimal = Decimal("0"),
     has_open_position: bool = False,
     has_exit_resting: bool = False,
+    confidence_min: Decimal = CONFIDENCE_MIN,
+    jev_target_ms: int = JEV_TARGET_MS,
 ) -> CycleIntent:
     """Hold is the default. Live send is opt-in after every gate."""
     clipped = clip_inventory(bot_inventory=inventory_btc, free_btc=free_btc, floor_btc=floor_btc)
@@ -246,8 +253,9 @@ def decide_cycle(
             clipped_inventory=clipped if inventory_changed else None,
         )
     if jev is None:
-        # Book ticks stay at JEV_FLOOR_MS for stale cancel; Jev itself is ~1 s.
-        if last_jev_elapsed_ms is not None and last_jev_elapsed_ms < JEV_TARGET_MS:
+        # Book ticks stay at JEV_FLOOR_MS for stale cancel; the Jev consult
+        # cadence is the injected `jev_target_ms` (card #1025: 30 s default).
+        if last_jev_elapsed_ms is not None and last_jev_elapsed_ms < jev_target_ms:
             return CycleIntent(
                 send=False,
                 cancel_resting=cancel_stale,
@@ -282,7 +290,7 @@ def decide_cycle(
             skip_reason="hold",
             clipped_inventory=clipped if inventory_changed else None,
         )
-    if jev.confidence < CONFIDENCE_MIN:
+    if jev.confidence < confidence_min:
         return CycleIntent(
             send=False,
             cancel_resting=cancel_stale,
@@ -296,6 +304,17 @@ def decide_cycle(
             cancel_resting=cancel_stale,
             fire_kill=False,
             skip_reason="hurdle",
+            clipped_inventory=clipped if inventory_changed else None,
+        )
+    # Card #1025: maker cost + 50% slack. Evaluated after the bare hurdle
+    # ("below cost") and before `toxic_book`, so the tokens tell the story:
+    # `hurdle` = below cost, `regime` = clears cost without the slack.
+    if not passes_regime_gate(jev.expected_move_bp, fee_bp, spread_bp):
+        return CycleIntent(
+            send=False,
+            cancel_resting=cancel_stale,
+            fire_kill=False,
+            skip_reason="regime",
             clipped_inventory=clipped if inventory_changed else None,
         )
     if jev.book_toxic:
@@ -399,13 +418,18 @@ def position_ret_bp(avg_entry: Decimal, mid: Decimal) -> Decimal:
 def should_post_exit(
     *,
     ret_bp: Decimal,
-    seconds_since_fill: float,
 ) -> bool:
+    """Passive exit inside the waiting window only: target or stop.
+
+    Card #1025: the time branch (``seconds_since_fill >= HOLD_AFTER_FILL_S``)
+    is gone — at the end of the window the cycle goes aggressive instead of
+    posting one more passive order (the forbidden extra passive attempt).
+    """
     if ret_bp >= EXIT_TARGET_BP:
         return True
     if ret_bp <= EXIT_STOP_BP:
         return True
-    return seconds_since_fill >= float(HOLD_AFTER_FILL_S)
+    return False
 
 
 def should_mark_stuck(seconds_since_fill: float) -> bool:
@@ -442,6 +466,27 @@ def decide_exit_cycle(
         touch = post_only_price(resting.side, bid=book.bid, ask=book.ask)
         if resting.price != touch:
             cancel_stale = True
+    # Card #1025 (findings F1/F2): the end-of-window escape is evaluated
+    # BEFORE the `exit_resting` return below — that return used to come first
+    # and made the escape unreachable whenever the bot's passive exit was
+    # resting and unfilled. The trigger is the first cycle that reaches
+    # HOLD_AFTER_FILL_S with the position open, not the `stuck` mark (930 s).
+    # No price ceiling: the aggressive order exits whatever the price.
+    if seconds_since_fill >= float(HOLD_AFTER_FILL_S):
+        return CycleIntent(
+            send=True,
+            cancel_resting=resting is not None,
+            fire_kill=False,
+            skip_reason=None,
+            side="SELL",
+            price=None,
+            quote_qty=None,
+            quantity=clipped,
+            order_type=AGGRESSIVE_ORDER_TYPE,
+            time_in_force="",
+            clipped_inventory=clipped if inventory_changed else None,
+            aggressive_exit=True,
+        )
     if resting is not None:
         return CycleIntent(
             send=False,
@@ -451,6 +496,8 @@ def decide_exit_cycle(
             clipped_inventory=clipped if inventory_changed else None,
         )
     if stuck:
+        # Kept for callers that pass the mark directly; the escape above
+        # already fires at the window end, so a position is never inert there.
         return CycleIntent(
             send=False,
             cancel_resting=False,
@@ -459,7 +506,7 @@ def decide_exit_cycle(
             clipped_inventory=clipped if inventory_changed else None,
         )
     ret_bp = position_ret_bp(avg_entry, book.mid)
-    if not should_post_exit(ret_bp=ret_bp, seconds_since_fill=seconds_since_fill):
+    if not should_post_exit(ret_bp=ret_bp):
         return CycleIntent(
             send=False,
             cancel_resting=False,

@@ -721,6 +721,69 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL workflow session fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_scalp_aggressive_exit.py",
+      "protected_behavior": "card #1025 aggressive MARKET exit at the waiting-window end (unfilled passive exit cancelled, no price cap, WARNING record)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; engine/exit cases use Book/FakeExchange and the tail-truncating diagnostic log"
+    },
+    {
+      "file": "backend/tests/unit/test_scalp_book_toxic_observability.py",
+      "protected_behavior": "card #1025 book_toxic drivers (noul + window features) in the diagnostic return record",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; reply cases fake urlopen and use the diagnostic log fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_scalp_confidence_gate.py",
+      "protected_behavior": "card #1025 confidence gate by env (engine receives the value) and the opt-in raw reply record",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "pure decide_cycle cases with JevSignal; env/raw-record cases fake urlopen and use a tail-truncating file handler"
+    },
+    {
+      "file": "backend/tests/unit/test_scalp_jev_consult_cadence.py",
+      "protected_behavior": "card #1025 Jev consult cadence (30 s default by env), summarized payload budget and latency measured after the entry record",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; payload cases use the in-memory BTC window; HTTP cases fake urlopen"
+    },
+    {
+      "file": "backend/tests/unit/test_scalp_jev_eval_ruler.py",
+      "protected_behavior": "card #1025 read-only Jev ruler (non-overlapping windows, insufficiency declaration, bucket proposal)",
+      "production_reachability": "operator script over the DEV log",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "pure parser/report cases over a synthetic multi-line log and a constructed candle series; scripts/scalp_jev_eval.py loaded by path"
+    },
+    {
+      "file": "backend/tests/unit/test_scalp_maker_fee_hurdle.py",
+      "protected_behavior": "card #1025 real maker fee read, per-user cache/fallback and the fee rate in the status",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; signed fee reads faked at scalp_binance.signed_request; _FeeExchange port for the status case"
+    },
+    {
+      "file": "backend/tests/unit/test_scalp_regime_gate.py",
+      "protected_behavior": "card #1025 regime gate (maker cost + 50% slack) and the geometry kept without the ruler",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "pure decide_cycle/hurdle cases with Book and JevSignal; no environment switch disables the gate"
     }
   ]
 }

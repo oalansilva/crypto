@@ -82,7 +82,10 @@ def _buy_signal(**overrides) -> JevSignal:
     values = dict(
         side="BUY",
         confidence=Decimal("0.8"),
-        expected_move_bp=Decimal("30"),
+        # Card #1025: the signal used as "passes the gates" clears the regime
+        # gate too (hurdle + 50% slack) with the conservative 10 bp fee and the
+        # seeded ~1,5 bp spread.
+        expected_move_bp=Decimal("35"),
         book_toxic=False,
         latency_ms=50,
         cost_quote=Decimal("0"),
@@ -559,10 +562,12 @@ class FakeExchange:
         self.free_usdt = Decimal("80")
         self.free_btc = Decimal("0.01")
         self.placed: list[dict] = []
+        self.aggressive: list[dict] = []
         self.cancelled: list[str] = []
         self.queried: list[str] = []
         self.orders: dict[str, dict] = {}
         self.reject_code = None
+        self.aggressive_reject_code = None
 
     def book(self) -> Book:
         return Book(self.bid, self.ask)
@@ -588,6 +593,31 @@ class FakeExchange:
             "price": str(kwargs["price"]),
             "origQty": str(kwargs["quantity"]),
             "cummulativeQuoteQty": "0",
+            "clientOrderId": cid,
+        }
+        self.orders[cid] = dict(result)
+        return result
+
+    def place_aggressive_exit(self, **kwargs):
+        """Card #1025: MARKET escape, no price and no time-in-force."""
+        from app.services.binance_spot_orders import BinanceOrderError
+
+        assert "price" not in kwargs
+        assert "time_in_force" not in kwargs
+        assert str(kwargs["client_order_id"]).startswith("cfscalp_")
+        if self.aggressive_reject_code is not None:
+            raise BinanceOrderError("market refused", code=self.aggressive_reject_code)
+        self.aggressive.append(kwargs)
+        cid = str(kwargs["client_order_id"])
+        quantity = Decimal(str(kwargs["quantity"]))
+        result = {
+            "status": "FILLED",
+            "executedQty": str(quantity),
+            "orderId": 7,
+            "side": "SELL",
+            "price": "0",
+            "origQty": str(quantity),
+            "cummulativeQuoteQty": str(quantity * self.bid),
             "clientOrderId": cid,
         }
         self.orders[cid] = dict(result)
@@ -891,6 +921,12 @@ def test_open_gtx_rest_is_queried_not_overwritten(scalp_db):
     assert Decimal(str(state.inventory_btc)) == Decimal("0")
 
     later = t0 + timedelta(milliseconds=JEV_TARGET_MS + 50)
+    # Card #1025: the consult cadence (30 s) is longer than the entry post-only
+    # timeout (10 s), so the fixture keeps the resting entry fresh to test the
+    # sync/query behaviour itself instead of the timeout that would cancel it.
+    state = get_or_create_state(scalp_db, user_id)
+    state.rest_opened_at = later
+    scalp_db.commit()
     second = tick_user(
         scalp_db,
         user_id,
@@ -1046,7 +1082,7 @@ def test_stand_in_without_jev_key_does_not_place(scalp_db, monkeypatch):
 
 def test_jev_requests_wait_target_ms_stale_cancel_does_not():
     assert JEV_FLOOR_MS == 400
-    assert JEV_TARGET_MS == 1000
+    assert JEV_TARGET_MS == 30000
     too_soon = decide_cycle(
         enabled=True,
         killed=False,
@@ -1645,6 +1681,12 @@ def test_diagnostic_log_ignores_rest_open_blocking_the_send(scalp_db, diagnostic
     assert get_or_create_state(scalp_db, user_id).rest_client_order_id is not None
 
     # second cycle: the decided send is blocked by the resting order (no gate token)
+    second_at = t0 + timedelta(milliseconds=JEV_TARGET_MS + 50)
+    # Keep the resting entry fresh: the 10 s entry timeout is shorter than the
+    # 30 s consult cadence (card #1025).
+    state = get_or_create_state(scalp_db, user_id)
+    state.rest_opened_at = second_at
+    scalp_db.commit()
     second = tick_user(
         scalp_db,
         user_id,
@@ -1653,7 +1695,7 @@ def test_diagnostic_log_ignores_rest_open_blocking_the_send(scalp_db, diagnostic
         free_usdt=Decimal("80"),
         free_btc=Decimal("0.01"),
         book=_book(),
-        now=t0 + timedelta(milliseconds=JEV_TARGET_MS + 50),
+        now=second_at,
     )
     assert second.sent is False
     assert second.skipped is None
@@ -1669,7 +1711,7 @@ def test_diagnostic_log_ignores_keyless_stand_in_send(scalp_db, diagnostic_log, 
     monkeypatch.setenv("JEV_STAND_IN", "1")
     monkeypatch.setenv("JEV_STAND_IN_SIDE", "BUY")
     monkeypatch.setenv("JEV_STAND_IN_CONFIDENCE", "0.9")
-    monkeypatch.setenv("JEV_STAND_IN_MOVE_BP", "25")
+    monkeypatch.setenv("JEV_STAND_IN_MOVE_BP", "35")
     fx = FakeExchange()
     set_switch(scalp_db, user_id, enabled=True, exchange=fx, free_btc=Decimal("0.01"))
 

@@ -104,8 +104,11 @@ def test_stuck_after_15m30s():
 
 
 def test_exit_triggers_on_target():
-    assert should_post_exit(ret_bp=Decimal("35"), seconds_since_fill=1) is True
-    assert should_post_exit(ret_bp=Decimal("10"), seconds_since_fill=1) is False
+    assert should_post_exit(ret_bp=Decimal("35")) is True
+    assert should_post_exit(ret_bp=Decimal("-28")) is True
+    # Card #1025: the waiting-window end no longer posts a passive exit —
+    # that cycle goes aggressive (see test_scalp_aggressive_exit.py).
+    assert should_post_exit(ret_bp=Decimal("10")) is False
 
 
 def test_decide_cycle_rejects_low_hurdle():
