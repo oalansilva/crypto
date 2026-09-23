@@ -6,7 +6,7 @@ import logging
 import os
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Callable, Optional, Protocol
@@ -38,6 +38,7 @@ from app.services.scalp_engine import (
     panel_state,
     pnl_quote,
     position_ret_bp,
+    reply_gate_verdicts,
     should_mark_stuck,
     unrealized_pnl,
 )
@@ -49,7 +50,7 @@ from app.services.scalp_btcusdt_snapshot_store import (
 )
 from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
 from app.services.scalp_jev import jev_api_key, jev_available, request_jev
-from app.services.scalp_jev_log import log_aggressive_exit, log_cycle_refusal
+from app.services.scalp_jev_log import log_aggressive_exit, log_cycle_refusal, log_cycle_sent
 from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
 logger = logging.getLogger(__name__)
@@ -352,6 +353,10 @@ class CycleResult:
     sent: bool
     killed: bool
     skipped: Optional[str]
+    # Card #1028: the model reply this cycle decided on (diagnostics for the
+    # cycle record). ``None`` when the cycle had no reply (pre-call closes and
+    # the exit path). Never read by the decision.
+    reply: Optional[JevSignal] = None
 
 
 def _credential(db: Session, user_id: str) -> Optional[UserExchangeCredential]:
@@ -799,6 +804,42 @@ def apply_bot_fill(
     invalidate_balance_cache(str(user_id))
 
 
+def _gate_verdict_fields(intent: CycleIntent) -> Optional[dict[str, str]]:
+    """``{gate: verdict}`` of the reply-fed gates, in evaluation order (card #1028)."""
+    verdicts = intent.gate_verdicts
+    if verdicts is None:
+        return None
+    return dict(verdicts.as_items())
+
+
+def _write_cycle_record(*, user_id: str, result: CycleResult) -> None:
+    """The single close of the cycle writes one diagnostic record (card #1028).
+
+    A cycle with a model reply carries, in the same record, the verdict of
+    every reply-fed gate plus the reply diagnostics (model version that
+    answered, confidence value + origin, toxicity label + decision boolean).
+    Closes with no gate token (broker rejection, keyless stand-in ``send``
+    without ``live_send``, ``rest_open`` blocking the send) stay out: they are
+    execution-path outcomes, not entry-gate decisions.
+    """
+    reply = result.reply
+    fields: dict = {"gate_verdicts": _gate_verdict_fields(result.intent)}
+    if reply is not None:
+        fields.update(
+            model=reply.model if reply.model is not None else "unknown",
+            confidence=reply.confidence,
+            confidence_origin=reply.confidence_origin,
+            noul=reply.noul,
+            noul_label=reply.noul_label,
+            book_toxic=reply.book_toxic,
+        )
+    if result.skipped:
+        log_cycle_refusal(user_id=user_id, skip_reason=result.skipped, **fields)
+        return
+    if result.sent and reply is not None:
+        log_cycle_sent(user_id=user_id, **fields)
+
+
 def tick_user(
     db: Session,
     user_id: str,
@@ -812,9 +853,11 @@ def tick_user(
 ) -> CycleResult:
     """One cycle; every gate refusal (non-null ``skip_reason``) goes to the log.
 
-    The refusal record is written here — the single close of the cycle — so
-    pre-call and post-reply gates are covered identically. Closes without a
-    gate token (broker rejection, keyless stand-in ``send`` without
+    The record is written here — the single close of the cycle — so pre-call
+    and post-reply gates are covered identically. A cycle with a model reply
+    also carries the verdict of every reply-fed gate, the model version that
+    answered, the confidence origin and the toxicity label (card #1028). Closes
+    without a gate token (broker rejection, keyless stand-in ``send`` without
     ``live_send``, ``rest_open`` blocking the send) leave no diagnostic record.
     """
     result = _run_cycle(
@@ -827,8 +870,7 @@ def tick_user(
         free_usdt=free_usdt,
         free_btc=free_btc,
     )
-    if result.skipped:
-        log_cycle_refusal(user_id=str(user_id), skip_reason=result.skipped)
+    _write_cycle_record(user_id=str(user_id), result=result)
     return result
 
 
@@ -938,6 +980,10 @@ def _run_cycle(
     elapsed = _elapsed_ms(state, stamp)
     if state.jev_in_flight and elapsed is not None and elapsed > max(JEV_FLOOR_MS * 5, 2000):
         state.jev_in_flight = False
+
+    # Card #1028: the model reply of this cycle (diagnostics for the record).
+    # Stays ``None`` on the exit path and on pre-call closes.
+    reply_signal: Optional[JevSignal] = None
 
     if has_open_position:
         intent = decide_exit_cycle(
@@ -1090,6 +1136,9 @@ def _run_cycle(
         state.last_jev_latency_ms = int(signal.latency_ms)
         state.jev_cost_quote = _dec(state.jev_cost_quote) + _dec(signal.cost_quote)
         state.calibration_signals = int(state.calibration_signals or 0) + 1
+        # Card #1028: from here the cycle has a reply; its diagnostics travel
+        # to the cycle record (never into the decision).
+        reply_signal = signal
 
         enabled_now, killed_now = _live_switch_flags(db, str(user_id))
         state.enabled = enabled_now
@@ -1100,12 +1149,22 @@ def _run_cycle(
             state.updated_at = stamp
             db.add(state)
             db.commit()
+            halt_intent = replace(
+                intent,
+                gate_verdicts=reply_gate_verdicts(
+                    jev=signal,
+                    confidence_min=_confidence_min(),
+                    fee_bp=fee_bp,
+                    spread_bp=spread_bp,
+                ),
+            )
             return CycleResult(
                 user_id=str(user_id),
-                intent=intent,
+                intent=halt_intent,
                 sent=False,
                 killed=killed_now,
                 skipped=skip,
+                reply=signal,
             )
 
         intent = decide_cycle(
@@ -1270,6 +1329,7 @@ def _run_cycle(
                     sent=False,
                     killed=False,
                     skipped="no_book",
+                    reply=reply_signal,
                 )
             fresh_book = memory.read_book()
             if fresh_book is None:
@@ -1283,6 +1343,7 @@ def _run_cycle(
                     sent=False,
                     killed=False,
                     skipped="no_book",
+                    reply=reply_signal,
                 )
             book = fresh_book
         client_order_id = f"cfscalp_{uuid.uuid4().hex[:16]}"
@@ -1359,6 +1420,7 @@ def _run_cycle(
         sent=sent,
         killed=bool(state.killed),
         skipped=None if sent else intent.skip_reason,
+        reply=reply_signal,
     )
 
 

@@ -24,6 +24,7 @@ from app.routes import scalp as scalp_route
 from app.services.scalp_engine import (
     CLIENT_ORDER_PREFIX,
     CROSS_REJECT_CODES,
+    JEV_CALL_TIMEOUT_MS,
     JEV_FLOOR_MS,
     JEV_LATE_MS,
     JEV_TARGET_MS,
@@ -463,9 +464,13 @@ def test_request_jev_posts_systemone_not_signal(monkeypatch):
     assert captured["url"] == "https://api.typesafe.ai/v1/systemone"
     assert "/v1/signal" not in captured["url"]
     assert captured["method"] == "POST"
-    assert captured["timeout"] == JEV_LATE_MS / 1000.0
+    # Card #1028: the call timeout is 3 s, decoupled from the 1.5 s late gate.
+    assert captured["timeout"] == JEV_CALL_TIMEOUT_MS / 1000.0
+    assert captured["timeout"] == 3.0
     body = captured["body"]
-    assert body["model"] == "jev-latest"
+    # Card #1028: the call requests a fixed model version, never the alias.
+    assert body["model"] == "jev-1.13.0"
+    assert body["model"] != "jev-latest"
     assert set(body["questions"]) == {"side", "expected_move_bp", "book_toxic"}
     assert body["questions"]["side"]["type"] == "choice"
     move_q = body["questions"]["expected_move_bp"]
@@ -1679,6 +1684,9 @@ def test_diagnostic_log_ignores_rest_open_blocking_the_send(scalp_db, diagnostic
     )
     assert first.sent is True
     assert get_or_create_state(scalp_db, user_id).rest_client_order_id is not None
+    # Card #1028: the sent cycle leaves its verdict record (no first refusal).
+    assert f"scalp cycle sent user={user_id} skip_reason=none" in _diagnostic_text(diagnostic_log)
+    before_second = _diagnostic_text(diagnostic_log)
 
     # second cycle: the decided send is blocked by the resting order (no gate token)
     second_at = t0 + timedelta(milliseconds=JEV_TARGET_MS + 50)
@@ -1700,7 +1708,8 @@ def test_diagnostic_log_ignores_rest_open_blocking_the_send(scalp_db, diagnostic
     assert second.sent is False
     assert second.skipped is None
     assert len(fx.placed) == 1, "no second order: the send was blocked, not decided away"
-    assert "skip_reason" not in _diagnostic_text(diagnostic_log)
+    # Card #1028: the blocked close still leaves no record of its own.
+    assert _diagnostic_text(diagnostic_log) == before_second
 
 
 def test_diagnostic_log_ignores_keyless_stand_in_send(scalp_db, diagnostic_log, monkeypatch):
