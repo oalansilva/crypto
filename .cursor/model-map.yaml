@@ -1,9 +1,9 @@
 juizo:
-  label: Grok 4.6
-  slug: cursor-grok-4.6-high
+  label: deepseek-flash
+  slug: deepseek-flash
 execucao:
-  label: Composer 2.5
-  slug: composer-2.5
+  label: deepseek-flash
+  slug: deepseek-flash
 forbid:
   - composer-2.5-fast
   - inherit
