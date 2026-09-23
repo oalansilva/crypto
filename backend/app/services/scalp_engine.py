@@ -17,6 +17,16 @@ JEV_LATE_MS = 1500
 JEV_FLOOR_MS = 400
 # Card #1025: 30 s default, injected by the service (the engine reads no env).
 JEV_TARGET_MS = 30000
+# Card #1028: the call timeout is decoupled from the late gate. A reply that
+# arrives between JEV_LATE_MS and this value is received, mapped and recorded
+# and the cycle is still refused as late (same decision, now with data). The
+# timeout is a pure contract value; the service may still override it.
+JEV_CALL_TIMEOUT_MS = 3000
+# Card #1028: toxicity read with two cut-offs and an uncertainty band that only
+# labels the record. The decision keeps the single 0.5 cut-off below.
+TOXIC_NOUL_DECISION = Decimal("0.5")
+TOXIC_NOUL_NOT_TOXIC_BELOW = Decimal("0.4")
+TOXIC_NOUL_TOXIC_ABOVE = Decimal("0.6")
 ENTRY_REST_TIMEOUT_S = 10
 EXIT_TARGET_BP = Decimal("35")
 EXIT_STOP_BP = Decimal("-28")
@@ -32,6 +42,18 @@ CROSS_REJECT_CODES = frozenset({-5022, -2010})
 Side = Literal["BUY", "SELL"]
 PanelState = Literal["off", "on", "kill", "nokey"]
 SkipReason = Optional[str]
+# Card #1028: verdict of one reply-fed entry gate. ``not_applicable`` is a gate
+# configured off (never a ``fail``).
+GateVerdict = Literal["pass", "fail", "not_applicable"]
+# The reply-fed entry gates, in the order their rules are evaluated below.
+GATE_ORDER: tuple[str, ...] = (
+    "jev_late",
+    "hold",
+    "low_confidence",
+    "hurdle",
+    "regime",
+    "toxic_book",
+)
 
 
 def _q(value: Decimal, places: str = "0.01") -> Decimal:
@@ -143,6 +165,29 @@ class JevSignal:
     book_toxic: bool
     latency_ms: int
     cost_quote: Decimal = Decimal("0")
+    # Card #1028: diagnostics carried from the client to the cycle record. The
+    # decision never reads them; ``confidence`` above stays the value the gates
+    # consume, produced together with ``confidence_origin``.
+    model: Optional[str] = None
+    confidence_origin: str = "none"
+    noul: Optional[Decimal] = None
+    noul_label: str = "unknown"
+
+
+@dataclass(frozen=True)
+class GateVerdicts:
+    """Verdict of every reply-fed entry gate, computed independently (card #1028)."""
+
+    jev_late: GateVerdict
+    hold: GateVerdict
+    low_confidence: GateVerdict
+    hurdle: GateVerdict
+    regime: GateVerdict
+    toxic_book: GateVerdict
+
+    def as_items(self) -> tuple[tuple[str, str], ...]:
+        """``(gate, verdict)`` pairs in evaluation order (record rendering)."""
+        return tuple((name, getattr(self, name)) for name in GATE_ORDER)
 
 
 @dataclass(frozen=True)
@@ -161,9 +206,42 @@ class CycleIntent:
     call_jev: bool = False
     # Card #1025: MARKET escape with no price ceiling (exit path only).
     aggressive_exit: bool = False
+    # Card #1028: verdict of every reply-fed gate. ``None`` when the cycle has
+    # no model reply (pre-call closes and the exit path); a side effect that
+    # never enters the decision.
+    gate_verdicts: Optional[GateVerdicts] = None
 
 
 from app.services.scalp_window import passes_entry_hurdle, passes_regime_gate  # noqa: E402
+
+
+def reply_gate_verdicts(
+    *,
+    jev: JevSignal,
+    confidence_min: Optional[Decimal] = CONFIDENCE_MIN,
+    fee_bp: Decimal = Decimal("10"),
+    spread_bp: Decimal = Decimal("0"),
+) -> GateVerdicts:
+    """Verdict of every entry gate fed by the model reply (card #1028).
+
+    Each verdict is computed independently of the first gate that closes the
+    cycle, so a refusal by confidence still carries the cost, regime and
+    toxicity verdicts. Pure data: no I/O, no config lookup, no side effect.
+    """
+    if confidence_min is None:
+        low_confidence: GateVerdict = "not_applicable"
+    elif jev.confidence < confidence_min:
+        low_confidence = "fail"
+    else:
+        low_confidence = "pass"
+    return GateVerdicts(
+        jev_late="fail" if jev.latency_ms > JEV_LATE_MS else "pass",
+        hold="fail" if jev.side is None else "pass",
+        low_confidence=low_confidence,
+        hurdle=("pass" if passes_entry_hurdle(jev.expected_move_bp, fee_bp, spread_bp) else "fail"),
+        regime=("pass" if passes_regime_gate(jev.expected_move_bp, fee_bp, spread_bp) else "fail"),
+        toxic_book="fail" if jev.book_toxic else "pass",
+    )
 
 
 def decide_cycle(
@@ -274,6 +352,12 @@ def decide_cycle(
             call_jev=True,
             clipped_inventory=clipped if inventory_changed else None,
         )
+    # Card #1028: from here on the cycle has a model reply, so the verdict of
+    # every reply-fed gate is computed once and attached to whichever return
+    # closes the cycle (the decision itself is unchanged).
+    verdicts = reply_gate_verdicts(
+        jev=jev, confidence_min=confidence_min, fee_bp=fee_bp, spread_bp=spread_bp
+    )
     if jev.latency_ms > JEV_LATE_MS:
         return CycleIntent(
             send=False,
@@ -281,6 +365,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="jev_late",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
 
     side = jev.side
@@ -291,6 +376,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="hold",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
     if confidence_min is not None and jev.confidence < confidence_min:
         return CycleIntent(
@@ -299,6 +385,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="low_confidence",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
     if not passes_entry_hurdle(jev.expected_move_bp, fee_bp, spread_bp):
         return CycleIntent(
@@ -307,6 +394,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="hurdle",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
     # Card #1025: maker cost + 50% slack. Evaluated after the bare hurdle
     # ("below cost") and before `toxic_book`, so the tokens tell the story:
@@ -318,6 +406,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="regime",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
     if jev.book_toxic:
         return CycleIntent(
@@ -326,6 +415,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="toxic_book",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
     if t <= 0:
         return CycleIntent(
@@ -334,6 +424,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="t_zero",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
 
     inventory_quote = clipped * book.mid
@@ -346,6 +437,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="ceiling_reduce_only",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
     if side == "SELL" and clipped <= 0:
         return CycleIntent(
@@ -354,6 +446,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="zero_inventory",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
 
     price = post_only_price(side, bid=book.bid, ask=book.ask)
@@ -364,6 +457,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="would_cross",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
     if side == "BUY":
         quote_qty = min(CLIP_CAP, max(Decimal("0"), remaining_to_t), compute_t(free_usdt))
@@ -375,6 +469,7 @@ def decide_cycle(
                 fire_kill=False,
                 skip_reason="t_zero",
                 clipped_inventory=clipped if inventory_changed else None,
+                gate_verdicts=verdicts,
             )
         quantity = (quote_qty / price) if price > 0 else Decimal("0")
     else:
@@ -391,6 +486,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="dust",
             clipped_inventory=clipped if inventory_changed else None,
+            gate_verdicts=verdicts,
         )
     if quote_qty > CLIP_CAP:
         quote_qty = CLIP_CAP
@@ -408,6 +504,7 @@ def decide_cycle(
         order_type=ORDER_TYPE,
         time_in_force=TIME_IN_FORCE,
         clipped_inventory=clipped if inventory_changed else None,
+        gate_verdicts=verdicts,
     )
 
 
