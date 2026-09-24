@@ -759,6 +759,15 @@
       "evidence": "scalp_db uses postgres_isolation/unit_database_url; payload cases use the in-memory BTC window; HTTP cases fake urlopen"
     },
     {
+      "file": "backend/tests/unit/test_scalp_jev_cost_band.py",
+      "protected_behavior": "card #1029 model reply read as a cost-relative band: the level already reached is credited (rounded down, no interpolation), the band label rides the model question and both the call return and the cycle record, and the read-only window A/B only concludes with 30+ non-overlapping windows per arm",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "scalp_db uses postgres_isolation/unit_database_url; pure band/decide_cycle cases reuse the JEV fixtures; reply cases fake urlopen and the tail-truncating diagnostic log; the A/B script is loaded by path and asserted read-only against the diagnostic log"
+    },
+    {
       "file": "backend/tests/unit/test_scalp_jev_entry_verdicts.py",
       "protected_behavior": "card #1028 entry-gate verdicts (every reply-fed gate in one record), confidence origin, answered model version, toxicity band label and the 1.5 s late refusal",
       "production_reachability": "reachable",
