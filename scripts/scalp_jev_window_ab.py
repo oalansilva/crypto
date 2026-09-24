@@ -7,10 +7,12 @@ com a **janela de estado actual** e com a **janela maior**. É **read-only**:
 não escreve produto, estado do scalp nem base de dados nova, e não precisa do
 loop do scalp a correr.
 
-O braço de cada observação é o rótulo aditivo ``ab_arm=`` que o registo de
-retorno passou a carregar (``SCALP_JEV_AB_ARM``: ``current`` por omissão,
-``larger`` quando a amostra foi recolhida com a janela maior). O braço **não**
-altera o gate, o limiar, a pergunta nem a decisão — só etiqueta o registo.
+O braço de cada observação é **derivado da janela de estado efectiva** que o
+registo de retorno passou a declarar (``state_window_s=``): ``larger`` se e só
+se a janela for maior do que a actual (900 s), ``current`` caso contrário. O
+rótulo ``ab_arm=`` continua a ser lido, mas deixa de ser autoridade — um rótulo
+``larger`` com a janela de 900 s é contado como incoerência e não move a
+amostra. O braço **não** altera o gate, o limiar, a pergunta nem a decisão.
 
 Regras do contrato (decisão 7 do Design):
 
@@ -32,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -43,9 +46,16 @@ from typing import Any, Optional, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
+if str(BACKEND) not in sys.path:
+    sys.path.insert(0, str(BACKEND))
+
+from app.services.scalp_state_window import CURRENT_STATE_WINDOW_S  # noqa: E402
+
 DEFAULT_LOG_PATH = BACKEND / "scalp_jev_diagnostic.log"
 
-HORIZON_S = 900
+# The window that decides the A/B arm is the product single source (card #1029):
+# imported, never re-declared here, so label and window cannot drift apart.
+HORIZON_S = CURRENT_STATE_WINDOW_S
 MIN_NON_OVERLAPPING_WINDOWS = 30
 ARM_CURRENT = "current"
 ARM_LARGER = "larger"
@@ -73,6 +83,21 @@ def _parse_stamp(raw: str) -> Optional[datetime]:
         return None
 
 
+def _window_s(value: Any) -> Optional[int]:
+    """Effective state window declared by the record; ``None`` when absent/invalid."""
+    if value is None:
+        return None
+    try:
+        parsed = float(str(value))
+    except (TypeError, ValueError):
+        return None
+    # ``inf``/``1e400``/``nan`` are invalid, never a raise (``parse_returns``
+    # promises "Never raises") and never a value that compares true by accident.
+    if not math.isfinite(parsed):
+        return None
+    return int(parsed)
+
+
 def _pinned_model() -> str:
     """Fixed model version of the sample (pin of the prerequisite of this card)."""
     try:
@@ -90,13 +115,17 @@ def _pinned_model() -> str:
 
 @dataclass(frozen=True)
 class Observation:
-    """One ``call return`` record: the confidence used, its arm and its model."""
+    """One ``call return`` record: confidence, derived arm, model and window."""
 
     call_id: str
     at: datetime
     arm: str
     confidence: Decimal
     model: str
+    # Effective state window declared by the record (card #1029) and the raw
+    # label it carried; ``None`` on records that predate the effective window.
+    state_window_s: Optional[int] = None
+    recorded_arm: Optional[str] = None
 
 
 def parse_returns(path: Path) -> tuple[list[Observation], int]:
@@ -114,8 +143,15 @@ def parse_returns(path: Path) -> tuple[list[Observation], int]:
             malformed += 1
             continue
         fields = dict(KVRe.findall(returned.group(2)))
-        arm = str(fields.get("ab_arm") or "").strip().lower()
-        if arm not in ARMS:
+        recorded = str(fields.get("ab_arm") or "").strip().lower()
+        effective = _window_s(fields.get("state_window_s"))
+        if effective is not None:
+            # The record declares the effective window: derive the arm from it,
+            # so a ``larger`` label with the 900 s window is not trusted.
+            arm = ARM_LARGER if effective > HORIZON_S else ARM_CURRENT
+        elif recorded in ARMS:
+            arm = recorded
+        else:
             malformed += 1
             continue
         if "confidence" not in fields:
@@ -128,6 +164,8 @@ def parse_returns(path: Path) -> tuple[list[Observation], int]:
                 arm=arm,
                 confidence=_dec(fields.get("confidence")),
                 model=str(fields.get("model") or "unknown"),
+                state_window_s=effective,
+                recorded_arm=recorded if recorded in ARMS else None,
             )
         )
     return observations, malformed
@@ -176,6 +214,20 @@ def build_report(
     window_counts = {arm: len(windows[arm]) for arm in ARMS}
     observation_counts = {arm: len(by_arm[arm]) for arm in ARMS}
     enough = all(window_counts[arm] >= MIN_NON_OVERLAPPING_WINDOWS for arm in ARMS)
+    # A record that declares an effective window but carries no label, or a
+    # label that disagrees with the window, is a coherence finding — never a
+    # reason to move the observation between arms.
+    window_arm_mismatches = sum(
+        1
+        for observation in observations
+        if observation.state_window_s is not None
+        and observation.recorded_arm in ARMS
+        and observation.recorded_arm != observation.arm
+    )
+    effective_windows = {
+        arm: sorted({obs.state_window_s for obs in by_arm[arm] if obs.state_window_s is not None})
+        for arm in ARMS
+    }
 
     summary: dict[str, Any] = {
         "log": str(log_path),
@@ -186,6 +238,8 @@ def build_report(
         "excluded_other_model": excluded_other_model,
         "windows": window_counts,
         "observations": observation_counts,
+        "effective_windows_s": effective_windows,
+        "window_arm_mismatches": window_arm_mismatches,
         "mean_confidence": {
             arm: (None if mean_confidence[arm] is None else str(mean_confidence[arm]))
             for arm in ARMS
@@ -205,6 +259,12 @@ def build_report(
     )
     lines.append(f"- registos malformados ignorados: {malformed}")
     lines.append(f"- observações de outra versão de modelo excluídas: {excluded_other_model}")
+    lines.append(
+        "- janela de estado efectiva declarada: "
+        f"`current`={effective_windows[ARM_CURRENT] or '—'} s; "
+        f"`larger`={effective_windows[ARM_LARGER] or '—'} s"
+    )
+    lines.append(f"- rótulos de braço incoerentes com a janela efectiva: {window_arm_mismatches}")
     lines.append("")
     lines.append("## Confiança média por braço (janela de estado)")
     lines.append("")

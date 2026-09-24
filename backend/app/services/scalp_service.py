@@ -51,6 +51,7 @@ from app.services.scalp_btcusdt_snapshot_store import (
 from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
 from app.services.scalp_jev import ab_arm, jev_api_key, jev_available, request_jev
 from app.services.scalp_jev_log import log_aggressive_exit, log_cycle_refusal, log_cycle_sent
+from app.services.scalp_state_window import state_window_s
 from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
 logger = logging.getLogger(__name__)
@@ -833,11 +834,14 @@ def _write_cycle_record(*, user_id: str, result: CycleResult) -> None:
             noul_label=reply.noul_label,
             book_toxic=reply.book_toxic,
             # Card #1029: band of the credited level + position on the scale,
-            # read from the same reply that fed the cost predicates. The A/B
-            # arm only labels the record; it never enters the decision.
+            # read from the same reply that fed the cost predicates. The A/B arm
+            # is derived from the effective state window (never ``larger`` with
+            # the 900 s window) and that window travels in the same record; it
+            # never enters the decision.
             move_band=reply.move_band,
             move_position=("unknown" if reply.move_position is None else reply.move_position),
             ab_arm=ab_arm(),
+            state_window_s=state_window_s(),
         )
     if result.skipped:
         log_cycle_refusal(user_id=user_id, skip_reason=result.skipped, **fields)
