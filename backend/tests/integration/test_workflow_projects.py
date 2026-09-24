@@ -54,7 +54,7 @@ def _assert_body_without_secrets(response) -> None:
 def _build_client(*, as_admin: bool = False):
     _reset_workflow_engine_cache()
     engine = create_engine(
-        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
+        "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/postgres",
     )
     WorkflowBase.metadata.drop_all(bind=engine)
     WorkflowBase.metadata.create_all(bind=engine)

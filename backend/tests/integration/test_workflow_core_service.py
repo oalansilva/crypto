@@ -19,7 +19,7 @@ from app.services.workflow_core_service import (
 
 @pytest.fixture
 def db():
-    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
+    engine = create_engine("postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/postgres")
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = SessionLocal()

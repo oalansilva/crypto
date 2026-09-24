@@ -12,11 +12,11 @@ os.environ["WORKFLOW_ALLOW_SHARED_PROJECT_DB"] = "1"
 os.environ["JWT_SECRET"] = "pytest-jwt-secret-do-not-use-elsewhere"
 os.environ.setdefault(
     "DATABASE_URL",
-    "postgresql://postgres:postgres@127.0.0.1:5432/crypto_app_test",
+    "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/crypto_app_test",
 )
 os.environ.setdefault(
     "WORKFLOW_DATABASE_URL",
-    "postgresql://postgres:postgres@127.0.0.1:5432/crypto_workflow_test",
+    "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/crypto_workflow_test",
 )
 os.environ.setdefault("CRYPTO_DATABASE_URL", os.environ["DATABASE_URL"])
 os.environ.setdefault("CRYPTO_WORKFLOW_DATABASE_URL", os.environ["WORKFLOW_DATABASE_URL"])
