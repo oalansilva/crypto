@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import time
 import urllib.error
@@ -33,6 +34,12 @@ from app.services.scalp_jev_log import (
     redact,
     summarize_body,
 )
+from app.services.scalp_window import (
+    MOVE_BAND_BELOW_COST,
+    MOVE_BAND_COVERS_COST,
+    MOVE_BAND_COVERS_WITH_SLACK,
+    move_band,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,37 +55,74 @@ _SYSTEMONE_PATH = "/v1/systemone"
 _DEFAULT_JEV_MODEL = "jev-1.13.0"
 _MOVING_JEV_ALIAS = "jev-latest"
 
-# Ordered Score criteria (2–10 levels). Index i maps to these bp values (linear interp between).
+# Ordered Score criteria (ten levels). Index i maps to these exact bp values.
+# Card #1029: the reply is read as a position on this ordered scale; the level
+# **already reached** (rounded down) is the only bp the cost comparison uses.
 _EXPECTED_MOVE_BP_LEVELS_BP: tuple[int, ...] = (0, 5, 10, 15, 20, 25, 30, 35, 50, 80)
 
+# A/B arm declared by the operator for this run (card #1029). Diagnostics only:
+# it labels the record so the read-only A/B can split the sample; it never
+# changes the state, the question or the entry decision.
+_AB_ARM_CURRENT = "current"
+_AB_ARM_LARGER = "larger"
 
-def _expected_move_bp_criteria() -> list[str]:
-    """The ten ladder levels, compact: the bp value is the criterion.
+# Model-facing text of each band (record keeps the token from ``scalp_window``).
+_BAND_LABEL_TEXT = {
+    MOVE_BAND_BELOW_COST: "below cost",
+    MOVE_BAND_COVERS_COST: "covers cost",
+    MOVE_BAND_COVERS_WITH_SLACK: "covers cost with slack",
+}
 
-    The level list and its meaning (score index → bp of expected absolute move
-    over the next 900 s) are unchanged; the shared explanation moved to the
-    question instructions (card #1025: input per call ≤ ~500 tokens).
+
+def _expected_move_bp_criteria(fee_bp: Decimal, spread_bp: Decimal) -> list[str]:
+    """The ten ladder levels, each labelled with its band against the cycle cost.
+
+    Card #1029: the ten options stay (ordered, same ``score`` type, the answer
+    is still a position); the label of each level is its band relative to the
+    **real cost of this cycle** instead of a bare bp number. The band uses the
+    same predicates as the decision, so the label the model sees and the band
+    the decision reads agree. The bp of the level stays in the label, next to
+    the band, so the ten ordered positions remain distinguishable and the
+    shared explanation still lives in the question instructions (card #1025:
+    input per call ≤ ~500 tokens).
     """
-    return [f"{bp} bp" for bp in _EXPECTED_MOVE_BP_LEVELS_BP]
+    return [
+        f"{bp} bp ({_BAND_LABEL_TEXT[move_band(Decimal(str(bp)), fee_bp, spread_bp)]})"
+        for bp in _EXPECTED_MOVE_BP_LEVELS_BP
+    ]
 
 
-def _bp_from_score(score: float) -> Decimal:
+def _credited_level_index(score: Any) -> int:
+    """Index of the level **already reached** by ``score``: clipped, floored.
+
+    Card #1029: between two levels the reply credits the lower one (the level
+    already reached), never the interpolated magnitude. Values at or beyond the
+    ends of the scale clip to the first/last level; a missing/invalid score is
+    read as level 0 (today's defensive zero).
+    """
+    levels = _EXPECTED_MOVE_BP_LEVELS_BP
+    if not levels:
+        return 0
+    try:
+        value = float(score)
+    except (TypeError, ValueError):
+        return 0
+    if math.isnan(value):
+        return 0
+    if value <= 0:
+        return 0
+    max_idx = len(levels) - 1
+    if value >= max_idx:
+        return max_idx
+    return int(math.floor(value))
+
+
+def _credited_level_bp(score: Any) -> Decimal:
+    """Exact bp of the level already reached (card #1029, decision 2)."""
     levels = _EXPECTED_MOVE_BP_LEVELS_BP
     if not levels:
         return Decimal("0")
-    if score <= 0:
-        return Decimal(str(levels[0]))
-    max_idx = len(levels) - 1
-    if score >= max_idx:
-        return Decimal(str(levels[max_idx]))
-    lo = int(score)
-    if lo >= max_idx:
-        return Decimal(str(levels[max_idx]))
-    hi = lo + 1
-    frac = Decimal(str(score)) - Decimal(lo)
-    lo_bp = Decimal(str(levels[lo]))
-    hi_bp = Decimal(str(levels[hi]))
-    return lo_bp + frac * (hi_bp - lo_bp)
+    return Decimal(str(levels[_credited_level_index(score)]))
 
 
 def jev_api_key() -> Optional[str]:
@@ -111,6 +155,17 @@ def jev_model() -> str:
     return raw
 
 
+def ab_arm() -> str:
+    """A/B arm declared by the operator for this run (card #1029).
+
+    Diagnostics only: the value labels the record (``ab_arm=``) so the
+    read-only A/B can split the sample between the current state window and the
+    larger one. It never changes the state, the question or the decision.
+    """
+    raw = (os.getenv("SCALP_JEV_AB_ARM") or "").strip().lower()
+    return _AB_ARM_LARGER if raw == _AB_ARM_LARGER else _AB_ARM_CURRENT
+
+
 def _base_url() -> str:
     return (os.getenv("JEV_BASE_URL") or "").strip().rstrip("/")
 
@@ -140,6 +195,22 @@ def _decimal(value: Any, default: str = "0") -> Decimal:
         return Decimal(str(value if value is not None else default))
     except Exception:
         return Decimal(default)
+
+
+def _payload_cost_bp(payload: Any) -> tuple[Decimal, Decimal]:
+    """``(fee_bp, spread_bp)`` carried by the state the call is built from.
+
+    Card #1029: the band labels of the question need the **real cost of the
+    cycle**. The payload already carries it (``state.account.fee_bp`` from the
+    signed maker read, ``state.touch.spread_bp`` from the fresh touch), so the
+    question is labelled from the same cost the entry predicates use without a
+    new argument on the client call. A missing cost reads as zero (no cost),
+    which only affects synthetic payloads — the service always sends both.
+    """
+    state = _as_dict(_as_dict(payload).get("state")) or _as_dict(payload)
+    account = _as_dict(state.get("account"))
+    touch = _as_dict(state.get("touch"))
+    return _decimal(account.get("fee_bp")), _decimal(touch.get("spread_bp"))
 
 
 def _hold_signal(latency_ms: int, *, model: Optional[str] = None) -> JevSignal:
@@ -180,6 +251,7 @@ def stand_in_signal(*, latency_ms: int = 1) -> JevSignal:
 
 def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
     state = payload.get("state") if isinstance(payload.get("state"), dict) else payload
+    fee_bp, spread_bp = _payload_cost_bp(payload)
     return {
         "state": state,
         "model": jev_model(),
@@ -200,9 +272,11 @@ def _systemone_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 "type": "score",
                 "instructions": (
                     "Expected absolute price move in basis points over the next 900 s "
-                    "for the chosen side; the criteria are the ten levels."
+                    "for the chosen side; each of the ten ordered levels is labelled "
+                    "with its band against this cycle's real cost (below cost / "
+                    "covers cost / covers cost with slack)."
                 ),
-                "criteria": _expected_move_bp_criteria(),
+                "criteria": _expected_move_bp_criteria(fee_bp, spread_bp),
             },
             "book_toxic": {
                 "type": "noul",
@@ -282,13 +356,18 @@ def _reply_model(parsed: Any) -> Optional[str]:
 
 
 def _expected_move_bp(answers: dict[str, Any]) -> Decimal:
+    """Bp the cost predicates consume: the exact bp of the credited level.
+
+    Card #1029: a ``score`` reply is read as a position on the ordered ladder
+    and the **level already reached** (rounded down) credits its exact bp — the
+    linear interpolation between levels is gone from the decision path. The
+    legacy ``number``/``value`` fallbacks keep today's literal reading (outside
+    the band contract, declared in the change).
+    """
     raw = answers.get("expected_move_bp")
     if isinstance(raw, dict):
         if raw.get("score") is not None:
-            try:
-                return _bp_from_score(float(raw["score"]))
-            except (TypeError, ValueError):
-                return Decimal("0")
+            return _credited_level_bp(raw["score"])
         if raw.get("number") is not None:
             return _decimal(raw.get("number"))
         if raw.get("value") is not None:
@@ -299,7 +378,13 @@ def _expected_move_bp(answers: dict[str, Any]) -> Decimal:
     return _decimal(raw)
 
 
-def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
+def _map_systemone(
+    parsed: Any,
+    *,
+    latency_ms: int,
+    fee_bp: Optional[Decimal] = None,
+    spread_bp: Optional[Decimal] = None,
+) -> JevSignal:
     data = _as_dict(parsed)
     answers = _as_dict(data.get("answers"))
     if not answers:
@@ -307,10 +392,19 @@ def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
     side_answer = _as_dict(answers.get("side"))
     confidence, confidence_origin = _side_confidence(side_answer)
     noul = _noul_value(parsed)
+    expected_move_bp = _expected_move_bp(answers)
+    position = _move_position(parsed)
+    # Card #1029: the band of the level already reached against the cycle's real
+    # cost, from the same predicates the decision uses. Without a ladder score
+    # there is no position, so the band is declared unknown (the literal
+    # ``number``/``value`` fallbacks stay outside the band contract).
+    band = "unknown"
+    if position is not None:
+        band = move_band(expected_move_bp, fee_bp or Decimal("0"), spread_bp or Decimal("0"))
     return JevSignal(
         side=_parse_side(side_answer.get("choice")),
         confidence=confidence,
-        expected_move_bp=_expected_move_bp(answers),
+        expected_move_bp=expected_move_bp,
         book_toxic=_noul_yes(answers.get("book_toxic")),
         latency_ms=latency_ms,
         cost_quote=Decimal("0"),
@@ -319,6 +413,9 @@ def _map_systemone(parsed: Any, *, latency_ms: int) -> JevSignal:
         confidence_origin=confidence_origin,
         noul=noul,
         noul_label=noul_label(noul),
+        # Card #1029: position on the scale + band of the credited level.
+        move_position=position,
+        move_band=band,
     )
 
 
@@ -332,6 +429,18 @@ def _move_score(parsed: Any) -> Optional[float]:
         except (TypeError, ValueError):
             return None
     return None
+
+
+def _move_position(parsed: Any) -> Optional[int]:
+    """Position on the scale credited to the reply (card #1029).
+
+    ``None`` when the reply has no ladder ``score`` (legacy ``number``/``value``
+    fallback or no movement answer): there is no position to credit.
+    """
+    score = _move_score(parsed)
+    if score is None:
+        return None
+    return _credited_level_index(score)
 
 
 def _noul_value(parsed: Any) -> Optional[Decimal]:
@@ -390,6 +499,10 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
         return _hold_signal(elapsed_ms)
 
     url = _endpoint_url()
+    # Card #1029: the cost that labels the question is the same one the reply
+    # is read against, so the band the model sees and the band the decision
+    # derives from the credited level agree.
+    fee_bp, spread_bp = _payload_cost_bp(payload)
     systemone = _systemone_payload(payload)
     call_id = uuid.uuid4().hex[:12]
     log_call_entry(call_id=call_id, systemone=systemone)
@@ -444,7 +557,7 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
 
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     try:
-        signal = _map_systemone(parsed, latency_ms=elapsed_ms)
+        signal = _map_systemone(parsed, latency_ms=elapsed_ms, fee_bp=fee_bp, spread_bp=spread_bp)
     except Exception:
         signal = _hold_signal(elapsed_ms)
     if raw_payload_enabled():
@@ -467,5 +580,10 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
         model=signal.model,
         confidence_origin=signal.confidence_origin,
         noul_label=signal.noul_label,
+        # Card #1029: band of the credited level + position on the scale (the
+        # exact bp travels in expected_move_bp=), plus the A/B arm of the run.
+        move_band=signal.move_band,
+        move_position=signal.move_position,
+        ab_arm=ab_arm(),
     )
     return signal

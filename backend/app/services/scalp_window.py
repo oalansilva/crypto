@@ -140,3 +140,27 @@ def passes_regime_gate(expected_move_bp: Decimal, fee_bp: Decimal, spread_bp: De
     justify it as a secondary condition).
     """
     return expected_move_bp >= entry_hurdle_bp_with_slack(fee_bp, spread_bp)
+
+
+# Card #1029: names of the three bands of a level's **exact** bp against the
+# **real cost of that cycle**. They are labels of the two comparisons above,
+# read in this order: covers with slack (>= hurdle × 1.5) implies covers the
+# cost (strict > hurdle), which implies not below it. No boundary is added to
+# the scale and no new threshold or constant is introduced.
+MOVE_BAND_BELOW_COST = "below_cost"
+MOVE_BAND_COVERS_COST = "covers_cost"
+MOVE_BAND_COVERS_WITH_SLACK = "covers_with_slack"
+
+
+def move_band(expected_move_bp: Decimal, fee_bp: Decimal, spread_bp: Decimal) -> str:
+    """Band of a level's exact bp against the cycle's real cost (card #1029).
+
+    Deliberately a thin reading over ``passes_regime_gate`` / ``passes_entry_hurdle``
+    with their current boundaries (``>=`` and strict ``>``), so the band the
+    model sees and the band the entry decision reads come from the same rules.
+    """
+    if passes_regime_gate(expected_move_bp, fee_bp, spread_bp):
+        return MOVE_BAND_COVERS_WITH_SLACK
+    if passes_entry_hurdle(expected_move_bp, fee_bp, spread_bp):
+        return MOVE_BAND_COVERS_COST
+    return MOVE_BAND_BELOW_COST

@@ -172,6 +172,12 @@ class JevSignal:
     confidence_origin: str = "none"
     noul: Optional[Decimal] = None
     noul_label: str = "unknown"
+    # Card #1029: the reply read as a position on the ordered scale, plus the
+    # band of the level already reached against that cycle's real cost.
+    # ``expected_move_bp`` above is already the exact bp of the credited level
+    # (never an interpolated value); these two fields only feed the record.
+    move_position: Optional[int] = None
+    move_band: str = "unknown"
 
 
 @dataclass(frozen=True)
@@ -227,6 +233,10 @@ def reply_gate_verdicts(
     Each verdict is computed independently of the first gate that closes the
     cycle, so a refusal by confidence still carries the cost, regime and
     toxicity verdicts. Pure data: no I/O, no config lookup, no side effect.
+
+    Card #1029: ``jev.expected_move_bp`` is the exact bp of the **level already
+    reached** (rounded down), so the two cost verdicts below already read the
+    credited level's band; their rules, names and boundaries are untouched.
     """
     if confidence_min is None:
         low_confidence: GateVerdict = "not_applicable"
@@ -399,6 +409,8 @@ def decide_cycle(
     # Card #1025: maker cost + 50% slack. Evaluated after the bare hurdle
     # ("below cost") and before `toxic_book`, so the tokens tell the story:
     # `hurdle` = below cost, `regime` = clears cost without the slack.
+    # Card #1029: the value compared here is the band of the level already
+    # reached (credited, rounded down); one reason only, no new token.
     if not passes_regime_gate(jev.expected_move_bp, fee_bp, spread_bp):
         return CycleIntent(
             send=False,
