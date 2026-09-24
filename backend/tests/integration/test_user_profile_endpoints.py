@@ -17,7 +17,7 @@ from app.services import beta_invites as beta_invites_service
 
 def _build_session_local():
     engine = create_engine(
-        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
+        "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/postgres",
     )
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:

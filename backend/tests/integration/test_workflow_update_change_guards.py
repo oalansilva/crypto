@@ -34,7 +34,7 @@ def _trusted_qa_environment(monkeypatch):
 
 
 def _build_client(actor: WorkflowActor | None = ALAN) -> TestClient:
-    url = "postgresql://postgres:postgres@127.0.0.1:5432/postgres"
+    url = "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/postgres"
     init_workflow_schema_for_url(url)
     engine = create_engine(url)
     session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
