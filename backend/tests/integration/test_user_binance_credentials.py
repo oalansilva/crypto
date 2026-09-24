@@ -13,7 +13,7 @@ from app.routes import user_credentials
 def _session_factory(tmp_path: Path):
     db_file = tmp_path / "user_credentials_test.db"
     engine = create_engine(
-        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
+        "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/postgres",
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
