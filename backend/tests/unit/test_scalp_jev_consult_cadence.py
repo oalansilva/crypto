@@ -240,7 +240,14 @@ def test_payload_stays_within_the_token_budget_with_the_ladder_intact():
 
     systemone = _systemone_payload(body)
     criteria = systemone["questions"]["expected_move_bp"]["criteria"]
-    assert criteria == [f"{bp} bp" for bp in _EXPECTED_MOVE_BP_LEVELS_BP]
+    # Card #1029: the ten ordered options stay, each labelled with its band
+    # against the cycle cost instead of a bare bp number. The ladder itself is
+    # unchanged (task 3.4).
+    assert len(criteria) == len(_EXPECTED_MOVE_BP_LEVELS_BP)
+    for bp, label in zip(_EXPECTED_MOVE_BP_LEVELS_BP, criteria):
+        assert label != f"{bp} bp", "no bare bp label"
+    assert any("below cost" in label for label in criteria)
+    assert any("covers cost with slack" in label for label in criteria)
     assert _EXPECTED_MOVE_BP_LEVELS_BP == (0, 5, 10, 15, 20, 25, 30, 35, 50, 80)
     assert systemone["questions"]["expected_move_bp"]["type"] == "score"
 

@@ -43,7 +43,8 @@ from app.services.scalp_engine import (
 )
 from app.services.scalp_jev import (
     _EXPECTED_MOVE_BP_LEVELS_BP,
-    _bp_from_score,
+    _credited_level_bp,
+    _credited_level_index,
     _error_body,
     _expected_move_bp,
     request_jev,
@@ -476,9 +477,15 @@ def test_request_jev_posts_systemone_not_signal(monkeypatch):
     move_q = body["questions"]["expected_move_bp"]
     assert move_q["type"] == "score"
     assert isinstance(move_q["criteria"], list)
-    assert 2 <= len(move_q["criteria"]) <= 10
-    assert "35 bp" in move_q["criteria"][7]
-    assert "20 bp" in move_q["criteria"][4]
+    # Card #1029: the ten ordered options stay, each labelled with its band
+    # against the cycle cost (fee_bp=10, spread_bp=1.5 in this payload) and
+    # never with a bare bp number alone.
+    assert len(move_q["criteria"]) == len(_EXPECTED_MOVE_BP_LEVELS_BP)
+    assert move_q["criteria"][4] == "20 bp (below cost)"
+    assert move_q["criteria"][7] == "35 bp (covers cost with slack)"
+    for bp, label in zip(_EXPECTED_MOVE_BP_LEVELS_BP, move_q["criteria"]):
+        assert label != f"{bp} bp", "no bare bp label"
+        assert "bp (" in label and label.endswith(")")
     assert body["questions"]["book_toxic"]["type"] == "noul"
     assert body["state"]["symbol"] == "BTCUSDT"
     assert "edge_after_fees" not in body["questions"]
@@ -486,10 +493,15 @@ def test_request_jev_posts_systemone_not_signal(monkeypatch):
     assert signal.side == "BUY"
 
 
-def test_expected_move_bp_score_interpolation_and_legacy_number():
-    assert _bp_from_score(5.0) == Decimal("25")
-    assert _bp_from_score(4.5) == Decimal("22.5")
+def test_expected_move_bp_credits_the_level_already_reached():
+    """#1029: the score is a position; between levels it credits the lower one."""
+    assert _credited_level_bp(5.0) == Decimal("25")
+    assert _credited_level_bp(4.5) == Decimal("20"), "never the interpolated 22.5"
+    assert (_credited_level_index(3.07), _credited_level_bp(3.07)) == (3, Decimal("15"))
+    assert (_credited_level_index(2.86), _credited_level_bp(2.86)) == (2, Decimal("10"))
+    assert (_credited_level_index(0.92), _credited_level_bp(0.92)) == (0, Decimal("0"))
     assert _expected_move_bp({"expected_move_bp": {"type": "score", "score": 5.0}}) == Decimal("25")
+    # The legacy number/value fallbacks keep today's literal reading.
     assert _expected_move_bp({"expected_move_bp": {"type": "number", "number": 18}}) == Decimal(
         "18"
     )

@@ -141,6 +141,18 @@ def record_token(value: Any, *, default: str = "unknown") -> str:
     return summarize_body(value, limit=RECORD_TOKEN_CHARS) or str(default)
 
 
+def position_token(value: Any) -> str:
+    """Record token of the scale position; ``unknown`` when there is none.
+
+    Card #1029: ``record_token`` maps a falsy value to its default, which would
+    turn the valid level **0** into ``unknown``. The position is an internal
+    integer (never a free vendor field), so it is rendered directly.
+    """
+    if value is None:
+        return "unknown"
+    return str(value)
+
+
 class TailTruncatingFileHandler(logging.FileHandler):
     """Append-only handler that drops the oldest records once the ceiling is hit.
 
@@ -338,6 +350,9 @@ def log_call_return(
     model: Any = None,
     confidence_origin: Any = None,
     noul_label: Any = None,
+    move_band: Any = None,
+    move_position: Any = None,
+    ab_arm: Any = None,
 ) -> None:
     """Return record: the reply plus the drivers of the ``book_toxic`` flag.
 
@@ -350,11 +365,18 @@ def log_call_return(
     (``model=``, ``unknown`` when the reply has no identifier), the origin of
     the confidence used (``confidence_origin=``) and the record-only toxicity
     label (``noul_label=``), independent of ``SCALP_JEV_RAW_PAYLOAD``.
+
+    Card #1029: the reply is a **position on the scale** — the record shows the
+    band of the level already reached (``move_band=``) and that position
+    (``move_position=``), and ``expected_move_bp=`` is the exact bp of that
+    level (never interpolated). ``ab_arm=`` declares the A/B arm of the run.
+    All fields are additive: the read-only ruler keeps matching the prefix.
     """
     features = _as_dict(window)
     logger.info(
         "scalp jev call return id=%s status=%s latency_ms=%s side=%s "
-        "expected_move_bp=%s score=%s book_toxic=%s confidence=%s "
+        "expected_move_bp=%s score=%s move_band=%s move_position=%s ab_arm=%s "
+        "book_toxic=%s confidence=%s "
         "noul=%s model=%s confidence_origin=%s noul_label=%s "
         "window_ret_bp=%s window_vol_bp=%s window_aggressor_flow=%s "
         "window_spread_bp_mean=%s window_trade_count=%s",
@@ -364,6 +386,9 @@ def log_call_return(
         side,
         expected_move_bp,
         score,
+        record_token(move_band),
+        position_token(move_position),
+        record_token(ab_arm),
         book_toxic,
         confidence,
         noul,
@@ -397,12 +422,19 @@ def _cycle_suffix(
     noul: Any = None,
     noul_label: Any = None,
     book_toxic: Any = None,
+    move_band: Any = None,
+    move_position: Any = None,
+    ab_arm: Any = None,
 ) -> str:
     """Additive ``k=v`` fields of a cycle record; empty when there is no reply.
 
     The fields come **after** ``user=``/``skip_reason=`` so the #1025 read-only
     ruler (``RefusalRe`` / ``KVRe``) keeps matching the prefix and tolerates
     the extra keys. Values are single tokens (``\\S+``).
+
+    Card #1029: the cycle record also carries the band of the level already
+    reached (``move_band=``), the position on the scale (``move_position=``)
+    and the A/B arm of the run (``ab_arm=``) — additive, same record.
     """
     parts: list[str] = []
     if gate_verdicts:
@@ -418,6 +450,12 @@ def _cycle_suffix(
         parts.append(f"noul_label={noul_label}")
     if book_toxic is not None:
         parts.append(f"book_toxic={book_toxic}")
+    if move_band is not None:
+        parts.append(f"move_band={record_token(move_band)}")
+    if move_position is not None:
+        parts.append(f"move_position={position_token(move_position)}")
+    if ab_arm is not None:
+        parts.append(f"ab_arm={record_token(ab_arm)}")
     return (" " + " ".join(parts)) if parts else ""
 
 
@@ -432,13 +470,17 @@ def log_cycle_refusal(
     noul: Any = None,
     noul_label: Any = None,
     book_toxic: Any = None,
+    move_band: Any = None,
+    move_position: Any = None,
+    ab_arm: Any = None,
 ) -> None:
     """A cycle closed without an order.
 
     ``skip_reason`` is the raw token of the **first** gate that closed the
     cycle and stays immediately after ``user=`` (card #1015 contract). Card
     #1028 appends, in the same record, the verdict of every reply-fed gate plus
-    the reply diagnostics when the cycle had a model reply.
+    the reply diagnostics when the cycle had a model reply. Card #1029 appends
+    the band, the position and the A/B arm (additive).
     """
     token = str(skip_reason or "").strip()
     if not token:
@@ -455,6 +497,9 @@ def log_cycle_refusal(
             noul=noul,
             noul_label=noul_label,
             book_toxic=book_toxic,
+            move_band=move_band,
+            move_position=move_position,
+            ab_arm=ab_arm,
         ),
     )
 
@@ -469,11 +514,15 @@ def log_cycle_sent(
     noul: Any = None,
     noul_label: Any = None,
     book_toxic: Any = None,
+    move_band: Any = None,
+    move_position: Any = None,
+    ab_arm: Any = None,
 ) -> None:
     """A cycle that passed every entry gate and sent an order (card #1028).
 
     Same record shape as the refusal, with ``skip_reason=none`` and the same
-    additive fields; the #1025 ruler ignores this prefix, so it is additive.
+    additive fields (card #1029 adds band, position and A/B arm); the #1025
+    ruler ignores this prefix, so it is additive.
     """
     logger.info(
         "scalp cycle sent user=%s skip_reason=none%s",
@@ -486,6 +535,9 @@ def log_cycle_sent(
             noul=noul,
             noul_label=noul_label,
             book_toxic=book_toxic,
+            move_band=move_band,
+            move_position=move_position,
+            ab_arm=ab_arm,
         ),
     )
 
