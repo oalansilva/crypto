@@ -475,9 +475,7 @@ def test_a_confidence_that_does_not_separate_turns_the_threshold_off():
     assert "não separa" in report
     assert "desligado" in report
     # O limiar proposto (só para leitura) empata com aceitar tudo: não separa.
-    assert Decimal(calm["chosen"]["expected_net_bp"]) == Decimal(
-        calm["expected_net_accept_all_bp"]
-    )
+    assert Decimal(calm["chosen"]["expected_net_bp"]) == Decimal(calm["expected_net_accept_all_bp"])
 
 
 def test_a_regime_without_a_boundary_is_closed_and_insufficient():
