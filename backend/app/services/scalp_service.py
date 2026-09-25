@@ -17,6 +17,9 @@ from app.models import ScalpFill, ScalpUserState, UserExchangeCredential
 from app.services.binance_spot_orders import ORDER_FILTER_REJECTED_CODE, BinanceOrderError
 from app.services.scalp_engine import (
     CONFIDENCE_MIN,
+    CONFIDENCE_POLICY_CLOSED,
+    CONFIDENCE_POLICY_NUMERIC,
+    CONFIDENCE_POLICY_OFF,
     CROSS_REJECT_CODES,
     ENTRY_REST_TIMEOUT_S,
     EXIT_STOP_BP,
@@ -24,10 +27,15 @@ from app.services.scalp_engine import (
     HORIZON_S,
     JEV_FLOOR_MS,
     JEV_TARGET_MS,
+    REGIME_ACTIVE,
+    REGIME_CALM,
+    REGIME_UNKNOWN,
     SYMBOL,
     Book,
+    ConfidencePolicy,
     CycleIntent,
     JevSignal,
+    MarketRegime,
     RestingOrder,
     Side,
     clip_inventory,
@@ -119,6 +127,100 @@ def _confidence_min() -> Optional[Decimal]:
     if not value.is_finite() or value < 0 or value > 1:
         return CONFIDENCE_MIN
     return value
+
+
+# Card #1030: single regime boundary (σ of the window, bp) shared with the
+# read-only ruler. Absent/invalid keeps both regimes closed (fail closed).
+REGIME_BOUNDARY_ENV = "SCALP_REGIME_BOUNDARY_BP"
+# Card #1030: confidence policy per market regime. Each accepts a value in
+# [0, 1], a turned-off token (``none``/``off``/``disabled``) or ``closed``; the
+# #1025 single ``SCALP_CONFIDENCE_MIN`` stays as the reported value in use.
+CONFIDENCE_POLICY_CLOSED_TOKEN = "closed"
+CONFIDENCE_POLICY_ENV: dict[MarketRegime, str] = {
+    REGIME_CALM: "SCALP_CONFIDENCE_MIN_CALM",
+    REGIME_ACTIVE: "SCALP_CONFIDENCE_MIN_ACTIVE",
+}
+
+
+def _confidence_in_use_token() -> str:
+    """The configured value in use (#1025), preserved and reported (card #1030)."""
+    value = _confidence_min()
+    return "off" if value is None else str(value)
+
+
+def _regime_boundary_bp() -> Optional[Decimal]:
+    """Single σ boundary (bp) shared by the ruler and the decision (card #1030)."""
+    raw = (os.getenv(REGIME_BOUNDARY_ENV) or "").strip()
+    if not raw:
+        return None
+    try:
+        value = Decimal(raw)
+    except Exception:
+        return None
+    if not value.is_finite() or value < 0:
+        return None
+    return value
+
+
+def market_regime_for(vol_bp: Optional[Decimal], boundary_bp: Optional[Decimal]) -> MarketRegime:
+    """Market regime of the window σ against the single boundary (card #1030).
+
+    Calm below the boundary, active at or above it. Without a boundary or
+    without a finite σ the regime cannot be named: ``unknown`` (both closed).
+    """
+    if vol_bp is None or boundary_bp is None or not vol_bp.is_finite():
+        return REGIME_UNKNOWN
+    return REGIME_ACTIVE if vol_bp >= boundary_bp else REGIME_CALM
+
+
+def _confidence_policy_for(
+    *, regime: MarketRegime, boundary_bp: Optional[Decimal]
+) -> ConfidencePolicy:
+    """Policy of a regime's configuration; any doubt falls to ``closed``.
+
+    Card #1030 (decision 9): a value in [0, 1] opens the regime with that
+    threshold; ``none``/``off``/``disabled`` removes the gate (decision by
+    forecast × cost × regime); ``closed`` does not operate. An absent,
+    non-finite or out-of-range value — and an absent boundary, which leaves the
+    regime unnamed — falls back to ``closed`` (fail closed).
+    """
+    if boundary_bp is None or regime not in CONFIDENCE_POLICY_ENV:
+        return ConfidencePolicy(kind=CONFIDENCE_POLICY_CLOSED, value=None, regime=regime)
+    raw = (os.getenv(CONFIDENCE_POLICY_ENV[regime]) or "").strip()
+    if not raw:
+        return ConfidencePolicy(kind=CONFIDENCE_POLICY_CLOSED, value=None, regime=regime)
+    token = raw.lower()
+    if token in CONFIDENCE_GATE_OFF or token == CONFIDENCE_POLICY_CLOSED_TOKEN:
+        kind = CONFIDENCE_POLICY_OFF if token in CONFIDENCE_GATE_OFF else CONFIDENCE_POLICY_CLOSED
+        return ConfidencePolicy(kind=kind, value=None, regime=regime)
+    try:
+        value = Decimal(raw)
+    except Exception:
+        return ConfidencePolicy(kind=CONFIDENCE_POLICY_CLOSED, value=None, regime=regime)
+    if not value.is_finite() or value < 0 or value > 1:
+        return ConfidencePolicy(kind=CONFIDENCE_POLICY_CLOSED, value=None, regime=regime)
+    return ConfidencePolicy(kind=CONFIDENCE_POLICY_NUMERIC, value=value, regime=regime)
+
+
+def _default_confidence_policy() -> ConfidencePolicy:
+    """Pre-reply policy: no σ yet, so the cycle belongs to no open regime."""
+    return ConfidencePolicy(kind=CONFIDENCE_POLICY_CLOSED, value=None, regime=REGIME_UNKNOWN)
+
+
+def _payload_vol_bp(payload: Optional[dict[str, Any]]) -> Optional[Decimal]:
+    """σ of the window as it travels in the payload (card #1030, decision 3)."""
+    if not isinstance(payload, dict):
+        return None
+    state = payload.get("state")
+    window = state.get("window") if isinstance(state, dict) else None
+    raw = window.get("vol_bp") if isinstance(window, dict) else None
+    if raw is None:
+        return None
+    try:
+        value = Decimal(str(raw))
+    except Exception:
+        return None
+    return value if value.is_finite() else None
 
 
 def _jev_target_ms() -> int:
@@ -842,6 +944,12 @@ def _write_cycle_record(*, user_id: str, result: CycleResult) -> None:
             move_position=("unknown" if reply.move_position is None else reply.move_position),
             ab_arm=ab_arm(),
             state_window_s=state_window_s(),
+            # Card #1030: the market regime the decision used and the kind of
+            # its confidence policy, plus the #1025 value in use — preserved and
+            # reported even when the regime is closed.
+            market_regime=result.intent.market_regime,
+            confidence_policy=result.intent.confidence_policy_kind,
+            confidence_in_use=_confidence_in_use_token(),
         )
     if result.skipped:
         log_cycle_refusal(user_id=user_id, skip_reason=result.skipped, **fields)
@@ -1029,7 +1137,7 @@ def _run_cycle(
             spread_bp=spread_bp,
             has_open_position=False,
             has_exit_resting=has_exit_resting,
-            confidence_min=_confidence_min(),
+            confidence_policy=_default_confidence_policy(),
             jev_target_ms=_jev_target_ms(),
         )
 
@@ -1149,6 +1257,14 @@ def _run_cycle(
         # Card #1028: from here the cycle has a reply; its diagnostics travel
         # to the cycle record (never into the decision).
         reply_signal = signal
+        # Card #1030: the market regime is the σ of the window that travelled in
+        # the payload against the single boundary, and the policy is that
+        # regime's configuration. Without a boundary (or with an invalid one)
+        # the regime is unnamed and both regimes are closed (fail closed). The
+        # value in use (#1025) is preserved and reported, never applied here.
+        boundary_bp = _regime_boundary_bp()
+        market_regime = market_regime_for(_payload_vol_bp(jev_body), boundary_bp)
+        confidence_policy = _confidence_policy_for(regime=market_regime, boundary_bp=boundary_bp)
 
         enabled_now, killed_now = _live_switch_flags(db, str(user_id))
         state.enabled = enabled_now
@@ -1163,10 +1279,12 @@ def _run_cycle(
                 intent,
                 gate_verdicts=reply_gate_verdicts(
                     jev=signal,
-                    confidence_min=_confidence_min(),
+                    confidence_policy=confidence_policy,
                     fee_bp=fee_bp,
                     spread_bp=spread_bp,
                 ),
+                market_regime=market_regime,
+                confidence_policy_kind=confidence_policy.kind,
             )
             return CycleResult(
                 user_id=str(user_id),
@@ -1196,7 +1314,8 @@ def _run_cycle(
             spread_bp=spread_bp,
             has_open_position=False,
             has_exit_resting=has_exit_resting,
-            confidence_min=_confidence_min(),
+            confidence_policy=confidence_policy,
+            market_regime=market_regime,
             jev_target_ms=_jev_target_ms(),
         )
     sent = False
