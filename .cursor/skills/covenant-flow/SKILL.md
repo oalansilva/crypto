@@ -51,6 +51,18 @@ T7: Alan abre o **Snapshot Impeccable** linkado no comentário do card (path / b
 
 Handoff de Design/Apply/Review registra **proxies**: palavras de `design.md`, bytes de HTML gerado vs copiado (`cp`/clone = copied; delta = generated; sem protótipo = `N/A`), número de spawns, **uma linha por spawn** `proxy modelo: <papel> → <rótulo> (<slug>)` (papel = needle do spawn; rótulo/slug = mapa acima). Sem parser de usage Cursor/Grok e sem dashboard.
 
+## Codex CLI local (cooperativo; sem Auto)
+
+Skills são descobertas pelas pontes `.agents/skills/<nome>/SKILL.md`, que mandam ler o canônico completo em `.cursor/skills/<nome>/SKILL.md`; a ponte não concede autorização nem define estado. AGENTS.md permanece curto; a FSM (`.cursor/process-fsm.yaml` + `process_event`) define estado e transições, e `.cursor/model-map.yaml` define os pares. O adapter usa `.codex/hooks.json` e scripts `scripts/process-fsm/codex_*.py`; detalhes de comandos, proxy, captura e verificação ficam nos scripts. `.codex/` não é fonte de estado nem de modelos.
+
+Hooks do projeto são **não gerenciados** e só operam depois que Alan/operador revisar e confiar explicitamente na definição atual no host local. Nunca use `--dangerously-bypass-hook-trust`, atribua confiança ao pin ou trate hook ausente/não confiado como proteção. `SessionStart` injeta a página compartilhada e, sem Status, mantém `Write produto deny`. `PreToolUse` declara matcher `Bash|exec_command|apply_patch|Edit|Write|Agent`, mas spawn nativo `Agent`, hosted tools e rotas especializadas podem não dispará-lo. `PostToolUse` e `Stop` são advisory e não revertem efeitos; permissões nativas continuam ativas. Codex é cooperativo, sem modo Auto.
+
+Protocolo por filho: leia o Status vinculado e confira a ação permitida pela FSM; classifique `juizo` (grill, Design-autor, crítica e avaliações) ou `execucao` (Apply, QA, reviewers e demais execução); leia de novo o mapa vigente na raiz do consumidor a cada spawn e passe literalmente o par de modelo/esforço da faixa. Quando disparado, `PreToolUse` confere faixa/modelo/esforço com o mapa; valores ausentes, inválidos, proibidos ou divergentes recebem deny visível. Não fixe pares em `.codex/config.toml` ou `.codex/agents/*.toml`, nem use fallback; mapa ausente/inválido ou recusa do host falha visivelmente.
+
+Cada prompt é autocontido: `#<id>`, Status, branch/worktree e paths, ação autorizada, escopo, contexto necessário, skill canônica e contrato exato de saída. Não herde nem solicite transcript do pai. Registre pelo proxy script o par pedido e o par **observado pelo runtime/trace** (nunca inferido do pedido), host/versão, status e payload. `unavailable` deve ficar visível e é falha, sem fallback. Sucesso exige `completed`, payload retornado e par observado igual ao mapa; `completed` sem payload não basta. Só o pai move estado, pelo `process_event` permitido na FSM.
+
+No Code Review, o pai materializa e verifica uma vez o diff; no mesmo turno, `diff-reviewer` e `code-reviewer` recebem o mesmo path + SHA-256, prompts próprios, par vigente de `execucao` e sandbox `read-only`. Cada reviewer lê só o artefato verificado e não escreve; a verificação pelos scripts exige dois papéis e filhos distintos, mesmo digest/sandbox, `completed` com payload e par observado válido. Falha ou dado indisponível reprova a onda. Esse limite é cooperativo: Codex não transforma instruções em isolamento de leitura.
+
 ## Modos Cursor (terminal vs Desktop+SSH)
 
 Dois modos do **mesmo** cliente Cursor nesta VM — não abandonar um modo e não forçar um só host:
@@ -197,6 +209,8 @@ Antes de spawnar `diff-reviewer` / `code-reviewer`, o **pai** materializa o inte
 - Grelha, Apply e QA **não** recebem este contrato.
 
 Pin overlay permanece `v1.1.16`. Stubs Grok/dsh/OpenCode: ponte ≤8 linhas; MUST NOT dual-write lei.
+
+Checklist de review: se o OpenSpec estiver noutro checkout, passe `--change-root <consumer-root>`. O padrão `strict` continua exigindo todas as tasks marcadas. Antes do commit, use `--phase precommit`: tasks de implementação pendentes bloqueiam; só tarefas com a anotação explícita `<!-- covenant-flow:after-commit -->`, `<!-- covenant-flow:after-pin -->` ou `<!-- covenant-flow:after-qa -->` podem aguardar, vencendo respectivamente em `postcommit`, `postpin` e `postqa`. Depois do pin/QA, rode novamente com `--phase postqa` para revalidar todas as tasks.
 
 ## Destape — subagentStop (S2)
 
