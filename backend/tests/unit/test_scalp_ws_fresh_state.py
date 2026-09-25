@@ -297,8 +297,10 @@ async def test_single_shared_stream_task_per_process(monkeypatch):
 
 def test_explicit_book_param_bypasses_memory_for_tests(scalp_db):
     memory = get_scalp_btcusdt_memory()
-    memory.reset_for_tests()
-    memory.set_ws_connected(False)
+    # Card #1030: the cycle needs a window σ to name the market regime, so the
+    # memory is seeded with a touch and a trade — but at prices other than the
+    # explicit book below, so the assertion proves which book was used.
+    _seed_fresh_touch(memory, bid="70000", ask="70005")
 
     user_id = str(uuid.uuid4())
     _add_key(scalp_db, user_id)
@@ -314,6 +316,7 @@ def test_explicit_book_param_bypasses_memory_for_tests(scalp_db):
         book=Book(bid=Decimal("65000"), ask=Decimal("65010")),
     )
     assert result.sent is True
+    assert result.intent.price == Decimal("65000"), "the explicit book wins over memory"
 
 
 def test_to_decimal_invalid_returns_zero():

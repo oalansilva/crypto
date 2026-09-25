@@ -7,6 +7,15 @@ from pathlib import Path
 os.environ["ARBITRAGE_MONITOR_ENABLED"] = "0"
 os.environ["SCALP_LOOP_ENABLED"] = "0"
 os.environ["RUN_SCALP_LOOP"] = "0"
+# Card #1030: the per-regime confidence policy fails closed (``closed``) in the
+# product. The tests that exercise the **other** reply-fed gates configure a
+# numeric policy for both regimes, so the closed default does not mask the gate
+# under test; a boundary well above the fixtures' σ keeps them in the calm
+# regime, where the numeric 0.7 reproduces the #1025 product threshold. The
+# tests of the closed default delete these variables explicitly.
+os.environ.setdefault("SCALP_REGIME_BOUNDARY_BP", "100")
+os.environ.setdefault("SCALP_CONFIDENCE_MIN_CALM", "0.7")
+os.environ.setdefault("SCALP_CONFIDENCE_MIN_ACTIVE", "0.7")
 os.environ["WORKFLOW_DB_ENABLED"] = "1"
 os.environ["WORKFLOW_ALLOW_SHARED_PROJECT_DB"] = "1"
 os.environ["JWT_SECRET"] = "pytest-jwt-secret-do-not-use-elsewhere"

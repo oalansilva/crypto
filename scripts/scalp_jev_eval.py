@@ -10,20 +10,37 @@ scalp a correr (só lê o ficheiro de log e o repositório OHLCV já existente).
 O relatório agrega:
 
 * previsão vs realizado em janelas **não sobrepostas** de 900 s;
-* segmentação por regime (calmo vs activo): por σ da janela (``vol_bp``) e pelo
-  predicado do gate de regime (``expected_move_bp >= entry_hurdle_bp × 1,5``);
 * acerto das barreiras +35 bp / −28 bp (percurso high/low dos candles);
-* expectancy líquida por bucket de ``score`` e de ``confidence``;
-* curva de calibração (``confidence`` → |realizado|).
+* segmentação por regime (calmo vs activo): pela **fronteira configurada** de σ
+  da janela (``vol_bp``) — a mesma que a decisão usa — e, como referência, pela
+  mediana da amostra e pelo predicado do gate de regime
+  (``expected_move_bp >= entry_hurdle_bp × 1,5``);
+* por faixa de confiança (largura 0,1) e por regime, ``n``, ``n`` com preço,
+  **acurácia** (fracção de ciclos com realização assinada positiva) e
+  **retorno líquido** (bp) — a acurácia é **reportada**, nunca critério de
+  escolha do limiar;
+* por regime, a **curva do limiar** sobre a **população elegível** (ciclos de
+  janela não sobreposta com resposta que passam `hold`, `jev_late`, `hurdle`,
+  `regime` e `toxic_book`) com o nº de ciclos que cada limiar deixa passar, a
+  **cobertura**, o ganho esperado e o **retorno líquido esperado**
+  (``ganho esperado × cobertura``); o limiar do regime é o ``argmax`` do
+  retorno líquido esperado;
+* expectancy líquida por bucket de ``score`` e de ``confidence`` e a curva de
+  calibração (``confidence`` → |realizado|).
+
+Card #1030: o custo é o round-trip da **taxa real por perna** da conta,
+registada com a origem (conta vs fallback conservador); o regime sem amostra
+suficiente aparece **fechado** (não opera); se a confiança **não separar**
+ciclos bons de ruins o limiar fica **desligado**; a **homogeneidade** da
+amostra (versão do modelo e origem da confiança) é declarada e, sem ela, nenhum
+limiar é proposto; o **valor em uso** de `CONFIDENCE_MIN` é preservado e
+reportado (nunca reescrito por um relatório insuficiente).
 
 Amostra insuficiente é **declarada** (por bucket, por regime e no total) em vez
-de concluída — e nesse caso nenhum valor de `CONFIDENCE_MIN`,
-`EXIT_TARGET_BP`, `EXIT_STOP_BP` ou `HOLD_AFTER_FILL_S` é proposto. Com amostra
-suficiente a régua propõe `CONFIDENCE_MIN` (bucket positivo mais baixo) e a
-**geometria** de alvo/stop derivada das barreiras reais da amostra (break-even
-das barreiras + expectancy líquida por candidato, com a taxa maker **por
-perna**); sem amostra, `EXIT_TARGET_BP` / `EXIT_STOP_BP` ficam como *defaults de
-produto*, explicitamente não derivados.
+de concluída — e nesse caso nenhum limiar de confiança é proposto e
+`EXIT_TARGET_BP`/`EXIT_STOP_BP`/`HOLD_AFTER_FILL_S` mantêm os valores de produto
+(salvo a geometria derivada quando a amostra chega). A régua continua
+**read-only** e sem o loop do scalp.
 
 Uso (do worktree do card, venv do source)::
 
@@ -39,6 +56,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import statistics
 import sys
@@ -70,6 +88,34 @@ REGIME_SLACK = Decimal("1.5")
 MIN_NON_OVERLAPPING_WINDOWS = 30
 MIN_BUCKET_TRADES = 20
 CONFIDENCE_BUCKET_WIDTH = Decimal("0.1")
+
+# Card #1030: reply-fed gates, in evaluation order (the #1028 ``GATE_ORDER``),
+# and the subset that defines the eligible population of a regime — every
+# reply-fed gate **except** the confidence gate being calibrated.
+GATE_ORDER = ("jev_late", "hold", "low_confidence", "hurdle", "regime", "toxic_book")
+ELIGIBILITY_GATES = ("jev_late", "hold", "hurdle", "regime", "toxic_book")
+# The late gate is a pure constant of the decision (#1025/#1028).
+JEV_LATE_MS = 1500
+# Market regime of the window σ (``vol_bp``) against the single configured
+# boundary: calm below it, active at or above it.
+REGIME_CALM = "calm"
+REGIME_ACTIVE = "active"
+REGIME_UNKNOWN = "unknown"
+# Confidence policy of a regime (mirrors the pure engine of the decision).
+CONFIDENCE_POLICY_NUMERIC = "numeric"
+CONFIDENCE_POLICY_OFF = "off"
+CONFIDENCE_POLICY_CLOSED = "closed"
+CONFIDENCE_GATE_OFF = frozenset({"none", "off", "disabled"})
+# Value in use while no sufficient report opens a regime (#1025 product
+# default). Preserved and reported, never rewritten by the ruler.
+DEFAULT_CONFIDENCE_IN_USE = Decimal("0.7")
+# Card #1030: the single σ boundary (bp) shared with the decision is read from
+# the same configuration the decision uses when the CLI flag is not given.
+REGIME_BOUNDARY_ENV = "SCALP_REGIME_BOUNDARY_BP"
+# A cycle record carries no call id: it is matched to the return record it
+# followed in the same cycle by the timestamp distance (the record is written
+# milliseconds after the reply).
+CYCLE_JOIN_TOLERANCE_S = 5.0
 # Candidatos de alvo/stop (bp) avaliados na derivação da geometria. O par de
 # produto (+35/−28) entra primeiro: em empate, a geometria de produto prevalece.
 GEOMETRY_TARGET_CANDIDATES_BP = (
@@ -90,6 +136,10 @@ _OHLCV_MAX_1M_CANDLES = 20160  # 14 dias de candles de 1 min
 EntryRe = re.compile(r"\sscalp jev call entry id=(\S+) state=(\{.*\}) questions=")
 ReturnRe = re.compile(r"\sscalp jev call return id=(\S+) (.*)$")
 RefusalRe = re.compile(r"\sscalp cycle refused user=(\S+) skip_reason=(\S+)")
+# Card #1030: the cycle record (refused or sent) carries the registered verdict
+# of every reply-fed gate and the regime/policy fields; the #1015 prefix and the
+# ``user=``/``skip_reason=`` adjacency are preserved.
+CycleRe = re.compile(r"\sscalp cycle (?:refused|sent) user=(\S+) skip_reason=(\S+)(.*)$")
 KVRe = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=(\S+)")
 TimestampRe = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) ")
 
@@ -101,6 +151,31 @@ def _dec(value: Any, default: str = "0") -> Decimal:
         return Decimal(str(value))
     except Exception:
         return Decimal(default)
+
+
+def _token(value: Any) -> Optional[str]:
+    """Optional single-token record field (``None``/``None`` string → ``None``)."""
+    if value in (None, "None"):
+        return None
+    return str(value)
+
+
+def _window_vol_bp(fields: dict[str, str], decision: "Decision") -> Optional[Decimal]:
+    """σ of the window the decision used (card #1030).
+
+    Prefers the value the return record carried (the same features the decision
+    read) and falls back to the window snapshot of the entry record.
+    """
+    raw = fields.get("window_vol_bp")
+    if raw is None and decision.window:
+        raw = decision.window.get("vol_bp")
+    if raw is None:
+        return None
+    try:
+        decimal = Decimal(str(raw))
+    except Exception:
+        return None
+    return decimal if decimal.is_finite() else None
 
 
 def _parse_stamp(raw: str) -> Optional[datetime]:
@@ -133,6 +208,18 @@ class Decision:
     entry_mid: Optional[Decimal] = None
     spread_bp: Decimal = Decimal("0")
     window: dict[str, Any] = field(default_factory=dict)
+    # Card #1030: the return record states the version that answered and the
+    # origin of the confidence; ``vol_bp`` is the σ of the window the decision
+    # used and ``returned_at`` joins that record to its cycle record.
+    model: Optional[str] = None
+    confidence_origin: Optional[str] = None
+    vol_bp: Optional[Decimal] = None
+    returned_at: Optional[datetime] = None
+    # Card #1030: registered verdicts of the reply-fed gates (#1028 record),
+    # when a cycle record was matched to this decision; ``None`` falls back to
+    # the pure #1025 predicates reconstructed from the reply.
+    gate_verdicts: Optional[dict[str, str]] = None
+    verdict_source: str = "reconstructed"
 
 
 @dataclass
@@ -146,10 +233,16 @@ class Realized:
 
 
 def parse_log(path: Path) -> tuple[list[Decision], dict[str, int], int]:
-    """Parse entry/return/refusal records. Read-only; never raises on bad lines."""
+    """Parse entry/return/refusal records. Read-only; never raises on bad lines.
+
+    Card #1030: the same pass also reads the cycle records (refused/sent) so a
+    decision can carry the **registered** verdicts of its reply-fed gates
+    (#1028) instead of only the reconstructed #1025 predicates.
+    """
     decisions: dict[str, Decision] = {}
     order: list[str] = []
     refusals: dict[str, int] = {}
+    cycles: list[dict[str, Any]] = []
     malformed = 0
     text = path.read_text(encoding="utf-8", errors="replace")
     for line in text.splitlines():
@@ -190,6 +283,10 @@ def parse_log(path: Path) -> tuple[list[Decision], dict[str, int], int]:
             decision.status = fields.get("status")
             decision.book_toxic = str(fields.get("book_toxic", "")).lower() == "true"
             decision.noul = _dec(fields["noul"]) if "noul" in fields else None
+            decision.returned_at = stamp
+            decision.model = _token(fields.get("model"))
+            decision.confidence_origin = _token(fields.get("confidence_origin"))
+            decision.vol_bp = _window_vol_bp(fields, decision)
             if fields.get("score") not in (None, "None"):
                 try:
                     decision.score = float(fields["score"])
@@ -203,7 +300,52 @@ def parse_log(path: Path) -> tuple[list[Decision], dict[str, int], int]:
         if refusal is not None:
             token = refusal.group(2)
             refusals[token] = refusals.get(token, 0) + 1
-    return [decisions[call_id] for call_id in order], refusals, malformed
+        cycle = CycleRe.search(line)
+        if cycle is not None and stamp is not None:
+            fields = dict(KVRe.findall(cycle.group(3)))
+            registered = {gate: fields[gate] for gate in GATE_ORDER if gate in fields}
+            if registered:
+                cycles.append(
+                    {
+                        "at": stamp,
+                        "verdicts": registered,
+                        "confidence": (
+                            _dec(fields["confidence"]) if "confidence" in fields else None
+                        ),
+                    }
+                )
+    parsed = [decisions[call_id] for call_id in order]
+    _attach_registered_verdicts(parsed, cycles)
+    return parsed, refusals, malformed
+
+
+def _attach_registered_verdicts(decisions: list[Decision], cycles: list[dict[str, Any]]) -> None:
+    """Match each cycle record to the return record of the same cycle (#1030).
+
+    The cycle record carries no call id, so it is matched to the latest return
+    record at or before its timestamp within ``CYCLE_JOIN_TOLERANCE_S``,
+    preferring an equal confidence value when both carry one. The registered
+    verdicts are the authority; a decision without a match keeps the
+    reconstructed #1025 predicates (``verdict_source="reconstructed"``).
+    """
+    if not decisions or not cycles:
+        return
+    ordered = [decision for decision in decisions if decision.returned_at is not None]
+    for cycle in sorted(cycles, key=lambda item: item["at"]):
+        within: list[Decision] = []
+        for decision in ordered:
+            returned_at = decision.returned_at
+            if returned_at is None or returned_at > cycle["at"]:
+                continue
+            if (cycle["at"] - returned_at).total_seconds() <= CYCLE_JOIN_TOLERANCE_S:
+                within.append(decision)
+        if not within:
+            continue
+        cycle_confidence = cycle["confidence"]
+        matching = [d for d in within if cycle_confidence is None or d.confidence == cycle_confidence]
+        best = max(matching or within, key=lambda d: d.returned_at or cycle["at"])
+        best.gate_verdicts = dict(cycle["verdicts"])
+        best.verdict_source = "registered"
 
 
 class CandleSeries:
@@ -465,9 +607,15 @@ def _stats(rows: Sequence[tuple[Decision, Realized]], *, fee_bp: Decimal) -> dic
     barriers = [r.barrier for _d, r in rows]
     round_trip = Decimal("2") * fee_bp
     expectancy = (sum(signed, Decimal("0")) / Decimal(len(signed)) - round_trip) if signed else None
+    # Card #1030: accuracy is reported, never the criterion that picks a
+    # threshold — the direction was right when the realized signed return at the
+    # horizon is positive.
+    positive = [value for value in signed if value > 0]
     return {
         "n": len(rows),
         "n_priced": len(signed),
+        "n_positive": len(positive),
+        "accuracy": (Decimal(len(positive)) / Decimal(len(signed))) if signed else None,
         "n_target": barriers.count("target"),
         "n_stop": barriers.count("stop"),
         "n_none": barriers.count("none"),
@@ -507,31 +655,307 @@ def score_bucket(decision: Decision) -> Optional[str]:
     return f"score {index}"
 
 
+def _band_label(floor: Decimal) -> str:
+    """Confidence band label for a band's lower edge (width 0,1)."""
+    if floor >= Decimal("1"):
+        return "[1.0, ∞)"
+    return f"[{_fmt(floor, '0.1')}, {_fmt(floor + CONFIDENCE_BUCKET_WIDTH, '0.1')})"
+
+
 def confidence_bucket(decision: Decision) -> Optional[str]:
     if decision.confidence < 0:
         return None
-    low = (decision.confidence / CONFIDENCE_BUCKET_WIDTH).to_integral_value(rounding="ROUND_FLOOR")
-    low = max(Decimal("0"), low) * CONFIDENCE_BUCKET_WIDTH
-    if low >= Decimal("1"):
-        return "[1.0, ∞)"
-    return f"[{_fmt(low, '0.1')}, {_fmt(low + CONFIDENCE_BUCKET_WIDTH, '0.1')})"
+    return _band_label(confidence_floor(decision.confidence))
+
+
+def confidence_floor(confidence: Decimal) -> Decimal:
+    """Lower edge of the confidence band that contains ``confidence``."""
+    low = (confidence / CONFIDENCE_BUCKET_WIDTH).to_integral_value(rounding="ROUND_FLOOR")
+    return max(Decimal("0"), low) * CONFIDENCE_BUCKET_WIDTH
+
+
+def market_regime(decision: Decision, boundary_bp: Optional[Decimal]) -> Optional[str]:
+    """Market regime of a decision: σ of its window against the boundary (#1030)."""
+    if decision.vol_bp is None or boundary_bp is None:
+        return None
+    if not decision.vol_bp.is_finite():
+        return None
+    return REGIME_ACTIVE if decision.vol_bp >= boundary_bp else REGIME_CALM
+
+
+def passes_other_gates(decision: Decision, *, fee_bp: Decimal) -> bool:
+    """Does the reply pass every reply-fed gate **except** confidence? (#1030)
+
+    The registered verdicts of the #1028 record are the authority; when the
+    decision has no matched cycle record, the pure #1025 predicates are
+    reconstructed from the reply (same rules the decision applies).
+    """
+    registered = decision.gate_verdicts
+    if registered:
+        return all(registered.get(gate) == "pass" for gate in ELIGIBILITY_GATES)
+    return (
+        decision.side in {"BUY", "SELL"}
+        and decision.latency_ms is not None
+        and decision.latency_ms <= JEV_LATE_MS
+        and decision.expected_move_bp > hurdle_bp(fee_bp=fee_bp, spread_bp=decision.spread_bp)
+        and regime_gate_predicate(decision=decision, fee_bp=fee_bp)
+        and not decision.book_toxic
+    )
+
+
+def eligible_population(
+    rows: Sequence[tuple[Decision, Realized]], *, fee_bp: Decimal
+) -> tuple[list[tuple[Decision, Realized]], dict[str, int]]:
+    """Priced cycles that pass the other reply-fed gates (#1030).
+
+    Returns the eligible rows and how many verdicts came from the registered
+    #1028 record vs from the reconstructed #1025 predicates.
+    """
+    eligible: list[tuple[Decision, Realized]] = []
+    sources = {"registered": 0, "reconstructed": 0}
+    for decision, realized in rows:
+        if realized.signed_bp is None:
+            continue
+        if not passes_other_gates(decision, fee_bp=fee_bp):
+            continue
+        eligible.append((decision, realized))
+        source = "registered" if decision.gate_verdicts else "reconstructed"
+        sources[source] = sources.get(source, 0) + 1
+    return eligible, sources
+
+
+def threshold_curve(
+    eligible: Sequence[tuple[Decision, Realized]], *, fee_bp: Decimal
+) -> list[dict[str, Any]]:
+    """Coverage and expected net return of every candidate threshold (#1030).
+
+    Candidate thresholds are 0 (accept everything) and the lower edge of each
+    confidence band present in the eligible population. For each candidate:
+    how many cycles it lets pass, the coverage, the expected gain (mean net
+    return of the passing cycles) and the expected net return ``gain ×
+    coverage``, where the net return of a cycle is its realized signed bp minus
+    the round-trip cost ``2 × fee per leg``.
+    """
+    total = len(eligible)
+    if total == 0:
+        return []
+    round_trip = Decimal("2") * fee_bp
+    nets = [(decision, realized.signed_bp - round_trip) for decision, realized in eligible]
+    band_counts: dict[Decimal, int] = {}
+    for decision, _realized in eligible:
+        floor = confidence_floor(decision.confidence)
+        band_counts[floor] = band_counts.get(floor, 0) + 1
+    candidates = sorted({Decimal("0")} | set(band_counts))
+    curve: list[dict[str, Any]] = []
+    for threshold in candidates:
+        passing = [value for decision, value in nets if decision.confidence >= threshold]
+        n_pass = len(passing)
+        coverage = Decimal(n_pass) / Decimal(total)
+        gain = (sum(passing, Decimal("0")) / Decimal(n_pass)) if n_pass else None
+        expected = (gain * coverage) if gain is not None else Decimal("0")
+        band_n = band_counts.get(threshold, 0)
+        curve.append(
+            {
+                "threshold": str(threshold),
+                "band": _band_label(threshold),
+                "n_pass": n_pass,
+                "coverage": str(coverage),
+                "expected_gain_bp": None if gain is None else str(gain),
+                "expected_net_bp": str(expected),
+                "band_n_priced": band_n,
+                "sufficient": band_n >= MIN_BUCKET_TRADES,
+            }
+        )
+    return curve
+
+
+def _homogeneity(
+    eligible: Sequence[tuple[Decision, Realized]]
+) -> tuple[bool, list[str], list[str], int]:
+    """Version/origin homogeneity of the sample (#1030, decision 7).
+
+    Returns ``(homogeneous, models, origins, excluded_windows)`` where
+    ``excluded_windows`` counts the eligible cycles that do not share the
+    dominant ``(model, confidence_origin)`` pair.
+    """
+    models = sorted({(decision.model or "unknown") for decision, _ in eligible})
+    origins = sorted({(decision.confidence_origin or "unknown") for decision, _ in eligible})
+    homogeneous = len(models) <= 1 and len(origins) <= 1
+    excluded = 0
+    if eligible and not homogeneous:
+        counts: dict[tuple[str, str], int] = {}
+        for decision, _ in eligible:
+            pair = (decision.model or "unknown", decision.confidence_origin or "unknown")
+            counts[pair] = counts.get(pair, 0) + 1
+        dominant = max(counts.items(), key=lambda item: (item[1], item[0]))[0]
+        excluded = sum(
+            1
+            for decision, _ in eligible
+            if (decision.model or "unknown", decision.confidence_origin or "unknown") != dominant
+        )
+    return homogeneous, models, origins, excluded
+
+
+def regime_analysis(
+    eligible: Sequence[tuple[Decision, Realized]],
+    *,
+    fee_bp: Decimal,
+    boundary_bp: Optional[Decimal],
+    labels: dict[str, str],
+) -> dict[str, Any]:
+    """One regime's report: bands, threshold curve, choice, separation (#1030).
+
+    A regime is **closed** when its eligible priced population is below the
+    ruler's minimum, when no contributing band reaches the minimum sample, or
+    when the sample is not homogeneous. An open regime whose confidence does
+    not separate good from bad cycles (no threshold with a strictly positive
+    expected net return strictly better than accepting everything) is
+    **turned off**.
+    """
+    stats = _stats(eligible, fee_bp=fee_bp)
+    curve = threshold_curve(eligible, fee_bp=fee_bp)
+    sufficient = [row for row in curve if row["sufficient"]]
+    chosen = None
+    if sufficient:
+        chosen = max(
+            sufficient,
+            key=lambda row: (Decimal(row["expected_net_bp"]), -Decimal(row["threshold"])),
+        )
+    at_zero = next((row for row in curve if Decimal(row["threshold"]) == 0), None)
+    expected_zero = Decimal(at_zero["expected_net_bp"]) if at_zero else Decimal("0")
+    homogeneous, models, origins, excluded = _homogeneity(eligible)
+
+    closed_reasons: list[str] = []
+    if boundary_bp is None:
+        closed_reasons.append("fronteira de regime ausente")
+    elif stats["n_priced"] < MIN_NON_OVERLAPPING_WINDOWS:
+        closed_reasons.append(
+            f"população elegível com preço {stats['n_priced']} "
+            f"< mínimo de {MIN_NON_OVERLAPPING_WINDOWS}"
+        )
+    elif not sufficient:
+        closed_reasons.append(
+            f"nenhuma faixa contribuinte com {MIN_BUCKET_TRADES}+ trades com preço"
+        )
+    elif not homogeneous:
+        closed_reasons.append("amostra não homogénea (versão/origem misturadas)")
+
+    separates: Optional[bool]
+    if closed_reasons:
+        policy = CONFIDENCE_POLICY_CLOSED
+        separates = None
+    else:
+        best = Decimal(chosen["expected_net_bp"])
+        separates = best > 0 and best > expected_zero
+        policy = CONFIDENCE_POLICY_NUMERIC if separates else CONFIDENCE_POLICY_OFF
+
+    band_rows = _bucket_rows(eligible, key=confidence_bucket, fee_bp=fee_bp)
+    return {
+        "label": labels.get("regime", REGIME_UNKNOWN),
+        "sample": stats,
+        "bands": band_rows,
+        "curve": curve,
+        "chosen": chosen,
+        "expected_net_accept_all_bp": str(expected_zero),
+        "separates": separates,
+        "policy": policy,
+        "closed": policy == CONFIDENCE_POLICY_CLOSED,
+        "closed_reasons": closed_reasons,
+        "homogeneous": homogeneous,
+        "models": models,
+        "origins": origins,
+        "excluded_windows": excluded,
+    }
+
+
+def _threshold_table(curve: list[dict[str, Any]]) -> list[str]:
+    lines = [
+        "| limiar | faixa contribuinte | n que passam | cobertura | ganho esperado (bp) | retorno líq. esperado (bp) | amostra da faixa | suficiente |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    if not curve:
+        lines.append("| — | — | 0 | 0 | — | — | 0 | não |")
+        return lines
+    for row in curve:
+        lines.append(
+            f"| {row['threshold']} | {row['band']} | {row['n_pass']} | "
+            f"{_fmt(Decimal(row['coverage']) * Decimal('100'), '0.1')}% | "
+            f"{_fmt(None if row['expected_gain_bp'] is None else Decimal(row['expected_gain_bp']))} | "
+            f"{_fmt(Decimal(row['expected_net_bp']))} | {row['band_n_priced']} | "
+            f"{'sim' if row['sufficient'] else 'não'} |"
+        )
+    return lines
+
+
+def _regime_lines(analysis: dict[str, Any]) -> list[str]:
+    label = analysis["label"]
+    stats = analysis["sample"]
+    lines = [f"#### Regime {label}", ""]
+    lines.append(
+        f"- amostra elegível: {stats['n']} ciclo(s), **{stats['n_priced']} com preço** "
+        f"(acurácia {_fmt((stats['accuracy'] or Decimal('0')) * Decimal('100'), '0.1')}%, "
+        f"retorno líq. médio {_fmt(stats['expectancy_net_bp'])} bp)"
+    )
+    lines.append(
+        f"- homogeneidade: {'homogénea' if analysis['homogeneous'] else 'NÃO homogénea'}"
+        f" (modelos: {', '.join(analysis['models']) or '—'}; origens: "
+        f"{', '.join(analysis['origins']) or '—'}; janelas excluídas: "
+        f"{analysis['excluded_windows']})"
+    )
+    lines.append(
+        f"- aceitar tudo (limiar 0) dá retorno líquido esperado de "
+        f"{_fmt(Decimal(analysis['expected_net_accept_all_bp']))} bp"
+    )
+    if analysis["closed"]:
+        lines.append(
+            "- **regime fechado** (não opera): "
+            + "; ".join(analysis["closed_reasons"])
+        )
+    elif analysis["separates"]:
+        chosen = analysis["chosen"]
+        lines.append(
+            f"- **separa** ciclos bons de ruins: limiar `{chosen['threshold']}` "
+            f"(faixa {chosen['band']}, {chosen['band_n_priced']} trades com preço) — "
+            f"deixa passar {chosen['n_pass']} ciclo(s) com cobertura de "
+            f"{_fmt(Decimal(chosen['coverage']) * Decimal('100'), '0.1')}% e retorno líquido "
+            f"esperado de {_fmt(Decimal(chosen['expected_net_bp']))} bp"
+        )
+        lines.append(f"- política do regime: `{analysis['policy']}`")
+    else:
+        lines.append(
+            "- **a confiança não separa** ciclos bons de ruins nesta amostra: o limiar é "
+            "**desligado** e a decisão passa a previsão × custo × regime"
+        )
+        lines.append(f"- política do regime: `{analysis['policy']}`")
+    lines.append("")
+    lines.append("Faixas de confiança (acurácia **reportada**, nunca critério de escolha):")
+    lines.append("")
+    lines.extend(_bucket_table("Por `confidence` (elegível do regime)", analysis["bands"]))
+    lines.append("Curva do limiar (ganho esperado × cobertura):")
+    lines.append("")
+    lines.extend(_threshold_table(analysis["curve"]))
+    lines.append("")
+    return lines
 
 
 def _bucket_table(title: str, rows: list[tuple[str, dict[str, Any]]]) -> list[str]:
     lines = [
         f"#### {title}",
         "",
-        "| bucket | n | n com preço | expectancy líq. (bp) | alvo | stop | sem barreira | insuficiente |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| bucket | n | n com preço | acurácia | retorno líq. (bp) | alvo | stop | sem barreira | insuficiente |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for label, stats in rows:
         insufficient = "sim" if stats["n_priced"] < MIN_BUCKET_TRADES else "não"
+        accuracy = stats.get("accuracy")
         lines.append(
-            f"| {label} | {stats['n']} | {stats['n_priced']} | {_fmt(stats['expectancy_net_bp'])} | "
+            f"| {label} | {stats['n']} | {stats['n_priced']} | "
+            f"{_fmt(None if accuracy is None else Decimal(accuracy) * Decimal('100'), '0.1')}% | "
+            f"{_fmt(stats['expectancy_net_bp'])} | "
             f"{stats['n_target']} | {stats['n_stop']} | {stats['n_none']} | {insufficient} |"
         )
     if not rows:
-        lines.append("| — | 0 | 0 | — | 0 | 0 | 0 | sim |")
+        lines.append("| — | 0 | 0 | — | — | 0 | 0 | 0 | sim |")
     lines.append("")
     return lines
 
@@ -621,11 +1045,47 @@ def build_report(
     series: CandleSeries,
     ohlcv_note: str,
     fee_bp: Decimal,
+    # Card #1030: the single σ boundary shared with the decision; absent keeps
+    # both regimes closed (fail closed). The fee source and the value in use are
+    # declared so the report never hides them.
+    regime_boundary_bp: Optional[Decimal] = None,
+    fee_source: str = "fallback",
+    confidence_in_use: Optional[Decimal] = DEFAULT_CONFIDENCE_IN_USE,
 ) -> tuple[str, dict[str, Any]]:
+    # Card #1030: the conservative fallback while the real per-leg fee of the
+    # account was not given is a **defect of the report**, never a neutral
+    # number (spec ``scalp-jev-net-return-ruler``).
+    fee_is_fallback = fee_source == "fallback"
     realized = [(decision, realized_for(decision, series)) for decision in decisions]
     windows = non_overlapping(decisions)
     window_ids = {decision.call_id for decision in windows}
     realized_windows = [(d, r) for d, r in realized if d.call_id in window_ids]
+    # Card #1030: eligible population per regime (priced cycles that pass every
+    # reply-fed gate except confidence), the threshold curve of each regime and
+    # the policy the ruler proposes for it (numeric / off / closed).
+    eligible_all, verdict_sources = eligible_population(realized_windows, fee_bp=fee_bp)
+    regime_labels = {
+        REGIME_CALM: (
+            f"calmo (vol_bp < {_fmt(regime_boundary_bp)})"
+            if regime_boundary_bp is not None
+            else "calmo"
+        ),
+        REGIME_ACTIVE: (
+            f"activo (vol_bp ≥ {_fmt(regime_boundary_bp)})"
+            if regime_boundary_bp is not None
+            else "activo"
+        ),
+    }
+    regime_analyses = {
+        regime: regime_analysis(
+            [(d, r) for d, r in eligible_all if market_regime(d, regime_boundary_bp) == regime],
+            fee_bp=fee_bp,
+            boundary_bp=regime_boundary_bp,
+            labels={"regime": regime_labels[regime]},
+        )
+        for regime in (REGIME_CALM, REGIME_ACTIVE)
+    }
+    homogeneous_all, models_all, origins_all, excluded_all = _homogeneity(eligible_all)
     # Percurso high/low de cada janela não sobreposta — usado para reavaliar as
     # barreiras de cada candidato de geometria (E4).
     paths = {
@@ -635,6 +1095,9 @@ def build_report(
     span = None
     if decisions:
         span = (min(d.at for d in decisions), max(d.at for d in decisions))
+    # Card #1030: ``None`` means the single gate was explicitly removed
+    # (#1025 C): the value in use is reported as ``off``, never rewritten.
+    confidence_in_use_token = "off" if confidence_in_use is None else _fmt(confidence_in_use)
     summary: dict[str, Any] = {
         "log": str(log_path),
         "calls_returned": sum(1 for d in decisions if d.status is not None),
@@ -644,14 +1107,46 @@ def build_report(
         "windows_non_overlapping": len(windows),
         "min_non_overlapping_windows": MIN_NON_OVERLAPPING_WINDOWS,
         "min_bucket_trades": MIN_BUCKET_TRADES,
-        "fee_bp": str(fee_bp),
         "ohlcv": ohlcv_note,
         "ohlcv_candles": len(series),
         "refusals": dict(sorted(refusals.items())),
         "insufficient": True,
         "confidence_max": str(max((d.confidence for d in decisions), default=Decimal("0"))),
         "insufficient_reasons": [],
-        "suggested_confidence_min": None,
+        # Card #1030: fee used and its source; the single σ boundary shared with
+        # the decision (``None`` = absent, both regimes closed); the value in use
+        # preserved when no sufficient report opens a regime.
+        "fee_bp": str(fee_bp),
+        "fee_source": fee_source,
+        "fee_source_defect": fee_is_fallback,
+        "regime_boundary_bp": None if regime_boundary_bp is None else str(regime_boundary_bp),
+        "confidence_in_use": confidence_in_use_token,
+        "eligible_population": {"n": len(eligible_all), "verdict_sources": verdict_sources},
+        "homogeneity": {
+            "homogeneous": homogeneous_all,
+            "models": models_all,
+            "origins": origins_all,
+            "excluded_windows": excluded_all,
+        },
+        "regimes": {
+            regime: {
+                "label": analysis["label"],
+                "sample": analysis["sample"],
+                "bands": {label: stats for label, stats in analysis["bands"]},
+                "curve": analysis["curve"],
+                "chosen": analysis["chosen"],
+                "expected_net_accept_all_bp": analysis["expected_net_accept_all_bp"],
+                "separates": analysis["separates"],
+                "policy": analysis["policy"],
+                "closed": analysis["closed"],
+                "closed_reasons": analysis["closed_reasons"],
+                "homogeneous": analysis["homogeneous"],
+                "models": analysis["models"],
+                "origins": analysis["origins"],
+                "excluded_windows": analysis["excluded_windows"],
+            }
+            for regime, analysis in regime_analyses.items()
+        },
         "suggested_exit_target_bp": None,
         "suggested_exit_stop_bp": None,
         # A geometria é derivada da régua **só** com amostra suficiente (>= 30
@@ -733,28 +1228,12 @@ def build_report(
 
     score_rows = _bucket_rows(realized_windows, key=score_bucket, fee_bp=fee_bp)
     confidence_rows = _bucket_rows(realized_windows, key=confidence_bucket, fee_bp=fee_bp)
-    # Correção pós-CR (item 1): um bucket que a própria tabela marca
-    # `insuficiente` (``n_priced < MIN_BUCKET_TRADES``) nunca pode originar um
-    # limiar proposto — expectancy positiva de uma amostra curta não é leitura.
-    positive = [
-        (label, stats)
-        for label, stats in confidence_rows
-        if stats["n_priced"] >= MIN_BUCKET_TRADES
-        and stats["expectancy_net_bp"] is not None
-        and stats["expectancy_net_bp"] > 0
-    ]
-    confidence_max = Decimal(summary["confidence_max"])
     # E2: uma amostra só é suficiente quando as **janelas com preço**
     # (`n_priced`) chegam ao mínimo, não apenas as janelas não sobrepostas.
     sample_sufficient = (
         len(windows) >= MIN_NON_OVERLAPPING_WINDOWS
         and stats_all["n_priced"] >= MIN_NON_OVERLAPPING_WINDOWS
     )
-    if positive and sample_sufficient:
-        label = positive[0][0]
-        threshold = Decimal(label.split(",")[0].strip("[ "))
-        if threshold <= confidence_max:
-            summary["suggested_confidence_min"] = str(threshold)
     # E4: com amostra suficiente a régua volta a **derivar** a geometria
     # alvo/stop das barreiras reais — candidatos avaliados por expectancy
     # líquida com a taxa maker **por perna** (round-trip = 2 × taxa). Sem
@@ -799,6 +1278,27 @@ def build_report(
     lines.append(
         f"- custo por round-trip considerado: 2 × {_fmt(fee_bp)} bp = {_fmt(2 * fee_bp)} bp"
     )
+    lines.append(
+        f"- taxa maker por perna: {_fmt(fee_bp)} bp (origem: **{fee_source}**)"
+        + (
+            " — **defeito do relatório**: a taxa real por perna da conta não foi "
+            "fornecida; o retorno líquido usa o fallback conservador e é uma estimativa."
+            if fee_is_fallback
+            else ""
+        )
+    )
+    lines.append(
+        "- fronteira de regime (σ, bp): "
+        + (
+            _fmt(regime_boundary_bp)
+            if regime_boundary_bp is not None
+            else "**ausente** — ambos os regimes fechados (falha fechada)"
+        )
+    )
+    lines.append(
+        f"- valor em uso preservado: `CONFIDENCE_MIN` = {confidence_in_use_token} "
+        "— reportado, nunca reescrito por um relatório insuficiente"
+    )
     lines.append("")
     lines.append("## Previsão vs realizado (janelas não sobrepostas)")
     lines.append("")
@@ -820,6 +1320,23 @@ def build_report(
             "Pelo predicado do gate (`expected_move_bp ≥ entry_hurdle_bp × 1,5`)", by_predicate
         )
     )
+    lines.append("## Limiar por regime (retorno líquido esperado × cobertura)")
+    lines.append("")
+    lines.append(
+        "População elegível (passa `hold`, `jev_late`, `hurdle`, `regime` e `toxic_book`): "
+        f"**{len(eligible_all)}** ciclo(s) com preço — veredictos registados "
+        f"{verdict_sources.get('registered', 0)}, reconstruídos "
+        f"{verdict_sources.get('reconstructed', 0)}."
+    )
+    lines.append(
+        "Homogeneidade da amostra elegível: "
+        f"{'homogénea' if homogeneous_all else '**NÃO homogénea**'} "
+        f"(modelos: {', '.join(models_all) or '—'}; origens: {', '.join(origins_all) or '—'}; "
+        f"janelas excluídas: {excluded_all}). Sem homogeneidade não é proposto limiar."
+    )
+    lines.append("")
+    for regime in (REGIME_CALM, REGIME_ACTIVE):
+        lines.extend(_regime_lines(regime_analyses[regime]))
     lines.append("## Buckets")
     lines.append("")
     lines.extend(_bucket_table("Por `score` de `expected_move_bp`", score_rows))
@@ -851,6 +1368,20 @@ def build_report(
     lines.append("")
     lines.append("## Declaração / gate")
     lines.append("")
+    policy_lines = [
+        f"- regime `{regime}`: política `{regime_analyses[regime]['policy']}`"
+        + (
+            f" — limiar {regime_analyses[regime]['chosen']['threshold']}"
+            if regime_analyses[regime]["policy"] == CONFIDENCE_POLICY_NUMERIC
+            else (
+                " — desligado (a confiança não separa; decisão por previsão × custo × regime)"
+                if regime_analyses[regime]["policy"] == CONFIDENCE_POLICY_OFF
+                else " — fechado (não opera): "
+                + "; ".join(regime_analyses[regime]["closed_reasons"])
+            )
+        )
+        for regime in (REGIME_CALM, REGIME_ACTIVE)
+    ]
     if reasons:
         lines.append("**Amostra insuficiente** — nenhum limiar ou geometria é proposto:")
         lines.append("")
@@ -860,21 +1391,15 @@ def build_report(
             lines.append(f"- buckets/regimes com menos de {MIN_BUCKET_TRADES} trades com preço")
         lines.append("")
         lines.append(
-            "Consequência (task 1.5): `CONFIDENCE_MIN` mantém o default actual, "
-            "`EXIT_TARGET_BP`/`EXIT_STOP_BP` mantêm os valores actuais e "
-            "`HOLD_AFTER_FILL_S` fica nos 900 s de produto. O motivo fica registado na evidência."
+            "Consequência: o valor em uso de `CONFIDENCE_MIN` "
+            f"({confidence_in_use_token}) é **preservado e reportado**; as políticas por "
+            "regime ficam `fechado` (o bot **não opera**) enquanto o relatório for insuficiente. "
+            "`EXIT_TARGET_BP`/`EXIT_STOP_BP` mantêm os valores actuais e `HOLD_AFTER_FILL_S` "
+            "fica nos 900 s de produto. O motivo fica registado na evidência."
         )
     else:
         lines.append("Amostra suficiente na régua: proposta")
         lines.append("")
-        if summary["suggested_confidence_min"] is not None:
-            lines.append(f"- `CONFIDENCE_MIN` = {summary['suggested_confidence_min']}")
-        else:
-            lines.append(
-                "- `CONFIDENCE_MIN`: nenhum bucket com "
-                f"{MIN_BUCKET_TRADES}+ trades com preço tem expectancy líquida positiva "
-                "— default de produto mantido"
-            )
         if summary["exit_geometry_derived"]:
             target_bp = Decimal(summary["suggested_exit_target_bp"])
             stop_bp = Decimal(summary["suggested_exit_stop_bp"])
@@ -895,7 +1420,76 @@ def build_report(
             )
         lines.append("- `HOLD_AFTER_FILL_S` = 900 s (valor de produto, fora da recalibração)")
     lines.append("")
+    lines.append("### Política de confiança por regime (card #1030)")
+    lines.append("")
+    lines.extend(policy_lines)
+    lines.append(
+        "- nenhum valor numérico é adoptado sem relatório suficiente; reverter = repor a "
+        "configuração por regime"
+    )
+    lines.append("")
     return "\n".join(lines), summary
+
+
+def _confidence_in_use(raw: Optional[str]) -> Optional[Decimal]:
+    """The single ``CONFIDENCE_MIN`` value in use, reported (card #1030).
+
+    Reads the CLI value or ``SCALP_CONFIDENCE_MIN`` with the same fail-closed
+    rules as the decision: absent falls to the product default, a turned-off
+    token is reported as ``off`` (``None``) and an invalid value falls to the
+    product default. Never a proposal — the value is preserved.
+    """
+    candidate = raw if raw is not None else os.getenv("SCALP_CONFIDENCE_MIN")
+    if candidate is None or not str(candidate).strip():
+        return DEFAULT_CONFIDENCE_IN_USE
+    token = str(candidate).strip()
+    if token.lower() in CONFIDENCE_GATE_OFF:
+        return None
+    try:
+        value = Decimal(token)
+    except Exception:
+        return DEFAULT_CONFIDENCE_IN_USE
+    if not value.is_finite() or value < 0 or value > 1:
+        return DEFAULT_CONFIDENCE_IN_USE
+    return value
+
+
+def _non_negative_boundary(raw: Optional[str]) -> Optional[Decimal]:
+    """Parse a σ boundary (bp) with the decision's fail-closed rules."""
+    if raw is None or not str(raw).strip():
+        return None
+    try:
+        value = Decimal(str(raw).strip())
+    except Exception:
+        return None
+    if not value.is_finite() or value < 0:
+        return None
+    return value
+
+
+def _regime_boundary_bp(raw: Optional[str]) -> Optional[Decimal]:
+    """The single σ boundary (bp) shared with the decision (card #1030).
+
+    Uses the CLI value when given; otherwise reads ``SCALP_REGIME_BOUNDARY_BP``
+    — the same configuration the decision consumes — with the same fail-closed
+    rules. When both are present and diverge the CLI value wins and the
+    divergence is warned explicitly: the ruler never silently segments a
+    population the bot does not trade. Absent/invalid keeps both regimes closed.
+    """
+    flag = None if raw is None else str(raw).strip()
+    env_raw = (os.getenv(REGIME_BOUNDARY_ENV) or "").strip()
+    if flag:
+        value = _non_negative_boundary(flag)
+        env_value = _non_negative_boundary(env_raw)
+        if env_raw and env_value != value:
+            print(
+                f"AVISO: --regime-boundary-bp={flag} diverge de "
+                f"{REGIME_BOUNDARY_ENV}={env_raw} (a decisão usa {env_raw}); "
+                "a régua usa o valor do flag.",
+                file=sys.stderr,
+            )
+        return value
+    return _non_negative_boundary(env_raw)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -908,26 +1502,51 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="log de diagnóstico do #1015 (default: SCALP_JEV_LOG_FILE ou backend/scalp_jev_diagnostic.log)",
     )
     parser.add_argument("--fee-bp", default=str(DEFAULT_FEE_BP), help="taxa maker por perna em bp")
+    parser.add_argument(
+        "--fee-source",
+        choices=("account", "fallback"),
+        default="fallback",
+        help="origem da taxa: conta real ou fallback conservador (default)",
+    )
+    parser.add_argument(
+        "--regime-boundary-bp",
+        default=None,
+        help="fronteira única de regime (σ da janela, bp) partilhada com a decisão "
+        "(default: SCALP_REGIME_BOUNDARY_BP)",
+    )
+    parser.add_argument(
+        "--confidence-in-use",
+        default=None,
+        help="valor em uso de CONFIDENCE_MIN (default: SCALP_CONFIDENCE_MIN ou 0.7)",
+    )
     parser.add_argument("--json", action="store_true", help="imprime também o sumário JSON")
     parser.add_argument("--out", default=None, help="grava o relatório markdown neste caminho")
     args = parser.parse_args(argv)
 
-    import os
-
     log_path = Path(args.log or os.getenv("SCALP_JEV_LOG_FILE") or DEFAULT_LOG_PATH)
     fee_bp = _dec(args.fee_bp, str(DEFAULT_FEE_BP))
+    # Card #1030: the flag, else the boundary the decision uses (env), else
+    # absent → both regimes closed (fail closed).
+    regime_boundary_bp = _regime_boundary_bp(args.regime_boundary_bp)
+    confidence_in_use = _confidence_in_use(args.confidence_in_use)
 
-    if not log_path.exists():
-        series, ohlcv_note = CandleSeries([]), "OHLCV não consultado (log ausente)"
-        report, summary = build_report(
+    def _build(decisions, refusals, malformed, series, ohlcv_note):
+        return build_report(
             log_path=log_path,
-            decisions=[],
-            refusals={},
-            malformed=0,
+            decisions=decisions,
+            refusals=refusals,
+            malformed=malformed,
             series=series,
             ohlcv_note=ohlcv_note,
             fee_bp=fee_bp,
+            regime_boundary_bp=regime_boundary_bp,
+            fee_source=args.fee_source,
+            confidence_in_use=confidence_in_use,
         )
+
+    if not log_path.exists():
+        series, ohlcv_note = CandleSeries([]), "OHLCV não consultado (log ausente)"
+        report, summary = _build([], {}, 0, series, ohlcv_note)
         report = f"> **Log ausente**: `{log_path}` não existe.\n\n" + report
     else:
         decisions, refusals, malformed = parse_log(log_path)
@@ -937,15 +1556,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             need_from = need_to = datetime.utcnow()
         series, ohlcv_note = load_candles(need_from=need_from, need_to=need_to)
-        report, summary = build_report(
-            log_path=log_path,
-            decisions=decisions,
-            refusals=refusals,
-            malformed=malformed,
-            series=series,
-            ohlcv_note=ohlcv_note,
-            fee_bp=fee_bp,
-        )
+        report, summary = _build(decisions, refusals, malformed, series, ohlcv_note)
 
     print(report)
     if args.json:

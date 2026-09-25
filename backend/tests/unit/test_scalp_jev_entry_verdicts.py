@@ -136,6 +136,13 @@ def _green_reply(**overrides) -> dict:
 def _arming(scalp_db, user_id: str, monkeypatch, *, confidence_min: str | None = None):
     _add_key(scalp_db, user_id)
     monkeypatch.setenv("JEV_API_KEY", "secret-1028")
+    # Card #1030: the decision reads the **per-regime** policy; the single
+    # ``SCALP_CONFIDENCE_MIN`` stays as the reported value in use. ``None``
+    # keeps the #1025 product threshold for both regimes, ``"none"`` removes
+    # the gate in both.
+    per_regime = "0.7" if confidence_min is None else confidence_min
+    monkeypatch.setenv("SCALP_CONFIDENCE_MIN_CALM", per_regime)
+    monkeypatch.setenv("SCALP_CONFIDENCE_MIN_ACTIVE", per_regime)
     if confidence_min is None:
         monkeypatch.delenv("SCALP_CONFIDENCE_MIN", raising=False)
     else:
@@ -589,3 +596,34 @@ def test_verdict_records_carry_no_secret_or_exact_account_value(
     assert "Bearer" not in text
     assert "77.531" not in text
     assert "0.01234567" not in text
+
+
+# --- Card #1030: the closed regime leaves its own token in the record -------
+
+
+def test_closed_regime_closes_with_its_own_token_and_reports_the_policy(
+    scalp_db, diagnostic_log, monkeypatch
+):
+    user_id = str(uuid.uuid4())
+    fx = _arming(scalp_db, user_id, monkeypatch)
+    # A boundary exists, but neither regime was opened by a sufficient report:
+    # the cycle does not operate and names the policy in the same record.
+    monkeypatch.setenv("SCALP_REGIME_BOUNDARY_BP", "100")
+    monkeypatch.setenv("SCALP_CONFIDENCE_MIN_CALM", "closed")
+    monkeypatch.setenv("SCALP_CONFIDENCE_MIN_ACTIVE", "closed")
+    _capture_urlopen(monkeypatch, lambda _r, _t, _c: _FakeHttpResponse(_green_reply()))
+
+    result = _tick(scalp_db, user_id, fx)
+    assert result.sent is False
+    assert result.skipped == "regime_closed"
+
+    line = _cycle_lines(diagnostic_log)[0]
+    matched = re.search(r"scalp cycle refused user=(\S+) skip_reason=(\S+)", line)
+    assert matched is not None
+    assert matched.group(2) == "regime_closed"
+    # Its own token, never `regime` nor `low_confidence`.
+    assert "low_confidence=not_applicable" in line
+    assert "market_regime=calm" in line
+    assert "confidence_policy=closed" in line
+    assert "confidence_in_use=" in line
+    assert "skip_reason=regime " not in line

@@ -45,6 +45,24 @@ SkipReason = Optional[str]
 # Card #1028: verdict of one reply-fed entry gate. ``not_applicable`` is a gate
 # configured off (never a ``fail``).
 GateVerdict = Literal["pass", "fail", "not_applicable"]
+# Card #1030: market regime of the window volatility (σ, ``vol_bp``) against
+# the single configured boundary. ``unknown`` is the fail-closed default (no
+# boundary or no finite σ): the regime cannot be named, so neither opens.
+MarketRegime = Literal["calm", "active", "unknown"]
+REGIME_CALM: MarketRegime = "calm"
+REGIME_ACTIVE: MarketRegime = "active"
+REGIME_UNKNOWN: MarketRegime = "unknown"
+# Card #1030: confidence policy of one market regime. ``numeric`` keeps the
+# threshold gate with that regime's value; ``off`` is the removal path of the
+# #1025 gate (decision by forecast × cost × regime); ``closed`` does not
+# operate.
+ConfidencePolicyKind = Literal["numeric", "off", "closed"]
+CONFIDENCE_POLICY_NUMERIC: ConfidencePolicyKind = "numeric"
+CONFIDENCE_POLICY_OFF: ConfidencePolicyKind = "off"
+CONFIDENCE_POLICY_CLOSED: ConfidencePolicyKind = "closed"
+# Card #1030: refusal token of a closed regime. It is its own token — never
+# ``regime`` (the #1025 cost-with-slack gate) and never ``low_confidence``.
+CLOSED_REGIME_SKIP = "regime_closed"
 # The reply-fed entry gates, in the order their rules are evaluated below.
 GATE_ORDER: tuple[str, ...] = (
     "jev_late",
@@ -216,6 +234,65 @@ class CycleIntent:
     # no model reply (pre-call closes and the exit path); a side effect that
     # never enters the decision.
     gate_verdicts: Optional[GateVerdicts] = None
+    # Card #1030: market regime the decision used and the kind of the
+    # confidence policy applied to it. Record only — the decision already
+    # happened when these are read.
+    market_regime: MarketRegime = REGIME_UNKNOWN
+    confidence_policy_kind: ConfidencePolicyKind = CONFIDENCE_POLICY_NUMERIC
+
+
+@dataclass(frozen=True)
+class ConfidencePolicy:
+    """Confidence policy of the market regime a cycle belongs to (card #1030).
+
+    Pure data: the engine receives it by parameter and reads no env.
+    ``numeric`` keeps the threshold gate with the regime's value; ``off`` is
+    the removal path of the #1025 gate (no ``low_confidence``, decision by
+    forecast × cost × regime); ``closed`` does not operate and closes the cycle
+    with ``CLOSED_REGIME_SKIP`` without comparing any threshold.
+
+    The default keeps the product threshold for callers of the older entry
+    points; the service always passes the policy of the cycle's regime.
+    """
+
+    kind: ConfidencePolicyKind = CONFIDENCE_POLICY_NUMERIC
+    value: Optional[Decimal] = CONFIDENCE_MIN
+    regime: MarketRegime = REGIME_UNKNOWN
+
+    @property
+    def closed(self) -> bool:
+        return self.kind == CONFIDENCE_POLICY_CLOSED
+
+    @property
+    def threshold(self) -> Optional[Decimal]:
+        """Numeric threshold in use, or ``None`` when the gate is off/closed."""
+        if self.kind != CONFIDENCE_POLICY_NUMERIC:
+            return None
+        return self.value
+
+
+def resolve_confidence_policy(
+    *,
+    confidence_policy: Optional[ConfidencePolicy] = None,
+    confidence_min: Optional[Decimal] = CONFIDENCE_MIN,
+    market_regime: MarketRegime = REGIME_UNKNOWN,
+) -> ConfidencePolicy:
+    """Policy the engine reads, with the #1025 ``confidence_min`` as alias.
+
+    Card #1030: the service passes the ``ConfidencePolicy`` of the cycle's
+    regime and the market regime itself. Callers of the #1025 contract may
+    still pass ``confidence_min`` (``None`` = gate removed); it is read as the
+    numeric/off policy of that regime, so the old entry points keep their
+    meaning and the engine never reads the env. When a policy is given, the
+    regime it carries is the authority.
+    """
+    if confidence_policy is not None:
+        return confidence_policy
+    if confidence_min is None:
+        return ConfidencePolicy(kind=CONFIDENCE_POLICY_OFF, value=None, regime=market_regime)
+    return ConfidencePolicy(
+        kind=CONFIDENCE_POLICY_NUMERIC, value=confidence_min, regime=market_regime
+    )
 
 
 from app.services.scalp_window import passes_entry_hurdle, passes_regime_gate  # noqa: E402
@@ -225,6 +302,8 @@ def reply_gate_verdicts(
     *,
     jev: JevSignal,
     confidence_min: Optional[Decimal] = CONFIDENCE_MIN,
+    confidence_policy: Optional[ConfidencePolicy] = None,
+    market_regime: MarketRegime = REGIME_UNKNOWN,
     fee_bp: Decimal = Decimal("10"),
     spread_bp: Decimal = Decimal("0"),
 ) -> GateVerdicts:
@@ -237,10 +316,20 @@ def reply_gate_verdicts(
     Card #1029: ``jev.expected_move_bp`` is the exact bp of the **level already
     reached** (rounded down), so the two cost verdicts below already read the
     credited level's band; their rules, names and boundaries are untouched.
+
+    Card #1030: the confidence verdict reads the **policy of the regime** the
+    cycle belongs to (``numeric`` value, ``off`` or ``closed``), never a single
+    global threshold.
     """
-    if confidence_min is None:
+    policy = resolve_confidence_policy(
+        confidence_policy=confidence_policy,
+        confidence_min=confidence_min,
+        market_regime=market_regime,
+    )
+    threshold = policy.threshold
+    if threshold is None:
         low_confidence: GateVerdict = "not_applicable"
-    elif jev.confidence < confidence_min:
+    elif jev.confidence < threshold:
         low_confidence = "fail"
     else:
         low_confidence = "pass"
@@ -276,7 +365,11 @@ def decide_cycle(
     has_exit_resting: bool = False,
     # ``None`` removes the confidence gate (card #1025 C): no ``low_confidence``
     # refusal is produced and the decision becomes forecast × cost × regime.
+    # Card #1030: ``confidence_policy`` (the policy of the cycle's regime) takes
+    # precedence; ``confidence_min`` is read only as the #1025 alias.
     confidence_min: Optional[Decimal] = CONFIDENCE_MIN,
+    confidence_policy: Optional[ConfidencePolicy] = None,
+    market_regime: MarketRegime = REGIME_UNKNOWN,
     jev_target_ms: int = JEV_TARGET_MS,
 ) -> CycleIntent:
     """Hold is the default. Live send is opt-in after every gate."""
@@ -365,9 +458,25 @@ def decide_cycle(
     # Card #1028: from here on the cycle has a model reply, so the verdict of
     # every reply-fed gate is computed once and attached to whichever return
     # closes the cycle (the decision itself is unchanged).
-    verdicts = reply_gate_verdicts(
-        jev=jev, confidence_min=confidence_min, fee_bp=fee_bp, spread_bp=spread_bp
+    # Card #1030: the confidence verdict reads the policy of the cycle's
+    # regime; the regime and the policy kind travel in the same intent for the
+    # record (never a second decision).
+    policy = resolve_confidence_policy(
+        confidence_policy=confidence_policy,
+        confidence_min=confidence_min,
+        market_regime=market_regime,
     )
+    verdicts = reply_gate_verdicts(
+        jev=jev,
+        confidence_policy=policy,
+        fee_bp=fee_bp,
+        spread_bp=spread_bp,
+    )
+    reply_meta: dict = {
+        "gate_verdicts": verdicts,
+        "market_regime": policy.regime,
+        "confidence_policy_kind": policy.kind,
+    }
     if jev.latency_ms > JEV_LATE_MS:
         return CycleIntent(
             send=False,
@@ -375,7 +484,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="jev_late",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
 
     side = jev.side
@@ -386,16 +495,29 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="hold",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
-    if confidence_min is not None and jev.confidence < confidence_min:
+    if policy.closed:
+        # Card #1030: the regime's policy is closed — the cycle does not
+        # operate and closes with its own token, without comparing any
+        # threshold. Never `regime` and never `low_confidence`.
+        return CycleIntent(
+            send=False,
+            cancel_resting=cancel_stale,
+            fire_kill=False,
+            skip_reason=CLOSED_REGIME_SKIP,
+            clipped_inventory=clipped if inventory_changed else None,
+            **reply_meta,
+        )
+    threshold = policy.threshold
+    if threshold is not None and jev.confidence < threshold:
         return CycleIntent(
             send=False,
             cancel_resting=cancel_stale,
             fire_kill=False,
             skip_reason="low_confidence",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
     if not passes_entry_hurdle(jev.expected_move_bp, fee_bp, spread_bp):
         return CycleIntent(
@@ -404,7 +526,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="hurdle",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
     # Card #1025: maker cost + 50% slack. Evaluated after the bare hurdle
     # ("below cost") and before `toxic_book`, so the tokens tell the story:
@@ -418,7 +540,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="regime",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
     if jev.book_toxic:
         return CycleIntent(
@@ -427,7 +549,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="toxic_book",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
     if t <= 0:
         return CycleIntent(
@@ -436,7 +558,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="t_zero",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
 
     inventory_quote = clipped * book.mid
@@ -449,7 +571,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="ceiling_reduce_only",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
     if side == "SELL" and clipped <= 0:
         return CycleIntent(
@@ -458,7 +580,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="zero_inventory",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
 
     price = post_only_price(side, bid=book.bid, ask=book.ask)
@@ -469,7 +591,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="would_cross",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
     if side == "BUY":
         quote_qty = min(CLIP_CAP, max(Decimal("0"), remaining_to_t), compute_t(free_usdt))
@@ -481,7 +603,7 @@ def decide_cycle(
                 fire_kill=False,
                 skip_reason="t_zero",
                 clipped_inventory=clipped if inventory_changed else None,
-                gate_verdicts=verdicts,
+                **reply_meta,
             )
         quantity = (quote_qty / price) if price > 0 else Decimal("0")
     else:
@@ -498,7 +620,7 @@ def decide_cycle(
             fire_kill=False,
             skip_reason="dust",
             clipped_inventory=clipped if inventory_changed else None,
-            gate_verdicts=verdicts,
+            **reply_meta,
         )
     if quote_qty > CLIP_CAP:
         quote_qty = CLIP_CAP
@@ -516,7 +638,7 @@ def decide_cycle(
         order_type=ORDER_TYPE,
         time_in_force=TIME_IN_FORCE,
         clipped_inventory=clipped if inventory_changed else None,
-        gate_verdicts=verdicts,
+        **reply_meta,
     )
 
 

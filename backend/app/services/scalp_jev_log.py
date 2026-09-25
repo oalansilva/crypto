@@ -430,6 +430,9 @@ def _cycle_suffix(
     move_position: Any = None,
     ab_arm: Any = None,
     state_window_s: Any = None,
+    market_regime: Any = None,
+    confidence_policy: Any = None,
+    confidence_in_use: Any = None,
 ) -> str:
     """Additive ``k=v`` fields of a cycle record; empty when there is no reply.
 
@@ -441,6 +444,11 @@ def _cycle_suffix(
     reached (``move_band=``), the position on the scale (``move_position=``),
     the A/B arm of the run (``ab_arm=``, derived from the effective window) and
     that effective window (``state_window_s=``) — additive, same record.
+
+    Card #1030: the record also names the market regime the decision used
+    (``market_regime=``), the kind of the confidence policy applied
+    (``confidence_policy=`` numeric/off/closed, the #1025 value in use is
+    reported separately as ``confidence_in_use=``) — additive, same record.
     """
     parts: list[str] = []
     if gate_verdicts:
@@ -456,6 +464,12 @@ def _cycle_suffix(
         parts.append(f"noul_label={noul_label}")
     if book_toxic is not None:
         parts.append(f"book_toxic={book_toxic}")
+    if market_regime is not None:
+        parts.append(f"market_regime={record_token(market_regime)}")
+    if confidence_policy is not None:
+        parts.append(f"confidence_policy={record_token(confidence_policy)}")
+    if confidence_in_use is not None:
+        parts.append(f"confidence_in_use={record_token(confidence_in_use)}")
     if move_band is not None:
         parts.append(f"move_band={record_token(move_band)}")
     if move_position is not None:
@@ -482,6 +496,9 @@ def log_cycle_refusal(
     move_position: Any = None,
     ab_arm: Any = None,
     state_window_s: Any = None,
+    market_regime: Any = None,
+    confidence_policy: Any = None,
+    confidence_in_use: Any = None,
 ) -> None:
     """A cycle closed without an order.
 
@@ -489,7 +506,10 @@ def log_cycle_refusal(
     cycle and stays immediately after ``user=`` (card #1015 contract). Card
     #1028 appends, in the same record, the verdict of every reply-fed gate plus
     the reply diagnostics when the cycle had a model reply. Card #1029 appends
-    the band, the position and the A/B arm (additive).
+    the band, the position and the A/B arm (additive). Card #1030 appends the
+    market regime, the confidence policy kind and the value in use, so a closed
+    regime's refusal (``skip_reason=regime_closed``) names them in the same
+    record.
     """
     token = str(skip_reason or "").strip()
     if not token:
@@ -510,6 +530,9 @@ def log_cycle_refusal(
             move_position=move_position,
             ab_arm=ab_arm,
             state_window_s=state_window_s,
+            market_regime=market_regime,
+            confidence_policy=confidence_policy,
+            confidence_in_use=confidence_in_use,
         ),
     )
 
@@ -528,12 +551,16 @@ def log_cycle_sent(
     move_position: Any = None,
     ab_arm: Any = None,
     state_window_s: Any = None,
+    market_regime: Any = None,
+    confidence_policy: Any = None,
+    confidence_in_use: Any = None,
 ) -> None:
     """A cycle that passed every entry gate and sent an order (card #1028).
 
     Same record shape as the refusal, with ``skip_reason=none`` and the same
-    additive fields (card #1029 adds band, position and A/B arm); the #1025
-    ruler ignores this prefix, so it is additive.
+    additive fields (card #1029 adds band, position and A/B arm, card #1030 the
+    market regime and the confidence policy); the #1025 ruler ignores this
+    prefix, so it is additive.
     """
     logger.info(
         "scalp cycle sent user=%s skip_reason=none%s",
@@ -550,6 +577,9 @@ def log_cycle_sent(
             move_position=move_position,
             ab_arm=ab_arm,
             state_window_s=state_window_s,
+            market_regime=market_regime,
+            confidence_policy=confidence_policy,
+            confidence_in_use=confidence_in_use,
         ),
     )
 
