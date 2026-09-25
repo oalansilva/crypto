@@ -34,6 +34,10 @@ from app.services.scalp_jev_log import (
     redact,
     summarize_body,
 )
+from app.services.scalp_state_window import (
+    state_window_arm as ab_arm,
+    state_window_s,
+)
 from app.services.scalp_window import (
     MOVE_BAND_BELOW_COST,
     MOVE_BAND_COVERS_COST,
@@ -60,11 +64,11 @@ _MOVING_JEV_ALIAS = "jev-latest"
 # **already reached** (rounded down) is the only bp the cost comparison uses.
 _EXPECTED_MOVE_BP_LEVELS_BP: tuple[int, ...] = (0, 5, 10, 15, 20, 25, 30, 35, 50, 80)
 
-# A/B arm declared by the operator for this run (card #1029). Diagnostics only:
-# it labels the record so the read-only A/B can split the sample; it never
-# changes the state, the question or the entry decision.
-_AB_ARM_CURRENT = "current"
-_AB_ARM_LARGER = "larger"
+# Card #1029: the A/B arm is derived from the effective state window inside
+# ``state_window_arm`` (re-exported as ``ab_arm`` so both call sites — the call
+# return and the cycle record — inherit the derivation). The independent
+# ``SCALP_JEV_AB_ARM`` no longer exists: it could label ``larger`` a call made
+# with the 900 s window, the false label the T18 proved.
 
 # Model-facing text of each band (record keeps the token from ``scalp_window``).
 _BAND_LABEL_TEXT = {
@@ -153,17 +157,6 @@ def jev_model() -> str:
     if not raw or raw.lower() == _MOVING_JEV_ALIAS:
         return _DEFAULT_JEV_MODEL
     return raw
-
-
-def ab_arm() -> str:
-    """A/B arm declared by the operator for this run (card #1029).
-
-    Diagnostics only: the value labels the record (``ab_arm=``) so the
-    read-only A/B can split the sample between the current state window and the
-    larger one. It never changes the state, the question or the decision.
-    """
-    raw = (os.getenv("SCALP_JEV_AB_ARM") or "").strip().lower()
-    return _AB_ARM_LARGER if raw == _AB_ARM_LARGER else _AB_ARM_CURRENT
 
 
 def _base_url() -> str:
@@ -581,9 +574,13 @@ def request_jev(payload: dict[str, Any], *, timeout_s: Optional[float] = None) -
         confidence_origin=signal.confidence_origin,
         noul_label=signal.noul_label,
         # Card #1029: band of the credited level + position on the scale (the
-        # exact bp travels in expected_move_bp=), plus the A/B arm of the run.
+        # exact bp travels in expected_move_bp=). The A/B arm is derived from
+        # the effective state window (never ``larger`` with the 900 s window)
+        # and the effective window travels in the same record so the invariant
+        # is verifiable in the log.
         move_band=signal.move_band,
         move_position=signal.move_position,
         ab_arm=ab_arm(),
+        state_window_s=state_window_s(),
     )
     return signal

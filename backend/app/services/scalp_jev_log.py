@@ -353,6 +353,7 @@ def log_call_return(
     move_band: Any = None,
     move_position: Any = None,
     ab_arm: Any = None,
+    state_window_s: Any = None,
 ) -> None:
     """Return record: the reply plus the drivers of the ``book_toxic`` flag.
 
@@ -369,14 +370,16 @@ def log_call_return(
     Card #1029: the reply is a **position on the scale** — the record shows the
     band of the level already reached (``move_band=``) and that position
     (``move_position=``), and ``expected_move_bp=`` is the exact bp of that
-    level (never interpolated). ``ab_arm=`` declares the A/B arm of the run.
-    All fields are additive: the read-only ruler keeps matching the prefix.
+    level (never interpolated). ``ab_arm=`` declares the A/B arm of the run and
+    ``state_window_s=`` the effective state window it was derived from, so the
+    invariant (no ``larger`` arm with the 900 s window) is verifiable in the
+    log. All fields are additive: the read-only ruler keeps matching the prefix.
     """
     features = _as_dict(window)
     logger.info(
         "scalp jev call return id=%s status=%s latency_ms=%s side=%s "
         "expected_move_bp=%s score=%s move_band=%s move_position=%s ab_arm=%s "
-        "book_toxic=%s confidence=%s "
+        "state_window_s=%s book_toxic=%s confidence=%s "
         "noul=%s model=%s confidence_origin=%s noul_label=%s "
         "window_ret_bp=%s window_vol_bp=%s window_aggressor_flow=%s "
         "window_spread_bp_mean=%s window_trade_count=%s",
@@ -389,6 +392,7 @@ def log_call_return(
         record_token(move_band),
         position_token(move_position),
         record_token(ab_arm),
+        state_window_s,
         book_toxic,
         confidence,
         noul,
@@ -425,6 +429,7 @@ def _cycle_suffix(
     move_band: Any = None,
     move_position: Any = None,
     ab_arm: Any = None,
+    state_window_s: Any = None,
 ) -> str:
     """Additive ``k=v`` fields of a cycle record; empty when there is no reply.
 
@@ -433,8 +438,9 @@ def _cycle_suffix(
     the extra keys. Values are single tokens (``\\S+``).
 
     Card #1029: the cycle record also carries the band of the level already
-    reached (``move_band=``), the position on the scale (``move_position=``)
-    and the A/B arm of the run (``ab_arm=``) — additive, same record.
+    reached (``move_band=``), the position on the scale (``move_position=``),
+    the A/B arm of the run (``ab_arm=``, derived from the effective window) and
+    that effective window (``state_window_s=``) — additive, same record.
     """
     parts: list[str] = []
     if gate_verdicts:
@@ -456,6 +462,8 @@ def _cycle_suffix(
         parts.append(f"move_position={position_token(move_position)}")
     if ab_arm is not None:
         parts.append(f"ab_arm={record_token(ab_arm)}")
+    if state_window_s is not None:
+        parts.append(f"state_window_s={state_window_s}")
     return (" " + " ".join(parts)) if parts else ""
 
 
@@ -473,6 +481,7 @@ def log_cycle_refusal(
     move_band: Any = None,
     move_position: Any = None,
     ab_arm: Any = None,
+    state_window_s: Any = None,
 ) -> None:
     """A cycle closed without an order.
 
@@ -500,6 +509,7 @@ def log_cycle_refusal(
             move_band=move_band,
             move_position=move_position,
             ab_arm=ab_arm,
+            state_window_s=state_window_s,
         ),
     )
 
@@ -517,6 +527,7 @@ def log_cycle_sent(
     move_band: Any = None,
     move_position: Any = None,
     ab_arm: Any = None,
+    state_window_s: Any = None,
 ) -> None:
     """A cycle that passed every entry gate and sent an order (card #1028).
 
@@ -538,6 +549,7 @@ def log_cycle_sent(
             move_band=move_band,
             move_position=move_position,
             ab_arm=ab_arm,
+            state_window_s=state_window_s,
         ),
     )
 

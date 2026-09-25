@@ -44,3 +44,17 @@
 - [x] 6.2 — **Não** alterar a régua read-only `scripts/scalp_jev_eval.py` (prefixo e chave do #1015 preservados; campos aditivos na mesma linha).
 - [x] 6.3 — Testes: cenários das três capabilities verdes (faixa vs custo, nível já alcançado, rótulo em faixas, registo sem interpolado, A/B com amostra declarada e `amostra insuficiente` abaixo de 30 janelas).
 - [x] 6.4 — `openspec validate card-1029-jev-faixa-observavel --strict` verde.
+
+## 7. Tratamento do A/B (rework pós-T18) — janela maior como contrato visível
+
+> Novas tasks do rework. As 22 anteriores ficam concluídas; estas ficam por fazer e são resolvidas no Apply seguinte (após novo T7).
+
+- [x] 7.1 — Criar a configuração efectiva da janela de estado (env do produto; nome final P3) e fazê-la mandar no **conteúdo** da janela: retenção do buffer do stream (`LOOKBACK_SECONDS`/`TRADE_WINDOW_SECONDS`, `scalp_btcusdt_stream.py:24-25`) e horizonte dos agregados enviados ao modelo (`scalp_jev_payload.py:69,115`); a janela maior (referência 3600 s) tem de reter de facto mais trades/spreads e declarar o `horizon_s` efectivo. Não é rótulo.
+- [x] 7.2 — Derivar o braço do A/B da **janela efectiva** (`larger` sse janela > 900 s) e remover/inertar `SCALP_JEV_AB_ARM` como autoridade do rótulo (`scalp_jev.py:158-166,587`); garantir a invariante «nunca `ab_arm=larger` com a janela de 900 s enviada» e levar a janela efectiva ao registo.
+- [x] 7.3 — Declarar a separação `state window` (contexto: retenção + agregados + `horizon_s`) vs `prediction horizon` (não muda neste card); confirmar que decisão, gates, limiar, geometria alvo/stop e cadência não leem o horizonte e ficam intactos.
+- [x] 7.4 — Provar que o orçamento de payload do #1025 (≤ ~500 tokens) se mantém com a janela maior: bloco `window` de forma fixa (sete escalares + `recent_trades` ≤ `RECENT_TRADES_N = 5`); manter/estender o teste `systemone_input_tokens(body) <= 500` (`test_scalp_jev_consult_cadence.py:239`) com a janela maior.
+- [x] 7.5 — Recolha dos dois braços por **alternância da configuração entre execuções** do loop DEV (900 s = `current`; 3600 s = `larger`), com o registo a declarar a janela efectiva e o braço derivado; piso de **≥30 janelas de 900 s não sobrepostas por braço**; abaixo disso **`amostra insuficiente`** (mantém a régua read-only `scripts/scalp_jev_window_ab.py`).
+- [x] 7.6 — Fixar que **gates, limiar de confiança e a pergunta** (dez opções, `type: score`) são **idênticos** nos dois braços; só o contexto difere, por desenho; a análise read-only não altera nada.
+- [x] 7.7 — Testes do contrato novo: janela maior produzida (conteúdo/valores diferentes de 900 s), rótulo derivado (900 s nunca é `larger`; janela maior é `larger`), `horizon_s` declarado = janela efectiva, orçamento ≤ ~500 tokens com a janela maior, `amostra insuficiente` abaixo de 30 janelas.
+- [x] 7.8 — `openspec validate card-1029-jev-faixa-observavel --strict` verde.
+

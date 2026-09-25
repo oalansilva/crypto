@@ -220,10 +220,23 @@ def test_tick_uses_the_env_cadence(scalp_db, monkeypatch):
     assert calls["n"] == 1, "the env cadence drives the jev_target gate"
 
 
-def test_payload_stays_within_the_token_budget_with_the_ladder_intact():
+@pytest.mark.parametrize("state_window", [None, "3600"])
+def test_payload_stays_within_the_token_budget_with_the_ladder_intact(monkeypatch, state_window):
+    """Card #1029: the ≤ ~500-token budget holds with the larger state window too.
+
+    The ``window`` block keeps a fixed shape (scalars + at most ``RECENT_TRADES_N``
+    trades), so the larger window changes values, not the number of fields. The
+    declared horizon equals the effective state window in both cases.
+    """
     from datetime import timezone as _tz
 
     from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
+
+    if state_window is None:
+        monkeypatch.delenv("SCALP_JEV_STATE_WINDOW_S", raising=False)
+    else:
+        monkeypatch.setenv("SCALP_JEV_STATE_WINDOW_S", state_window)
+    effective_window_s = 900 if state_window is None else int(state_window)
 
     body, skip = build_jev_payload(
         inventory_btc=Decimal("0.0005"),
@@ -254,7 +267,10 @@ def test_payload_stays_within_the_token_budget_with_the_ladder_intact():
     window = body["state"]["window"]
     assert 0 < len(window["recent_trades"]) <= RECENT_TRADES_N
     assert "trades" not in window, "no full tick dump"
-    assert window["horizon_s"] == 900
+    # Card #1029: the declared horizon is the effective state window (900 s or
+    # the larger one), never a fixed 900 s labelling a larger window.
+    assert window["horizon_s"] == effective_window_s
+    assert body["state"]["horizon_s"] == effective_window_s
     for field in ("ret_bp", "vol_bp", "aggressor_flow", "spread_bp_mean", "trade_count"):
         assert field in window
 
