@@ -46,12 +46,19 @@ from app.services.scalp_jev import (
     _map_systemone,
     ab_arm,
     request_jev,
+    systemone_input_tokens,
 )
 from app.services.scalp_jev_log import (
     TailTruncatingFileHandler,
     logger as diagnostic_logger,
 )
+from app.services.scalp_jev_payload import build_jev_payload
 from app.services.scalp_service import set_switch, tick_user
+from app.services.scalp_state_window import (
+    CURRENT_STATE_WINDOW_S,
+    state_window_arm,
+    state_window_s,
+)
 from app.services.scalp_window import (
     MOVE_BAND_BELOW_COST,
     MOVE_BAND_COVERS_COST,
@@ -298,7 +305,9 @@ def test_call_return_records_the_band_and_the_position_without_interpolation(
     returned = _lines_with(diagnostic_log, "call return")[0]
     assert "expected_move_bp=15 score=3.07" in returned
     assert "move_band=below_cost move_position=3" in returned
-    assert "ab_arm=current" in returned
+    # Card #1029: the arm is derived from the effective window (900 s → current)
+    # and the record declares that window so the invariant is verifiable.
+    assert "ab_arm=current state_window_s=900" in returned
     # The quantized interpolation artifact is no longer produced.
     for artifact in ("15.35", "14.30", "14.3", "9.60", "9.6", "22.5"):
         assert artifact not in returned
@@ -330,7 +339,7 @@ def test_cycle_record_carries_the_band_and_the_position(scalp_db, diagnostic_log
     assert re.search(r"scalp cycle refused user=(\S+) skip_reason=(\S+)", cycle)
     assert f"scalp cycle refused user={user_id} skip_reason=hurdle" in cycle
     assert "move_band=below_cost move_position=2" in cycle
-    assert "ab_arm=current" in cycle
+    assert "ab_arm=current state_window_s=900" in cycle
     # A single cost reason, no own token for the lowest band.
     assert "skip_reason=below_cost" not in cycle
 
@@ -379,6 +388,175 @@ def test_legacy_number_fallback_stays_literal_and_outside_the_band_contract(
     returned = _lines_with(diagnostic_log, "call return")[0]
     assert "expected_move_bp=18" in returned
     assert "move_band=unknown move_position=unknown" in returned
+
+
+# --- scalp-jev-window-ab: the larger window is produced, not just labelled ---
+
+
+def _payload_for_window(memory):
+    from datetime import timezone as _tz
+
+    return build_jev_payload(
+        inventory_btc=Decimal("0.0005"),
+        free_usdt=Decimal("80"),
+        fee_bp=Decimal("10"),
+        bnb_fee_active=False,
+        resting=None,
+        rest_opened_at=None,
+        now=datetime.now(_tz.utc).replace(tzinfo=None),
+        memory=memory,
+    )
+
+
+def test_the_larger_state_window_is_produced_not_only_labelled(monkeypatch):
+    """Decision 10: one config extends the retention **and** the declared horizon.
+
+    The 2000 s old trade is outside the 900 s window and inside the larger one,
+    so the content (trade_count) changes, not only the label.
+    """
+    import time as _time
+
+    from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
+
+    mem = get_scalp_btcusdt_memory()
+    now_ms = int(_time.time() * 1000)
+    earlier_ms = now_ms - 2000_000
+
+    monkeypatch.setenv("SCALP_JEV_STATE_WINDOW_S", "3600")
+    assert state_window_s() == 3600
+    mem.ingest_agg_trade({"s": "BTCUSDT", "p": "60000", "q": "1", "T": earlier_ms, "m": False})
+    mem.ingest_agg_trade({"s": "BTCUSDT", "p": "65000", "q": "1", "T": now_ms, "m": False})
+
+    larger_times = [t.trade_time_ms for t in mem.recent_trades()]
+    assert earlier_ms in larger_times, "the larger window retains the older trade"
+    larger_body, skip = _payload_for_window(mem)
+    assert skip is None
+    assert larger_body["state"]["horizon_s"] == 3600
+    assert larger_body["state"]["window"]["horizon_s"] == 3600
+    larger_count = larger_body["state"]["window"]["trade_count"]
+
+    monkeypatch.delenv("SCALP_JEV_STATE_WINDOW_S", raising=False)
+    assert state_window_s() == CURRENT_STATE_WINDOW_S == 900
+    current_times = [t.trade_time_ms for t in mem.recent_trades()]
+    assert earlier_ms not in current_times, "the 900 s window drops the older trade"
+    current_body, skip = _payload_for_window(mem)
+    assert skip is None
+    assert current_body["state"]["horizon_s"] == 900
+    assert current_body["state"]["window"]["horizon_s"] == 900
+    assert current_body["state"]["window"]["trade_count"] < larger_count
+
+
+def test_the_ab_arm_is_derived_from_the_effective_state_window(monkeypatch):
+    monkeypatch.delenv("SCALP_JEV_STATE_WINDOW_S", raising=False)
+    monkeypatch.delenv("SCALP_JEV_AB_ARM", raising=False)
+    assert state_window_s() == 900 and ab_arm() == "current"
+    # The old independent label is inert: it cannot claim the larger arm.
+    monkeypatch.setenv("SCALP_JEV_AB_ARM", "larger")
+    assert ab_arm() == "current", "no larger arm while the 900 s window is sent"
+    # Invalid values fall back to the current window (and the current arm).
+    # ``inf``/``1e400`` overflow and ``nan`` compares false against every bound,
+    # so none of them may leak a larger window (card #1029 item 1).
+    for raw in ("", "900", "899", "0", "-5", "not-a-number", "inf", "-inf", "1e400", "nan"):
+        monkeypatch.setenv("SCALP_JEV_STATE_WINDOW_S", raw)
+        assert state_window_s() == 900, raw
+        assert ab_arm() == "current", raw
+    # Strictly greater than 900 is the larger arm.
+    for raw in ("901", "3600", " 3600 "):
+        monkeypatch.setenv("SCALP_JEV_STATE_WINDOW_S", raw)
+        assert state_window_s() == int(raw)
+        assert ab_arm() == "larger"
+    assert state_window_arm(900) == "current"
+    assert state_window_arm(3600) == "larger"
+
+
+def test_call_return_records_the_effective_window_and_the_derived_arm(monkeypatch, diagnostic_log):
+    monkeypatch.setenv("JEV_API_KEY", "secret-1029")
+
+    monkeypatch.setenv("SCALP_JEV_STATE_WINDOW_S", "3600")
+    _capture_urlopen(monkeypatch, lambda _r, _t, _c: _FakeHttpResponse(_score_reply(3.07)))
+    request_jev(_diagnostic_call_payload())
+    returned = _lines_with(diagnostic_log, "call return")[0]
+    assert "ab_arm=larger state_window_s=3600" in returned
+
+    # The 900 s window is never labelled larger, even with the old env set.
+    monkeypatch.setenv("SCALP_JEV_AB_ARM", "larger")
+    monkeypatch.delenv("SCALP_JEV_STATE_WINDOW_S", raising=False)
+    _capture_urlopen(monkeypatch, lambda _r, _t, _c: _FakeHttpResponse(_score_reply(3.07)))
+    request_jev(_diagnostic_call_payload())
+    returns = _lines_with(diagnostic_log, "call return")
+    assert "ab_arm=current state_window_s=900" in returns[1]
+    assert "ab_arm=larger state_window_s=900" not in returns[1]
+
+
+def test_the_state_window_does_not_change_the_decision(monkeypatch):
+    """Decision 12: ``state window`` is context; the decision does not read it."""
+    fee_bp, spread_bp = Decimal("10"), Decimal("1.5")
+
+    monkeypatch.delenv("SCALP_JEV_STATE_WINDOW_S", raising=False)
+    current = _map_systemone(_score_reply(5.0), latency_ms=1, fee_bp=fee_bp, spread_bp=spread_bp)
+    current_criteria = _expected_move_bp_criteria(fee_bp, spread_bp)
+    current_cycle = _cycle(expected_move_bp=current.expected_move_bp)
+
+    monkeypatch.setenv("SCALP_JEV_STATE_WINDOW_S", "3600")
+    larger = _map_systemone(_score_reply(5.0), latency_ms=1, fee_bp=fee_bp, spread_bp=spread_bp)
+    larger_criteria = _expected_move_bp_criteria(fee_bp, spread_bp)
+    larger_cycle = _cycle(expected_move_bp=larger.expected_move_bp)
+
+    for attr in (
+        "side",
+        "confidence",
+        "expected_move_bp",
+        "book_toxic",
+        "move_position",
+        "move_band",
+    ):
+        assert getattr(current, attr) == getattr(larger, attr)
+    assert current_criteria == larger_criteria, "the question is identical in both arms"
+    assert current_cycle.send == larger_cycle.send
+    assert current_cycle.skip_reason == larger_cycle.skip_reason
+    assert current_cycle.gate_verdicts == larger_cycle.gate_verdicts
+
+
+def test_payload_budget_holds_with_the_larger_state_window(monkeypatch):
+    import time as _time
+    from datetime import timezone as _tz
+
+    from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
+
+    mem = get_scalp_btcusdt_memory()
+    now_ms = int(_time.time() * 1000)
+    # Trades older than the 900 s window but inside the larger one, so the larger
+    # case aggregates a **bigger** trade_count and a full recent_trades sample —
+    # the budget is proved over the wider content, not only a re-labelled payload.
+    for age_s in (2000, 1800, 1500, 1200):
+        mem.ingest_agg_trade(
+            {"s": "BTCUSDT", "p": "64000", "q": "0.5", "T": now_ms - age_s * 1000, "m": False}
+        )
+
+    trade_counts = {}
+    for state_window in (None, "3600"):
+        if state_window is None:
+            monkeypatch.delenv("SCALP_JEV_STATE_WINDOW_S", raising=False)
+        else:
+            monkeypatch.setenv("SCALP_JEV_STATE_WINDOW_S", state_window)
+        body, skip = build_jev_payload(
+            inventory_btc=Decimal("0.0005"),
+            free_usdt=Decimal("80"),
+            fee_bp=Decimal("7.5"),
+            bnb_fee_active=True,
+            resting=None,
+            rest_opened_at=None,
+            now=datetime.now(_tz.utc).replace(tzinfo=None),
+            memory=mem,
+        )
+        assert skip is None
+        assert systemone_input_tokens(body) <= 500
+        window = body["state"]["window"]
+        assert len(window["recent_trades"]) <= 5
+        assert window["horizon_s"] == state_window_s()
+        trade_counts[state_window] = window["trade_count"]
+
+    assert trade_counts["3600"] > trade_counts[None], "the larger window aggregated more content"
 
 
 # --- scalp-jev-window-ab: read-only, declared sample, 30-window gate --------
@@ -479,6 +657,35 @@ def test_ab_parses_the_arm_of_the_return_record(tmp_path):
     assert observations[0].model == "jev-1.13.0"
 
 
+def test_ab_derives_the_arm_from_the_declared_effective_window(tmp_path):
+    """Decision 11: the analysis derives the arm; a false label is a finding."""
+    stamp = "2026-09-23 13:30:00,000"
+    log = tmp_path / "diag.log"
+    log.write_text(
+        f"{stamp} INFO scalp jev call return id=a1 status=200 latency_ms=100 side=BUY "
+        "expected_move_bp=25 score=5.0 move_band=covers_cost move_position=5 "
+        "ab_arm=larger state_window_s=900 "
+        "book_toxic=False confidence=0.31 model=jev-1.13.0\n",
+        encoding="utf-8",
+    )
+    observations, malformed = ab.parse_returns(log)
+    assert malformed == 0
+    assert observations[0].state_window_s == 900
+    assert observations[0].arm == "current", "900 s is never the larger arm"
+    assert observations[0].recorded_arm == "larger"
+    _, summary = _report(observations)
+    assert summary["window_arm_mismatches"] == 1
+    assert summary["effective_windows_s"]["current"] == [900]
+
+
+def test_ab_window_parser_rejects_non_finite_values():
+    """Card #1029 item 1: ``inf``/``1e400``/``nan`` are absent, never a raise."""
+    for raw in ("inf", "-inf", "1e400", "nan", "NaN", "not-a-number"):
+        assert ab._window_s(raw) is None, raw
+    assert ab._window_s("900") == 900
+    assert ab._window_s("3600") == 3600
+
+
 def test_ab_is_read_only_and_never_changes_the_decision(monkeypatch):
     source = AB_SCRIPT_PATH.read_text(encoding="utf-8").lower()
     for forbidden in (
@@ -493,23 +700,12 @@ def test_ab_is_read_only_and_never_changes_the_decision(monkeypatch):
     ):
         assert forbidden not in source
 
-    monkeypatch.setenv("SCALP_JEV_AB_ARM", "current")
+    monkeypatch.delenv("SCALP_JEV_STATE_WINDOW_S", raising=False)
     before = _cycle(expected_move_bp=Decimal("25"))
-    monkeypatch.setenv("SCALP_JEV_AB_ARM", "larger")
+    monkeypatch.setenv("SCALP_JEV_STATE_WINDOW_S", "3600")
     after = _cycle(expected_move_bp=Decimal("25"))
     assert before.send is False and before.skip_reason == "regime"
     assert after.send is before.send and after.skip_reason == before.skip_reason
-
-
-def test_ab_arm_label_reads_the_operator_env(monkeypatch):
-    monkeypatch.delenv("SCALP_JEV_AB_ARM", raising=False)
-    assert ab_arm() == "current"
-    for raw in ("larger", "LARGER", " Larger "):
-        monkeypatch.setenv("SCALP_JEV_AB_ARM", raw)
-        assert ab_arm() == "larger"
-    for raw in ("", "current", "anything-else"):
-        monkeypatch.setenv("SCALP_JEV_AB_ARM", raw)
-        assert ab_arm() == "current"
 
 
 def test_ab_script_prints_insufficient_sample_for_a_short_log(tmp_path, capsys):
@@ -518,7 +714,8 @@ def test_ab_script_prints_insufficient_sample_for_a_short_log(tmp_path, capsys):
     log = tmp_path / "diag.log"
     log.write_text(
         f"{stamp} INFO scalp jev call return id=a1 status=200 latency_ms=100 side=BUY "
-        "expected_move_bp=25 score=5.0 move_band=covers_cost move_position=5 ab_arm=current "
+        "expected_move_bp=25 score=5.0 move_band=covers_cost move_position=5 "
+        "ab_arm=current state_window_s=900 "
         "book_toxic=False confidence=0.31 model=jev-1.13.0\n",
         encoding="utf-8",
     )

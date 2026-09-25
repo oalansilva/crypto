@@ -11,7 +11,8 @@ from app.services.scalp_btcusdt_stream import (
     ScalpBtcusdtMemory,
     get_scalp_btcusdt_memory,
 )
-from app.services.scalp_engine import HORIZON_S, RestingOrder, compute_t
+from app.services.scalp_engine import RestingOrder, compute_t
+from app.services.scalp_state_window import state_window_s
 from app.services.scalp_window import TouchMetrics, WindowMetrics, touch_metrics, window_metrics
 
 # Card #1025 (P3): the window summary carries the horizon aggregates plus at
@@ -64,9 +65,16 @@ def build_touch(memory: ScalpBtcusdtMemory) -> Optional[TouchMetrics]:
 
 
 def build_window(memory: ScalpBtcusdtMemory) -> Optional[WindowMetrics]:
+    """Aggregates over the **effective state window** (card #1029, decision 10).
+
+    ``window_metrics`` does not filter by horizon: the content is the trades and
+    spreads the buffer retained (the retention reads the same effective window),
+    and the ``horizon_s`` declared here is the effective window too, so the
+    model never sees the 900 s window labelled as the larger one.
+    """
     trades = memory.recent_trades()
     spreads = memory.spread_samples_bp()
-    return window_metrics(trades, spread_samples_bp=spreads, horizon_s=HORIZON_S)
+    return window_metrics(trades, spread_samples_bp=spreads, horizon_s=state_window_s())
 
 
 def resting_payload(
@@ -112,7 +120,10 @@ def build_jev_payload(
     trades = mem.recent_trades()
     state: dict[str, Any] = {
         "symbol": "BTCUSDT",
-        "horizon_s": HORIZON_S,
+        # Card #1029: the state horizon declared is the effective state window
+        # (same value the aggregates were computed over), never a fixed 900 s
+        # when the larger window was sent.
+        "horizon_s": window.horizon_s,
         "touch": {
             "bid": _dec_str(touch.bid, "0.01"),
             "ask": _dec_str(touch.ask, "0.01"),

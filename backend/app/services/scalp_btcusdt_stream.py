@@ -17,11 +17,19 @@ import websockets
 
 from app.config import get_settings
 from app.services.scalp_engine import SYMBOL, Book
+from app.services.scalp_state_window import (
+    CURRENT_STATE_WINDOW_S,
+    state_window_s,
+)
 
 logger = logging.getLogger(__name__)
 
 FRESH_AGE_MS = 500
-LOOKBACK_SECONDS = 900.0
+# Card #1029: the retention of the shared buffer is the **effective state
+# window** (``scalp_state_window``), read at each cutoff so a run started with
+# ``SCALP_JEV_STATE_WINDOW_S`` retains the larger window. These two names stay
+# as the current-window default (900 s) and for compatibility.
+LOOKBACK_SECONDS = float(CURRENT_STATE_WINDOW_S)
 TRADE_WINDOW_SECONDS = LOOKBACK_SECONDS
 _SYMBOL = SYMBOL.lower()
 
@@ -118,7 +126,7 @@ class ScalpBtcusdtMemory:
         spread_bp = (ask - bid) / mid * Decimal("10000")
         self._spread_ring.append(SpreadSample(spread_bp=spread_bp, sampled_at=now))
         self._last_spread_sample_at = now
-        cutoff = now - LOOKBACK_SECONDS
+        cutoff = now - state_window_s()
         while self._spread_ring and self._spread_ring[0].sampled_at < cutoff:
             self._spread_ring.popleft()
 
@@ -138,7 +146,7 @@ class ScalpBtcusdtMemory:
             trade_time_ms=trade_time_ms,
             is_buyer_maker=is_buyer_maker,
         )
-        cutoff_ms = int((time.time() - TRADE_WINDOW_SECONDS) * 1000)
+        cutoff_ms = int((time.time() - state_window_s()) * 1000)
         with self._lock:
             self._trades.append(tick)
             while self._trades and self._trades[0].trade_time_ms < cutoff_ms:
@@ -175,12 +183,12 @@ class ScalpBtcusdtMemory:
             return t.bid, t.ask, t.bid_qty, t.ask_qty
 
     def recent_trades(self) -> list[AggTradeTick]:
-        cutoff_ms = int((time.time() - TRADE_WINDOW_SECONDS) * 1000)
+        cutoff_ms = int((time.time() - state_window_s()) * 1000)
         with self._lock:
             return [t for t in self._trades if t.trade_time_ms >= cutoff_ms]
 
     def spread_samples_bp(self) -> list[Decimal]:
-        cutoff = time.time() - LOOKBACK_SECONDS
+        cutoff = time.time() - state_window_s()
         with self._lock:
             return [s.spread_bp for s in self._spread_ring if s.sampled_at >= cutoff]
 
