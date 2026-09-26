@@ -1,9 +1,17 @@
 juizo:
   label: Grok 4.6
   slug: cursor-grok-4.6-high
+  codex:
+    label: GPT-6 Sol
+    slug: gpt-6-sol
+    effort: high
 execucao:
   label: Composer 2.5
   slug: composer-2.5
+  codex:
+    label: GPT-6 Luna
+    slug: gpt-6-luna
+    effort: max
 forbid:
   - composer-2.5-fast
   - inherit
