@@ -89,6 +89,23 @@ MIN_NON_OVERLAPPING_WINDOWS = 30
 MIN_BUCKET_TRADES = 20
 CONFIDENCE_BUCKET_WIDTH = Decimal("0.1")
 
+# Card #1043: the state of the realized measurement is an explicit result of
+# the report — a failure to read the OHLCV is never presented as insufficient
+# sample. The states are derived from the structured read result, never from
+# free text; ``não aplicável`` exists only when there is no realized side to
+# join (no decisions, or no window with an entry to join).
+MEASUREMENT_MEASURED = "medido"
+MEASUREMENT_PARTIAL = "medição parcial"
+MEASUREMENT_NOT_MEASURED = "não medido"
+MEASUREMENT_NOT_APPLICABLE = "não aplicável"
+# Exit contract: a run whose realized side was needed and not measured (state
+# ``não medido``) ends non-zero (``3``, distinct from argparse's ``2``); every
+# other state ends zero. The report is always emitted before the return.
+EXIT_OK = 0
+EXIT_NOT_MEASURED = 3
+# Bound of the sanitized underlying error message exposed in the failure notes.
+CAUSE_MESSAGE_LIMIT = 200
+
 # Card #1030: reply-fed gates, in evaluation order (the #1028 ``GATE_ORDER``),
 # and the subset that defines the eligible population of a regime — every
 # reply-fed gate **except** the confidence gate being calibrated.
@@ -232,6 +249,51 @@ class Realized:
     barrier: str  # "target" | "stop" | "none" | "unknown"
 
 
+@dataclass
+class OhlcvConnection:
+    """Identity of the connection the ruler used — never the password/DSN."""
+
+    user: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[str] = None
+    dbname: Optional[str] = None
+    source: str = "unknown"
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "user": self.user,
+            "host": self.host,
+            "port": self.port,
+            "dbname": self.dbname,
+            "source": self.source,
+        }
+
+    def describe(self) -> str:
+        return (
+            f"user=`{self.user or '—'}`, host=`{self.host or '—'}`, "
+            f"port=`{self.port or '—'}`, dbname=`{self.dbname or '—'}` "
+            f"(origem: `{self.source}`)"
+        )
+
+
+@dataclass
+class OhlcvRead:
+    """Structured result of reading the stored OHLCV (card #1043).
+
+    ``status`` is derived from the outcome of the read, never from free text:
+    ``medido`` (the read succeeded over the whole log window), ``medição
+    parcial`` (the store covers only part of it), ``não medido`` (the read
+    failed) or ``não aplicável``. This is the read-level state; ``build_report``
+    refines it against the windows that actually needed a price.
+    """
+
+    status: str
+    reason: str
+    connection: OhlcvConnection = field(default_factory=OhlcvConnection)
+    partial: bool = False
+    session_identity: Optional[dict[str, Any]] = None
+
+
 def parse_log(path: Path) -> tuple[list[Decision], dict[str, int], int]:
     """Parse entry/return/refusal records. Read-only; never raises on bad lines.
 
@@ -342,7 +404,9 @@ def _attach_registered_verdicts(decisions: list[Decision], cycles: list[dict[str
         if not within:
             continue
         cycle_confidence = cycle["confidence"]
-        matching = [d for d in within if cycle_confidence is None or d.confidence == cycle_confidence]
+        matching = [
+            d for d in within if cycle_confidence is None or d.confidence == cycle_confidence
+        ]
         best = max(matching or within, key=lambda d: d.returned_at or cycle["at"])
         best.gate_verdicts = dict(cycle["verdicts"])
         best.verdict_source = "registered"
@@ -439,27 +503,177 @@ class CandleSeries:
         ]
 
 
-def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSeries, str]:
+_URL_CREDENTIAL_RE = re.compile(r"([A-Za-z][A-Za-z0-9+.\-]*://[^:/@\s]+):[^@/\s]+@")
+_PASSWORD_KV_RE = re.compile(r"(?i)\b(password|passwd|pwd)\s*[=:]\s*\S+")
+
+
+def _sanitize_cause(text: str, *, limit: int = CAUSE_MESSAGE_LIMIT) -> str:
+    """Bounded, credential-free rendering of an underlying error message.
+
+    ``str(exc)`` of an ``OperationalError`` may embed the full DSN (with the
+    password); the report must never carry it (card #1043, decisions 4/5).
+    """
+    if not text:
+        return ""
+    cleaned = _URL_CREDENTIAL_RE.sub(r"\1:***@", str(text))
+    cleaned = _PASSWORD_KV_RE.sub(r"\1=***", cleaned)
+    cleaned = " ".join(cleaned.split())
+    if len(cleaned) > limit:
+        cleaned = cleaned[:limit].rstrip() + "…"
+    return cleaned
+
+
+def _error_cause(exc: BaseException) -> str:
+    """Real cause of a failure: message (sanitized) plus the exception class."""
+    raw = str(exc).strip()
+    message = _sanitize_cause(raw.splitlines()[0]) if raw else ""
+    return f"{type(exc).__name__}: {message}" if message else type(exc).__name__
+
+
+def _missing_module(exc: BaseException) -> Optional[str]:
+    """Name of the missing module of an import failure, when available."""
+    name = getattr(exc, "name", None)
+    if not name:
+        match = re.search(r"No module named '([^']+)'", str(exc))
+        name = match.group(1) if match else None
+    return name
+
+
+def _connection_from_url(url: Optional[str], *, source: str = "unknown") -> OhlcvConnection:
+    """Parse ``user``/``host``/``port``/``dbname`` from a DSN, never the secret."""
+    if not url:
+        return OhlcvConnection(source=source)
+    user = host = port = dbname = None
+    try:
+        from sqlalchemy.engine import make_url
+
+        parsed = make_url(str(url))
+        user = parsed.username
+        host = parsed.host
+        port = None if parsed.port is None else str(parsed.port)
+        dbname = parsed.database
+    except Exception:
+        match = re.match(
+            r"^[A-Za-z][A-Za-z0-9+.\-]*://(?:([^:@/\s]+)(?::[^@/\s]*)?@)?"
+            r"([^:/\s]+)(?::(\d+))?/([^?\s]+)",
+            str(url),
+        )
+        if match:
+            user, host, port, dbname = match.groups()
+    return OhlcvConnection(user=user, host=host, port=port, dbname=dbname, source=source)
+
+
+def _ensure_backend_on_path() -> None:
+    """Make ``backend`` (and the repo root) importable, idempotently.
+
+    The identity derivation imports ``app.config``/``app.database``; when the
+    ruler runs as a script only ``scripts/`` is on ``sys.path``, so this
+    bootstrap must happen **before** any ``_connection_identity`` call —
+    otherwise the declared connection degrades to ``unknown`` (card #1043,
+    decision 4/Q2).
+    """
+    for path in (str(BACKEND), str(ROOT)):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+
+
+def _connection_identity() -> OhlcvConnection:
+    """Connection identity the ruler uses, derived from the environment.
+
+    Mirrors ``resolve_db_url`` (``settings.database_url`` else ``DATABASE_URL``)
+    without exposing the password. Best-effort: never raises.
+    """
+    _ensure_backend_on_path()
+    source = "unknown"
+    url: Optional[str] = None
+    try:
+        from app.config import get_settings
+
+        configured = getattr(get_settings(), "database_url", None)
+    except Exception:
+        configured = None
+    if configured:
+        url, source = str(configured), "settings.database_url"
+    else:
+        env_url = os.getenv("DATABASE_URL")
+        if env_url:
+            url, source = env_url, "DATABASE_URL"
+        else:
+            try:
+                from app.database import DB_URL
+
+                url, source = str(DB_URL), "app.database.DB_URL"
+            except Exception:
+                url = None
+    return _connection_from_url(url, source=source)
+
+
+def _confirm_session_identity() -> Optional[dict[str, Any]]:
+    """Read-only, best-effort confirmation of the session identity (decision 4).
+
+    A failure here never changes the measurement status nor fails the run.
+    """
+    try:
+        from sqlalchemy import text
+
+        from app.database import engine
+
+        with engine.connect() as conn:
+            row = conn.execute(
+                text(
+                    "SELECT current_user, inet_server_addr(), "
+                    "inet_server_port(), current_database()"
+                )
+            ).first()
+        if row is None:
+            return None
+        return {
+            "current_user": row[0],
+            "server_addr": None if row[1] is None else str(row[1]),
+            "server_port": row[2],
+            "database": row[3],
+        }
+    except Exception:
+        return None
+
+
+def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSeries, OhlcvRead]:
     """Read the existing OHLCV store (no writes, no new table).
 
     Picks the finest timeframe already stored that covers the log window; when
     no stored timeframe reaches the window the realized side is declared
-    unavailable (never invented).
+    **não medido** with the real cause — never as insufficient sample and never
+    invented (card #1043). The connection identity is declared on success and
+    on failure, without the password.
     """
-    if str(BACKEND) not in sys.path:
-        sys.path.insert(0, str(BACKEND))
-    if str(ROOT) not in sys.path:
-        sys.path.insert(0, str(ROOT))
+    _ensure_backend_on_path()
+    connection = _connection_identity()
     try:
         from app.services.ohlcv_storage import MarketOhlcvRepository
     except Exception as exc:  # pragma: no cover - environment without DB settings
-        return CandleSeries([]), f"OHLCV indisponível (import: {type(exc).__name__})"
+        missing = _missing_module(exc)
+        detail = _error_cause(exc)
+        if missing:
+            detail += f"; módulo em falta: {missing}"
+        return CandleSeries([]), OhlcvRead(
+            MEASUREMENT_NOT_MEASURED,
+            f"OHLCV indisponível (import: {detail})",
+            connection,
+        )
     try:
         repo = MarketOhlcvRepository()
     except Exception as exc:
-        return CandleSeries([]), f"OHLCV indisponível (repo: {type(exc).__name__})"
+        return CandleSeries([]), OhlcvRead(
+            MEASUREMENT_NOT_MEASURED,
+            f"OHLCV indisponível (repo: {_error_cause(exc)})",
+            connection,
+        )
     if not repo.enabled:
-        return CandleSeries([]), "OHLCV desativado (sem DATABASE_URL)"
+        return CandleSeries([]), OhlcvRead(
+            MEASUREMENT_NOT_MEASURED,
+            "OHLCV desativado (sem DATABASE_URL)",
+            connection,
+        )
     latest_by_timeframe: dict[str, Optional[datetime]] = {}
     try:
         for timeframe in OHLCV_TIMEFRAMES:
@@ -467,7 +681,11 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
                 repo.get_latest_candle_time(OHLCV_SYMBOL, timeframe)
             )
     except Exception as exc:
-        return CandleSeries([]), f"OHLCV falhou na leitura ({type(exc).__name__})"
+        return CandleSeries([]), OhlcvRead(
+            MEASUREMENT_NOT_MEASURED,
+            f"OHLCV falhou na leitura ({_error_cause(exc)})",
+            connection,
+        )
     need_to_naive = _naive(need_to) or need_to
     need_from_naive = _naive(need_from) or need_from
     chosen: Optional[str] = None
@@ -480,7 +698,7 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
     if chosen is None:
         # A live log outruns the OHLCV store: keep the finest timeframe that
         # at least reaches the log start and let the per-window pricing
-        # declare the windows the store does not cover (partial sample, E2).
+        # declare the windows the store does not cover (card #1043).
         for timeframe in OHLCV_TIMEFRAMES:
             latest = latest_by_timeframe.get(timeframe)
             if latest is not None and latest >= need_from_naive:
@@ -492,10 +710,11 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
             f"{tf}: {'—' if latest_by_timeframe.get(tf) is None else latest_by_timeframe[tf].isoformat(sep=' ')}"
             for tf in OHLCV_TIMEFRAMES
         )
-        return (
-            CandleSeries([]),
+        return CandleSeries([]), OhlcvRead(
+            MEASUREMENT_NOT_MEASURED,
             f"OHLCV {OHLCV_SYMBOL} sem candles que cubram a janela até "
             f"{need_to_naive.isoformat(sep=' ')} (último por timeframe — {detail})",
+            connection,
         )
     minutes = int((need_to_naive - need_from_naive).total_seconds() // 60) + 60
     step_minutes = {"1m": 1, "5m": 5, "15m": 15, "1h": 60}[chosen]
@@ -503,9 +722,17 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
     try:
         candles = repo.read_recent_candles(OHLCV_SYMBOL, chosen, limit)
     except Exception as exc:
-        return CandleSeries([]), f"OHLCV falhou na leitura ({type(exc).__name__})"
+        return CandleSeries([]), OhlcvRead(
+            MEASUREMENT_NOT_MEASURED,
+            f"OHLCV falhou na leitura ({_error_cause(exc)})",
+            connection,
+        )
     if not candles:
-        return CandleSeries([]), f"OHLCV sem candles {OHLCV_SYMBOL} {chosen}"
+        return CandleSeries([]), OhlcvRead(
+            MEASUREMENT_NOT_MEASURED,
+            f"OHLCV sem candles {OHLCV_SYMBOL} {chosen}",
+            connection,
+        )
     note = (
         f"OHLCV {OHLCV_SYMBOL} {chosen} (granularidade {step_minutes} min): "
         f"{len(candles)} candles (limit={limit})"
@@ -517,7 +744,14 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
             f"{'—' if latest is None else latest.isoformat(sep=' ')} não chega ao fim "
             f"{need_to_naive.isoformat(sep=' ')}"
         )
-    return CandleSeries(candles, step=timedelta(minutes=step_minutes)), note
+    session = None if partial else _confirm_session_identity()
+    return CandleSeries(candles, step=timedelta(minutes=step_minutes)), OhlcvRead(
+        MEASUREMENT_PARTIAL if partial else MEASUREMENT_MEASURED,
+        note,
+        connection,
+        partial=partial,
+        session_identity=session,
+    )
 
 
 def _barrier_for(
@@ -770,7 +1004,7 @@ def threshold_curve(
 
 
 def _homogeneity(
-    eligible: Sequence[tuple[Decision, Realized]]
+    eligible: Sequence[tuple[Decision, Realized]],
 ) -> tuple[bool, list[str], list[str], int]:
     """Version/origin homogeneity of the sample (#1030, decision 7).
 
@@ -802,6 +1036,7 @@ def regime_analysis(
     fee_bp: Decimal,
     boundary_bp: Optional[Decimal],
     labels: dict[str, str],
+    measurement_closure: Optional[str] = None,
 ) -> dict[str, Any]:
     """One regime's report: bands, threshold curve, choice, separation (#1030).
 
@@ -829,10 +1064,15 @@ def regime_analysis(
     if boundary_bp is None:
         closed_reasons.append("fronteira de regime ausente")
     elif stats["n_priced"] < MIN_NON_OVERLAPPING_WINDOWS:
-        closed_reasons.append(
+        reason = (
             f"população elegível com preço {stats['n_priced']} "
             f"< mínimo de {MIN_NON_OVERLAPPING_WINDOWS}"
         )
+        # Card #1043: a closure driven by a coverage gap declares the partial
+        # measurement alongside the sample reason (predicate unchanged).
+        if measurement_closure:
+            reason += f"; {measurement_closure}"
+        closed_reasons.append(reason)
     elif not sufficient:
         closed_reasons.append(
             f"nenhuma faixa contribuinte com {MIN_BUCKET_TRADES}+ trades com preço"
@@ -907,10 +1147,7 @@ def _regime_lines(analysis: dict[str, Any]) -> list[str]:
         f"{_fmt(Decimal(analysis['expected_net_accept_all_bp']))} bp"
     )
     if analysis["closed"]:
-        lines.append(
-            "- **regime fechado** (não opera): "
-            + "; ".join(analysis["closed_reasons"])
-        )
+        lines.append("- **regime fechado** (não opera): " + "; ".join(analysis["closed_reasons"]))
     elif analysis["separates"]:
         chosen = analysis["chosen"]
         lines.append(
@@ -1036,6 +1273,108 @@ def _break_even_hit_rate(*, target_bp: Decimal, stop_bp: Decimal, fee_bp: Decima
     return (Decimal("2") * fee_bp + risk) / (gain + risk)
 
 
+def _measurement_state(
+    *,
+    decisions: Sequence[Decision],
+    windows: Sequence[Decision],
+    series: CandleSeries,
+    ohlcv_read: Optional[OhlcvRead],
+) -> dict[str, Any]:
+    """Derive the realized-measurement state from the read result (card #1043).
+
+    The state is never inferred from the note's wording nor from ``if not
+    series``: it comes from the structured read result plus which windows
+    actually needed a price. ``não aplicável`` exists only when there is no
+    realized side to join (no decisions, or no window with an entry to join);
+    a window without an entry is **not** a coverage gap and does not enter the
+    error contract.
+    """
+    connection = ohlcv_read.connection if ohlcv_read is not None else OhlcvConnection()
+    session = ohlcv_read.session_identity if ohlcv_read is not None else None
+    if not decisions:
+        return {
+            "status": MEASUREMENT_NOT_APPLICABLE,
+            "reason": "log ausente/vazio: nenhuma chamada Jev registada",
+            "connection": connection,
+            "session_identity": session,
+            "windows_without_price": 0,
+            "windows_without_price_coverage": 0,
+            "windows_without_price_entry": 0,
+        }
+    if ohlcv_read is not None:
+        read_status = ohlcv_read.status
+        read_reason = ohlcv_read.reason
+    else:  # direct callers (tests) without the structured result
+        read_status = MEASUREMENT_MEASURED if len(series) else MEASUREMENT_NOT_MEASURED
+        read_reason = "OHLCV com candles" if len(series) else "realizado indisponível (sem OHLCV)"
+    if read_status == MEASUREMENT_NOT_MEASURED:
+        entry_ok = sum(1 for d in windows if d.entry_mid is not None and d.entry_mid > 0)
+        return {
+            "status": MEASUREMENT_NOT_MEASURED,
+            "reason": read_reason,
+            "connection": connection,
+            "session_identity": session,
+            "windows_without_price": len(windows),
+            "windows_without_price_coverage": entry_ok,
+            "windows_without_price_entry": len(windows) - entry_ok,
+        }
+    priced = coverage_gaps = entry_absent = 0
+    for decision in windows:
+        if decision.entry_mid is None or decision.entry_mid <= 0:
+            entry_absent += 1
+            continue
+        if series.price_at(decision.at + timedelta(seconds=HORIZON_S)) is None:
+            coverage_gaps += 1
+        else:
+            priced += 1
+    needing = priced + coverage_gaps
+    if needing == 0:
+        return {
+            "status": MEASUREMENT_NOT_APPLICABLE,
+            "reason": "nenhuma janela com entrada (`mid`): sem lado realizado a medir",
+            "connection": connection,
+            "session_identity": session,
+            "windows_without_price": entry_absent,
+            "windows_without_price_coverage": 0,
+            "windows_without_price_entry": entry_absent,
+        }
+    if priced == 0:
+        return {
+            "status": MEASUREMENT_NOT_MEASURED,
+            "reason": (
+                f"nenhuma das {needing} janela(s) com entrada obteve preço: o OHLCV não "
+                f"cobre o fim da janela ({read_reason})"
+            ),
+            "connection": connection,
+            "session_identity": session,
+            "windows_without_price": coverage_gaps + entry_absent,
+            "windows_without_price_coverage": coverage_gaps,
+            "windows_without_price_entry": entry_absent,
+        }
+    if coverage_gaps:
+        return {
+            "status": MEASUREMENT_PARTIAL,
+            "reason": (
+                f"{coverage_gaps} de {needing} janela(s) sem preço por cobertura do OHLCV "
+                f"({read_reason})"
+            ),
+            "connection": connection,
+            "session_identity": session,
+            "windows_without_price": coverage_gaps + entry_absent,
+            "windows_without_price_coverage": coverage_gaps,
+            "windows_without_price_entry": entry_absent,
+        }
+    return {
+        "status": MEASUREMENT_MEASURED,
+        "reason": read_reason,
+        "connection": connection,
+        "session_identity": session,
+        "windows_without_price": entry_absent,
+        "windows_without_price_coverage": 0,
+        "windows_without_price_entry": entry_absent,
+    }
+
+
 def build_report(
     *,
     log_path: Path,
@@ -1044,6 +1383,7 @@ def build_report(
     malformed: int,
     series: CandleSeries,
     ohlcv_note: str,
+    ohlcv_read: Optional[OhlcvRead] = None,
     fee_bp: Decimal,
     # Card #1030: the single σ boundary shared with the decision; absent keeps
     # both regimes closed (fail closed). The fee source and the value in use are
@@ -1060,6 +1400,23 @@ def build_report(
     windows = non_overlapping(decisions)
     window_ids = {decision.call_id for decision in windows}
     realized_windows = [(d, r) for d, r in realized if d.call_id in window_ids]
+    # Card #1043: the state of the realized measurement is derived from the
+    # structured read result plus which windows needed a price — never from the
+    # note's wording nor from ``if not series``.
+    measurement = _measurement_state(
+        decisions=decisions, windows=windows, series=series, ohlcv_read=ohlcv_read
+    )
+    measurement_closure = None
+    if (
+        measurement["status"] == MEASUREMENT_PARTIAL
+        and measurement["windows_without_price_coverage"]
+    ):
+        measurement_closure = (
+            f"medição parcial — {measurement['windows_without_price_coverage']} "
+            "janela(s) sem cobertura"
+        )
+    elif measurement["status"] == MEASUREMENT_NOT_MEASURED:
+        measurement_closure = "realizado não medido — nenhuma janela com preço"
     # Card #1030: eligible population per regime (priced cycles that pass every
     # reply-fed gate except confidence), the threshold curve of each regime and
     # the policy the ruler proposes for it (numeric / off / closed).
@@ -1082,6 +1439,7 @@ def build_report(
             fee_bp=fee_bp,
             boundary_bp=regime_boundary_bp,
             labels={"regime": regime_labels[regime]},
+            measurement_closure=measurement_closure,
         )
         for regime in (REGIME_CALM, REGIME_ACTIVE)
     }
@@ -1162,8 +1520,6 @@ def build_report(
         reasons.append("log ausente/vazio: nenhuma chamada Jev registada")
     if malformed:
         reasons.append(f"{malformed} registo(s) `call entry` ilegível(is)")
-    if not series:
-        reasons.append(f"realizado indisponível: {ohlcv_note}")
     if len(windows) < MIN_NON_OVERLAPPING_WINDOWS:
         reasons.append(
             f"{len(windows)} janela(s) não sobreposta(s) de {HORIZON_S} s "
@@ -1254,6 +1610,23 @@ def build_report(
     summary["insufficient"] = bool(reasons)
     summary["insufficient_regimes"] = insufficient_regimes
     summary["stats"] = stats_all
+    # Card #1043: the measurement travels on its own field (``insufficient``
+    # keeps the meaning of **sample**) so an automatic consumer cannot read a
+    # measurement failure as lack of sample.
+    summary["measurement"] = {
+        "status": measurement["status"],
+        "reason": measurement["reason"],
+        "connection": measurement["connection"].as_dict(),
+        "n_windows": len(windows),
+        "n_priced": stats_all["n_priced"],
+        "windows_without_price": measurement["windows_without_price"],
+        "windows_without_price_coverage": measurement["windows_without_price_coverage"],
+        "windows_without_price_entry": measurement["windows_without_price_entry"],
+        "session": measurement.get("session_identity"),
+        "exit_code": (
+            EXIT_NOT_MEASURED if measurement["status"] == MEASUREMENT_NOT_MEASURED else EXIT_OK
+        ),
+    }
 
     lines: list[str] = []
     lines.append("# Card A — régua Jev (read-only)")
@@ -1299,6 +1672,34 @@ def build_report(
         f"- valor em uso preservado: `CONFIDENCE_MIN` = {confidence_in_use_token} "
         "— reportado, nunca reescrito por um relatório insuficiente"
     )
+    lines.append("")
+    lines.append("## Medição do realizado")
+    lines.append("")
+    lines.append(f"- estado da medição: **{measurement['status']}**")
+    lines.append(f"- ligação/utilizador: {measurement['connection'].describe()}")
+    lines.append(
+        f"- janelas não sobrepostas: {len(windows)}; **{stats_all['n_priced']} com preço**"
+    )
+    if measurement["windows_without_price_coverage"]:
+        lines.append(
+            f"- janelas sem preço por **cobertura do OHLCV**: "
+            f"{measurement['windows_without_price_coverage']} de {len(windows)} — "
+            f"{measurement['reason']}"
+        )
+    if measurement["windows_without_price_entry"]:
+        lines.append(
+            f"- janelas sem preço por ausência de entrada (`mid`): "
+            f"{measurement['windows_without_price_entry']} (fora do contrato de erro)"
+        )
+    lines.append(f"- motivo da medição: {measurement['reason']}")
+    session = measurement.get("session_identity")
+    if session:
+        lines.append(
+            "- identidade confirmada pela sessão: "
+            f"current_user=`{session.get('current_user')}`, "
+            f"server=`{session.get('server_addr')}:{session.get('server_port')}`, "
+            f"database=`{session.get('database')}`"
+        )
     lines.append("")
     lines.append("## Previsão vs realizado (janelas não sobrepostas)")
     lines.append("")
@@ -1382,22 +1783,75 @@ def build_report(
         )
         for regime in (REGIME_CALM, REGIME_ACTIVE)
     ]
-    if reasons:
-        lines.append("**Amostra insuficiente** — nenhum limiar ou geometria é proposto:")
+    measurement_status = measurement["status"]
+    consequence = (
+        "Consequência: o valor em uso de `CONFIDENCE_MIN` "
+        f"({confidence_in_use_token}) é **preservado e reportado**; as políticas por "
+        "regime ficam `fechado` (o bot **não opera**) enquanto o relatório for insuficiente. "
+        "`EXIT_TARGET_BP`/`EXIT_STOP_BP` mantêm os valores actuais e `HOLD_AFTER_FILL_S` "
+        "fica nos 900 s de produto. O motivo fica registado na evidência."
+    )
+    if measurement_status == MEASUREMENT_NOT_MEASURED:
+        # Card #1043: the verdict is chosen from the measurement state **first**;
+        # a failed measurement is never presented as insufficient sample.
+        lines.append(
+            "**Realizado não medido** — nenhum limiar ou geometria é proposto "
+            "(falha de medição, **não** amostra insuficiente):"
+        )
         lines.append("")
+        lines.append(f"- {measurement['reason']}")
+        if measurement["windows_without_price_coverage"]:
+            lines.append(
+                f"- {measurement['windows_without_price_coverage']} janela(s) sem preço "
+                "por cobertura do OHLCV"
+            )
+        if measurement["windows_without_price_entry"]:
+            lines.append(
+                f"- {measurement['windows_without_price_entry']} janela(s) sem preço por "
+                "ausência de entrada (`mid`)"
+            )
+        # The sample insufficiency, when present, is declared in separate bullets.
         for reason in reasons:
             lines.append(f"- {reason}")
         if insufficient_regimes:
             lines.append(f"- buckets/regimes com menos de {MIN_BUCKET_TRADES} trades com preço")
         lines.append("")
         lines.append(
-            "Consequência: o valor em uso de `CONFIDENCE_MIN` "
-            f"({confidence_in_use_token}) é **preservado e reportado**; as políticas por "
-            "regime ficam `fechado` (o bot **não opera**) enquanto o relatório for insuficiente. "
-            "`EXIT_TARGET_BP`/`EXIT_STOP_BP` mantêm os valores actuais e `HOLD_AFTER_FILL_S` "
-            "fica nos 900 s de produto. O motivo fica registado na evidência."
+            consequence + " Esta corrida termina com código de saída não-zero (medição falhada)."
         )
+    elif reasons:
+        if measurement_status == MEASUREMENT_PARTIAL:
+            lines.append(
+                f"**Medição parcial** — {measurement['windows_without_price_coverage']} "
+                "janela(s) sem preço por cobertura do OHLCV:"
+            )
+            lines.append("")
+            lines.append(f"- {measurement['reason']}")
+            if measurement["windows_without_price_entry"]:
+                lines.append(
+                    f"- {measurement['windows_without_price_entry']} janela(s) sem preço por "
+                    "ausência de entrada (`mid`)"
+                )
+            lines.append("")
+            lines.append("**Amostra insuficiente** — declarada em separado da medição parcial:")
+        else:
+            lines.append("**Amostra insuficiente** — nenhum limiar ou geometria é proposto:")
+        lines.append("")
+        for reason in reasons:
+            lines.append(f"- {reason}")
+        if insufficient_regimes:
+            lines.append(f"- buckets/regimes com menos de {MIN_BUCKET_TRADES} trades com preço")
+        lines.append("")
+        lines.append(consequence)
     else:
+        if measurement_status == MEASUREMENT_PARTIAL:
+            lines.append(
+                f"**Medição parcial** — {measurement['windows_without_price_coverage']} "
+                "janela(s) sem preço por cobertura do OHLCV; a amostra com preço é suficiente:"
+            )
+            lines.append("")
+            lines.append(f"- {measurement['reason']}")
+            lines.append("")
         lines.append("Amostra suficiente na régua: proposta")
         lines.append("")
         if summary["exit_geometry_derived"]:
@@ -1522,6 +1976,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--json", action="store_true", help="imprime também o sumário JSON")
     parser.add_argument("--out", default=None, help="grava o relatório markdown neste caminho")
     args = parser.parse_args(argv)
+    # Card #1043 (decision 4/Q2): the identity is derived on every path,
+    # including the missing-log one, so the bootstrap must precede it.
+    _ensure_backend_on_path()
 
     log_path = Path(args.log or os.getenv("SCALP_JEV_LOG_FILE") or DEFAULT_LOG_PATH)
     fee_bp = _dec(args.fee_bp, str(DEFAULT_FEE_BP))
@@ -1530,14 +1987,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     regime_boundary_bp = _regime_boundary_bp(args.regime_boundary_bp)
     confidence_in_use = _confidence_in_use(args.confidence_in_use)
 
-    def _build(decisions, refusals, malformed, series, ohlcv_note):
+    def _build(decisions, refusals, malformed, series, ohlcv_read):
         return build_report(
             log_path=log_path,
             decisions=decisions,
             refusals=refusals,
             malformed=malformed,
             series=series,
-            ohlcv_note=ohlcv_note,
+            ohlcv_note=ohlcv_read.reason,
+            ohlcv_read=ohlcv_read,
             fee_bp=fee_bp,
             regime_boundary_bp=regime_boundary_bp,
             fee_source=args.fee_source,
@@ -1545,8 +2003,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
 
     if not log_path.exists():
-        series, ohlcv_note = CandleSeries([]), "OHLCV não consultado (log ausente)"
-        report, summary = _build([], {}, 0, series, ohlcv_note)
+        series = CandleSeries([])
+        ohlcv_read = OhlcvRead(
+            MEASUREMENT_NOT_APPLICABLE,
+            "OHLCV não consultado (log ausente)",
+            _connection_identity(),
+        )
+        report, summary = _build([], {}, 0, series, ohlcv_read)
         report = f"> **Log ausente**: `{log_path}` não existe.\n\n" + report
     else:
         decisions, refusals, malformed = parse_log(log_path)
@@ -1555,8 +2018,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             need_to = max(d.at for d in decisions) + timedelta(seconds=HORIZON_S)
         else:
             need_from = need_to = datetime.utcnow()
-        series, ohlcv_note = load_candles(need_from=need_from, need_to=need_to)
-        report, summary = _build(decisions, refusals, malformed, series, ohlcv_note)
+        series, ohlcv_read = load_candles(need_from=need_from, need_to=need_to)
+        report, summary = _build(decisions, refusals, malformed, series, ohlcv_read)
 
     print(report)
     if args.json:
@@ -1567,7 +2030,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         out_path = Path(args.out)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(report + "\n", encoding="utf-8")
-    return 0
+    # Card #1043 (Q1): the report is already emitted above; a run whose
+    # realized side was needed and not measured ends non-zero.
+    return int(summary.get("measurement", {}).get("exit_code", EXIT_OK))
 
 
 if __name__ == "__main__":
