@@ -179,6 +179,7 @@ def test_insufficient_sample_is_declared_and_no_threshold_is_proposed(tmp_path):
     )
     assert summary["measurement"]["status"] == "medido"
     assert summary["insufficient"] is True
+    assert summary["sample_assessment"] == "insuficiente"
     # Card #1030: sem fronteira de regime (e com amostra insuficiente) as
     # políticas por regime ficam fechadas e o valor em uso é preservado.
     assert summary["regimes"]["calm"]["policy"] == "closed"
@@ -320,13 +321,12 @@ def test_missing_log_file_is_declared(monkeypatch, tmp_path, capsys):
     assert "Amostra insuficiente" in out
 
 
-def test_partial_coverage_declares_insufficiency_on_the_priced_windows(tmp_path):
+def test_uncovered_windows_are_confirmed_gaps_without_a_sample_verdict(tmp_path):
     """Card #1043: um store que não cobre as janelas é ``não medido``.
 
     O OHLCV pode existir mas cobrir só um período antigo: a lista de candles
-    existe e ``n_priced`` é 0. Sob o contrato do #1043 isso é uma falha de
-    medição (``não medido``), nunca ``Amostra insuficiente``; a insuficiência de
-    amostra continua a olhar a contagem **com preço**.
+    existe e ``n_priced`` é 0. A consulta confirmou uma lacuna de cobertura,
+    distinta de uma falha ao ler OHLCV; a amostra permanece sem avaliação.
     """
     decisions, _series = _windows(40, confidence="0.35", realized_bp=40)
     stale = ruler.CandleSeries(
@@ -345,6 +345,7 @@ def test_partial_coverage_declares_insufficiency_on_the_priced_windows(tmp_path)
         ruler.MEASUREMENT_NOT_MEASURED,
         "OHLCV BTC/USDT sem candles que cubram a janela",
         ruler.OhlcvConnection(user="u", host="h", port="5432", dbname="d", source="DATABASE_URL"),
+        coverage_assessed=True,
     )
     report, summary = ruler.build_report(
         log_path=tmp_path / "diag.log",
@@ -358,14 +359,21 @@ def test_partial_coverage_declares_insufficiency_on_the_priced_windows(tmp_path)
     )
     assert summary["windows_non_overlapping"] == 40
     assert summary["stats"]["n_priced"] == 0
-    assert summary["insufficient"] is True
+    assert summary["insufficient"] is None
+    assert summary["sample_assessment"] == "não avaliada"
+    assert summary["insufficient_reasons"] == []
     assert summary["measurement"]["status"] == "não medido"
+    assert summary["measurement"]["coverage_assessment"] == "avaliada"
+    assert summary["measurement"]["windows_without_price"] == 40
+    assert summary["measurement"]["windows_without_price_coverage"] == 40
+    assert summary["measurement"]["windows_without_price_coverage_unassessed"] == 0
     assert summary["regimes"]["calm"]["policy"] == "closed"
     assert summary["regimes"]["active"]["policy"] == "closed"
     assert summary["exit_geometry_derived"] is False
-    assert "n_priced" in summary["insufficient_reasons"][-1]
     assert "Realizado não medido" in report
-    assert "Amostra insuficiente" not in report
+    assert "insuficiente" not in report.lower()
+    assert "40 de 40" in report
+    assert "lacuna confirmada" in report
 
 
 def test_sufficient_sample_derives_the_geometry_from_the_barriers(tmp_path):
@@ -708,8 +716,23 @@ def test_the_measurement_is_not_measured_when_the_read_fails():
     )
     assert summary["measurement"]["status"] == "não medido"
     assert summary["measurement"]["exit_code"] == 3
+    assert summary["measurement"]["windows_without_price"] == 40
+    assert summary["measurement"]["windows_without_price_coverage"] == 0
+    assert summary["measurement"]["windows_without_price_coverage_unassessed"] == 40
+    assert summary["measurement"]["coverage_assessment"] == "não avaliada"
+    assert summary["sample_assessment"] == "não avaliada"
+    assert summary["insufficient"] is None
+    assert summary["insufficient_reasons"] == []
     assert "Realizado não medido" in report
-    assert "Amostra insuficiente" not in report
+    assert "insuficiente" not in report.lower()
+    assert "cobertura não avaliada" in report
+    assert "- avaliação da amostra: **não avaliada**" in report
+    assert "| avaliação da amostra |" in report
+    assert any(
+        "[0.3, 0.4)" in row and row.endswith("| não avaliada |") for row in report.splitlines()
+    )
+    assert "não determina o estado de execução do bot" in report
+    assert "não opera" not in report
 
 
 def test_the_measurement_is_partial_with_the_coverage_count():
@@ -719,8 +742,13 @@ def test_the_measurement_is_partial_with_the_coverage_count():
     report, summary = _report_with(decisions=decisions, series=covered, ohlcv_read=read)
     assert summary["measurement"]["status"] == "medição parcial"
     assert summary["measurement"]["windows_without_price_coverage"] == 20
+    assert summary["measurement"]["windows_without_price_coverage_unassessed"] == 0
+    assert summary["measurement"]["coverage_assessment"] == "avaliada"
     assert summary["measurement"]["exit_code"] == 0
+    assert summary["sample_assessment"] == "insuficiente"
+    assert summary["insufficient"] is True
     assert "Medição parcial" in report
+    assert "**Amostra insuficiente** — declarada em separado da medição parcial" in report
     # O fecho por regime declara a medição parcial sem mudar o predicado.
     assert any(
         "medição parcial" in reason for reason in summary["regimes"]["calm"]["closed_reasons"]
@@ -743,6 +771,20 @@ def test_a_window_without_an_entry_is_not_a_coverage_gap():
     assert summary["measurement"]["status"] == "medido"
     assert summary["measurement"]["windows_without_price_entry"] == 1
     assert summary["measurement"]["windows_without_price_coverage"] == 0
+    assert summary["measurement"]["windows_without_price_coverage_unassessed"] == 0
+
+
+def test_decisions_without_any_entry_are_not_marked_not_applicable():
+    decisions, series = _windows(2, confidence="0.35", realized_bp=40)
+    for decision in decisions:
+        decision.entry_mid = None
+    read = _read(ruler.MEASUREMENT_MEASURED, "OHLCV BTC/USDT 1m: 120 candles")
+    _, summary = _report_with(decisions=decisions, series=series, ohlcv_read=read)
+    assert summary["measurement"]["status"] == "medido"
+    assert summary["measurement"]["coverage_assessment"] == "não aplicável"
+    assert summary["measurement"]["windows_without_price_entry"] == 2
+    assert summary["measurement"]["windows_without_price_coverage"] == 0
+    assert summary["measurement"]["exit_code"] == 0
 
 
 def test_not_measured_run_exits_nonzero_after_emitting_every_output(monkeypatch, tmp_path, capsys):
@@ -759,7 +801,7 @@ def test_not_measured_run_exits_nonzero_after_emitting_every_output(monkeypatch,
             ruler.CandleSeries([]),
             _read(
                 ruler.MEASUREMENT_NOT_MEASURED,
-                "OHLCV indisponível (import: ModuleNotFoundError: No module named 'app')",
+                'OHLCV falhou na leitura (OperationalError: FATAL: Peer authentication failed for user "root")',
             ),
         ),
     )
@@ -767,9 +809,25 @@ def test_not_measured_run_exits_nonzero_after_emitting_every_output(monkeypatch,
     assert code == 3
     printed = capsys.readouterr().out
     assert "Realizado não medido" in printed
-    assert "Amostra insuficiente" not in printed
-    assert '"status": "não medido"' in printed
-    assert '"exit_code": 3' in printed
+    assert "insuficiente" not in printed.lower()
+    assert "cobertura não avaliada" in printed
+    assert "| avaliação da amostra |" in printed
+    assert any(
+        "[0.2, 0.3)" in row and row.endswith("| não avaliada |") for row in printed.splitlines()
+    )
+    assert "Peer authentication failed" in printed
+    assert "não determina o estado de execução do bot" in printed
+    summary = _json_summary(printed)
+    assert summary["measurement"]["status"] == "não medido"
+    assert summary["measurement"]["exit_code"] == 3
+    assert summary["measurement"]["windows_without_price"] == 1
+    assert summary["measurement"]["windows_without_price_coverage"] == 0
+    assert summary["measurement"]["windows_without_price_coverage_unassessed"] == 1
+    assert summary["measurement"]["coverage_assessment"] == "não avaliada"
+    assert summary["measurement"]["connection"]["user"] == "analyzer"
+    assert summary["sample_assessment"] == "não avaliada"
+    assert summary["insufficient"] is None
+    assert summary["insufficient_reasons"] == []
     assert out.exists()
     assert "Realizado não medido" in out.read_text(encoding="utf-8")
 
