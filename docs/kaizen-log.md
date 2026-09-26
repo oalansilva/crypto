@@ -1,5 +1,39 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-09-26 — Kaizen release (release 2026-09-26, cards 1043, 1030, 1025, 1036, 1029, 1008, 1006, 1001, 994, 1015, 1017, 1028)
+
+- **Release/card**: 12 cards `Homologado` → PR #1053 `release-2026-09-26` → `main`, merge `66f07aff0e040319d62353b8e756abc2bcebc85d`; deploy PROD no mesmo commit. Health `/api/health`, `/` e `/monitor` validados.
+- **Fontes**: Project 1 (`gh project item-list --limit 500`), issues e handoffs #994/#1001/#1015, branches/worktrees, `release-guard pre/post`, `openspec validate --all`, checks do PR #1053, evidência PROD estrita e auditoria local de transcripts/proxies.
+- **Grelha**: 11 spawns diretamente contáveis pelas marcas canônicas; 16 ocorrências brutas em sete cards. A discrepância entre comentários e transcripts impede escolher um único número histórico. A coorte dos próximos dez cards não está identificável nas fontes disponíveis; portanto não declaro média ≤1,5 atingida nem falhada.
+- **Design**: 34 spawns localizados e oito linhas de proxy nos handoffs de #1001/#1015. A cobertura por card continua incompleta.
+- **Apply/review/QA**: transcripts misturam sessões e cards: #1008 contém 7 Apply, 26 spawns de reviewers e 7 QA; #1006 contém 7 Apply e 20 reviewers. Sem associação confiável por card, os totais não são atribuídos como métricas do lote.
+- **Proxy modelo**: linhas REST por spawn observadas em #1043, #1006, #1001 e #1015. A atribuição histórica restante é limitada pela divergência do `.cursor/model-map.yaml` local, que está dirty fora deste PR documental.
+
+#### Métricas
+
+- **Board**: os 12 cards continuam `Homologado`; 11 comentários canônicos foram registrados neste fechamento e #1017 já tinha comentário. Responsável=Alan foi preenchido em #994/#1001/#1015 usando os handoffs. Prioridade/Tipo ainda faltam em #1001 e #1015; os outros dez cards têm os campos do gate preenchidos.
+- **Git/CI**: `release-guard pre` PASS (0 blockers, 17 avisos classificados); PR #1053 com os checks iniciados verdes, exceto `qa-gate` e `deploy-staging` skipped pela base `main`.
+- **OpenSpec**: 185/185 válidos; 11 changes ativas e 33/33 tarefas concluídas. A escolha foi sync de 26 specs novas + 7 atualizadas antes do archive. O process-fsm guard negou a escrita (`fail_closed`, `q=None`, `bound_card=⊥`, `q_git=develop`); não houve alteração das specs principais nem archive.
+- **PROD**: `66f07aff0e040319d62353b8e756abc2bcebc85d`; 5 units persistentes reiniciadas, duas oneshot fora da janela; migração em `20260921_0002`; frontend bundles `index-BERHuHYh.js` / `index-DvgqlVcc.css`; checker estrito PASS para o endpoint público.
+- **Fechamento**: sync normal `main → develop`, classificação/limpeza de branches e `release-guard post` ainda pendentes. Nenhum status foi movido para `Pronto`; T16 continua condicionado a `post` PASS.
+- **Drive**: a nota `release-2026-09-26` foi criada e o `kaizen-log` atualizado na pasta `Docs`.
+
+#### Achados
+
+- **F-1 [minor] proxies por spawn ausentes em comentários REST** — linhas disponíveis em #1043/#1006/#1001/#1015, mas a auditoria histórica não fecha para o restante. Recorrência/dedupe **#909** e **#963**; não criado card novo.
+- **F-2 [minor] marcas de grill divergem das fontes de sessão** — #1008 marca zero enquanto o transcript mostra 2 spawns; #994 marca zero enquanto comentário/transcript documenta 3. O #963 recebeu seção de reconciliação por fonte para orientar a auditoria; sem novo card.
+- **F-3 [info] transcripts Apply/review/QA misturam cards e sessões** — os números de #1008/#1006 não permitem atribuição individual confiável. Não se infere falha de execução nem média por card; manter a coleta reconciliada em **#963**.
+- **F-4 [info] campos obrigatórios do Project faltaram antes do closeout** — Responsável agora está preenchido nos três cards, mas Prioridade/Tipo continuam ausentes em #1001 e #1015. Dedupe **#910**; o `post` continua bloqueado até regularização.
+- **OpenSpec**: a escrita para sync/archive foi recusada pelo guard. Este registro não tenta contornar o deny nem declarar as changes arquivadas.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) handoff REST de proxy por spawn | P1 | F-1 | coberto por #909 |
+| (não criado) reconciliar marcas de grill com fontes | — | F-2/F-3 | coberto por #963 |
+| (não criado) exigir campos do Project no gate | P2 | F-4 | coberto por #910 |
+
 ## 2026-09-22 — Kaizen release (release 2026-09-22, cards 1017)
 
 - **Release/card**: Homologado `#1017` → `release-2026-09-22` (cherry-picks `be689c33` de `dc772725` + archive `bc6382d5`) → `main` PR #1019 merged `3b0ebdf5ab3036be4e427f14f01ccb838a6ba97b`. PROD bundle `index-CJP6s_v3.js`.
