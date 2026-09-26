@@ -729,8 +729,7 @@ def test_the_measurement_is_not_measured_when_the_read_fails():
     assert "- avaliação da amostra: **não avaliada**" in report
     assert "| avaliação da amostra |" in report
     assert any(
-        "[0.3, 0.4)" in row and row.endswith("| não avaliada |")
-        for row in report.splitlines()
+        "[0.3, 0.4)" in row and row.endswith("| não avaliada |") for row in report.splitlines()
     )
     assert "não determina o estado de execução do bot" in report
     assert "não opera" not in report
@@ -814,8 +813,7 @@ def test_not_measured_run_exits_nonzero_after_emitting_every_output(monkeypatch,
     assert "cobertura não avaliada" in printed
     assert "| avaliação da amostra |" in printed
     assert any(
-        "[0.2, 0.3)" in row and row.endswith("| não avaliada |")
-        for row in printed.splitlines()
+        "[0.2, 0.3)" in row and row.endswith("| não avaliada |") for row in printed.splitlines()
     )
     assert "Peer authentication failed" in printed
     assert "não determina o estado de execução do bot" in printed
