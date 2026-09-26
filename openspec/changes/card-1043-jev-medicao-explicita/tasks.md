@@ -1,7 +1,6 @@
 # Tasks — card-1043-jev-medicao-explicita
 
-> Execução SOMENTE após `Status=Pronto para Dev` (T8). Este filho de Design NÃO implementa.
-> Gate antes de implementar: **Design → Aprovação de Design → Pronto para Dev** — só o `Status=Pronto para Dev` (aprovação humana do Alan) libera `/opsx:apply`; o agente não cruza `Aprovação de Design → Pronto para Dev`.
+> A implementação inicial ocorreu após `Status=Pronto para Dev` (T8). Esta passagem regista as regressões de homologação após T18 em `Em desenvolvimento`; não reabre Design nem altera o gate humano.
 > Usar as skills do projeto disponíveis no Cursor quando aplicável (`.cursor/skills/`, `.agents/skills/`), com o runbook `covenant-flow`; a crítica de Design é a skill `design-critic`.
 > `UI impact: none` nesta entrega: nada de painel/Monitor, rota, HTML, base de dados nova ou PROD. Os tokens do gate estão no `design.md`.
 
@@ -54,3 +53,10 @@
 - [x] 7.1 — Confirmar `Status=Design` → crítica do `design-critic` → `Aprovação de Design`; **não** avançar para `Pronto para Dev` (T7 é do Alan) nem editar código de produto neste filho.
 - [x] 7.2 — Depois de `Pronto para Dev`: `/opsx:apply` com o contrato do `design.md` (secção de medição, veredicto sem confusão, código de saída não-zero, causa real sanitizada, ligação/utilizador declarado).
 - [x] 7.3 — Declarar na evidência do Apply que a corrida usada para evidência **mediu** o realizado (código de saída `0` e `status` da medição), nunca uma corrida degradada.
+
+## 8. Regressões da homologação após T18
+
+- [x] 8.1 — Em falha de leitura OHLCV (incluindo autenticação), contar `windows_without_price` sem atribuir as janelas a lacunas confirmadas; expor a quantidade de cobertura não avaliada, motivo e ligação. Markdown e JSON deixam a avaliação da amostra como não avaliada, sem `Amostra insuficiente` nos rótulos, linhas ou consequência.
+- [x] 8.2 — Distinguir falha de leitura de cobertura ausente confirmada; conservar as contagens de lacunas reais, o estado `medição parcial`, exit `0`, e a insuficiência de uma amostra pequena que foi medida.
+- [x] 8.3 — Manter ausência de entrada distinta de lacuna de cobertura e `não aplicável` restrito a log sem decisões; não classificar a falha do relatório read-only como estado operacional do bot.
+- [x] 8.4 — Regressão de saída: leitura falhada emite relatório, JSON e `--out` antes do exit `3`; invocação sem novo argumento de acesso.
