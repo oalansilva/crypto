@@ -1,0 +1,44 @@
+{
+  "cli": {
+    "exit": 0,
+    "findings": [],
+    "raw_type": "list",
+    "stderr": "",
+    "count": 0,
+    "rule_names": []
+  },
+  "browser": {
+    "elements": 55,
+    "nested_findings": 79,
+    "types": {
+      "low-contrast": 28,
+      "undersized-ui-text": 38,
+      "tiny-text": 2,
+      "cramped-padding": 2,
+      "ai-color-palette": 2,
+      "gpt-thin-border-wide-shadow": 1,
+      "text-occlusion": 3,
+      "skipped-heading": 1,
+      "gradient-text": 1,
+      "marquee": 1
+    },
+    "names": {
+      "Low contrast text": 28,
+      "Undersized functional text": 38,
+      "Tiny body text": 2,
+      "Cramped padding": 2,
+      "AI color palette": 2,
+      "Hairline border with wide shadow": 1,
+      "Text occluded by an overlapping element": 3,
+      "Skipped heading level": 1,
+      "Gradient text": 1,
+      "Auto-scrolling marquee": 1
+    },
+    "severities": {
+      "warning": 78,
+      "advisory": 1
+    },
+    "overlays_visible": 52,
+    "note": "CLI static HTML []/exit 0. Browser overlay nits are clone chrome (muted #707a8a on #181a20). Classified P3; none puncture chart-TF contract."
+  }
+}

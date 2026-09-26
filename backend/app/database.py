@@ -171,6 +171,34 @@ def ensure_runtime_schema_migrations() -> None:
                 CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_user_id
                 ON monitor_telegram_alerts (user_id)
                 """))
+        conn.execute(text("""
+                ALTER TABLE scalp_user_states
+                ADD COLUMN IF NOT EXISTS rest_role VARCHAR(8) NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE scalp_user_states
+                ADD COLUMN IF NOT EXISTS rest_opened_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE scalp_user_states
+                ADD COLUMN IF NOT EXISTS position_opened_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE scalp_user_states
+                ADD COLUMN IF NOT EXISTS horizon_s INTEGER NOT NULL DEFAULT 900
+                """))
+        conn.execute(text("""
+                ALTER TABLE scalp_user_states
+                ADD COLUMN IF NOT EXISTS last_trade_bp NUMERIC(36, 18) NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE scalp_user_states
+                ADD COLUMN IF NOT EXISTS last_trade_quote NUMERIC(36, 18) NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE scalp_user_states
+                ADD COLUMN IF NOT EXISTS stuck BOOLEAN NOT NULL DEFAULT FALSE
+                """))
 
         conn.execute(text("""
                 UPDATE users

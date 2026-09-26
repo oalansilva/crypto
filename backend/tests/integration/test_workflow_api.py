@@ -14,7 +14,7 @@ TEST_ACTOR = WorkflowActor(user_id=str(uuid4()), email="o.alan.silva@gmail.com")
 
 
 def _build_client():
-    workflow_database_url = "postgresql://postgres:postgres@127.0.0.1:5432/postgres"
+    workflow_database_url = "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/postgres"
     init_workflow_schema_for_url(workflow_database_url)
     engine = create_engine(
         workflow_database_url,

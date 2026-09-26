@@ -36,6 +36,12 @@ class BinanceOrderError(RuntimeError):
         self.safe_for_user = safe_for_user
 
 
+# Binance code for a symbol-filter failure (``Filter failure: MIN_NOTIONAL`` /
+# ``LOT_SIZE``): the order is not executable at any price, so a caller may treat
+# the remainder as dust instead of retrying it forever.
+ORDER_FILTER_REJECTED_CODE = -1013
+
+
 def _env_base_url() -> str:
     import os
 

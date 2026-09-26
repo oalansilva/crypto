@@ -17,7 +17,7 @@ export default function HelpPage() {
           <h1>Como usar o Cripto Farol no primeiro acesso</h1>
           <p>
             Comece pelos Favoritos, escolha as estrategias que merecem acompanhamento e depois use o Monitor. A carteira
-            Binance e opcional e pode ficar para depois.
+            Binance e opcional (leitura, Operar com confirmacao, e scalp BTCUSDT no Monitor se ligar) e pode ficar para depois.
           </p>
         </div>
         <div className="help-page-guardrail">
@@ -47,7 +47,8 @@ export default function HelpPage() {
           <h2>Carteira Binance opcional</h2>
           <p>
             Configure a carteira apenas se quiser complementar o acompanhamento com saldos (leitura) e, se quiser,
-            comprar / stop / vender Spot no Farol apos confirmacao — opcional, nunca saque, nao e bot. Ela nao e
+            comprar / stop / vender Spot no Farol apos confirmacao no Operar — opcional, nunca saque.
+            No Monitor pode ligar um scalp direcional BTCUSDT (default desligado). Ela nao e
             pre-requisito para usar Favoritos ou Monitor.
           </p>
         </article>

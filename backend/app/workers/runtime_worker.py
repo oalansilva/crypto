@@ -107,20 +107,28 @@ async def _run(stop_event: asyncio.Event) -> None:
     run_signal_feed = _env_enabled("RUN_SIGNAL_FEED_SNAPSHOT_WORKER")
     run_favorite_refresh = _env_enabled("RUN_FAVORITE_BACKTEST_REFRESH")
     run_discovery_dispatcher = _env_enabled("RUN_DISCOVERY_OUTBOX_DISPATCHER")
+    run_scalp_loop = _env_enabled("RUN_SCALP_LOOP")
 
     if not any(
-        (run_signal_monitor, run_signal_feed, run_favorite_refresh, run_discovery_dispatcher)
+        (
+            run_signal_monitor,
+            run_signal_feed,
+            run_favorite_refresh,
+            run_discovery_dispatcher,
+            run_scalp_loop,
+        )
     ):
         logger.warning(
             "No worker routines enabled. Set RUN_SIGNAL_MONITOR, "
             "RUN_SIGNAL_FEED_SNAPSHOT_WORKER, RUN_FAVORITE_BACKTEST_REFRESH, "
-            "and/or RUN_DISCOVERY_OUTBOX_DISPATCHER to 1."
+            "RUN_DISCOVERY_OUTBOX_DISPATCHER, and/or RUN_SCALP_LOOP to 1."
         )
         return
 
     _initialize_runtime_state()
     favorite_refresh_task: asyncio.Task | None = None
     discovery_dispatch_task: asyncio.Task | None = None
+    scalp_task: asyncio.Task | None = None
 
     if run_signal_monitor:
         signal_monitor.start()
@@ -138,9 +146,26 @@ async def _run(stop_event: asyncio.Event) -> None:
         discovery_dispatch_task = asyncio.create_task(discovery_outbox_loop(stop_event))
         logger.info("Discovery outbox dispatcher loop started.")
 
+    if run_scalp_loop:
+        from app.services.scalp_loop import scalp_loop, _acquire_lock
+
+        if _acquire_lock():
+            scalp_task = asyncio.create_task(scalp_loop(stop_event))
+            logger.info("Scalp BTCUSDT loop started.")
+        else:
+            logger.info("Scalp loop lock held elsewhere — worker skipping duplicate.")
+
     try:
         await stop_event.wait()
     finally:
+        if scalp_task is not None:
+            scalp_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await scalp_task
+            from app.services.scalp_loop import _release_lock
+
+            _release_lock()
+            logger.info("Scalp BTCUSDT loop stopped.")
         if discovery_dispatch_task is not None:
             discovery_dispatch_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
