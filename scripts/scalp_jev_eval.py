@@ -30,7 +30,7 @@ O relatório agrega:
 
 Card #1030: o custo é o round-trip da **taxa real por perna** da conta,
 registada com a origem (conta vs fallback conservador); o regime sem amostra
-suficiente aparece **fechado** (não opera); se a confiança **não separar**
+suficiente aparece **fechado na recomendação da régua**; se a confiança **não separar**
 ciclos bons de ruins o limiar fica **desligado**; a **homogeneidade** da
 amostra (versão do modelo e origem da confiança) é declarada e, sem ela, nenhum
 limiar é proposto; o **valor em uso** de `CONFIDENCE_MIN` é preservado e
@@ -47,9 +47,11 @@ Uso (do worktree do card, venv do source)::
     /srv/apps/dev/criptofarol/source/backend/.venv/bin/python \
         scripts/scalp_jev_eval.py --out <relatorio.md>
 
-O OHLCV é lido com ``DATABASE_URL`` do ambiente; sem ela (ou sem cobertura de
-candles para a janela do log) o realizado é declarado indisponível e a amostra
-fica insuficiente por falta de preço — nunca se inventa realização.
+O OHLCV é lido pela ligação da aplicação resolvida do ambiente. Se a leitura
+falhar, o realizado fica ``não medido`` e a cobertura dessas janelas permanece
+por avaliar; o relatório não classifica essa falha como insuficiência de amostra.
+Lacunas confirmadas numa leitura bem-sucedida continuam a ser contadas como
+cobertura em falta.
 """
 
 from __future__ import annotations
@@ -92,8 +94,7 @@ CONFIDENCE_BUCKET_WIDTH = Decimal("0.1")
 # Card #1043: the state of the realized measurement is an explicit result of
 # the report — a failure to read the OHLCV is never presented as insufficient
 # sample. The states are derived from the structured read result, never from
-# free text; ``não aplicável`` exists only when there is no realized side to
-# join (no decisions, or no window with an entry to join).
+# free text; ``não aplicável`` exists only when there are no decisions to join.
 MEASUREMENT_MEASURED = "medido"
 MEASUREMENT_PARTIAL = "medição parcial"
 MEASUREMENT_NOT_MEASURED = "não medido"
@@ -292,6 +293,10 @@ class OhlcvRead:
     connection: OhlcvConnection = field(default_factory=OhlcvConnection)
     partial: bool = False
     session_identity: Optional[dict[str, Any]] = None
+    # ``True`` means the repository read succeeded enough to confirm coverage
+    # gaps, even if it could not price any window. ``None`` derives from the
+    # status; failed reads default to unassessed coverage.
+    coverage_assessed: Optional[bool] = None
 
 
 def parse_log(path: Path) -> tuple[list[Decision], dict[str, int], int]:
@@ -715,6 +720,7 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
             f"OHLCV {OHLCV_SYMBOL} sem candles que cubram a janela até "
             f"{need_to_naive.isoformat(sep=' ')} (último por timeframe — {detail})",
             connection,
+            coverage_assessed=True,
         )
     minutes = int((need_to_naive - need_from_naive).total_seconds() // 60) + 60
     step_minutes = {"1m": 1, "5m": 5, "15m": 15, "1h": 60}[chosen]
@@ -732,6 +738,7 @@ def load_candles(*, need_from: datetime, need_to: datetime) -> tuple[CandleSerie
             MEASUREMENT_NOT_MEASURED,
             f"OHLCV sem candles {OHLCV_SYMBOL} {chosen}",
             connection,
+            coverage_assessed=True,
         )
     note = (
         f"OHLCV {OHLCV_SYMBOL} {chosen} (granularidade {step_minutes} min): "
@@ -1037,6 +1044,7 @@ def regime_analysis(
     boundary_bp: Optional[Decimal],
     labels: dict[str, str],
     measurement_closure: Optional[str] = None,
+    sample_assessed: bool = True,
 ) -> dict[str, Any]:
     """One regime's report: bands, threshold curve, choice, separation (#1030).
 
@@ -1063,22 +1071,27 @@ def regime_analysis(
     closed_reasons: list[str] = []
     if boundary_bp is None:
         closed_reasons.append("fronteira de regime ausente")
-    elif stats["n_priced"] < MIN_NON_OVERLAPPING_WINDOWS:
-        reason = (
-            f"população elegível com preço {stats['n_priced']} "
-            f"< mínimo de {MIN_NON_OVERLAPPING_WINDOWS}"
-        )
-        # Card #1043: a closure driven by a coverage gap declares the partial
-        # measurement alongside the sample reason (predicate unchanged).
-        if measurement_closure:
-            reason += f"; {measurement_closure}"
-        closed_reasons.append(reason)
-    elif not sufficient:
+    if not sample_assessed:
         closed_reasons.append(
-            f"nenhuma faixa contribuinte com {MIN_BUCKET_TRADES}+ trades com preço"
+            measurement_closure or "realizado não medido; amostra do regime não avaliada"
         )
-    elif not homogeneous:
-        closed_reasons.append("amostra não homogénea (versão/origem misturadas)")
+    elif boundary_bp is not None:
+        if stats["n_priced"] < MIN_NON_OVERLAPPING_WINDOWS:
+            reason = (
+                f"população elegível com preço {stats['n_priced']} "
+                f"< mínimo de {MIN_NON_OVERLAPPING_WINDOWS}"
+            )
+            # Card #1043: a closure driven by a coverage gap declares the partial
+            # measurement alongside the sample reason (predicate unchanged).
+            if measurement_closure:
+                reason += f"; {measurement_closure}"
+            closed_reasons.append(reason)
+        elif not sufficient:
+            closed_reasons.append(
+                f"nenhuma faixa contribuinte com {MIN_BUCKET_TRADES}+ trades com preço"
+            )
+        elif not homogeneous:
+            closed_reasons.append("amostra não homogénea (versão/origem misturadas)")
 
     separates: Optional[bool]
     if closed_reasons:
@@ -1101,20 +1114,25 @@ def regime_analysis(
         "policy": policy,
         "closed": policy == CONFIDENCE_POLICY_CLOSED,
         "closed_reasons": closed_reasons,
-        "homogeneous": homogeneous,
+        "homogeneous": homogeneous if sample_assessed else None,
+        "sample_assessed": sample_assessed,
         "models": models,
         "origins": origins,
         "excluded_windows": excluded,
     }
 
 
-def _threshold_table(curve: list[dict[str, Any]]) -> list[str]:
+def _threshold_table(
+    curve: list[dict[str, Any]], *, sample_assessed: bool = True
+) -> list[str]:
+    assessment_heading = "suficiente" if sample_assessed else "avaliação da amostra"
     lines = [
-        "| limiar | faixa contribuinte | n que passam | cobertura | ganho esperado (bp) | retorno líq. esperado (bp) | amostra da faixa | suficiente |",
+        f"| limiar | faixa contribuinte | n que passam | cobertura | ganho esperado (bp) | retorno líq. esperado (bp) | amostra da faixa | {assessment_heading} |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     if not curve:
-        lines.append("| — | — | 0 | 0 | — | — | 0 | não |")
+        sufficient = "não" if sample_assessed else "não avaliada"
+        lines.append(f"| — | — | 0 | 0 | — | — | 0 | {sufficient} |")
         return lines
     for row in curve:
         lines.append(
@@ -1122,7 +1140,7 @@ def _threshold_table(curve: list[dict[str, Any]]) -> list[str]:
             f"{_fmt(Decimal(row['coverage']) * Decimal('100'), '0.1')}% | "
             f"{_fmt(None if row['expected_gain_bp'] is None else Decimal(row['expected_gain_bp']))} | "
             f"{_fmt(Decimal(row['expected_net_bp']))} | {row['band_n_priced']} | "
-            f"{'sim' if row['sufficient'] else 'não'} |"
+            f"{'sim' if row['sufficient'] else 'não' if sample_assessed else 'não avaliada'} |"
         )
     return lines
 
@@ -1131,23 +1149,29 @@ def _regime_lines(analysis: dict[str, Any]) -> list[str]:
     label = analysis["label"]
     stats = analysis["sample"]
     lines = [f"#### Regime {label}", ""]
-    lines.append(
-        f"- amostra elegível: {stats['n']} ciclo(s), **{stats['n_priced']} com preço** "
-        f"(acurácia {_fmt((stats['accuracy'] or Decimal('0')) * Decimal('100'), '0.1')}%, "
-        f"retorno líq. médio {_fmt(stats['expectancy_net_bp'])} bp)"
-    )
-    lines.append(
-        f"- homogeneidade: {'homogénea' if analysis['homogeneous'] else 'NÃO homogénea'}"
-        f" (modelos: {', '.join(analysis['models']) or '—'}; origens: "
-        f"{', '.join(analysis['origins']) or '—'}; janelas excluídas: "
-        f"{analysis['excluded_windows']})"
-    )
-    lines.append(
-        f"- aceitar tudo (limiar 0) dá retorno líquido esperado de "
-        f"{_fmt(Decimal(analysis['expected_net_accept_all_bp']))} bp"
-    )
+    if analysis["sample_assessed"]:
+        lines.append(
+            f"- amostra elegível: {stats['n']} ciclo(s), **{stats['n_priced']} com preço** "
+            f"(acurácia {_fmt((stats['accuracy'] or Decimal('0')) * Decimal('100'), '0.1')}%, "
+            f"retorno líq. médio {_fmt(stats['expectancy_net_bp'])} bp)"
+        )
+        lines.append(
+            f"- homogeneidade: {'homogénea' if analysis['homogeneous'] else 'NÃO homogénea'}"
+            f" (modelos: {', '.join(analysis['models']) or '—'}; origens: "
+            f"{', '.join(analysis['origins']) or '—'}; janelas excluídas: "
+            f"{analysis['excluded_windows']})"
+        )
+        lines.append(
+            f"- aceitar tudo (limiar 0) dá retorno líquido esperado de "
+            f"{_fmt(Decimal(analysis['expected_net_accept_all_bp']))} bp"
+        )
+    else:
+        lines.append(
+            f"- amostra elegível: {stats['n']} ciclo(s); avaliação de preços, "
+            "homogeneidade e retorno não disponível porque o realizado não foi medido"
+        )
     if analysis["closed"]:
-        lines.append("- **regime fechado** (não opera): " + "; ".join(analysis["closed_reasons"]))
+        lines.append("- **regime fechado na régua**: " + "; ".join(analysis["closed_reasons"]))
     elif analysis["separates"]:
         chosen = analysis["chosen"]
         lines.append(
@@ -1167,23 +1191,36 @@ def _regime_lines(analysis: dict[str, Any]) -> list[str]:
     lines.append("")
     lines.append("Faixas de confiança (acurácia **reportada**, nunca critério de escolha):")
     lines.append("")
-    lines.extend(_bucket_table("Por `confidence` (elegível do regime)", analysis["bands"]))
+    lines.extend(
+        _bucket_table(
+            "Por `confidence` (elegível do regime)",
+            analysis["bands"],
+            sample_assessed=analysis["sample_assessed"],
+        )
+    )
     lines.append("Curva do limiar (ganho esperado × cobertura):")
     lines.append("")
-    lines.extend(_threshold_table(analysis["curve"]))
+    lines.extend(_threshold_table(analysis["curve"], sample_assessed=analysis["sample_assessed"]))
     lines.append("")
     return lines
 
 
-def _bucket_table(title: str, rows: list[tuple[str, dict[str, Any]]]) -> list[str]:
+def _bucket_table(
+    title: str, rows: list[tuple[str, dict[str, Any]]], *, sample_assessed: bool = True
+) -> list[str]:
+    assessment_heading = "amostra insuficiente" if sample_assessed else "avaliação da amostra"
     lines = [
         f"#### {title}",
         "",
-        "| bucket | n | n com preço | acurácia | retorno líq. (bp) | alvo | stop | sem barreira | insuficiente |",
+        f"| bucket | n | n com preço | acurácia | retorno líq. (bp) | alvo | stop | sem barreira | {assessment_heading} |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for label, stats in rows:
-        insufficient = "sim" if stats["n_priced"] < MIN_BUCKET_TRADES else "não"
+        insufficient = (
+            ("sim" if stats["n_priced"] < MIN_BUCKET_TRADES else "não")
+            if sample_assessed
+            else "não avaliada"
+        )
         accuracy = stats.get("accuracy")
         lines.append(
             f"| {label} | {stats['n']} | {stats['n_priced']} | "
@@ -1192,7 +1229,8 @@ def _bucket_table(title: str, rows: list[tuple[str, dict[str, Any]]]) -> list[st
             f"{stats['n_target']} | {stats['n_stop']} | {stats['n_none']} | {insufficient} |"
         )
     if not rows:
-        lines.append("| — | 0 | 0 | — | — | 0 | 0 | 0 | sim |")
+        empty_assessment = "sim" if sample_assessed else "não avaliada"
+        lines.append(f"| — | 0 | 0 | — | — | 0 | 0 | 0 | {empty_assessment} |")
     lines.append("")
     return lines
 
@@ -1284,10 +1322,9 @@ def _measurement_state(
 
     The state is never inferred from the note's wording nor from ``if not
     series``: it comes from the structured read result plus which windows
-    actually needed a price. ``não aplicável`` exists only when there is no
-    realized side to join (no decisions, or no window with an entry to join);
-    a window without an entry is **not** a coverage gap and does not enter the
-    error contract.
+    actually needed a price. ``não aplicável`` exists only when there are no
+    decisions to join; a window without an entry is **not** a coverage gap and
+    does not enter the read-failure count.
     """
     connection = ohlcv_read.connection if ohlcv_read is not None else OhlcvConnection()
     session = ohlcv_read.session_identity if ohlcv_read is not None else None
@@ -1297,26 +1334,35 @@ def _measurement_state(
             "reason": "log ausente/vazio: nenhuma chamada Jev registada",
             "connection": connection,
             "session_identity": session,
+            "coverage_assessment": "não aplicável",
             "windows_without_price": 0,
             "windows_without_price_coverage": 0,
+            "windows_without_price_coverage_unassessed": 0,
             "windows_without_price_entry": 0,
         }
     if ohlcv_read is not None:
         read_status = ohlcv_read.status
         read_reason = ohlcv_read.reason
+        coverage_assessed = ohlcv_read.coverage_assessed
+        if coverage_assessed is None:
+            coverage_assessed = read_status != MEASUREMENT_NOT_MEASURED
     else:  # direct callers (tests) without the structured result
         read_status = MEASUREMENT_MEASURED if len(series) else MEASUREMENT_NOT_MEASURED
         read_reason = "OHLCV com candles" if len(series) else "realizado indisponível (sem OHLCV)"
-    if read_status == MEASUREMENT_NOT_MEASURED:
+        coverage_assessed = read_status != MEASUREMENT_NOT_MEASURED
+    if read_status == MEASUREMENT_NOT_MEASURED and not coverage_assessed:
         entry_ok = sum(1 for d in windows if d.entry_mid is not None and d.entry_mid > 0)
+        entry_absent = len(windows) - entry_ok
         return {
             "status": MEASUREMENT_NOT_MEASURED,
             "reason": read_reason,
             "connection": connection,
             "session_identity": session,
+            "coverage_assessment": "não avaliada",
             "windows_without_price": len(windows),
-            "windows_without_price_coverage": entry_ok,
-            "windows_without_price_entry": len(windows) - entry_ok,
+            "windows_without_price_coverage": 0,
+            "windows_without_price_coverage_unassessed": entry_ok,
+            "windows_without_price_entry": entry_absent,
         }
     priced = coverage_gaps = entry_absent = 0
     for decision in windows:
@@ -1330,12 +1376,17 @@ def _measurement_state(
     needing = priced + coverage_gaps
     if needing == 0:
         return {
-            "status": MEASUREMENT_NOT_APPLICABLE,
-            "reason": "nenhuma janela com entrada (`mid`): sem lado realizado a medir",
+            # The approved contract reserves ``não aplicável`` for a missing
+            # or empty decision log. Decisions without an entry are excluded
+            # from pricing, but do not create an OHLCV coverage gap.
+            "status": MEASUREMENT_MEASURED,
+            "reason": "nenhuma janela com entrada (`mid`): nenhuma cobertura de preço requerida",
             "connection": connection,
             "session_identity": session,
+            "coverage_assessment": "não aplicável",
             "windows_without_price": entry_absent,
             "windows_without_price_coverage": 0,
+            "windows_without_price_coverage_unassessed": 0,
             "windows_without_price_entry": entry_absent,
         }
     if priced == 0:
@@ -1347,8 +1398,10 @@ def _measurement_state(
             ),
             "connection": connection,
             "session_identity": session,
+            "coverage_assessment": "avaliada",
             "windows_without_price": coverage_gaps + entry_absent,
             "windows_without_price_coverage": coverage_gaps,
+            "windows_without_price_coverage_unassessed": 0,
             "windows_without_price_entry": entry_absent,
         }
     if coverage_gaps:
@@ -1360,8 +1413,10 @@ def _measurement_state(
             ),
             "connection": connection,
             "session_identity": session,
+            "coverage_assessment": "avaliada",
             "windows_without_price": coverage_gaps + entry_absent,
             "windows_without_price_coverage": coverage_gaps,
+            "windows_without_price_coverage_unassessed": 0,
             "windows_without_price_entry": entry_absent,
         }
     return {
@@ -1369,8 +1424,10 @@ def _measurement_state(
         "reason": read_reason,
         "connection": connection,
         "session_identity": session,
+        "coverage_assessment": "avaliada",
         "windows_without_price": entry_absent,
         "windows_without_price_coverage": 0,
+        "windows_without_price_coverage_unassessed": 0,
         "windows_without_price_entry": entry_absent,
     }
 
@@ -1406,6 +1463,7 @@ def build_report(
     measurement = _measurement_state(
         decisions=decisions, windows=windows, series=series, ohlcv_read=ohlcv_read
     )
+    sample_assessed = measurement["status"] != MEASUREMENT_NOT_MEASURED
     measurement_closure = None
     if (
         measurement["status"] == MEASUREMENT_PARTIAL
@@ -1416,7 +1474,13 @@ def build_report(
             "janela(s) sem cobertura"
         )
     elif measurement["status"] == MEASUREMENT_NOT_MEASURED:
-        measurement_closure = "realizado não medido — nenhuma janela com preço"
+        if measurement["coverage_assessment"] == "avaliada":
+            measurement_closure = (
+                "realizado não medido; amostra do regime não avaliada; "
+                f"{measurement['windows_without_price_coverage']} janela(s) sem cobertura confirmada"
+            )
+        else:
+            measurement_closure = "realizado não medido; cobertura e amostra do regime não avaliadas"
     # Card #1030: eligible population per regime (priced cycles that pass every
     # reply-fed gate except confidence), the threshold curve of each regime and
     # the policy the ruler proposes for it (numeric / off / closed).
@@ -1440,6 +1504,7 @@ def build_report(
             boundary_bp=regime_boundary_bp,
             labels={"regime": regime_labels[regime]},
             measurement_closure=measurement_closure,
+            sample_assessed=sample_assessed,
         )
         for regime in (REGIME_CALM, REGIME_ACTIVE)
     }
@@ -1468,7 +1533,8 @@ def build_report(
         "ohlcv": ohlcv_note,
         "ohlcv_candles": len(series),
         "refusals": dict(sorted(refusals.items())),
-        "insufficient": True,
+        "insufficient": None if not sample_assessed else True,
+        "sample_assessment": "não avaliada" if not sample_assessed else "insuficiente",
         "confidence_max": str(max((d.confidence for d in decisions), default=Decimal("0"))),
         "insufficient_reasons": [],
         # Card #1030: fee used and its source; the single σ boundary shared with
@@ -1481,7 +1547,7 @@ def build_report(
         "confidence_in_use": confidence_in_use_token,
         "eligible_population": {"n": len(eligible_all), "verdict_sources": verdict_sources},
         "homogeneity": {
-            "homogeneous": homogeneous_all,
+            "homogeneous": homogeneous_all if sample_assessed else None,
             "models": models_all,
             "origins": origins_all,
             "excluded_windows": excluded_all,
@@ -1499,6 +1565,7 @@ def build_report(
                 "closed": analysis["closed"],
                 "closed_reasons": analysis["closed_reasons"],
                 "homogeneous": analysis["homogeneous"],
+                "sample_assessed": analysis["sample_assessed"],
                 "models": analysis["models"],
                 "origins": analysis["origins"],
                 "excluded_windows": analysis["excluded_windows"],
@@ -1607,8 +1674,18 @@ def build_report(
             summary["exit_geometry_break_even_hit_rate"] = str(
                 _break_even_hit_rate(target_bp=target_bp, stop_bp=stop_bp, fee_bp=fee_bp)
             )
-    summary["insufficient"] = bool(reasons)
-    summary["insufficient_regimes"] = insufficient_regimes
+    if sample_assessed:
+        summary["insufficient"] = bool(reasons)
+        summary["sample_assessment"] = "insuficiente" if reasons else "suficiente"
+        summary["insufficient_regimes"] = insufficient_regimes
+    else:
+        # A failed read leaves the priced sample unknown. ``None`` keeps the
+        # JSON field's sample meaning without reporting synthetic zero prices
+        # as an insufficient sample.
+        reasons.clear()
+        summary["insufficient"] = None
+        summary["sample_assessment"] = "não avaliada"
+        summary["insufficient_regimes"] = None
     summary["stats"] = stats_all
     # Card #1043: the measurement travels on its own field (``insufficient``
     # keeps the meaning of **sample**) so an automatic consumer cannot read a
@@ -1621,7 +1698,11 @@ def build_report(
         "n_priced": stats_all["n_priced"],
         "windows_without_price": measurement["windows_without_price"],
         "windows_without_price_coverage": measurement["windows_without_price_coverage"],
+        "windows_without_price_coverage_unassessed": measurement[
+            "windows_without_price_coverage_unassessed"
+        ],
         "windows_without_price_entry": measurement["windows_without_price_entry"],
+        "coverage_assessment": measurement["coverage_assessment"],
         "session": measurement.get("session_identity"),
         "exit_code": (
             EXIT_NOT_MEASURED if measurement["status"] == MEASUREMENT_NOT_MEASURED else EXIT_OK
@@ -1670,21 +1751,29 @@ def build_report(
     )
     lines.append(
         f"- valor em uso preservado: `CONFIDENCE_MIN` = {confidence_in_use_token} "
-        "— reportado, nunca reescrito por um relatório insuficiente"
+        "— reportado pela configuração em uso"
     )
     lines.append("")
     lines.append("## Medição do realizado")
     lines.append("")
     lines.append(f"- estado da medição: **{measurement['status']}**")
+    lines.append(f"- avaliação da amostra: **{summary['sample_assessment']}**")
+    lines.append(f"- avaliação da cobertura OHLCV: **{measurement['coverage_assessment']}**")
     lines.append(f"- ligação/utilizador: {measurement['connection'].describe()}")
     lines.append(
-        f"- janelas não sobrepostas: {len(windows)}; **{stats_all['n_priced']} com preço**"
+        f"- janelas não sobrepostas: {len(windows)}; **{stats_all['n_priced']} com preço**; "
+        f"{measurement['windows_without_price']} sem preço"
     )
     if measurement["windows_without_price_coverage"]:
         lines.append(
-            f"- janelas sem preço por **cobertura do OHLCV**: "
+            f"- janelas sem preço por lacuna **confirmada** de cobertura do OHLCV: "
             f"{measurement['windows_without_price_coverage']} de {len(windows)} — "
             f"{measurement['reason']}"
+        )
+    if measurement["windows_without_price_coverage_unassessed"]:
+        lines.append(
+            "- janelas sem preço com cobertura não avaliada após a falha de leitura: "
+            f"{measurement['windows_without_price_coverage_unassessed']}"
         )
     if measurement["windows_without_price_entry"]:
         lines.append(
@@ -1715,10 +1804,16 @@ def build_report(
     lines.append("")
     lines.append("## Regime")
     lines.append("")
-    lines.extend(_bucket_table("Por σ da janela (`vol_bp`)", by_sigma))
     lines.extend(
         _bucket_table(
-            "Pelo predicado do gate (`expected_move_bp ≥ entry_hurdle_bp × 1,5`)", by_predicate
+            "Por σ da janela (`vol_bp`)", by_sigma, sample_assessed=sample_assessed
+        )
+    )
+    lines.extend(
+        _bucket_table(
+            "Pelo predicado do gate (`expected_move_bp ≥ entry_hurdle_bp × 1,5`)",
+            by_predicate,
+            sample_assessed=sample_assessed,
         )
     )
     lines.append("## Limiar por regime (retorno líquido esperado × cobertura)")
@@ -1729,19 +1824,28 @@ def build_report(
         f"{verdict_sources.get('registered', 0)}, reconstruídos "
         f"{verdict_sources.get('reconstructed', 0)}."
     )
-    lines.append(
-        "Homogeneidade da amostra elegível: "
-        f"{'homogénea' if homogeneous_all else '**NÃO homogénea**'} "
-        f"(modelos: {', '.join(models_all) or '—'}; origens: {', '.join(origins_all) or '—'}; "
-        f"janelas excluídas: {excluded_all}). Sem homogeneidade não é proposto limiar."
-    )
+    if sample_assessed:
+        lines.append(
+            "Homogeneidade da amostra elegível: "
+            f"{'homogénea' if homogeneous_all else '**NÃO homogénea**'} "
+            f"(modelos: {', '.join(models_all) or '—'}; origens: {', '.join(origins_all) or '—'}; "
+            f"janelas excluídas: {excluded_all}). Sem homogeneidade não é proposto limiar."
+        )
+    else:
+        lines.append("Homogeneidade da amostra elegível: não avaliada porque o realizado não foi medido.")
     lines.append("")
     for regime in (REGIME_CALM, REGIME_ACTIVE):
         lines.extend(_regime_lines(regime_analyses[regime]))
     lines.append("## Buckets")
     lines.append("")
-    lines.extend(_bucket_table("Por `score` de `expected_move_bp`", score_rows))
-    lines.extend(_bucket_table("Por `confidence`", confidence_rows))
+    lines.extend(
+        _bucket_table(
+            "Por `score` de `expected_move_bp`", score_rows, sample_assessed=sample_assessed
+        )
+    )
+    lines.extend(
+        _bucket_table("Por `confidence`", confidence_rows, sample_assessed=sample_assessed)
+    )
     lines.append("## Curva de calibração (`confidence` → |realizado|)")
     lines.append("")
     lines.append("| confidence | n | |realizado| p50 (bp) | |realizado| médio (bp) |")
@@ -1777,44 +1881,51 @@ def build_report(
             else (
                 " — desligado (a confiança não separa; decisão por previsão × custo × regime)"
                 if regime_analyses[regime]["policy"] == CONFIDENCE_POLICY_OFF
-                else " — fechado (não opera): "
+                else " — fechado segundo a régua: "
                 + "; ".join(regime_analyses[regime]["closed_reasons"])
             )
         )
         for regime in (REGIME_CALM, REGIME_ACTIVE)
     ]
     measurement_status = measurement["status"]
-    consequence = (
-        "Consequência: o valor em uso de `CONFIDENCE_MIN` "
-        f"({confidence_in_use_token}) é **preservado e reportado**; as políticas por "
-        "regime ficam `fechado` (o bot **não opera**) enquanto o relatório for insuficiente. "
-        "`EXIT_TARGET_BP`/`EXIT_STOP_BP` mantêm os valores actuais e `HOLD_AFTER_FILL_S` "
-        "fica nos 900 s de produto. O motivo fica registado na evidência."
-    )
+    if sample_assessed:
+        consequence = (
+            "Consequência: o valor em uso de `CONFIDENCE_MIN` "
+            f"({confidence_in_use_token}) é **preservado e reportado**; as políticas indicadas "
+            "são recomendações desta régua read-only. `EXIT_TARGET_BP`/`EXIT_STOP_BP` mantêm "
+            "os valores actuais e `HOLD_AFTER_FILL_S` fica nos 900 s de produto."
+        )
+    else:
+        consequence = (
+            "Consequência: esta corrida não avaliou a amostra nem produziu recomendações por "
+            "regime. O relatório é read-only; o seu resultado não determina o estado de execução "
+            "do bot. O valor em uso de `CONFIDENCE_MIN` "
+            f"({confidence_in_use_token}) fica reportado, e `EXIT_TARGET_BP`/`EXIT_STOP_BP` e "
+            "`HOLD_AFTER_FILL_S` são apenas identificados como valores de produto."
+        )
     if measurement_status == MEASUREMENT_NOT_MEASURED:
         # Card #1043: the verdict is chosen from the measurement state **first**;
         # a failed measurement is never presented as insufficient sample.
         lines.append(
-            "**Realizado não medido** — nenhum limiar ou geometria é proposto "
-            "(falha de medição, **não** amostra insuficiente):"
+            "**Realizado não medido** — nenhum limiar ou geometria é proposto:"
         )
         lines.append("")
         lines.append(f"- {measurement['reason']}")
         if measurement["windows_without_price_coverage"]:
             lines.append(
                 f"- {measurement['windows_without_price_coverage']} janela(s) sem preço "
-                "por cobertura do OHLCV"
+                "por lacuna confirmada de cobertura do OHLCV"
+            )
+        if measurement["windows_without_price_coverage_unassessed"]:
+            lines.append(
+                f"- {measurement['windows_without_price_coverage_unassessed']} janela(s) sem preço; "
+                "a cobertura do OHLCV não pôde ser avaliada"
             )
         if measurement["windows_without_price_entry"]:
             lines.append(
                 f"- {measurement['windows_without_price_entry']} janela(s) sem preço por "
                 "ausência de entrada (`mid`)"
             )
-        # The sample insufficiency, when present, is declared in separate bullets.
-        for reason in reasons:
-            lines.append(f"- {reason}")
-        if insufficient_regimes:
-            lines.append(f"- buckets/regimes com menos de {MIN_BUCKET_TRADES} trades com preço")
         lines.append("")
         lines.append(
             consequence + " Esta corrida termina com código de saída não-zero (medição falhada)."
