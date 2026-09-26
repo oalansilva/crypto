@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -135,6 +138,21 @@ def _windows(
     return decisions, ruler.CandleSeries(candles, step=timedelta(seconds=60))
 
 
+def _covering_series(at: datetime, *, price: str = "85000") -> "ruler.CandleSeries":
+    """Card #1043: candles that price the 900 s window opened at ``at``."""
+    candles = [
+        {
+            "timestamp_utc": (at + timedelta(seconds=step)).isoformat(),
+            "open": price,
+            "high": price,
+            "low": price,
+            "close": price,
+        }
+        for step in range(60, 901, 60)
+    ]
+    return ruler.CandleSeries(candles, step=timedelta(seconds=60))
+
+
 def test_insufficient_sample_is_declared_and_no_threshold_is_proposed(tmp_path):
     log = tmp_path / "diag.log"
     at = datetime(2026, 9, 23, 13, 30, 0)
@@ -142,15 +160,24 @@ def test_insufficient_sample_is_declared_and_no_threshold_is_proposed(tmp_path):
         "\n".join([_entry_line("a1", at), _return_line("a1", at)]) + "\n", encoding="utf-8"
     )
     decisions, refusals, malformed = ruler.parse_log(log)
+    # Card #1043: a short but **measured** sample keeps the insufficient-sample
+    # verdict; a read failure would be declared ``não medido`` instead.
+    read = ruler.OhlcvRead(
+        ruler.MEASUREMENT_MEASURED,
+        "OHLCV BTC/USDT 1m: 15 candles",
+        ruler.OhlcvConnection(user="u", host="h", port="5432", dbname="d", source="DATABASE_URL"),
+    )
     report, summary = ruler.build_report(
         log_path=log,
         decisions=decisions,
         refusals=refusals,
         malformed=malformed,
-        series=ruler.CandleSeries([]),
-        ohlcv_note="OHLCV sem candles",
+        series=_covering_series(at),
+        ohlcv_note=read.reason,
+        ohlcv_read=read,
         fee_bp=Decimal("14"),
     )
+    assert summary["measurement"]["status"] == "medido"
     assert summary["insufficient"] is True
     # Card #1030: sem fronteira de regime (e com amostra insuficiente) as
     # políticas por regime ficam fechadas e o valor em uso é preservado.
@@ -294,11 +321,12 @@ def test_missing_log_file_is_declared(monkeypatch, tmp_path, capsys):
 
 
 def test_partial_coverage_declares_insufficiency_on_the_priced_windows(tmp_path):
-    """E2: 40 janelas não sobrepostas sem preço não são amostra suficiente.
+    """Card #1043: um store que não cobre as janelas é ``não medido``.
 
-    O OHLCV pode cobrir só parte da janela do log: a lista de candles existe,
-    mas ``n_priced`` é 0 — e é a contagem **com preço** que decide a
-    insuficiência, não a existência da lista.
+    O OHLCV pode existir mas cobrir só um período antigo: a lista de candles
+    existe e ``n_priced`` é 0. Sob o contrato do #1043 isso é uma falha de
+    medição (``não medido``), nunca ``Amostra insuficiente``; a insuficiência de
+    amostra continua a olhar a contagem **com preço**.
     """
     decisions, _series = _windows(40, confidence="0.35", realized_bp=40)
     stale = ruler.CandleSeries(
@@ -313,23 +341,31 @@ def test_partial_coverage_declares_insufficiency_on_the_priced_windows(tmp_path)
             for i in range(60)
         ]
     )
+    read = ruler.OhlcvRead(
+        ruler.MEASUREMENT_NOT_MEASURED,
+        "OHLCV BTC/USDT sem candles que cubram a janela",
+        ruler.OhlcvConnection(user="u", host="h", port="5432", dbname="d", source="DATABASE_URL"),
+    )
     report, summary = ruler.build_report(
         log_path=tmp_path / "diag.log",
         decisions=decisions,
         refusals={},
         malformed=0,
         series=stale,
-        ohlcv_note="OHLCV com cobertura parcial",
+        ohlcv_note=read.reason,
+        ohlcv_read=read,
         fee_bp=Decimal("5"),
     )
     assert summary["windows_non_overlapping"] == 40
     assert summary["stats"]["n_priced"] == 0
     assert summary["insufficient"] is True
+    assert summary["measurement"]["status"] == "não medido"
     assert summary["regimes"]["calm"]["policy"] == "closed"
     assert summary["regimes"]["active"]["policy"] == "closed"
     assert summary["exit_geometry_derived"] is False
     assert "n_priced" in summary["insufficient_reasons"][-1]
-    assert "Amostra insuficiente" in report
+    assert "Realizado não medido" in report
+    assert "Amostra insuficiente" not in report
 
 
 def test_sufficient_sample_derives_the_geometry_from_the_barriers(tmp_path):
@@ -637,3 +673,352 @@ def test_the_fallback_fee_is_declared_as_a_report_defect():
     )
     assert summary["fee_source_defect"] is False
     assert "defeito do relatório" not in report
+
+
+# --- Card #1043: explicit realized measurement ------------------------------
+
+
+def _conn(source: str = "DATABASE_URL") -> "ruler.OhlcvConnection":
+    return ruler.OhlcvConnection(
+        user="analyzer", host="db.dev", port="5432", dbname="cryptodb", source=source
+    )
+
+
+def _read(status: str, reason: str) -> "ruler.OhlcvRead":
+    return ruler.OhlcvRead(status, reason, _conn())
+
+
+def test_the_measurement_is_measured_when_every_window_is_priced():
+    decisions, series = _windows(40, confidence="0.35", realized_bp=40)
+    read = _read(ruler.MEASUREMENT_MEASURED, "OHLCV BTC/USDT 1m: 2400 candles")
+    _, summary = _report_with(decisions=decisions, series=series, ohlcv_read=read)
+    assert summary["measurement"]["status"] == "medido"
+    assert summary["measurement"]["windows_without_price"] == 0
+    assert summary["measurement"]["exit_code"] == 0
+
+
+def test_the_measurement_is_not_measured_when_the_read_fails():
+    decisions, _series = _windows(40, confidence="0.35", realized_bp=40)
+    read = _read(
+        ruler.MEASUREMENT_NOT_MEASURED,
+        "OHLCV indisponível (import: ModuleNotFoundError: No module named 'app')",
+    )
+    report, summary = _report_with(
+        decisions=decisions, series=ruler.CandleSeries([]), ohlcv_read=read
+    )
+    assert summary["measurement"]["status"] == "não medido"
+    assert summary["measurement"]["exit_code"] == 3
+    assert "Realizado não medido" in report
+    assert "Amostra insuficiente" not in report
+
+
+def test_the_measurement_is_partial_with_the_coverage_count():
+    decisions, _series = _windows(40, confidence="0.35", realized_bp=40)
+    _more, covered = _windows(20, confidence="0.35", realized_bp=40)
+    read = _read(ruler.MEASUREMENT_MEASURED, "OHLCV BTC/USDT 1m: 1200 candles")
+    report, summary = _report_with(decisions=decisions, series=covered, ohlcv_read=read)
+    assert summary["measurement"]["status"] == "medição parcial"
+    assert summary["measurement"]["windows_without_price_coverage"] == 20
+    assert summary["measurement"]["exit_code"] == 0
+    assert "Medição parcial" in report
+    # O fecho por regime declara a medição parcial sem mudar o predicado.
+    assert any(
+        "medição parcial" in reason for reason in summary["regimes"]["calm"]["closed_reasons"]
+    )
+
+
+def test_the_measurement_is_not_applicable_without_decisions():
+    read = _read(ruler.MEASUREMENT_NOT_APPLICABLE, "log ausente/vazio")
+    report, summary = _report_with(decisions=[], series=ruler.CandleSeries([]), ohlcv_read=read)
+    assert summary["measurement"]["status"] == "não aplicável"
+    assert summary["measurement"]["exit_code"] == 0
+    assert "não aplicável" in report
+
+
+def test_a_window_without_an_entry_is_not_a_coverage_gap():
+    decisions, series = _windows(2, confidence="0.35", realized_bp=40)
+    decisions[1].entry_mid = None
+    read = _read(ruler.MEASUREMENT_MEASURED, "OHLCV BTC/USDT 1m: 120 candles")
+    _, summary = _report_with(decisions=decisions, series=series, ohlcv_read=read)
+    assert summary["measurement"]["status"] == "medido"
+    assert summary["measurement"]["windows_without_price_entry"] == 1
+    assert summary["measurement"]["windows_without_price_coverage"] == 0
+
+
+def test_not_measured_run_exits_nonzero_after_emitting_every_output(monkeypatch, tmp_path, capsys):
+    at = datetime(2026, 9, 23, 13, 30, 0)
+    log = tmp_path / "diag.log"
+    log.write_text(
+        "\n".join([_entry_line("a1", at), _return_line("a1", at)]) + "\n", encoding="utf-8"
+    )
+    out = tmp_path / "report.md"
+    monkeypatch.setattr(
+        ruler,
+        "load_candles",
+        lambda **_: (
+            ruler.CandleSeries([]),
+            _read(
+                ruler.MEASUREMENT_NOT_MEASURED,
+                "OHLCV indisponível (import: ModuleNotFoundError: No module named 'app')",
+            ),
+        ),
+    )
+    code = ruler.main(["--log", str(log), "--json", "--out", str(out)])
+    assert code == 3
+    printed = capsys.readouterr().out
+    assert "Realizado não medido" in printed
+    assert "Amostra insuficiente" not in printed
+    assert '"status": "não medido"' in printed
+    assert '"exit_code": 3' in printed
+    assert out.exists()
+    assert "Realizado não medido" in out.read_text(encoding="utf-8")
+
+
+def test_measured_run_exits_zero(monkeypatch, tmp_path):
+    at = datetime(2026, 9, 23, 13, 30, 0)
+    log = tmp_path / "diag.log"
+    log.write_text(
+        "\n".join([_entry_line("a1", at), _return_line("a1", at)]) + "\n", encoding="utf-8"
+    )
+    series = _covering_series(at)
+    monkeypatch.setattr(
+        ruler,
+        "load_candles",
+        lambda **_: (series, _read(ruler.MEASUREMENT_MEASURED, "OHLCV ok")),
+    )
+    assert ruler.main(["--log", str(log)]) == 0
+
+
+def test_partial_run_exits_zero(monkeypatch, tmp_path):
+    at = datetime(2026, 9, 23, 13, 30, 0)
+    log = tmp_path / "diag.log"
+    log.write_text(
+        "\n".join(
+            [
+                _entry_line("a1", at),
+                _return_line("a1", at),
+                _entry_line("a2", at + timedelta(seconds=900)),
+                _return_line("a2", at + timedelta(seconds=900)),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    series = _covering_series(at)  # cobre só a primeira das duas janelas
+    monkeypatch.setattr(
+        ruler,
+        "load_candles",
+        lambda **_: (series, _read(ruler.MEASUREMENT_MEASURED, "OHLCV parcial")),
+    )
+    assert ruler.main(["--log", str(log)]) == 0
+
+
+def test_not_applicable_run_exits_zero(monkeypatch, tmp_path):
+    log = tmp_path / "diag.log"
+    log.write_text("", encoding="utf-8")
+    monkeypatch.setattr(
+        ruler,
+        "load_candles",
+        lambda **_: (ruler.CandleSeries([]), _read(ruler.MEASUREMENT_NOT_APPLICABLE, "log vazio")),
+    )
+    assert ruler.main(["--log", str(log)]) == 0
+
+
+def test_the_real_cause_is_exposed_and_sanitized():
+    exc = RuntimeError(
+        'connection failed: postgresql://alice:s3cr3t@db.internal:5432/cryptodb FATAL: Peer authentication failed for user "root"'
+    )
+    cause = ruler._error_cause(exc)
+    assert "RuntimeError" in cause
+    assert "Peer authentication failed" in cause
+    assert "s3cr3t" not in cause
+    assert "alice:***@db.internal:5432/cryptodb" in cause
+    # A password em par chave/valor também é removida.
+    assert "hunter2" not in ruler._sanitize_cause("password=hunter2 host=db")
+
+
+def test_the_import_failure_names_the_missing_module():
+    exc = ModuleNotFoundError("No module named 'app'")
+    exc.name = "app"
+    assert ruler._missing_module(exc) == "app"
+    read = _read(
+        ruler.MEASUREMENT_NOT_MEASURED,
+        "OHLCV indisponível (import: ModuleNotFoundError: No module named 'app'; "
+        "módulo em falta: app)",
+    )
+    decisions, _series = _windows(2, confidence="0.35", realized_bp=40)
+    _, summary = _report_with(decisions=decisions, series=ruler.CandleSeries([]), ohlcv_read=read)
+    assert summary["measurement"]["status"] == "não medido"
+    assert "módulo em falta: app" in summary["measurement"]["reason"]
+
+
+def test_the_connection_is_declared_without_the_password():
+    conn = ruler._connection_from_url(
+        "postgresql://alice:s3cr3t@db.internal:5432/cryptodb", source="DATABASE_URL"
+    )
+    assert (conn.user, conn.host, conn.port, conn.dbname) == (
+        "alice",
+        "db.internal",
+        "5432",
+        "cryptodb",
+    )
+    assert conn.source == "DATABASE_URL"
+    described = conn.describe()
+    assert "s3cr3t" not in described
+    assert "postgresql://" not in described
+
+
+def test_the_report_declares_the_connection_on_success_and_on_failure():
+    decisions, series = _windows(2, confidence="0.35", realized_bp=40)
+    for status, run_series, reason in (
+        (ruler.MEASUREMENT_MEASURED, series, "OHLCV ok"),
+        (ruler.MEASUREMENT_NOT_MEASURED, ruler.CandleSeries([]), "OHLCV indisponível"),
+    ):
+        report, summary = _report_with(
+            decisions=decisions,
+            series=run_series,
+            ohlcv_read=_read(status, reason),
+        )
+        assert summary["measurement"]["connection"]["user"] == "analyzer"
+        assert summary["measurement"]["connection"]["source"] == "DATABASE_URL"
+        assert "analyzer" in report and "db.dev" in report and "cryptodb" in report
+        assert "s3cr3t" not in report
+
+
+def test_the_invocation_carries_no_new_connection_argument(capsys):
+    with pytest.raises(SystemExit) as excinfo:
+        ruler.main(["--help"])
+    assert excinfo.value.code == 0
+    usage = capsys.readouterr().out
+    assert "--dsn" not in usage
+    assert "--db-url" not in usage
+
+
+def test_the_ruler_constants_are_unchanged():
+    assert ruler.MIN_NON_OVERLAPPING_WINDOWS == 30
+    assert ruler.MIN_BUCKET_TRADES == 20
+    assert ruler.TARGET_BP == Decimal("35")
+    assert ruler.STOP_BP == Decimal("-28")
+    assert ruler.DEFAULT_FEE_BP == Decimal("10")
+    assert ruler.HORIZON_S == 900
+
+
+# --- Card #1043 / correção C1 (Code Review): bootstrap antes da identidade ---
+
+
+def _run_ruler_as_a_script(*args: str, database_url: str) -> subprocess.CompletedProcess:
+    """Run the ruler exactly as a script (``python scripts/scalp_jev_eval.py``).
+
+    ``PYTHONPATH`` is dropped and ``DATABASE_URL`` removed, so the URL is only
+    reachable through ``settings.database_url`` (the lowercase env key) — the
+    case where the pre-C1 ruler declared the connection as ``unknown`` because
+    ``app.config`` was imported before ``backend`` reached ``sys.path``.
+    """
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in {"PYTHONPATH", "DATABASE_URL", "database_url"}
+    }
+    env["database_url"] = database_url
+    return subprocess.run(
+        [sys.executable, str(RULER_PATH), *args],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _json_summary(stdout: str) -> dict:
+    marker = "```json"
+    start = stdout.index(marker) + len(marker)
+    return json.loads(stdout[start : stdout.index("```", start)])
+
+
+def test_main_with_a_missing_log_declares_the_derived_connection(tmp_path):
+    """C1: a segunda chamada (caminho de log ausente) deriva a ligação real.
+
+    Sem ``PYTHONPATH`` e sem ``DATABASE_URL`` exportado, a identidade só existe
+    se o bootstrap do ``sys.path`` preceder ``_connection_identity()``.
+    """
+    missing = tmp_path / "nope.log"
+    result = _run_ruler_as_a_script(
+        "--log",
+        str(missing),
+        "--json",
+        database_url="postgresql://ruler:s3cr3t@db.invalid:5432/cryptodb",
+    )
+    assert result.returncode == 0
+    assert "user=`ruler`" in result.stdout
+    assert "host=`db.invalid`" in result.stdout
+    assert "origem: `settings.database_url`" in result.stdout
+    assert "s3cr3t" not in result.stdout
+    connection = _json_summary(result.stdout)["measurement"]["connection"]
+    assert connection["source"] == "settings.database_url"
+    assert (
+        connection["user"],
+        connection["host"],
+        connection["port"],
+        connection["dbname"],
+    ) == ("ruler", "db.invalid", "5432", "cryptodb")
+
+
+def test_load_candles_carries_the_derived_connection_when_the_read_fails(tmp_path):
+    """C1: a identidade declarada espelha ``resolve_db_url`` também na falha."""
+    at = datetime(2026, 9, 23, 13, 30, 0)
+    log = tmp_path / "diag.log"
+    log.write_text(
+        "\n".join([_entry_line("a1", at), _return_line("a1", at)]) + "\n",
+        encoding="utf-8",
+    )
+    result = _run_ruler_as_a_script(
+        "--log",
+        str(log),
+        "--json",
+        database_url="postgresql://ruler:s3cr3t@127.0.0.1:1/cryptodb",
+    )
+    assert result.returncode == 3
+    assert "s3cr3t" not in result.stdout
+    summary = _json_summary(result.stdout)
+    assert summary["measurement"]["status"] == "não medido"
+    connection = summary["measurement"]["connection"]
+    assert connection["source"] == "settings.database_url"
+    assert connection["user"] == "ruler"
+    assert connection["host"] == "127.0.0.1"
+    assert connection["dbname"] == "cryptodb"
+
+
+def test_the_real_derivation_is_declared_in_the_report_on_success_and_failure(monkeypatch):
+    """C2: a derivação **real** (``settings.database_url``) chega ao relatório.
+
+    Complementa os testes acima: usa ``_connection_identity()`` (não uma
+    ligação construída à mão) e confirma o contrato no sucesso e na falha.
+    """
+    import app.config
+
+    class _Settings:
+        database_url = "postgresql://ruler:s3cr3t@db.dev:5432/cryptodb"
+
+    monkeypatch.setattr(app.config, "get_settings", lambda: _Settings())
+    connection = ruler._connection_identity()
+    assert connection.source == "settings.database_url"
+    assert (connection.user, connection.host, connection.port, connection.dbname) == (
+        "ruler",
+        "db.dev",
+        "5432",
+        "cryptodb",
+    )
+    decisions, series = _windows(2, confidence="0.35", realized_bp=40)
+    for status, run_series, reason in (
+        (ruler.MEASUREMENT_MEASURED, series, "OHLCV ok"),
+        (ruler.MEASUREMENT_NOT_MEASURED, ruler.CandleSeries([]), "OHLCV indisponível"),
+    ):
+        report, summary = _report_with(
+            decisions=decisions,
+            series=run_series,
+            ohlcv_read=ruler.OhlcvRead(status, reason, connection),
+        )
+        assert summary["measurement"]["connection"]["user"] == "ruler"
+        assert summary["measurement"]["connection"]["source"] == "settings.database_url"
+        assert "db.dev" in report and "cryptodb" in report
+        assert "s3cr3t" not in report
