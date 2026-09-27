@@ -199,6 +199,58 @@ def ensure_runtime_schema_migrations() -> None:
                 ALTER TABLE scalp_user_states
                 ADD COLUMN IF NOT EXISTS stuck BOOLEAN NOT NULL DEFAULT FALSE
                 """))
+        conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS scalp_jev_diagnoses (
+                    closed_day DATE NOT NULL PRIMARY KEY,
+                    run_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    period_start TIMESTAMP WITHOUT TIME ZONE NULL,
+                    period_end TIMESTAMP WITHOUT TIME ZONE NULL,
+                    measurement_status VARCHAR(32) NOT NULL,
+                    verb VARCHAR(16) NOT NULL,
+                    reason TEXT NOT NULL,
+                    operator_reason TEXT NOT NULL,
+                    blocked BOOLEAN NOT NULL DEFAULT FALSE,
+                    block_kind VARCHAR(32) NULL,
+                    posterior_n INTEGER NULL,
+                    operable BOOLEAN NOT NULL DEFAULT FALSE,
+                    fingerprint VARCHAR(64) NULL,
+                    applied_version_id VARCHAR(36) NULL,
+                    panel_json TEXT NULL,
+                    summary_json TEXT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """))
+        conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS scalp_confidence_versions (
+                    id VARCHAR(36) NOT NULL PRIMARY KEY,
+                    version_n INTEGER NOT NULL UNIQUE,
+                    fingerprint VARCHAR(64) NOT NULL UNIQUE,
+                    policies_json TEXT NOT NULL,
+                    previous_id VARCHAR(36) NULL,
+                    applied_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    applied_for_day DATE NOT NULL,
+                    reason TEXT NOT NULL,
+                    source VARCHAR(24) NOT NULL,
+                    active BOOLEAN NOT NULL DEFAULT TRUE,
+                    choice_until TIMESTAMP WITHOUT TIME ZONE NULL,
+                    validated_until TIMESTAMP WITHOUT TIME ZONE NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """))
+        conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS scalp_calibration_state (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    paused BOOLEAN NOT NULL DEFAULT TRUE,
+                    suppressed_fingerprint VARCHAR(64) NULL,
+                    suppressed_day DATE NULL,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """))
+        conn.execute(text("""
+                INSERT INTO scalp_calibration_state (id, paused, updated_at)
+                VALUES (1, TRUE, CURRENT_TIMESTAMP)
+                ON CONFLICT (id) DO NOTHING
+                """))
 
         conn.execute(text("""
                 UPDATE users

@@ -2,6 +2,7 @@
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
     Float,
     Index,
@@ -491,6 +492,68 @@ class ScalpFill(Base):
     __table_args__ = (
         UniqueConstraint("client_order_id", "side", "quantity", "price", name="uq_scalp_fills_leg"),
         Index("ix_scalp_fills_user_created", "user_id", "created_at"),
+    )
+
+
+class ScalpJevDiagnosis(Base):
+    """One closed-UTC-day Jev diagnosis (#1045). Never backfilled into a version."""
+
+    __tablename__ = "scalp_jev_diagnoses"
+
+    closed_day = Column(Date, primary_key=True)
+    run_at = Column(DateTime, nullable=False)
+    period_start = Column(DateTime, nullable=True)
+    period_end = Column(DateTime, nullable=True)
+    measurement_status = Column(String(32), nullable=False)
+    verb = Column(String(16), nullable=False)
+    reason = Column(Text, nullable=False)
+    operator_reason = Column(Text, nullable=False)
+    blocked = Column(Boolean, nullable=False, default=False)
+    block_kind = Column(String(32), nullable=True)
+    posterior_n = Column(Integer, nullable=True)
+    operable = Column(Boolean, nullable=False, default=False)
+    fingerprint = Column(String(64), nullable=True)
+    applied_version_id = Column(String(36), nullable=True)
+    panel_json = Column(Text, nullable=True)
+    summary_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ScalpConfidenceVersion(Base):
+    """Applied per-regime confidence version. Fingerprint is unique (#1045)."""
+
+    __tablename__ = "scalp_confidence_versions"
+
+    id = Column(String(36), primary_key=True)
+    version_n = Column(Integer, nullable=False, unique=True)
+    fingerprint = Column(String(64), nullable=False, unique=True)
+    policies_json = Column(Text, nullable=False)
+    previous_id = Column(String(36), nullable=True)
+    applied_at = Column(DateTime, nullable=False)
+    applied_for_day = Column(Date, nullable=False)
+    reason = Column(Text, nullable=False)
+    source = Column(String(24), nullable=False)
+    active = Column(Boolean, nullable=False, default=True)
+    choice_until = Column(DateTime, nullable=True)
+    validated_until = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ScalpCalibrationState(Base):
+    """Global automatic-calibration switch. Born paused (#1045)."""
+
+    __tablename__ = "scalp_calibration_state"
+
+    id = Column(Integer, primary_key=True)
+    paused = Column(Boolean, nullable=False, default=True)
+    suppressed_fingerprint = Column(String(64), nullable=True)
+    suppressed_day = Column(Date, nullable=True)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
     )
 
 

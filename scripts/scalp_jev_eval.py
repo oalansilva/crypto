@@ -57,8 +57,10 @@ cobertura em falta.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import random
 import re
 import statistics
 import sys
@@ -149,6 +151,20 @@ GEOMETRY_STOP_CANDIDATES_BP = (
     Decimal("-28"),
     Decimal("-35"),
 )
+# Card #1045: candidate horizons measured on the finest stored candle that
+# still fits inside the horizon. A candle as long as the horizon cannot
+# resolve which barrier was hit first.
+CANDIDATE_HORIZONS_S: tuple[tuple[str, int], ...] = (
+    ("15 min", 15 * 60),
+    ("1 h", 60 * 60),
+    ("4 h", 4 * 60 * 60),
+    ("24 h", 24 * 60 * 60),
+)
+HOMOGENEITY_HOMOGENEOUS = "homogénea"
+HOMOGENEITY_UNVERIFIED = "não verificada"
+HOMOGENEITY_MIXED = "não homogénea"
+UNDECLARED_TOKENS = frozenset({"", "unknown", "none", "null"})
+BARRIER_INDETERMINATE = "indeterminate"
 _OHLCV_MAX_1M_CANDLES = 20160  # 14 dias de candles de 1 min
 
 EntryRe = re.compile(r"\sscalp jev call entry id=(\S+) state=(\{.*\}) questions=")
@@ -877,6 +893,18 @@ def _fmt(value: Optional[Decimal], places: str = "0.01") -> str:
     return str(Decimal(value).quantize(Decimal(places)))
 
 
+def _group_rows(
+    rows: Sequence[tuple[Decision, Realized]], *, key
+) -> list[tuple[str, list[tuple[Decision, Realized]]]]:
+    groups: dict[str, list[tuple[Decision, Realized]]] = {}
+    for decision, realized in rows:
+        label = key(decision)
+        if label is None:
+            continue
+        groups.setdefault(str(label), []).append((decision, realized))
+    return list(groups.items())
+
+
 def _bucket_rows(
     rows: Sequence[tuple[Decision, Realized]], *, key, fee_bp: Decimal
 ) -> list[tuple[str, dict[str, Any]]]:
@@ -1010,31 +1038,50 @@ def threshold_curve(
     return curve
 
 
+def _declared_token(value: Optional[str]) -> Optional[str]:
+    """A declared model/origin; missing or ``unknown`` do not count (#1045)."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.lower() in UNDECLARED_TOKENS:
+        return None
+    return text
+
+
 def _homogeneity(
     eligible: Sequence[tuple[Decision, Realized]],
-) -> tuple[bool, list[str], list[str], int]:
-    """Version/origin homogeneity of the sample (#1030, decision 7).
+) -> tuple[bool, str, list[str], list[str], int]:
+    """Version/origin homogeneity of the eligible sample (#1045).
 
-    Returns ``(homogeneous, models, origins, excluded_windows)`` where
-    ``excluded_windows`` counts the eligible cycles that do not share the
-    dominant ``(model, confidence_origin)`` pair.
+    Returns ``(homogeneous, status, models, origins, affected_windows)``.
+    An empty sample, or a sample whose model/origin is missing or ``unknown``,
+    is **não verificada**, not homogénea. Only a single declared model and a
+    single declared origin, shared by every eligible window, is homogénea.
     """
     models = sorted({(decision.model or "unknown") for decision, _ in eligible})
     origins = sorted({(decision.confidence_origin or "unknown") for decision, _ in eligible})
-    homogeneous = len(models) <= 1 and len(origins) <= 1
-    excluded = 0
-    if eligible and not homogeneous:
-        counts: dict[tuple[str, str], int] = {}
-        for decision, _ in eligible:
-            pair = (decision.model or "unknown", decision.confidence_origin or "unknown")
-            counts[pair] = counts.get(pair, 0) + 1
-        dominant = max(counts.items(), key=lambda item: (item[1], item[0]))[0]
-        excluded = sum(
-            1
-            for decision, _ in eligible
-            if (decision.model or "unknown", decision.confidence_origin or "unknown") != dominant
-        )
-    return homogeneous, models, origins, excluded
+    if not eligible:
+        return False, HOMOGENEITY_UNVERIFIED, models, origins, 0
+    pairs: list[tuple[Optional[str], Optional[str]]] = []
+    declared: list[tuple[str, str]] = []
+    for decision, _ in eligible:
+        model = _declared_token(decision.model)
+        origin = _declared_token(decision.confidence_origin)
+        pairs.append((model, origin))
+        if model is not None and origin is not None:
+            declared.append((model, origin))
+    unique_declared = set(declared)
+    if not unique_declared:
+        return False, HOMOGENEITY_UNVERIFIED, models, origins, len(eligible)
+    only = next(iter(unique_declared))
+    if len(unique_declared) == 1 and all(pair == only for pair in pairs):
+        return True, HOMOGENEITY_HOMOGENEOUS, models, origins, 0
+    counts: dict[tuple[str, str], int] = {}
+    for pair in declared:
+        counts[pair] = counts.get(pair, 0) + 1
+    dominant = max(counts.items(), key=lambda item: (item[1], item[0]))[0]
+    affected = sum(1 for pair in pairs if pair != dominant)
+    return False, HOMOGENEITY_MIXED, models, origins, affected
 
 
 def regime_analysis(
@@ -1066,7 +1113,7 @@ def regime_analysis(
         )
     at_zero = next((row for row in curve if Decimal(row["threshold"]) == 0), None)
     expected_zero = Decimal(at_zero["expected_net_bp"]) if at_zero else Decimal("0")
-    homogeneous, models, origins, excluded = _homogeneity(eligible)
+    homogeneous, homo_status, models, origins, excluded = _homogeneity(eligible)
 
     closed_reasons: list[str] = []
     if boundary_bp is None:
@@ -1090,8 +1137,13 @@ def regime_analysis(
             closed_reasons.append(
                 f"nenhuma faixa contribuinte com {MIN_BUCKET_TRADES}+ trades com preço"
             )
-        elif not homogeneous:
-            closed_reasons.append("amostra não homogénea (versão/origem misturadas)")
+        if not homogeneous:
+            if homo_status == HOMOGENEITY_UNVERIFIED:
+                closed_reasons.append(
+                    "amostra não verificada (versão ou origem ausente/unknown)"
+                )
+            else:
+                closed_reasons.append("amostra não homogénea (versão/origem misturadas)")
 
     separates: Optional[bool]
     if closed_reasons:
@@ -1115,10 +1167,12 @@ def regime_analysis(
         "closed": policy == CONFIDENCE_POLICY_CLOSED,
         "closed_reasons": closed_reasons,
         "homogeneous": homogeneous if sample_assessed else None,
+        "homogeneity_status": homo_status if sample_assessed else None,
         "sample_assessed": sample_assessed,
         "models": models,
         "origins": origins,
         "excluded_windows": excluded,
+        "affected_windows": excluded,
     }
 
 
@@ -1155,11 +1209,14 @@ def _regime_lines(analysis: dict[str, Any]) -> list[str]:
             f"(acurácia {_fmt((stats['accuracy'] or Decimal('0')) * Decimal('100'), '0.1')}%, "
             f"retorno líq. médio {_fmt(stats['expectancy_net_bp'])} bp)"
         )
+        status = analysis.get("homogeneity_status") or (
+            "homogénea" if analysis["homogeneous"] else "NÃO homogénea"
+        )
         lines.append(
-            f"- homogeneidade: {'homogénea' if analysis['homogeneous'] else 'NÃO homogénea'}"
+            f"- homogeneidade: {status}"
             f" (modelos: {', '.join(analysis['models']) or '—'}; origens: "
-            f"{', '.join(analysis['origins']) or '—'}; janelas excluídas: "
-            f"{analysis['excluded_windows']})"
+            f"{', '.join(analysis['origins']) or '—'}; janelas afectadas: "
+            f"{analysis.get('affected_windows', analysis['excluded_windows'])})"
         )
         lines.append(
             f"- aceitar tudo (limiar 0) dá retorno líquido esperado de "
@@ -1311,6 +1368,286 @@ def _break_even_hit_rate(*, target_bp: Decimal, stop_bp: Decimal, fee_bp: Decima
     return (Decimal("2") * fee_bp + risk) / (gain + risk)
 
 
+def _break_even_without_cost(*, target_bp: Decimal, stop_bp: Decimal) -> Decimal:
+    """Target hit rate a barrier pair needs with no round-trip cost."""
+    risk = abs(stop_bp)
+    gain = abs(target_bp)
+    if gain + risk <= 0:
+        return Decimal("1")
+    return risk / (gain + risk)
+
+
+def _benchmark_seed(
+    *, log_path: Path, span: Optional[tuple[datetime, datetime]], seed: Optional[int]
+) -> int:
+    """Reproducible seed for the matched-bias random rule (#1045)."""
+    if seed is not None:
+        return int(seed) & 0xFFFFFFFF
+    start = span[0].isoformat(sep=" ") if span else ""
+    end = span[1].isoformat(sep=" ") if span else ""
+    material = f"{log_path}|{start}|{end}"
+    digest = hashlib.sha256(material.encode("utf-8")).hexdigest()
+    return int(digest[:8], 16)
+
+
+def _long_move_bp(decision: Decision, realized: Realized) -> Optional[Decimal]:
+    """Unsigned-side price move in bp (buy-and-hold of the asset)."""
+    if realized.price is None or decision.entry_mid is None or decision.entry_mid <= 0:
+        return None
+    return (realized.price / decision.entry_mid - Decimal("1")) * Decimal("10000")
+
+
+def _mean_bp(values: Sequence[Decimal]) -> Optional[Decimal]:
+    if not values:
+        return None
+    return sum(values, Decimal("0")) / Decimal(len(values))
+
+
+def _matched_bias_for(
+    rows: Sequence[tuple[Decision, Realized]],
+    *,
+    fee_bp: Decimal,
+    seed: int,
+) -> dict[str, Any]:
+    """Signal vs buy-and-hold vs same-BUY-fraction random rule, same round-trip."""
+    priced = [(decision, realized) for decision, realized in rows if realized.signed_bp is not None]
+    sided = [decision for decision, _realized in priced if decision.side in {"BUY", "SELL"}]
+    buy_fraction = (
+        Decimal(sum(1 for decision in sided if decision.side == "BUY")) / Decimal(len(sided))
+        if sided
+        else None
+    )
+    round_trip = Decimal("2") * fee_bp
+    rng = random.Random(seed)
+    signal_nets: list[Decimal] = []
+    hold_nets: list[Decimal] = []
+    random_nets: list[Decimal] = []
+    signal_hits = 0
+    hold_hits = 0
+    for decision, realized in priced:
+        signed = realized.signed_bp
+        assert signed is not None
+        signal_nets.append(signed - round_trip)
+        if signed > 0:
+            signal_hits += 1
+        long_bp = _long_move_bp(decision, realized)
+        if long_bp is None:
+            continue
+        hold_nets.append(long_bp - round_trip)
+        if long_bp > 0:
+            hold_hits += 1
+        if buy_fraction is None:
+            continue
+        draw_buy = rng.random() < float(buy_fraction)
+        random_signed = long_bp if draw_buy else -long_bp
+        random_nets.append(random_signed - round_trip)
+    signal_mean = _mean_bp(signal_nets)
+    random_mean = _mean_bp(random_nets)
+    contribution = (
+        None if signal_mean is None or random_mean is None else signal_mean - random_mean
+    )
+    n = len(priced)
+    n_hold = len(hold_nets)
+    return {
+        "seed": seed,
+        "n": n,
+        "buy_fraction": None if buy_fraction is None else str(buy_fraction),
+        "signal_net_bp": None if signal_mean is None else str(signal_mean),
+        "buy_and_hold_net_bp": None if not hold_nets else str(_mean_bp(hold_nets)),
+        "random_net_bp": None if random_mean is None else str(random_mean),
+        "predictive_contribution_bp": None if contribution is None else str(contribution),
+        "signal_accuracy": None if n == 0 else str(Decimal(signal_hits) / Decimal(n)),
+        "buy_and_hold_accuracy": (
+            None if n_hold == 0 else str(Decimal(hold_hits) / Decimal(n_hold))
+        ),
+        "computable": bool(n > 0 and buy_fraction is not None and random_mean is not None),
+    }
+
+
+def _horizon_fits(series: CandleSeries, horizon_s: int) -> bool:
+    """True when at least two candles of this series fit inside the horizon."""
+    step_s = series.step.total_seconds()
+    return step_s > 0 and step_s < horizon_s
+
+
+def realized_for_horizon(
+    decision: Decision,
+    series: CandleSeries,
+    *,
+    horizon_s: int,
+    target_bp: Decimal = TARGET_BP,
+    stop_bp: Decimal = STOP_BP,
+) -> Realized:
+    """Realized outcome at ``horizon_s``. Indeterminate when the candle cannot fit."""
+    if decision.entry_mid is None or decision.entry_mid <= 0:
+        return Realized(None, None, None, "unknown")
+    if not _horizon_fits(series, horizon_s):
+        return Realized(None, None, None, BARRIER_INDETERMINATE)
+    end = decision.at + timedelta(seconds=horizon_s)
+    price = series.price_at(end)
+    path = series.path(decision.at, end)
+    if not path:
+        return Realized(None, None, None, BARRIER_INDETERMINATE)
+    barrier = _barrier_for(
+        side=decision.side,
+        entry=decision.entry_mid,
+        path=path,
+        target_bp=target_bp,
+        stop_bp=stop_bp,
+    )
+    if price is None or price <= 0:
+        return Realized(None, None, None, BARRIER_INDETERMINATE)
+    move_bp = (price / decision.entry_mid - Decimal("1")) * Decimal("10000")
+    if decision.side == "SELL":
+        signed = -move_bp
+    elif decision.side == "BUY":
+        signed = move_bp
+    else:
+        signed = None
+    return Realized(price, signed, abs(move_bp), barrier)
+
+
+def _barrier_hit_rate(barriers: Sequence[str]) -> tuple[Optional[Decimal], dict[str, int]]:
+    counts = {
+        "target": barriers.count("target"),
+        "stop": barriers.count("stop"),
+        "none": barriers.count("none"),
+        "indeterminate": barriers.count(BARRIER_INDETERMINATE),
+        "unknown": barriers.count("unknown"),
+    }
+    resolved = counts["target"] + counts["stop"]
+    hit = Decimal(counts["target"]) / Decimal(resolved) if resolved else None
+    return hit, counts
+
+
+def _geometry_candidate_row(
+    rows: Sequence[tuple[Decision, Realized]],
+    series: CandleSeries,
+    *,
+    target_bp: Decimal,
+    stop_bp: Decimal,
+    fee_bp: Decimal,
+    horizon_s: int,
+    label: str,
+) -> dict[str, Any]:
+    """Break-even with/without cost beside realized hit for one geometry/horizon."""
+    be_without = _break_even_without_cost(target_bp=target_bp, stop_bp=stop_bp)
+    be_with = _break_even_hit_rate(target_bp=target_bp, stop_bp=stop_bp, fee_bp=fee_bp)
+    fits = _horizon_fits(series, horizon_s)
+    barriers: list[str] = []
+    paths: dict[str, Sequence[tuple[Decimal, Decimal]]] = {}
+    horizon_rows: list[tuple[Decision, Realized]] = []
+    if not fits:
+        barriers = [BARRIER_INDETERMINATE] * len(rows)
+        hit, counts = _barrier_hit_rate(barriers)
+        expectancy = None
+        n_priced = 0
+    else:
+        for decision, _realized in rows:
+            horizon_realized = realized_for_horizon(
+                decision,
+                series,
+                horizon_s=horizon_s,
+                target_bp=target_bp,
+                stop_bp=stop_bp,
+            )
+            horizon_rows.append((decision, horizon_realized))
+            barriers.append(horizon_realized.barrier)
+            end = decision.at + timedelta(seconds=horizon_s)
+            paths[decision.call_id] = series.path(decision.at, end)
+        hit, counts = _barrier_hit_rate(barriers)
+        expectancy, n_priced = _geometry_expectancy(
+            horizon_rows, paths, target_bp=target_bp, stop_bp=stop_bp, fee_bp=fee_bp
+        )
+    beats = hit is not None and be_with < hit
+    return {
+        "label": label,
+        "target_bp": str(target_bp),
+        "stop_bp": str(stop_bp),
+        "horizon_s": horizon_s,
+        "candle_fits": fits,
+        "break_even_without_cost": str(be_without),
+        "break_even_with_cost": str(be_with),
+        "realized_hit": None if hit is None else str(hit),
+        "n_target": counts["target"],
+        "n_stop": counts["stop"],
+        "n_time_exit": counts["none"],
+        "n_indeterminate": counts["indeterminate"],
+        "expectancy_net_bp": None if expectancy is None else str(expectancy),
+        "n_priced": n_priced,
+        "beats_break_even": beats,
+    }
+
+
+def _propose_geometry(
+    rows: Sequence[tuple[Decision, Realized]],
+    series: CandleSeries,
+    *,
+    fee_bp: Decimal,
+) -> tuple[Optional[dict[str, Any]], list[dict[str, Any]], bool]:
+    """Propose the beating candidate with the highest net expectancy, or none.
+
+    A candidate beats when its break-even **with cost** is strictly below the
+    realized barrier hit. The ruler never writes the proposed pair.
+    """
+    in_use = _geometry_candidate_row(
+        rows,
+        series,
+        target_bp=TARGET_BP,
+        stop_bp=STOP_BP,
+        fee_bp=fee_bp,
+        horizon_s=HORIZON_S,
+        label="em uso +35/−28 / 15 min",
+    )
+    candidates = [in_use]
+    seen = {(TARGET_BP, STOP_BP, HORIZON_S)}
+    for target_bp in GEOMETRY_TARGET_CANDIDATES_BP:
+        for stop_bp in GEOMETRY_STOP_CANDIDATES_BP:
+            key = (target_bp, stop_bp, HORIZON_S)
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append(
+                _geometry_candidate_row(
+                    rows,
+                    series,
+                    target_bp=target_bp,
+                    stop_bp=stop_bp,
+                    fee_bp=fee_bp,
+                    horizon_s=HORIZON_S,
+                    label=f"alvo {target_bp}/stop {stop_bp} / 15 min",
+                )
+            )
+    horizons: list[dict[str, Any]] = []
+    for label, horizon_s in CANDIDATE_HORIZONS_S:
+        row = _geometry_candidate_row(
+            rows,
+            series,
+            target_bp=TARGET_BP,
+            stop_bp=STOP_BP,
+            fee_bp=fee_bp,
+            horizon_s=horizon_s,
+            label=f"em uso / {label}",
+        )
+        horizons.append(row)
+        key = (TARGET_BP, STOP_BP, horizon_s)
+        if key not in seen:
+            seen.add(key)
+            candidates.append(row)
+    beating = [row for row in candidates if row["beats_break_even"]]
+    proposed = None
+    if beating:
+        proposed = max(
+            beating,
+            key=lambda row: (
+                Decimal(row["expectancy_net_bp"] or "-Infinity"),
+                -int(row["horizon_s"]),
+            ),
+        )
+    operable = proposed is not None
+    return proposed, horizons, operable
+
+
 def _measurement_state(
     *,
     decisions: Sequence[Decision],
@@ -1448,6 +1785,8 @@ def build_report(
     regime_boundary_bp: Optional[Decimal] = None,
     fee_source: str = "fallback",
     confidence_in_use: Optional[Decimal] = DEFAULT_CONFIDENCE_IN_USE,
+    rng_seed: Optional[int] = None,
+    until: Optional[datetime] = None,
 ) -> tuple[str, dict[str, Any]]:
     # Card #1030: the conservative fallback while the real per-leg fee of the
     # account was not given is a **defect of the report**, never a neutral
@@ -1455,6 +1794,13 @@ def build_report(
     fee_is_fallback = fee_source == "fallback"
     realized = [(decision, realized_for(decision, series)) for decision in decisions]
     windows = non_overlapping(decisions)
+    if until is not None:
+        until_naive = _naive(until) or until
+        windows = [
+            decision
+            for decision in windows
+            if decision.at + timedelta(seconds=HORIZON_S) <= until_naive
+        ]
     window_ids = {decision.call_id for decision in windows}
     realized_windows = [(d, r) for d, r in realized if d.call_id in window_ids]
     # Card #1043: the state of the realized measurement is derived from the
@@ -1508,7 +1854,9 @@ def build_report(
         )
         for regime in (REGIME_CALM, REGIME_ACTIVE)
     }
-    homogeneous_all, models_all, origins_all, excluded_all = _homogeneity(eligible_all)
+    homogeneous_all, homo_status_all, models_all, origins_all, excluded_all = _homogeneity(
+        eligible_all
+    )
     # Percurso high/low de cada janela não sobreposta — usado para reavaliar as
     # barreiras de cada candidato de geometria (E4).
     paths = {
@@ -1548,9 +1896,11 @@ def build_report(
         "eligible_population": {"n": len(eligible_all), "verdict_sources": verdict_sources},
         "homogeneity": {
             "homogeneous": homogeneous_all if sample_assessed else None,
+            "status": homo_status_all if sample_assessed else None,
             "models": models_all,
             "origins": origins_all,
             "excluded_windows": excluded_all,
+            "affected_windows": excluded_all,
         },
         "regimes": {
             regime: {
@@ -1565,22 +1915,27 @@ def build_report(
                 "closed": analysis["closed"],
                 "closed_reasons": analysis["closed_reasons"],
                 "homogeneous": analysis["homogeneous"],
+                "homogeneity_status": analysis.get("homogeneity_status"),
                 "sample_assessed": analysis["sample_assessed"],
                 "models": analysis["models"],
                 "origins": analysis["origins"],
                 "excluded_windows": analysis["excluded_windows"],
+                "affected_windows": analysis.get("affected_windows", analysis["excluded_windows"]),
             }
             for regime, analysis in regime_analyses.items()
         },
         "suggested_exit_target_bp": None,
         "suggested_exit_stop_bp": None,
-        # A geometria é derivada da régua **só** com amostra suficiente (>= 30
-        # janelas com preço) e um candidato com expectancy líquida positiva;
-        # sem isso, os valores actuais são *defaults de produto* explicitamente
-        # não derivados (E4).
+        "suggested_horizon_s": None,
+        # Card #1045: a proposal exists only when a candidate's break-even with
+        # cost is below the realized hit. The ruler never writes the pair.
         "exit_geometry_derived": False,
+        "operable": False,
         "product_exit_target_bp": str(TARGET_BP),
         "product_exit_stop_bp": str(STOP_BP),
+        "geometry_in_use": None,
+        "horizons": [],
+        "benchmark": None,
     }
     reasons: list[str] = summary["insufficient_reasons"]
     if not decisions:
@@ -1657,23 +2012,62 @@ def build_report(
         len(windows) >= MIN_NON_OVERLAPPING_WINDOWS
         and stats_all["n_priced"] >= MIN_NON_OVERLAPPING_WINDOWS
     )
-    # E4: com amostra suficiente a régua volta a **derivar** a geometria
-    # alvo/stop das barreiras reais — candidatos avaliados por expectancy
-    # líquida com a taxa maker **por perna** (round-trip = 2 × taxa). Sem
-    # candidato que pague o round-trip, ou sem amostra, `suggested_exit_*`
-    # fica a `None` e a geometria são os defaults de produto, explicitamente
-    # não derivados.
-    if sample_sufficient:
-        geometry = _derive_geometry(realized_windows, paths, fee_bp=fee_bp)
-        if geometry is not None:
-            target_bp, stop_bp, expectancy = geometry
-            summary["suggested_exit_target_bp"] = str(target_bp)
-            summary["suggested_exit_stop_bp"] = str(stop_bp)
-            summary["exit_geometry_derived"] = True
-            summary["exit_geometry_expectancy_bp"] = str(expectancy)
-            summary["exit_geometry_break_even_hit_rate"] = str(
-                _break_even_hit_rate(target_bp=target_bp, stop_bp=stop_bp, fee_bp=fee_bp)
+    seed = _benchmark_seed(log_path=log_path, span=span, seed=rng_seed)
+    summary["benchmark"] = {
+        "overall": _matched_bias_for(realized_windows, fee_bp=fee_bp, seed=seed),
+        "by_confidence_band": {
+            label: _matched_bias_for(subset, fee_bp=fee_bp, seed=seed)
+            for label, subset in _group_rows(realized_windows, key=confidence_bucket)
+        },
+        "by_regime": {
+            regime: _matched_bias_for(
+                [
+                    (d, r)
+                    for d, r in realized_windows
+                    if market_regime(d, regime_boundary_bp) == regime
+                ],
+                fee_bp=fee_bp,
+                seed=seed,
             )
+            for regime in (REGIME_CALM, REGIME_ACTIVE)
+        },
+        "by_horizon": {},
+    }
+    proposed, horizons, operable = _propose_geometry(
+        realized_windows, series, fee_bp=fee_bp
+    )
+    summary["horizons"] = horizons
+    summary["geometry_in_use"] = next(
+        (row for row in horizons if int(row["horizon_s"]) == HORIZON_S),
+        _geometry_candidate_row(
+            realized_windows,
+            series,
+            target_bp=TARGET_BP,
+            stop_bp=STOP_BP,
+            fee_bp=fee_bp,
+            horizon_s=HORIZON_S,
+            label="em uso +35/−28 / 15 min",
+        ),
+    )
+    for row in horizons:
+        horizon_rows = [
+            (decision, realized_for_horizon(decision, series, horizon_s=int(row["horizon_s"])))
+            for decision, _realized in realized_windows
+        ]
+        summary["benchmark"]["by_horizon"][row["label"]] = _matched_bias_for(
+            horizon_rows, fee_bp=fee_bp, seed=seed
+        )
+    # Card #1045: propose only when break-even with cost is below realized hit.
+    # The ruler never writes target, stop, horizon, size or a version.
+    if sample_sufficient and proposed is not None:
+        summary["suggested_exit_target_bp"] = proposed["target_bp"]
+        summary["suggested_exit_stop_bp"] = proposed["stop_bp"]
+        summary["suggested_horizon_s"] = proposed["horizon_s"]
+        summary["exit_geometry_derived"] = True
+        summary["exit_geometry_expectancy_bp"] = proposed["expectancy_net_bp"]
+        summary["exit_geometry_break_even_hit_rate"] = proposed["break_even_with_cost"]
+        summary["geometry_proposal"] = proposed
+    summary["operable"] = bool(sample_sufficient and operable)
     if sample_assessed:
         summary["insufficient"] = bool(reasons)
         summary["sample_assessment"] = "insuficiente" if reasons else "suficiente"
@@ -1825,11 +2219,16 @@ def build_report(
         f"{verdict_sources.get('reconstructed', 0)}."
     )
     if sample_assessed:
+        homo_label = {
+            HOMOGENEITY_HOMOGENEOUS: "homogénea",
+            HOMOGENEITY_UNVERIFIED: "**não verificada**",
+            HOMOGENEITY_MIXED: "**NÃO homogénea**",
+        }.get(homo_status_all, "não verificada")
         lines.append(
             "Homogeneidade da amostra elegível: "
-            f"{'homogénea' if homogeneous_all else '**NÃO homogénea**'} "
+            f"{homo_label} "
             f"(modelos: {', '.join(models_all) or '—'}; origens: {', '.join(origins_all) or '—'}; "
-            f"janelas excluídas: {excluded_all}). Sem homogeneidade não é proposto limiar."
+            f"janelas afectadas: {excluded_all}). Sem homogeneidade verificada não é proposto limiar."
         )
     else:
         lines.append("Homogeneidade da amostra elegível: não avaliada porque o realizado não foi medido.")
@@ -1860,6 +2259,56 @@ def build_report(
         lines.append(
             f"| {label} | {len(rows)} | {_fmt(stats['abs_realized_p50'])} | {_fmt(mean_abs)} |"
         )
+    lines.append("")
+    lines.append("## Benchmark de viés casado")
+    lines.append("")
+    bench = (summary.get("benchmark") or {}).get("overall") or {}
+    if bench:
+        lines.append(
+            f"- semente: `{bench.get('seed')}` (gravada; a mesma corrida reproduz o mesmo número)"
+        )
+        lines.append(
+            f"- fracção de BUY: {_fmt(None if bench.get('buy_fraction') is None else Decimal(bench['buy_fraction']) * Decimal('100'), '0.1')}%"
+        )
+        lines.append(
+            "- acurácia do sinal: "
+            f"{_fmt(None if bench.get('signal_accuracy') is None else Decimal(bench['signal_accuracy']) * Decimal('100'), '0.1')}% "
+            "ao lado da do buy-and-hold: "
+            f"{_fmt(None if bench.get('buy_and_hold_accuracy') is None else Decimal(bench['buy_and_hold_accuracy']) * Decimal('100'), '0.1')}%"
+        )
+        lines.append(
+            "- retorno líquido médio (mesmo custo 2 × taxa por perna): sinal "
+            f"{_fmt(None if bench.get('signal_net_bp') is None else Decimal(bench['signal_net_bp']))} bp, "
+            "comprar-e-segurar (drift) "
+            f"{_fmt(None if bench.get('buy_and_hold_net_bp') is None else Decimal(bench['buy_and_hold_net_bp']))} bp, "
+            "regra aleatória "
+            f"{_fmt(None if bench.get('random_net_bp') is None else Decimal(bench['random_net_bp']))} bp"
+        )
+        lines.append(
+            "- contribuição preditiva (sinal − aleatória, drift à parte): "
+            f"{_fmt(None if bench.get('predictive_contribution_bp') is None else Decimal(bench['predictive_contribution_bp']))} bp"
+        )
+    else:
+        lines.append("- benchmark não calculável nesta amostra")
+    lines.append("")
+    lines.append("## Horizontes candidatos")
+    lines.append("")
+    lines.append(
+        "| horizonte | vela cabe | break-even c/ custo | break-even s/ custo | acerto | alvo | stop | tempo | indeterminada | expectancy líq. (bp) |"
+    )
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    for row in summary.get("horizons") or []:
+        hit = row.get("realized_hit")
+        lines.append(
+            f"| {row['label']} | {'sim' if row.get('candle_fits') else 'não'} | "
+            f"{_fmt(Decimal(row['break_even_with_cost']) * Decimal('100'), '0.1')}% | "
+            f"{_fmt(Decimal(row['break_even_without_cost']) * Decimal('100'), '0.1')}% | "
+            f"{_fmt(None if hit is None else Decimal(hit) * Decimal('100'), '0.1')}% | "
+            f"{row['n_target']} | {row['n_stop']} | {row['n_time_exit']} | "
+            f"{row['n_indeterminate']} | {_fmt(None if row.get('expectancy_net_bp') is None else Decimal(row['expectancy_net_bp']))} |"
+        )
+    if not summary.get("horizons"):
+        lines.append("| — | — | — | — | — | 0 | 0 | 0 | 0 | — |")
     lines.append("")
     lines.append("## Recusas registadas no log")
     lines.append("")
@@ -1963,25 +2412,45 @@ def build_report(
             lines.append("")
             lines.append(f"- {measurement['reason']}")
             lines.append("")
-        lines.append("Amostra suficiente na régua: proposta")
+        if summary.get("operable"):
+            lines.append("Amostra suficiente na régua: proposta")
+        else:
+            lines.append(
+                "**não operável** — nenhum candidato de geometria ou horizonte bate o "
+                "break-even com custo; nenhum parâmetro é adoptado (incluindo a confiança)."
+            )
         lines.append("")
+        in_use = summary.get("geometry_in_use") or {}
+        if in_use:
+            lines.append(
+                "- geometria em uso +35/−28: break-even com custo "
+                f"{_fmt(Decimal(in_use['break_even_with_cost']) * Decimal('100'), '0.1')}% "
+                f"e sem custo {_fmt(Decimal(in_use['break_even_without_cost']) * Decimal('100'), '0.1')}%; "
+                f"acerto por barreira alvo={in_use['n_target']}, stop={in_use['n_stop']}, "
+                f"saída por tempo={in_use['n_time_exit']}"
+                + (
+                    f", indeterminada={in_use['n_indeterminate']}"
+                    if in_use.get("n_indeterminate")
+                    else ""
+                )
+            )
         if summary["exit_geometry_derived"]:
             target_bp = Decimal(summary["suggested_exit_target_bp"])
             stop_bp = Decimal(summary["suggested_exit_stop_bp"])
             break_even = Decimal(summary["exit_geometry_break_even_hit_rate"])
-            expectancy = Decimal(summary["exit_geometry_expectancy_bp"])
+            expectancy = Decimal(summary["exit_geometry_expectancy_bp"] or "0")
             lines.append(
-                f"- geometria: `EXIT_TARGET_BP` = {_fmt(target_bp)} e `EXIT_STOP_BP` = "
-                f"{_fmt(stop_bp)} — **derivada** da amostra (candidato com expectancy líquida "
-                f"de {_fmt(expectancy)} bp e hit-rate de break-even "
-                f"{_fmt(break_even * Decimal('100'))}% com a taxa maker de {_fmt(fee_bp)} bp/perna)"
+                f"- proposta (não gravada): alvo {_fmt(target_bp)} / stop {_fmt(stop_bp)} "
+                f"/ horizonte {summary.get('suggested_horizon_s')} s — break-even com custo "
+                f"{_fmt(break_even * Decimal('100'), '0.1')}% abaixo do acerto, expectancy "
+                f"líquida {_fmt(expectancy)} bp. A régua não grava alvo, stop, horizonte, "
+                "tamanho nem versão."
             )
         else:
             lines.append(
                 f"- geometria: `EXIT_TARGET_BP` = {_fmt(TARGET_BP)} e `EXIT_STOP_BP` = "
-                f"{_fmt(STOP_BP)} são **defaults de produto** (`EXIT_TARGET_BP`/`EXIT_STOP_BP`), "
-                "**não derivados desta régua** — nenhum candidato de barreira paga o "
-                "round-trip com esta amostra"
+                f"{_fmt(STOP_BP)} são **defaults de produto** e **não são adoptados** "
+                "por esta régua"
             )
         lines.append("- `HOLD_AFTER_FILL_S` = 900 s (valor de produto, fora da recalibração)")
     lines.append("")

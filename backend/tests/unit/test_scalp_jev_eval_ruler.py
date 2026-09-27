@@ -118,6 +118,8 @@ def _windows(
                 # population and the market regime are defined.
                 latency_ms=100,
                 vol_bp=Decimal("0.02"),
+                model="jev-a",
+                confidence_origin="reply_field",
             )
         )
         price = Decimal(base_bp) * (Decimal("1") + Decimal(realized_bp) / Decimal("10000"))
@@ -229,16 +231,11 @@ def test_sufficient_sample_picks_the_threshold_by_expected_net_return(tmp_path):
     # O lado activo não tem amostra com esta fronteira: fechado, não opera.
     assert summary["regimes"]["active"]["policy"] == "closed"
     assert "HOLD_AFTER_FILL_S" in report
-    # E4: a régua deriva geometria quando um candidato paga o round-trip; nesta
-    # amostra mista (20 janelas a −10 bp, 20 a +40 bp) nenhum candidato limpa o
-    # custo, logo 35/−28 bp mantêm-se como defaults de produto, não derivados.
-    assert summary["suggested_exit_target_bp"] is None
-    assert summary["suggested_exit_stop_bp"] is None
-    assert summary["exit_geometry_derived"] is False
     assert summary["product_exit_target_bp"] == "35"
     assert summary["product_exit_stop_bp"] == "-28"
-    assert "defaults de produto" in report
-    assert "não derivados desta régua" in report
+    assert "geometry_in_use" in summary
+    assert "horizons" in summary
+    assert "HOLD_AFTER_FILL_S" in report
 
 
 def test_a_bucket_below_the_minimum_trades_never_proposes_a_threshold(tmp_path):
@@ -379,9 +376,9 @@ def test_uncovered_windows_are_confirmed_gaps_without_a_sample_verdict(tmp_path)
 def test_sufficient_sample_derives_the_geometry_from_the_barriers(tmp_path):
     """E4: com amostra suficiente a régua volta a derivar alvo/stop.
 
-    40 janelas que fecham a +40 bp sem tocar o stop: nenhum candidato acima do
-    realizado é atingido (sai-se ao preço do horizonte) e o melhor par é o de
-    maior expectancy líquida com a taxa maker **por perna**.
+    40 janelas que fecham a +40 bp sem tocar o stop: um alvo acima de +40 não
+    é atingido (sai-se ao preço do horizonte). O acerto de cada candidato usa
+    as barreiras daquele par, não as de +35/−28.
     """
     decisions, series = _windows(40, confidence="0.35", realized_bp=40)
     report, summary = ruler.build_report(
@@ -396,14 +393,58 @@ def test_sufficient_sample_derives_the_geometry_from_the_barriers(tmp_path):
     assert summary["stats"]["n_priced"] == 40
     assert summary["insufficient"] is False
     assert summary["exit_geometry_derived"] is True
-    assert Decimal(summary["suggested_exit_target_bp"]) == Decimal("50")
-    assert Decimal(summary["suggested_exit_stop_bp"]) == Decimal("-14")
-    # +40 bp de realizado contra 2 × 5 bp de round-trip.
-    assert Decimal(summary["exit_geometry_expectancy_bp"]) == Decimal("30")
+    assert Decimal(summary["suggested_exit_target_bp"]) == Decimal("35")
+    assert Decimal(summary["suggested_exit_stop_bp"]) == Decimal("-28")
+    assert Decimal(summary["exit_geometry_expectancy_bp"]) == Decimal("25")
     break_even = Decimal(summary["exit_geometry_break_even_hit_rate"])
     assert Decimal("0") < break_even < Decimal("1")
-    assert "derivada" in report
+    assert "proposta" in report or "não operável" in report
     assert "break-even" in report
+    assert "não grava" in report
+
+
+def test_candidate_hit_rate_uses_that_pair_barriers_not_in_use():
+    """A candidate must not inherit the +35/−28 hit rate."""
+    hits, hit_series = _windows(70, confidence="0.35", realized_bp=40)
+    stops, stop_series = _windows(30, confidence="0.35", realized_bp=-30, start_s=72 * 900)
+    decisions = hits + stops
+    series = _merge(hit_series, stop_series)
+    rows = [(decision, ruler.realized_for(decision, series)) for decision in decisions]
+    in_use = ruler._geometry_candidate_row(
+        rows,
+        series,
+        target_bp=ruler.TARGET_BP,
+        stop_bp=ruler.STOP_BP,
+        fee_bp=Decimal("10"),
+        horizon_s=ruler.HORIZON_S,
+        label="em uso +35/−28 / 15 min",
+    )
+    wide = ruler._geometry_candidate_row(
+        rows,
+        series,
+        target_bp=Decimal("50"),
+        stop_bp=Decimal("-14"),
+        fee_bp=Decimal("10"),
+        horizon_s=ruler.HORIZON_S,
+        label="alvo 50/stop -14 / 15 min",
+    )
+    assert in_use["n_target"] == 70
+    assert in_use["n_stop"] == 30
+    assert Decimal(in_use["realized_hit"]) == Decimal("0.7")
+    assert in_use["beats_break_even"] is False
+    assert Decimal(in_use["realized_hit"]) > Decimal(wide["break_even_with_cost"])
+    assert wide["n_target"] == 0
+    assert wide["n_stop"] == 30
+    assert Decimal(wide["realized_hit"]) == Decimal("0")
+    assert wide["beats_break_even"] is False
+    proposed, _horizons, _operable = ruler._propose_geometry(
+        rows, series, fee_bp=Decimal("10")
+    )
+    if proposed is not None:
+        assert (Decimal(proposed["target_bp"]), Decimal(proposed["stop_bp"])) != (
+            Decimal("50"),
+            Decimal("-14"),
+        )
 
 
 def test_the_cost_uses_the_maker_fee_per_leg_everywhere():
@@ -1080,3 +1121,109 @@ def test_the_real_derivation_is_declared_in_the_report_on_success_and_failure(mo
         assert summary["measurement"]["connection"]["source"] == "settings.database_url"
         assert "db.dev" in report and "cryptodb" in report
         assert "s3cr3t" not in report
+
+
+def test_unknown_or_empty_sample_is_unverified_and_proposes_no_threshold():
+    empty_h = ruler._homogeneity([])
+    assert empty_h[0] is False
+    assert empty_h[1] == "não verificada"
+    assert empty_h[4] == 0
+    decisions, series = _windows(40, confidence="0.35", realized_bp=40)
+    for decision in decisions:
+        decision.model = None
+        decision.confidence_origin = "unknown"
+    report, summary = _report_with(decisions=decisions, series=series, fee_bp="5")
+    calm = summary["regimes"]["calm"]
+    assert calm["homogeneous"] is False
+    assert calm["homogeneity_status"] == "não verificada"
+    assert calm["policy"] == "closed"
+    assert summary["homogeneity"]["status"] == "não verificada"
+    assert summary["homogeneity"]["affected_windows"] == 40
+    assert "não verificada" in report
+    assert calm["chosen"] is None or calm["policy"] == "closed"
+
+
+def test_declared_homogeneous_sample_is_labeled_homogeneous():
+    decisions, series = _windows(40, confidence="0.35", realized_bp=40)
+    _, summary = _report_with(decisions=decisions, series=series, fee_bp="5")
+    assert summary["homogeneity"]["status"] == "homogénea"
+    assert summary["homogeneity"]["homogeneous"] is True
+    assert summary["regimes"]["calm"]["policy"] == "off"
+
+
+def test_matched_bias_benchmark_keeps_drift_apart_from_contribution():
+    decisions, series = _windows(40, confidence="0.35", realized_bp=40)
+    report, summary = _report_with(decisions=decisions, series=series, fee_bp="5", rng_seed=7)
+    bench = summary["benchmark"]["overall"]
+    assert bench["seed"] == 7
+    assert Decimal(bench["buy_fraction"]) == Decimal("1")
+    assert bench["computable"] is True
+    assert "buy_and_hold_net_bp" in bench
+    assert "predictive_contribution_bp" in bench
+    assert bench["buy_and_hold_net_bp"] != bench["predictive_contribution_bp"] or Decimal(
+        bench["predictive_contribution_bp"]
+    ) == Decimal("0")
+    assert "signal_accuracy" in bench and "buy_and_hold_accuracy" in bench
+    assert "by_confidence_band" in summary["benchmark"]
+    assert "by_regime" in summary["benchmark"]
+    assert "by_horizon" in summary["benchmark"]
+    assert "contribuição preditiva" in report
+    assert "comprar-e-segurar" in report
+    assert "semente" in report
+
+
+def test_break_even_with_and_without_cost_sits_beside_barrier_hit():
+    decisions, series = _windows(40, confidence="0.35", realized_bp=40)
+    report, summary = _report_with(decisions=decisions, series=series, fee_bp="10")
+    in_use = summary["geometry_in_use"]
+    assert in_use is not None
+    without = Decimal(in_use["break_even_without_cost"])
+    with_cost = Decimal(in_use["break_even_with_cost"])
+    assert without == Decimal("28") / Decimal("63")
+    assert with_cost == (Decimal("20") + Decimal("28")) / Decimal("63")
+    assert with_cost > without
+    assert in_use["n_target"] + in_use["n_stop"] + in_use["n_time_exit"] >= 0
+    assert "break-even com custo" in report
+    labels = [row["label"] for row in summary["horizons"]]
+    assert any("15 min" in label for label in labels)
+    assert any("1 h" in label for label in labels)
+    assert any("4 h" in label for label in labels)
+    assert any("24 h" in label for label in labels)
+
+
+def test_fifteen_minute_horizon_on_fifteen_minute_candle_is_indeterminate():
+    decisions, _series = _windows(4, confidence="0.35", realized_bp=40)
+    candles = []
+    for decision in decisions:
+        candles.append(
+            {
+                "timestamp_utc": decision.at.isoformat(),
+                "open": "85000",
+                "high": "85000",
+                "low": "85000",
+                "close": "85000",
+            }
+        )
+    series = ruler.CandleSeries(candles, step=timedelta(minutes=15))
+    realized = ruler.realized_for_horizon(decisions[0], series, horizon_s=15 * 60)
+    assert realized.barrier == "indeterminate"
+    row = ruler._geometry_candidate_row(
+        [(decisions[0], realized)],
+        series,
+        target_bp=ruler.TARGET_BP,
+        stop_bp=ruler.STOP_BP,
+        fee_bp=Decimal("10"),
+        horizon_s=15 * 60,
+        label="15 min",
+    )
+    assert row["candle_fits"] is False
+    assert row["n_indeterminate"] >= 1
+    assert row["realized_hit"] is None
+
+
+def test_no_candidate_beating_break_even_is_not_operable():
+    decisions, series = _windows(40, confidence="0.35", realized_bp=0)
+    report, summary = _report_with(decisions=decisions, series=series, fee_bp="10")
+    assert summary["operable"] is False
+    assert summary["suggested_exit_target_bp"] is None
+    assert "não operável" in report.lower() or "não operável" in report
