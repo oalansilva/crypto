@@ -156,7 +156,9 @@ Monitor graph modal SHALL use the same chart base as Favorites while retaining M
 #### Scenario: Monitor keeps signal context
 - **WHEN** the Monitor graph modal opens
 - **THEN** it SHALL show the shared candle/volume chart
-- **AND** it SHALL keep signal badge, strategy summary, timeframe selector, signal context, signal history, risk/stop details, parameters and notes according to the opportunity visibility rules.
+- **AND** it SHALL keep the signal badge, strategy summary, a read-only label of the strategy timeframe, signal context, signal history, risk/stop details, parameters and notes according to opportunity visibility rules
+- **AND** it SHALL NOT offer a chart timeframe selector
+- **AND** the Monitor list timeframe filter SHALL remain available and SHALL NOT choose the chart timeframe
 
 ### Requirement: Monitor chart modal keeps saved favorite parity
 The Monitor chart modal SHALL treat the saved favorite id as the identity for chart parity with Favorites and SHALL not render a divergent marker source when favorite analysis data is available.
@@ -172,11 +174,13 @@ The Monitor chart modal SHALL treat the saved favorite id as the identity for ch
 - **THEN** both chart paths SHALL resolve trades and candles from the same favorite analysis payload where permitted.
 
 ### Requirement: Monitor chart opens with stable operational timeframe
-Monitor opportunity cards SHALL open charts using the validated `1d` operational timeframe from the saved WIP.
+Monitor opportunity cards SHALL open charts on the saved favorite's strategy timeframe, matching the timeframe shown next to the pair. The chart SHALL show that timeframe as a read-only label and SHALL NOT offer a timeframe selector.
 
 #### Scenario: User opens a Monitor chart
 - **WHEN** the user opens chart analysis from a Monitor opportunity card
-- **THEN** the chart request uses timeframe `1d` and does not expose stale intraday timeframe controls
+- **THEN** the chart request uses the saved favorite's strategy timeframe
+- **AND** the chart shows that timeframe as a read-only label
+- **AND** the chart does not expose a timeframe selector
 
 ### Requirement: Monitor Labels Are Direction-Aware
 
@@ -385,7 +389,8 @@ The Monitor chart modal SHALL render user-facing charts without visible technica
 
 #### Scenario: Chart context remains available
 - **WHEN** the user opens a chart from `/monitor`
-- **THEN** timeframe controls, zoom controls, candle values, risk context, and signal history SHALL remain available where applicable
+- **THEN** the read-only strategy-timeframe label, zoom controls, candle values, risk context, and signal history SHALL remain available where applicable
+- **AND** the Monitor list timeframe filter SHALL remain available without changing the chart timeframe
 
 ### Requirement: Monitor renders responsive mobile cards
 The Monitor page SHALL render opportunities in a mobile-usable card layout on narrow viewports instead of relying on the desktop table layout.
@@ -398,7 +403,7 @@ The Monitor page SHALL render opportunities in a mobile-usable card layout on na
 
 #### Scenario: Mobile cards keep Monitor controls usable
 - **WHEN** the user views a Monitor opportunity on a narrow viewport
-- **THEN** timeframe controls, management actions, notes, and chart entry actions SHALL remain reachable
+- **THEN** the timeframe filter, management actions, notes, and chart entry actions SHALL remain reachable
 - **AND** the detail sections SHALL wrap into a single-column layout that fits the viewport width
 
 ### Requirement: Monitor current state matches latest visible chart signal
@@ -643,3 +648,80 @@ On `/monitor`, during access renewal, the board SHALL show the signals derived f
 - **THEN** the operator sees the existing load error
 - **AND** MUST NOT see «Nenhum ativo disponível no monitor»
 
+### Requirement: Monitor pair TF, timeframe filter and spark follow the strategy
+
+The Monitor list SHALL display the strategy timeframe next to the pair, offer a timeframe filter of Todos plus the TFs present in the visible crypto list (same rule as Favorites), and draw the minichart with candles of that strategy timeframe. Abrir gráfico and Ver Trades SHALL open on that same timeframe and stay there. The chart SHALL NOT offer a timeframe selector; it SHALL show a read-only label of the strategy timeframe. The list filter SHALL remain and SHALL NOT choose the chart. The board column set stays; the minichart column remains and its visible name is Gráfico.
+
+#### Scenario: Pair TF matches Favorites TF
+
+- **WHEN** a crypto opportunity is rendered on `/monitor`
+- **THEN** the TF next to the pair MUST equal that strategy's TF on `/favorites`
+- **AND** MUST NOT be a hardcoded 1d
+
+#### Scenario: Filter options come from the visible list
+
+- **WHEN** visible crypto strategies include more than one timeframe
+- **THEN** the Monitor list timeframe filter lists Todos and each of those timeframes
+- **AND** MUST NOT list only Todos and 1d
+
+#### Scenario: Chart opens on the strategy timeframe with no selector
+
+- **WHEN** the operator clicks Abrir gráfico or Ver Trades on a crypto strategy
+- **THEN** the chart `initialTimeframe` is the strategy timeframe
+- **AND** the chart shows a read-only label of that timeframe
+- **AND** MUST NOT show a timeframe selector
+
+### Requirement: Monitor hosts the directional scalp module without redesigning Operar
+
+`/monitor` SHALL host the per-user Scalp BTCUSDT module on the existing authenticated workbench. The board columns and Operar market-click flow SHALL remain. This card SHALL NOT restyle opportunity cards, signal states, or the Operar confirmation modal.
+
+#### Scenario: Board and Operar stay
+
+- **WHEN** the scalp module is present on `/monitor`
+- **THEN** `table.signals` SHALL still expose Status, Preço, Distância, Tags, Operar and Par / Estratégia
+- **AND** the Operar control SHALL still open the existing confirmed MARKET flow
+- **AND** turning the scalp on SHALL NOT remove or replace that Operar control
+
+### Requirement: Monitor scalp module gains a rolling 15 min lookback without redesigning the board or Operar
+
+Authenticated `/monitor` SHALL keep hosting the existing Scalp BTCUSDT module on the workbench. This card SHALL add the «últimos 15 min» lookback fact, hurdle, fee, default target 35 bp, default stop −28 bp, open position after fill, last-trade result and «posição presa» inside that module. The board columns and Operar market-click flow SHALL remain. This card SHALL NOT restyle opportunity cards, signal states, or the Operar confirmation modal. This card SHALL NOT add a catalog route and SHALL NOT change landing or Ajuda copy. This card SHALL NOT add a 1 / 2 / 5 minute horizon selector. This card SHALL NOT show «Jev no máximo 1 vez / 15 min». This card SHALL NOT add Monitor copy of the 1.5 s send-wait cap.
+
+#### Scenario: Board and Operar stay
+
+- **WHEN** the 15 min lookback delta is present on `/monitor`
+- **THEN** `table.signals` SHALL still expose Status, Preço, Distância, 7d, Risco até stop, Tags, Operar and Par / Estratégia
+- **AND** the Operar control SHALL still open the existing confirmed MARKET flow
+- **AND** turning the scalp on SHALL NOT remove or replace that Operar control
+
+#### Scenario: Not a new surface
+
+- **WHEN** the user looks for the lookback
+- **THEN** it SHALL be on `/monitor` inside the existing Scalp BTCUSDT module as the fact «últimos 15 min»
+- **AND** SHALL NOT require a new nav destination
+- **AND** SHALL NOT be a radio 1/2/5
+- **AND** SHALL NOT say «1 vez / 15 min»
+
+### Requirement: Scalp panel shows livro indisponível when the book is not fresh
+
+The Scalp BTCUSDT module already on authenticated `/monitor` SHALL show the exact copy «livro indisponível» when the scalp is ligado and the shared book stream is down or the touch `age_ms` is greater than 500. The per-user switch SHALL remain Ligado. The module SHALL NOT add a new catalog route. The module SHALL NOT live inside Operar. Existing visual states `off`, `on`, `kill` and `nokey` SHALL remain. This card SHALL NOT redesign the switch, T, clip, kill banner, board, or Operar.
+
+#### Scenario: Stream down while scalp is on
+
+- **WHEN** the authenticated user has the scalp ligado
+- **AND** the BTCUSDT book stream is down or the touch is older than 500 ms
+- **THEN** the scalp status line on `/monitor` SHALL show «livro indisponível»
+- **AND** the switch SHALL remain Ligado
+- **AND** `table.signals` SHALL still expose Status, Preço, Distância, 7d, Risco até stop, Tags, Operar and Par / Estratégia
+
+#### Scenario: Book returns while scalp stays on
+
+- **WHEN** the scalp is still ligado
+- **AND** the in-memory touch is fresh (`age_ms` ≤ 500)
+- **THEN** the status line SHALL NOT show «livro indisponível» as the live copy
+- **AND** the switch SHALL remain Ligado
+
+#### Scenario: Off kill and nokey stay as they are
+
+- **WHEN** the module is desligado, parado por kill, or sem chave Spot
+- **THEN** those states SHALL keep their existing copy and controls
+- **AND** this card SHALL NOT restyle the switch, T, clip, or kill banner
