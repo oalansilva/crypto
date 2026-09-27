@@ -1096,3 +1096,303 @@ def test_decide_quota_error_includes_reset(tmp_path: Path) -> None:
     assert "fail_closed" in result["agent_message"]
     assert "2026-09-03T02:55:52Z" in result["agent_message"]
     assert "remaining=0" in result["agent_message"]
+
+
+def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("RELEASE_CARDS", raising=False)
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("github called")
+
+    monkeypatch.setattr("guard.github_status_provider", boom)
+
+
+def _status_of(mapping: dict[str, str | None], calls: list[str | None]):
+    def provider(card_id: str | None) -> str | None:
+        calls.append(card_id)
+        if card_id is None or card_id not in mapping:
+            return None
+        return mapping[card_id]
+
+    return provider
+
+
+def _reject_evaluate(fsm, ctx):
+    raise AssertionError(f"evaluate must not run event={getattr(ctx, 'event', ctx)}")
+
+
+def test_replay_release_unbound_without_package_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    repo = tmp_path / "release"
+    rel = "openspec/changes/closeout-notes/proposal.md"
+    _init_repo(repo, "release-2026-08-26", rel)
+    calls: list[str | None] = []
+    payload = _write_payload(repo, rel)
+    result = decide(
+        payload,
+        status_provider=_status_of({"1017": "Homologado"}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_deny(result)
+    assert "fail_closed" in result["agent_message"]
+    assert "q=None" in result["agent_message"]
+    assert "q_git=release-2026-08-26" in result["agent_message"]
+    assert "bound_card=⊥" in result["agent_message"]
+    assert "id=" not in result["agent_message"]
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "rel",
+    [
+        "openspec/changes/card-1017-mapa-juizo-execucao/proposal.md",
+        "openspec/changes/archive/2026-09-22-card-1017-mapa-juizo-execucao/proposal.md",
+        "openspec/changes/issue-1017-mapa/proposal.md",
+    ],
+)
+def test_release_archive_homologado_allowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rel: str
+) -> None:
+    _no_network(monkeypatch)
+    repo = tmp_path / "release"
+    _init_repo(repo, "release-2026-09-22", rel)
+    calls: list[str | None] = []
+    payload = _write_payload(repo, rel)
+    result = decide(
+        payload,
+        status_provider=_status_of({"1017": "Homologado"}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_allow(result)
+    assert calls == ["1017"]
+
+
+def test_release_archive_empty_release_cards_still_needs_homologado(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    monkeypatch.setenv("RELEASE_CARDS", "   ")
+    repo = tmp_path / "release"
+    rel = "openspec/changes/card-1017-x/design.md"
+    _init_repo(repo, "release-2026-09-22", rel)
+    calls: list[str | None] = []
+    payload = _write_payload(repo, rel)
+    result = decide(
+        payload,
+        status_provider=_status_of({"1017": "Homologado"}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_allow(result)
+    assert calls == ["1017"]
+
+
+def test_release_archive_unread_status_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    repo = tmp_path / "release"
+    rel = "openspec/changes/card-1017-x/design.md"
+    _init_repo(repo, "release-2026-09-22", rel)
+    calls: list[str | None] = []
+    payload = _write_payload(repo, rel)
+    result = decide(payload, status_provider=_status_of({}, calls), evaluate_fn=_reject_evaluate)
+    _assert_dual_deny(result)
+    assert "fail_closed" in result["agent_message"]
+    assert "id=1017" in result["agent_message"]
+    assert calls == ["1017"]
+
+
+def test_release_archive_quota_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from graphql_quota import GraphQLQuotaError
+
+    _no_network(monkeypatch)
+    repo = tmp_path / "release"
+    rel = "openspec/changes/card-1017-x/design.md"
+    _init_repo(repo, "release-2026-09-22", rel)
+
+    def quota(card_id: str | None) -> str | None:
+        assert card_id == "1017"
+        raise GraphQLQuotaError(0, "2026-09-03T02:55:52Z")
+
+    result = decide(_write_payload(repo, rel), status_provider=quota, evaluate_fn=_reject_evaluate)
+    _assert_dual_deny(result)
+    assert "fail_closed" in result["agent_message"]
+    assert "id=1017" in result["agent_message"]
+    assert "remaining=0" in result["agent_message"]
+
+
+@pytest.mark.parametrize("status_name", ["Design", "Todo"])
+def test_release_archive_not_homologado_outside_package(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status_name: str
+) -> None:
+    _no_network(monkeypatch)
+    monkeypatch.setenv("RELEASE_CARDS", "1017")
+    repo = tmp_path / "release"
+    rel = "openspec/changes/card-1017-x/design.md"
+    _init_repo(repo, "release-2026-09-22", rel)
+    calls: list[str | None] = []
+    result = decide(
+        _write_payload(repo, rel),
+        status_provider=_status_of({"1017": status_name}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_deny(result)
+    assert "outside_package" in result["agent_message"]
+    assert "id=1017" in result["agent_message"]
+    assert calls == ["1017"]
+
+
+def test_release_archive_homologado_absent_from_release_cards(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    monkeypatch.setenv("RELEASE_CARDS", "999")
+    repo = tmp_path / "release"
+    rel = "openspec/changes/card-1017-x/design.md"
+    _init_repo(repo, "release-2026-09-22", rel)
+    calls: list[str | None] = []
+    result = decide(
+        _write_payload(repo, rel),
+        status_provider=_status_of({"1017": "Homologado"}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_deny(result)
+    assert "outside_package" in result["agent_message"]
+    assert "id=1017" in result["agent_message"]
+    assert calls == ["1017"]
+
+
+def test_release_archive_invalid_release_cards_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    monkeypatch.setenv("RELEASE_CARDS", "1017,61O")
+    repo = tmp_path / "release"
+    rel = "openspec/changes/card-1017-x/design.md"
+    _init_repo(repo, "release-2026-09-22", rel)
+    result = decide(
+        _write_payload(repo, rel),
+        status_provider=_status_of({"1017": "Homologado"}, []),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_deny(result)
+    assert "fail_closed" in result["agent_message"]
+    assert "id=1017" in result["agent_message"]
+
+
+@pytest.mark.parametrize("branch", ["develop", "main"])
+def test_design_outside_release_branch_stays_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, branch: str
+) -> None:
+    _no_network(monkeypatch)
+    repo = tmp_path / branch
+    rel = "openspec/changes/card-1017-x/design.md"
+    _init_repo(repo, branch, rel)
+    calls: list[str | None] = []
+    result = decide(
+        _write_payload(repo, rel),
+        status_provider=_status_of({"1017": "Homologado"}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_deny(result)
+    assert "fail_closed" in result["agent_message"]
+    assert f"q_git={branch}" in result["agent_message"]
+    assert "1017" not in calls
+
+
+def test_product_on_release_unbound_stays_denied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    repo = tmp_path / "release"
+    rel = "backend/app/main.py"
+    _init_repo(repo, "release-2026-09-22", rel)
+    calls: list[str | None] = []
+    result = decide(
+        _write_payload(repo, rel),
+        status_provider=_status_of({"1017": "Homologado"}, calls),
+    )
+    _assert_dual_deny(result)
+    assert "1017" not in calls
+
+
+def test_prototype_on_release_unbound_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    repo = tmp_path / "release"
+    rel = "frontend/public/prototypes/x/index.html"
+    _init_repo(repo, "release-2026-09-22", rel)
+    calls: list[str | None] = []
+    result = decide(
+        _write_payload(repo, rel),
+        status_provider=_status_of({"1017": "Homologado"}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_deny(result)
+    assert "fail_closed" in result["agent_message"]
+    assert calls == []
+
+
+def test_mixed_prototype_and_archive_envelope_denied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    repo = tmp_path / "release"
+    rel = "openspec/changes/card-1017-x/proposal.md"
+    _init_repo(repo, "release-2026-09-22", rel)
+    payload = {
+        "tool_name": "apply_patch",
+        "tool_input": {
+            "patchText": (
+                "*** Begin Patch\n"
+                f"*** Add File: {rel}\n"
+                "*** Add File: frontend/public/prototypes/x/index.html\n"
+                "*** End Patch"
+            )
+        },
+        "cwd": str(repo),
+    }
+    calls: list[str | None] = []
+    result = decide(
+        payload,
+        status_provider=_status_of({"1017": "Homologado"}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_deny(result)
+    assert "fail_closed" in result["agent_message"]
+
+
+def test_release_archive_one_card_outside_package_denies_envelope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_network(monkeypatch)
+    repo = tmp_path / "release"
+    first = "openspec/changes/card-1017-x/proposal.md"
+    _init_repo(repo, "release-2026-09-22", first)
+    payload = {
+        "tool_name": "apply_patch",
+        "tool_input": {
+            "patchText": (
+                "*** Begin Patch\n"
+                f"*** Add File: {first}\n"
+                "*** Add File: openspec/changes/card-999-y/proposal.md\n"
+                "*** End Patch"
+            )
+        },
+        "cwd": str(repo),
+    }
+    calls: list[str | None] = []
+    result = decide(
+        payload,
+        status_provider=_status_of({"1017": "Homologado", "999": "Design"}, calls),
+        evaluate_fn=_reject_evaluate,
+    )
+    _assert_dual_deny(result)
+    assert "outside_package" in result["agent_message"]
+    assert "id=999" in result["agent_message"]
+    assert calls == ["1017", "999"]

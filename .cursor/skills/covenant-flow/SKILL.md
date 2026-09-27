@@ -259,6 +259,8 @@ No **mesmo turno** do pedido explícito de fechar lote / subir release, o pai sp
 
 Quando o push do archive em `develop` for recusado por proteção (`qa-gate`), mesmo com pacote só Homologado: use `release-*` = `origin/develop` + archive → PR `release-* → main`; `pre` em `release-*` **não** exige archive em `origin/develop`. Após merge + deploy PROD, sync `main → develop` (um PR de merge normal) é obrigatório antes do `post` final até `origin/main` ser ancestral de `origin/develop` (extra na develop = aviso no `post`; recusar #926 e #913+#914+#915). Não dual-write o playbook completo neste `SKILL.md` nem no stub `AGENTS.md`.
 
+Archive OpenSpec do pacote Homologado no caminho B (`q_git=release-*`), depois do pedido explícito de release: identificar cada change `card-<id>-*` / `issue-<id>-*`, Status vivo `Homologado`, e gravar o archive **nessa** `release-*` (`openspec/changes/<change>/` e `openspec/changes/archive/<YYYY-MM-DD>-<change>/`). O controlo de escrita é `decide()` em `scripts/process-fsm/guard.py`. `bound_card=⊥` não bloqueia esse archive. Lista declarada ou o nome da branch sozinhos não autorizam. Não pedir confirmação operacional extra a Alan (T7 continua o gate de Design). Não abrir worktree `card-<id>-*` nem cherry-pick só para furar `fail_closed`. #1059 consome esse mesmo `decide()` e não cria segunda allow-list. O próximo `/kaizen release` aplicável registra se a recorrência F-1/#1022 (`fail_closed` em `release-*` unbound) encerrou. Esta regra não entra em `AGENTS.md` nem nos stubs `.dsh`/`.grok`/`.opencode`.
+
 ## Higiene
 
 Worktree por change. Stash só temporário, classificado. Não dual-write esta skill para hermes/`~/.codex`.
