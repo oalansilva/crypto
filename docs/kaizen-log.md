@@ -34,6 +34,16 @@
 | (não criado) reconciliar marcas de grill com fontes | — | F-2/F-3 | coberto por #963 |
 | (não criado) exigir campos do Project no gate | P2 | F-4 | coberto por #910 |
 
+
+### Continuação do fechamento em 2026-09-27
+
+- **Campos regularizados:** #1001 = Alan/P0/Produto; #1015 = Alan/P1/Operacao; #994 = Alan/P1/Produto. Os 12 cards permaneciam Homologado durante a conferência e tinham os campos exigidos pelo post preenchidos.
+- **OpenSpec:** 33 deltas sincronizados em 30 specs principais (26 novas, 4 modificadas); 11 changes arquivadas com integridade SHA-256 preservada. Validação global na branch de closeout: 201/201. #1042 permaneceu fora do lote.
+- **F-5 [P1] archive em release sem binding permanece bloqueado pelo guard:** recorrência coberta por #1022, ainda Em Refinamento. Alan autorizou a alternativa prevista nesse card: archive em worktrees vinculadas aos cards Homologados e cherry-pick dos commits documentais. Todos os prechecks de origem/destino retornaram allow; não houve alteração do guard nem do estado dos cards para executar o archive.
+- **Duplicação #1017:** a cópia ativa era idêntica ao archive de 22/09. Foi removida na worktree vinculada a #1017, preservando o arquivo histórico, para integrar a limpeza no sync de develop.
+- **Git:** o sync anterior main → develop foi concluído no PR #1056. Esta continuação publica apenas archive/specs/docs e preserva os commits extras de develop. T16 segue condicionado ao post PASS; comentários canônicos de Pronto são emitidos pelo process_event.
+- **Materialização:** sem novo card; falha de archive coberta por #1022. A alternativa operacional foi autorizada para este lote; a correção definitiva do guard continua no fluxo do #1022.
+
 ## 2026-09-22 — Kaizen release (release 2026-09-22, cards 1017)
 
 - **Release/card**: Homologado `#1017` → `release-2026-09-22` (cherry-picks `be689c33` de `dc772725` + archive `bc6382d5`) → `main` PR #1019 merged `3b0ebdf5ab3036be4e427f14f01ccb838a6ba97b`. PROD bundle `index-CJP6s_v3.js`.
