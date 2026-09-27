@@ -147,7 +147,7 @@ def fingerprint_of(policies: dict[str, Any]) -> str:
 
 
 def closed_day_for(now: datetime) -> date:
-    return (now.date() - timedelta(days=1))
+    return now.date() - timedelta(days=1)
 
 
 def day_end(closed: date) -> datetime:
@@ -196,19 +196,11 @@ def active_version(db: Session) -> Optional[ScalpConfidenceVersion]:
 def version_by_id(db: Session, version_id: Optional[str]) -> Optional[ScalpConfidenceVersion]:
     if not version_id:
         return None
-    return (
-        db.query(ScalpConfidenceVersion)
-        .filter(ScalpConfidenceVersion.id == version_id)
-        .first()
-    )
+    return db.query(ScalpConfidenceVersion).filter(ScalpConfidenceVersion.id == version_id).first()
 
 
 def diagnosis_for(db: Session, closed: date) -> Optional[ScalpJevDiagnosis]:
-    return (
-        db.query(ScalpJevDiagnosis)
-        .filter(ScalpJevDiagnosis.closed_day == closed)
-        .first()
-    )
+    return db.query(ScalpJevDiagnosis).filter(ScalpJevDiagnosis.closed_day == closed).first()
 
 
 def env_policies() -> dict[str, dict[str, Any]]:
@@ -233,9 +225,7 @@ def policies_of(version: Optional[ScalpConfidenceVersion]) -> dict[str, dict[str
     return loaded if isinstance(loaded, dict) else env_policies()
 
 
-def policy_from_map(
-    policies: dict[str, Any], *, regime: MarketRegime
-) -> ConfidencePolicy:
+def policy_from_map(policies: dict[str, Any], *, regime: MarketRegime) -> ConfidencePolicy:
     row = policies.get(regime) or {}
     kind = str(row.get("kind") or CONFIDENCE_POLICY_CLOSED)
     raw = row.get("value")
@@ -373,26 +363,56 @@ def _policy_net_bp(
     return sum(pnls, Decimal("0")) / Decimal(len(pnls))
 
 
-def _quality_block(summary: dict[str, Any], *, newest_candle: Optional[datetime], last_window_end: Optional[datetime]) -> Optional[tuple[str, str]]:
+def _quality_block(
+    summary: dict[str, Any],
+    *,
+    newest_candle: Optional[datetime],
+    last_window_end: Optional[datetime],
+) -> Optional[tuple[str, str]]:
     measurement = (summary.get("measurement") or {}).get("status")
     if measurement == "não medido":
-        return "measurement", "A leitura dos preços falhou. Isto não é um resultado do scalp. A confiança fica."
-    if newest_candle is not None and last_window_end is not None and newest_candle < last_window_end:
-        return "stale", "Os dados desta leitura já tinham expirado. Isto não é um resultado do scalp. A confiança fica."
+        return (
+            "measurement",
+            "A leitura dos preços falhou. Isto não é um resultado do scalp. A confiança fica.",
+        )
+    if (
+        newest_candle is not None
+        and last_window_end is not None
+        and newest_candle < last_window_end
+    ):
+        return (
+            "stale",
+            "Os dados desta leitura já tinham expirado. Isto não é um resultado do scalp. A confiança fica.",
+        )
     if measurement == "medição parcial":
         missing = (summary.get("measurement") or {}).get("windows_without_price_coverage") or 0
         if int(missing) > 0:
-            return "coverage", "Faltam preços para fechar o dia. Isto não é um resultado do scalp. A confiança fica."
+            return (
+                "coverage",
+                "Faltam preços para fechar o dia. Isto não é um resultado do scalp. A confiança fica.",
+            )
     homo = summary.get("homogeneity") or {}
     if homo.get("status") != "homogénea":
-        return "unverified", "A amostra não está verificada. Isto não é um resultado do scalp. A confiança fica."
+        return (
+            "unverified",
+            "A amostra não está verificada. Isto não é um resultado do scalp. A confiança fica.",
+        )
     if summary.get("fee_source") != "account":
-        return "cost", "A taxa desta leitura não é a taxa real da conta. Isto não é um resultado do scalp. A confiança fica."
-    bench = ((summary.get("benchmark") or {}).get("overall") or {})
+        return (
+            "cost",
+            "A taxa desta leitura não é a taxa real da conta. Isto não é um resultado do scalp. A confiança fica.",
+        )
+    bench = (summary.get("benchmark") or {}).get("overall") or {}
     if not bench.get("computable"):
-        return "benchmark", "Não deu para comparar o sinal com o acaso. Isto não é um resultado do scalp. A confiança fica."
+        return (
+            "benchmark",
+            "Não deu para comparar o sinal com o acaso. Isto não é um resultado do scalp. A confiança fica.",
+        )
     if not summary.get("operable"):
-        return "not_operable", "Com este alvo e este stop o scalp não se paga. Não mudei parâmetro nenhum."
+        return (
+            "not_operable",
+            "Com este alvo e este stop o scalp não se paga. Não mudei parâmetro nenhum.",
+        )
     return None
 
 
@@ -548,12 +568,7 @@ def _history_line(diagnosis: ScalpJevDiagnosis) -> dict[str, Any]:
 
 
 def history_payload(db: Session) -> list[dict[str, Any]]:
-    rows = (
-        db.query(ScalpJevDiagnosis)
-        .order_by(ScalpJevDiagnosis.closed_day.desc())
-        .limit(12)
-        .all()
-    )
+    rows = db.query(ScalpJevDiagnosis).order_by(ScalpJevDiagnosis.closed_day.desc()).limit(12).all()
     items = [_history_line(row) for row in rows]
     manuals = (
         db.query(ScalpConfidenceVersion)
@@ -581,7 +596,9 @@ def history_payload(db: Session) -> list[dict[str, Any]]:
 
 
 def _next_version_n(db: Session) -> int:
-    current = db.query(ScalpConfidenceVersion).order_by(ScalpConfidenceVersion.version_n.desc()).first()
+    current = (
+        db.query(ScalpConfidenceVersion).order_by(ScalpConfidenceVersion.version_n.desc()).first()
+    )
     return 1 if current is None else int(current.version_n) + 1
 
 
@@ -608,9 +625,7 @@ def _activate_version(
     stamp = now or _utcnow()
     fp = fingerprint or fingerprint_of(policies)
     existing = reuse or (
-        db.query(ScalpConfidenceVersion)
-        .filter(ScalpConfidenceVersion.fingerprint == fp)
-        .first()
+        db.query(ScalpConfidenceVersion).filter(ScalpConfidenceVersion.fingerprint == fp).first()
     )
     _deactivate_all(db)
     if existing is not None:
@@ -785,9 +800,7 @@ def run_closed_day_diagnosis(
     posterior_n = len(posterior_rows)
     comparable = posterior_n >= POSTERIOR_MIN
     data_ok = (summary.get("measurement") or {}).get("status") in {"medido", "medição parcial"}
-    quality = _quality_block(
-        summary, newest_candle=newest_candle, last_window_end=last_window_end
-    )
+    quality = _quality_block(summary, newest_candle=newest_candle, last_window_end=last_window_end)
 
     def _finish(
         *,
@@ -909,11 +922,7 @@ def run_closed_day_diagnosis(
         }:
             reopen = True
 
-    improves = (
-        declared_net is not None
-        and current_net is not None
-        and declared_net > current_net
-    )
+    improves = declared_net is not None and current_net is not None and declared_net > current_net
 
     if current is not None and current.previous_id and current.applied_for_day < closed:
         previous = version_by_id(db, current.previous_id)
@@ -1001,7 +1010,9 @@ def maybe_run_daily(db: Session, *, now: Optional[datetime] = None) -> Optional[
     return run_closed_day_diagnosis(db, now=stamp)
 
 
-def revert_to_previous(db: Session, *, now: Optional[datetime] = None) -> Optional[ScalpConfidenceVersion]:
+def revert_to_previous(
+    db: Session, *, now: Optional[datetime] = None
+) -> Optional[ScalpConfidenceVersion]:
     """Manual revert to the registered previous version. No 200 wait. Next entry."""
     stamp = now or _utcnow()
     current = active_version(db)
@@ -1037,40 +1048,42 @@ def status_fields(db: Session) -> dict[str, Any]:
     state = get_calibration_state(db)
     version = active_version(db)
     previous = version_by_id(db, version.previous_id) if version is not None else None
-    latest = (
-        db.query(ScalpJevDiagnosis)
-        .order_by(ScalpJevDiagnosis.closed_day.desc())
-        .first()
-    )
+    latest = db.query(ScalpJevDiagnosis).order_by(ScalpJevDiagnosis.closed_day.desc()).first()
     policies = policies_of(version)
     panel = _json_load(latest.panel_json) if latest is not None else None
     return {
         "calibration_paused": bool(state.paused),
         "calibration_enabled": not bool(state.paused),
-        "confidence_version": None
-        if version is None
-        else {
-            "id": version.id,
-            "version_n": version.version_n,
-            "fingerprint": version.fingerprint,
-            "previous": None
-            if previous is None
+        "confidence_version": (
+            None
+            if version is None
             else {
-                "id": previous.id,
-                "version_n": previous.version_n,
-                "policies": policies_of(previous),
-            },
-            "current": policies,
-            "reason": version.reason,
-            "source": version.source,
-        },
-        "jev_diagnosis": None
-        if latest is None or not isinstance(panel, dict)
-        else {
-            **panel,
-            "history": history_payload(db),
-            "can_revert": bool(version is not None and version.previous_id),
-        },
+                "id": version.id,
+                "version_n": version.version_n,
+                "fingerprint": version.fingerprint,
+                "previous": (
+                    None
+                    if previous is None
+                    else {
+                        "id": previous.id,
+                        "version_n": previous.version_n,
+                        "policies": policies_of(previous),
+                    }
+                ),
+                "current": policies,
+                "reason": version.reason,
+                "source": version.source,
+            }
+        ),
+        "jev_diagnosis": (
+            None
+            if latest is None or not isinstance(panel, dict)
+            else {
+                **panel,
+                "history": history_payload(db),
+                "can_revert": bool(version is not None and version.previous_id),
+            }
+        ),
     }
 
 

@@ -188,7 +188,10 @@ def test_still_negative_improvement_is_applied_without_step_band(diag_db):
         id=str(uuid.uuid4()),
         version_n=11,
         fingerprint=fingerprint_of(
-            {"calm": {"kind": "numeric", "value": "0.20"}, "active": {"kind": "closed", "value": None}}
+            {
+                "calm": {"kind": "numeric", "value": "0.20"},
+                "active": {"kind": "closed", "value": None},
+            }
         ),
         policies_json=(
             '{"calm": {"kind": "numeric", "value": "0.20"}, '
@@ -227,9 +230,7 @@ def test_still_negative_improvement_is_applied_without_step_band(diag_db):
     summary = _summary(n=len(rows), policy="off")
     row = _run(diag_db, rows=rows, summary=summary, now=now, closed=closed)
     applied = (
-        diag_db.query(ScalpConfidenceVersion)
-        .filter(ScalpConfidenceVersion.active.is_(True))
-        .one()
+        diag_db.query(ScalpConfidenceVersion).filter(ScalpConfidenceVersion.active.is_(True)).one()
     )
     loaded = json.loads(applied.policies_json)
     assert row.verb == VERB_APPLY
@@ -532,9 +533,7 @@ def test_closed_env_reopens_without_beating_zero(diag_db, monkeypatch):
     now = datetime(2026, 9, 26, 0, 20, 0)
     row = _run(diag_db, rows=rows, summary=_summary(n=240, policy="closed"), now=now)
     applied = (
-        diag_db.query(ScalpConfidenceVersion)
-        .filter(ScalpConfidenceVersion.active.is_(True))
-        .one()
+        diag_db.query(ScalpConfidenceVersion).filter(ScalpConfidenceVersion.active.is_(True)).one()
     )
     loaded = json.loads(applied.policies_json)
     assert row.verb == VERB_APPLY

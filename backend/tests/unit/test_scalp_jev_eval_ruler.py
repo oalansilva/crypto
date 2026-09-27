@@ -437,9 +437,7 @@ def test_candidate_hit_rate_uses_that_pair_barriers_not_in_use():
     assert wide["n_stop"] == 30
     assert Decimal(wide["realized_hit"]) == Decimal("0")
     assert wide["beats_break_even"] is False
-    proposed, _horizons, _operable = ruler._propose_geometry(
-        rows, series, fee_bp=Decimal("10")
-    )
+    proposed, _horizons, _operable = ruler._propose_geometry(rows, series, fee_bp=Decimal("10"))
     if proposed is not None:
         assert (Decimal(proposed["target_bp"]), Decimal(proposed["stop_bp"])) != (
             Decimal("50"),
