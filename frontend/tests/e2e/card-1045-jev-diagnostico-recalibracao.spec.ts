@@ -39,20 +39,29 @@ function diagnosisBody() {
     lead: 'Um aviso por dia, só depois que o dia fecha. Este é o de 28 de setembro de 2026. Hoje não há outro.',
     when: '28 set 2026, sobre o dia 27 que já fechou',
     data_ok:
-      '267 de 300 janelas históricas têm preço entre 23 setembro 2026 13:26 a 27 setembro 2026 21:47 UTC. Comparação bloqueada: o modelo e a origem da confiança não foram identificados em 1 de 1 janelas elegíveis. São janelas históricas avaliadas, não trades executados.',
+      '267 de 300 janelas históricas têm preço entre 23 setembro 2026 13:26 a 27 setembro 2026 21:47 UTC. A fronteira entre mercado calmo e agitado está ausente; os dois regimes continuam bloqueados. A comparação também está bloqueada: o modelo e a origem da confiança não foram identificados em 1 de 1 janelas elegíveis. São janelas históricas avaliadas, não trades executados.',
     period: '23 setembro 2026 13:26 a 27 setembro 2026 21:47 UTC',
     until: 'só as janelas que já tinham terminado à meia-noite UTC',
     confidence_now: 'Mercado calmo não entra. Mercado agitado não entra. Versão 12.',
+    regime_boundary_bp: null,
+    regime_boundary_status: 'absent',
+    viability_status: 'indeterminate',
+    barrier_measurement: {
+      candidate_count: 24,
+      measured_candidates: 0,
+      indeterminate_candidates: 24,
+      no_hit_candidates: 0,
+    },
     decision: 'não mudei a confiança',
     verb: 'bloquear',
     sample:
-      '1 janela histórica independente com preço passou pelos filtros depois da escolha; ainda não chega às 200 necessárias. Motivo: o modelo não foi identificado e a origem da confiança não foi identificada em 1 de 1 janelas elegíveis. São janelas avaliadas, não trades executados.',
+      '1 janela histórica independente com preço passou pelos filtros depois da escolha; ainda não chega às 200 necessárias. Motivo: a fronteira entre mercado calmo e agitado está ausente; as barreiras ainda não foram resolvidas. São janelas avaliadas, não trades executados.',
     target_stop:
-      'para não perder com a taxa, teria de acertar cerca de 76 em 100. Sem a taxa, cerca de 44 em 100. O preço chegou no alvo em cerca de 30 em 100 das vezes em que bateu num dos lados.',
+      'Com a taxa, o alvo precisaria ser atingido em cerca de 76 de cada 100 janelas; sem a taxa, em cerca de 44. No alvo e stop atuais: 0 alvos, 0 stops e 0 saídas pelo prazo. Em 267 janelas históricas as barreiras não tiveram resolução suficiente. Ainda não dá para concluir se a estratégia se paga.',
     signal: 'não ganhou da escolha aleatória na mesma proporção de compras.',
     side: 'Em 97 de 100 janelas o sinal indicou compra. Acertar o lado ficou em 49 em 100, igual a comprar e segurar (50 em 100).',
     reason:
-      'Não mudei nada. Só há 1 janela histórica com preço que passou pelos filtros, abaixo de 200. O modelo e a origem da confiança não puderam ser confirmados. Com este alvo e este stop o scalp não se paga. A confiança fica como está. Alvo, stop e o prazo do scalp não mudam.',
+      'Não mudei nada. A fronteira entre mercado calmo e agitado está ausente, então os dois regimes continuam bloqueados. A amostra e as barreiras ainda não podem ser comparadas; isso não mostra prejuízo. A confiança fica como está. Alvo, stop e o prazo do scalp não mudam.',
     calibration_note:
       'O ajuste automático está ligado ao processamento dos diagnósticos, mas as entradas continuam bloqueadas nos regimes calmo e agitado. Isso não liga o scalp nem envia ordens.',
     can_revert: true,
@@ -302,6 +311,10 @@ test.describe('card-1045 monitor diagnosis', () => {
     await expect(page.getByTestId('scalp-switch')).toHaveText('Desligado')
     await expect(page.getByTestId('scalp-fee')).toHaveText('10 bp')
     await expect(diagnosis.getByText(/267 de 300 janelas históricas/)).toBeVisible()
+    await expect(diagnosis.getByText(/fronteira entre mercado calmo e agitado está ausente/).first()).toBeVisible()
+    await expect(diagnosis.getByText(/barreiras não tiveram resolução suficiente/).first()).toBeVisible()
+    await expect(diagnosis.getByText(/ainda não dá para concluir se a estratégia se paga/i)).toBeVisible()
+    expect(text).not.toMatch(/scalp não se paga/i)
     await expect(diagnosis.getByText(/modelo e a origem da confiança não foram identificados/)).toBeVisible()
     await expect(diagnosis.getByText(/não trades executados/).first()).toBeVisible()
     await expect(diagnosis.getByText(/1 janela histórica independente com preço/)).toBeVisible()

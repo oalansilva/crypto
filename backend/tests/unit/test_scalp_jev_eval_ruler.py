@@ -437,7 +437,9 @@ def test_candidate_hit_rate_uses_that_pair_barriers_not_in_use():
     assert wide["n_stop"] == 30
     assert Decimal(wide["realized_hit"]) == Decimal("0")
     assert wide["beats_break_even"] is False
-    proposed, _horizons, _operable = ruler._propose_geometry(rows, series, fee_bp=Decimal("10"))
+    proposed, _horizons, _viability, _barrier_measurement = ruler._propose_geometry(
+        rows, series, fee_bp=Decimal("10")
+    )
     if proposed is not None:
         assert (Decimal(proposed["target_bp"]), Decimal(proposed["stop_bp"])) != (
             Decimal("50"),
@@ -565,10 +567,12 @@ def test_a_regime_without_a_boundary_is_closed_and_insufficient():
     decisions, series = _windows(40, confidence="0.35", realized_bp=40)
     report, summary = _report_with(decisions=decisions, series=series, boundary=None)
     assert summary["regime_boundary_bp"] is None
+    assert summary["regime_boundary_status"] == "absent"
     for regime in ("calm", "active"):
         assert summary["regimes"][regime]["policy"] == "closed"
         assert "fronteira de regime ausente" in summary["regimes"][regime]["closed_reasons"]
-    assert "ausente" in report
+    assert "fronteira de regime (σ, bp): **ausente**" in report
+    assert "promoção: **bloqueada**" in report
 
 
 def test_a_mixed_model_or_origin_blocks_the_threshold():
@@ -1253,11 +1257,97 @@ def test_fifteen_minute_horizon_on_fifteen_minute_candle_is_indeterminate():
     assert row["candle_fits"] is False
     assert row["n_indeterminate"] >= 1
     assert row["realized_hit"] is None
+    assert row["measurement_status"] == "indeterminate"
 
 
-def test_no_candidate_beating_break_even_is_not_operable():
+def test_flat_sample_without_resolved_barrier_hits_is_indeterminate():
     decisions, series = _windows(40, confidence="0.35", realized_bp=0)
     report, summary = _report_with(decisions=decisions, series=series, fee_bp="10")
     assert summary["operable"] is False
+    assert summary["viability_status"] == "indeterminate"
     assert summary["suggested_exit_target_bp"] is None
-    assert "não operável" in report.lower() or "não operável" in report
+    assert "viabilidade indeterminada" in report.lower()
+    assert "não operável" not in report.lower()
+    assert "Medição das barreiras:" in report
+    assert "sem toque de alvo ou stop" in report
+
+
+def test_all_resolved_barriers_can_support_a_measured_not_operable_verdict():
+    base = datetime(2026, 9, 23, 0, 0, 0)
+    decisions = [
+        ruler.Decision(
+            call_id=f"measured-{index}",
+            at=base + timedelta(minutes=15 * index),
+            side="BUY",
+            entry_mid=Decimal("85000"),
+        )
+        for index in range(4)
+    ]
+    until = decisions[-1].at + timedelta(hours=24)
+    candles = []
+    for minute in range(1, int((until - base).total_seconds() // 60) + 1):
+        stamp = base + timedelta(minutes=minute)
+        candles.append(
+            {
+                "timestamp_utc": stamp.isoformat(),
+                "open": "85000",
+                "high": "85000",
+                "low": "84000",
+                "close": "84000",
+            }
+        )
+    series = ruler.CandleSeries(candles, step=timedelta(minutes=1))
+    rows = [(decision, ruler.Realized(None, None, None, "none")) for decision in decisions]
+
+    proposed, _horizons, viability, measurement = ruler._propose_geometry(
+        rows, series, fee_bp=Decimal("10")
+    )
+
+    assert proposed is None
+    assert viability == "not_operable"
+    assert measurement["indeterminate_candidates"] == 0
+    assert measurement["no_hit_candidates"] == 0
+    assert measurement["measured_candidates"] == measurement["candidate_count"]
+
+
+def test_candle_gap_keeps_barrier_verdict_indeterminate_and_prevents_proposal():
+    base = datetime(2026, 9, 23, 0, 0, 0)
+    decisions = [
+        ruler.Decision(
+            call_id=f"gap-{index}",
+            at=base + timedelta(minutes=15 * index),
+            side="BUY",
+            entry_mid=Decimal("85000"),
+        )
+        for index in range(2)
+    ]
+    candles = []
+    for index, decision in enumerate(decisions):
+        for minute in range(15):
+            if index == 0 and minute == 1:
+                continue
+            stamp = decision.at + timedelta(minutes=minute)
+            candles.append(
+                {
+                    "timestamp_utc": stamp.isoformat(),
+                    "open": "85000",
+                    "high": "85500",
+                    "low": "85000",
+                    "close": "85500",
+                }
+            )
+    series = ruler.CandleSeries(candles, step=timedelta(minutes=1))
+    rows = [(decision, ruler.Realized(None, None, None, "none")) for decision in decisions]
+
+    proposed, horizons, viability, measurement = ruler._propose_geometry(
+        rows, series, fee_bp=Decimal("10")
+    )
+
+    fifteen_minute = next(row for row in horizons if row["horizon_s"] == 15 * 60)
+    assert proposed is None
+    assert viability == "indeterminate"
+    assert fifteen_minute["n_target"] == 1
+    assert fifteen_minute["n_indeterminate"] == 1
+    assert fifteen_minute["measurement_status"] == "indeterminate"
+    assert fifteen_minute["beats_break_even"] is False
+    assert measurement["indeterminate_candidates"] > 0

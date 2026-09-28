@@ -29,6 +29,15 @@ export type ScalpDiagnosis = {
   until?: string
   period?: string | null
   confidence_now?: string
+  regime_boundary_bp?: string | null
+  regime_boundary_status?: 'configured' | 'absent'
+  viability_status?: 'viable' | 'not_operable' | 'indeterminate' | 'insufficient_sample'
+  barrier_measurement?: {
+    candidate_count?: number
+    measured_candidates?: number
+    indeterminate_candidates?: number
+    no_hit_candidates?: number
+  } | null
   decision?: string
   verb?: string
   sample?: string
