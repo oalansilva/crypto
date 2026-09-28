@@ -99,6 +99,7 @@ def _joined(batches):
 
 def _summary(*, operable=True, homo="homogénea", fee_source="account", n=214, policy="numeric"):
     hit = "0.80"
+    viability_status = "viable" if operable else "not_operable"
     return {
         "measurement": {"status": "medido", "windows_without_price_coverage": 0},
         "homogeneity": {"status": homo, "homogeneous": homo == "homogénea", "affected_windows": 0},
@@ -106,6 +107,14 @@ def _summary(*, operable=True, homo="homogénea", fee_source="account", n=214, p
         "fee_bp": "10",
         "operable": operable,
         "regime_boundary_bp": "0.05",
+        "regime_boundary_status": "configured",
+        "viability_status": viability_status,
+        "barrier_measurement": {
+            "candidate_count": 24,
+            "measured_candidates": 24,
+            "indeterminate_candidates": 0,
+            "no_hit_candidates": 0,
+        },
         "benchmark": {
             "overall": {
                 "computable": True,
@@ -125,6 +134,8 @@ def _summary(*, operable=True, homo="homogénea", fee_source="account", n=214, p
             "n_target": 12,
             "n_stop": 28,
             "n_time_exit": 27,
+            "n_indeterminate": 0,
+            "n_unknown": 0,
             "realized_hit": hit,
         },
         "regimes": {
@@ -469,6 +480,113 @@ def test_not_operable_adopts_no_parameter(diag_db):
     assert diag_db.query(ScalpConfidenceVersion).count() == 0
 
 
+def test_indeterminate_barriers_block_without_claiming_a_loss(diag_db):
+    set_calibration_paused(diag_db, paused=False)
+    summary = _summary(operable=False)
+    summary["viability_status"] = "indeterminate"
+    summary["barrier_measurement"] = {
+        "candidate_count": 24,
+        "measured_candidates": 0,
+        "indeterminate_candidates": 24,
+        "no_hit_candidates": 0,
+    }
+    summary["geometry_in_use"].update(
+        {"n_target": 0, "n_stop": 0, "n_time_exit": 0, "n_indeterminate": 214}
+    )
+
+    row = _run(
+        diag_db,
+        rows=_rows(214),
+        summary=summary,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+    )
+
+    assert row.block_kind == "barriers"
+    assert "não dá para afirmar" in row.operator_reason
+    assert "Com este alvo e este stop o scalp não se paga" not in row.operator_reason
+    panel = status_fields(diag_db)["jev_diagnosis"]
+    assert panel["viability_status"] == "indeterminate"
+    assert "barreiras ficaram sem resolução" in panel["data_ok"]
+    assert "Ainda não dá para concluir" in panel["target_stop"]
+
+
+def test_short_sample_still_discloses_indeterminate_candidate_barriers(diag_db):
+    set_calibration_paused(diag_db, paused=False)
+    summary = _summary(operable=False)
+    summary["viability_status"] = "insufficient_sample"
+    summary["barrier_measurement"] = {
+        "candidate_count": 24,
+        "measured_candidates": 23,
+        "indeterminate_candidates": 1,
+        "no_hit_candidates": 0,
+    }
+
+    row = _run(
+        diag_db,
+        rows=_rows(214),
+        summary=summary,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+    )
+
+    assert row.block_kind == "sample"
+    panel = status_fields(diag_db)["jev_diagnosis"]
+    assert "amostra ainda não é suficiente" in panel["data_ok"]
+    assert "barreiras ficaram sem resolução em 1 de 24" in panel["data_ok"]
+    assert "A amostra ainda é curta para concluir" in panel["target_stop"]
+    assert "scalp não se paga" not in row.operator_reason.lower()
+
+
+def test_no_resolved_barrier_hits_are_not_presented_as_negative_performance(diag_db):
+    set_calibration_paused(diag_db, paused=False)
+    summary = _summary(operable=False)
+    summary["viability_status"] = "indeterminate"
+    summary["barrier_measurement"] = {
+        "candidate_count": 24,
+        "measured_candidates": 0,
+        "indeterminate_candidates": 0,
+        "no_hit_candidates": 24,
+    }
+    summary["geometry_in_use"].update(
+        {"n_target": 0, "n_stop": 0, "n_time_exit": 214, "n_indeterminate": 0}
+    )
+
+    row = _run(
+        diag_db,
+        rows=_rows(214),
+        summary=summary,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+    )
+
+    assert row.block_kind == "barriers"
+    assert "nenhuma janela tocou o alvo ou o stop" in row.operator_reason
+    assert "ainda não dá para afirmar que o scalp não se paga" in row.operator_reason
+    panel = status_fields(diag_db)["jev_diagnosis"]
+    assert "nenhuma janela tocou o alvo ou o stop" in panel["data_ok"]
+    assert "ainda não dá para afirmar que o scalp não se paga" in panel["data_ok"].lower()
+
+
+def test_missing_regime_boundary_is_explicit_and_blocks_promotion(diag_db):
+    set_calibration_paused(diag_db, paused=False)
+    summary = _summary(operable=True)
+    summary["regime_boundary_bp"] = None
+    summary["regime_boundary_status"] = "absent"
+
+    row = _run(
+        diag_db,
+        rows=_rows(214),
+        summary=summary,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+    )
+
+    assert row.block_kind == "regime_boundary"
+    assert "fronteira entre mercado calmo e agitado está ausente" in row.operator_reason
+    assert diag_db.query(ScalpConfidenceVersion).count() == 0
+    panel = status_fields(diag_db)["jev_diagnosis"]
+    assert panel["regime_boundary_bp"] is None
+    assert panel["regime_boundary_status"] == "absent"
+    assert "fronteira entre mercado calmo e agitado está ausente" in panel["data_ok"]
+
+
 def test_env_is_used_without_applied_version_and_invalid_fails_closed(diag_db, monkeypatch):
     monkeypatch.setenv("SCALP_CONFIDENCE_MIN_CALM", "0.42")
     monkeypatch.setenv("SCALP_REGIME_BOUNDARY_BP", "0.05")
@@ -735,12 +853,14 @@ def test_daily_run_reads_real_maker_fee_as_account_source(diag_db, monkeypatch):
         "app.services.scalp_service._live_fee_terms",
         lambda _key, _secret: (Decimal("7.5"), True),
     )
+    monkeypatch.setattr("app.services.scalp_service._regime_boundary_bp", lambda: Decimal("0.07"))
     seen: dict[str, object] = {}
     module = calibration._load_ruler()
 
     def fake_build_report(**kwargs):
         seen["fee_source"] = kwargs.get("fee_source")
         seen["fee_bp"] = kwargs.get("fee_bp")
+        seen["regime_boundary_bp"] = kwargs.get("regime_boundary_bp")
         return "report", _summary(fee_source=str(kwargs.get("fee_source")), operable=False)
 
     monkeypatch.setattr(module, "build_report", fake_build_report)
@@ -758,6 +878,7 @@ def test_daily_run_reads_real_maker_fee_as_account_source(diag_db, monkeypatch):
     assert fee_bp == Decimal("7.5")
     run_closed_day_diagnosis(diag_db, now=datetime(2026, 9, 26, 0, 20, 0))
     assert seen["fee_source"] == "account"
+    assert seen["regime_boundary_bp"] == Decimal("0.07")
     assert seen["fee_bp"] == Decimal("7.5")
 
 

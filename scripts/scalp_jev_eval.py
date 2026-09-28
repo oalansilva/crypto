@@ -522,6 +522,45 @@ class CandleSeries:
             if stamp >= start and stamp + self.step <= end
         ]
 
+    def has_complete_path(self, start: datetime, end: datetime) -> bool:
+        """Whether every usable candle in the horizon is present, without gaps.
+
+        An absent candle inside the window can hide which barrier was touched
+        first. The exact entry-boundary candle is optional because it may be
+        shared with the decision timestamp; any later missing candle makes
+        the barrier result indeterminate.
+        """
+        if self.step <= timedelta(0):
+            return False
+        epoch = datetime(1970, 1, 1)
+        step = self.step
+        first_offset = start - epoch
+        first_index = first_offset // step
+        first_stamp = epoch + step * first_index
+        if first_stamp < start:
+            first_index += 1
+            first_stamp = epoch + step * first_index
+        last_offset = end - step - epoch
+        if last_offset < timedelta(0):
+            return False
+        last_index = last_offset // step
+        if last_index < first_index:
+            return False
+        expected = [
+            epoch + step * index
+            for index in range(first_index, last_index + 1)
+        ]
+        actual = [
+            stamp
+            for stamp, _open, _high, _low, _close in self.candles
+            if stamp >= start and stamp + step <= end
+        ]
+        if actual == expected:
+            return True
+        # If the decision lands exactly on a candle boundary, that first bar
+        # is the only one we may omit without making the later path ambiguous.
+        return first_stamp == start and actual == expected[1:]
+
 
 _URL_CREDENTIAL_RE = re.compile(r"([A-Za-z][A-Za-z0-9+.\-]*://[^:/@\s]+):[^@/\s]+@")
 _PASSWORD_KV_RE = re.compile(r"(?i)\b(password|passwd|pwd)\s*[=:]\s*\S+")
@@ -1491,12 +1530,16 @@ def realized_for_horizon(
     path = series.path(decision.at, end)
     if not path:
         return Realized(None, None, None, BARRIER_INDETERMINATE)
-    barrier = _barrier_for(
-        side=decision.side,
-        entry=decision.entry_mid,
-        path=path,
-        target_bp=target_bp,
-        stop_bp=stop_bp,
+    barrier = (
+        _barrier_for(
+            side=decision.side,
+            entry=decision.entry_mid,
+            path=path,
+            target_bp=target_bp,
+            stop_bp=stop_bp,
+        )
+        if series.has_complete_path(decision.at, end)
+        else BARRIER_INDETERMINATE
     )
     if price is None or price <= 0:
         return Realized(None, None, None, BARRIER_INDETERMINATE)
@@ -1557,12 +1600,22 @@ def _geometry_candidate_row(
             horizon_rows.append((decision, horizon_realized))
             barriers.append(horizon_realized.barrier)
             end = decision.at + timedelta(seconds=horizon_s)
-            paths[decision.call_id] = series.path(decision.at, end)
+            if series.has_complete_path(decision.at, end):
+                paths[decision.call_id] = series.path(decision.at, end)
         hit, counts = _barrier_hit_rate(barriers)
         expectancy, n_priced = _geometry_expectancy(
             horizon_rows, paths, target_bp=target_bp, stop_bp=stop_bp, fee_bp=fee_bp
         )
-    beats = hit is not None and be_with < hit
+    n_resolved = counts["target"] + counts["stop"]
+    if not fits or counts["indeterminate"] or counts["unknown"]:
+        measurement_status = "indeterminate"
+    elif n_resolved == 0:
+        measurement_status = "no_barrier_hit"
+    else:
+        measurement_status = "measured"
+    beats = (
+        measurement_status == "measured" and hit is not None and be_with < hit
+    )
     return {
         "label": label,
         "target_bp": str(target_bp),
@@ -1576,6 +1629,9 @@ def _geometry_candidate_row(
         "n_stop": counts["stop"],
         "n_time_exit": counts["none"],
         "n_indeterminate": counts["indeterminate"],
+        "n_unknown": counts["unknown"],
+        "n_resolved": n_resolved,
+        "measurement_status": measurement_status,
         "expectancy_net_bp": None if expectancy is None else str(expectancy),
         "n_priced": n_priced,
         "beats_break_even": beats,
@@ -1587,7 +1643,7 @@ def _propose_geometry(
     series: CandleSeries,
     *,
     fee_bp: Decimal,
-) -> tuple[Optional[dict[str, Any]], list[dict[str, Any]], bool]:
+) -> tuple[Optional[dict[str, Any]], list[dict[str, Any]], str, dict[str, int]]:
     """Propose the beating candidate with the highest net expectancy, or none.
 
     A candidate beats when its break-even **with cost** is strictly below the
@@ -1647,8 +1703,27 @@ def _propose_geometry(
                 -int(row["horizon_s"]),
             ),
         )
-    operable = proposed is not None
-    return proposed, horizons, operable
+    barrier_measurement = {
+        "candidate_count": len(candidates),
+        "measured_candidates": sum(row["measurement_status"] == "measured" for row in candidates),
+        "indeterminate_candidates": sum(
+            row["measurement_status"] == "indeterminate" for row in candidates
+        ),
+        "no_hit_candidates": sum(
+            row["measurement_status"] == "no_barrier_hit" for row in candidates
+        ),
+    }
+    if proposed is not None:
+        viability = "viable"
+    elif (
+        barrier_measurement["indeterminate_candidates"] or barrier_measurement["no_hit_candidates"]
+    ):
+        # Without a resolved target/stop rate for every candidate, the ruler
+        # cannot turn missing barrier evidence into a negative verdict.
+        viability = "indeterminate"
+    else:
+        viability = "not_operable"
+    return proposed, horizons, viability, barrier_measurement
 
 
 def _measurement_state(
@@ -1908,6 +1983,7 @@ def build_report(
         "fee_source": fee_source,
         "fee_source_defect": fee_is_fallback,
         "regime_boundary_bp": None if regime_boundary_bp is None else str(regime_boundary_bp),
+        "regime_boundary_status": "configured" if regime_boundary_bp is not None else "absent",
         "confidence_in_use": confidence_in_use_token,
         "eligible_population": {"n": len(eligible_all), "verdict_sources": verdict_sources},
         "homogeneity": {
@@ -1947,6 +2023,13 @@ def build_report(
         # cost is below the realized hit. The ruler never writes the pair.
         "exit_geometry_derived": False,
         "operable": False,
+        "viability_status": "indeterminate",
+        "barrier_measurement": {
+            "candidate_count": 0,
+            "measured_candidates": 0,
+            "indeterminate_candidates": 0,
+            "no_hit_candidates": 0,
+        },
         "product_exit_target_bp": str(TARGET_BP),
         "product_exit_stop_bp": str(STOP_BP),
         "geometry_in_use": None,
@@ -2049,10 +2132,11 @@ def build_report(
         },
         "by_horizon": {},
     }
-    proposed, horizons, operable = _propose_geometry(
+    proposed, horizons, viability, barrier_measurement = _propose_geometry(
         realized_windows, series, fee_bp=fee_bp
     )
     summary["horizons"] = horizons
+    summary["barrier_measurement"] = barrier_measurement
     summary["geometry_in_use"] = next(
         (row for row in horizons if int(row["horizon_s"]) == HORIZON_S),
         _geometry_candidate_row(
@@ -2083,7 +2167,8 @@ def build_report(
         summary["exit_geometry_expectancy_bp"] = proposed["expectancy_net_bp"]
         summary["exit_geometry_break_even_hit_rate"] = proposed["break_even_with_cost"]
         summary["geometry_proposal"] = proposed
-    summary["operable"] = bool(sample_sufficient and operable)
+    summary["viability_status"] = viability if sample_sufficient else "insufficient_sample"
+    summary["operable"] = summary["viability_status"] == "viable"
     if sample_assessed:
         summary["insufficient"] = bool(reasons)
         summary["sample_assessment"] = "insuficiente" if reasons else "suficiente"
@@ -2166,6 +2251,11 @@ def build_report(
             else "**ausente** — ambos os regimes fechados (falha fechada)"
         )
     )
+    if regime_boundary_bp is None:
+        lines.append(
+            "- promoção: **bloqueada** — a fronteira entre os regimes está ausente; "
+            "mercado calmo e agitado continuam fechados."
+        )
     lines.append(
         f"- valor em uso preservado: `CONFIDENCE_MIN` = {confidence_in_use_token} "
         "— reportado pela configuração em uso"
@@ -2317,9 +2407,9 @@ def build_report(
     lines.append("## Horizontes candidatos")
     lines.append("")
     lines.append(
-        "| horizonte | vela cabe | break-even c/ custo | break-even s/ custo | acerto | alvo | stop | tempo | indeterminada | expectancy líq. (bp) |"
+        "| horizonte | vela cabe | break-even c/ custo | break-even s/ custo | acerto | alvo | stop | tempo | indeterminada | desconhecida | expectancy líq. (bp) |"
     )
-    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for row in summary.get("horizons") or []:
         hit = row.get("realized_hit")
         lines.append(
@@ -2328,10 +2418,20 @@ def build_report(
             f"{_fmt(Decimal(row['break_even_without_cost']) * Decimal('100'), '0.1')}% | "
             f"{_fmt(None if hit is None else Decimal(hit) * Decimal('100'), '0.1')}% | "
             f"{row['n_target']} | {row['n_stop']} | {row['n_time_exit']} | "
-            f"{row['n_indeterminate']} | {_fmt(None if row.get('expectancy_net_bp') is None else Decimal(row['expectancy_net_bp']))} |"
+            f"{row['n_indeterminate']} | {row['n_unknown']} | "
+            f"{_fmt(None if row.get('expectancy_net_bp') is None else Decimal(row['expectancy_net_bp']))} |"
         )
     if not summary.get("horizons"):
-        lines.append("| — | — | — | — | — | 0 | 0 | 0 | 0 | — |")
+        lines.append("| — | — | — | — | — | 0 | 0 | 0 | 0 | 0 | — |")
+    barrier_measurement = summary.get("barrier_measurement") or {}
+    lines.append("")
+    lines.append(
+        "Medição das barreiras: "
+        f"{int(barrier_measurement.get('measured_candidates') or 0)} de "
+        f"{int(barrier_measurement.get('candidate_count') or 0)} alternativas com alvo/stop resolvidos; "
+        f"{int(barrier_measurement.get('indeterminate_candidates') or 0)} indeterminadas; "
+        f"{int(barrier_measurement.get('no_hit_candidates') or 0)} sem toque de alvo ou stop."
+    )
     lines.append("")
     lines.append("## Recusas registadas no log")
     lines.append("")
@@ -2435,27 +2535,34 @@ def build_report(
             lines.append("")
             lines.append(f"- {measurement['reason']}")
             lines.append("")
-        if summary.get("operable"):
+        if summary.get("viability_status") == "viable":
             lines.append("Amostra suficiente na régua: proposta")
-        else:
+        elif summary.get("viability_status") == "not_operable":
             lines.append(
                 "**não operável** — nenhum candidato de geometria ou horizonte bate o "
                 "break-even com custo; nenhum parâmetro é adoptado (incluindo a confiança)."
             )
+        elif summary.get("viability_status") == "indeterminate":
+            lines.append(
+                "**viabilidade indeterminada** — há geometrias ou prazos sem barreiras "
+                "resolvidas; a régua não conclui que o scalp não se paga e não adopta parâmetros."
+            )
         lines.append("")
         in_use = summary.get("geometry_in_use") or {}
         if in_use:
+            realized_hit = in_use.get("realized_hit")
+            hit_label = (
+                "sem acerto resolvido"
+                if realized_hit is None
+                else f"acerto alvo/(alvo+stop)={_fmt(Decimal(realized_hit) * Decimal('100'), '0.1')}%"
+            )
             lines.append(
                 "- geometria em uso +35/−28: break-even com custo "
                 f"{_fmt(Decimal(in_use['break_even_with_cost']) * Decimal('100'), '0.1')}% "
                 f"e sem custo {_fmt(Decimal(in_use['break_even_without_cost']) * Decimal('100'), '0.1')}%; "
-                f"acerto por barreira alvo={in_use['n_target']}, stop={in_use['n_stop']}, "
-                f"saída por tempo={in_use['n_time_exit']}"
-                + (
-                    f", indeterminada={in_use['n_indeterminate']}"
-                    if in_use.get("n_indeterminate")
-                    else ""
-                )
+                f"{hit_label}; alvo={in_use['n_target']}, stop={in_use['n_stop']}, "
+                f"saída por tempo={in_use['n_time_exit']}, "
+                f"indeterminadas={in_use['n_indeterminate']}, desconhecidas={in_use['n_unknown']}"
             )
         if summary["exit_geometry_derived"]:
             target_bp = Decimal(summary["suggested_exit_target_bp"])

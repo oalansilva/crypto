@@ -369,6 +369,11 @@ def _quality_block(
     newest_candle: Optional[datetime],
     last_window_end: Optional[datetime],
 ) -> Optional[tuple[str, str]]:
+    if summary.get("regime_boundary_bp") is None:
+        return (
+            "regime_boundary",
+            "A fronteira entre mercado calmo e agitado está ausente. Os dois regimes continuam fechados e nenhum ajuste pode ser promovido.",
+        )
     measurement = (summary.get("measurement") or {}).get("status")
     if measurement == "não medido":
         return (
@@ -409,12 +414,71 @@ def _quality_block(
             "benchmark",
             "Não deu para comparar o sinal com o acaso. Isto não é um resultado do scalp. A confiança fica.",
         )
-    if not summary.get("operable"):
+    viability = _viability_status(summary)
+    if viability == "insufficient_sample":
+        return (
+            "sample",
+            "A amostra ainda não tem 200 janelas históricas independentes com preço. Isto não é um resultado do scalp. A confiança fica.",
+        )
+    if viability == "indeterminate":
+        return ("barriers", _barrier_evidence_reason(summary))
+    if viability == "not_operable":
         return (
             "not_operable",
-            "Com este alvo e este stop o scalp não se paga. Não mudei parâmetro nenhum.",
+            "As barreiras foram medidas e nenhuma alternativa de alvo ou prazo supera o necessário depois da taxa. Não mudei parâmetro nenhum.",
         )
     return None
+
+
+def _viability_status(summary: dict[str, Any]) -> str:
+    status = summary.get("viability_status")
+    if status in {"viable", "not_operable", "indeterminate", "insufficient_sample"}:
+        return status
+    # Older stored diagnoses only had a boolean. Treat its negative value as
+    # unknown: it may have come from missing or indeterminate barrier data.
+    return "viable" if summary.get("operable") is True else "indeterminate"
+
+
+def _barrier_evidence_reason(summary: dict[str, Any]) -> str:
+    measurement = summary.get("barrier_measurement") or {}
+    candidate_count = int(measurement.get("candidate_count") or 0)
+    indeterminate = int(measurement.get("indeterminate_candidates") or 0)
+    no_hits = int(measurement.get("no_hit_candidates") or 0)
+    in_use = summary.get("geometry_in_use") or {}
+    if indeterminate:
+        detail = (
+            f"as barreiras ficaram sem resolução em {indeterminate} de {candidate_count} "
+            "alternativas de alvo e prazo"
+        )
+    elif no_hits:
+        detail = (
+            f"em {no_hits} de {candidate_count} alternativas de alvo e prazo, nenhuma janela "
+            "tocou o alvo ou o stop"
+        )
+    elif int(in_use.get("n_indeterminate") or 0):
+        detail = (
+            f"as barreiras atuais ficaram sem resolução em {int(in_use['n_indeterminate'])} "
+            "janelas históricas"
+        )
+    elif not int(in_use.get("n_target") or 0) + int(in_use.get("n_stop") or 0):
+        detail = "não houve alvo nem stop medidos em janelas históricas comparáveis"
+    else:
+        detail = "a medição das barreiras e dos prazos candidatos não ficou completa"
+    return (
+        f"{detail}; ainda não dá para afirmar que o scalp não se paga. "
+        "A confiança fica e nenhum parâmetro é promovido."
+    )
+
+
+def _has_incomplete_barrier_evidence(summary: dict[str, Any]) -> bool:
+    measurement = summary.get("barrier_measurement") or {}
+    in_use = summary.get("geometry_in_use") or {}
+    return bool(
+        int(measurement.get("indeterminate_candidates") or 0)
+        or int(measurement.get("no_hit_candidates") or 0)
+        or int(in_use.get("n_indeterminate") or 0)
+        or not (int(in_use.get("n_target") or 0) + int(in_use.get("n_stop") or 0))
+    )
 
 
 def _confidence_phrase(policies: dict[str, Any], version: Optional[ScalpConfidenceVersion]) -> str:
@@ -497,14 +561,18 @@ def _sample_is_comparable(summary: dict[str, Any], block_kind: Optional[str] = N
         "unverified",
         "cost",
         "benchmark",
+        "regime_boundary",
+        "barriers",
+        "sample",
         "not_operable",
         "posterior",
     } and (
         measurement.get("status") == "medido"
         and homogeneity.get("status") == "homogénea"
         and summary.get("fee_source") == "account"
+        and summary.get("regime_boundary_bp") is not None
         and bool(benchmark.get("computable"))
-        and summary.get("operable") is True
+        and _viability_status(summary) == "viable"
     )
 
 
@@ -522,6 +590,10 @@ def _data_quality_phrase(
     period_label = _format_period(period)
     period_part = f" entre {period_label}" if period_label else ""
     quality: list[str] = []
+    if summary.get("regime_boundary_bp") is None:
+        quality.append(
+            "a fronteira entre mercado calmo e agitado está ausente; os dois regimes continuam bloqueados"
+        )
     if block_kind == "stale":
         quality.append("os preços guardados estavam atrasados para o fim da janela")
     if measurement.get("status") == "não medido":
@@ -536,8 +608,17 @@ def _data_quality_phrase(
     benchmark = (summary.get("benchmark") or {}).get("overall") or {}
     if not benchmark.get("computable"):
         quality.append("não foi possível comparar o sinal com uma escolha aleatória")
-    if summary.get("operable") is False:
-        quality.append("com este alvo e stop o scalp não se paga")
+    viability = _viability_status(summary)
+    if viability == "not_operable":
+        quality.append(
+            "as barreiras foram medidas e nenhuma alternativa supera o necessário depois da taxa"
+        )
+    elif viability == "indeterminate":
+        quality.append(_barrier_evidence_reason(summary).rstrip("."))
+    elif viability == "insufficient_sample":
+        quality.append("a amostra ainda não é suficiente para avaliar a viabilidade")
+        if _has_incomplete_barrier_evidence(summary):
+            quality.append(_barrier_evidence_reason(summary).rstrip("."))
     if block_kind == "posterior":
         count = 0 if posterior_n is None else posterior_n
         noun = "janela passou" if count == 1 else "janelas passaram"
@@ -583,8 +664,19 @@ def _sample_phrase(
         reasons.append("o sinal não pôde ser comparado com uma escolha aleatória")
     if block_kind == "stale":
         reasons.append("os preços estavam atrasados")
-    if block_kind == "not_operable" or summary.get("operable") is False:
-        reasons.append("o alvo e o stop atuais não se pagam")
+    if summary.get("regime_boundary_bp") is None:
+        reasons.append("a fronteira entre mercado calmo e agitado está ausente")
+    viability = _viability_status(summary)
+    if viability == "not_operable":
+        reasons.append(
+            "as barreiras foram medidas e nenhuma alternativa supera o necessário depois da taxa"
+        )
+    elif viability == "indeterminate":
+        reasons.append(_barrier_evidence_reason(summary).rstrip("."))
+    elif viability == "insufficient_sample":
+        reasons.append("a amostra ainda não é suficiente para avaliar a viabilidade")
+        if _has_incomplete_barrier_evidence(summary):
+            reasons.append(_barrier_evidence_reason(summary).rstrip("."))
     reason = "; ".join(dict.fromkeys(reasons)) or "os filtros da comparação não passaram"
     if posterior_n < POSTERIOR_MIN:
         passed = "passou" if posterior_n == 1 else "passaram"
@@ -613,11 +705,30 @@ def _target_stop_phrase(summary: dict[str, Any]) -> str:
     with_n = _em_100(with_cost)
     without_n = _em_100(without)
     hit_n = _em_100(hit)
+    n_time_exit = int(in_use.get("n_time_exit") or 0)
+    n_indeterminate = int(in_use.get("n_indeterminate") or 0)
+    n_unknown = int(in_use.get("n_unknown") or 0)
     hit_bit = (
-        f" O preço chegou no alvo em cerca de {hit_n} em 100 das vezes em que bateu num dos lados."
+        f" O alvo foi atingido em cerca de {hit_n} em 100 das janelas em que o preço chegou ao alvo ou stop."
         if hit_n is not None
         else ""
     )
+    if _viability_status(summary) in {"indeterminate", "insufficient_sample"}:
+        observations = f" No alvo e stop atuais: {n_target} alvos, {n_stop} stops e {n_time_exit} saídas pelo prazo."
+        if n_indeterminate:
+            observations += f" Em {n_indeterminate} janelas históricas as barreiras não tiveram resolução suficiente."
+        if n_unknown:
+            observations += f" Em {n_unknown} janelas faltou uma direção reconhecida."
+        if hit_n is None and not n_indeterminate and not n_unknown:
+            observations += " Nenhuma barreira foi atingida, então não há acerto comparável."
+        if _viability_status(summary) == "insufficient_sample":
+            observations += " A amostra ainda é curta para concluir se a estratégia se paga."
+        else:
+            observations += " Ainda não dá para concluir se a estratégia se paga."
+        return (
+            f"Com a taxa, o alvo precisaria ser atingido em cerca de {with_n} de cada 100 janelas; "
+            f"sem a taxa, em cerca de {without_n}.{hit_bit}{observations}"
+        )
     return (
         f"para não perder com a taxa, teria de acertar cerca de {with_n} em 100. "
         f"Sem a taxa, cerca de {without_n} em 100.{hit_bit}"
@@ -688,6 +799,11 @@ def build_panel(
         "until": "só as janelas que já tinham terminado à meia-noite UTC",
         "period": _format_period(period),
         "confidence_now": _confidence_phrase(policies, version),
+        "regime_boundary_bp": summary.get("regime_boundary_bp"),
+        "regime_boundary_status": summary.get("regime_boundary_status")
+        or ("configured" if summary.get("regime_boundary_bp") is not None else "absent"),
+        "viability_status": _viability_status(summary),
+        "barrier_measurement": summary.get("barrier_measurement"),
         "decision": _decision_label(verb),
         "verb": verb,
         "sample": _sample_phrase(
@@ -891,6 +1007,8 @@ def run_closed_day_diagnosis(
         return existing
     ruler = _load_ruler()
     if summary is None:
+        from app.services.scalp_service import _regime_boundary_bp
+
         fee_bp, fee_source = _account_maker_fee(db)
         log_path = log_file_path()
         if not log_path.exists():
@@ -914,6 +1032,7 @@ def run_closed_day_diagnosis(
             ohlcv_read=ohlcv_read,
             fee_bp=fee_bp,
             fee_source=fee_source,
+            regime_boundary_bp=_regime_boundary_bp(),
             rng_seed=seed_for_day(closed),
             until=until,
         )
@@ -1260,6 +1379,12 @@ def status_fields(db: Session) -> dict[str, Any]:
             else None
         )
         panel["period"] = _format_period(period)
+        panel["regime_boundary_bp"] = summary.get("regime_boundary_bp")
+        panel["regime_boundary_status"] = summary.get("regime_boundary_status") or (
+            "configured" if summary.get("regime_boundary_bp") is not None else "absent"
+        )
+        panel["viability_status"] = _viability_status(summary)
+        panel["barrier_measurement"] = summary.get("barrier_measurement")
         priced_total = int(
             (
                 (summary.get("measurement") or {}).get(
@@ -1274,6 +1399,7 @@ def status_fields(db: Session) -> dict[str, Any]:
         eligible_total = int((summary.get("eligible_population") or {}).get("n") or 0)
         posterior_n = min(posterior_n, eligible_total)
         panel["data_ok"] = _data_quality_phrase(summary, period, latest.block_kind, posterior_n)
+        panel["target_stop"] = _target_stop_phrase(summary)
         panel["sample"] = _sample_phrase(
             posterior_n,
             posterior_n >= POSTERIOR_MIN and _sample_is_comparable(summary, latest.block_kind),
