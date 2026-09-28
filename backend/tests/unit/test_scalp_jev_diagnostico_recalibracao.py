@@ -180,6 +180,64 @@ def test_posterior_below_200_does_not_change_confidence(diag_db):
     assert policy.kind == CONFIDENCE_POLICY_CLOSED or policy.value != Decimal("0.55")
 
 
+def test_posterior_floor_counts_only_priced_windows_that_pass_entry_gates(diag_db):
+    set_calibration_paused(diag_db, paused=False)
+    rows = _rows(200)
+    for index, (decision, _realized) in enumerate(rows):
+        decision.gate_verdicts = {
+            "jev_late": "pass",
+            "hold": "pass",
+            "low_confidence": "pass",
+            "hurdle": "pass" if index == 0 else "fail",
+            "regime": "pass",
+            "toxic_book": "pass",
+        }
+    summary = _summary(n=1)
+    summary["measurement"].update({"n_windows": 200, "n_priced": 200})
+    row = _run(
+        diag_db,
+        rows=rows,
+        summary=summary,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+    )
+    assert row.block_kind == "posterior"
+    assert row.posterior_n == 1
+    assert diag_db.query(ScalpConfidenceVersion).count() == 0
+
+
+def test_missing_price_does_not_count_toward_posterior_floor(diag_db):
+    set_calibration_paused(diag_db, paused=False)
+    rows = _rows(200)
+    rows[0] = (rows[0][0], ruler.Realized(None, None, None, "unknown"))
+    for decision, _realized in rows[1:]:
+        decision.gate_verdicts = {
+            "jev_late": "pass",
+            "hold": "pass",
+            "low_confidence": "pass",
+            "hurdle": "pass",
+            "regime": "pass",
+            "toxic_book": "pass",
+        }
+    summary = _summary(n=199)
+    summary["measurement"].update(
+        {
+            "status": "medição parcial",
+            "n_windows": 200,
+            "n_priced": 199,
+            "windows_without_price_coverage": 1,
+        }
+    )
+    row = _run(
+        diag_db,
+        rows=rows,
+        summary=summary,
+        now=datetime(2026, 9, 27, 0, 20, 0),
+    )
+    assert row.block_kind == "coverage"
+    assert row.posterior_n == 199
+    assert diag_db.query(ScalpConfidenceVersion).count() == 0
+
+
 def test_still_negative_improvement_is_applied_without_step_band(diag_db):
     set_calibration_paused(diag_db, paused=False)
     now = datetime(2026, 9, 12, 0, 20, 0)
@@ -242,6 +300,99 @@ def test_still_negative_improvement_is_applied_without_step_band(diag_db):
     assert policy.kind == CONFIDENCE_POLICY_NUMERIC
     assert policy.value == Decimal("0.5")
     assert len(posterior_rows) == POSTERIOR_MIN
+
+
+def test_automatic_reverts_advance_the_reused_fingerprint_cutoff(diag_db, monkeypatch):
+    set_calibration_paused(diag_db, paused=False)
+    previous_policies = {
+        "calm": {"kind": "numeric", "value": "0.55"},
+        "active": {"kind": "closed", "value": None},
+    }
+    current_policies = {
+        "calm": {"kind": "numeric", "value": "0.60"},
+        "active": {"kind": "closed", "value": None},
+    }
+    previous = ScalpConfidenceVersion(
+        id=str(uuid.uuid4()),
+        version_n=12,
+        fingerprint=fingerprint_of(previous_policies),
+        policies_json=json.dumps(previous_policies),
+        previous_id=None,
+        applied_at=datetime(2026, 9, 20),
+        applied_for_day=date(2026, 9, 19),
+        reason="previous",
+        source="automatic",
+        active=False,
+        choice_until=datetime(2026, 9, 20),
+        validated_until=datetime(2026, 9, 21),
+        created_at=datetime(2026, 9, 20),
+    )
+    current = ScalpConfidenceVersion(
+        id=str(uuid.uuid4()),
+        version_n=13,
+        fingerprint=fingerprint_of(current_policies),
+        policies_json=json.dumps(current_policies),
+        previous_id=previous.id,
+        applied_at=datetime(2026, 9, 24),
+        applied_for_day=date(2026, 9, 23),
+        reason="current",
+        source="automatic",
+        active=True,
+        choice_until=datetime(2026, 9, 22),
+        validated_until=datetime(2026, 9, 22),
+        created_at=datetime(2026, 9, 24),
+    )
+    diag_db.add_all([previous, current])
+    diag_db.commit()
+
+    def net_for(_rows, policies, **_kwargs):
+        return Decimal("-2") if policies["calm"]["value"] == "0.55" else Decimal("-5")
+
+    monkeypatch.setattr(calibration, "_policy_net_bp", net_for)
+    first_rows = _rows(POSTERIOR_MIN)
+    first_summary = _summary(n=POSTERIOR_MIN)
+    first_summary["measurement"].update({"n_windows": POSTERIOR_MIN, "n_priced": POSTERIOR_MIN})
+    first = _run(
+        diag_db,
+        rows=first_rows,
+        summary=first_summary,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+        closed=date(2026, 9, 25),
+    )
+    assert first.verb == VERB_REVERT
+    diag_db.refresh(previous)
+    first_cutoff = first_rows[-1][0].at
+    assert previous.validated_until == first_cutoff
+    assert calibration._split_posterior(first_rows, previous)[1] == []
+
+    calibration._activate_version(
+        diag_db,
+        policies=current_policies,
+        closed=date(2026, 9, 26),
+        reason="newly accepted again",
+        source="automatic",
+        previous=previous,
+        choice_until=first_cutoff,
+        validated_until=first_cutoff,
+        fingerprint=current.fingerprint,
+        now=datetime(2026, 9, 27, 0, 20, 0),
+        reuse=current,
+    )
+    second_rows = _rows(POSTERIOR_MIN, start=POSTERIOR_MIN * 900)
+    second_summary = _summary(n=POSTERIOR_MIN)
+    second_summary["measurement"].update({"n_windows": POSTERIOR_MIN, "n_priced": POSTERIOR_MIN})
+    second = _run(
+        diag_db,
+        rows=second_rows,
+        summary=second_summary,
+        now=datetime(2026, 9, 28, 0, 20, 0),
+        closed=date(2026, 9, 27),
+    )
+    assert second.verb == VERB_REVERT
+    diag_db.refresh(previous)
+    assert previous.validated_until == second_rows[-1][0].at
+    assert previous.validated_until > first_cutoff
+    assert calibration._split_posterior(first_rows + second_rows, previous)[1] == []
 
 
 def test_paused_calibration_still_writes_diagnosis_and_does_not_apply(diag_db):
@@ -346,6 +497,7 @@ def test_status_shows_version_previous_new_and_reason(diag_db):
 
 def test_manual_revert_does_not_wait_for_200_and_suppresses_same_day(diag_db):
     now = datetime(2026, 9, 20, 12, 0, 0)
+    cutoff = datetime(2026, 9, 19, 12, 0, 0)
     previous = ScalpConfidenceVersion(
         id=str(uuid.uuid4()),
         version_n=12,
@@ -357,6 +509,8 @@ def test_manual_revert_does_not_wait_for_200_and_suppresses_same_day(diag_db):
         reason="old",
         source="automatic",
         active=False,
+        choice_until=cutoff - timedelta(days=3),
+        validated_until=cutoff - timedelta(days=2),
         created_at=datetime(2026, 9, 12, 0, 20, 0),
     )
     current = ScalpConfidenceVersion(
@@ -370,6 +524,8 @@ def test_manual_revert_does_not_wait_for_200_and_suppresses_same_day(diag_db):
         reason="new",
         source="automatic",
         active=True,
+        choice_until=cutoff - timedelta(days=1),
+        validated_until=cutoff,
         created_at=datetime(2026, 9, 19, 0, 20, 0),
     )
     diag_db.add_all([previous, current])
@@ -377,11 +533,98 @@ def test_manual_revert_does_not_wait_for_200_and_suppresses_same_day(diag_db):
     restored = revert_to_previous(diag_db, now=now)
     assert restored is not None
     assert restored.version_n == 12
+    assert restored.choice_until == cutoff
+    assert restored.validated_until == cutoff
+    probe = [
+        (ruler.Decision(call_id=f"cut-{offset}", at=cutoff + timedelta(seconds=offset)), None)
+        for offset in (-1, 0, 1)
+    ]
+    _choice, fresh = calibration._split_posterior(probe, restored)
+    assert [decision.at for decision, _realized in fresh] == [cutoff + timedelta(seconds=1)]
     policy = _confidence_policy_for(regime=REGIME_CALM, boundary_bp=Decimal("0.05"), db=diag_db)
     assert policy.value == Decimal("0.55")
     state = get_calibration_state(diag_db)
     assert state.suppressed_fingerprint == "b" * 64
     assert state.suppressed_day == now.date()
+
+
+def test_status_projects_corrected_history_and_active_reverted_policy_without_writing(
+    diag_db, monkeypatch
+):
+    monkeypatch.setenv("SCALP_REGIME_BOUNDARY_BP", "0.05")
+    monkeypatch.delenv("SCALP_CONFIDENCE_MIN_CALM", raising=False)
+    monkeypatch.delenv("SCALP_CONFIDENCE_MIN_ACTIVE", raising=False)
+    now = datetime(2026, 9, 28, 12, 0, 0)
+    set_calibration_paused(diag_db, paused=False)
+    previous = ScalpConfidenceVersion(
+        id=str(uuid.uuid4()),
+        version_n=12,
+        fingerprint="c" * 64,
+        policies_json='{"calm": {"kind": "numeric", "value": "0.55"}, "active": {"kind": "closed", "value": null}}',
+        previous_id=None,
+        applied_at=datetime(2026, 9, 12, 0, 20, 0),
+        applied_for_day=date(2026, 9, 11),
+        reason="old",
+        source="automatic",
+        active=False,
+        created_at=datetime(2026, 9, 12, 0, 20, 0),
+    )
+    current = ScalpConfidenceVersion(
+        id=str(uuid.uuid4()),
+        version_n=13,
+        fingerprint="d" * 64,
+        policies_json='{"calm": {"kind": "numeric", "value": "0.60"}, "active": {"kind": "closed", "value": null}}',
+        previous_id=previous.id,
+        applied_at=datetime(2026, 9, 19, 0, 20, 0),
+        applied_for_day=date(2026, 9, 18),
+        reason="new",
+        source="automatic",
+        active=True,
+        created_at=datetime(2026, 9, 19, 0, 20, 0),
+    )
+    summary = _summary(homo="não verificada", n=1, operable=False)
+    summary["measurement"].update({"n_windows": 300, "n_priced": 267})
+    summary["homogeneity"].update(
+        {"models": ["unknown"], "origins": ["unknown"], "affected_windows": 1}
+    )
+    panel = {"data_ok": "servem", "sample": "200 operações", "confidence_now": "Versão 13"}
+    diagnosis = ScalpJevDiagnosis(
+        closed_day=date(2026, 9, 27),
+        run_at=now,
+        period_start=datetime(2026, 9, 23, 13, 26, 57),
+        period_end=datetime(2026, 9, 27, 21, 47, 46),
+        measurement_status="medido",
+        verb=VERB_BLOCK,
+        reason="amostra não verificada",
+        operator_reason="amostra não verificada",
+        blocked=True,
+        block_kind="unverified",
+        posterior_n=200,
+        operable=False,
+        fingerprint="e" * 64,
+        panel_json=json.dumps(panel),
+        summary_json=json.dumps(summary),
+        created_at=now,
+    )
+    diag_db.add_all([previous, current, diagnosis])
+    diag_db.commit()
+    original_panel = diagnosis.panel_json
+
+    restored = revert_to_previous(diag_db, now=now)
+    assert restored is not None and restored.version_n == 12
+    projection = status_fields(diag_db)["jev_diagnosis"]
+    assert "Versão 12" in projection["confidence_now"]
+    assert "55%" in projection["confidence_now"]
+    assert "modelo não foi identificado" in projection["data_ok"]
+    assert "1 de 1 janelas elegíveis" in projection["data_ok"]
+    assert "não trades executados" in projection["data_ok"].lower()
+    assert projection["period"] == "23 setembro 2026 13:26 a 27 setembro 2026 21:47 UTC"
+    assert "1 janela histórica independente com preço" in projection["sample"]
+    assert "200 operações" not in projection["sample"]
+    assert "processamento dos diagnósticos" in projection["calibration_note"]
+    assert "entradas continuam bloqueadas" in projection["calibration_note"]
+    diag_db.refresh(diagnosis)
+    assert diagnosis.panel_json == original_panel
 
 
 def test_open_position_fields_stay_on_status_after_version_change(diag_db):

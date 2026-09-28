@@ -81,11 +81,10 @@ OHLCV_TIMEFRAMES = ("1m", "5m", "15m", "1h")
 HORIZON_S = 900
 TARGET_BP = Decimal("35")
 STOP_BP = Decimal("-28")
-# Taxa maker **por perna** em bp — a mesma unidade de `_fee_terms` (#1025 B).
-# O default é o fallback conservador de `_fee_terms` (10 bp/perna → 20 bp de
-# round-trip). A banda 12–16 bp do #1015 pressupõe o desconto BNB (≈7,5 bp por
-# perna → 15 bp); usa-se `--fee-bp 7.5` nesse caso. Custo e predicado de regime
-# usam sempre `2 × taxa` (nunca uma taxa já somada).
+# Taxa por perna em bp — a mesma unidade de `_fee_terms` (#1025 B). O default
+# é o fallback conservador de 10 bp/perna → 20 bp round-trip. Para relatório de
+# conta, passe a taxa retornada pela consulta de comissão; a régua não aplica
+# fator BNB por conta própria. Custo e gate usam sempre `2 × taxa`.
 DEFAULT_FEE_BP = Decimal("10")
 REGIME_SLACK = Decimal("1.5")
 # Tecto de conclusão (P3): abaixo disto o relatório declara insuficiência.
@@ -596,6 +595,10 @@ def _ensure_backend_on_path() -> None:
     for path in (str(BACKEND), str(ROOT)):
         if path not in sys.path:
             sys.path.insert(0, path)
+    # Import the canonical settings module before reading runtime flags. Its
+    # import loads backend/.env and the repo-root .env with override=False, so
+    # this read-only CLI uses the same regime boundary as the decision path.
+    import app.config  # noqa: F401
 
 
 def _connection_identity() -> OhlcvConnection:
@@ -1866,6 +1869,13 @@ def build_report(
     span = None
     if decisions:
         span = (min(d.at for d in decisions), max(d.at for d in decisions))
+    priced_period = [d for d, realized in realized_windows if realized.signed_bp is not None]
+    period_start = min((d.at for d in priced_period), default=None)
+    period_end = (
+        max(d.at + timedelta(seconds=HORIZON_S) for d in priced_period)
+        if priced_period
+        else None
+    )
     # Card #1030: ``None`` means the single gate was explicitly removed
     # (#1025 C): the value in use is reported as ``off``, never rewritten.
     confidence_in_use_token = "off" if confidence_in_use is None else _fmt(confidence_in_use)
@@ -1876,6 +1886,12 @@ def build_report(
         "malformed_records": malformed,
         "windows_raw": len(decisions),
         "windows_non_overlapping": len(windows),
+        "period": {
+            "start": None if period_start is None else period_start.isoformat(sep=" "),
+            "end": None if period_end is None else period_end.isoformat(sep=" "),
+            "windows": len(windows),
+            "priced_windows": len(priced_period),
+        },
         "min_non_overlapping_windows": MIN_NON_OVERLAPPING_WINDOWS,
         "min_bucket_trades": MIN_BUCKET_TRADES,
         "ohlcv": ohlcv_note,
@@ -2113,6 +2129,13 @@ def build_report(
         lines.append(
             f"- janela do log: {span[0].isoformat(sep=' ')} → {span[1].isoformat(sep=' ')} "
             f"({minutes:.1f} min)"
+        )
+    if period_start is not None and period_end is not None:
+        priced_window_label = "janela" if len(priced_period) == 1 else "janelas"
+        lines.append(
+            f"- período efetivamente medido: {period_start.isoformat(sep=' ')} → "
+            f"{period_end.isoformat(sep=' ')} UTC "
+            f"({len(priced_period)} {priced_window_label} com preço; não são trades executados)"
         )
     lines.append(
         f"- chamadas: {summary['calls_entered']} com janela / {summary['calls_returned']} com retorno"

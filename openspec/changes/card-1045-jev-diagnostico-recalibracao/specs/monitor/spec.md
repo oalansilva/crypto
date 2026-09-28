@@ -2,12 +2,15 @@
 
 ### Requirement: Monitor scalp module shows the Jev diagnosis without a new route
 
-Authenticated `/monitor` SHALL keep hosting the existing Scalp BTCUSDT module. That module SHALL show the last closed-day diagnosis on the first view in beginner-trader phrases: the date, that the data serves this reading, the period, the confidence in force (including its version), the last decision, and the reason. A history of those decisions SHALL be on the same module, in those phrases. The module SHALL offer pause of the automatic adjustment and a way back to the previous version. The first view SHALL NOT require the on-screen labels break-even, homogeneidade or bp. The scalp switch, T, clip, kill, board and Operar SHALL remain. Enabling the automatic adjustment SHALL NOT turn the scalp switch on and SHALL NOT send an order. This card SHALL NOT add a catalog route and SHALL NOT change landing or Ajuda copy. The canonical surface SHALL NOT be a grid of outcome cards.
+Authenticated `/monitor` SHALL keep hosting the existing Scalp BTCUSDT module. That module SHALL show the last closed-day diagnosis on the first view in beginner-trader phrases: the date, the actual measured period, the confidence in force (including its version), the last decision, and the reason the comparison is verified or blocked. It SHALL name missing or mixed model/confidence-origin information and the number of affected eligible windows. It SHALL distinguish historical evaluation windows from executed trades, and SHALL NOT say the data serves the decision when a measurement, homogeneity, fee, benchmark, viability, or posterior gate blocks it. A history of those decisions SHALL be on the same module, in those phrases. The module SHALL show the fee value returned by the API; a BNB setting SHALL NOT be described as a discount already applied to that value. The module SHALL offer pause of the automatic adjustment and a way back to the previous version. The first view SHALL NOT require the on-screen labels break-even, homogeneidade or bp. The scalp switch, T, clip, kill, board and Operar SHALL remain. Enabling the automatic adjustment SHALL NOT turn the scalp switch on and SHALL NOT send an order. This card SHALL NOT add a catalog route and SHALL NOT change landing or Ajuda copy. The canonical surface SHALL NOT be a grid of outcome cards.
 
 #### Scenario: The diagnosis sits on the existing scalp module
 
 - **WHEN** an authenticated user opens `/monitor` after a closed-day diagnosis exists
-- **THEN** the Scalp BTCUSDT module SHALL show, in beginner-trader phrases, the date, that the data serves this reading, the period, the confidence in force, the last decision, the reason, pause, revert and the history
+- **THEN** the Scalp BTCUSDT module SHALL show, in beginner-trader phrases, the date, whether the evidence passed its gates, the actual measured period, the confidence in force, the last decision, the reason, pause, revert and the history
+- **AND** SHALL state the reason and affected-window count when homogeneity is unknown or mixed
+- **AND** SHALL identify evaluation windows as historical data, not executed trades
+- **AND** SHALL show the API-returned fee value without claiming that the BNB discount was already applied
 - **AND** the first view SHALL NOT require the labels break-even, homogeneidade or bp
 - **AND** `table.signals` SHALL still expose Status, Preço, Distância, 7d, Risco até stop, Tags, Operar and Par / Estratégia
 - **AND** the Operar control SHALL still open the existing confirmed MARKET flow

@@ -795,6 +795,15 @@
       "evidence": "pure parser/report cases over a synthetic multi-line log and a constructed candle series; scripts/scalp_jev_eval.py loaded by path"
     },
     {
+      "file": "backend/tests/unit/test_scalp_loop_ownership.py",
+      "protected_behavior": "card #1045 single ownership of the scalp loop between API and runtime worker",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "mocked API startup and environment-controlled API/runtime-worker loop selection assertions"
+    },
+    {
       "file": "backend/tests/unit/test_scalp_maker_fee_hurdle.py",
       "protected_behavior": "card #1025 real maker fee read, per-user cache/fallback and the fee rate in the status",
       "production_reachability": "reachable",

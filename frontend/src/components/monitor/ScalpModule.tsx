@@ -27,6 +27,7 @@ export type ScalpDiagnosis = {
   when?: string
   data_ok?: string
   until?: string
+  period?: string | null
   confidence_now?: string
   decision?: string
   verb?: string
@@ -35,6 +36,7 @@ export type ScalpDiagnosis = {
   signal?: string
   side?: string
   reason?: string
+  calibration_note?: string
   history?: ScalpDiagnosisHistory[]
   can_revert?: boolean
 }
@@ -154,8 +156,8 @@ function formatAge(seconds: number | undefined): string {
 
 function formatFeeBp(status: ScalpStatus): string {
   const n = parseNumber(status.fee_bp)
-  if (status.bnb_fee_active) return '7,5 bp'
-  return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} bp`
+  const rate = `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} bp`
+  return status.bnb_fee_active ? `${rate} (BNB habilitado; desconto não aplicado)` : rate
 }
 
 function formatHurdle(value: string | undefined): string {
@@ -440,8 +442,8 @@ export function ScalpModule() {
             <dd>{diagnosis?.data_ok || '—'}</dd>
           </div>
           <div>
-            <dt>Até quando</dt>
-            <dd>{diagnosis?.until || 'só o que já tinha fechado à meia-noite'}</dd>
+            <dt>Período</dt>
+            <dd>{diagnosis?.period || diagnosis?.until || 'só o que já tinha fechado à meia-noite UTC'}</dd>
           </div>
           <div>
             <dt>Confiança agora</dt>
@@ -477,8 +479,8 @@ export function ScalpModule() {
             'Ainda não há aviso deste dia fechado. A confiança fica. Alvo, stop e o prazo do scalp não mudam.'}
         </p>
         <p className="scalp-note">
-          Ligar o ajuste automático não liga o scalp e não manda ordem. O interruptor acima continua como o deixou. Se
-          já houver uma posição aberta, ela sai como estava.
+          {diagnosis?.calibration_note ||
+            'Ligar o ajuste automático não liga o scalp nem envia ordem. O interruptor acima continua como o deixou. Se já houver uma posição aberta, ela sai como estava.'}
         </p>
         <div className="scalp-actions" aria-label="Comandos do diagnóstico">
           <button

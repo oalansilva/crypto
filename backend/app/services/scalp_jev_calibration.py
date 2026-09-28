@@ -395,12 +395,13 @@ def _quality_block(
     if homo.get("status") != "homogénea":
         return (
             "unverified",
-            "A amostra não está verificada. Isto não é um resultado do scalp. A confiança fica.",
+            f"A comparação foi bloqueada: {_homogeneity_reason(summary)}. "
+            "Isto não é um resultado do scalp. A confiança fica.",
         )
     if summary.get("fee_source") != "account":
         return (
             "cost",
-            "A taxa desta leitura não é a taxa real da conta. Isto não é um resultado do scalp. A confiança fica.",
+            "A taxa desta leitura não veio da consulta de comissão da conta. Isto não é um resultado do scalp. A confiança fica.",
         )
     bench = (summary.get("benchmark") or {}).get("overall") or {}
     if not bench.get("computable"):
@@ -449,15 +450,152 @@ def _decision_label(verb: str) -> str:
     }.get(verb, "não mudei a confiança")
 
 
-def _sample_phrase(posterior_n: int, comparable: bool) -> str:
-    if comparable:
+def _homogeneity_reason(summary: dict[str, Any]) -> str:
+    homo = summary.get("homogeneity") or {}
+    eligible = int((summary.get("eligible_population") or {}).get("n") or 0)
+    affected = int(homo.get("affected_windows", homo.get("excluded_windows", 0)) or 0)
+    if eligible == 0:
+        return "nenhuma janela ficou elegível para conferir o modelo e a origem da confiança"
+    if homo.get("status") == "não homogénea":
         return (
-            f"{posterior_n} operações medidas à parte, e dá para compará-las. "
-            "Para mudar alguma coisa preciso de cerca de 200."
+            f"o modelo ou a origem da confiança varia em {affected} de {eligible} "
+            "janelas elegíveis"
+        )
+    unknown: list[str] = []
+    if any(
+        str(value).strip().lower() in {"", "unknown", "desconhecido", "none"}
+        for value in homo.get("models", [])
+    ):
+        unknown.append("o modelo não foi identificado")
+    if any(
+        str(value).strip().lower() in {"", "unknown", "desconhecido", "none"}
+        for value in homo.get("origins", [])
+    ):
+        unknown.append("a origem da confiança não foi identificada")
+    if not unknown:
+        unknown.append("a identidade da amostra não pôde ser confirmada")
+    return f"{' e '.join(unknown)} em {affected} de {eligible} janelas elegíveis"
+
+
+def _format_period(period: Optional[tuple[datetime, datetime]]) -> Optional[str]:
+    if period is None:
+        return None
+    start, end = period
+    start_label = f"{start.day} {_MONTHS_LONG[start.month - 1]} {start.year} {start:%H:%M}"
+    end_label = f"{end.day} {_MONTHS_LONG[end.month - 1]} {end.year} {end:%H:%M}"
+    return f"{start_label} a {end_label} UTC"
+
+
+def _sample_is_comparable(summary: dict[str, Any], block_kind: Optional[str] = None) -> bool:
+    measurement = summary.get("measurement") or {}
+    homogeneity = summary.get("homogeneity") or {}
+    benchmark = (summary.get("benchmark") or {}).get("overall") or {}
+    return block_kind not in {
+        "measurement",
+        "stale",
+        "coverage",
+        "unverified",
+        "cost",
+        "benchmark",
+        "not_operable",
+        "posterior",
+    } and (
+        measurement.get("status") == "medido"
+        and homogeneity.get("status") == "homogénea"
+        and summary.get("fee_source") == "account"
+        and bool(benchmark.get("computable"))
+        and summary.get("operable") is True
+    )
+
+
+def _data_quality_phrase(
+    summary: dict[str, Any],
+    period: Optional[tuple[datetime, datetime]],
+    block_kind: Optional[str] = None,
+    posterior_n: Optional[int] = None,
+) -> str:
+    measurement = summary.get("measurement") or {}
+    homogeneity = summary.get("homogeneity") or {}
+    stats = summary.get("stats") or {}
+    total = int(measurement.get("n_windows", stats.get("n", 0)) or 0)
+    priced = int(measurement.get("n_priced", stats.get("n_priced", 0)) or 0)
+    period_label = _format_period(period)
+    period_part = f" entre {period_label}" if period_label else ""
+    quality: list[str] = []
+    if block_kind == "stale":
+        quality.append("os preços guardados estavam atrasados para o fim da janela")
+    if measurement.get("status") == "não medido":
+        quality.append("os preços não puderam ser medidos")
+    elif measurement.get("status") == "medição parcial":
+        missing = int(measurement.get("windows_without_price_coverage", 0) or 0)
+        quality.append(f"faltam preços em {missing} janelas")
+    if homogeneity.get("status") != "homogénea":
+        quality.append(f"comparação bloqueada: {_homogeneity_reason(summary)}")
+    if summary.get("fee_source") != "account":
+        quality.append("o custo usa a taxa conservadora, não a taxa consultada da conta")
+    benchmark = (summary.get("benchmark") or {}).get("overall") or {}
+    if not benchmark.get("computable"):
+        quality.append("não foi possível comparar o sinal com uma escolha aleatória")
+    if summary.get("operable") is False:
+        quality.append("com este alvo e stop o scalp não se paga")
+    if block_kind == "posterior":
+        count = 0 if posterior_n is None else posterior_n
+        noun = "janela passou" if count == 1 else "janelas passaram"
+        quality.append(f"só {count} {noun} pelos filtros da posterior")
+    period_text = f"{priced} de {total} janelas históricas têm preço{period_part}"
+    if quality:
+        return (
+            f"{period_text}. "
+            + "; ".join(quality)
+            + ". São janelas históricas avaliadas, não trades executados."
         )
     return (
-        f"{posterior_n} operações, e não dá para compará-las. "
-        "Para mudar alguma coisa preciso de cerca de 200."
+        f"{period_text}. Os filtros desta leitura passaram. São janelas históricas avaliadas, "
+        "não trades executados."
+    )
+
+
+def _sample_phrase(
+    posterior_n: int,
+    comparable: bool,
+    summary: dict[str, Any],
+    block_kind: Optional[str] = None,
+) -> str:
+    noun = (
+        "janela histórica independente com preço"
+        if posterior_n == 1
+        else "janelas históricas independentes com preço"
+    )
+    subject = f"{posterior_n} {noun}"
+    if comparable:
+        return (
+            f"{subject} foram medidas depois da escolha; a comparação está verificada. "
+            "Não são trades executados. Para mudar a confiança são necessárias 200."
+        )
+    reasons: list[str] = []
+    if (summary.get("homogeneity") or {}).get("status") != "homogénea":
+        reasons.append(_homogeneity_reason(summary))
+    if (summary.get("measurement") or {}).get("status") != "medido":
+        reasons.append("a medição não está completa")
+    if summary.get("fee_source") != "account":
+        reasons.append("a taxa da conta não foi confirmada")
+    if not ((summary.get("benchmark") or {}).get("overall") or {}).get("computable"):
+        reasons.append("o sinal não pôde ser comparado com uma escolha aleatória")
+    if block_kind == "stale":
+        reasons.append("os preços estavam atrasados")
+    if block_kind == "not_operable" or summary.get("operable") is False:
+        reasons.append("o alvo e o stop atuais não se pagam")
+    reason = "; ".join(dict.fromkeys(reasons)) or "os filtros da comparação não passaram"
+    if posterior_n < POSTERIOR_MIN:
+        passed = "passou" if posterior_n == 1 else "passaram"
+        return (
+            f"{subject} {passed} pelos filtros depois da escolha; ainda não chegam às 200 necessárias. "
+            f"Motivo: {reason}. "
+            "São janelas avaliadas, não trades executados."
+        )
+    return (
+        f"{subject} foram medidas depois da escolha, mas não podem ser comparadas: {reason}. "
+        "São janelas avaliadas, não trades executados."
     )
 
 
@@ -494,10 +632,12 @@ def _signal_phrase(summary: dict[str, Any]) -> str:
     except Exception:
         value = None
     if value is None:
-        return "não deu para ver se o sinal ganhou algo além de ficar comprado."
+        return (
+            "não deu para comparar o sinal com uma escolha aleatória na mesma proporção de compras."
+        )
     if value <= 0:
-        return "não ganhou nada além de ficar comprado."
-    return "ganhou alguma coisa além de ficar comprado."
+        return "não ganhou da escolha aleatória na mesma proporção de compras."
+    return "ganhou da escolha aleatória na mesma proporção de compras."
 
 
 def _side_phrase(summary: dict[str, Any]) -> str:
@@ -511,11 +651,11 @@ def _side_phrase(summary: dict[str, Any]) -> str:
     if buy_n is None or sig_n is None or hold_n is None:
         return "não deu para ler o lado das operações."
     return (
-        f"{buy_n} em 100 foram compra. Acertar o lado ficou em {sig_n} em 100, "
+        f"Em {buy_n} de 100 janelas o sinal indicou compra. Acertar o lado ficou em {sig_n} em 100, "
         f"igual a comprar e segurar ({hold_n} em 100)."
         if sig_n == hold_n
         else (
-            f"{buy_n} em 100 foram compra. Acertar o lado ficou em {sig_n} em 100; "
+            f"Em {buy_n} de 100 janelas o sinal indicou compra. Acertar o lado ficou em {sig_n} em 100; "
             f"comprar e segurar ficou em {hold_n} em 100."
         )
     )
@@ -532,7 +672,8 @@ def build_panel(
     summary: dict[str, Any],
     policies: dict[str, Any],
     version: Optional[ScalpConfidenceVersion],
-    data_ok: bool,
+    period: Optional[tuple[datetime, datetime]],
+    block_kind: Optional[str] = None,
 ) -> dict[str, Any]:
     lead = (
         f"Um aviso por dia, só depois que o dia fecha. Este é o de {_fmt_long_day(shown_on)}. "
@@ -543,12 +684,18 @@ def build_panel(
         "shown_on": shown_on.isoformat(),
         "lead": lead,
         "when": f"{_fmt_day(shown_on)}, sobre o dia {closed.day} que já fechou",
-        "data_ok": "servem para esta leitura" if data_ok else "não servem para esta leitura",
-        "until": "só o que já tinha fechado à meia-noite",
+        "data_ok": _data_quality_phrase(summary, period, block_kind, posterior_n),
+        "until": "só as janelas que já tinham terminado à meia-noite UTC",
+        "period": _format_period(period),
         "confidence_now": _confidence_phrase(policies, version),
         "decision": _decision_label(verb),
         "verb": verb,
-        "sample": _sample_phrase(posterior_n, comparable),
+        "sample": _sample_phrase(
+            posterior_n,
+            comparable and _sample_is_comparable(summary, block_kind),
+            summary,
+            block_kind,
+        ),
         "target_stop": _target_stop_phrase(summary),
         "signal": _signal_phrase(summary),
         "side": _side_phrase(summary),
@@ -636,8 +783,11 @@ def _activate_version(
         existing.source = source
         if source not in {SOURCE_REVERT_AUTO, SOURCE_REVERT_MANUAL}:
             existing.previous_id = None if previous is None else previous.id
-            existing.choice_until = choice_until
-            existing.validated_until = validated_until
+        # A reverted fingerprint keeps the posterior cutoff that rejected it.
+        # Otherwise reactivating an older row makes already-used windows appear
+        # new to the next automatic validation.
+        existing.choice_until = choice_until
+        existing.validated_until = validated_until
         db.add(existing)
         db.flush()
         return existing
@@ -783,11 +933,26 @@ def run_closed_day_diagnosis(
     current_policies = policies_of(current)
     state = get_calibration_state(db)
     shown_on = stamp.date()
-    period = None
-    if rows:
-        period = (rows[0][0].at, rows[-1][0].at + timedelta(seconds=900))
-
-    choice_rows, posterior_rows = _split_posterior(rows, current)
+    # Only windows with a realized price can be evidence for choosing or
+    # validating confidence. Unpriced/indeterminate windows do not count
+    # toward the independent 200-window posterior floor.
+    measured_rows = [
+        (decision, realized) for decision, realized in rows if realized.signed_bp is not None
+    ]
+    period = (
+        (
+            min(decision.at for decision, _realized in measured_rows),
+            max(decision.at for decision, _realized in measured_rows)
+            + timedelta(seconds=ruler.HORIZON_S),
+        )
+        if measured_rows
+        else None
+    )
+    eligible_rows, _verdict_sources = ruler.eligible_population(measured_rows, fee_bp=fee_bp)
+    # Apply and reversal use only independent priced windows that pass every
+    # non-confidence entry gate. Raw log rows and unpriced windows cannot
+    # inflate the posterior floor.
+    choice_rows, posterior_rows = _split_posterior(eligible_rows, current)
     boundary_raw = summary.get("regime_boundary_bp")
     boundary_bp = Decimal(boundary_raw) if boundary_raw is not None else None
     if choice_rows:
@@ -799,7 +964,6 @@ def run_closed_day_diagnosis(
     declared_fp = fingerprint_of(declared)
     posterior_n = len(posterior_rows)
     comparable = posterior_n >= POSTERIOR_MIN
-    data_ok = (summary.get("measurement") or {}).get("status") in {"medido", "medição parcial"}
     quality = _quality_block(summary, newest_candle=newest_candle, last_window_end=last_window_end)
 
     def _finish(
@@ -823,7 +987,8 @@ def run_closed_day_diagnosis(
             summary=summary,
             policies=used_policies,
             version=applied or current,
-            data_ok=data_ok and block_kind not in {"measurement", "stale", "coverage"},
+            period=period,
+            block_kind=block_kind,
         )
         return _store_diagnosis(
             db,
@@ -862,8 +1027,8 @@ def run_closed_day_diagnosis(
         return _finish(
             verb=VERB_BLOCK,
             reason=(
-                f"Não mudei nada. Ainda só há {posterior_n} operações medidas à parte, "
-                "abaixo de 200, e essa amostra não é comparável. Com este alvo e este stop "
+                f"Não mudei nada. Só há {posterior_n} janelas históricas com preço que passaram pelos filtros, "
+                "abaixo de 200. Com este alvo e este stop "
                 "o scalp não se paga. A confiança fica como está. Alvo, stop e o prazo "
                 "do scalp não mudam."
             ),
@@ -912,14 +1077,32 @@ def run_closed_day_diagnosis(
         posterior_rows, current_policies, fee_bp=fee_bp, boundary_bp=boundary_bp, ruler=ruler
     )
 
+    posterior_policies = (
+        _policies_from_windows(
+            posterior_rows,
+            fee_bp=fee_bp,
+            boundary_bp=boundary_bp,
+            ruler=ruler,
+        )
+        if posterior_rows
+        else current_policies
+    )
     reopen = False
     for regime in (REGIME_CALM, REGIME_ACTIVE):
         was = policy_from_map(current_policies, regime=regime)
         now_kind = declared.get(regime, {}).get("kind")
-        if was.kind == CONFIDENCE_POLICY_CLOSED and now_kind in {
-            CONFIDENCE_POLICY_NUMERIC,
-            CONFIDENCE_POLICY_OFF,
-        }:
+        posterior_kind = posterior_policies.get(regime, {}).get("kind")
+        if (
+            was.kind == CONFIDENCE_POLICY_CLOSED
+            and now_kind
+            in {
+                CONFIDENCE_POLICY_NUMERIC,
+                CONFIDENCE_POLICY_OFF,
+            }
+            and posterior_kind in {CONFIDENCE_POLICY_NUMERIC, CONFIDENCE_POLICY_OFF}
+        ):
+            # An open posterior policy confirms the regime can reopen. OFF may
+            # still have negative net return; positive return is not required.
             reopen = True
 
     improves = declared_net is not None and current_net is not None and declared_net > current_net
@@ -981,7 +1164,11 @@ def run_closed_day_diagnosis(
         db,
         policies=declared,
         closed=closed,
-        reason="A nova perdia menos, já com a taxa.",
+        reason=(
+            "A posterior confirmou que o regime pode voltar a operar; o retorno ainda pode ser negativo."
+            if reopen and not improves
+            else "A nova perdia menos, já com a taxa."
+        ),
         source=SOURCE_AUTOMATIC,
         previous=current,
         choice_until=choice_rows[-1][0].at if choice_rows else None,
@@ -1021,6 +1208,17 @@ def revert_to_previous(
     previous = version_by_id(db, current.previous_id)
     if previous is None:
         return None
+    cutoffs = [
+        value
+        for value in (
+            current.choice_until,
+            current.validated_until,
+            previous.choice_until,
+            previous.validated_until,
+        )
+        if value is not None
+    ]
+    cutoff = max(cutoffs) if cutoffs else None
     restored = _activate_version(
         db,
         policies=policies_of(previous),
@@ -1028,8 +1226,8 @@ def revert_to_previous(
         reason="Reversão manual para a versão anterior registada.",
         source=SOURCE_REVERT_MANUAL,
         previous=current,
-        choice_until=previous.choice_until,
-        validated_until=previous.validated_until,
+        choice_until=cutoff,
+        validated_until=cutoff,
         fingerprint=previous.fingerprint,
         now=stamp,
         reuse=previous,
@@ -1051,6 +1249,57 @@ def status_fields(db: Session) -> dict[str, Any]:
     latest = db.query(ScalpJevDiagnosis).order_by(ScalpJevDiagnosis.closed_day.desc()).first()
     policies = policies_of(version)
     panel = _json_load(latest.panel_json) if latest is not None else None
+    if latest is not None and isinstance(panel, dict):
+        # Keep the closed-day record immutable, while projecting its facts
+        # through the current policy and the corrected trader-facing copy.
+        panel = dict(panel)
+        summary = _json_load(latest.summary_json) or {}
+        period = (
+            (latest.period_start, latest.period_end)
+            if latest.period_start is not None and latest.period_end is not None
+            else None
+        )
+        panel["period"] = _format_period(period)
+        priced_total = int(
+            (
+                (summary.get("measurement") or {}).get(
+                    "n_priced", (summary.get("stats") or {}).get("n_priced", 0)
+                )
+            )
+            or 0
+        )
+        posterior_n = int(latest.posterior_n or 0)
+        if priced_total:
+            posterior_n = min(posterior_n, priced_total)
+        eligible_total = int((summary.get("eligible_population") or {}).get("n") or 0)
+        posterior_n = min(posterior_n, eligible_total)
+        panel["data_ok"] = _data_quality_phrase(summary, period, latest.block_kind, posterior_n)
+        panel["sample"] = _sample_phrase(
+            posterior_n,
+            posterior_n >= POSTERIOR_MIN and _sample_is_comparable(summary, latest.block_kind),
+            summary,
+            latest.block_kind,
+        )
+        panel["confidence_now"] = _confidence_phrase(policies, version)
+        closed_regimes = [
+            "calmo" if regime == REGIME_CALM else "agitado"
+            for regime in (REGIME_CALM, REGIME_ACTIVE)
+            if policy_from_map(policies, regime=regime).kind == CONFIDENCE_POLICY_CLOSED
+        ]
+        if state.paused:
+            panel["calibration_note"] = (
+                "O ajuste automático está pausado. Isso não liga nem desliga o scalp."
+            )
+        elif closed_regimes:
+            panel["calibration_note"] = (
+                "O ajuste automático está ligado ao processamento dos diagnósticos, mas as "
+                f"entradas continuam bloqueadas no regime {' e '.join(closed_regimes)}. "
+                "Isso não liga o scalp nem envia ordens."
+            )
+        else:
+            panel["calibration_note"] = (
+                "O ajuste automático processa diagnósticos e não liga o scalp nem envia ordens."
+            )
     return {
         "calibration_paused": bool(state.paused),
         "calibration_enabled": not bool(state.paused),

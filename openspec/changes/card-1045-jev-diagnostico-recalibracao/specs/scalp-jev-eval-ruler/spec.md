@@ -6,6 +6,8 @@ The Farol SHALL provide `scripts/scalp_jev_eval.py`, a **read-only** evaluation 
 
 The matched-bias benchmark SHALL compare the signal with (a) buy-and-hold of the same asset and (b) a random rule with the same directional bias (the same BUY fraction), using the same round-trip cost on all three. Predictive contribution SHALL be the signal's mean net return minus the random rule's mean net return, in bp, reported per confidence band, per regime and per horizon. Buy-and-hold SHALL be reported beside that contribution and SHALL NOT be substituted for it. The random draw SHALL be reproducible from a seed recorded in the report.
 
+When `--regime-boundary-bp` is absent, the ruler SHALL read `SCALP_REGIME_BOUNDARY_BP` from the same runtime configuration consumed by the entry decision. An explicit CLI value SHALL be passed into the report; when it differs from the environment, the ruler SHALL warn that the decision uses the environment value. The summary and report SHALL include the actual period containing windows with realized prices, the number of priced windows, and SHALL identify these as historical evaluation windows rather than executed trades.
+
 For the geometry in use the report SHALL show, side by side, the break-even win rate with cost and without cost, and the realized hit split by target, stop and time exit. Break-even without cost SHALL be `|stop| / (|target| + |stop|)`. Break-even with cost SHALL be `(2 × fee per leg + |stop|) / (|target| + |stop|)`. The report SHALL propose an alternative geometry (target, stop or horizon) whose break-even with cost is **below** the realized hit, or SHALL declare that none can. Candidate horizons SHALL be 15 min, 1 h, 4 h and 24 h, measured with the finest OHLCV timeframe already stored that fits inside the horizon. A 15 min horizon that cannot resolve a barrier SHALL be reported as barrier indeterminate, not as a hit rate of zero. No geometry SHALL be adopted without the report. When no candidate geometry or horizon beats its break-even, the report SHALL declare the strategy **não operável** and SHALL NOT adopt any parameter. This instrument SHALL NOT write target, stop, horizon or size.
 
 #### Scenario: Multi-day report is produced from the diagnostic log
@@ -61,3 +63,9 @@ For the geometry in use the report SHALL show, side by side, the break-even win 
 - **WHEN** the ruler runs
 - **THEN** it SHALL NOT write to product tables, to the trading path, to the scalp state, to an applied confidence version or to any database
 - **AND** it SHALL NOT require the scalp loop to be running
+
+#### Scenario: The report uses the configured regime boundary
+
+- **WHEN** the CLI boundary is omitted and `SCALP_REGIME_BOUNDARY_BP` is configured
+- **THEN** the same value SHALL be used to segment the report passed to `build_report`
+- **AND** both regimes SHALL remain closed when that boundary is absent or invalid
