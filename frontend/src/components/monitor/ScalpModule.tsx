@@ -12,6 +12,33 @@ export type ScalpPosition = {
   stop_bp?: string
 }
 
+export type ScalpDiagnosisHistory = {
+  date?: string
+  label?: string
+  verb?: string
+  text?: string
+  decision?: string
+}
+
+export type ScalpDiagnosis = {
+  closed_day?: string
+  shown_on?: string
+  lead?: string
+  when?: string
+  data_ok?: string
+  until?: string
+  confidence_now?: string
+  decision?: string
+  verb?: string
+  sample?: string
+  target_stop?: string
+  signal?: string
+  side?: string
+  reason?: string
+  history?: ScalpDiagnosisHistory[]
+  can_revert?: boolean
+}
+
 export type ScalpStatus = {
   symbol?: string
   state?: ScalpPanelState
@@ -39,6 +66,15 @@ export type ScalpStatus = {
   last_trade_bp?: string | null
   last_trade_quote?: string | null
   stuck?: boolean
+  calibration_paused?: boolean
+  calibration_enabled?: boolean
+  confidence_version?: {
+    version_n?: number
+    previous?: { version_n?: number } | null
+    current?: Record<string, { kind?: string; value?: string | null }>
+    reason?: string
+  } | null
+  jev_diagnosis?: ScalpDiagnosis | null
 }
 
 const DEFAULT_STATUS: ScalpStatus = {
@@ -60,6 +96,9 @@ const DEFAULT_STATUS: ScalpStatus = {
   exit_target_bp: '35',
   exit_stop_bp: '-28',
   stuck: false,
+  calibration_paused: true,
+  calibration_enabled: false,
+  jev_diagnosis: null,
 }
 
 function parseNumber(value: string | undefined): number {
@@ -163,6 +202,44 @@ export function ScalpModule() {
   const lastUsd = parseNumber(status.last_trade_quote ?? undefined)
   const lastBpClass = lastBp < 0 ? 'neg' : lastBp > 0 ? 'pos' : ''
   const lastUsdClass = lastUsd < 0 ? 'neg' : lastUsd > 0 ? 'pos' : ''
+  const diagnosis = status.jev_diagnosis || null
+  const calibrationOn = status.calibration_paused === false || status.calibration_enabled === true
+  const canRevert = Boolean(diagnosis?.can_revert || status.confidence_version?.previous)
+  const history = diagnosis?.history || []
+
+  const postJson = async (path: string, body?: unknown) => {
+    const res = await authFetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+    const payload = (await res.json().catch(() => null)) as ScalpStatus | { detail?: string } | null
+    if (res.ok && payload && typeof payload === 'object' && 'state' in payload) {
+      setStatus({ ...DEFAULT_STATUS, ...(payload as ScalpStatus) })
+    } else {
+      await load()
+    }
+  }
+
+  const setCalibration = async (paused: boolean) => {
+    if (pending) return
+    setPending(true)
+    try {
+      await postJson('/scalp/calibration', { paused })
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const revertVersion = async () => {
+    if (pending) return
+    setPending(true)
+    try {
+      await postJson('/scalp/revert')
+    } finally {
+      setPending(false)
+    }
+  }
 
   const toggle = async () => {
     if (disabled) return
@@ -325,6 +402,133 @@ export function ScalpModule() {
           P&amp;L e perda por trade tão visíveis quanto o ganho.
         </p>
       )}
+      <section
+        className="scalp-diagnosis"
+        id="scalp-diagnosis"
+        data-testid="scalp-diagnosis"
+        data-outcome={diagnosis?.verb || 'bloquear'}
+        aria-labelledby="scalp-diagnosis-title"
+      >
+        <div className="scalp-diagnosis-head">
+          <h3 id="scalp-diagnosis-title">Como está o scalp</h3>
+          <button
+            className="scalp-switch"
+            id="scalp-calibration"
+            type="button"
+            role="switch"
+            aria-checked={calibrationOn}
+            aria-label="Ajuste automático"
+            data-testid="scalp-calibration"
+            disabled={pending}
+            onClick={() => {
+              void setCalibration(calibrationOn)
+            }}
+          >
+            {calibrationOn ? 'Ligada' : 'Pausada'}
+          </button>
+        </div>
+        <p className="scalp-diagnosis-lead">
+          {diagnosis?.lead || 'Um aviso por dia, só depois que o dia fecha. Ainda não há aviso deste dia fechado.'}
+        </p>
+        <dl className="scalp-diagnosis-facts">
+          <div>
+            <dt>Quando</dt>
+            <dd>{diagnosis?.when || '—'}</dd>
+          </div>
+          <div>
+            <dt>Dados</dt>
+            <dd>{diagnosis?.data_ok || '—'}</dd>
+          </div>
+          <div>
+            <dt>Até quando</dt>
+            <dd>{diagnosis?.until || 'só o que já tinha fechado à meia-noite'}</dd>
+          </div>
+          <div>
+            <dt>Confiança agora</dt>
+            <dd>{diagnosis?.confidence_now || '—'}</dd>
+          </div>
+          <div>
+            <dt>Última decisão</dt>
+            <dd>
+              <span className="scalp-verb" data-verb={diagnosis?.verb || 'bloquear'}>
+                {diagnosis?.decision || 'não mudei a confiança'}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>Amostra</dt>
+            <dd>{diagnosis?.sample || '—'}</dd>
+          </div>
+          <div>
+            <dt>Alvo e stop</dt>
+            <dd>{diagnosis?.target_stop || 'alvo +35 e stop −28. O prazo do scalp não muda.'}</dd>
+          </div>
+          <div>
+            <dt>O sinal</dt>
+            <dd>{diagnosis?.signal || '—'}</dd>
+          </div>
+          <div>
+            <dt>O lado</dt>
+            <dd>{diagnosis?.side || '—'}</dd>
+          </div>
+        </dl>
+        <p className="scalp-diagnosis-reason" id="scalp-diagnosis-reason" data-testid="scalp-diagnosis-reason">
+          {diagnosis?.reason ||
+            'Ainda não há aviso deste dia fechado. A confiança fica. Alvo, stop e o prazo do scalp não mudam.'}
+        </p>
+        <p className="scalp-note">
+          Ligar o ajuste automático não liga o scalp e não manda ordem. O interruptor acima continua como o deixou. Se
+          já houver uma posição aberta, ela sai como estava.
+        </p>
+        <div className="scalp-actions" aria-label="Comandos do diagnóstico">
+          <button
+            type="button"
+            data-testid="scalp-calibration-pause"
+            disabled={pending || !calibrationOn}
+            onClick={() => {
+              void setCalibration(true)
+            }}
+          >
+            Pausar ajuste automático
+          </button>
+          <button
+            type="button"
+            data-testid="scalp-revert"
+            disabled={pending || !canRevert}
+            onClick={() => {
+              void revertVersion()
+            }}
+          >
+            Voltar à versão anterior
+          </button>
+        </div>
+        <h4 id="scalp-history-title">Histórico</h4>
+        <ol className="scalp-diagnosis-history" aria-labelledby="scalp-history-title">
+          {history.length === 0 ? (
+            <li>
+              <span>Ainda não há histórico deste scalp.</span>
+            </li>
+          ) : (
+            history.map((item, index) => (
+              <li key={`${item.date || 'h'}-${index}`}>
+                <time dateTime={item.date}>{item.label || item.date}</time>
+                <span>
+                  <span className="scalp-verb" data-verb={item.verb || 'bloquear'}>
+                    {item.verb === 'aplicar'
+                      ? 'Apliquei.'
+                      : item.verb === 'reverter'
+                        ? 'Voltei atrás.'
+                        : item.verb === 'manter'
+                          ? 'Mantive.'
+                          : 'Não mudei.'}
+                  </span>{' '}
+                  {item.text}
+                </span>
+              </li>
+            ))
+          )}
+        </ol>
+      </section>
     </section>
   )
 }

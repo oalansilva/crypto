@@ -768,6 +768,15 @@
       "evidence": "scalp_db uses postgres_isolation/unit_database_url; pure band/decide_cycle cases reuse the JEV fixtures; reply cases fake urlopen and the tail-truncating diagnostic log; the A/B script is loaded by path and asserted read-only against the diagnostic log"
     },
     {
+      "file": "backend/tests/unit/test_scalp_jev_diagnostico_recalibracao.py",
+      "protected_behavior": "card #1045 closed-day daily diagnosis, homogeneity, posterior and the consumed confidence version",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "diag_db uses postgres_isolation/unit_database_url; diagnosis/apply/pause/revert cases exercise scalp_jev_calibration; fee/ruler cases fake build_report and load_candles"
+    },
+    {
       "file": "backend/tests/unit/test_scalp_jev_entry_verdicts.py",
       "protected_behavior": "card #1028 entry-gate verdicts (every reply-fed gate in one record), confidence origin, answered model version, toxicity band label and the 1.5 s late refusal",
       "production_reachability": "reachable",

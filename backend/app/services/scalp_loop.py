@@ -12,6 +12,7 @@ from app.database import SessionLocal
 from app.services.runtime_status import env_flag_enabled
 from app.services.scalp_engine import JEV_FLOOR_MS
 from app.services.scalp_btcusdt_stream import ensure_scalp_btcusdt_stream, stop_scalp_btcusdt_stream
+from app.services.scalp_jev_calibration import maybe_run_daily
 from app.services.scalp_jev_log import install_diagnostic_log
 from app.services.scalp_service import list_enabled_user_ids, tick_user
 
@@ -87,6 +88,10 @@ async def scalp_loop(stop_event: asyncio.Event | None = None) -> None:
             break
         db = SessionLocal()
         try:
+            try:
+                maybe_run_daily(db)
+            except Exception:
+                logger.exception("scalp closed-day diagnosis failed")
             user_ids = list_enabled_user_ids(db)
             if user_ids:
                 await ensure_scalp_btcusdt_stream()

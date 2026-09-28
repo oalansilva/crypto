@@ -174,7 +174,10 @@ def market_regime_for(vol_bp: Optional[Decimal], boundary_bp: Optional[Decimal])
 
 
 def _confidence_policy_for(
-    *, regime: MarketRegime, boundary_bp: Optional[Decimal]
+    *,
+    regime: MarketRegime,
+    boundary_bp: Optional[Decimal],
+    db: Optional[Session] = None,
 ) -> ConfidencePolicy:
     """Policy of a regime's configuration; any doubt falls to ``closed``.
 
@@ -183,7 +186,16 @@ def _confidence_policy_for(
     forecast × cost × regime); ``closed`` does not operate. An absent,
     non-finite or out-of-range value — and an absent boundary, which leaves the
     regime unnamed — falls back to ``closed`` (fail closed).
+
+    Card #1045: when an applied version exists it is the value in use. Without
+    one, the env of #1030 remains, still fail-closed on an invalid value.
     """
+    if db is not None:
+        from app.services.scalp_jev_calibration import active_version, policy_from_map, policies_of
+
+        version = active_version(db)
+        if version is not None:
+            return policy_from_map(policies_of(version), regime=regime)
     if boundary_bp is None or regime not in CONFIDENCE_POLICY_ENV:
         return ConfidencePolicy(kind=CONFIDENCE_POLICY_CLOSED, value=None, regime=regime)
     raw = (os.getenv(CONFIDENCE_POLICY_ENV[regime]) or "").strip()
@@ -1264,7 +1276,9 @@ def _run_cycle(
         # value in use (#1025) is preserved and reported, never applied here.
         boundary_bp = _regime_boundary_bp()
         market_regime = market_regime_for(_payload_vol_bp(jev_body), boundary_bp)
-        confidence_policy = _confidence_policy_for(regime=market_regime, boundary_bp=boundary_bp)
+        confidence_policy = _confidence_policy_for(
+            regime=market_regime, boundary_bp=boundary_bp, db=db
+        )
 
         enabled_now, killed_now = _live_switch_flags(db, str(user_id))
         state.enabled = enabled_now
@@ -1562,6 +1576,21 @@ def list_enabled_user_ids(db: Session) -> list[str]:
     return [str(row[0]) for row in rows]
 
 
+def _diagnosis_status_fields(db: Session) -> dict[str, Any]:
+    try:
+        from app.services.scalp_jev_calibration import status_fields
+
+        return status_fields(db)
+    except Exception:
+        logger.exception("scalp diagnosis status failed")
+        return {
+            "calibration_paused": True,
+            "calibration_enabled": False,
+            "confidence_version": None,
+            "jev_diagnosis": None,
+        }
+
+
 def status_payload(
     db: Session,
     user_id: str,
@@ -1720,4 +1749,5 @@ def status_payload(
             str(state.last_trade_quote) if state and state.last_trade_quote is not None else None
         ),
         "stuck": stuck,
+        **_diagnosis_status_fields(db),
     }
