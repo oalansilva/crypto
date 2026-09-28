@@ -37,20 +37,30 @@ The complete critique report SHALL be written under `.impeccable/critique/` and 
 - **AND** MUST follow `design.md` short sections, specs, tasks, and the prototype file when UI-affected
 
 ### Requirement: Critics inherit model, not transcript
-Assessment A, Assessment B SHALL use the `juizo.slug` from `.cursor/model-map.yaml`, the same juízo model as Design-autor. `diff-reviewer` and `code-reviewer` SHALL use the `execucao.slug` from that file. They SHALL receive a self-contained prompt. They MUST NOT inherit the parent Design/Apply/Review transcript. They MUST NOT inherit the parent chat picker. Isolated critics MAY write only `.impeccable/critique/**`. They MUST NOT edit `design.md`, prototype HTML, or product code. Their return to the parent MUST be bullets, disposition, verdict, and snapshot path. For Code Review, the parent SHALL attach the materialized interval (`review_diff_path:` and optional `## Diff` bytes) to the versioned agent file; the reviewer prompt MUST NOT instruct the child to fetch that interval with git or by listing transcripts.
+On Cursor, Assessment A and Assessment B SHALL use the `juizo.slug` from `.cursor/model-map.yaml`, the same juízo model as Design-autor, and `diff-reviewer` and `code-reviewer` SHALL use the `execucao.slug` from that file. On Grok Build, Assessment A and Assessment B SHALL use `juizo.grok.slug` (`grok-4.7`), the same juízo model as the Grok Design-autor, and `diff-reviewer` and `code-reviewer` SHALL use `execucao.grok.slug` (`grok-4.6`). They SHALL receive a self-contained prompt. They MUST NOT inherit the parent Design/Apply/Review transcript. They MUST NOT inherit the parent chat picker. The Grok spawn MUST NOT omit `model`. Isolated critics MAY write only `.impeccable/critique/**`. They MUST NOT edit `design.md`, prototype HTML, or product code. Their return to the parent MUST be bullets, disposition, verdict, and snapshot path. For Code Review, the parent SHALL attach the materialized interval (`review_diff_path:` and optional `## Diff` bytes) to the versioned agent file; the reviewer prompt MUST NOT instruct the child to fetch that interval with git or by listing transcripts.
 
 #### Scenario: Dual critic without parent chat
-- **WHEN** Design spawns Assessment A and Assessment B
+- **WHEN** Design spawns Assessment A and Assessment B on Cursor
 - **THEN** each child uses the `juizo.slug` from `.cursor/model-map.yaml`
 - **AND** the spawn prompt does not include the parent transcript
 - **AND** the child's user-visible return is bullets plus snapshot path, not the full rubric dump
 
 #### Scenario: Reviewers without Design/Apply transcript
-- **WHEN** Code Review spawns `diff-reviewer` or `code-reviewer`
+- **WHEN** Code Review spawns `diff-reviewer` or `code-reviewer` on Cursor
 - **THEN** the prompt is the versioned agent file plus the parent-materialized interval
 - **AND** the Task `model` is the `execucao.slug` from `.cursor/model-map.yaml`
 - **AND** it MUST NOT include the Design or Apply chat
 - **AND** it MUST NOT ask the child to run git or list transcripts
+
+#### Scenario: Grok critics use juizo.grok
+- **WHEN** Grok Build spawns Assessment A or Assessment B
+- **THEN** `model` is `juizo.grok.slug` (`grok-4.7`)
+- **AND** the spawn does not include the parent transcript and does not inherit the picker
+
+#### Scenario: Grok reviewers use execucao.grok
+- **WHEN** Grok Build spawns `diff-reviewer` or `code-reviewer`
+- **THEN** `model` is `execucao.grok.slug` (`grok-4.6`)
+- **AND** `model` is not omitted
 
 ### Requirement: Parent emits the review wave as two Tasks in one turn
 When Code Review starts, the parent session's emitted tool call set for that turn SHALL include both `diff-reviewer` and `code-reviewer` Tasks. The parent MUST NOT emit the second reviewer only after destape or completion of the first. Operator-facing emission MAY note that host queueing is allowed and does not fail the card. Destape remains an order/poke (#879); its followup MUST NOT be emitted as permission to skip the pair or to birth the missing reviewer. This SHALL NOT add a state, event, hook, or `enabled_tools` change to `.cursor/process-fsm.yaml`.

@@ -39,7 +39,7 @@ No relatório de **`/kaizen release`**, além dos achados habituais, incluir (re
 
 - **sessões de grelha por card** — count de filhos/spawns cujo título ou descrição contém needle `grill-card`; comentário exacto `card nítido; sem grill` no card conta como **0** sessões de grelha nesse card;
 - **Em Refinamento vs Design** — count grelha vs count `design-autor` + `design-critic` + `Assessment A`/`Assessment B` na mesma janela/cards analisados.
-- **proxy modelo** — nas linhas `proxy modelo: <papel> → <rótulo> (<slug>)` dos handoffs Design/Apply/Review, comparar cada slug às faixas `juizo` / `execucao` em `.cursor/model-map.yaml` (não à skill `covenant-flow`); proxy em falta num card que spawnou filhos = achado.
+- **proxy modelo** — nas linhas `proxy modelo: <papel> → <rótulo> (<slug>)` dos handoffs Design/Apply/Review, comparar o proxy do Cursor às faixas de topo `juizo` / `execucao` em `.cursor/model-map.yaml` e o do Grok a `juizo.grok` / `execucao.grok` (não à skill `covenant-flow`); um revisor Grok em `grok-4.6` MUST NOT ser achado por diferir de `composer-2.5`; proxy em falta num card que spawnou filhos = achado.
 
 MUST NOT parser de usage Cursor/Grok; MUST NOT dashboard; MUST NOT valores em dinheiro. Alvo de melhoria contínua (não assert de CI): média ≤ **1,5** sessões de grelha por card nos próximos 10 cards que saem de Em Refinamento.
 
