@@ -27,7 +27,7 @@ from app.services.scalp_engine import (
     is_bot_client_order_id,
 )
 
-ACCOUNT_PATH = "/api/v3/account"
+COMMISSION_PATH = "/api/v3/account/commission"
 BNB_BURN_PATH = "/sapi/v1/bnbBurn"
 _BP_PER_RATE = Decimal("10000")
 
@@ -38,26 +38,81 @@ def fetch_maker_fee_bp(
     api_secret: str,
     base_url: Optional[str] = None,
 ) -> Decimal:
-    """Real maker commission of the account, in basis points **per leg**.
+    """Conservative maker commission per leg, in basis points.
 
-    ``commissionRates.maker`` already reflects the account's effective rate
-    (VIP tier and BNB discount when active).
+    Binance exposes separate standard, tax, and special commissions, plus
+    buyer/seller components, on the symbol commission endpoint. Use the larger
+    of BUY and SELL rates and do not subtract a BNB discount: the API only says
+    whether the account/symbol is enabled, not whether the account has enough
+    BNB for the fill. This keeps the hurdle conservative and avoids applying
+    the discount twice.
     """
-    payload = signed_request(
-        method="GET",
-        path=ACCOUNT_PATH,
+    return fetch_maker_fee_terms(
         api_key=api_key,
         api_secret=api_secret,
         base_url=base_url,
+    )[0]
+
+
+def fetch_maker_fee_terms(
+    *,
+    api_key: str,
+    api_secret: str,
+    base_url: Optional[str] = None,
+) -> tuple[Decimal, bool]:
+    """Return the conservative rate and whether BNB discount is configured."""
+    payload = signed_request(
+        method="GET",
+        path=COMMISSION_PATH,
+        api_key=api_key,
+        api_secret=api_secret,
+        params={"symbol": SYMBOL},
+        base_url=base_url,
     )
-    rates = payload.get("commissionRates") if isinstance(payload, dict) else None
-    maker = (rates or {}).get("maker") if isinstance(rates, dict) else None
-    if maker is None:
-        raise BinanceOrderError("commissionRates.maker ausente")
-    fee_bp = Decimal(str(maker)) * _BP_PER_RATE
+    if not isinstance(payload, dict) or payload.get("symbol") != SYMBOL:
+        raise BinanceOrderError("taxas da conta ausentes para BTCUSDT")
+
+    components = [
+        payload.get("standardCommission"),
+        payload.get("taxCommission"),
+        payload.get("specialCommission"),
+    ]
+    if not isinstance(components[0], dict):
+        raise BinanceOrderError("standardCommission.maker ausente")
+
+    side_rates: dict[str, Decimal] = {"BUY": Decimal("0"), "SELL": Decimal("0")}
+    for component in components:
+        if component is None:
+            continue
+        if not isinstance(component, dict):
+            raise BinanceOrderError("componente de taxa inválido")
+        maker = _commission_rate(component.get("maker"), field="maker")
+        buyer = _commission_rate(component.get("buyer", "0"), field="buyer")
+        seller = _commission_rate(component.get("seller", "0"), field="seller")
+        side_rates["BUY"] += maker + buyer
+        side_rates["SELL"] += maker + seller
+
+    fee_bp = max(side_rates.values()) * _BP_PER_RATE
     if fee_bp <= 0:
-        raise BinanceOrderError("commissionRates.maker inválido")
-    return fee_bp
+        raise BinanceOrderError("taxa maker inválida")
+    discount = payload.get("discount")
+    discount_enabled = bool(
+        isinstance(discount, dict)
+        and discount.get("enabledForAccount")
+        and discount.get("enabledForSymbol")
+        and discount.get("discountAsset") == "BNB"
+    )
+    return fee_bp, discount_enabled
+
+
+def _commission_rate(value: Any, *, field: str) -> Decimal:
+    try:
+        rate = Decimal(str(value))
+    except Exception as exc:
+        raise BinanceOrderError(f"taxa {field} inválida") from exc
+    if not rate.is_finite() or rate < 0:
+        raise BinanceOrderError(f"taxa {field} inválida")
+    return rate
 
 
 def fetch_spot_bnb_burn(
@@ -66,7 +121,10 @@ def fetch_spot_bnb_burn(
     api_secret: str,
     base_url: Optional[str] = None,
 ) -> bool:
-    """Whether the account pays Spot fees with BNB (``spotBNBBurn``)."""
+    """Whether Spot BNB-fee payment is enabled in the account settings.
+
+    This setting alone does not prove that a particular fill can pay in BNB.
+    """
     payload = signed_request(
         method="GET",
         path=BNB_BURN_PATH,

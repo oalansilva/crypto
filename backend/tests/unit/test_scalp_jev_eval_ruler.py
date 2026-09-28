@@ -648,6 +648,33 @@ def test_the_report_records_the_fee_source_and_the_value_in_use():
     assert "valor em uso preservado" in report
 
 
+def test_report_period_counts_only_windows_with_realized_prices(tmp_path):
+    decisions, _all_series = _windows(2, confidence="0.35", realized_bp=40)
+    series = _covering_series(decisions[0].at)
+    read = ruler.OhlcvRead(
+        ruler.MEASUREMENT_MEASURED,
+        "OHLCV BTC/USDT 1m",
+        ruler.OhlcvConnection(user="u", host="h", port="5432", dbname="d", source="DATABASE_URL"),
+    )
+    report, summary = ruler.build_report(
+        log_path=tmp_path / "diag.log",
+        decisions=decisions,
+        refusals={},
+        malformed=0,
+        series=series,
+        ohlcv_note=read.reason,
+        ohlcv_read=read,
+        fee_bp=Decimal("10"),
+        regime_boundary_bp=Decimal("0.05"),
+    )
+    assert summary["measurement"]["status"] == ruler.MEASUREMENT_PARTIAL
+    assert summary["period"]["windows"] == 2
+    assert summary["period"]["priced_windows"] == 1
+    assert summary["period"]["start"] == decisions[0].at.isoformat(sep=" ")
+    assert summary["period"]["end"] == (decisions[0].at + timedelta(seconds=900)).isoformat(sep=" ")
+    assert "(1 janela com preço; não são trades executados)" in report
+
+
 def test_the_value_in_use_reads_the_product_default_and_the_off_token(monkeypatch):
     monkeypatch.delenv("SCALP_CONFIDENCE_MIN", raising=False)
     assert ruler._confidence_in_use(None) == ruler.DEFAULT_CONFIDENCE_IN_USE
@@ -680,6 +707,15 @@ def test_main_accepts_the_boundary_and_the_fee_source(tmp_path, capsys):
     out = capsys.readouterr().out
     assert '"fee_source": "account"' in out
     assert '"regime_boundary_bp": "0.05"' in out
+
+
+def test_main_passes_the_runtime_boundary_to_the_report(tmp_path, monkeypatch, capsys):
+    log = tmp_path / "diag.log"
+    log.write_text("", encoding="utf-8")
+    monkeypatch.setenv(ruler.REGIME_BOUNDARY_ENV, "0.07")
+    code = ruler.main(["--log", str(log), "--json"])
+    assert code == 0
+    assert '"regime_boundary_bp": "0.07"' in capsys.readouterr().out
 
 
 def test_the_boundary_flag_falls_back_to_the_configured_env(monkeypatch):

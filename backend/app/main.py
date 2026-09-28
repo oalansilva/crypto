@@ -69,7 +69,7 @@ from app.services.runtime_status import (
     should_start_ohlcv_ingestion,
 )
 from app.services.scalp_btcusdt_stream import stop_scalp_btcusdt_stream
-from app.services.scalp_loop import start_scalp_loop, stop_scalp_loop
+from app.services.scalp_loop import api_scalp_loop_enabled, start_scalp_loop, stop_scalp_loop
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -138,10 +138,15 @@ async def _start_noncritical_services() -> None:
     else:
         logger.info("OHLCV backfill scheduler disabled by runtime flags")
 
-    try:
-        await start_scalp_loop()
-    except Exception:
-        logger.exception("Failed to start scalp BTCUSDT loop")
+    if api_scalp_loop_enabled():
+        try:
+            await start_scalp_loop()
+        except Exception:
+            logger.exception("Failed to start scalp BTCUSDT loop")
+    else:
+        logger.info(
+            "Scalp loop skipped in API; SCALP_API_LOOP_ENABLED=0 leaves ownership to the worker"
+        )
 
 
 @asynccontextmanager

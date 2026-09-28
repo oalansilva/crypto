@@ -19,11 +19,11 @@ The system SHALL run the read-only Jev ruler once for each closed UTC calendar d
 
 ### Requirement: Quality gates block promotion without pretending the sample lost money
 
-Before any confidence change the apply step SHALL consume the #1043 measurement state and the homogeneity, cost, benchmark and viability gates. A read failure, stale data (the newest stored candle is older than the last window end), inadequate coverage, an unverified sample, a cost that is not the known real per-leg fee, or a benchmark that cannot be computed SHALL block promotion. The reason SHALL be explicit and SHALL NOT be presented as negative performance. When no candidate geometry or horizon beats its break-even, the diagnosis SHALL say não operável and SHALL NOT adopt any parameter. With fewer than 200 independent operations measured apart from the sample that chose the adjustment, the diagnosis SHALL still appear and the confidence policy SHALL stay unchanged. Those independent operations SHALL be non-overlapping windows, not every Jev tick. The count of 300 SHALL NOT be an additional gate above 200.
+Before any confidence change the apply step SHALL consume the #1043 measurement state and the homogeneity, cost, benchmark and viability gates. A read failure, stale data (the newest stored candle is older than the last window end), inadequate coverage, an unverified sample, a cost that is not the account rate returned by the commission query, or a benchmark that cannot be computed SHALL block promotion. The account rate used for the hurdle SHALL be conservative across maker BUY/SELL and standard, tax and special commission components; it SHALL NOT subtract the BNB factor unless sufficient BNB for the fee is confirmed. The reason SHALL be explicit and SHALL NOT be presented as negative performance. When no candidate geometry or horizon beats its break-even, the diagnosis SHALL say não operável and SHALL NOT adopt any parameter. The posterior SHALL contain at least 200 independent, non-overlapping windows with realized prices that pass every non-confidence entry gate, measured apart from the sample that chose the adjustment. Missing, indeterminate, or ineligible windows SHALL NOT count toward 200. These are historical evaluation windows, not trades executed by the scalp. The diagnosis SHALL show the actual evaluated period and distinguish its windows from executed trades. The count of 300 SHALL NOT be an additional gate above 200.
 
 #### Scenario: A short posterior sample does not move confidence
 
-- **WHEN** the posterior independent operations number fewer than 200
+- **WHEN** fewer than 200 independent posterior windows with realized prices pass the non-confidence entry gates
 - **THEN** the diagnosis SHALL appear with the date and the reason
 - **AND** the consumed confidence policy SHALL stay unchanged
 
@@ -42,11 +42,11 @@ Before any confidence change the apply step SHALL consume the #1043 measurement 
 
 ### Requirement: Validated apply writes only the declared confidence outcome
 
-The apply step SHALL be separate from the read-only ruler. On the first version it SHALL automatically apply only the per-regime confidence policy already defined for #1030: the numeric value the evaluation declares, the filter turned off, the regime stopped, or the regime reopened to the declared numeric-or-off outcome. It SHALL NOT clamp that value by an up or down step. It SHALL NOT change target, stop, horizon or size. For a change between policies that can be compared on the posterior sample, it SHALL swap only when the declared policy loses less than the current one on later data that was not used to choose it, after cost, even if the net result is still negative. If it does not lose less, the current policy SHALL stay and the reason SHALL be shown. Reopening a stopped regime SHALL NOT be required to beat zero: it SHALL apply when the posterior sample of at least 200 independent operations confirms the regime is no longer closed and the declared outcome is the numeric value or the turned-off filter. If that posterior sample still closes the regime, the regime SHALL stay stopped and the reason SHALL be shown. The minimum interval in this design SHALL allow another confidence change on the next closed day when the new posterior sample excludes both the windows that chose the current version and the windows that validated it. It SHALL NOT change confidence twice on the same closed day. There SHALL NOT be a multi-day quarantine unless approval rejects this assumption.
+The apply step SHALL be separate from the read-only ruler. On the first version it SHALL automatically apply only the per-regime confidence policy already defined for #1030: the numeric value the evaluation declares, the filter turned off, the regime stopped, or the regime reopened to the declared numeric-or-off outcome. It SHALL NOT clamp that value by an up or down step. It SHALL NOT change target, stop, horizon or size. For a change between policies that can be compared on the posterior sample, it SHALL swap only when the declared policy loses less than the current one on later data that was not used to choose it, after cost, even if the net result is still negative. If it does not lose less, the current policy SHALL stay and the reason SHALL be shown. Reopening a stopped regime SHALL NOT be required to beat zero: it SHALL apply only when at least 200 independent priced posterior windows pass every non-confidence entry gate, the posterior analysis declares the regime non-closed, and the chosen outcome is numeric or filter-off. A negative return SHALL NOT by itself keep a confirmed regime closed. If that posterior sample still closes the regime, the regime SHALL stay stopped and the reason SHALL be shown. The minimum interval in this design SHALL allow another confidence change on the next closed day when the new posterior sample excludes both the windows that chose the current version and the windows that validated it. It SHALL NOT change confidence twice on the same closed day. There SHALL NOT be a multi-day quarantine unless approval rejects this assumption.
 
 #### Scenario: A still-negative improvement is applied
 
-- **WHEN** calibration is enabled and the posterior sample has at least 200 independent operations not used to choose the adjustment
+- **WHEN** calibration is enabled and the posterior sample has at least 200 independent priced windows that pass the non-confidence entry gates and were not used to choose the adjustment
 - **AND** the declared policy's net result after cost is greater than the current policy's, while both are negative
 - **THEN** the system SHALL apply that declared outcome with no step band
 - **AND** SHALL NOT change target, stop, horizon or size
@@ -60,8 +60,14 @@ The apply step SHALL be separate from the read-only ruler. On the first version 
 #### Scenario: Reopen does not have to beat zero
 
 - **WHEN** the evaluation declares that a stopped regime reopens to a numeric value or a turned-off filter
-- **AND** the posterior sample of at least 200 independent operations confirms the regime is no longer closed
+- **AND** the posterior sample of at least 200 independent priced windows that pass the non-confidence entry gates confirms the regime is no longer closed
 - **THEN** the system SHALL apply that declared outcome even if the net result is still negative
+
+#### Scenario: Missing prices do not count toward the posterior floor
+
+- **WHEN** 200 raw non-overlapping windows include one or more windows without a realized price or that fail a non-confidence entry gate
+- **THEN** those windows SHALL NOT count toward the minimum of 200
+- **AND** the confidence policy SHALL stay unchanged until 200 priced, eligible posterior windows are available
 
 #### Scenario: The same closed day does not change confidence twice
 
@@ -70,7 +76,7 @@ The apply step SHALL be separate from the read-only ruler. On the first version 
 
 ### Requirement: The applied version is what the next entry consumes
 
-The system SHALL record the previous value, the new value, the evidence, the reason and the applied version. The version shown to the operator SHALL be the version the scalper consumes. As soon as the swap is accepted, the next entry SHALL use the new confidence. A position that was already open SHALL exit as it was, without retargeting from the new confidence. The operator SHALL NOT have to turn the scalp switch off. Repeating an execution SHALL NOT apply the same adjustment twice. Automatic reversal, under the design assumption, SHALL on a later closed day restore the immediately previous version when a fresh sample of at least 200 independent operations, not used to validate the swap, shows that the applied version loses more after cost than that previous version. It SHALL NOT invent a third number, SHALL NOT revert on the same day as the apply, and SHALL NOT revert because the measurement failed.
+The system SHALL record the previous value, the new value, the evidence, the reason and the applied version. The version shown to the operator SHALL be the active version and policy the scalper consumes on its next entry, including after a manual revert. As soon as the swap is accepted, the next entry SHALL use the new confidence. A position that was already open SHALL exit as it was, without retargeting from the new confidence. The operator SHALL NOT have to turn the scalp switch off. Repeating an execution SHALL NOT apply the same adjustment twice. Automatic reversal, under the design assumption, SHALL on a later closed day restore the immediately previous version when a fresh sample of at least 200 independent priced windows that pass the non-confidence entry gates, not used to validate the swap, shows that the applied version loses more after cost than that previous version. The restored fingerprint SHALL retain the inclusive validation cutoff that rejected it, so those windows cannot be reused in a later validation. A manual revert SHALL also advance the restored fingerprint's cutoff through evidence already used by the version being reverted. The system SHALL NOT invent a third number, SHALL NOT revert on the same day as the apply, and SHALL NOT revert because the measurement failed.
 
 #### Scenario: The next entry uses the new confidence
 
@@ -81,11 +87,17 @@ The system SHALL record the previous value, the new value, the evidence, the rea
 
 #### Scenario: Automatic revert restores the previous version
 
-- **WHEN** a later closed day has a fresh sample of at least 200 independent operations that did not validate the swap
+- **WHEN** a later closed day has a fresh sample of at least 200 independent priced windows that pass the non-confidence entry gates and did not validate the swap
 - **AND** the applied version's net result after cost is worse than the immediately previous version on that sample
 - **THEN** the system SHALL restore that previous version
 - **AND** SHALL record the reason as reverter
 - **AND** SHALL NOT invent a new confidence number
+
+#### Scenario: Reversal does not reuse validation windows
+
+- **WHEN** an automatic or manual revert reactivates a previously registered fingerprint
+- **THEN** the restored version SHALL persist the latest inclusive validation cutoff already used
+- **AND** a later posterior SHALL contain only priced windows after that cutoff
 
 #### Scenario: A measurement failure does not revert
 
@@ -95,7 +107,7 @@ The system SHALL record the previous value, the new value, the evidence, the rea
 
 ### Requirement: The operator can pause calibration and revert from the system
 
-Automatic calibration SHALL start paused. The operator SHALL be able to enable and pause it from the scalp module. While paused, the daily diagnosis SHALL still run and SHALL NOT apply. Enabling calibration SHALL NOT turn the scalper on and SHALL NOT send an order by itself. A diagnosis failure SHALL NOT weaken the existing switch, kill or other gates. The operator SHALL be able to revert to a previous registered version without waiting for 200 independent operations. That manual revert SHALL take effect on the next entry, SHALL NOT retarget an open position, and SHALL NOT turn the switch off. The same day's automatic run SHALL NOT reapply the fingerprint the operator just reverted.
+Automatic calibration SHALL start paused. The operator SHALL be able to enable and pause it from the scalp module. While paused, the daily diagnosis SHALL still run and SHALL NOT apply. Enabling calibration SHALL NOT turn the scalper on and SHALL NOT send an order by itself. A diagnosis failure SHALL NOT weaken the existing switch, kill or other gates. The operator SHALL be able to revert to a previous registered version without waiting for 200 independent posterior windows. That manual revert SHALL take effect on the next entry, SHALL NOT retarget an open position, and SHALL NOT turn the switch off. The same day's automatic run SHALL NOT reapply the fingerprint the operator just reverted.
 
 #### Scenario: Paused calibration still shows the diagnosis
 

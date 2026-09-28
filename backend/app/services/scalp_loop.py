@@ -26,6 +26,11 @@ def scalp_loop_enabled() -> bool:
     return env_flag_enabled("SCALP_LOOP_ENABLED", "1")
 
 
+def api_scalp_loop_enabled() -> bool:
+    """Keep the API loop as a default fallback; a dedicated worker can own DEV."""
+    return env_flag_enabled("SCALP_API_LOOP_ENABLED", "1")
+
+
 def _lock_path() -> Path:
     return Path(os.getenv("CRYPTO_SCALP_LOOP_LOCK_FILE", "/tmp/crypto-scalp-loop.lock"))
 

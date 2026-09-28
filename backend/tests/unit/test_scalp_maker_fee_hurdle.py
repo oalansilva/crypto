@@ -28,7 +28,11 @@ from test_scalp_direcional_jev import FakeExchange, _add_key, _seed_stream_for_j
 
 
 @pytest.fixture(autouse=True)
-def _scalp_stream_memory():
+def _scalp_stream_memory(tmp_path, monkeypatch):
+    monkeypatch.setenv(
+        "CRYPTO_SCALP_BTCUSDT_SNAPSHOT_PATH",
+        str(tmp_path / "scalp-btcusdt-snapshot.json"),
+    )
     _seed_stream_for_jev()
     yield
     from app.services.scalp_btcusdt_stream import get_scalp_btcusdt_memory
@@ -147,20 +151,34 @@ def test_fee_cache_expires_after_the_ttl(monkeypatch):
     assert calls["n"] == 2
 
 
-def test_live_fee_terms_read_the_signed_account_and_bnb_burn(monkeypatch):
-    paths: list[str] = []
+def test_live_fee_terms_use_symbol_commission_and_do_not_apply_bnb_discount_twice(monkeypatch):
+    calls: list[tuple[str, dict | None]] = []
 
     def fake_signed_request(*, method, path, api_key, api_secret, params=None, base_url=None):
-        paths.append(path)
-        if path == scalp_binance.ACCOUNT_PATH:
-            return {"commissionRates": {"maker": "0.00075000", "taker": "0.00100000"}}
+        calls.append((path, params))
+        if path == scalp_binance.COMMISSION_PATH:
+            return {
+                "symbol": "BTCUSDT",
+                "standardCommission": {"maker": "0.00070000", "buyer": "0.00005000", "seller": "0.00005000"},
+                "taxCommission": {"maker": "0.00010000", "buyer": "0.00005000", "seller": "0.00005000"},
+                "specialCommission": {"maker": "0.00005000", "buyer": "0.00005000", "seller": "0.00005000"},
+                "discount": {
+                    "enabledForAccount": True,
+                    "enabledForSymbol": True,
+                    "discountAsset": "BNB",
+                    "discount": "0.25000000",
+                },
+            }
         if path == scalp_binance.BNB_BURN_PATH:
             return {"spotBNBBurn": True}
         raise AssertionError(f"unexpected path {path}")
 
     monkeypatch.setattr(scalp_binance, "signed_request", fake_signed_request)
-    assert _live_fee_terms("key", "secret") == (Decimal("7.5"), True)
-    assert paths == [scalp_binance.ACCOUNT_PATH, scalp_binance.BNB_BURN_PATH]
+    assert _live_fee_terms("key", "secret") == (Decimal("10.00000000"), True)
+    assert calls == [
+        (scalp_binance.COMMISSION_PATH, {"symbol": "BTCUSDT"}),
+        (scalp_binance.BNB_BURN_PATH, None),
+    ]
 
 
 def test_live_fee_terms_failure_is_the_conservative_fallback(monkeypatch):
@@ -181,7 +199,7 @@ def test_live_fee_terms_failure_is_the_conservative_fallback(monkeypatch):
 class _FeeExchange(FakeExchange):
     """Fake port that serves the signed fee reads without touching the network."""
 
-    def __init__(self, fee_bp: Decimal = Decimal("7.5"), bnb_fee_active: bool = True) -> None:
+    def __init__(self, fee_bp: Decimal = Decimal("10"), bnb_fee_active: bool = True) -> None:
         super().__init__()
         self.fee_bp = fee_bp
         self.bnb_fee_active = bnb_fee_active
@@ -206,10 +224,10 @@ def test_status_shows_the_fee_rate_in_use(scalp_db, monkeypatch):
 
     payload = status_payload(scalp_db, user_id)
     spread_bp = (Decimal("65010") - Decimal("65000")) / Decimal("65005") * Decimal("10000")
-    assert payload["fee_bp"] == "7.5"
+    assert payload["fee_bp"] == "10"
     assert payload["bnb_fee_active"] is True
-    assert Decimal(payload["hurdle_bp"]) == entry_hurdle_bp(Decimal("7.5"), spread_bp)
-    assert "com taxa 7,5 bp (BNB)" in payload["status_text"]
+    assert Decimal(payload["hurdle_bp"]) == entry_hurdle_bp(Decimal("10"), spread_bp)
+    assert "taxa considerada 10 bp (BNB habilitado; desconto não aplicado)" in payload["status_text"]
     assert payload["state"] == "on"
 
     # The status serves the rate already in use from the cache: no new signed read.

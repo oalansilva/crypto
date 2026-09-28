@@ -518,12 +518,15 @@ def invalidate_fee_cache(user_id: str) -> None:
 
 
 def _live_fee_terms(api_key: str, api_secret: str) -> tuple[Decimal, bool]:
-    """Real maker rate per leg + BNB-burn state, through the signed client."""
-    from app.services.scalp_binance import fetch_maker_fee_bp, fetch_spot_bnb_burn
+    """Conservative account maker rate + configured BNB discount, via signed reads."""
+    from app.services.scalp_binance import fetch_maker_fee_terms, fetch_spot_bnb_burn
 
+    fee_bp, discount_enabled = fetch_maker_fee_terms(
+        api_key=api_key, api_secret=api_secret
+    )
     return (
-        fetch_maker_fee_bp(api_key=api_key, api_secret=api_secret),
-        fetch_spot_bnb_burn(api_key=api_key, api_secret=api_secret),
+        fee_bp,
+        discount_enabled and fetch_spot_bnb_burn(api_key=api_key, api_secret=api_secret),
     )
 
 
@@ -533,7 +536,7 @@ def _fee_terms(
     cred: Optional[UserExchangeCredential] = None,
     fetcher: Optional[Callable[[str, str], tuple[Decimal, bool]]] = None,
 ) -> tuple[Decimal, bool]:
-    """Maker fee per leg and BNB-burn state, cached per user.
+    """Account fee considered per leg and BNB discount setting, cached per user.
 
     Any failure of the signed reads (transport, timeout, bad payload) falls
     back to the conservative ``(10 bp, False)``: failing to the more expensive
@@ -1711,9 +1714,9 @@ def status_payload(
     if visual == "on" and key_ok and book_available:
         status_text = (
             f"Ligado: pergunta ao Jev com o toque fresco. Lookback últimos 15 min. "
-            f"Hurdle {hurdle_bp.quantize(Decimal('0.1'))} bp com taxa "
+            f"Hurdle {hurdle_bp.quantize(Decimal('0.1'))} bp com taxa considerada "
             f"{_fee_bp_label(fee_bp)} bp"
-            f"{' (BNB)' if bnb_fee_active else ''}. "
+            f"{' (BNB habilitado; desconto não aplicado)' if bnb_fee_active else ''}. "
             f"Alvo {_bp_label(EXIT_TARGET_BP)} bp. Stop {_bp_label(EXIT_STOP_BP)} bp depois do fill. "
             "Operar continua ao lado."
         )

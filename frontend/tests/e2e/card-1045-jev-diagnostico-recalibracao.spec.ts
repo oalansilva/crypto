@@ -34,29 +34,34 @@ const BTC_OPPORTUNITY = {
 
 function diagnosisBody() {
   return {
-    closed_day: '2026-09-25',
-    shown_on: '2026-09-26',
-    lead: 'Um aviso por dia, só depois que o dia fecha. Este é o de 26 de setembro de 2026. Hoje não há outro.',
-    when: '26 set 2026, sobre o dia 25 que já fechou',
-    data_ok: 'servem para esta leitura',
-    until: 'só o que já tinha fechado à meia-noite',
-    confidence_now: 'mercado calmo só entra acima de 55%. Mercado agitado não entra. Versão 12.',
+    closed_day: '2026-09-27',
+    shown_on: '2026-09-28',
+    lead: 'Um aviso por dia, só depois que o dia fecha. Este é o de 28 de setembro de 2026. Hoje não há outro.',
+    when: '28 set 2026, sobre o dia 27 que já fechou',
+    data_ok:
+      '267 de 300 janelas históricas têm preço entre 23 setembro 2026 13:26 a 27 setembro 2026 21:47 UTC. Comparação bloqueada: o modelo e a origem da confiança não foram identificados em 1 de 1 janelas elegíveis. São janelas históricas avaliadas, não trades executados.',
+    period: '23 setembro 2026 13:26 a 27 setembro 2026 21:47 UTC',
+    until: 'só as janelas que já tinham terminado à meia-noite UTC',
+    confidence_now: 'Mercado calmo não entra. Mercado agitado não entra. Versão 12.',
     decision: 'não mudei a confiança',
     verb: 'bloquear',
-    sample: '67 operações, e não dá para compará-las. Para mudar alguma coisa preciso de cerca de 200.',
+    sample:
+      '1 janela histórica independente com preço passou pelos filtros depois da escolha; ainda não chega às 200 necessárias. Motivo: o modelo não foi identificado e a origem da confiança não foi identificada em 1 de 1 janelas elegíveis. São janelas avaliadas, não trades executados.',
     target_stop:
       'para não perder com a taxa, teria de acertar cerca de 76 em 100. Sem a taxa, cerca de 44 em 100. O preço chegou no alvo em cerca de 30 em 100 das vezes em que bateu num dos lados.',
-    signal: 'não ganhou nada além de ficar comprado.',
-    side: '97 em 100 foram compra. Acertar o lado ficou em 49 em 100, igual a comprar e segurar (50 em 100).',
+    signal: 'não ganhou da escolha aleatória na mesma proporção de compras.',
+    side: 'Em 97 de 100 janelas o sinal indicou compra. Acertar o lado ficou em 49 em 100, igual a comprar e segurar (50 em 100).',
     reason:
-      'Não mudei nada. Ainda só há 67 operações medidas à parte, abaixo de 200, e essa amostra não é comparável. Com este alvo e este stop o scalp não se paga. A confiança fica como está. Alvo, stop e o prazo do scalp não mudam.',
+      'Não mudei nada. Só há 1 janela histórica com preço que passou pelos filtros, abaixo de 200. O modelo e a origem da confiança não puderam ser confirmados. Com este alvo e este stop o scalp não se paga. A confiança fica como está. Alvo, stop e o prazo do scalp não mudam.',
+    calibration_note:
+      'O ajuste automático está ligado ao processamento dos diagnósticos, mas as entradas continuam bloqueadas nos regimes calmo e agitado. Isso não liga o scalp nem envia ordens.',
     can_revert: true,
     history: [
       {
         date: '2026-09-26',
         label: '26 set 2026',
         verb: 'bloquear',
-        text: 'Não mudei. Só havia 67 operações, abaixo de 200.',
+        text: 'Não mudei. Só havia 1 janela histórica elegível, abaixo de 200.',
       },
     ],
   }
@@ -241,6 +246,13 @@ async function mockMonitor(page: Page, scalp: Record<string, unknown>) {
   })
 }
 
+async function dismissMonitorRefreshToast(page: Page) {
+  const toast = page.getByRole('status').filter({ hasText: 'estratégias analisadas' })
+  await expect(toast).toBeVisible()
+  await toast.getByRole('button', { name: 'Fechar notificação' }).click()
+  await expect(toast).toHaveCount(0)
+}
+
 test.describe('card-1045 monitor diagnosis', () => {
   test('prototype keeps board landmarks and beginner diagnosis copy', async ({ page }) => {
     await page.goto('/prototypes/card-1045-jev-diagnostico-recalibracao/')
@@ -288,8 +300,45 @@ test.describe('card-1045 monitor diagnosis', () => {
     expect(text).not.toMatch(/fasquia/i)
     expect(text).not.toMatch(/contribui[cç][aã]o preditiva/i)
     await expect(page.getByTestId('scalp-switch')).toHaveText('Desligado')
+    await expect(page.getByTestId('scalp-fee')).toHaveText('10 bp')
+    await expect(diagnosis.getByText(/267 de 300 janelas históricas/)).toBeVisible()
+    await expect(diagnosis.getByText(/modelo e a origem da confiança não foram identificados/)).toBeVisible()
+    await expect(diagnosis.getByText(/não trades executados/).first()).toBeVisible()
+    await expect(diagnosis.getByText(/1 janela histórica independente com preço/)).toBeVisible()
+    await expect(diagnosis.getByText(/ligado ao processamento dos diagnósticos/)).toBeVisible()
     await page.getByTestId('scalp-calibration-pause').click()
     await expect(page.getByTestId('scalp-module')).toHaveAttribute('data-state', 'off')
     await expect(page.getByTestId('scalp-switch')).toHaveText('Desligado')
+  })
+
+  test('shows the API rate and labels the BNB setting without reapplying a discount', async ({ page }) => {
+    await mockAuthenticatedSession(page)
+    await mockMonitor(page, scalpBody({ fee_bp: '10', bnb_fee_active: true, hurdle_bp: '20.1' }))
+    await page.goto('/monitor')
+    await expect(page.getByTestId('scalp-fee')).toHaveText(
+      '10 bp (BNB habilitado; desconto não aplicado)',
+    )
+    await expect(page.getByTestId('scalp-hurdle')).toHaveText('20,1 bp')
+  })
+
+  test('diagnosis panel keeps the approved desktop hierarchy', async ({ page }) => {
+    await mockAuthenticatedSession(page)
+    await mockMonitor(page, scalpBody())
+    await page.goto('/monitor')
+    await dismissMonitorRefreshToast(page)
+    await expect(page.getByTestId('scalp-diagnosis')).toHaveScreenshot(
+      'card-1045-diagnosis-desktop.png',
+    )
+  })
+
+  test('diagnosis panel keeps the approved hierarchy on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 2400 })
+    await mockAuthenticatedSession(page)
+    await mockMonitor(page, scalpBody())
+    await page.goto('/monitor')
+    await dismissMonitorRefreshToast(page)
+    await expect(page.getByTestId('scalp-diagnosis')).toHaveScreenshot(
+      'card-1045-diagnosis-mobile.png',
+    )
   })
 })
