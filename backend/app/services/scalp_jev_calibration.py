@@ -462,9 +462,15 @@ def _homogeneity_reason(summary: dict[str, Any]) -> str:
             "janelas elegíveis"
         )
     unknown: list[str] = []
-    if any(str(value).strip().lower() in {"", "unknown", "desconhecido", "none"} for value in homo.get("models", [])):
+    if any(
+        str(value).strip().lower() in {"", "unknown", "desconhecido", "none"}
+        for value in homo.get("models", [])
+    ):
         unknown.append("o modelo não foi identificado")
-    if any(str(value).strip().lower() in {"", "unknown", "desconhecido", "none"} for value in homo.get("origins", [])):
+    if any(
+        str(value).strip().lower() in {"", "unknown", "desconhecido", "none"}
+        for value in homo.get("origins", [])
+    ):
         unknown.append("a origem da confiança não foi identificada")
     if not unknown:
         unknown.append("a identidade da amostra não pôde ser confirmada")
@@ -555,7 +561,11 @@ def _sample_phrase(
     summary: dict[str, Any],
     block_kind: Optional[str] = None,
 ) -> str:
-    noun = "janela histórica independente com preço" if posterior_n == 1 else "janelas históricas independentes com preço"
+    noun = (
+        "janela histórica independente com preço"
+        if posterior_n == 1
+        else "janelas históricas independentes com preço"
+    )
     subject = f"{posterior_n} {noun}"
     if comparable:
         return (
@@ -622,7 +632,9 @@ def _signal_phrase(summary: dict[str, Any]) -> str:
     except Exception:
         value = None
     if value is None:
-        return "não deu para comparar o sinal com uma escolha aleatória na mesma proporção de compras."
+        return (
+            "não deu para comparar o sinal com uma escolha aleatória na mesma proporção de compras."
+        )
     if value <= 0:
         return "não ganhou da escolha aleatória na mesma proporção de compras."
     return "ganhou da escolha aleatória na mesma proporção de compras."
@@ -925,9 +937,7 @@ def run_closed_day_diagnosis(
     # validating confidence. Unpriced/indeterminate windows do not count
     # toward the independent 200-window posterior floor.
     measured_rows = [
-        (decision, realized)
-        for decision, realized in rows
-        if realized.signed_bp is not None
+        (decision, realized) for decision, realized in rows if realized.signed_bp is not None
     ]
     period = (
         (
@@ -1082,10 +1092,15 @@ def run_closed_day_diagnosis(
         was = policy_from_map(current_policies, regime=regime)
         now_kind = declared.get(regime, {}).get("kind")
         posterior_kind = posterior_policies.get(regime, {}).get("kind")
-        if was.kind == CONFIDENCE_POLICY_CLOSED and now_kind in {
-            CONFIDENCE_POLICY_NUMERIC,
-            CONFIDENCE_POLICY_OFF,
-        } and posterior_kind in {CONFIDENCE_POLICY_NUMERIC, CONFIDENCE_POLICY_OFF}:
+        if (
+            was.kind == CONFIDENCE_POLICY_CLOSED
+            and now_kind
+            in {
+                CONFIDENCE_POLICY_NUMERIC,
+                CONFIDENCE_POLICY_OFF,
+            }
+            and posterior_kind in {CONFIDENCE_POLICY_NUMERIC, CONFIDENCE_POLICY_OFF}
+        ):
             # An open posterior policy confirms the regime can reopen. OFF may
             # still have negative net return; positive return is not required.
             reopen = True
@@ -1246,7 +1261,11 @@ def status_fields(db: Session) -> dict[str, Any]:
         )
         panel["period"] = _format_period(period)
         priced_total = int(
-            ((summary.get("measurement") or {}).get("n_priced", (summary.get("stats") or {}).get("n_priced", 0)))
+            (
+                (summary.get("measurement") or {}).get(
+                    "n_priced", (summary.get("stats") or {}).get("n_priced", 0)
+                )
+            )
             or 0
         )
         posterior_n = int(latest.posterior_n or 0)
@@ -1254,13 +1273,10 @@ def status_fields(db: Session) -> dict[str, Any]:
             posterior_n = min(posterior_n, priced_total)
         eligible_total = int((summary.get("eligible_population") or {}).get("n") or 0)
         posterior_n = min(posterior_n, eligible_total)
-        panel["data_ok"] = _data_quality_phrase(
-            summary, period, latest.block_kind, posterior_n
-        )
+        panel["data_ok"] = _data_quality_phrase(summary, period, latest.block_kind, posterior_n)
         panel["sample"] = _sample_phrase(
             posterior_n,
-            posterior_n >= POSTERIOR_MIN
-            and _sample_is_comparable(summary, latest.block_kind),
+            posterior_n >= POSTERIOR_MIN and _sample_is_comparable(summary, latest.block_kind),
             summary,
             latest.block_kind,
         )

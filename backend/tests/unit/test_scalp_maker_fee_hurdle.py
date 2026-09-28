@@ -159,9 +159,21 @@ def test_live_fee_terms_use_symbol_commission_and_do_not_apply_bnb_discount_twic
         if path == scalp_binance.COMMISSION_PATH:
             return {
                 "symbol": "BTCUSDT",
-                "standardCommission": {"maker": "0.00070000", "buyer": "0.00005000", "seller": "0.00005000"},
-                "taxCommission": {"maker": "0.00010000", "buyer": "0.00005000", "seller": "0.00005000"},
-                "specialCommission": {"maker": "0.00005000", "buyer": "0.00005000", "seller": "0.00005000"},
+                "standardCommission": {
+                    "maker": "0.00070000",
+                    "buyer": "0.00005000",
+                    "seller": "0.00005000",
+                },
+                "taxCommission": {
+                    "maker": "0.00010000",
+                    "buyer": "0.00005000",
+                    "seller": "0.00005000",
+                },
+                "specialCommission": {
+                    "maker": "0.00005000",
+                    "buyer": "0.00005000",
+                    "seller": "0.00005000",
+                },
                 "discount": {
                     "enabledForAccount": True,
                     "enabledForSymbol": True,
@@ -227,7 +239,9 @@ def test_status_shows_the_fee_rate_in_use(scalp_db, monkeypatch):
     assert payload["fee_bp"] == "10"
     assert payload["bnb_fee_active"] is True
     assert Decimal(payload["hurdle_bp"]) == entry_hurdle_bp(Decimal("10"), spread_bp)
-    assert "taxa considerada 10 bp (BNB habilitado; desconto não aplicado)" in payload["status_text"]
+    assert (
+        "taxa considerada 10 bp (BNB habilitado; desconto não aplicado)" in payload["status_text"]
+    )
     assert payload["state"] == "on"
 
     # The status serves the rate already in use from the cache: no new signed read.

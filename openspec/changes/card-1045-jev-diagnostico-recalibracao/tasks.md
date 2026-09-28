@@ -46,3 +46,9 @@
 - [x] 7.6 — Somente o runtime-worker DEV com `RUN_SCALP_LOOP=1` detém o loop e instala o log diagnóstico, mantendo fallback local/API-only e o comportamento PROD sem alterar flags/segredos.
 - [x] 7.7 — A primeira vista do ScalpModule explica com precisão os estados e a qualidade dos dados sem mudar a estrutura aprovada do protótipo; taxa, bloqueio e janela observada são apresentados sem ambiguidade.
 - [x] 7.8 — Testes isolados cobrem casos relatados de relatório, fee, cutoff/reversão, snapshot consumido, inicialização do loop e estados visíveis; validar OpenSpec e contrato do protótipo.
+
+## 8. Correções determinísticas do CI após T13
+
+- [x] 8.1 — Aplicar Black somente aos quatro arquivos apontados por `backend-format`; `black --check backend` termina com 352 arquivos inalterados.
+- [x] 8.2 — Registrar `test_scalp_loop_ownership.py` no inventário; alinhar a contagem do contrato de 90 para 91 e validar 91 arquivos sem entradas ausentes, obsoletas, duplicadas ou semânticas.
+- [x] 8.3 — Rodar todo `backend/tests/contract` em ambiente isolado: 10 passaram; conferir no PR1068 que `e2e-playwright` e os checks frontend terminaram verdes, sem alterar UI ou snapshots.

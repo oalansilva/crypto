@@ -521,9 +521,7 @@ def _live_fee_terms(api_key: str, api_secret: str) -> tuple[Decimal, bool]:
     """Conservative account maker rate + configured BNB discount, via signed reads."""
     from app.services.scalp_binance import fetch_maker_fee_terms, fetch_spot_bnb_burn
 
-    fee_bp, discount_enabled = fetch_maker_fee_terms(
-        api_key=api_key, api_secret=api_secret
-    )
+    fee_bp, discount_enabled = fetch_maker_fee_terms(api_key=api_key, api_secret=api_secret)
     return (
         fee_bp,
         discount_enabled and fetch_spot_bnb_burn(api_key=api_key, api_secret=api_secret),

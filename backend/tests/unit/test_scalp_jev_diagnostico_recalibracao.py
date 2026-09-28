@@ -548,7 +548,9 @@ def test_manual_revert_does_not_wait_for_200_and_suppresses_same_day(diag_db):
     assert state.suppressed_day == now.date()
 
 
-def test_status_projects_corrected_history_and_active_reverted_policy_without_writing(diag_db, monkeypatch):
+def test_status_projects_corrected_history_and_active_reverted_policy_without_writing(
+    diag_db, monkeypatch
+):
     monkeypatch.setenv("SCALP_REGIME_BOUNDARY_BP", "0.05")
     monkeypatch.delenv("SCALP_CONFIDENCE_MIN_CALM", raising=False)
     monkeypatch.delenv("SCALP_CONFIDENCE_MIN_ACTIVE", raising=False)
