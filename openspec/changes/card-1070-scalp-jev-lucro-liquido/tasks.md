@@ -42,3 +42,4 @@
 - [x] 7.1 — Com a versão promovida, DEV envia post-only de US$ 10 e fecha compra→venda. T e clip não sobem.
 - [x] 7.2 — A primeira volta pode fechar no prejuízo e ainda conta; `last_trade_*` líquidos aparecem na tela. O lucro líquido exigido continua o do backtest.
 - [x] 7.3 — Enquanto neste par nenhuma geometria tiver IC acima de zero, não encerrar com recusa visível: continuar a variar prazo, alvo e stop. Geometria em uso permanece.
+- [x] 7.4 — Diagnóstico diário mede a fronteira de regime no `vol_bp` finito das decisões do log real (`compute_regime_boundary_bp`); sem env/versão prévia grava `regime_boundary_bp` medido e activa versão com confiança numérica em uso e geometria de fábrica, sem usar a fita sintética do backtest offline para esse número.

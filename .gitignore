@@ -100,6 +100,7 @@ backend/runtime/
 **/checkpoints/
 **/cache/
 **/.cache/
+scripts/.jev_backtest_cache.json
 
 # Frontend dev outputs
 frontend/vite.out

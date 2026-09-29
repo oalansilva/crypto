@@ -829,6 +829,7 @@ def test_daily_run_without_account_fee_uses_fallback_and_blocks_cost(diag_db, mo
         ),
     )
     monkeypatch.setattr(calibration, "log_file_path", lambda: Path("/tmp/no-scalp-jev.log"))
+    monkeypatch.setattr(calibration, "_attach_offline_backtest", lambda summary, *, fee_bp: None)
     fee_bp, source = calibration._account_maker_fee(diag_db)
     assert source == "fallback"
     assert fee_bp == FALLBACK_FEE_BP
