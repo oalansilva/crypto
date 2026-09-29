@@ -35,8 +35,10 @@ STUCK_AFTER_FILL_S = 930
 CLIENT_ORDER_PREFIX = "cfscalp_"
 ORDER_TYPE = "LIMIT"
 TIME_IN_FORCE = "GTX"
-# Aggressive exit (card #1025): MARKET, no price ceiling and no slippage guard.
-AGGRESSIVE_ORDER_TYPE = "MARKET"
+# Card #1070: last-resort IOC limit with slippage cap (no uncapped MARKET).
+AGGRESSIVE_ORDER_TYPE = "LIMIT"
+EXIT_SLIPPAGE_CAP_BP = Decimal("10")
+IOC_TIME_IN_FORCE = "IOC"
 CROSS_REJECT_CODES = frozenset({-5022, -2010})
 
 Side = Literal["BUY", "SELL"]
@@ -651,6 +653,8 @@ def position_ret_bp(avg_entry: Decimal, mid: Decimal) -> Decimal:
 def should_post_exit(
     *,
     ret_bp: Decimal,
+    exit_target_bp: Decimal = EXIT_TARGET_BP,
+    exit_stop_bp: Decimal = EXIT_STOP_BP,
 ) -> bool:
     """Passive exit inside the waiting window only: target or stop.
 
@@ -658,15 +662,17 @@ def should_post_exit(
     is gone — at the end of the window the cycle goes aggressive instead of
     posting one more passive order (the forbidden extra passive attempt).
     """
-    if ret_bp >= EXIT_TARGET_BP:
+    if ret_bp >= exit_target_bp:
         return True
-    if ret_bp <= EXIT_STOP_BP:
+    if ret_bp <= exit_stop_bp:
         return True
     return False
 
 
-def should_mark_stuck(seconds_since_fill: float) -> bool:
-    return seconds_since_fill >= float(STUCK_AFTER_FILL_S)
+def should_mark_stuck(
+    seconds_since_fill: float, *, stuck_after_fill_s: float = float(STUCK_AFTER_FILL_S)
+) -> bool:
+    return seconds_since_fill >= stuck_after_fill_s
 
 
 def decide_exit_cycle(
@@ -682,6 +688,11 @@ def decide_exit_cycle(
     resting: Optional[RestingOrder],
     seconds_since_fill: float,
     stuck: bool,
+    window_end_mode: str = "limit",
+    hold_after_fill_s: int = HOLD_AFTER_FILL_S,
+    exit_target_bp: Decimal = EXIT_TARGET_BP,
+    exit_stop_bp: Decimal = EXIT_STOP_BP,
+    slippage_cap_bp: Decimal = EXIT_SLIPPAGE_CAP_BP,
 ) -> CycleIntent:
     clipped = clip_inventory(bot_inventory=inventory_btc, free_btc=free_btc, floor_btc=floor_btc)
     inventory_changed = clipped != inventory_btc
@@ -705,20 +716,56 @@ def decide_exit_cycle(
     # resting and unfilled. The trigger is the first cycle that reaches
     # HOLD_AFTER_FILL_S with the position open, not the `stuck` mark (930 s).
     # No price ceiling: the aggressive order exits whatever the price.
-    if seconds_since_fill >= float(HOLD_AFTER_FILL_S):
+    if seconds_since_fill >= float(hold_after_fill_s):
+        if window_end_mode == "ioc":
+            cap = book.mid * (Decimal("1") - slippage_cap_bp / Decimal("10000"))
+            if book.bid < cap:
+                return CycleIntent(
+                    send=False,
+                    cancel_resting=False,
+                    fire_kill=False,
+                    skip_reason="beyond_slippage_cap",
+                    clipped_inventory=clipped if inventory_changed else None,
+                )
+            price = cap
+            quote_qty = clipped * price
+            return CycleIntent(
+                send=True,
+                cancel_resting=resting is not None,
+                fire_kill=False,
+                skip_reason=None,
+                side="SELL",
+                price=price,
+                quote_qty=quote_qty,
+                quantity=clipped,
+                order_type=AGGRESSIVE_ORDER_TYPE,
+                time_in_force=IOC_TIME_IN_FORCE,
+                clipped_inventory=clipped if inventory_changed else None,
+                aggressive_exit=True,
+            )
+        price = post_only_price("SELL", bid=book.bid, ask=book.ask)
+        quote_qty = clipped * price
+        if clipped <= 0 or would_cross("SELL", price, bid=book.bid, ask=book.ask):
+            return CycleIntent(
+                send=False,
+                cancel_resting=resting is not None,
+                fire_kill=False,
+                skip_reason="would_cross",
+                clipped_inventory=clipped if inventory_changed else None,
+            )
         return CycleIntent(
             send=True,
             cancel_resting=resting is not None,
             fire_kill=False,
             skip_reason=None,
             side="SELL",
-            price=None,
-            quote_qty=None,
+            price=price,
+            quote_qty=quote_qty,
             quantity=clipped,
-            order_type=AGGRESSIVE_ORDER_TYPE,
-            time_in_force="",
+            order_type=ORDER_TYPE,
+            time_in_force=TIME_IN_FORCE,
             clipped_inventory=clipped if inventory_changed else None,
-            aggressive_exit=True,
+            aggressive_exit=False,
         )
     if resting is not None:
         return CycleIntent(
@@ -739,7 +786,9 @@ def decide_exit_cycle(
             clipped_inventory=clipped if inventory_changed else None,
         )
     ret_bp = position_ret_bp(avg_entry, book.mid)
-    if not should_post_exit(ret_bp=ret_bp):
+    if not should_post_exit(
+        ret_bp=ret_bp, exit_target_bp=exit_target_bp, exit_stop_bp=exit_stop_bp
+    ):
         return CycleIntent(
             send=False,
             cancel_resting=False,

@@ -616,12 +616,11 @@ class FakeExchange:
         return result
 
     def place_aggressive_exit(self, **kwargs):
-        """Card #1025: MARKET escape, no price and no time-in-force."""
+        """Card #1070: LIMIT IOC escape with slippage cap price."""
         from app.services.binance_spot_orders import BinanceOrderError
 
-        assert "price" not in kwargs
-        assert "time_in_force" not in kwargs
         assert str(kwargs["client_order_id"]).startswith("cfscalp_")
+        assert kwargs.get("reference_price") is not None
         if self.aggressive_reject_code is not None:
             raise BinanceOrderError("market refused", code=self.aggressive_reject_code)
         self.aggressive.append(kwargs)

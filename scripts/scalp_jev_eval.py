@@ -164,6 +164,42 @@ HOMOGENEITY_UNVERIFIED = "não verificada"
 HOMOGENEITY_MIXED = "não homogénea"
 UNDECLARED_TOKENS = frozenset({"", "unknown", "none", "null"})
 BARRIER_INDETERMINATE = "indeterminate"
+_PRICE_PATH_MODULE = None
+
+
+def _price_path_module():
+    global _PRICE_PATH_MODULE
+    if _PRICE_PATH_MODULE is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "scalp_jev_price_path",
+            Path(__file__).resolve().parent / "scalp_jev_price_path.py",
+        )
+        mod = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(mod)
+        _PRICE_PATH_MODULE = mod
+    return _PRICE_PATH_MODULE
+
+
+def _rows_with_declared_identity(
+    rows: Sequence[tuple[Decision, Realized]],
+) -> list[tuple[Decision, Realized]]:
+    """Sample only windows with declared model and confidence origin (#1070)."""
+    out: list[tuple[Decision, Realized]] = []
+    for decision, realized in rows:
+        if _declared_token(decision.model) and _declared_token(decision.confidence_origin):
+            out.append((decision, realized))
+    return out
+
+
+def geometry_candidate_indeterminate_fraction(candidates: Sequence[dict[str, Any]]) -> Decimal:
+    """Share of geometry/horizon alternatives left indeterminate (#1070)."""
+    if not candidates:
+        return Decimal("0")
+    indeterminate = sum(1 for row in candidates if row.get("measurement_status") == "indeterminate")
+    return Decimal(indeterminate) / Decimal(len(candidates))
+
 _OHLCV_MAX_1M_CANDLES = 20160  # 14 dias de candles de 1 min
 
 EntryRe = re.compile(r"\sscalp jev call entry id=(\S+) state=(\{.*\}) questions=")
@@ -1519,13 +1555,29 @@ def realized_for_horizon(
     horizon_s: int,
     target_bp: Decimal = TARGET_BP,
     stop_bp: Decimal = STOP_BP,
+    price_path_store: Any = None,
 ) -> Realized:
-    """Realized outcome at ``horizon_s``. Indeterminate when the candle cannot fit."""
+    """Realized outcome at ``horizon_s`` on the real price path when available."""
     if decision.entry_mid is None or decision.entry_mid <= 0:
         return Realized(None, None, None, "unknown")
+    end = decision.at + timedelta(seconds=horizon_s)
+    if price_path_store is not None:
+        ppm = _price_path_module()
+        barrier, price = ppm.barrier_for_window(
+            price_path_store,
+            side=decision.side,
+            entry=decision.entry_mid,
+            start=decision.at,
+            end=end,
+            target_bp=target_bp,
+            stop_bp=stop_bp,
+        )
+        signed = ppm.realized_signed_bp(side=decision.side, entry=decision.entry_mid, exit_price=price)
+        if barrier == "indeterminate" or price is None or signed is None:
+            return Realized(None, None, None, BARRIER_INDETERMINATE)
+        return Realized(price, signed, abs(signed), barrier)
     if not _horizon_fits(series, horizon_s):
         return Realized(None, None, None, BARRIER_INDETERMINATE)
-    end = decision.at + timedelta(seconds=horizon_s)
     price = series.price_at(end)
     path = series.path(decision.at, end)
     if not path:
@@ -1575,11 +1627,12 @@ def _geometry_candidate_row(
     fee_bp: Decimal,
     horizon_s: int,
     label: str,
+    price_path_store: Any = None,
 ) -> dict[str, Any]:
     """Break-even with/without cost beside realized hit for one geometry/horizon."""
     be_without = _break_even_without_cost(target_bp=target_bp, stop_bp=stop_bp)
     be_with = _break_even_hit_rate(target_bp=target_bp, stop_bp=stop_bp, fee_bp=fee_bp)
-    fits = _horizon_fits(series, horizon_s)
+    fits = _horizon_fits(series, horizon_s) or price_path_store is not None
     barriers: list[str] = []
     paths: dict[str, Sequence[tuple[Decimal, Decimal]]] = {}
     horizon_rows: list[tuple[Decision, Realized]] = []
@@ -1596,6 +1649,7 @@ def _geometry_candidate_row(
                 horizon_s=horizon_s,
                 target_bp=target_bp,
                 stop_bp=stop_bp,
+                price_path_store=price_path_store,
             )
             horizon_rows.append((decision, horizon_realized))
             barriers.append(horizon_realized.barrier)
@@ -1643,12 +1697,14 @@ def _propose_geometry(
     series: CandleSeries,
     *,
     fee_bp: Decimal,
+    price_path_store: Any = None,
 ) -> tuple[Optional[dict[str, Any]], list[dict[str, Any]], str, dict[str, int]]:
     """Propose the beating candidate with the highest net expectancy, or none.
 
     A candidate beats when its break-even **with cost** is strictly below the
     realized barrier hit. The ruler never writes the proposed pair.
     """
+    rows = _rows_with_declared_identity(rows)
     in_use = _geometry_candidate_row(
         rows,
         series,
@@ -1657,6 +1713,7 @@ def _propose_geometry(
         fee_bp=fee_bp,
         horizon_s=HORIZON_S,
         label="em uso +35/−28 / 15 min",
+        price_path_store=price_path_store,
     )
     candidates = [in_use]
     seen = {(TARGET_BP, STOP_BP, HORIZON_S)}
@@ -1675,6 +1732,7 @@ def _propose_geometry(
                     fee_bp=fee_bp,
                     horizon_s=HORIZON_S,
                     label=f"alvo {target_bp}/stop {stop_bp} / 15 min",
+                    price_path_store=price_path_store,
                 )
             )
     horizons: list[dict[str, Any]] = []
@@ -1687,6 +1745,7 @@ def _propose_geometry(
             fee_bp=fee_bp,
             horizon_s=horizon_s,
             label=f"em uso / {label}",
+            price_path_store=price_path_store,
         )
         horizons.append(row)
         key = (TARGET_BP, STOP_BP, horizon_s)
@@ -1865,6 +1924,7 @@ def build_report(
     confidence_in_use: Optional[Decimal] = DEFAULT_CONFIDENCE_IN_USE,
     rng_seed: Optional[int] = None,
     until: Optional[datetime] = None,
+    price_path_store: Any = None,
 ) -> tuple[str, dict[str, Any]]:
     # Card #1030: the conservative fallback while the real per-leg fee of the
     # account was not given is a **defect of the report**, never a neutral
@@ -2133,7 +2193,7 @@ def build_report(
         "by_horizon": {},
     }
     proposed, horizons, viability, barrier_measurement = _propose_geometry(
-        realized_windows, series, fee_bp=fee_bp
+        realized_windows, series, fee_bp=fee_bp, price_path_store=price_path_store
     )
     summary["horizons"] = horizons
     summary["barrier_measurement"] = barrier_measurement
@@ -2147,6 +2207,7 @@ def build_report(
             fee_bp=fee_bp,
             horizon_s=HORIZON_S,
             label="em uso +35/−28 / 15 min",
+            price_path_store=price_path_store,
         ),
     )
     for row in horizons:
@@ -2169,6 +2230,7 @@ def build_report(
         summary["geometry_proposal"] = proposed
     summary["viability_status"] = viability if sample_sufficient else "insufficient_sample"
     summary["operable"] = summary["viability_status"] == "viable"
+    summary["geometry_search_active"] = summary["viability_status"] == "not_operable"
     if sample_assessed:
         summary["insufficient"] = bool(reasons)
         summary["sample_assessment"] = "insuficiente" if reasons else "suficiente"
@@ -2685,6 +2747,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     parser.add_argument("--json", action="store_true", help="imprime também o sumário JSON")
     parser.add_argument("--out", default=None, help="grava o relatório markdown neste caminho")
+    parser.add_argument(
+        "--agg-trades",
+        default=None,
+        help="aggTrades históricos BTCUSDT (JSONL) para resolver barreiras no caminho real",
+    )
     args = parser.parse_args(argv)
     # Card #1043 (decision 4/Q2): the identity is derived on every path,
     # including the missing-log one, so the bootstrap must precede it.
@@ -2696,6 +2763,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # absent → both regimes closed (fail closed).
     regime_boundary_bp = _regime_boundary_bp(args.regime_boundary_bp)
     confidence_in_use = _confidence_in_use(args.confidence_in_use)
+
+    price_path_store = None
+    if args.agg_trades:
+        price_path_store = _price_path_module().load_agg_trades_jsonl(Path(args.agg_trades))
 
     def _build(decisions, refusals, malformed, series, ohlcv_read):
         return build_report(
@@ -2710,6 +2781,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             regime_boundary_bp=regime_boundary_bp,
             fee_source=args.fee_source,
             confidence_in_use=confidence_in_use,
+            price_path_store=price_path_store,
         )
 
     if not log_path.exists():

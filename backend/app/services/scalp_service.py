@@ -22,8 +22,11 @@ from app.services.scalp_engine import (
     CONFIDENCE_POLICY_OFF,
     CROSS_REJECT_CODES,
     ENTRY_REST_TIMEOUT_S,
+    EXIT_SLIPPAGE_CAP_BP,
     EXIT_STOP_BP,
     EXIT_TARGET_BP,
+    HOLD_AFTER_FILL_S,
+    STUCK_AFTER_FILL_S,
     HORIZON_S,
     JEV_FLOOR_MS,
     JEV_TARGET_MS,
@@ -148,8 +151,50 @@ def _confidence_in_use_token() -> str:
     return "off" if value is None else str(value)
 
 
-def _regime_boundary_bp() -> Optional[Decimal]:
+def _applied_geometry(
+    db: Optional[Session],
+) -> tuple[Decimal, Decimal, int, Decimal]:
+    target = EXIT_TARGET_BP
+    stop = EXIT_STOP_BP
+    horizon = HORIZON_S
+    slippage_cap = EXIT_SLIPPAGE_CAP_BP
+    if db is None:
+        return target, stop, horizon, slippage_cap
+    from app.services.scalp_jev_calibration import active_version, geometry_from_policies, policies_of
+
+    version = active_version(db)
+    if version is None:
+        return target, stop, horizon, slippage_cap
+    geo = geometry_from_policies(policies_of(version))
+    try:
+        target = Decimal(str(geo.get("target_bp", target)))
+        stop = Decimal(str(geo.get("stop_bp", stop)))
+        horizon = int(geo.get("horizon_s", horizon))
+        slippage_cap = Decimal(str(geo.get("slippage_cap_bp", slippage_cap)))
+    except Exception:
+        pass
+    return target, stop, horizon, slippage_cap
+
+
+def _regime_boundary_bp(db: Optional[Session] = None) -> Optional[Decimal]:
     """Single σ boundary (bp) shared by the ruler and the decision (card #1030)."""
+    if db is not None:
+        from app.services.scalp_jev_calibration import (
+            active_version,
+            policies_of,
+            regime_boundary_from_policies,
+        )
+
+        version = active_version(db)
+        if version is not None:
+            raw = regime_boundary_from_policies(policies_of(version))
+            if raw:
+                try:
+                    value = Decimal(raw)
+                    if value.is_finite() and value >= 0:
+                        return value
+                except Exception:
+                    pass
     raw = (os.getenv(REGIME_BOUNDARY_ENV) or "").strip()
     if not raw:
         return None
@@ -282,7 +327,7 @@ class ExchangePort(Protocol):
 
     def free_balances(self, api_key: str, api_secret: str) -> tuple[Decimal, Decimal]: ...
 
-    def fee_terms(self, api_key: str, api_secret: str) -> tuple[Decimal, bool]: ...
+    def fee_terms(self, api_key: str, api_secret: str) -> tuple[Decimal, bool, bool]: ...
 
     def place_post_only(
         self,
@@ -361,6 +406,31 @@ class _AggressiveAttempt:
 
 # Uma entrada por utilizador; o processo do loop do scalp é o único que a usa.
 _aggressive_attempts: dict[str, _AggressiveAttempt] = {}
+# Card #1070: após IOC recusada por derrapagem, o ciclo seguinte volta ao post-only.
+_window_end_limit_after_ioc_cap: set[str] = set()
+
+
+def _window_end_mode(
+    user_id: str,
+    *,
+    seconds_since_fill: Optional[float],
+    stuck: bool,
+    hold_after_fill_s: int = HOLD_AFTER_FILL_S,
+) -> str:
+    if seconds_since_fill is None or seconds_since_fill < float(hold_after_fill_s):
+        return "inside"
+    key = str(user_id)
+    if key in _window_end_limit_after_ioc_cap:
+        _window_end_limit_after_ioc_cap.discard(key)
+        return "limit"
+    if stuck:
+        return "ioc"
+    return "limit"
+
+
+def _clear_window_end_escape_state(user_id: str) -> None:
+    _window_end_limit_after_ioc_cap.discard(str(user_id))
+    _aggressive_attempts.pop(str(user_id), None)
 
 
 def _aggressive_attempt(state: ScalpUserState, *, stamp: datetime) -> tuple[str, bool]:
@@ -397,7 +467,7 @@ class LiveExchange:
 
         return fetch_free_usdt_btc(api_key=api_key, api_secret=api_secret)
 
-    def fee_terms(self, api_key: str, api_secret: str) -> tuple[Decimal, bool]:
+    def fee_terms(self, api_key: str, api_secret: str) -> tuple[Decimal, bool, bool]:
         return _live_fee_terms(api_key, api_secret)
 
     def place_post_only(
@@ -507,33 +577,82 @@ FEE_CACHE_TTL_SECONDS = 900.0
 class _FeeCacheEntry:
     fee_bp: Decimal
     bnb_fee_active: bool
+    bnb_discount_applied: bool
     fetched_at: float
 
 
 _fee_cache: dict[str, _FeeCacheEntry] = {}
+_round_entry_fees: dict[str, Decimal] = {}
+_last_screen_fee_bp: dict[str, Decimal] = {}
+_fee_mismatch_bp: dict[str, str] = {}
+
+
+def fee_mismatch_for(user_id: str) -> Optional[str]:
+    return _fee_mismatch_bp.get(str(user_id))
 
 
 def invalidate_fee_cache(user_id: str) -> None:
     _fee_cache.pop(str(user_id), None)
 
 
-def _live_fee_terms(api_key: str, api_secret: str) -> tuple[Decimal, bool]:
-    """Conservative account maker rate + configured BNB discount, via signed reads."""
+CLIP_FEE_QUOTE = Decimal("10")
+
+
+def _apply_bnb_discount_to_fee(
+    fee_bp: Decimal,
+    *,
+    discount_enabled: bool,
+    spot_burn: bool,
+    bnb_free: Decimal,
+    bnb_price: Decimal,
+    discount_rate: Decimal,
+) -> tuple[Decimal, bool]:
+    if not (discount_enabled and spot_burn):
+        return fee_bp, False
+    est_fee_quote = CLIP_FEE_QUOTE * fee_bp / Decimal("10000")
+    if bnb_free <= 0 or bnb_price <= 0 or bnb_free * bnb_price < est_fee_quote:
+        return fee_bp, False
+    return fee_bp * (Decimal("1") - discount_rate), True
+
+
+def _live_fee_terms(api_key: str, api_secret: str) -> tuple[Decimal, bool, bool]:
+    """Maker rate per leg, BNB configured, and whether discount was applied once."""
+    from app.services.binance_spot_orders import fetch_free_balance
     from app.services.scalp_binance import fetch_maker_fee_terms, fetch_spot_bnb_burn
 
-    fee_bp, discount_enabled = fetch_maker_fee_terms(api_key=api_key, api_secret=api_secret)
-    return (
-        fee_bp,
-        discount_enabled and fetch_spot_bnb_burn(api_key=api_key, api_secret=api_secret),
+    fee_bp, discount_enabled, discount_rate = fetch_maker_fee_terms(
+        api_key=api_key, api_secret=api_secret
     )
+    spot_burn = fetch_spot_bnb_burn(api_key=api_key, api_secret=api_secret)
+    bnb_free = Decimal("0")
+    bnb_price = Decimal("0")
+    if discount_enabled and spot_burn:
+        try:
+            bnb_free = fetch_free_balance(api_key=api_key, api_secret=api_secret, asset="BNB")
+            from app.services.scalp_binance import public_get
+
+            payload = public_get("/api/v3/ticker/price", {"symbol": "BNBUSDT"})
+            bnb_price = Decimal(str(payload.get("price") or "0"))
+        except Exception:
+            bnb_free = Decimal("0")
+            bnb_price = Decimal("0")
+    fee_bp, applied = _apply_bnb_discount_to_fee(
+        fee_bp,
+        discount_enabled=discount_enabled,
+        spot_burn=spot_burn,
+        bnb_free=bnb_free,
+        bnb_price=bnb_price,
+        discount_rate=discount_rate,
+    )
+    return fee_bp, bool(discount_enabled and spot_burn), applied
 
 
 def _fee_terms(
     user_id: str,
     *,
     cred: Optional[UserExchangeCredential] = None,
-    fetcher: Optional[Callable[[str, str], tuple[Decimal, bool]]] = None,
-) -> tuple[Decimal, bool]:
+    fetcher: Optional[Callable[[str, str], tuple[Decimal, bool, bool]]] = None,
+) -> tuple[Decimal, bool, bool]:
     """Account fee considered per leg and BNB discount setting, cached per user.
 
     Any failure of the signed reads (transport, timeout, bad payload) falls
@@ -545,20 +664,30 @@ def _fee_terms(
     now = time.time()
     hit = _fee_cache.get(key)
     if hit is not None and (now - hit.fetched_at) < FEE_CACHE_TTL_SECONDS:
-        return hit.fee_bp, hit.bnb_fee_active
+        return hit.fee_bp, hit.bnb_fee_active, hit.bnb_discount_applied
     if cred is None or fetcher is None:
-        return FALLBACK_FEE_BP, False
+        return FALLBACK_FEE_BP, False, False
     try:
-        fee_bp, bnb_fee_active = fetcher(cred.api_key, cred.api_secret)
+        fetched = fetcher(cred.api_key, cred.api_secret)
+        if len(fetched) == 2:
+            fee_bp, bnb_fee_active = fetched
+            discount_applied = False
+        else:
+            fee_bp, bnb_fee_active, discount_applied = fetched
         fee_bp = _dec(fee_bp)
         if fee_bp <= 0:
             raise ValueError("fee_bp não positivo")
         active = bool(bnb_fee_active)
     except Exception as exc:
         logger.warning("scalp fee terms fallback user=%s err=%s", key, type(exc).__name__)
-        fee_bp, active = FALLBACK_FEE_BP, False
-    _fee_cache[key] = _FeeCacheEntry(fee_bp=fee_bp, bnb_fee_active=active, fetched_at=now)
-    return fee_bp, active
+        fee_bp, active, discount_applied = FALLBACK_FEE_BP, False, False
+    _fee_cache[key] = _FeeCacheEntry(
+        fee_bp=fee_bp,
+        bnb_fee_active=active,
+        bnb_discount_applied=discount_applied,
+        fetched_at=now,
+    )
+    return fee_bp, active, discount_applied
 
 
 def _fee_bp_label(fee_bp: Decimal) -> str:
@@ -624,6 +753,7 @@ def _apply_fill(
         if prev <= 0 and new_inv > 0:
             state.position_opened_at = _utcnow()
             state.stuck = False
+            _round_entry_fees[str(state.user_id)] = max(Decimal("0"), fee)
     else:
         prev = _dec(state.inventory_btc)
         sell_qty = min(qty, prev)
@@ -631,14 +761,28 @@ def _apply_fill(
         realized = (price - avg) * sell_qty
         state.realized_pnl_quote = _dec(state.realized_pnl_quote) + realized
         if avg > 0 and sell_qty > 0:
-            state.last_trade_bp = position_ret_bp(avg, price)
-            state.last_trade_quote = realized
+            entry_fee = _round_entry_fees.pop(str(state.user_id), Decimal("0"))
+            net = realized - entry_fee - max(Decimal("0"), fee)
+            state.last_trade_bp = position_ret_bp(avg, price) - (
+                (entry_fee + max(Decimal("0"), fee)) / (avg * sell_qty) * Decimal("10000")
+                if avg > 0 and sell_qty > 0
+                else Decimal("0")
+            )
+            state.last_trade_quote = net
+            notional = avg * sell_qty
+            if notional > 0:
+                exit_fee_bp = max(Decimal("0"), fee) / notional * Decimal("10000")
+                expected = _last_screen_fee_bp.get(str(state.user_id))
+                if expected is not None and abs(exit_fee_bp - expected) > Decimal("0.25"):
+                    delta = (exit_fee_bp - expected).quantize(Decimal("0.1"))
+                    _fee_mismatch_bp[str(state.user_id)] = str(delta)
         remaining = prev - sell_qty
         state.inventory_btc = remaining
         if remaining <= 0:
             state.avg_entry_quote = None
             state.position_opened_at = None
             state.stuck = False
+            _clear_window_end_escape_state(str(state.user_id))
     state.fees_quote = _dec(state.fees_quote) + max(Decimal("0"), fee)
 
 
@@ -1021,6 +1165,8 @@ def _run_cycle(
     state = get_or_create_state(db, user_id)
     cred = _credential(db, user_id)
     key_ok = cred is not None
+    exit_target_bp, exit_stop_bp, hold_after_fill_s, slippage_cap_bp = _applied_geometry(db)
+    stuck_after_fill_s = float(hold_after_fill_s) + float(STUCK_AFTER_FILL_S - HOLD_AFTER_FILL_S)
 
     if free_usdt is None or free_btc is None:
         if cred is not None:
@@ -1082,7 +1228,7 @@ def _run_cycle(
     resting_now = _resting(state)
     # Real maker fee (card #1025): injected from the exchange port when it
     # offers the signed reads, otherwise the conservative fallback applies.
-    fee_bp, bnb_fee_active = _fee_terms(
+    fee_bp, bnb_fee_active, _bnb_discount_applied = _fee_terms(
         str(user_id), cred=cred, fetcher=getattr(port, "fee_terms", None)
     )
     spread_bp = Decimal("0")
@@ -1098,7 +1244,10 @@ def _run_cycle(
     has_open_position = inventory_live > Decimal("0.00000001") and state.avg_entry_quote is not None
     has_exit_resting = resting_now is not None and resting_now.role == "exit"
     if has_open_position and state.position_opened_at is not None:
-        if should_mark_stuck(_seconds_since(state.position_opened_at, stamp)):
+        if should_mark_stuck(
+            _seconds_since(state.position_opened_at, stamp),
+            stuck_after_fill_s=stuck_after_fill_s,
+        ):
             state.stuck = True
 
     day_pnl = _refresh_day_pnl(state, mid=book.mid)
@@ -1117,6 +1266,7 @@ def _run_cycle(
     reply_signal: Optional[JevSignal] = None
 
     if has_open_position:
+        seconds_since_fill = _seconds_since(state.position_opened_at, stamp)
         intent = decide_exit_cycle(
             enabled=bool(state.enabled),
             killed=bool(state.killed),
@@ -1127,8 +1277,18 @@ def _run_cycle(
             avg_entry=_dec(state.avg_entry_quote) if state.avg_entry_quote is not None else None,
             book=book,
             resting=resting_now if resting_now and resting_now.role == "exit" else None,
-            seconds_since_fill=_seconds_since(state.position_opened_at, stamp),
+            seconds_since_fill=seconds_since_fill,
             stuck=bool(state.stuck),
+            window_end_mode=_window_end_mode(
+                str(user_id),
+                seconds_since_fill=seconds_since_fill,
+                stuck=bool(state.stuck),
+                hold_after_fill_s=hold_after_fill_s,
+            ),
+            hold_after_fill_s=hold_after_fill_s,
+            exit_target_bp=exit_target_bp,
+            exit_stop_bp=exit_stop_bp,
+            slippage_cap_bp=slippage_cap_bp,
         )
     else:
         intent = decide_cycle(
@@ -1184,6 +1344,8 @@ def _run_cycle(
 
     if has_open_position:
         if not intent.send:
+            if intent.skip_reason == "beyond_slippage_cap":
+                _window_end_limit_after_ioc_cap.add(str(user_id))
             state.updated_at = stamp
             db.add(state)
             db.commit()
@@ -1240,6 +1402,7 @@ def _run_cycle(
             rest_opened_at=state.rest_opened_at,
             now=stamp,
             memory=memory,
+            declared_horizon_s=hold_after_fill_s,
         )
         if window_skip and book_from_memory:
             state.updated_at = stamp
@@ -1275,7 +1438,7 @@ def _run_cycle(
         # regime's configuration. Without a boundary (or with an invalid one)
         # the regime is unnamed and both regimes are closed (fail closed). The
         # value in use (#1025) is preserved and reported, never applied here.
-        boundary_bp = _regime_boundary_bp()
+        boundary_bp = _regime_boundary_bp(db)
         market_regime = market_regime_for(_payload_vol_bp(jev_body), boundary_bp)
         confidence_policy = _confidence_policy_for(
             regime=market_regime, boundary_bp=boundary_bp, db=db
@@ -1354,7 +1517,7 @@ def _run_cycle(
         # The reference price only feeds the symbol's NOTIONAL/MIN_NOTIONAL
         # filter (a MARKET order carries no price of its own); for a SELL the
         # bid is the conservative realizable side. It never enters the order.
-        reference_price = book.bid if (intent.side or "SELL") == "SELL" else book.ask
+        reference_price = intent.price or (book.bid if (intent.side or "SELL") == "SELL" else book.ask)
         if not attempt_allowed:
             # Item 3 da correção pós-CR: nada de reenviar a rejeitada a cada
             # ciclo com um id novo — mesma chave de reconciliação e backoff
@@ -1459,7 +1622,7 @@ def _run_cycle(
         and intent.quantity is not None
         and cred is not None
         and (live_send or has_open_position)
-        and not rest_open
+        and not bool(state.rest_client_order_id)
     ):
         if book_from_memory:
             if not memory.book_available():
@@ -1577,11 +1740,20 @@ def list_enabled_user_ids(db: Session) -> list[str]:
     return [str(row[0]) for row in rows]
 
 
-def _diagnosis_status_fields(db: Session) -> dict[str, Any]:
+def _diagnosis_status_fields(db: Session, *, user_id: str) -> dict[str, Any]:
     try:
         from app.services.scalp_jev_calibration import status_fields
 
-        return status_fields(db)
+        fields = status_fields(db)
+        mismatch = fee_mismatch_for(user_id)
+        diagnosis = fields.get("jev_diagnosis")
+        if mismatch and isinstance(diagnosis, dict):
+            patched = dict(diagnosis)
+            patched["fee_mismatch_bp"] = mismatch
+            note = f"O último fill cobrou taxa diferente da tela em cerca de {mismatch} bp."
+            patched["data_ok"] = f"{patched.get('data_ok') or ''} {note}".strip()
+            fields["jev_diagnosis"] = patched
+        return fields
     except Exception:
         logger.exception("scalp diagnosis status failed")
         return {
@@ -1685,9 +1857,13 @@ def status_payload(
         )
         if live_book is not None:
             mark = live_book.mid
-    fee_bp, bnb_fee_active = _fee_terms(
+    fee_bp, bnb_fee_active, bnb_discount_applied = _fee_terms(
         str(user_id), cred=_credential(db, user_id), fetcher=fee_fetcher
     )
+    _last_screen_fee_bp[str(user_id)] = fee_bp
+    exit_target_bp, exit_stop_bp, horizon_s, _slippage_cap_bp = _applied_geometry(db)
+    lookback_min = max(1, int(horizon_s // 60))
+    lookback_label = f"últimos {lookback_min} min"
     spread_bp = Decimal("0.1")
     if mark > 0 and visual == "on":
         touch_row = memory.read_touch()
@@ -1706,16 +1882,16 @@ def status_payload(
             position = {
                 "entry_quote": str(state.avg_entry_quote),
                 "age_s": int(_seconds_since(state.position_opened_at, _utcnow())),
-                "target_bp": str(EXIT_TARGET_BP),
-                "stop_bp": str(EXIT_STOP_BP),
+                "target_bp": str(exit_target_bp),
+                "stop_bp": str(exit_stop_bp),
             }
     if visual == "on" and key_ok and book_available:
         status_text = (
-            f"Ligado: pergunta ao Jev com o toque fresco. Lookback últimos 15 min. "
+            f"Ligado: pergunta ao Jev com o toque fresco. Lookback {lookback_label}. "
             f"Hurdle {hurdle_bp.quantize(Decimal('0.1'))} bp com taxa considerada "
             f"{_fee_bp_label(fee_bp)} bp"
-            f"{' (BNB habilitado; desconto não aplicado)' if bnb_fee_active else ''}. "
-            f"Alvo {_bp_label(EXIT_TARGET_BP)} bp. Stop {_bp_label(EXIT_STOP_BP)} bp depois do fill. "
+            f"{' · desconto aplicado' if bnb_discount_applied else (' (BNB habilitado; desconto não aplicado)' if bnb_fee_active else '')}. "
+            f"Alvo {_bp_label(exit_target_bp)} bp. Stop {_bp_label(exit_stop_bp)} bp depois do fill. "
             "Operar continua ao lado."
         )
     return {
@@ -1726,8 +1902,8 @@ def status_payload(
         "jev_unavailable": visual == "on" and not jev_live,
         "book_available": book_available,
         "book_age_ms": book_age_ms if visual == "on" else memory.age_ms(),
-        "horizon_s": HORIZON_S,
-        "lookback_label": "últimos 15 min",
+        "horizon_s": horizon_s,
+        "lookback_label": lookback_label,
         "t_quote": str(t),
         "clip_quote": "10",
         "inventory_btc": str(inventory),
@@ -1739,9 +1915,11 @@ def status_payload(
         "enabled": enabled and not killed and key_ok,
         "fee_bp": str(fee_bp),
         "bnb_fee_active": bnb_fee_active,
+        "bnb_discount_applied": bnb_discount_applied,
         "hurdle_bp": str(hurdle_bp),
-        "exit_target_bp": str(EXIT_TARGET_BP),
-        "exit_stop_bp": str(EXIT_STOP_BP),
+        "exit_target_bp": str(exit_target_bp),
+        "exit_stop_bp": str(exit_stop_bp),
+        "fee_mismatch_bp": fee_mismatch_for(str(user_id)),
         "position": position,
         "last_trade_bp": (
             str(state.last_trade_bp) if state and state.last_trade_bp is not None else None
@@ -1750,5 +1928,5 @@ def status_payload(
             str(state.last_trade_quote) if state and state.last_trade_quote is not None else None
         ),
         "stuck": stuck,
-        **_diagnosis_status_fields(db),
+        **_diagnosis_status_fields(db, user_id=str(user_id)),
     }
