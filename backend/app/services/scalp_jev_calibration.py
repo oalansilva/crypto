@@ -72,6 +72,93 @@ def compute_regime_boundary_bp(
     return Decimal(str(statistics.median([float(v) for v in values])))
 
 
+def _vol_bps_from_decisions(decisions: Sequence[Any]) -> list[Decimal]:
+    vols: list[Decimal] = []
+    for decision in decisions:
+        vol = getattr(decision, "vol_bp", None)
+        if vol is not None and vol.is_finite():
+            vols.append(vol)
+    return vols
+
+
+def _maybe_measure_and_persist_regime_boundary(
+    db: Session,
+    summary: dict[str, Any],
+    decisions: Sequence[Any],
+    *,
+    closed: date,
+    now: datetime,
+) -> None:
+    """Measure σ boundary from real log decisions; persist version when needed (#1070)."""
+    if summary.get("regime_boundary_bp") is not None:
+        return
+    measured = compute_regime_boundary_bp(_vol_bps_from_decisions(decisions))
+    if measured is None:
+        return
+    summary["regime_boundary_bp"] = str(measured)
+    summary["regime_boundary_status"] = "measured"
+
+    current = active_version(db)
+    if current is not None and regime_boundary_from_policies(policies_of(current)) is not None:
+        return
+
+    from app.services.scalp_service import _confidence_min
+
+    in_use = _confidence_min()
+    conf_value = str(in_use if in_use is not None else Decimal("0.7"))
+    confidence = {
+        REGIME_CALM: {"kind": CONFIDENCE_POLICY_NUMERIC, "value": conf_value},
+        REGIME_ACTIVE: {"kind": CONFIDENCE_POLICY_NUMERIC, "value": conf_value},
+    }
+    policies = bundle_version_policies(
+        confidence,
+        target_bp="35",
+        stop_bp="-28",
+        horizon_s=900,
+        regime_boundary_bp=str(measured),
+        slippage_cap_bp="10",
+    )
+    _activate_version(
+        db,
+        policies=policies,
+        closed=closed,
+        reason=_BOUNDARY_MEASURED_ACTIVATE_REASON,
+        source=SOURCE_MEASURED_BOUNDARY,
+        previous=current,
+        choice_until=None,
+        validated_until=None,
+        now=now,
+    )
+
+
+def _version_lacks_regime_boundary(db: Session) -> bool:
+    current = active_version(db)
+    if current is None:
+        return True
+    return regime_boundary_from_policies(policies_of(current)) is None
+
+
+def _try_measure_regime_boundary_from_log(
+    db: Session,
+    summary: dict[str, Any],
+    *,
+    closed: date,
+    now: datetime,
+) -> None:
+    log_path = log_file_path()
+    if not log_path.exists():
+        return
+    ruler = _load_ruler()
+    decisions, _refusals, _malformed = ruler.parse_log(log_path)
+    _maybe_measure_and_persist_regime_boundary(
+        db,
+        summary,
+        decisions,
+        closed=closed,
+        now=now,
+    )
+
+
 def confidence_only(policies: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {
         regime: dict(policies[regime])
@@ -105,10 +192,10 @@ def bundle_from_summary(
 ) -> dict[str, Any]:
     geo = summary.get("geometry_proposal") or summary.get("geometry_in_use") or {}
     boundary = None
-    if backtest and backtest.get("regime_boundary_bp"):
-        boundary = str(backtest["regime_boundary_bp"])
-    elif summary.get("regime_boundary_bp") is not None:
+    if summary.get("regime_boundary_bp") is not None:
         boundary = str(summary["regime_boundary_bp"])
+    elif backtest and backtest.get("regime_boundary_bp"):
+        boundary = str(backtest["regime_boundary_bp"])
     return bundle_version_policies(
         confidence,
         target_bp=str(geo.get("target_bp") or "35"),
@@ -176,8 +263,14 @@ POSTERIOR_MIN = 200
 RUN_AFTER_MINUTE = 15
 CALIBRATION_ROW_ID = 1
 SOURCE_AUTOMATIC = "automatic"
+SOURCE_MEASURED_BOUNDARY = "measured_boundary"
 SOURCE_REVERT_AUTO = "auto_revert"
 SOURCE_REVERT_MANUAL = "manual_revert"
+
+_BOUNDARY_MEASURED_ACTIVATE_REASON = (
+    "Fronteira medida no vol_bp real do log de diagnóstico; "
+    "a confiança mantém o valor em uso; alvo, stop e prazo não mudam."
+)
 
 VERB_APPLY = "aplicar"
 VERB_KEEP = "manter"
@@ -1123,6 +1216,69 @@ def _split_posterior(
     return ordered[:cut], ordered[cut:]
 
 
+def _refresh_existing_diagnosis_after_boundary_measure(
+    db: Session,
+    existing: ScalpJevDiagnosis,
+    summary: dict[str, Any],
+    *,
+    closed: date,
+    stamp: datetime,
+) -> None:
+    """Reconcile stored panel/summary after log bootstrap measured regime_boundary_bp."""
+    if summary.get("regime_boundary_bp") is None:
+        return
+    period = None
+    if existing.period_start is not None and existing.period_end is not None:
+        period = (existing.period_start, existing.period_end)
+    newest = existing.period_end
+    last_end = existing.period_end
+    current = active_version(db)
+    policies = policies_of(current)
+    block_kind = existing.block_kind
+    blocked = existing.blocked
+    verb = existing.verb
+    reason = existing.operator_reason or existing.reason or ""
+    if existing.block_kind == "regime_boundary":
+        quality = _quality_block(
+            summary,
+            newest_candle=newest,
+            last_window_end=last_end,
+        )
+        if quality is not None:
+            block_kind, reason = quality[0], quality[1]
+            blocked = True
+            verb = VERB_BLOCK
+        else:
+            block_kind = None
+            blocked = False
+    comparable_flag = existing.posterior_n >= POSTERIOR_MIN and _sample_is_comparable(
+        summary, block_kind
+    )
+    panel = build_panel(
+        closed=closed,
+        shown_on=stamp.date(),
+        verb=verb,
+        reason=reason,
+        posterior_n=existing.posterior_n,
+        comparable=comparable_flag,
+        summary=summary,
+        policies=policies,
+        version=current,
+        period=period,
+        block_kind=block_kind,
+    )
+    existing.summary_json = _json_dump(summary)
+    existing.panel_json = _json_dump(panel)
+    existing.block_kind = block_kind
+    existing.blocked = blocked
+    existing.verb = verb
+    existing.reason = reason
+    existing.operator_reason = reason
+    if current is not None:
+        existing.applied_version_id = current.id
+    db.add(existing)
+
+
 def _store_diagnosis(
     db: Session,
     *,
@@ -1185,8 +1341,28 @@ def run_closed_day_diagnosis(
     closed = closed or closed_day_for(stamp)
     existing = diagnosis_for(db, closed)
     if existing is not None:
+        if _version_lacks_regime_boundary(db):
+            summary_payload = _json_load(existing.summary_json)
+            if not isinstance(summary_payload, dict):
+                summary_payload = {}
+            _try_measure_regime_boundary_from_log(
+                db,
+                summary_payload,
+                closed=closed,
+                now=stamp,
+            )
+            _refresh_existing_diagnosis_after_boundary_measure(
+                db,
+                existing,
+                summary_payload,
+                closed=closed,
+                stamp=stamp,
+            )
+            db.commit()
+            db.refresh(existing)
         return existing
     ruler = _load_ruler()
+    log_decisions: list[Any] = []
     if summary is None:
         from app.services.scalp_service import _regime_boundary_bp
 
@@ -1196,6 +1372,7 @@ def run_closed_day_diagnosis(
             decisions, refusals, malformed = [], {}, 0
         else:
             decisions, refusals, malformed = ruler.parse_log(log_path)
+        log_decisions = list(decisions)
         until = day_end(closed)
         if decisions:
             need_from = min(d.at for d in decisions)
@@ -1230,6 +1407,14 @@ def run_closed_day_diagnosis(
 
     assert summary is not None
     rows = list(realized_windows or [])
+    boundary_decisions = log_decisions or [decision for decision, _realized in rows]
+    _maybe_measure_and_persist_regime_boundary(
+        db,
+        summary,
+        boundary_decisions,
+        closed=closed,
+        now=stamp,
+    )
     current = active_version(db)
     current_policies = policies_of(current)
     state = get_calibration_state(db)

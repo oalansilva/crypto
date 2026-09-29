@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -273,6 +274,21 @@ def test_bundle_fingerprint_includes_geometry_and_boundary():
     merged = bundle_from_summary(conf, summary, backtest=summary["backtest"])
     assert merged["geometry"]["horizon_s"] == 3600
     assert backtest_promotion_ready(summary) is True
+
+
+def test_bundle_from_summary_prefers_log_measured_boundary_over_offline_backtest():
+    conf = {
+        "calm": {"kind": "numeric", "value": "0.55"},
+        "active": {"kind": "numeric", "value": "0.6"},
+    }
+    summary = {
+        "geometry_in_use": {"target_bp": "35", "stop_bp": "-28", "horizon_s": 900},
+        "regime_boundary_bp": "0.042",
+        "regime_boundary_status": "measured",
+        "backtest": {"regime_boundary_bp": "0.99", "promotable": False, "regimes": {}},
+    }
+    merged = bundle_from_summary(conf, summary, backtest=summary["backtest"])
+    assert merged["regime_boundary_bp"] == "0.042"
 
 
 def test_geometry_search_skips_not_operable_block():
@@ -563,6 +579,246 @@ def test_decide_exit_cycle_respects_version_geometry():
     )
     expected_cap = book.mid * (Decimal("1") - cap_bp / Decimal("10000"))
     assert ioc.price == expected_cap
+
+
+def _rows_with_vol_bps(count: int, *, low: Decimal, high: Decimal):
+    from test_scalp_jev_eval_ruler import _merge, _windows, ruler
+
+    half = count // 2
+    low_decisions, low_series = _windows(half, confidence="0.55", realized_bp=12, start_s=0)
+    for decision in low_decisions:
+        decision.vol_bp = low
+    high_decisions, high_series = _windows(
+        count - half, confidence="0.55", realized_bp=12, start_s=half * 900
+    )
+    for decision in high_decisions:
+        decision.vol_bp = high
+    series = _merge(low_series, high_series)
+    decisions = low_decisions + high_decisions
+    return [(decision, ruler.realized_for(decision, series)) for decision in decisions]
+
+
+def test_measured_regime_boundary_from_log_vol_bp_persists_version(diag_db, monkeypatch):
+    from app.services import scalp_jev_calibration as calibration
+    from app.services.scalp_jev_calibration import (
+        active_version,
+        compute_regime_boundary_bp,
+        policies_of,
+        run_closed_day_diagnosis,
+    )
+    from app.services.scalp_engine import CONFIDENCE_POLICY_NUMERIC, REGIME_ACTIVE, REGIME_CALM
+    from app.services.scalp_service import _confidence_policy_for, _regime_boundary_bp
+    from test_scalp_jev_diagnostico_recalibracao import _summary
+
+    monkeypatch.delenv("SCALP_REGIME_BOUNDARY_BP", raising=False)
+    monkeypatch.delenv("SCALP_CONFIDENCE_MIN", raising=False)
+
+    low = Decimal("0.02")
+    high = Decimal("0.08")
+    rows = _rows_with_vol_bps(400, low=low, high=high)
+    vols = [decision.vol_bp for decision, _realized in rows]
+    expected = compute_regime_boundary_bp(vols)
+    assert expected is not None
+
+    backtest = calibration._load_backtest()
+    real_offline = backtest.run_offline_backtest
+
+    def fake_offline_backtest(**kwargs):
+        payload = real_offline(**kwargs)
+        payload = dict(payload)
+        payload["regime_boundary_bp"] = "0.99"
+        return payload
+
+    monkeypatch.setattr(backtest, "run_offline_backtest", fake_offline_backtest)
+
+    summary = _summary(n=400, operable=True)
+    summary["regime_boundary_bp"] = None
+    summary["regime_boundary_status"] = "absent"
+
+    calibration.set_calibration_paused(diag_db, paused=True)
+    row = run_closed_day_diagnosis(
+        diag_db,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+        summary=summary,
+        realized_windows=rows,
+        newest_candle=datetime(2026, 9, 26, 0, 20, 0),
+        last_window_end=datetime(2026, 9, 25, 23, 0, 0),
+        fee_bp=Decimal("10"),
+    )
+
+    assert row.block_kind != "regime_boundary"
+    assert summary["regime_boundary_bp"] == str(expected)
+    assert summary["regime_boundary_status"] == "measured"
+    version = active_version(diag_db)
+    assert version is not None
+    policies = policies_of(version)
+    assert policies["regime_boundary_bp"] == str(expected)
+    assert policies["calm"]["kind"] == CONFIDENCE_POLICY_NUMERIC
+    assert policies["active"]["kind"] == CONFIDENCE_POLICY_NUMERIC
+    assert policies["calm"]["value"] == "0.7"
+    assert policies["active"]["value"] == "0.7"
+    assert _regime_boundary_bp(diag_db) == expected
+    assert (
+        _confidence_policy_for(regime=REGIME_CALM, boundary_bp=expected, db=diag_db).kind
+        == CONFIDENCE_POLICY_NUMERIC
+    )
+    assert (
+        _confidence_policy_for(regime=REGIME_ACTIVE, boundary_bp=expected, db=diag_db).kind
+        == CONFIDENCE_POLICY_NUMERIC
+    )
+    stored_summary = json.loads(row.summary_json)
+    assert stored_summary["regime_boundary_bp"] == str(expected)
+    assert stored_summary["regime_boundary_status"] == "measured"
+    panel = json.loads(row.panel_json)
+    assert panel["regime_boundary_bp"] == str(expected)
+    assert panel["regime_boundary_status"] == "measured"
+    assert "ausente" not in panel["geometry_bundle"].lower()
+
+
+def test_existing_diagnosis_still_measures_boundary_from_log(diag_db, monkeypatch, tmp_path):
+    from app.models import ScalpConfidenceVersion, ScalpJevDiagnosis
+    from app.services import scalp_jev_calibration as calibration
+    from app.services.scalp_jev_calibration import (
+        active_version,
+        compute_regime_boundary_bp,
+        policies_of,
+        run_closed_day_diagnosis,
+    )
+    from app.services.scalp_service import _regime_boundary_bp
+    from test_scalp_jev_diagnostico_recalibracao import _run, _summary
+
+    monkeypatch.delenv("SCALP_REGIME_BOUNDARY_BP", raising=False)
+
+    summary = _summary(operable=True, n=214)
+    summary["regime_boundary_bp"] = None
+    summary["regime_boundary_status"] = "absent"
+    first = _run(
+        diag_db,
+        rows=_rows_with_vol_bps(214, low=Decimal("0.02"), high=Decimal("0.08")),
+        summary=summary,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+    )
+    assert first.block_kind == "regime_boundary"
+    assert diag_db.query(ScalpConfidenceVersion).count() == 0
+
+    low = Decimal("0.02")
+    high = Decimal("0.08")
+    log_decisions = [
+        decision for decision, _realized in _rows_with_vol_bps(400, low=low, high=high)
+    ]
+    expected = compute_regime_boundary_bp([d.vol_bp for d in log_decisions])
+    assert expected is not None
+
+    log_file = tmp_path / "scalp_jev_diagnostic.log"
+    log_file.write_text("stub\n", encoding="utf-8")
+    module = calibration._load_ruler()
+    monkeypatch.setattr(calibration, "log_file_path", lambda: log_file)
+    monkeypatch.setattr(module, "parse_log", lambda _p: (log_decisions, {}, 0))
+
+    second = run_closed_day_diagnosis(diag_db, now=datetime(2026, 9, 26, 0, 20, 0))
+    assert second.closed_day == first.closed_day
+    assert diag_db.query(ScalpJevDiagnosis).count() == 1
+    version = active_version(diag_db)
+    assert version is not None
+    assert policies_of(version)["regime_boundary_bp"] == str(expected)
+    assert _regime_boundary_bp(diag_db) == expected
+    assert second.block_kind != "regime_boundary"
+    stored_summary = json.loads(second.summary_json)
+    assert stored_summary["regime_boundary_bp"] == str(expected)
+    assert stored_summary["regime_boundary_status"] == "measured"
+    panel = json.loads(second.panel_json)
+    assert panel["regime_boundary_bp"] == str(expected)
+    assert panel["regime_boundary_status"] == "measured"
+    assert "ausente" not in panel["geometry_bundle"].lower()
+
+
+def test_daily_run_with_offline_backtest_uses_log_measured_boundary(diag_db, monkeypatch, tmp_path):
+    from app.services import scalp_jev_calibration as calibration
+    from app.services.scalp_jev_calibration import (
+        active_version,
+        compute_regime_boundary_bp,
+        policies_of,
+        run_closed_day_diagnosis,
+    )
+
+    monkeypatch.delenv("SCALP_REGIME_BOUNDARY_BP", raising=False)
+    calibration.set_calibration_paused(diag_db, paused=True)
+
+    low = Decimal("0.02")
+    high = Decimal("0.08")
+    log_decisions = [
+        decision for decision, _realized in _rows_with_vol_bps(400, low=low, high=high)
+    ]
+    expected = compute_regime_boundary_bp([d.vol_bp for d in log_decisions])
+    assert expected is not None
+
+    log_file = tmp_path / "scalp_jev_diagnostic.log"
+    log_file.write_text("stub\n", encoding="utf-8")
+    module = calibration._load_ruler()
+    monkeypatch.setattr(calibration, "log_file_path", lambda: log_file)
+    monkeypatch.setattr(module, "parse_log", lambda _p: (log_decisions, {}, 0))
+    monkeypatch.setattr(
+        module,
+        "load_candles",
+        lambda **_k: (
+            module.CandleSeries([]),
+            module.OhlcvRead(module.MEASUREMENT_NOT_APPLICABLE, "x", module.OhlcvConnection()),
+        ),
+    )
+
+    backtest = calibration._load_backtest()
+    real_offline = backtest.run_offline_backtest
+
+    def fake_offline_backtest(**kwargs):
+        payload = dict(real_offline(**kwargs))
+        payload["regime_boundary_bp"] = "0.99"
+        return payload
+
+    monkeypatch.setattr(backtest, "run_offline_backtest", fake_offline_backtest)
+
+    from test_scalp_jev_diagnostico_recalibracao import _summary
+
+    def fake_build_report(**kwargs):
+        summary = _summary(n=400, operable=True)
+        summary["regime_boundary_bp"] = None
+        summary["regime_boundary_status"] = "absent"
+        return "report", summary
+
+    monkeypatch.setattr(module, "build_report", fake_build_report)
+    monkeypatch.setattr(
+        "app.services.scalp_service._regime_boundary_bp",
+        lambda _db=None: None,
+    )
+
+    row = run_closed_day_diagnosis(diag_db, now=datetime(2026, 9, 26, 0, 20, 0))
+    version = active_version(diag_db)
+    assert version is not None
+    assert policies_of(version)["regime_boundary_bp"] == str(expected)
+    assert row.block_kind != "regime_boundary"
+    stored_summary = json.loads(row.summary_json)
+    assert stored_summary["regime_boundary_bp"] == str(expected)
+    assert stored_summary.get("backtest", {}).get("regime_boundary_bp") == "0.99"
+    panel = json.loads(row.panel_json)
+    assert panel["regime_boundary_bp"] == str(expected)
+
+
+def test_measured_regime_boundary_requires_four_hundred_finite_vols(diag_db, monkeypatch):
+    from app.models import ScalpConfidenceVersion
+    from test_scalp_jev_diagnostico_recalibracao import _rows, _run, _summary
+
+    monkeypatch.delenv("SCALP_REGIME_BOUNDARY_BP", raising=False)
+    summary = _summary(operable=True, n=214)
+    summary["regime_boundary_bp"] = None
+    summary["regime_boundary_status"] = "absent"
+
+    row = _run(
+        diag_db,
+        rows=_rows(214),
+        summary=summary,
+        now=datetime(2026, 9, 26, 0, 20, 0),
+    )
+    assert row.block_kind == "regime_boundary"
+    assert diag_db.query(ScalpConfidenceVersion).count() == 0
 
 
 def test_attach_offline_backtest_fills_summary():
