@@ -1,4 +1,5 @@
 """Card #1070 — price path, backtest, BNB, bundle promotion, monitor copy."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -126,13 +127,8 @@ def test_report_2909_indeterminate_fraction_below_five_percent():
     ppm = _load_module("scalp_jev_price_path")
     start = datetime(2025, 9, 29, 0, 0, 0)
     entry = Decimal("100")
-    ticks = [
-        ppm.TradeTick(at=start + timedelta(seconds=i), price=entry)
-        for i in range(1, 120)
-    ]
-    ticks.append(
-        ppm.TradeTick(at=start + timedelta(seconds=130), price=entry * Decimal("1.002"))
-    )
+    ticks = [ppm.TradeTick(at=start + timedelta(seconds=i), price=entry) for i in range(1, 120)]
+    ticks.append(ppm.TradeTick(at=start + timedelta(seconds=130), price=entry * Decimal("1.002")))
     store = ppm.MemoryPricePathStore(trades=tuple(ticks))
     candidates = [
         {"measurement_status": "measured"},
@@ -143,18 +139,20 @@ def test_report_2909_indeterminate_fraction_below_five_percent():
     assert without == Decimal("1") / Decimal("3")
     resolved = [
         {
-            "measurement_status": "measured"
-            if ppm.barrier_for_window(
-                store,
-                side="BUY",
-                entry=entry,
-                start=start,
-                end=start + timedelta(seconds=900),
-                target_bp=Decimal("20"),
-                stop_bp=Decimal("-14"),
-            )[0]
-            != "indeterminate"
-            else "indeterminate"
+            "measurement_status": (
+                "measured"
+                if ppm.barrier_for_window(
+                    store,
+                    side="BUY",
+                    entry=entry,
+                    start=start,
+                    end=start + timedelta(seconds=900),
+                    target_bp=Decimal("20"),
+                    stop_bp=Decimal("-14"),
+                )[0]
+                != "indeterminate"
+                else "indeterminate"
+            )
         }
         for _ in range(40)
     ]
@@ -349,7 +347,11 @@ def test_dev_cycle_posts_post_only_buy(diag_db, monkeypatch):
 
         def place_post_only(self, **kwargs):
             sent.append(kwargs)
-            return {"status": "FILLED", "executedQty": kwargs["quantity"], "cummulativeQuoteQty": "10"}
+            return {
+                "status": "FILLED",
+                "executedQty": kwargs["quantity"],
+                "cummulativeQuoteQty": "10",
+            }
 
         def place_aggressive_exit(self, **kwargs):
             raise AssertionError("no market")
@@ -407,8 +409,12 @@ def test_dev_cycle_posts_post_only_buy(diag_db, monkeypatch):
 
 def test_last_trade_net_visible_after_round_trip():
     state = ScalpUserState(user_id="u2", inventory_btc=Decimal("0"))
-    _apply_fill(state, side="BUY", quantity=Decimal("0.001"), price=Decimal("100"), fee=Decimal("0.01"))
-    _apply_fill(state, side="SELL", quantity=Decimal("0.001"), price=Decimal("99"), fee=Decimal("0.01"))
+    _apply_fill(
+        state, side="BUY", quantity=Decimal("0.001"), price=Decimal("100"), fee=Decimal("0.01")
+    )
+    _apply_fill(
+        state, side="SELL", quantity=Decimal("0.001"), price=Decimal("99"), fee=Decimal("0.01")
+    )
     assert state.last_trade_quote is not None
     assert state.last_trade_bp is not None
 
@@ -562,7 +568,10 @@ def test_decide_exit_cycle_respects_version_geometry():
 def test_attach_offline_backtest_fills_summary():
     from decimal import Decimal
 
-    from app.services.scalp_jev_calibration import _attach_offline_backtest, backtest_promotion_ready
+    from app.services.scalp_jev_calibration import (
+        _attach_offline_backtest,
+        backtest_promotion_ready,
+    )
 
     summary = {
         "geometry_in_use": {"target_bp": "20", "stop_bp": "-14", "horizon_s": 900},

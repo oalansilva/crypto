@@ -160,7 +160,11 @@ def _applied_geometry(
     slippage_cap = EXIT_SLIPPAGE_CAP_BP
     if db is None:
         return target, stop, horizon, slippage_cap
-    from app.services.scalp_jev_calibration import active_version, geometry_from_policies, policies_of
+    from app.services.scalp_jev_calibration import (
+        active_version,
+        geometry_from_policies,
+        policies_of,
+    )
 
     version = active_version(db)
     if version is None:
@@ -1517,7 +1521,9 @@ def _run_cycle(
         # The reference price only feeds the symbol's NOTIONAL/MIN_NOTIONAL
         # filter (a MARKET order carries no price of its own); for a SELL the
         # bid is the conservative realizable side. It never enters the order.
-        reference_price = intent.price or (book.bid if (intent.side or "SELL") == "SELL" else book.ask)
+        reference_price = intent.price or (
+            book.bid if (intent.side or "SELL") == "SELL" else book.ask
+        )
         if not attempt_allowed:
             # Item 3 da correção pós-CR: nada de reenviar a rejeitada a cada
             # ciclo com um id novo — mesma chave de reconciliação e backoff

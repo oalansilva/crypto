@@ -104,7 +104,7 @@ async function mockAuthenticatedSession(page: Page) {
 }
 
 async function mockMonitor(page: Page, scalp: Record<string, unknown>) {
-  let live = { ...scalp }
+  const live = { ...scalp }
   await page.route('**/api/**', async (route) => {
     const url = route.request().url()
     if (url.includes('/api/auth/refresh')) {

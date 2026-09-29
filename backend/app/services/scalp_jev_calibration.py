@@ -63,7 +63,9 @@ def bundle_version_policies(
     return payload
 
 
-def compute_regime_boundary_bp(vol_bps: Sequence[Decimal], *, min_per_side: int = 200) -> Optional[Decimal]:
+def compute_regime_boundary_bp(
+    vol_bps: Sequence[Decimal], *, min_per_side: int = 200
+) -> Optional[Decimal]:
     values = sorted(v for v in vol_bps if v is not None and v.is_finite())
     if len(values) < min_per_side * 2:
         return None
@@ -150,7 +152,9 @@ def _backtest_sample_phrase(summary: dict[str, Any]) -> str:
     return "Backtest: " + "; ".join(parts) + ". " + tail
 
 
-def _geometry_bundle_phrase(policies: dict[str, Any], version: Optional[ScalpConfidenceVersion]) -> str:
+def _geometry_bundle_phrase(
+    policies: dict[str, Any], version: Optional[ScalpConfidenceVersion]
+) -> str:
     geo = geometry_from_policies(policies)
     boundary = regime_boundary_from_policies(policies)
     mins = int(int(geo.get("horizon_s") or 900) // 60)
@@ -164,6 +168,7 @@ def _geometry_bundle_phrase(policies: dict[str, Any], version: Optional[ScalpCon
         f"Conjunto aplicado: alvo {geo.get('target_bp')} bp, stop {geo.get('stop_bp')} bp, "
         f"prazo {mins} min. {boundary_bit} {version_bit}"
     )
+
 
 logger = logging.getLogger(__name__)
 
