@@ -1704,7 +1704,6 @@ def _propose_geometry(
     A candidate beats when its break-even **with cost** is strictly below the
     realized barrier hit. The ruler never writes the proposed pair.
     """
-    rows = _rows_with_declared_identity(rows)
     in_use = _geometry_candidate_row(
         rows,
         series,

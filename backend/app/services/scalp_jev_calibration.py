@@ -1262,13 +1262,6 @@ def run_closed_day_diagnosis(
         )
     else:
         declared_conf = confidence_only(current_policies)
-    for regime in (REGIME_CALM, REGIME_ACTIVE):
-        kind = (declared_conf.get(regime) or {}).get("kind")
-        if kind == CONFIDENCE_POLICY_OFF:
-            declared_conf[regime] = {
-                "kind": CONFIDENCE_POLICY_CLOSED,
-                "value": None,
-            }
     declared = bundle_from_summary(
         declared_conf,
         summary,
