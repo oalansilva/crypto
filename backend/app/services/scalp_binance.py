@@ -18,6 +18,7 @@ from app.services.binance_spot_orders import (
 )
 from app.services.scalp_engine import (
     AGGRESSIVE_ORDER_TYPE,
+    IOC_TIME_IN_FORCE,
     CLIENT_ORDER_PREFIX,
     ORDER_TYPE,
     SYMBOL,
@@ -59,8 +60,8 @@ def fetch_maker_fee_terms(
     api_key: str,
     api_secret: str,
     base_url: Optional[str] = None,
-) -> tuple[Decimal, bool]:
-    """Return the conservative rate and whether BNB discount is configured."""
+) -> tuple[Decimal, bool, Decimal]:
+    """Return maker bp, whether BNB discount is configured, and discount rate."""
     payload = signed_request(
         method="GET",
         path=COMMISSION_PATH,
@@ -102,7 +103,15 @@ def fetch_maker_fee_terms(
         and discount.get("enabledForSymbol")
         and discount.get("discountAsset") == "BNB"
     )
-    return fee_bp, discount_enabled
+    discount_rate = Decimal("0.25")
+    if isinstance(discount, dict) and discount.get("discount") is not None:
+        try:
+            discount_rate = Decimal(str(discount.get("discount")))
+        except Exception:
+            discount_rate = Decimal("0.25")
+    if discount_rate < 0 or discount_rate > 1:
+        discount_rate = Decimal("0.25")
+    return fee_bp, discount_enabled, discount_rate
 
 
 def _commission_rate(value: Any, *, field: str) -> Decimal:
@@ -304,6 +313,7 @@ def place_aggressive_exit(
         raise BinanceOrderError(
             "Notional abaixo do filtro da Binance", code=ORDER_FILTER_REJECTED_CODE
         )
+    cap_price = reference_price
     return signed_request(
         method="POST",
         path="/api/v3/order",
@@ -313,7 +323,9 @@ def place_aggressive_exit(
             "symbol": SYMBOL,
             "side": side,
             "type": AGGRESSIVE_ORDER_TYPE,
+            "timeInForce": IOC_TIME_IN_FORCE,
             "quantity": format_decimal(qty),
+            "price": format_decimal(cap_price),
             "newClientOrderId": client_order_id,
         },
         base_url=base_url,

@@ -76,8 +76,8 @@ def test_fee_terms_return_the_real_maker_rate_per_leg_and_bnb_state():
         seen.append((api_key, api_secret))
         return Decimal("7.5"), True
 
-    fee_bp, bnb_fee_active = _fee_terms(user_id, cred=_cred(), fetcher=fetcher)
-    assert (fee_bp, bnb_fee_active) == (Decimal("7.5"), True)
+    fee_bp, bnb_fee_active, _disc = _fee_terms(user_id, cred=_cred(), fetcher=fetcher)
+    assert (fee_bp, bnb_fee_active, _disc) == (Decimal("7.5"), True, False)
     assert seen == [("api-key", "api-secret")]
     # Maker real por perna → hurdle = 2 × 7,5 + spread, na banda 12–16 bp.
     hurdle = entry_hurdle_bp(fee_bp, Decimal("0.1"))
@@ -87,10 +87,10 @@ def test_fee_terms_return_the_real_maker_rate_per_leg_and_bnb_state():
 
 def test_fee_terms_without_bnb_keeps_the_hurdle_near_20_bp():
     user_id = str(uuid.uuid4())
-    fee_bp, bnb_fee_active = _fee_terms(
+    fee_bp, bnb_fee_active, _disc = _fee_terms(
         user_id, cred=_cred(), fetcher=lambda _k, _s: (Decimal("10"), False)
     )
-    assert (fee_bp, bnb_fee_active) == (Decimal("10"), False)
+    assert (fee_bp, bnb_fee_active, _disc) == (Decimal("10"), False, False)
     hurdle = entry_hurdle_bp(fee_bp, Decimal("0.1"))
     assert Decimal("20") <= hurdle < Decimal("21")
 
@@ -101,14 +101,14 @@ def test_fee_api_failure_falls_back_to_ten_bp_without_bnb():
     def timeout(_key: str, _secret: str) -> tuple[Decimal, bool]:
         raise TimeoutError("account read timed out")
 
-    fee_bp, bnb_fee_active = _fee_terms(user_id, cred=_cred(), fetcher=timeout)
+    fee_bp, bnb_fee_active, _disc = _fee_terms(user_id, cred=_cred(), fetcher=timeout)
     assert (fee_bp, bnb_fee_active) == (FALLBACK_FEE_BP, False)
     assert entry_hurdle_bp(fee_bp, Decimal("0.1")).quantize(Decimal("0.1")) == Decimal("20.1")
 
 
 def test_fee_terms_non_positive_rate_also_falls_back():
     user_id = str(uuid.uuid4())
-    fee_bp, bnb_fee_active = _fee_terms(
+    fee_bp, bnb_fee_active, _disc = _fee_terms(
         user_id, cred=_cred(), fetcher=lambda _k, _s: (Decimal("0"), True)
     )
     assert (fee_bp, bnb_fee_active) == (FALLBACK_FEE_BP, False)
@@ -123,12 +123,12 @@ def test_fee_terms_are_cached_per_user_and_survive_the_cycle_count():
         return Decimal("7.5"), True
 
     for _ in range(200):
-        assert _fee_terms(user_id, cred=_cred(), fetcher=fetcher) == (Decimal("7.5"), True)
+        assert _fee_terms(user_id, cred=_cred(), fetcher=fetcher) == (Decimal("7.5"), True, False)
     assert calls["n"] == 1, "the lookup is served from the per-user cache"
     assert FEE_CACHE_TTL_SECONDS > 0
 
     invalidate_fee_cache(user_id)
-    assert _fee_terms(user_id, cred=_cred(), fetcher=fetcher) == (Decimal("7.5"), True)
+    assert _fee_terms(user_id, cred=_cred(), fetcher=fetcher) == (Decimal("7.5"), True, False)
     assert calls["n"] == 2
 
 
@@ -186,7 +186,7 @@ def test_live_fee_terms_use_symbol_commission_and_do_not_apply_bnb_discount_twic
         raise AssertionError(f"unexpected path {path}")
 
     monkeypatch.setattr(scalp_binance, "signed_request", fake_signed_request)
-    assert _live_fee_terms("key", "secret") == (Decimal("10.00000000"), True)
+    assert _live_fee_terms("key", "secret")[:2] == (Decimal("10.00000000"), True)
     assert calls == [
         (scalp_binance.COMMISSION_PATH, {"symbol": "BTCUSDT"}),
         (scalp_binance.BNB_BURN_PATH, None),
@@ -204,8 +204,8 @@ def test_live_fee_terms_failure_is_the_conservative_fallback(monkeypatch):
         "app.services.scalp_service._live_fee_terms",
         lambda api_key, api_secret: _live_fee_terms(api_key, api_secret),
     )
-    fee_bp, bnb_fee_active = _fee_terms(user_id, cred=_cred(), fetcher=_live_fee_terms)
-    assert (fee_bp, bnb_fee_active) == (Decimal("10"), False)
+    fee_bp, bnb_fee_active, _disc = _fee_terms(user_id, cred=_cred(), fetcher=_live_fee_terms)
+    assert (fee_bp, bnb_fee_active, _disc) == (Decimal("10"), False, False)
 
 
 class _FeeExchange(FakeExchange):

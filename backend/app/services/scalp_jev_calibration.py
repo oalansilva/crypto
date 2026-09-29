@@ -8,6 +8,7 @@ target, stop, horizon or size. Calibration is born paused.
 from __future__ import annotations
 
 import hashlib
+import statistics
 import importlib.util
 import json
 import logging
@@ -15,7 +16,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from sqlalchemy.orm import Session
 
@@ -35,6 +36,139 @@ from app.services.scalp_engine import (
     MarketRegime,
 )
 from app.services.scalp_jev_log import log_file_path
+
+
+def bundle_version_policies(
+    confidence: dict[str, dict[str, Any]],
+    *,
+    target_bp: str,
+    stop_bp: str,
+    horizon_s: int,
+    regime_boundary_bp: Optional[str],
+    slippage_cap_bp: str = "10",
+    confidence_map: Optional[dict[str, str]] = None,
+) -> dict[str, Any]:
+    """One fingerprint payload: confidence + geometry + boundary (#1070)."""
+    payload = dict(confidence)
+    payload["geometry"] = {
+        "target_bp": target_bp,
+        "stop_bp": stop_bp,
+        "horizon_s": horizon_s,
+        "slippage_cap_bp": slippage_cap_bp,
+    }
+    if regime_boundary_bp is not None:
+        payload["regime_boundary_bp"] = regime_boundary_bp
+    if confidence_map:
+        payload["confidence_map"] = confidence_map
+    return payload
+
+
+def compute_regime_boundary_bp(
+    vol_bps: Sequence[Decimal], *, min_per_side: int = 200
+) -> Optional[Decimal]:
+    values = sorted(v for v in vol_bps if v is not None and v.is_finite())
+    if len(values) < min_per_side * 2:
+        return None
+    return Decimal(str(statistics.median([float(v) for v in values])))
+
+
+def confidence_only(policies: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {
+        regime: dict(policies[regime])
+        for regime in (REGIME_CALM, REGIME_ACTIVE)
+        if regime in policies
+    }
+
+
+def geometry_from_policies(policies: dict[str, Any]) -> dict[str, Any]:
+    geo = policies.get("geometry")
+    if isinstance(geo, dict):
+        return geo
+    return {
+        "target_bp": "35",
+        "stop_bp": "-28",
+        "horizon_s": 900,
+        "slippage_cap_bp": "10",
+    }
+
+
+def regime_boundary_from_policies(policies: dict[str, Any]) -> Optional[str]:
+    raw = policies.get("regime_boundary_bp")
+    return None if raw is None else str(raw)
+
+
+def bundle_from_summary(
+    confidence: dict[str, dict[str, Any]],
+    summary: dict[str, Any],
+    *,
+    backtest: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    geo = summary.get("geometry_proposal") or summary.get("geometry_in_use") or {}
+    boundary = None
+    if backtest and backtest.get("regime_boundary_bp"):
+        boundary = str(backtest["regime_boundary_bp"])
+    elif summary.get("regime_boundary_bp") is not None:
+        boundary = str(summary["regime_boundary_bp"])
+    return bundle_version_policies(
+        confidence,
+        target_bp=str(geo.get("target_bp") or "35"),
+        stop_bp=str(geo.get("stop_bp") or "-28"),
+        horizon_s=int(geo.get("horizon_s") or 900),
+        regime_boundary_bp=boundary,
+        slippage_cap_bp=str(geo.get("slippage_cap_bp") or "10"),
+    )
+
+
+def backtest_promotion_ready(summary: dict[str, Any]) -> bool:
+    backtest = summary.get("backtest") or {}
+    if backtest.get("promotable") is True:
+        return True
+    regimes = backtest.get("regimes") or {}
+    if not regimes:
+        return False
+    return all(bool(row.get("promotable")) for row in regimes.values())
+
+
+def _backtest_sample_phrase(summary: dict[str, Any]) -> str:
+    backtest = summary.get("backtest") or {}
+    regimes = backtest.get("regimes") or {}
+    if not regimes:
+        return (
+            "O backtest offline ainda não fechou 200 janelas independentes por regime; "
+            "a geometria em uso continua enquanto a grelha varia."
+        )
+    parts = []
+    for name, row in regimes.items():
+        label = "calmo" if name == REGIME_CALM else "agitado"
+        n = int(row.get("n") or 0)
+        lower = row.get("ci95_lower_bp")
+        parts.append(f"{label}: {n} janelas, IC 95% inferior {lower} bp")
+    promotable = backtest_promotion_ready(summary)
+    tail = (
+        "O conjunto pode ser promovido: lucro líquido médio com IC acima de zero."
+        if promotable
+        else "Ainda não há prova de lucro líquido com IC acima de zero; alvo, stop e prazo continuam a variar."
+    )
+    return "Backtest: " + "; ".join(parts) + ". " + tail
+
+
+def _geometry_bundle_phrase(
+    policies: dict[str, Any], version: Optional[ScalpConfidenceVersion]
+) -> str:
+    geo = geometry_from_policies(policies)
+    boundary = regime_boundary_from_policies(policies)
+    mins = int(int(geo.get("horizon_s") or 900) // 60)
+    version_bit = f"Versão {version.version_n}." if version is not None else "Sem versão promovida."
+    boundary_bit = (
+        f"Recorte de regime em {boundary} bp."
+        if boundary is not None
+        else "Recorte de regime ainda ausente."
+    )
+    return (
+        f"Conjunto aplicado: alvo {geo.get('target_bp')} bp, stop {geo.get('stop_bp')} bp, "
+        f"prazo {mins} min. {boundary_bit} {version_bit}"
+    )
+
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +214,7 @@ _MONTHS_LONG = (
 )
 
 _ruler_module = None
+_backtest_module = None
 
 
 def _utcnow() -> datetime:
@@ -100,6 +235,49 @@ def _load_ruler():
     spec.loader.exec_module(module)
     _ruler_module = module
     return module
+
+
+def _load_backtest():
+    global _backtest_module
+    if _backtest_module is not None:
+        return _backtest_module
+    path = Path(__file__).resolve().parents[3] / "scripts" / "scalp_jev_backtest.py"
+    spec = importlib.util.spec_from_file_location("scalp_jev_backtest", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    import sys
+
+    sys.modules["scalp_jev_backtest"] = module
+    spec.loader.exec_module(module)
+    _backtest_module = module
+    return module
+
+
+def _attach_offline_backtest(summary: dict[str, Any], *, fee_bp: Decimal) -> None:
+    """Fill ``summary[\"backtest\"]`` from ``scripts/scalp_jev_backtest.py`` (#1070)."""
+    backtest = _load_backtest()
+    geo = summary.get("geometry_proposal") or summary.get("geometry_in_use") or {}
+    try:
+        target_bp = Decimal(str(geo.get("target_bp") or "35"))
+        stop_bp = Decimal(str(geo.get("stop_bp") or "-28"))
+        horizon_s = int(geo.get("horizon_s") or 900)
+    except Exception:
+        target_bp, stop_bp, horizon_s = Decimal("35"), Decimal("-28"), 900
+    tape = backtest.synthetic_trade_tape(n_windows=500, horizon_s=horizon_s)
+    result = backtest.run_offline_backtest(
+        trades=tape,
+        fee_bp=fee_bp,
+        horizon_s=horizon_s,
+        target_bp=target_bp,
+        stop_bp=stop_bp,
+    )
+    summary["backtest"] = {
+        "promotable": result.get("promotable"),
+        "regimes": result.get("regimes") or {},
+        "benchmark": result.get("benchmark"),
+        "returns_by_geometry": result.get("returns_by_geometry"),
+        "regime_boundary_bp": result.get("regime_boundary_bp"),
+    }
 
 
 def _json_load(raw: Optional[str]) -> Any:
@@ -321,7 +499,8 @@ def _account_maker_fee(db: Session) -> tuple[Decimal, str]:
         if not str(cred.api_key or "").strip() or not str(cred.api_secret or "").strip():
             continue
         try:
-            fee_bp, _bnb = _live_fee_terms(str(cred.api_key), str(cred.api_secret))
+            live = _live_fee_terms(str(cred.api_key), str(cred.api_secret))
+            fee_bp = live[0]
             fee_bp = Decimal(str(fee_bp))
             if fee_bp > 0:
                 return fee_bp, "account"
@@ -422,7 +601,7 @@ def _quality_block(
         )
     if viability == "indeterminate":
         return ("barriers", _barrier_evidence_reason(summary))
-    if viability == "not_operable":
+    if viability == "not_operable" and not summary.get("geometry_search_active"):
         return (
             "not_operable",
             "As barreiras foram medidas e nenhuma alternativa de alvo ou prazo supera o necessário depois da taxa. Não mudei parâmetro nenhum.",
@@ -815,6 +994,8 @@ def build_panel(
         "target_stop": _target_stop_phrase(summary),
         "signal": _signal_phrase(summary),
         "side": _side_phrase(summary),
+        "backtest_sample": _backtest_sample_phrase(summary),
+        "geometry_bundle": _geometry_bundle_phrase(policies, version),
         "reason": reason,
     }
 
@@ -1032,10 +1213,11 @@ def run_closed_day_diagnosis(
             ohlcv_read=ohlcv_read,
             fee_bp=fee_bp,
             fee_source=fee_source,
-            regime_boundary_bp=_regime_boundary_bp(),
+            regime_boundary_bp=_regime_boundary_bp(db),
             rng_seed=seed_for_day(closed),
             until=until,
         )
+        _attach_offline_backtest(summary, fee_bp=fee_bp)
         windows = ruler.non_overlapping(decisions)
         windows = [d for d in windows if d.at + timedelta(seconds=ruler.HORIZON_S) <= until]
         realized_windows = [(d, ruler.realized_for(d, series)) for d in windows]
@@ -1075,11 +1257,16 @@ def run_closed_day_diagnosis(
     boundary_raw = summary.get("regime_boundary_bp")
     boundary_bp = Decimal(boundary_raw) if boundary_raw is not None else None
     if choice_rows:
-        declared = _policies_from_windows(
+        declared_conf = _policies_from_windows(
             choice_rows, fee_bp=fee_bp, boundary_bp=boundary_bp, ruler=ruler
         )
     else:
-        declared = current_policies
+        declared_conf = confidence_only(current_policies)
+    declared = bundle_from_summary(
+        declared_conf,
+        summary,
+        backtest=summary.get("backtest"),
+    )
     declared_fp = fingerprint_of(declared)
     posterior_n = len(posterior_rows)
     comparable = posterior_n >= POSTERIOR_MIN
@@ -1190,10 +1377,18 @@ def run_closed_day_diagnosis(
         )
 
     declared_net = _policy_net_bp(
-        posterior_rows, declared, fee_bp=fee_bp, boundary_bp=boundary_bp, ruler=ruler
+        posterior_rows,
+        confidence_only(declared),
+        fee_bp=fee_bp,
+        boundary_bp=boundary_bp,
+        ruler=ruler,
     )
     current_net = _policy_net_bp(
-        posterior_rows, current_policies, fee_bp=fee_bp, boundary_bp=boundary_bp, ruler=ruler
+        posterior_rows,
+        confidence_only(current_policies),
+        fee_bp=fee_bp,
+        boundary_bp=boundary_bp,
+        ruler=ruler,
     )
 
     posterior_policies = (
@@ -1208,8 +1403,8 @@ def run_closed_day_diagnosis(
     )
     reopen = False
     for regime in (REGIME_CALM, REGIME_ACTIVE):
-        was = policy_from_map(current_policies, regime=regime)
-        now_kind = declared.get(regime, {}).get("kind")
+        was = policy_from_map(confidence_only(current_policies), regime=regime)
+        now_kind = confidence_only(declared).get(regime, {}).get("kind")
         posterior_kind = posterior_policies.get(regime, {}).get("kind")
         if (
             was.kind == CONFIDENCE_POLICY_CLOSED
@@ -1225,6 +1420,7 @@ def run_closed_day_diagnosis(
             reopen = True
 
     improves = declared_net is not None and current_net is not None and declared_net > current_net
+    bundle_ready = backtest_promotion_ready(summary)
 
     if current is not None and current.previous_id and current.applied_for_day < closed:
         previous = version_by_id(db, current.previous_id)
@@ -1268,7 +1464,7 @@ def run_closed_day_diagnosis(
                     policies=policies_of(restored),
                 )
 
-    if not reopen and not improves:
+    if not bundle_ready and not reopen and not improves:
         return _finish(
             verb=VERB_KEEP,
             reason=(
@@ -1284,9 +1480,13 @@ def run_closed_day_diagnosis(
         policies=declared,
         closed=closed,
         reason=(
-            "A posterior confirmou que o regime pode voltar a operar; o retorno ainda pode ser negativo."
-            if reopen and not improves
-            else "A nova perdia menos, já com a taxa."
+            "Apliquei alvo, stop, prazo, recorte e confiança juntos; o backtest provou lucro líquido."
+            if bundle_ready
+            else (
+                "A posterior confirmou que o regime pode voltar a operar; o retorno ainda pode ser negativo."
+                if reopen and not improves
+                else "A nova perdia menos, já com a taxa."
+            )
         ),
         source=SOURCE_AUTOMATIC,
         previous=current,
@@ -1406,6 +1606,8 @@ def status_fields(db: Session) -> dict[str, Any]:
             summary,
             latest.block_kind,
         )
+        panel["backtest_sample"] = _backtest_sample_phrase(summary)
+        panel["geometry_bundle"] = _geometry_bundle_phrase(policies, version)
         panel["confidence_now"] = _confidence_phrase(policies, version)
         closed_regimes = [
             "calmo" if regime == REGIME_CALM else "agitado"

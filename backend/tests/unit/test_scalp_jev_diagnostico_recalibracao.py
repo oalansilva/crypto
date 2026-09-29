@@ -853,7 +853,10 @@ def test_daily_run_reads_real_maker_fee_as_account_source(diag_db, monkeypatch):
         "app.services.scalp_service._live_fee_terms",
         lambda _key, _secret: (Decimal("7.5"), True),
     )
-    monkeypatch.setattr("app.services.scalp_service._regime_boundary_bp", lambda: Decimal("0.07"))
+    monkeypatch.setattr(
+        "app.services.scalp_service._regime_boundary_bp",
+        lambda _db=None: Decimal("0.07"),
+    )
     seen: dict[str, object] = {}
     module = calibration._load_ruler()
 
@@ -873,6 +876,7 @@ def test_daily_run_reads_real_maker_fee_as_account_source(diag_db, monkeypatch):
         ),
     )
     monkeypatch.setattr(calibration, "log_file_path", lambda: Path("/tmp/no-scalp-jev.log"))
+    monkeypatch.setattr(calibration, "_attach_offline_backtest", lambda summary, *, fee_bp: None)
     fee_bp, source = calibration._account_maker_fee(diag_db)
     assert source == "account"
     assert fee_bp == Decimal("7.5")

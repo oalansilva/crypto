@@ -46,6 +46,9 @@ export type ScalpDiagnosis = {
   side?: string
   reason?: string
   calibration_note?: string
+  backtest_sample?: string
+  geometry_bundle?: string
+  fee_mismatch_bp?: string | null
   history?: ScalpDiagnosisHistory[]
   can_revert?: boolean
 }
@@ -70,6 +73,7 @@ export type ScalpStatus = {
   enabled?: boolean
   fee_bp?: string
   bnb_fee_active?: boolean
+  bnb_discount_applied?: boolean
   hurdle_bp?: string
   exit_target_bp?: string
   exit_stop_bp?: string
@@ -166,7 +170,9 @@ function formatAge(seconds: number | undefined): string {
 function formatFeeBp(status: ScalpStatus): string {
   const n = parseNumber(status.fee_bp)
   const rate = `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} bp`
-  return status.bnb_fee_active ? `${rate} (BNB habilitado; desconto não aplicado)` : rate
+  if (status.bnb_discount_applied) return `${rate} · desconto aplicado`
+  if (status.bnb_fee_active) return `${rate} (BNB habilitado; desconto não aplicado)`
+  return rate
 }
 
 function formatHurdle(value: string | undefined): string {
@@ -314,7 +320,7 @@ export function ScalpModule() {
       <dl className="scalp-kpis">
         <div>
           <dt>Teto T</dt>
-          <dd id="scalp-t">{formatT(status.t_quote)}</dd>
+          <dd id="scalp-t" data-testid="scalp-t">{formatT(status.t_quote)}</dd>
         </div>
         <div>
           <dt>Clip</dt>
@@ -350,20 +356,20 @@ export function ScalpModule() {
         </div>
         <div>
           <dt>Alvo</dt>
-          <dd id="scalp-exit-target" data-testid="scalp-exit-target">+35 bp</dd>
+          <dd id="scalp-exit-target" data-testid="scalp-exit-target">{formatBp(status.exit_target_bp || "35")}</dd>
         </div>
         <div>
           <dt>Stop</dt>
-          <dd id="scalp-exit-stop" data-testid="scalp-exit-stop">−28 bp</dd>
+          <dd id="scalp-exit-stop" data-testid="scalp-exit-stop">{formatBp(status.exit_stop_bp || "-28")}</dd>
         </div>
         <div>
-          <dt>Último trade</dt>
+          <dt>P&L líquido</dt>
           <dd id="scalp-last-bp" className={lastBpClass} data-testid="scalp-last-bp">
             {status.last_trade_bp ? formatBp(status.last_trade_bp) : '—'}
           </dd>
         </div>
         <div>
-          <dt>Último trade US$</dt>
+          <dt>P&L líquido US$</dt>
           <dd id="scalp-last-usd" className={lastUsdClass} data-testid="scalp-last-usd">
             {status.last_trade_quote ? formatUsd(status.last_trade_quote) : '—'}
           </dd>
@@ -380,11 +386,11 @@ export function ScalpModule() {
         </div>
         <div>
           <dt>Alvo</dt>
-          <dd id="scalp-target">+35 bp</dd>
+          <dd id="scalp-target">{formatBp(status.exit_target_bp || "35")}</dd>
         </div>
         <div>
           <dt>Stop</dt>
-          <dd id="scalp-stop">−28 bp</dd>
+          <dd id="scalp-stop">{formatBp(status.exit_stop_bp || "-28")}</dd>
         </div>
       </dl>
       <p className="scalp-status" id="scalp-status" data-testid="scalp-status" aria-live="polite">
@@ -400,8 +406,7 @@ export function ScalpModule() {
         Parado por kill (−2% de T). Não religa sozinho. Ordens deste bot canceladas.
       </p>
       <p className="scalp-stuck" id="scalp-stuck" data-testid="scalp-stuck" hidden={!status.stuck}>
-        posição presa: saída post-only não preencheu até 15:30. O utilizador decide. Operar continua disponível. Sem
-        ordem a mercado.
+        posição presa: saída post-only não preencheu até o prazo+30 s. Operar continua disponível. Sem ordem a mercado.
       </p>
       {status.inventory_clipped ? (
         <p className="scalp-note" data-testid="scalp-clip-note">
@@ -469,6 +474,18 @@ export function ScalpModule() {
           <div>
             <dt>Amostra</dt>
             <dd>{diagnosis?.sample || '—'}</dd>
+          </div>
+          <div>
+            <dt>Backtest</dt>
+            <dd data-testid="scalp-diagnosis-backtest">
+              {diagnosis?.backtest_sample || '—'}
+            </dd>
+          </div>
+          <div>
+            <dt>Conjunto</dt>
+            <dd data-testid="scalp-diagnosis-bundle">
+              {diagnosis?.geometry_bundle || '—'}
+            </dd>
           </div>
           <div>
             <dt>Alvo e stop</dt>

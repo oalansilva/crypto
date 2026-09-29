@@ -106,6 +106,7 @@ def build_jev_payload(
     rest_opened_at: Optional[datetime],
     now: datetime,
     memory: Optional[ScalpBtcusdtMemory] = None,
+    declared_horizon_s: Optional[int] = None,
 ) -> tuple[Optional[dict[str, Any]], Optional[str]]:
     mem = memory or get_scalp_btcusdt_memory()
     touch = build_touch(mem)
@@ -118,12 +119,14 @@ def build_jev_payload(
     inv_quote = inventory_btc * touch.mid
     remaining = t - inv_quote
     trades = mem.recent_trades()
+    horizon_s = declared_horizon_s if declared_horizon_s is not None else window.horizon_s
     state: dict[str, Any] = {
         "symbol": "BTCUSDT",
         # Card #1029: the state horizon declared is the effective state window
         # (same value the aggregates were computed over), never a fixed 900 s
-        # when the larger window was sent.
-        "horizon_s": window.horizon_s,
+        # when the larger window was sent. Card #1070: the applied version prazo
+        # overrides the product default when it differs from the stream window.
+        "horizon_s": horizon_s,
         "touch": {
             "bid": _dec_str(touch.bid, "0.01"),
             "ask": _dec_str(touch.ask, "0.01"),
