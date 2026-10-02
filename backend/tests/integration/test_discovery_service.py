@@ -187,7 +187,9 @@ class TestPreflight:
         service = DiscoveryService()
         service.combo_service = ComboService()
         monkeypatch.setattr(service.combo_service, "list_templates", fake_list)
-        monkeypatch.setattr(service.combo_service, "get_template_metadata", lambda _n: {"direction": "long"})
+        monkeypatch.setattr(
+            service.combo_service, "get_template_metadata", lambda _n: {"direction": "long"}
+        )
 
         for tf in ("15m", "1h"):
             result = service.preflight(

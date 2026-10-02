@@ -371,9 +371,8 @@ class DiscoveryService:
             {tf for tf in timeframes if tf and tf not in DISCOVERY_SWING_TIMEFRAMES}
         )
         if rejected_tfs:
-            axis_errors["timeframes"] = (
-                "timeframes não suportados na Descoberta: "
-                + ", ".join(rejected_tfs)
+            axis_errors["timeframes"] = "timeframes não suportados na Descoberta: " + ", ".join(
+                rejected_tfs
             )
         if not normalized_directions:
             axis_errors["directions"] = "use long e/ou short"

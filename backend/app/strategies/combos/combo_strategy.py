@@ -312,7 +312,10 @@ class ComboStrategy:
                     col_name = alias if alias else f"SMA_{length}"
                     sma_series = talib.SMA(df["close"], timeperiod=length)
                     df[col_name] = sma_series
-                    pullback_pct = self._coerce_float(params.get("pullback_pct"), default=None)
+                    raw_pullback = params.get("pullback_pct")
+                    pullback_pct = (
+                        self._coerce_float(raw_pullback) if raw_pullback is not None else None
+                    )
                     if pullback_pct is not None and alias:
                         df[f"{alias}_pullback"] = sma_series * (1.0 + float(pullback_pct) / 100.0)
 

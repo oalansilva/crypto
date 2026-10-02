@@ -133,9 +133,7 @@ def extract_trades_from_signals(
     df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
 ):
     if _combo_optimizer_legacy():
-        return _legacy_extract_trades_from_signals(
-            df_with_signals, stop_loss, direction, slippage
-        )
+        return _legacy_extract_trades_from_signals(df_with_signals, stop_loss, direction, slippage)
     return _fast_extract_trades_from_signals(df_with_signals, stop_loss, direction, slippage)
 
 
@@ -281,13 +279,9 @@ def _fast_extract_trades_from_signals(
             pos["exit_time"] = iso[i]
             pos["exit_price"] = exit_price
             if is_short:
-                pos["profit"] = short_trade_profit_frac(
-                    entry_price, exit_price, slippage=slippage
-                )
+                pos["profit"] = short_trade_profit_frac(entry_price, exit_price, slippage=slippage)
             else:
-                pos["profit"] = long_trade_profit_frac(
-                    entry_price, exit_price, slippage=slippage
-                )
+                pos["profit"] = long_trade_profit_frac(entry_price, exit_price, slippage=slippage)
             pos["exit_reason"] = "signal"
             pos["signal_type"] = "Close entry(s) order..."
             trades.append(pos)

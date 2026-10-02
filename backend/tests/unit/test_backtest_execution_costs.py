@@ -118,6 +118,7 @@ def test_run_optimization_final_and_holdout_apply_timeframe_slippage(monkeypatch
         "create_strategy",
         lambda **_kwargs: _FakeStrategy(),
     )
+
     class _FakeProvider:
         def fetch_ohlcv(self, **_kwargs):
             return ohlcv
@@ -132,7 +133,9 @@ def test_run_optimization_final_and_holdout_apply_timeframe_slippage(monkeypatch
         def __exit__(self, *_args):
             return False
 
-    monkeypatch.setattr(combo_optimizer, "get_market_data_provider", lambda _source: _FakeProvider())
+    monkeypatch.setattr(
+        combo_optimizer, "get_market_data_provider", lambda _source: _FakeProvider()
+    )
     monkeypatch.setattr(combo_optimizer.concurrent.futures, "ProcessPoolExecutor", _FakeExecutor)
     monkeypatch.setattr(combo_optimizer, "extract_trades_with_mode", _fake_extract)
 

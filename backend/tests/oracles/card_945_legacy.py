@@ -23,6 +23,11 @@ import numpy as np
 import pandas as pd
 import talib
 
+from app.metrics.backtest_execution_costs import (
+    long_trade_profit_frac,
+    short_trade_profit_frac,
+)
+
 from app.strategies.combos.helpers import HELPER_FUNCTIONS
 from src.data.incremental_loader import IncrementalLoader
 
@@ -824,7 +829,11 @@ TRADING_FEE = 0.00075  # Binance 0.075%
 
 
 def simulate_execution_with_15m(
-    df_daily_signals: pd.DataFrame, df_15m: pd.DataFrame, stop_loss: float, direction: str = "long"
+    df_daily_signals: pd.DataFrame,
+    df_15m: pd.DataFrame,
+    stop_loss: float,
+    direction: str = "long",
+    slippage: float = 0.0,
 ) -> List[Dict]:
     """
     Simulate trade execution using 15-minute candles for realistic stop/target validation.
@@ -942,13 +951,11 @@ def simulate_execution_with_15m(
 
         last_exit_time = final_exit_time
         if is_short:
-            profit = (
-                entry_price * (1 - TRADING_FEE) - float(final_exit_price) * (1 + TRADING_FEE)
-            ) / (entry_price * (1 - TRADING_FEE))
+            profit = short_trade_profit_frac(
+                entry_price, float(final_exit_price), slippage=slippage
+            )
         else:
-            profit = (
-                (final_exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-            ) / (entry_price * (1 + TRADING_FEE))
+            profit = long_trade_profit_frac(entry_price, float(final_exit_price), slippage=slippage)
 
         signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
         trades.append(
@@ -969,7 +976,9 @@ def simulate_execution_with_15m(
     return trades
 
 
-def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
+def extract_trades_from_signals(
+    df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
+):
     """
     Extract trades from signals with consistent logic:
     - Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
@@ -1006,14 +1015,13 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: st
                 position["exit_time"] = idx.isoformat()
                 position["exit_price"] = exact_stop_price
                 if is_short:
-                    # Short PnL: sold at entry*(1-fee), buy back at exit*(1+fee); profit when exit < entry
-                    position["profit"] = (
-                        entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)
-                    ) / (entry_price * (1 - TRADING_FEE))
+                    position["profit"] = short_trade_profit_frac(
+                        entry_price, exact_stop_price, slippage=slippage
+                    )
                 else:
-                    position["profit"] = (
-                        (exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-                    ) / (entry_price * (1 + TRADING_FEE))
+                    position["profit"] = long_trade_profit_frac(
+                        entry_price, exact_stop_price, slippage=slippage
+                    )
                 position["exit_reason"] = "stop_loss"
                 position["signal_type"] = "Stop"
                 trades.append(position)
@@ -1034,13 +1042,13 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: st
             position["exit_time"] = idx.isoformat()
             position["exit_price"] = exit_price
             if is_short:
-                position["profit"] = (
-                    entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)
-                ) / (entry_price * (1 - TRADING_FEE))
+                position["profit"] = short_trade_profit_frac(
+                    entry_price, exit_price, slippage=slippage
+                )
             else:
-                position["profit"] = (
-                    (exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-                ) / (entry_price * (1 + TRADING_FEE))
+                position["profit"] = long_trade_profit_frac(
+                    entry_price, exit_price, slippage=slippage
+                )
             position["exit_reason"] = "signal"
             position["signal_type"] = "Close entry(s) order..."
             trades.append(position)
@@ -1059,6 +1067,7 @@ def extract_trades_with_mode(
     df_15m_cache: Optional[pd.DataFrame] = None,
     direction: str = "long",
     return_mode: bool = False,
+    slippage: float = 0.0,
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
@@ -1078,7 +1087,7 @@ def extract_trades_with_mode(
     df_exec = df_with_signals.copy()
 
     if not deep_backtest:
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
     logger = logging.getLogger(__name__)
@@ -1087,7 +1096,7 @@ def extract_trades_with_mode(
         logger.warning(
             "Deep Backtesting requires symbol and date range. Falling back to fast mode."
         )
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
     try:
@@ -1107,7 +1116,7 @@ def extract_trades_with_mode(
         if df_15m.empty:
             if df_15m_cache is None:  # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
             return (trades, "fast_1d") if return_mode else trades
 
         # Coverage guard: we need 15m for the current day of each trade to simulate stop/target correctly.
@@ -1144,24 +1153,28 @@ def extract_trades_with_mode(
                         str(intraday_start),
                         str(intraday_end),
                     )
-                trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+                trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
                 return (trades, "fast_1d") if return_mode else trades
         except Exception:
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
             return (trades, "fast_1d") if return_mode else trades
 
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
 
         trades = simulate_execution_with_15m(
-            df_daily_signals=df_exec, df_15m=df_15m, stop_loss=stop_loss, direction=direction
+            df_daily_signals=df_exec,
+            df_15m=df_15m,
+            stop_loss=stop_loss,
+            direction=direction,
+            slippage=slippage,
         )
         return (trades, "deep_15m") if return_mode else trades
 
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
 

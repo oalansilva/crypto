@@ -48,6 +48,15 @@
       "evidence": "in-memory store and fake Redis/Celery"
     },
     {
+      "file": "backend/tests/unit/test_backtest_execution_costs.py",
+      "protected_behavior": "Discovery swing slippage table and optimizer execution-cost propagation",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "slippage_for_timeframe table and run_optimization final/holdout slippage assertions"
+    },
+    {
       "file": "backend/tests/unit/test_binance_market_orders.py",
       "protected_behavior": "market order plan, submit, eligibility and durable reconcile workflow",
       "production_reachability": "reachable",
@@ -127,6 +136,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "exact SHA256/equality goldens for indicators, masks, trades and metrics; never allclose"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1074_combo_templates.py",
+      "protected_behavior": "card 1074 combo template and VWAP indicator smoke backtests",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "combo_templates_export bundles and synthetic OHLCV signal generation"
     },
     {
       "file": "backend/tests/unit/test_chart_pattern_service.py",
@@ -640,6 +658,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "trade/candle fixtures and secret redaction assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_vwap_indicator_schemas.py",
+      "protected_behavior": "VWAP daily and rolling auto-indicator optimization schemas",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "get_all_auto_schemas vwap_daily and vwap_rolling length range assertions"
     },
     {
       "file": "backend/tests/unit/test_user_exchange_credentials_and_indicators.py",

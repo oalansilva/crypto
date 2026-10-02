@@ -164,9 +164,7 @@ def _legacy_simulate_execution_with_15m(
                 entry_price, float(final_exit_price), slippage=slippage
             )
         else:
-            profit = long_trade_profit_frac(
-                entry_price, float(final_exit_price), slippage=slippage
-            )
+            profit = long_trade_profit_frac(entry_price, float(final_exit_price), slippage=slippage)
 
         signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
         trades.append(
@@ -314,9 +312,7 @@ def _fast_simulate_execution_with_15m(
                 entry_price, float(final_exit_price), slippage=slippage
             )
         else:
-            profit = long_trade_profit_frac(
-                entry_price, float(final_exit_price), slippage=slippage
-            )
+            profit = long_trade_profit_frac(entry_price, float(final_exit_price), slippage=slippage)
 
         signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
         if final_exit_iso is None:
