@@ -81,11 +81,23 @@ class ComboStrategy:
             return default
 
     @staticmethod
-    def _coerce_float(value: Any, default: float = 0.0) -> float:
+    def _coerce_float(value: Any, default: float | None = 0.0) -> float | None:
+        if value is None:
+            if default is None:
+                return None
+            try:
+                return float(default)
+            except (TypeError, ValueError):
+                return None
         try:
             return float(value)
-        except Exception:
-            return float(default)
+        except (TypeError, ValueError):
+            if default is None:
+                return None
+            try:
+                return float(default)
+            except (TypeError, ValueError):
+                return None
 
     @staticmethod
     def _required_columns(indicator: Dict[str, Any]) -> list[str]:
@@ -144,6 +156,26 @@ class ComboStrategy:
             if length is None:
                 return []
             return [alias if alias else f"VOL_SMA_{length}"]
+        if ind_type == "donchian":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            alias_prefix = alias if alias else "DON"
+            return [
+                f"{alias_prefix}_upper",
+                f"{alias_prefix}_middle",
+                f"{alias_prefix}_lower",
+            ]
+        if ind_type == "kc":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            alias_prefix = alias if alias else "KC"
+            return [
+                f"{alias_prefix}_upper",
+                f"{alias_prefix}_middle",
+                f"{alias_prefix}_lower",
+            ]
         if alias:
             return [alias]
         return []

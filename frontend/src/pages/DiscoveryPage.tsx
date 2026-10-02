@@ -2170,13 +2170,12 @@ export function DiscoveryPage() {
                 <legend className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Timeframes swing</legend>
                 <div className="grid grid-cols-2 gap-2">
                   {DISCOVERY_SWING_TIMEFRAME_OPTIONS.map(({ id, label }) => (
-                    <label key={id} className="relative">
+                    <label key={id} className="relative" data-testid={`timeframe-${id}`}>
                       <input
                         type="checkbox"
                         className="absolute h-0 w-0 opacity-0"
                         checked={timeframes.includes(id)}
                         onChange={() => toggleList(timeframes, setTimeframes, id)}
-                        data-testid={`timeframe-${id}`}
                       />
                       <span
                         className={`flex min-h-[44px] items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold ${

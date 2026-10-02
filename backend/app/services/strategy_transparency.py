@@ -94,6 +94,20 @@ _INDICATOR_META: dict[str, dict[str, Any]] = {
         "scale": "volume",
         "color": "#10ac84",
     },
+    "donchian": {
+        "label": "Canal de Donchian",
+        "function": "Marca máximas e mínimas recentes para identificar rompimentos de faixa.",
+        "panel": "price",
+        "scale": "price",
+        "color": "#00d2d3",
+    },
+    "kc": {
+        "label": "Canal de Keltner",
+        "function": "Envolve o preço com bandas baseadas em média e amplitude típica.",
+        "panel": "price",
+        "scale": "price",
+        "color": "#e17055",
+    },
 }
 
 _OUTPUT_ROLES = {
@@ -311,6 +325,102 @@ def _logic_mentions(logic: str, tokens: Iterable[str]) -> bool:
     )
 
 
+def _append_auxiliary_indicators(
+    indicators: list[StrategyIndicatorTransparency],
+    template_data: dict[str, Any],
+    effective_parameters: dict[str, Any] | None,
+    entry_logic: str,
+    exit_logic: str,
+) -> None:
+    """Expose derived thresholds and pullback columns referenced in public logic."""
+
+    seen_keys = {indicator.key for indicator in indicators}
+    for indicator in indicators:
+        for column in indicator.execution_columns:
+            seen_keys.add(normalize_strategy_key(column))
+
+    def add_column(
+        column: str,
+        *,
+        ind_type: str,
+        label: str,
+        panel: str,
+        scale: str,
+        color: str,
+    ) -> None:
+        key = normalize_strategy_key(column)
+        if key in seen_keys:
+            return
+        logic_tokens = [column, key]
+        participation: list[str] = []
+        if _logic_mentions(entry_logic, logic_tokens):
+            participation.append("entry")
+        if _logic_mentions(exit_logic, logic_tokens):
+            participation.append("exit")
+        if not participation:
+            return
+        seen_keys.add(key)
+        indicators.append(
+            StrategyIndicatorTransparency(
+                key=key,
+                type=ind_type,
+                label=label,
+                parameters={},
+                function=label,
+                panel=panel,
+                scale=scale,
+                color=color,
+                participation=participation,
+                references=[],
+                execution_columns=[column],
+                series_status="unavailable",
+                unavailable_reason="Série timestampada ainda não disponível.",
+            )
+        )
+
+    for indicator in _effective_indicators(template_data, effective_parameters):
+        ind_type = str(indicator.get("type") or "").lower()
+        alias = str(indicator.get("alias") or "")
+        params = indicator.get("params") if isinstance(indicator.get("params"), dict) else {}
+        if ind_type == "sma" and alias and params.get("pullback_pct") is not None:
+            add_column(
+                f"{alias}_pullback",
+                ind_type="sma",
+                label="nível de pullback da média",
+                panel="price",
+                scale="price",
+                color="#74b9ff",
+            )
+        if ind_type == "rsi":
+            if params.get("oversold") is not None:
+                add_column(
+                    "rsi_oversold",
+                    ind_type="rsi",
+                    label="limiar de sobrevenda do RSI",
+                    panel="oscillator",
+                    scale="oscillator",
+                    color="#a970ff",
+                )
+            if params.get("overbought") is not None:
+                add_column(
+                    "rsi_overbought",
+                    ind_type="rsi",
+                    label="limiar de sobrecompra do RSI",
+                    panel="oscillator",
+                    scale="oscillator",
+                    color="#a970ff",
+                )
+        if ind_type == "adx" and params.get("threshold") is not None:
+            add_column(
+                "adx_threshold",
+                ind_type="adx",
+                label="limiar mínimo do ADX",
+                panel="oscillator",
+                scale="oscillator",
+                color="#ff9f43",
+            )
+
+
 def _references(ind_type: str) -> list[IndicatorReference]:
     if ind_type == "rsi":
         return [
@@ -469,6 +579,10 @@ def build_strategy_transparency(
                     unavailable_reason="Série timestampada ainda não disponível.",
                 )
             )
+
+    _append_auxiliary_indicators(
+        indicators, template_data, effective_parameters, entry_logic, exit_logic
+    )
 
     if not indicators:
         return _unavailable(

@@ -96,11 +96,23 @@ class LegacyComboStrategy:
             return default
 
     @staticmethod
-    def _coerce_float(value: Any, default: float = 0.0) -> float:
+    def _coerce_float(value: Any, default: float | None = 0.0) -> float | None:
+        if value is None:
+            if default is None:
+                return None
+            try:
+                return float(default)
+            except (TypeError, ValueError):
+                return None
         try:
             return float(value)
-        except Exception:
-            return float(default)
+        except (TypeError, ValueError):
+            if default is None:
+                return None
+            try:
+                return float(default)
+            except (TypeError, ValueError):
+                return None
 
     @staticmethod
     def _required_columns(indicator: Dict[str, Any]) -> list[str]:
@@ -159,6 +171,26 @@ class LegacyComboStrategy:
             if length is None:
                 return []
             return [alias if alias else f"VOL_SMA_{length}"]
+        if ind_type == "donchian":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            alias_prefix = alias if alias else "DON"
+            return [
+                f"{alias_prefix}_upper",
+                f"{alias_prefix}_middle",
+                f"{alias_prefix}_lower",
+            ]
+        if ind_type == "kc":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            alias_prefix = alias if alias else "KC"
+            return [
+                f"{alias_prefix}_upper",
+                f"{alias_prefix}_middle",
+                f"{alias_prefix}_lower",
+            ]
         if alias:
             return [alias]
         return []
@@ -300,7 +332,14 @@ class LegacyComboStrategy:
                     if length is None:
                         raise RuntimeError("Invalid length for SMA")
                     col_name = alias if alias else f"SMA_{length}"
-                    df[col_name] = talib.SMA(df["close"], timeperiod=length)
+                    sma_series = talib.SMA(df["close"], timeperiod=length)
+                    df[col_name] = sma_series
+                    raw_pullback = params.get("pullback_pct")
+                    pullback_pct = (
+                        self._coerce_float(raw_pullback) if raw_pullback is not None else None
+                    )
+                    if pullback_pct is not None and alias:
+                        df[f"{alias}_pullback"] = sma_series * (1.0 + float(pullback_pct) / 100.0)
 
                 elif ind_type == "rsi":
                     length = self._coerce_int(params.get("length", 14), default=14)
@@ -311,6 +350,12 @@ class LegacyComboStrategy:
                     df[col_name] = rsi_series
                     if alias and alias != col_name:
                         df[alias] = rsi_series
+                    oversold = self._coerce_float(params.get("oversold"), default=None)
+                    if oversold is not None:
+                        df["rsi_oversold"] = float(oversold)
+                    overbought = self._coerce_float(params.get("overbought"), default=None)
+                    if overbought is not None:
+                        df["rsi_overbought"] = float(overbought)
 
                 elif ind_type == "macd":
                     fast = self._coerce_int(params.get("fast", 12), default=12)
@@ -371,6 +416,9 @@ class LegacyComboStrategy:
                     # Support stable alias when provided (e.g. "adx")
                     if alias and alias != col_name:
                         df[alias] = df[col_name]
+                    threshold = self._coerce_float(params.get("threshold"), default=None)
+                    if threshold is not None:
+                        df["adx_threshold"] = float(threshold)
 
                 elif ind_type == "roc":
                     length = self._coerce_int(params.get("length", 20), default=20)
@@ -387,7 +435,11 @@ class LegacyComboStrategy:
                     if length is None:
                         raise RuntimeError("Invalid length for VOLUME_SMA")
                     col_name = alias if alias else f"VOL_SMA_{length}"
-                    df[col_name] = talib.SMA(df["volume"], timeperiod=length)
+                    vol_avg = talib.SMA(df["volume"], timeperiod=length)
+                    multiplier = self._coerce_float(params.get("multiplier"), default=None)
+                    if multiplier is not None:
+                        vol_avg = vol_avg * float(multiplier)
+                    df[col_name] = vol_avg
 
                 else:
                     raise RuntimeError(
