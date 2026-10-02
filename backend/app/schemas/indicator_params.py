@@ -259,6 +259,23 @@ ICHIMOKU_SCHEMA = IndicatorSchema(
 )
 
 
+VWAP_DAILY_SCHEMA = IndicatorSchema(
+    name="VWAP Daily",
+    parameters={},
+)
+
+VWAP_ROLLING_SCHEMA = IndicatorSchema(
+    name="VWAP Rolling",
+    parameters={
+        "length": ParameterSchema(
+            default=20,
+            optimization_range=OptimizationRange(min=10, max=60, step=1),
+            market_standard="Rolling VWAP window; 20 candles is a common swing default.",
+            description="Number of candles for rolling VWAP",
+        ),
+    },
+)
+
 # Registry of all indicator schemas
 INDICATOR_SCHEMAS: Dict[str, IndicatorSchema] = {
     "macd": MACD_SCHEMA,
@@ -268,6 +285,8 @@ INDICATOR_SCHEMAS: Dict[str, IndicatorSchema] = {
     "emarsivolume": EMA_RSI_VOLUME_SCHEMA,
     "fibonacciema": FIBONACCI_EMA_SCHEMA,
     "ichimoku": ICHIMOKU_SCHEMA,
+    "vwap_daily": VWAP_DAILY_SCHEMA,
+    "vwap_rolling": VWAP_ROLLING_SCHEMA,
 }
 
 

@@ -217,6 +217,16 @@ function fmtPct(v: number | null | undefined): string {
   const percentage = Math.abs(v) <= 1 ? v * 100 : v
   return `${percentage.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
 }
+
+const DISCOVERY_SWING_TIMEFRAME_OPTIONS: { id: string; label: string }[] = [
+  { id: '15m', label: '15 minutos' },
+  { id: '1h', label: '1 hora' },
+  { id: '4h', label: '4 horas' },
+  { id: '1d', label: '1 dia' },
+]
+
+const DISCOVERY_COST_NOTE =
+  'taxa 0,075% · slippage do timeframe (0,02% em 4h e 1d · 0,03% em 1h · 0,05% em 15m) · sem campo para alterar'
 function compoundSource(row: LeaderboardRow): CompoundReturnSource {
   const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics : null
   return {
@@ -644,7 +654,7 @@ export function DiscoveryPage() {
   const impediments: string[] = []
   if (selectedTemplates.length === 0) impediments.push('Escolha ao menos 1 template.')
   if (selectedSymbols.length === 0) impediments.push('Escolha ao menos 1 símbolo.')
-  if (timeframes.length === 0) impediments.push('Escolha 1 timeframe (4h ou 1d).')
+  if (timeframes.length === 0) impediments.push('Escolha 1 timeframe (4h, 1h, 15m ou 1d).')
   if (directions.length === 0) impediments.push('Escolha a direção Long.')
   if (overLimit) {
     impediments.push(
@@ -1473,7 +1483,7 @@ export function DiscoveryPage() {
       start: fmtDate(row.start_at),
       end: fmtDate(row.end_at),
       candles: `${row.observed_valid_candles ?? '—'}/${row.expected_candles ?? '—'} candles ${row.candle_source ?? '—'}${row.candle_version ? ` v${row.candle_version}` : ''}`,
-      fees: fee != null ? `fees ${fmtPct(fee)}` : '',
+      fees: fee != null ? `taxa ${fmtPct(fee)}` : '',
       slippage: slippage != null ? `slippage ${fmtPct(slippage)}` : '',
     }
   }, [rows])
@@ -1561,7 +1571,7 @@ export function DiscoveryPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Descoberta de estratégias swing</h1>
             <p className="mt-2 max-w-[72ch] text-sm text-[var(--text-tertiary)]">
-              Compare templates em 4h e 1d. Preflight, ranking e promoção usam evidência histórica;
+              Compare templates em 4h, 1h, 15m e 1d. Preflight, ranking e promoção usam evidência histórica;
               nenhum candidato é salvo sem revisão.
             </p>
           </div>
@@ -2159,22 +2169,23 @@ export function DiscoveryPage() {
               <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
                 <legend className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Timeframes swing</legend>
                 <div className="grid grid-cols-2 gap-2">
-                  {['4h', '1d'].map((tf) => (
-                    <label key={tf} className="relative">
+                  {DISCOVERY_SWING_TIMEFRAME_OPTIONS.map(({ id, label }) => (
+                    <label key={id} className="relative">
                       <input
                         type="checkbox"
                         className="absolute h-0 w-0 opacity-0"
-                        checked={timeframes.includes(tf)}
-                        onChange={() => toggleList(timeframes, setTimeframes, tf)}
+                        checked={timeframes.includes(id)}
+                        onChange={() => toggleList(timeframes, setTimeframes, id)}
+                        data-testid={`timeframe-${id}`}
                       />
                       <span
                         className={`flex min-h-[44px] items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold ${
-                          timeframes.includes(tf)
+                          timeframes.includes(id)
                             ? 'border-[rgba(252,213,53,0.5)] bg-[rgba(252,213,53,0.1)] text-[var(--accent-primary)]'
                             : 'border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)]'
                         }`}
                       >
-                        {tf === '4h' ? '4 horas' : '1 dia'}
+                        {label}
                       </span>
                     </label>
                   ))}
@@ -2282,6 +2293,12 @@ export function DiscoveryPage() {
                       <b>{axisCount} combinações</b> · — · {periodLabel}
                     </>
                   )}
+                </p>
+                <p
+                  className="mt-3 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5 text-[12px] text-[var(--text-tertiary)]"
+                  data-testid="cost-note"
+                >
+                  {DISCOVERY_COST_NOTE}
                 </p>
                 {impediments.length > 0 && !preflightLoading ? (
                   <div
@@ -2545,8 +2562,9 @@ export function DiscoveryPage() {
                     className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
                   >
                     <option value="all">Todos</option>
-                    <option value="4h">4h</option>
-                    <option value="1d">1d</option>
+                    {DISCOVERY_SWING_TIMEFRAME_OPTIONS.map(({ id }) => (
+                      <option key={id} value={id}>{id}</option>
+                    ))}
                   </select>
                 </label>
                 <button

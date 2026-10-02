@@ -211,6 +211,31 @@ class ComboStrategy:
             "params": params,
         }
 
+    def _compute_vwap_series(
+        self, df: pd.DataFrame, *, variant: str, params: dict[str, Any]
+    ) -> pd.Series:
+        typical = (df["high"] + df["low"] + df["close"]) / 3.0
+        vol = df["volume"].astype(float)
+        tpv = typical * vol
+
+        if variant == "rolling":
+            length = self._coerce_int(params.get("length", 20), default=20) or 20
+            length = max(1, length)
+            vol_sum = vol.rolling(length, min_periods=1).sum()
+            return tpv.rolling(length, min_periods=1).sum() / vol_sum.replace(0, np.nan)
+
+        index = df.index
+        if not isinstance(index, pd.DatetimeIndex):
+            raise RuntimeError("VWAP do dia requer índice temporal")
+        if index.tz is None:
+            utc_index = index.tz_localize("UTC")
+        else:
+            utc_index = index.tz_convert("UTC")
+        day_key = utc_index.normalize()
+        cum_tpv = tpv.groupby(day_key).cumsum()
+        cum_vol = vol.groupby(day_key).cumsum()
+        return cum_tpv / cum_vol.replace(0, np.nan)
+
     def _apply_derived_features(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.derived_features:
             return df
@@ -285,7 +310,11 @@ class ComboStrategy:
                     if length is None:
                         raise RuntimeError("Invalid length for SMA")
                     col_name = alias if alias else f"SMA_{length}"
-                    df[col_name] = talib.SMA(df["close"], timeperiod=length)
+                    sma_series = talib.SMA(df["close"], timeperiod=length)
+                    df[col_name] = sma_series
+                    pullback_pct = self._coerce_float(params.get("pullback_pct"), default=None)
+                    if pullback_pct is not None and alias:
+                        df[f"{alias}_pullback"] = sma_series * (1.0 + float(pullback_pct) / 100.0)
 
                 elif ind_type == "rsi":
                     length = self._coerce_int(params.get("length", 14), default=14)
@@ -296,6 +325,12 @@ class ComboStrategy:
                     df[col_name] = rsi_series
                     if alias and alias != col_name:
                         df[alias] = rsi_series
+                    oversold = self._coerce_float(params.get("oversold"), default=None)
+                    if oversold is not None:
+                        df["rsi_oversold"] = float(oversold)
+                    overbought = self._coerce_float(params.get("overbought"), default=None)
+                    if overbought is not None:
+                        df["rsi_overbought"] = float(overbought)
 
                 elif ind_type == "macd":
                     fast = self._coerce_int(params.get("fast", 12), default=12)
@@ -356,6 +391,9 @@ class ComboStrategy:
                     # Support stable alias when provided (e.g. "adx")
                     if alias and alias != col_name:
                         df[alias] = df[col_name]
+                    threshold = self._coerce_float(params.get("threshold"), default=None)
+                    if threshold is not None:
+                        df["adx_threshold"] = float(threshold)
 
                 elif ind_type == "roc":
                     length = self._coerce_int(params.get("length", 20), default=20)
@@ -372,7 +410,47 @@ class ComboStrategy:
                     if length is None:
                         raise RuntimeError("Invalid length for VOLUME_SMA")
                     col_name = alias if alias else f"VOL_SMA_{length}"
-                    df[col_name] = talib.SMA(df["volume"], timeperiod=length)
+                    vol_avg = talib.SMA(df["volume"], timeperiod=length)
+                    multiplier = self._coerce_float(params.get("multiplier"), default=None)
+                    if multiplier is not None:
+                        vol_avg = vol_avg * float(multiplier)
+                    df[col_name] = vol_avg
+
+                elif ind_type == "donchian":
+                    length = self._coerce_int(params.get("length", 20), default=20)
+                    if length is None:
+                        raise RuntimeError("Invalid length for Donchian")
+                    alias_prefix = alias if alias else "DON"
+                    df[f"{alias_prefix}_upper"] = df["high"].rolling(length).max()
+                    df[f"{alias_prefix}_lower"] = df["low"].rolling(length).min()
+                    df[f"{alias_prefix}_middle"] = (
+                        df[f"{alias_prefix}_upper"] + df[f"{alias_prefix}_lower"]
+                    ) / 2.0
+
+                elif ind_type == "kc":
+                    length = self._coerce_int(params.get("length", 20), default=20)
+                    mult = self._coerce_float(params.get("mult", 1.5), default=1.5)
+                    if length is None:
+                        raise RuntimeError("Invalid length for Keltner")
+                    alias_prefix = alias if alias else "KC"
+                    middle = talib.EMA(df["close"], timeperiod=length)
+                    atr = talib.ATR(df["high"], df["low"], df["close"], timeperiod=length)
+                    df[f"{alias_prefix}_middle"] = middle
+                    df[f"{alias_prefix}_upper"] = middle + mult * atr
+                    df[f"{alias_prefix}_lower"] = middle - mult * atr
+
+                elif ind_type in ("vwap_daily", "vwap"):
+                    variant = str(params.get("variant", "daily")).lower()
+                    if ind_type == "vwap" and variant not in ("daily", "rolling"):
+                        variant = "daily"
+                    if ind_type == "vwap_daily":
+                        variant = "daily"
+                    col_name = alias if alias else ("VWAP_D" if variant == "daily" else "VWAP_R")
+                    df[col_name] = self._compute_vwap_series(df, variant=variant, params=params)
+
+                elif ind_type == "vwap_rolling":
+                    col_name = alias if alias else "VWAP_R"
+                    df[col_name] = self._compute_vwap_series(df, variant="rolling", params=params)
 
                 else:
                     raise RuntimeError(

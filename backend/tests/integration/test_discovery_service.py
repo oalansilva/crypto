@@ -167,13 +167,40 @@ class TestPreflight:
         result = service.preflight(
             templates=["multi_ma_crossover"],
             symbols=["BTCUSDT"],
-            timeframes=["15m"],
+            timeframes=["5m"],
             directions=["long"],
             start_date=None,
             end_date=None,
             period_type=None,
         )
         assert result["errors"].get("timeframes")
+
+    def test_preflight_accepts_swing_intraday_timeframes(self, monkeypatch):
+        from app.services.combo_service import ComboService
+
+        def fake_list(*_a, **_k):
+            return {
+                "prebuilt": [],
+                "examples": [{"name": "multi_ma_crossover", "direction": "long"}],
+            }
+
+        service = DiscoveryService()
+        service.combo_service = ComboService()
+        monkeypatch.setattr(service.combo_service, "list_templates", fake_list)
+        monkeypatch.setattr(service.combo_service, "get_template_metadata", lambda _n: {"direction": "long"})
+
+        for tf in ("15m", "1h"):
+            result = service.preflight(
+                templates=["multi_ma_crossover"],
+                symbols=["BTC/USDT"],
+                timeframes=[tf],
+                directions=["long"],
+                start_date="2024-01-01",
+                end_date="2024-12-31",
+                period_type=None,
+            )
+            assert tf in result["axes"]["timeframes"]
+            assert "timeframes" not in (result.get("errors") or {})
 
 
 class TestCreateSweepIdempotency:
