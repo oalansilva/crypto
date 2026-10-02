@@ -32,7 +32,7 @@ Apply só com Status=Pronto para Dev (T8). Não marcar estas tasks durante o Des
 ## 5. Flags e operação
 
 - [x] 5.1 Remover `RUN_SCALP_LOOP`, `SCALP_API_LOOP_ENABLED`, `SCALP_*`, `JEV_*`/`TYPESAFE_*` do código, units systemd do repositório e docs de operação (incl. overlay).
-- [ ] 5.2 Depois do `./restart` no DEV: sobe sem essas flags e sem log de diagnóstico do scalper.
+- [x] 5.2 Depois do `./restart` no DEV: sobe sem essas flags e sem log de diagnóstico do scalper.
 
 ## 6. Scripts, testes, protótipos, specs
 
@@ -52,4 +52,4 @@ Apply só com Status=Pronto para Dev (T8). Não marcar estas tasks durante o Des
 
 - [x] 8.1 `openspec validate --all` (ou validate desta change `--strict`) verde.
 - [x] 8.2 Suíte focada (backend sem scalp + frontend Monitor/Help/Profile/landing) verde.
-- [ ] 8.3 Após integração em `develop`: `./restart`; `/api/scalp/status` = 404; `/monitor` sem módulo; Ajuda/Perfil/Credenciais/landing sem a palavra scalp.
+- [x] 8.3 No DEV, com a árvore canônica no commit do card e sem merge em `develop`: `./restart`; `/api/scalp/status` = 404; `/monitor` sem módulo; Ajuda/Perfil/Credenciais/landing sem a palavra scalp.
