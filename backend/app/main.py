@@ -67,6 +67,7 @@ from app.services.runtime_status import (
     should_start_binance_realtime_connector,
     should_start_ohlcv_ingestion,
 )
+
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
 
@@ -133,6 +134,7 @@ async def _start_noncritical_services() -> None:
             logger.exception("Failed to start OHLCV backfill scheduler")
     else:
         logger.info("OHLCV backfill scheduler disabled by runtime flags")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
