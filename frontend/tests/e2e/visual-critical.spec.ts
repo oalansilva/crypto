@@ -458,3 +458,11 @@ test('visual critical profile', async ({ page }) => {
   await expect(page.getByTestId('telegram-alerts-form')).toBeVisible()
   await capture(page, 'profile.png')
 })
+
+test('visual critical help', async ({ page }) => {
+  await installStableApiMocks(page)
+  await page.goto('/help')
+  await expect(page.getByTestId('help-page')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Como usar o Cripto Farol no primeiro acesso' })).toBeVisible()
+  await capture(page, 'help.png')
+})
