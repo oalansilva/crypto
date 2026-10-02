@@ -1,0 +1,115 @@
+<!doctype html>
+<!-- Extra clone Meu Perfil — card-1075. Delta: copy sem scalper/scalp; sem anunciar que saiu. T5 mede index.html. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Meu Perfil — Cripto Farol</title>
+  <link rel="icon" href="/brand/cripto-farol-mark.svg">
+  <style>
+    /* COPIED:start tokens shell autenticado (AppNav + canvas DESIGN.md) */
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent:#fcd535; --accent-active:#f0b90b; --success:#0ecb81; --danger:#f6465d; --info:#3b82f6;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-md:6px; --radius-lg:8px;
+      --font:BinanceNova,BinancePlex,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --numbers:BinancePlex,ui-monospace,SFMono-Regular,Menlo,monospace;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--bg-primary);font-size:13px;line-height:1.5}
+    button,a,input{font:inherit} button{cursor:pointer}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97)}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:13px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .app-topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94)}.app-topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:20px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--accent);border-radius:var(--radius-lg);background:rgba(252,213,53,.10);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:13px;letter-spacing:.15em;text-transform:uppercase}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}
+    @media(max-width:1023px){.sidebar,.app-topbar{display:none}.mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96)}.main{margin-left:0;padding-top:72px}.mobile-title strong,.mobile-title span{display:block}.mobile-title span{color:var(--text-muted);font-size:13px}}
+    /* COPIED:end */
+    .page{width:min(100%,880px);margin:0 auto;padding:28px 22px 64px;display:grid;gap:18px}
+    .page-card{border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,rgba(16,28,42,.98),rgba(12,22,34,.94));padding:24px 28px}
+    .eyebrow{display:inline-flex;padding:.45rem .8rem;border-radius:9999px;border:1px solid rgba(252,213,53,.24);background:rgba(252,213,53,.08);color:var(--accent);font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+    h1{margin:.5rem 0 0;font-size:1.5rem;font-weight:650}
+    .section-copy{margin:.65rem 0 0;color:var(--text-tertiary);max-width:62ch}
+    h2{margin:.5rem 0 0;font-size:1.05rem}
+    .muted{margin:.5rem 0 0;color:var(--text-tertiary);font-size:13px}
+    label{display:block;margin:14px 0 6px;color:var(--text-muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+    input{width:100%;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary)}
+    input[readonly]{color:var(--text-tertiary)}
+    .grid{display:grid;gap:12px}
+    @media(min-width:720px){.grid-2{grid-template-columns:1fr 1fr}}
+    .btn{min-height:44px;padding:0 16px;border:0;border-radius:8px;background:var(--accent);color:#181a20;font-weight:600}
+    .meta{display:grid;gap:10px;margin-top:16px}
+    @media(min-width:720px){.meta{grid-template-columns:repeat(3,1fr)}}
+    .meta div{padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary)}
+    .meta dt{color:var(--text-muted);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+    .meta dd{margin:6px 0 0;color:var(--text-secondary)}
+  </style>
+</head>
+<body>
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </svg>
+  <!-- COPIED:start shell AppNav autenticado -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Meu Perfil</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item" href="index.html"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="ajuda.html"><svg class="icon"><use href="#i-history"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+  </aside>
+  <header class="app-topbar"><div class="app-topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Meu Perfil</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env">Ambiente DEV</span><button class="account" type="button" aria-current="page" aria-label="Conta"><span class="avatar">AS</span><span><small>Conta</small>Alan S</span></button></div></div></header>
+  <header class="mobilebar"><div class="mobile-title"><strong>Meu Perfil</strong><span>Conta</span></div><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+  <main class="main">
+    <div class="page">
+      <section class="page-card">
+        <p class="eyebrow">Conta</p>
+        <h1>Meu Perfil</h1>
+        <!-- DELTA: copy sem scalp; Spot para Operar fica -->
+        <p class="section-copy">Dados da conta e acesso à API da Binance em um só lugar: leitura para Home/Carteira; Spot Trade (sem saque) opcional para Operar no Monitor.</p>
+      </section>
+      <!-- COPIED:start bloco identidade Meu Perfil -->
+      <section class="page-card" aria-labelledby="profile-account-heading">
+        <p class="eyebrow">Identidade</p>
+        <h2 id="profile-account-heading">Dados da conta</h2>
+        <p class="muted">Atualize o nome exibido no app. O e-mail é somente leitura.</p>
+        <div class="grid grid-2">
+          <div><label for="name">Nome</label><input id="name" value="Alan S" maxlength="120"></div>
+          <div><label for="email">E-mail</label><input id="email" value="alan@criptofarol.com" readonly></div>
+        </div>
+        <dl class="meta">
+          <div><dt>Último login</dt><dd>01/10/2026, 22:10</dd></div>
+          <div><dt>Membro desde</dt><dd>12/08/2025, 09:00</dd></div>
+          <div><dt>User ID</dt><dd>usr_alan</dd></div>
+        </dl>
+        <p style="margin-top:18px;text-align:right"><button class="btn" type="button">Salvar perfil</button></p>
+      </section>
+      <!-- COPIED:end -->
+      <p class="muted">Credenciais da Binance nesta conta: <a href="credenciais.html" style="color:var(--accent)">abrir Credenciais Binance</a>.</p>
+    </div>
+  </main>
+</body>
+</html>

@@ -512,7 +512,7 @@ Padrão de commit recomendado:
 ## Como rodar (VPS / dev)
 
 ### Backend (FastAPI)
-- O `runtime-worker` só executa o loop scalp com `RUN_SCALP_LOOP=1`. A API mantém o mesmo loop como fallback por padrão (`SCALP_API_LOOP_ENABLED=1` implícito), para execução local, API-only e PROD. No DEV com o worker dedicado ativo, `criptofarol-dev-backend.service` usa `SCALP_API_LOOP_ENABLED=0`; isso deixa o lock, o diagnóstico diário e o log com o worker, sem alterar o comportamento do worker nem flags de conta. Não configure essa exceção na API-only.
+- O `runtime-worker` executa a fila da Descoberta e, quando a flag correspondente está ligada, a atualização de favoritos.
 - Porta padrão: **8003**
 - Logs (quando usamos nohup): `/tmp/uvicorn-8003.log`
 

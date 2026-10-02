@@ -114,78 +114,6 @@ const PORTFOLIO_KPI = {
   _history_insufficient: false,
 }
 
-const SCALP_STATUS = {
-  state: 'off',
-  has_spot_key: true,
-  jev_available: true,
-  book_available: true,
-  horizon_s: 900,
-  lookback_label: 'últimos 15 min',
-  t_quote: '100',
-  clip_quote: '10',
-  inventory_btc: '0',
-  calibration: null,
-  pnl_quote: '0',
-  status_text:
-    'Desligado: não envia ordem deste scalp. Lookback últimos 15 min. Inventário e P&L ficam visíveis.',
-  kill_banner: false,
-  inventory_clipped: false,
-  fee_bp: '10',
-  bnb_fee_active: false,
-  hurdle_bp: '20.1',
-  exit_target_bp: '35',
-  exit_stop_bp: '-28',
-  position: null,
-  stuck: false,
-  calibration_paused: false,
-  calibration_enabled: true,
-  jev_diagnosis: {
-    closed_day: '2026-09-25',
-    shown_on: '2026-09-26',
-    lead: 'Um aviso por dia, só depois que o dia fecha. Este é o de 26 de setembro de 2026. Hoje não há outro.',
-    when: '26 set 2026, sobre o dia 25 que já fechou',
-    data_ok: 'servem para esta leitura',
-    until: 'só o que já tinha fechado à meia-noite',
-    confidence_now: 'mercado calmo só entra acima de 55%. Mercado agitado não entra. Versão 12.',
-    decision: 'não mudei a confiança',
-    verb: 'bloquear',
-    sample: '67 operações, e não dá para compará-las. Para mudar alguma coisa preciso de cerca de 200.',
-    target_stop:
-      'para não perder com a taxa, teria de acertar cerca de 76 em 100. Sem a taxa, cerca de 44 em 100. O preço chegou no alvo em cerca de 30 em 100 das vezes em que bateu num dos lados.',
-    signal: 'não ganhou nada além de ficar comprado.',
-    side: '97 em 100 foram compra. Acertar o lado ficou em 49 em 100, igual a comprar e segurar (50 em 100).',
-    reason:
-      'Não mudei nada. Ainda só há 67 operações medidas à parte, abaixo de 200, e essa amostra não é comparável. Com este alvo e este stop o scalp não se paga. A confiança fica como está. Alvo, stop e o prazo do scalp não mudam.',
-    can_revert: true,
-    history: [
-      {
-        date: '2026-09-26',
-        label: '26 set 2026',
-        verb: 'bloquear',
-        text: 'Só havia 67 operações, abaixo de 200, e a amostra não era comparável. Com este prazo o scalp não se paga. A confiança ficou. Versão 12.',
-      },
-      {
-        date: '2026-09-20',
-        label: '20 set 2026',
-        verb: 'reverter',
-        text: 'A versão 13 passou a perder mais do que a 12. A posição que já estava aberta saiu como estava.',
-      },
-      {
-        date: '2026-09-12',
-        label: '12 set 2026',
-        verb: 'aplicar',
-        text: 'No mercado calmo a confiança passou de 50% para 55%. A nova perdia menos em cada US$ 100 (cerca de US$ 0,22 em vez de US$ 0,29, já com a taxa), em 214 operações novas. A entrada seguinte já usava 55%. Versão 12.',
-      },
-      {
-        date: '2026-09-11',
-        label: '11 set 2026',
-        verb: 'manter',
-        text: 'A nova não perdia menos do que a que já valia, mesmo ainda no prejuízo. Ficou a versão 11.',
-      },
-    ],
-  },
-}
-
 async function blockExternalNetwork(page: Page) {
   await page.route('**/*', (route) => {
     const url = new URL(route.request().url())
@@ -242,9 +170,6 @@ async function installStableApiMocks(page: Page) {
   )
   await page.route('**/api/monitor/preferences', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(preferences) }),
-  )
-  await page.route('**/api/scalp/status', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SCALP_STATUS) }),
   )
   await page.route('**/api/monitor/preferences/*', (route) =>
     route.fulfill({
