@@ -64,9 +64,8 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
   fi
 
   echo "Restarting canonical DEV services..."
-  # The scalp loop holds a DB transaction across network waits. Stop it before
-  # the backend runs schema migration, or ALTER TABLE waits forever and :8004
-  # never listens.
+  # Stop the runtime worker before the backend runs schema migration so a
+  # long-lived DB session cannot block ALTER TABLE and leave :8004 silent.
   systemctl stop "$DEV_RUNTIME_WORKER_UNIT" || true
   systemctl restart \
     "$DEV_BACKEND_UNIT" \
@@ -83,7 +82,7 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
     sleep 1
   done
   if [[ "$backend_up" -ne 1 ]]; then
-    echo "DEV backend did not become healthy before starting the scalp worker." >&2
+    echo "DEV backend did not become healthy before starting the runtime worker." >&2
     systemctl --no-pager --lines=20 status \
       "$DEV_BACKEND_UNIT" \
       "$DEV_FRONTEND_UNIT" \
