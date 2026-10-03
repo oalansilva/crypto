@@ -175,6 +175,8 @@ def get_all_auto_schemas() -> Dict[str, IndicatorSchema]:
         "obv",
         "cmf",
         "vwap",
+        "vwap_daily",
+        "vwap_rolling",
     ]
 
     schemas: Dict[str, IndicatorSchema] = {}

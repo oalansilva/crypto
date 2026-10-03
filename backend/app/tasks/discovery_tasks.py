@@ -23,6 +23,7 @@ from app.models_discovery import (
     DiscoveryResult,
     DiscoverySweep,
 )
+from app.metrics.backtest_execution_costs import fees_slippage_record
 from app.metrics.performance import CAGR_ABS_CEILING
 from app.metrics.risk_adjusted import CALMAR_ABS_CEILING
 from app.services.discovery_service import (
@@ -344,7 +345,7 @@ def run_combination(
         expected_candles=expected_candles,
         observed_valid_candles=observed_valid_candles,
         coverage=coverage,
-        fees_slippage={"fees": 0.001, "slippage": 0.001},
+        fees_slippage=fees_slippage_record(combination.timeframe),
         metrics=metrics_snapshot,
     )
 
@@ -398,7 +399,7 @@ def run_combination(
             expected_candles=expected_candles,
             observed_valid_candles=observed_valid_candles,
             coverage=coverage,
-            fees_slippage={"fees": 0.001, "slippage": 0.001},
+            fees_slippage=fees_slippage_record(combination.timeframe),
             metrics=persisted_metrics,
             trades_count=trades_count,
             win_rate=best_metrics.get("win_rate"),
