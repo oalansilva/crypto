@@ -63,22 +63,9 @@ class ComboService:
         if self._session_factory is not SessionLocal:
             return
 
-        from app.startup_seed import (
-            CARD_1074_TEMPLATE_NAMES,
-            seed_combo_templates_if_empty,
-            upsert_combo_templates_from_export,
-        )
+        from app.startup_seed import seed_combo_templates_if_empty
 
         seed_combo_templates_if_empty()
-        upsert_combo_templates_from_export(CARD_1074_TEMPLATE_NAMES)
-
-    def _ensure_card_1074_templates(self) -> None:
-        if self._session_factory is not SessionLocal:
-            return
-
-        from app.startup_seed import CARD_1074_TEMPLATE_NAMES, upsert_combo_templates_from_export
-
-        upsert_combo_templates_from_export(CARD_1074_TEMPLATE_NAMES)
 
     def list_templates(self) -> Dict[str, List[Dict[str, Any]]]:
         """
@@ -90,9 +77,7 @@ class ComboService:
         rows = self._list_template_rows()
         if not rows:
             self._seed_runtime_templates_if_empty()
-        else:
-            self._ensure_card_1074_templates()
-        rows = self._list_template_rows()
+            rows = self._list_template_rows()
 
         prebuilt: list[dict[str, Any]] = []
         examples: list[dict[str, Any]] = []

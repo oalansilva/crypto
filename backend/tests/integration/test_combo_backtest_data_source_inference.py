@@ -54,10 +54,8 @@ def _patch_backtest_dependencies(monkeypatch):
         lambda self, template_name, parameters: _FakeStrategy(),
     )
 
-    monkeypatch.setattr(
-        combo_optimizer,
-        "extract_trades_from_signals",
-        lambda df_with_signals, stop_loss_pct, direction: [
+    def _fake_extract_trades(df_with_signals, stop_loss_pct, direction, slippage=0.0):
+        return [
             {
                 "entry_time": df_with_signals.index[0].isoformat(),
                 "entry_price": float(df_with_signals.iloc[0]["open"]),
@@ -66,8 +64,9 @@ def _patch_backtest_dependencies(monkeypatch):
                 "profit": 0.01,
                 "type": direction,
             }
-        ],
-    )
+        ]
+
+    monkeypatch.setattr(combo_optimizer, "extract_trades_from_signals", _fake_extract_trades)
 
     return provider_calls
 

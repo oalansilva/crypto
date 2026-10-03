@@ -24,7 +24,7 @@ def _get_export_path() -> str:
 
 
 def seed_combo_templates_if_empty(export_path: str | None = None) -> int:
-    """Return number of templates imported/updated."""
+    """Return number of templates imported on first seed (0 if table already had rows)."""
 
     export_path = export_path or _get_export_path()
 
@@ -37,6 +37,7 @@ def seed_combo_templates_if_empty(export_path: str | None = None) -> int:
     with SessionLocal() as db:
         count = db.query(ComboTemplate).count()
         if count > 0:
+            upsert_combo_templates_from_export(CARD_1074_TEMPLATE_NAMES, export_path=export_path)
             return 0
 
         imported = 0

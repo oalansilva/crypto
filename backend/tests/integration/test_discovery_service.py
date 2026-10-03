@@ -658,7 +658,7 @@ class TestStartAfterTerminal:
         payload = {
             "templates": ["multi_ma_crossover"],
             "symbols": ["BTCUSDT"],
-            "timeframes": ["15m"],
+            "timeframes": ["5m"],
             "directions": ["long"],
             "period_type": "all",
             "snapshot_hash": "deadbeef",
