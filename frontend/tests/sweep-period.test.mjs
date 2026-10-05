@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 import {
   customPeriodImpediments,
@@ -8,6 +11,10 @@ import {
   periodPayloadForApi,
   resolvePeriodDates,
 } from '../src/lib/sweepPeriod.ts'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const discoveryPath = path.resolve(__dirname, '../src/pages/DiscoveryPage.tsx')
+const comboConfigurePath = path.resolve(__dirname, '../src/pages/ComboConfigurePage.tsx')
 
 test('shared period list order and labels', () => {
   assert.deepEqual(
@@ -43,4 +50,24 @@ test('customPeriodImpediments copy', () => {
     'Data Inicial não pode ser depois da Data Final.',
   ])
   assert.equal(customPeriodImpediments('15d', '', '', '2026-08-15').length, 0)
+})
+
+test('newDraft repõe período default da Descoberta', async () => {
+  const source = await readFile(discoveryPath, 'utf8')
+  const block = source.slice(source.indexOf('const newDraft = useCallback'))
+  assert.match(block, /setPeriod\(DISCOVERY_DEFAULT_PERIOD\)/)
+  assert.match(block, /setCustomStartDate\(''\)/)
+  assert.match(block, /setCustomEndDate\(''\)/)
+})
+
+test('Combo exists check inclui intervalo Personalizado', async () => {
+  const source = await readFile(comboConfigurePath, 'utf8')
+  assert.match(
+    source,
+    /if \(period === 'custom'\)[\s\S]*searchParams\.set\('start_date', start_date\)/,
+  )
+  assert.match(
+    source,
+    /if \(period === 'custom'\)[\s\S]*searchParams\.set\('end_date', end_date\)/,
+  )
 })

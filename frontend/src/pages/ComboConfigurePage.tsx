@@ -262,6 +262,10 @@ export function ComboConfigurePage() {
                 existsUrl.searchParams.set('timeframe', timeframe)
                 existsUrl.searchParams.set('period_type', period)
                 existsUrl.searchParams.set('direction', direction)
+                if (period === 'custom') {
+                    if (start_date) existsUrl.searchParams.set('start_date', start_date)
+                    if (end_date) existsUrl.searchParams.set('end_date', end_date)
+                }
                 const existsRes = await authFetch(existsUrl.toString())
                 if (existsRes.ok) {
                     const { exists } = await existsRes.json()
