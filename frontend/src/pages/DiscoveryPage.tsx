@@ -10,6 +10,15 @@ import {
   ACTIVE_RESTORE_BACKOFF_MS,
   ACTIVE_RESTORE_MAX_ATTEMPTS,
 } from '../lib/discoveryActiveRestoreConfig'
+import {
+  customPeriodImpediments,
+  DISCOVERY_DEFAULT_PERIOD,
+  isPeriodKey,
+  PERIOD_OPTIONS,
+  periodDisplayLabel,
+  periodPayloadForApi,
+  type PeriodKey,
+} from '../lib/sweepPeriod'
 import { formatCompoundReturn, type CompoundReturnSource } from '../lib/compoundReturn'
 import { SelectionWorkbench } from '../components/SelectionWorkbench'
 import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
@@ -349,7 +358,9 @@ export function DiscoveryPage() {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
   const [timeframes, setTimeframes] = useState<string[]>(['1d'])
   const [directions, setDirections] = useState<string[]>(['long'])
-  const [period, setPeriod] = useState<'6m' | '2y' | 'all'>('all')
+  const [period, setPeriod] = useState<PeriodKey>(DISCOVERY_DEFAULT_PERIOD)
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
   const [draftMetric, setDraftMetric] = useState<Metric>('calmar_ratio')
   const [metric, setMetric] = useState<Metric>('calmar_ratio')
   // Workbench
@@ -526,8 +537,15 @@ export function DiscoveryPage() {
     setTimeframes(axes.timeframes?.length ? axes.timeframes : [])
     setDirections(axes.directions?.length ? axes.directions : ['long'])
     const periodType = snapshot.period_type
-    if (periodType === '6m' || periodType === '2y' || periodType === 'all') {
+    if (isPeriodKey(periodType)) {
       setPeriod(periodType)
+      if (periodType === 'custom') {
+        setCustomStartDate(snapshot.start_date ?? '')
+        setCustomEndDate(snapshot.end_date ?? '')
+      } else {
+        setCustomStartDate('')
+        setCustomEndDate('')
+      }
     }
     setPreflight(snapshot)
     setDraftFrozen(true)
@@ -555,7 +573,14 @@ export function DiscoveryPage() {
   const runPreflight = useCallback(async () => {
     if (recoveryStatus !== 'ready' || draftFrozen) return
     setStartError(null)
-    if (selectedTemplates.length === 0 || selectedSymbols.length === 0 || timeframes.length === 0 || directions.length === 0) {
+    const periodBlocked = customPeriodImpediments(period, customStartDate, customEndDate)
+    if (
+      selectedTemplates.length === 0 ||
+      selectedSymbols.length === 0 ||
+      timeframes.length === 0 ||
+      directions.length === 0 ||
+      periodBlocked.length > 0
+    ) {
       setPreflight(null)
       setSnapshotStale(false)
       return
@@ -572,7 +597,7 @@ export function DiscoveryPage() {
           symbols: selectedSymbols,
           timeframes,
           directions,
-          period_type: period,
+          ...periodPayloadForApi(period, customStartDate, customEndDate),
         }),
       })
       const data = await res.json()
@@ -588,7 +613,17 @@ export function DiscoveryPage() {
     } finally {
       setPreflightLoading(false)
     }
-  }, [draftFrozen, recoveryStatus, selectedTemplates, selectedSymbols, timeframes, directions, period])
+  }, [
+    customEndDate,
+    customStartDate,
+    draftFrozen,
+    recoveryStatus,
+    selectedTemplates,
+    selectedSymbols,
+    timeframes,
+    directions,
+    period,
+  ])
 
   useEffect(() => {
     if (recoveryStatus !== 'ready' || draftFrozen) return
@@ -597,7 +632,17 @@ export function DiscoveryPage() {
     return () => {
       if (preflightTimer.current !== null) window.clearTimeout(preflightTimer.current)
     }
-  }, [selectedTemplates, selectedSymbols, timeframes, directions, period, draftFrozen, runPreflight])
+  }, [
+    customEndDate,
+    customStartDate,
+    selectedTemplates,
+    selectedSymbols,
+    timeframes,
+    directions,
+    period,
+    draftFrozen,
+    runPreflight,
+  ])
 
   const axisCount = [
     ...(committedSelection.templates.mode === 'all'
@@ -656,6 +701,8 @@ export function DiscoveryPage() {
   if (selectedSymbols.length === 0) impediments.push('Escolha ao menos 1 símbolo.')
   if (timeframes.length === 0) impediments.push('Escolha 1 timeframe (4h, 1h, 15m ou 1d).')
   if (directions.length === 0) impediments.push('Escolha a direção Long.')
+  impediments.push(...customPeriodImpediments(period, customStartDate, customEndDate))
+  if (preflight?.errors?.period) impediments.push(preflight.errors.period)
   if (overLimit) {
     impediments.push(
       `Reduza o escopo: ${axisCount} combinações passam do limite de ${preflight?.limits.max_total ?? '—'}.`,
@@ -755,7 +802,7 @@ export function DiscoveryPage() {
           symbols: selectedSymbols,
           timeframes,
           directions,
-          period_type: period,
+          ...periodPayloadForApi(period, customStartDate, customEndDate),
           snapshot_token: preflight.snapshot_token,
           snapshot_hash: preflight.snapshot_hash,
           idempotency_key: draftKey,
@@ -1148,6 +1195,9 @@ export function DiscoveryPage() {
     setSelectedSymbols([])
     setCommittedSelection(makeEmptySelection())
     setTimeframes(['1d'])
+    setPeriod(DISCOVERY_DEFAULT_PERIOD)
+    setCustomStartDate('')
+    setCustomEndDate('')
     setPreflight(null)
     setSnapshotStale(false)
     setStartError(null)
@@ -1497,7 +1547,9 @@ export function DiscoveryPage() {
     return merged.length ? merged : symbols
   }, [preflight, viewSweep, rows, symbols])
   const activeSnapshotHash = activeSweep?.snapshot?.snapshot_hash ?? preflight?.snapshot_hash ?? null
-  const periodLabel = { '6m': '6 meses', '2y': '2 anos', all: 'Todo histórico' }[period]
+  const periodLabel = periodDisplayLabel(period)
+  const periodSummary =
+    preflightWindow.length > 0 ? `${periodLabel}${preflightWindow}` : periodLabel
 
   // Card 852: bloco inline por eixo (busca + marcar/desmarcar, sem modal).
   const renderInlineAxis = (axis: 'templates' | 'symbols') => {
@@ -2222,20 +2274,28 @@ export function DiscoveryPage() {
               </fieldset>
 
               {/* Período + Ranking */}
-              <label className="block">
-                <span className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Período histórico</span>
-                <select
-                  value={period}
-                  disabled={draftFrozen}
-                  onChange={(e) => setPeriod(e.target.value as '6m' | '2y' | 'all')}
-                  className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
-                >
-                  <option value="all">Todo o histórico</option>
-                  <option value="2y">Últimos 2 anos</option>
-                  <option value="6m">Últimos 6 meses</option>
-                </select>
-              </label>
-              <label className="block">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block min-w-0">
+                  <span className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Período histórico</span>
+                  <select
+                    value={period}
+                    disabled={draftFrozen}
+                    data-testid="sel-period"
+                    aria-label="Período histórico"
+                    onChange={(e) => {
+                      const next = e.target.value
+                      if (isPeriodKey(next)) setPeriod(next)
+                    }}
+                    className="w-full min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                  >
+                    {PERIOD_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block min-w-0">
                 <span className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Ranking principal</span>
                 <select
                   value={draftMetric}
@@ -2246,7 +2306,36 @@ export function DiscoveryPage() {
                   <option value="calmar_ratio">Calmar (recomendado)</option>
                   <option value="delta_cagr_vs_bh">CAGR vs Buy &amp; Hold</option>
                 </select>
-              </label>
+                </label>
+              </div>
+              {period === 'custom' ? (
+                <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <label className="block min-w-0">
+                    <span className="mb-2 block text-xs font-semibold text-[var(--text-secondary)]">Data Inicial</span>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      disabled={draftFrozen}
+                      data-testid="date-start"
+                      aria-label="Data Inicial"
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-full min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                    />
+                  </label>
+                  <label className="block min-w-0">
+                    <span className="mb-2 block text-xs font-semibold text-[var(--text-secondary)]">Data Final</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      disabled={draftFrozen}
+                      data-testid="date-end"
+                      aria-label="Data Final"
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-full min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                    />
+                  </label>
+                </div>
+              ) : null}
             </div>
           </article>
 
@@ -2368,7 +2457,9 @@ export function DiscoveryPage() {
               <div className="my-3.5">
                 <div className="flex justify-between gap-3 py-1.5 text-sm text-[var(--text-tertiary)]">
                   <span>Período</span>
-                  <b className="font-semibold text-[var(--text-secondary)]">{periodLabel}</b>
+                  <b className="font-semibold text-[var(--text-secondary)]" data-testid="pf-period">
+                    {periodSummary}
+                  </b>
                 </div>
                 <div className="flex justify-between gap-3 py-1.5 text-sm text-[var(--text-tertiary)]">
                   <span>Estimativa</span>
