@@ -377,6 +377,15 @@ class DiscoveryService:
         if not normalized_directions:
             axis_errors["directions"] = "use long e/ou short"
 
+        from app.services.sweep_period import normalize_sweep_period
+
+        period_type, start_date, end_date, period_errors = normalize_sweep_period(
+            period_type=period_type,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        axis_errors.update(period_errors)
+
         catalog = {t["name"]: t for t in self.combo_service.list_templates().get("prebuilt", [])}
         catalog.update(
             {t["name"]: t for t in self.combo_service.list_templates().get("examples", [])}

@@ -50,13 +50,20 @@ def resolve_optimizer_date_range(
         return start_date, end_date
 
     period_type = snapshot.get("period_type")
-    if period_type not in {"6m", "2y"}:
-        return None, None
-
     from dateutil.relativedelta import relativedelta
 
     end = (now or datetime.now(timezone.utc)).date()
-    delta = relativedelta(months=6) if period_type == "6m" else relativedelta(years=2)
+    deltas: dict[str, relativedelta] = {
+        "15d": relativedelta(days=15),
+        "1m": relativedelta(months=1),
+        "3m": relativedelta(months=3),
+        "6m": relativedelta(months=6),
+        "1y": relativedelta(years=1),
+        "2y": relativedelta(years=2),
+    }
+    delta = deltas.get(period_type)
+    if delta is None:
+        return None, None
     return (end - delta).isoformat(), end.isoformat()
 
 

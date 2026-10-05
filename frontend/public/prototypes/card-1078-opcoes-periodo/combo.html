@@ -1,0 +1,250 @@
+<!doctype html>
+<!-- Prototype card-1078-opcoes-periodo extra — /combo/configure clone+delta (NOT canonical index).
+  Clone: página viva /combo/configure (shell AppNav Combo active + Template Information + Configuration).
+  DELTA: mesma lista de período da Descoberta; Personalizado com Data Inicial/Data Final.
+  Marca inicial = incumbente vivo Todo o histórico. NÃO é decisão #1078. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Combo — configurar</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0e11'/%3E%3Crect x='3' y='3' width='10' height='10' fill='%23fcd535'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent:#fcd535; --accent-active:#f0b90b; --primary-disabled:#3a3a1f;
+      --success:#0ecb81; --danger:#f6465d; --danger-text:#ff8294; --info:#3b82f6; --warning:#f59e0b;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px;
+      --font:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      --numbers:"IBM Plex Sans","JetBrains Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    html{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--bg-primary);font-size:14px;line-height:1.5}
+    button,input,select{font:inherit;min-height:44px}
+    button{cursor:pointer}
+    button:disabled{cursor:not-allowed}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97)}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:12px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}.compact-env{margin:0;font-size:10px;font-weight:700}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-top:1px solid rgba(43,49,57,.72);background:transparent;color:var(--text-tertiary)}
+    .topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94)}.topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:18px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:10px;letter-spacing:.15em;text-transform:uppercase}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}.page{width:min(100%,880px);margin:0 auto;padding:24px 32px 52px}
+    .card{border:1px solid var(--border);border-radius:16px;background:var(--bg-elevated);margin-bottom:20px;padding:24px}
+    .card h2{margin:0 0 16px;font-size:20px}
+    .meta{margin:0 0 8px;color:var(--text-tertiary);font-size:13px}
+    .meta p{margin:4px 0 0;color:var(--text-secondary)}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .chip{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border:1px solid rgba(59,130,246,.35);border-radius:8px;color:#93c5fd;font-size:12px;font-weight:600}
+    code.logic{display:block;margin-top:6px;padding:12px;border-radius:12px;background:var(--bg-primary);color:var(--success);font-size:13px}
+    code.logic.exit{color:var(--danger-text)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .field span,.field-label{display:block;margin-bottom:8px;color:var(--text-tertiary);font-size:13px;font-weight:650}
+    .control,.config-control{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-input);color:var(--text-primary)}
+    .readonly{padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-secondary);color:var(--text-muted);font-size:13px}
+    .hint{margin:8px 0 0;padding:12px;border:1px solid rgba(59,130,246,.3);border-radius:12px;background:rgba(59,130,246,.08);color:#93c5fd;font-size:13px}
+    .imp{margin-top:10px;padding:10px 12px;border:1px solid rgba(245,158,11,.35);border-radius:12px;background:rgba(245,158,11,.06);color:#fbbf24;font-size:12px}
+    .imp ul{margin:6px 0 0;padding-left:18px;color:var(--text-secondary)}
+    .custom-dates{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    .check{display:flex;align-items:flex-start;gap:12px;margin-top:16px}
+    .check input{width:20px;height:20px;margin-top:2px;accent-color:var(--info)}
+    .cta{display:flex;align-items:center;justify-content:center;width:100%;margin-top:20px;min-height:44px;border:1px solid var(--accent);border-radius:12px;background:var(--accent);color:#181a20;font-weight:700}
+    .cta:disabled{border-color:var(--primary-disabled);background:var(--primary-disabled);color:var(--text-muted)}
+    @media(max-width:1023px){.sidebar,.topbar{display:none}.mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96)}.menu-button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.mobile-title{min-width:0;flex:1}.mobile-title strong,.mobile-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-title span{color:var(--text-muted);font-size:12px}.main{margin-left:0;padding-top:72px}.grid,.custom-dates{grid-template-columns:1fr}.page{padding:18px 16px 40px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5M12 4v2M20 12h-2M12 20v-2M4 12h2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.4 2.4 0 1 1 3.9 1.9c-1 .7-1.6 1.1-1.6 2.6M12 17h.01"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </svg>
+
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px, Combo active) -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Combo</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="index.html"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item active" href="#" aria-current="page"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-help"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+    <button class="collapse" type="button"><svg class="icon"><use href="#i-menu"/></svg>Recolher menu</button>
+  </aside>
+  <header class="topbar"><div class="topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Combo</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env compact-env">Ambiente DEV</span><button class="account" type="button" aria-label="Abrir conta"><span class="avatar">AS</span><span><small>Conta</small>Alan Silva</span></button></div></div></header>
+  <header class="mobilebar"><button class="menu-button" type="button" aria-label="Abrir menu"><svg class="icon"><use href="#i-menu"/></svg></button><div class="mobile-title"><strong>Combo</strong><span>Configurar template</span></div><span class="env compact-env">DEV</span><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+
+  <main class="main">
+    <div class="page">
+      <!-- COPIED:start Template Information clone ComboConfigure -->
+      <section class="card">
+        <h2>Template Information</h2>
+        <div class="meta"><span>Description:</span><p>Entra quando a média curta cruza acima da longa; encerra no cruzamento contrário.</p></div>
+        <div class="meta"><span>Indicators:</span><div class="chips"><span class="chip">ema_short</span><span class="chip">ema_long</span></div></div>
+        <div class="meta"><span>Entry Logic:</span><code class="logic">ema_short crosses above ema_long</code></div>
+        <div class="meta"><span>Exit Logic:</span><code class="logic exit">ema_short crosses below ema_long</code></div>
+      </section>
+      <!-- COPIED:end -->
+
+      <!-- COPIED:start Configuration chrome ComboConfigure -->
+      <section class="card">
+        <h2>Configuration</h2>
+        <div class="grid">
+          <div>
+            <span class="field-label">Market Data</span>
+            <div class="readonly">CCXT (crypto exchange data)</div>
+          </div>
+          <div>
+            <span class="field-label">Escopo</span>
+            <div class="readonly">Selecciona · BTC/USDT</div>
+          </div>
+          <div>
+            <label class="field"><span>Timeframe</span>
+              <select class="config-control" aria-label="Timeframe">
+                <option>1 minute</option>
+                <option>5 minutes</option>
+                <option>15 minutes</option>
+                <option>1 hour</option>
+                <option>4 hours</option>
+                <option selected>1 day</option>
+              </select>
+            </label>
+          </div>
+          <!-- COPIED:end -->
+          <!-- DELTA:start período lista partilhada; marca inicial = incumbente all -->
+          <div>
+            <label class="field"><span>Período</span>
+              <select class="config-control" id="sel-period" data-testid="sel-period" aria-label="Período">
+                <option value="15d">15 dias</option>
+                <option value="1m">1 mês</option>
+                <option value="3m">3 meses</option>
+                <option value="6m">6 meses</option>
+                <option value="1y">1 ano</option>
+                <option value="2y">2 anos</option>
+                <option value="custom">Personalizado</option>
+                <option value="all" selected>Todo o histórico</option>
+              </select>
+            </label>
+            <div class="custom-dates" id="custom-dates" hidden>
+              <label><span class="field-label">Data Inicial</span><input class="config-control" type="date" id="date-start" data-testid="date-start" aria-label="Data Inicial" max="2026-10-05"></label>
+              <label><span class="field-label">Data Final</span><input class="config-control" type="date" id="date-end" data-testid="date-end" aria-label="Data Final" max="2026-10-05"></label>
+            </div>
+          </div>
+          <!-- DELTA:end -->
+          <!-- COPIED:start Direction Deep Backtest walk-forward -->
+          <div>
+            <label class="field"><span>Direction</span>
+              <select class="config-control" aria-label="Direction">
+                <option selected>Long</option>
+                <option>Short</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <label class="check">
+          <input type="checkbox" checked>
+          <span><strong>Deep Backtest (15m Precision)</strong><br><span style="color:var(--text-muted);font-size:12px">Simulates execution using 15-minute candles for realistic stop/target validation</span></span>
+        </label>
+        <label class="check">
+          <input type="checkbox">
+          <span><strong>Validação walk-forward (split 70/30)</strong><br><span style="color:var(--text-muted);font-size:12px">Otimiza parâmetros só no treino (70%) e valida no holdout (30%) com veredito GO/NO-GO.</span></span>
+        </label>
+        <!-- COPIED:end -->
+        <!-- DELTA:start janela + Preflight Combo -->
+        <p class="hint" id="period-hint" data-testid="period-hint">Será usado todo o histórico disponível para os símbolos escolhidos.</p>
+        <div class="imp" id="preflight-impediments" data-testid="preflight-impediments" hidden>
+          <strong>Falta fazer:</strong>
+          <ul id="impediment-list"></ul>
+        </div>
+        <button type="button" class="cta" id="btn-start" data-testid="start-combo">Iniciar Combo</button>
+        <!-- DELTA:end -->
+      </section>
+    </div>
+  </main>
+  <script>
+    (function () {
+      const TODAY = '2026-10-05';
+      const HINTS = {
+        '15d': 'Serão usados os últimos 15 dias de dados.',
+        '1m': 'Será usado o último mês de dados.',
+        '3m': 'Serão usados os últimos 3 meses de dados.',
+        '6m': 'Serão usados os últimos 6 meses de dados.',
+        '1y': 'Será usado o último ano de dados.',
+        '2y': 'Serão usados os últimos 2 anos de dados.',
+        all: 'Será usado todo o histórico disponível para os símbolos escolhidos.'
+      };
+      const period = document.getElementById('sel-period');
+      const customBox = document.getElementById('custom-dates');
+      const dateStart = document.getElementById('date-start');
+      const dateEnd = document.getElementById('date-end');
+      const hint = document.getElementById('period-hint');
+      const imp = document.getElementById('preflight-impediments');
+      const impList = document.getElementById('impediment-list');
+      const start = document.getElementById('btn-start');
+      function impediments() {
+        const missing = [];
+        if (period.value !== 'custom') return missing;
+        if (!dateStart.value && !dateEnd.value) missing.push('Seleccione Data Inicial e Data Final.');
+        else if (!dateStart.value) missing.push('Seleccione Data Inicial.');
+        else if (!dateEnd.value) missing.push('Seleccione Data Final.');
+        if (dateStart.value && dateEnd.value && dateStart.value > dateEnd.value) {
+          missing.push('Data Inicial não pode ser depois da Data Final.');
+        }
+        if (dateEnd.value && dateEnd.value > TODAY) {
+          missing.push('Data Final não pode ser depois de hoje.');
+        }
+        return missing;
+      }
+      function sync() {
+        const isCustom = period.value === 'custom';
+        customBox.hidden = !isCustom;
+        if (isCustom && dateStart.value && dateEnd.value && dateStart.value <= dateEnd.value) {
+          hint.textContent = 'Preflight e varredura usam ' + dateStart.value + ' → ' + dateEnd.value + '.';
+        } else {
+          hint.textContent = HINTS[period.value] || HINTS.all;
+        }
+        const gaps = impediments();
+        if (gaps.length) {
+          imp.hidden = false;
+          impList.replaceChildren();
+          gaps.forEach((g) => {
+            const li = document.createElement('li');
+            li.textContent = g;
+            impList.appendChild(li);
+          });
+          start.disabled = true;
+        } else {
+          imp.hidden = true;
+          impList.replaceChildren();
+          start.disabled = false;
+        }
+      }
+      period.addEventListener('change', sync);
+      dateStart.addEventListener('change', sync);
+      dateEnd.addEventListener('change', sync);
+      sync();
+    })();
+  </script>
+</body>
+</html>
