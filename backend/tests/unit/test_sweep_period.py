@@ -7,9 +7,17 @@ from app.services import sweep_period
 
 def test_validate_custom_period_messages():
     now = datetime(2026, 8, 15, tzinfo=timezone.utc)
-    assert sweep_period.validate_custom_period(None, None, now=now) == "Seleccione Data Inicial e Data Final."
-    assert sweep_period.validate_custom_period("2026-01-01", None, now=now) == "Seleccione Data Final."
-    assert sweep_period.validate_custom_period(None, "2026-01-01", now=now) == "Seleccione Data Inicial."
+    assert (
+        sweep_period.validate_custom_period(None, None, now=now)
+        == "Seleccione Data Inicial e Data Final."
+    )
+    assert (
+        sweep_period.validate_custom_period("2026-01-01", None, now=now) == "Seleccione Data Final."
+    )
+    assert (
+        sweep_period.validate_custom_period(None, "2026-01-01", now=now)
+        == "Seleccione Data Inicial."
+    )
     assert (
         sweep_period.validate_custom_period("2026-02-01", "2026-01-01", now=now)
         == "Data Inicial não pode ser depois da Data Final."

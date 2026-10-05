@@ -41,6 +41,9 @@ def normalize_sweep_period(
 ) -> tuple[str | None, str | None, str | None, dict[str, str]]:
     """Resolve period_type + datas para snapshot/preflight."""
     errors: dict[str, str] = {}
+    if period_type is None and start_date and end_date:
+        return None, start_date, end_date, errors
+
     ptype = period_type or ALL_PERIOD
 
     if ptype == CUSTOM_PERIOD:

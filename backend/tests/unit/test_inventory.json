@@ -615,6 +615,15 @@
       "evidence": "all persistence calls replaced by fake sessions"
     },
     {
+      "file": "backend/tests/unit/test_sweep_period.py",
+      "protected_behavior": "sweep period validation and fixed-window normalization",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "normalize_sweep_period and validate_custom_period assertions"
+    },
+    {
       "file": "backend/tests/unit/test_small_services_and_utils.py",
       "protected_behavior": "small services/preferences/refresh",
       "production_reachability": "reachable",
