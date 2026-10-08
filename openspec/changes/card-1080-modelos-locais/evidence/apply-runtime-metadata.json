@@ -1,0 +1,25 @@
+{
+  "evidence_kind": "runtime metadata only; birth before local migration, not new adapter runtime coverage",
+  "trace_path": "/home/ubuntu/.codex/sessions/2026/10/08/rollout-2026-10-08T21-04-10-01a11d54-aaa5-72e2-bdfa-90e8b32e6fb5.jsonl",
+  "session_meta": {
+    "id": "01a11d54-aaa5-72e2-bdfa-90e8b32e6fb5",
+    "timestamp": "2026-10-08T21:04:10.410Z",
+    "cli_version": "0.162.0",
+    "model_provider": "openai"
+  },
+  "thread_spawn": {
+    "parent_thread_id": "01a11d30-021c-7b21-ab05-28808c264476",
+    "depth": 1,
+    "agent_path": "/root/apply_coluna_1080"
+  },
+  "turn_context": [
+    {
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "sandbox_policy": {
+        "type": "danger-full-access"
+      },
+      "approval_policy": "never"
+    }
+  ]
+}

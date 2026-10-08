@@ -213,10 +213,10 @@ def test_codex_page_routes_reviewers_to_codex_without_changing_cursor_page():
     assert "até ambos retornarem `completed` com payload" in codex
     assert "registra proxies via `codex_proxy.py`" in codex
     assert "metadados observados de runtime/trace e retorno, nunca inferidos" in codex
-    assert "use o `.cursor/model-map.yaml` compartilhado, sem fallback" in codex
+    assert "use a captura local de nascimento, sem fallback" in codex
     assert "scripts/process-fsm/review_process_checklist.py" in codex
     assert "`review_diff_path` e SHA-256" in codex
-    assert "`execucao.codex` do mapa compartilhado" in codex
+    assert "`codex/execucao` da escolha local" in codex
     assert "Cursor Task, `cursor-agent` ou Composer" in codex
     codex_order = [
         codex.index("o pai/orquestrador gravável primeiro materializa"),
@@ -245,13 +245,13 @@ def test_codex_page_routes_reviewers_to_codex_without_changing_cursor_page():
     assert "sessão Codex CLI dedicada" in review_contract
     assert "recuse visivelmente antes de qualquer spawn" in review_contract
     assert "recebem o mesmo path + SHA-256" in review_contract
-    assert "par vigente de `execucao.codex` do mapa compartilhado" in review_contract
+    assert "par capturado de `codex/execucao` da escolha local" in review_contract
     assert "`sandbox_mode=read-only`" in review_contract
     assert "A sessão permanece `read-only` até ambos retornarem `completed` com payload" in review_contract
     assert "não grave proxies nem faça follow-up sob escrita nessa sessão" in review_contract
     assert "Só depois dos dois retornos, o pai/orquestrador gravável registra um proxy" in review_contract
     assert "Nunca invente ou infira metadados" in review_contract
-    assert "Use o `.cursor/model-map.yaml` compartilhado do consumidor, sem fallback" in review_contract
+    assert "Use a captura de nascimento aplicável, sem comparar com arquivo posteriormente editado e sem fallback" in review_contract
     assert "Em seguida execute `verify-wave`" in review_contract
     assert "scripts/process-fsm/review_process_checklist.py` passarem (`PASS`)" in review_contract
     assert "Não inferir que o Agent API controla o sandbox do pai" in skill
@@ -391,7 +391,7 @@ def test_agents_md_is_stub():
 
 def test_skill_t18_destape_resume_and_release_picker():
     text = (REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md").read_text(encoding="utf-8")
-    assert "Destape/resume mantém slug de execução" in text
+    assert "Destape/resume mantém captura de nascimento" in text
     assert "Release/lote — chat pai execução" in text
     assert ".cursor/model-map.yaml" in text
     assert "composer-2.5-fast" in text

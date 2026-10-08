@@ -1,3 +1,4 @@
+# Historical explicit migration input only. Spawns use account-local model-selection.yaml.
 juizo:
   label: Grok 4.6
   slug: cursor-grok-4.6-high
