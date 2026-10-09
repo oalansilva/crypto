@@ -29,6 +29,7 @@ Aqui deve ficar:
 
 ## Status Atual
 
+- Release 2026-10-09 publicada em PROD (`f94868d5`): #1022 guard de archive em release-*, #1042 adapter Codex, #1059 closeout Codex e #1061 juízo Grok 4.7/execução 4.6. Doc: `docs/release-2026-10-09.md`. #1074/#1075/#1078/#1080 seguem Done em develop, fora deste pacote.
 - Fase atual: fechamento do beta fechado.
 - Fonte operacional: GitHub Project `MVP Cripto - Beta Fechado`.
 - Release 2026-09-20 publicada em PROD (`dc3830a9`, #995 Monitor reabsorve falha transitória de rede). Doc: `docs/release-2026-09-20.md`.

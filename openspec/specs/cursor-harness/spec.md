@@ -738,4 +738,3 @@ The finding schema and destape table SHALL NOT change the #893 silent ceiling: a
 - **THEN** the parent records residual on the Done handoff and the card comment
 - **AND** the parent MUST NOT spawn a third cycle
 - **AND** the parent MUST NOT ask «autorizar extra / aceitar residual»
-

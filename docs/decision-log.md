@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-10-09 - Archive e adapters compartilhados no fechamento de release (cards #1022, #1042, #1059, #1061)
+
+**Decisão:** archive/sync de changes completas de um pacote Homologado ocorre na própria release-* quando o guard resolve os cards e seus estados vivos, sem inventar binding nem transição. Codex usa o quinto adapter, mesma FSM e revisão com pai e dois filhos nativos read-only; proxies são registrados após completed com payload e comparados ao runtime. Closeout mantém checkpoints e a autonomia operacional do pedido explícito. Grok usa juízo 4.7 e execução 4.6, sem herdar picker.
+
+**Motivo:** Clara (#1022) e Alan (#1061) homologaram a remoção do bloqueio operacional de archive e o alinhamento de modelos por faixa; #1042/#1059 permitem executar e fechar o mesmo processo pelo Codex sem interrupções artificiais ou evidência inferida.
+
+**Onde:** guard/process-fsm, adapters `.codex`, mapa compartilhado e specs do harness; publicação em `f94868d5` pelo PR #1082, com evidência PROD em `docs/release-2026-10-09.md`. A seleção local do #1080 continua Done em develop e não integra esta release; a captura operacional atual foi usada apenas na máquina.
+
 ## 2026-09-20 - Monitor reabsorve corte transitório de rede (card #995)
 
 **Decisão:** com sessão válida e favoritos crypto no servidor, um corte `Failed to fetch` na carga autenticada de `/monitor` não pinta o erro #975 à primeira. O quadro espera dezenas de segundos em «Carregando sinais...»; sucesso na mesma abertura lista os pares. Falha persistente mantém o copy #975 + «Tentar de novo» (releitura, sem `refresh=true`). Sessão morta vai ao login. Sem mudar Caddy, backend, TTL ou layout.
