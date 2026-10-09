@@ -1,0 +1,88 @@
+[
+  {
+    "recorded_at": "2026-10-08T23:34:06.307310+00:00",
+    "bound_card": "1080",
+    "activity": "diff-reviewer",
+    "band": "execucao",
+    "requested_model": "gpt-6.1-sol",
+    "requested_effort": "high",
+    "observed_model": "gpt-6.1-sol",
+    "observed_effort": "high",
+    "host": "Codex CLI",
+    "host_version": "0.162.0",
+    "status": "completed",
+    "payload_returned": true,
+    "successful": true,
+    "child_id": "01a11dda-443f-77a2-819a-e66eba1163f4",
+    "wave_id": "1080-review-2",
+    "sandbox_mode": "read-only",
+    "review_diff_sha256": "3f80c06e91fbceedc8b6364be1bbb984119d2b38d6bd4ba9a2fd9636c82ebf2f",
+    "selection_capture": {
+      "arguments": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "high"
+      },
+      "attempt_id": "97e50c7d-d075-488a-921a-2c60fb2e60ce",
+      "band": "execucao",
+      "capability_version": "codex-agent-pair-v1",
+      "capture_sha256": "beffae89788e117a1c42d453baeb2bce0c590a2b33d00bc401413330828bb587",
+      "client": "codex",
+      "effective_sha256": "20cd9379a7e4d5a14314eb52d441d287f4bdf8072b922449bbbb1c773fcc5f71",
+      "policy_sha256": "f5ce0eb818f27797e0fca52037aef0af80cbe0c2305927b222ca8bec197f2d16",
+      "policy_version": 1,
+      "role": "diff-reviewer",
+      "selection": {
+        "effort": "high",
+        "label": "GPT-6.1 Sol",
+        "model": "gpt-6.1-sol"
+      },
+      "source_path": "/home/ubuntu/.config/covenant-flow/model-selection.yaml",
+      "source_sha256": "6167e38fd93f8f00577de4adab6f73ab0c0f6942d72f610e85e989d78eabe9c4",
+      "version": 1
+    },
+    "reason": "Parent read-only 01a11dd9-7472-7961-89d5-6f2ce3668055 turn 01a11dd9-74ee-7fc3-8964-255b721a8b20; same-turn spawns in parent runtime; child /home/ubuntu/.codex/sessions/2026/10/08/rollout-2026-10-08T23-30-06-01a11dda-443f-77a2-819a-e66eba1163f4.jsonl; task_complete payload No findings; one correction and verification wave."
+  },
+  {
+    "recorded_at": "2026-10-08T23:34:06.323675+00:00",
+    "bound_card": "1080",
+    "activity": "code-reviewer",
+    "band": "execucao",
+    "requested_model": "gpt-6.1-sol",
+    "requested_effort": "high",
+    "observed_model": "gpt-6.1-sol",
+    "observed_effort": "high",
+    "host": "Codex CLI",
+    "host_version": "0.162.0",
+    "status": "completed",
+    "payload_returned": true,
+    "successful": true,
+    "child_id": "01a11dda-8762-7851-bb8e-e86d811b36fb",
+    "wave_id": "1080-review-2",
+    "sandbox_mode": "read-only",
+    "review_diff_sha256": "3f80c06e91fbceedc8b6364be1bbb984119d2b38d6bd4ba9a2fd9636c82ebf2f",
+    "selection_capture": {
+      "arguments": {
+        "model": "gpt-6.1-sol",
+        "reasoning_effort": "high"
+      },
+      "attempt_id": "4985f2b1-7b9a-444c-8ecf-55774f205f3b",
+      "band": "execucao",
+      "capability_version": "codex-agent-pair-v1",
+      "capture_sha256": "dc2b6a1496140f4d97e44ab43561ddff0823cb7144bb3058a59741a87966f232",
+      "client": "codex",
+      "effective_sha256": "20cd9379a7e4d5a14314eb52d441d287f4bdf8072b922449bbbb1c773fcc5f71",
+      "policy_sha256": "f5ce0eb818f27797e0fca52037aef0af80cbe0c2305927b222ca8bec197f2d16",
+      "policy_version": 1,
+      "role": "code-reviewer",
+      "selection": {
+        "effort": "high",
+        "label": "GPT-6.1 Sol",
+        "model": "gpt-6.1-sol"
+      },
+      "source_path": "/home/ubuntu/.config/covenant-flow/model-selection.yaml",
+      "source_sha256": "6167e38fd93f8f00577de4adab6f73ab0c0f6942d72f610e85e989d78eabe9c4",
+      "version": 1
+    },
+    "reason": "Parent read-only 01a11dd9-7472-7961-89d5-6f2ce3668055 turn 01a11dd9-74ee-7fc3-8964-255b721a8b20; same-turn spawns in parent runtime; child /home/ubuntu/.codex/sessions/2026/10/08/rollout-2026-10-08T23-30-23-01a11dda-8762-7851-bb8e-e86d811b36fb.jsonl; task_complete payload No findings; one correction and verification wave."
+  }
+]

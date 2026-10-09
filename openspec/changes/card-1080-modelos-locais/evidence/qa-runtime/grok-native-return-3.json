@@ -1,0 +1,23 @@
+{
+  "sessionUpdate": "tool_call_update",
+  "toolCallId": "call-a1d017ac-a27b-4d36-84ae-82684bd6ecd1-1",
+  "status": "completed",
+  "title": "[subagent:general-purpose] same-card-search 1080 cf=9de6e8b5-58e7-405b-83a8-1351bea7c77f (01a11e0f)",
+  "rawOutput": {
+    "type": "TaskOutput",
+    "Result": {
+      "task_id": "01a11e0f-7ca0-71f0-85ee-266fcbb553e1",
+      "command": "[subagent:general-purpose] same-card-search 1080 cf=9de6e8b5-58e7-405b-83a8-1351bea7c77f",
+      "status": "completed",
+      "exit_code": 0,
+      "started": "2026-10-09T00:28:13Z",
+      "ended": "2026-10-09T00:28:16Z",
+      "duration_secs": 2.647,
+      "output": "LOCAL_SELECTION_PROBE_OK\n\n<subagent_meta>id=01a11e0f-7ca0-71f0-85ee-266fcbb553e1, type=general-purpose, tool_calls=0, turns=1, duration_ms=2647</subagent_meta>\n\n<subagent_result>\nsubagent_id: 01a11e0f-7ca0-71f0-85ee-266fcbb553e1\nsubagent_type: general-purpose\nTo continue this subagent's conversation, use resume_from=\"01a11e0f-7ca0-71f0-85ee-266fcbb553e1\".\n</subagent_result>",
+      "output_file": "",
+      "truncated": false,
+      "truncation_hint": "",
+      "raw_output_bytes": 376
+    }
+  }
+}

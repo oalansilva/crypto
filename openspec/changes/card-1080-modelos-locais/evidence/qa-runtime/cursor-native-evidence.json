@@ -1,0 +1,44 @@
+{
+  "selection_capture": {
+    "arguments": {
+      "model": "composer-2.5"
+    },
+    "attempt_id": "b38dc7e2-9591-4059-a45f-bcb8e8cc5566",
+    "band": "execucao",
+    "capability_version": "cursor-task-model-v1",
+    "capture_sha256": "383a4f72bf2600ac2fefdac20c2b7c961cec361a59e23fad7fc2c499f19980e1",
+    "client": "cursor",
+    "effective_sha256": "fe426aff7b4e0403c5b9a2788b24a2c2840b769c1bf6a397d6d29082966e418d",
+    "policy_sha256": "f5ce0eb818f27797e0fca52037aef0af80cbe0c2305927b222ca8bec197f2d16",
+    "policy_version": 1,
+    "role": "same-card-search",
+    "selection": {
+      "label": "Composer 2.5",
+      "model": "composer-2.5"
+    },
+    "source_path": "/home/ubuntu/.config/covenant-flow/model-selection.yaml",
+    "source_sha256": "6167e38fd93f8f00577de4adab6f73ab0c0f6942d72f610e85e989d78eabe9c4",
+    "version": 1
+  },
+  "requested": {
+    "model": "composer-2.5",
+    "provider": "not_applicable",
+    "effort": "not_applicable",
+    "variant": "not_applicable"
+  },
+  "observed": {
+    "model": "composer-2.5",
+    "provider": "not_applicable",
+    "effort": "not_applicable",
+    "variant": "not_applicable"
+  },
+  "host": "Cursor Agent CLI",
+  "host_version": "2026.10.01-e373342",
+  "status": "completed",
+  "payload_returned": true,
+  "successful": true,
+  "child_id": "0e8c7336-e08f-4f82-8a35-fd1bd646ff2d",
+  "parent_id": "d5ab2f22-d48f-4477-a109-2b20f053348e",
+  "metadata_artifact": "/tmp/card1080-qa/cursor-child-metadata-1.json",
+  "return_artifact": "/tmp/card1080-qa/cursor-events-1.jsonl"
+}
