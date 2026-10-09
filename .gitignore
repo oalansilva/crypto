@@ -27,6 +27,7 @@ data/*.parquet
 .vscode/
 .idea/
 .cursor/*
+!.cursor/model-policy.yaml
 !.cursor/commands/
 !.cursor/commands/**
 !.cursor/skills/

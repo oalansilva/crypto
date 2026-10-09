@@ -1,0 +1,47 @@
+{
+  "selection_capture": {
+    "arguments": {
+      "model": "grok-4.6"
+    },
+    "attempt_id": "9de6e8b5-58e7-405b-83a8-1351bea7c77f",
+    "band": "execucao",
+    "capability_version": "grok-spawn-model-v1",
+    "capture_sha256": "1c3bfc460066aabc9f20286423edd08fc947cb29e556f937b9a1f1da9502ff98",
+    "client": "grok",
+    "effective_sha256": "d20d5b2d6131051f266c9c0e0d48e969a6b9ab6e5609e4597352ac97b78f1d5d",
+    "policy_sha256": "f5ce0eb818f27797e0fca52037aef0af80cbe0c2305927b222ca8bec197f2d16",
+    "policy_version": 1,
+    "role": "same-card-search",
+    "selection": {
+      "label": "Grok 4.6",
+      "model": "grok-4.6"
+    },
+    "source_path": "/home/ubuntu/.config/covenant-flow/model-selection.yaml",
+    "source_sha256": "6167e38fd93f8f00577de4adab6f73ab0c0f6942d72f610e85e989d78eabe9c4",
+    "version": 1
+  },
+  "requested": {
+    "model": "grok-4.6",
+    "provider": "not_applicable",
+    "effort": "not_applicable",
+    "variant": "not_applicable"
+  },
+  "observed": {
+    "model": "grok-4.6",
+    "provider": "not_applicable",
+    "effort": "not_applicable",
+    "variant": "not_applicable"
+  },
+  "host": "Grok Build",
+  "host_version": "1.0.25 (f7e67d6988e2)",
+  "status": "completed",
+  "payload_returned": true,
+  "successful": true,
+  "child_id": "01a11e0f-7ca0-71f0-85ee-266fcbb553e1",
+  "parent_id": "01a11e0e-aa32-7341-ab4d-22cbead0f5e6",
+  "own_usage_model_id": "grok-4.6-build",
+  "model_calls": 1,
+  "completion_artifact": "grok-native-return-3.json",
+  "metadata_artifact": "grok-child-runtime-3.json",
+  "permission_artifact": "grok-native-permission-3.json"
+}

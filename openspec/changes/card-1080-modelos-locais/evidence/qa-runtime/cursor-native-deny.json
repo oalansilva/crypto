@@ -1,0 +1,13 @@
+{
+  "type": "tool_call",
+  "subtype": "completed",
+  "call_id": "tool_803170de-a083-4e2b-8e0b-da24d735d77",
+  "session_id": "aa98192c-4fcc-4810-9b0d-b1268df35796",
+  "timestamp_ms": 1791502913471,
+  "result": {
+    "error": {
+      "error": "Task blocked by preToolUse hook: model_selection deny: cannot read birth capture /tmp/card1080-qa/intentionally-absent-capture.json: [Errno 2] No such file or directory: '/tmp/card1080-qa/intentionally-absent-capture.json'"
+    }
+  },
+  "source_sha256": "c709e15126b07fc087806b40b01a00b43c1630b638545527a88403a8a2c03f4e"
+}

@@ -1,0 +1,431 @@
+{
+  "change": "card-1080-modelos-locais",
+  "tasks_complete": 16,
+  "tasks_total": 16,
+  "requirements": 23,
+  "scenarios": 31,
+  "mapping": [
+    {
+      "requirement": "Review stance lives in local reviewers not BUGBOT.md",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/covenant-flow/spec.md:3",
+      "scenarios": [
+        {
+          "name": "Pin after operator model edit",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/covenant-flow/spec.md:6"
+        }
+      ],
+      "evidence": [
+        ".cursor/skills/covenant-flow/SKILL.md:64",
+        "scripts/process-fsm/test_subagent_stop.py:394"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Other-client stubs keep inherit without copying the table",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/covenant-flow/spec.md:10",
+      "scenarios": [
+        {
+          "name": "Stub selection guidance",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/covenant-flow/spec.md:13"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/grok_stubs.py:80",
+        "scripts/process-fsm/dsh_stubs.py:71",
+        "scripts/process-fsm/opencode_stubs.py:71"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Cursor Task model follows role not picker",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/covenant-flow/spec.md:17",
+      "scenarios": [
+        {
+          "name": "Operational change",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/covenant-flow/spec.md:20"
+        }
+      ],
+      "evidence": [
+        ".cursor/skills/covenant-flow/SKILL.md:22",
+        "scripts/process-fsm/test_model_selection.py:24"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Release closeout documents Composer parent chat exception",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/covenant-flow/spec.md:24",
+      "scenarios": [
+        {
+          "name": "Parent no longer matches local execution",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/covenant-flow/spec.md:27"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/release_model_selection.py:31",
+        "scripts/process-fsm/test_model_selection.py:126"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Reviewer child MUST NOT fetch the interval via git or transcripts",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-code-review/spec.md:3",
+      "scenarios": [
+        {
+          "name": "Reviewer launch after local edit",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-code-review/spec.md:6"
+        }
+      ],
+      "evidence": [
+        ".cursor/agents/diff-reviewer.md:11",
+        "scripts/process-fsm/codex_review.py:199",
+        "scripts/process-fsm/test_subagent_stop.py:431"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Grok diff reviewer uses execucao.grok",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-code-review/spec.md:10",
+      "scenarios": [
+        {
+          "name": "Grok execution changed locally",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-code-review/spec.md:13"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_selection.py:95",
+        "scripts/process-fsm/test_model_selection_adapters.py:33"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Versioned juízo/execução map file",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:3",
+      "scenarios": [
+        {
+          "name": "New spawn reads local selection",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:6"
+        },
+        {
+          "name": "Legacy map only",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:10"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_selection.py:51",
+        "scripts/process-fsm/test_model_selection.py:69"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Role models by juízo and execução",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:14",
+      "scenarios": [
+        {
+          "name": "Client-specific role",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:17"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_selection.py:70",
+        "scripts/process-fsm/test_model_selection.py:84"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Code Review happy path MUST use Composer execução model",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:21",
+      "scenarios": [
+        {
+          "name": "Review after operational choice change",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:24"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/codex_review.py:199",
+        "scripts/process-fsm/test_codex_review.py:272"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Composer destape and resume keep execução slug",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:28",
+      "scenarios": [
+        {
+          "name": "Local edit during continuation",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:31"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_proxy.py:22",
+        "scripts/process-fsm/test_model_selection_adapters.py:44"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Grok execução resume outside grok-4.6 does not count",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:35",
+      "scenarios": [
+        {
+          "name": "Grok continuation diverges",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/cursor-harness/spec.md:38"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_proxy.py:22",
+        "scripts/process-fsm/test_model_selection.py:106"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Versioned local reviewer subagents exist",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/developer-tooling/spec.md:3",
+      "scenarios": [
+        {
+          "name": "Inspect reviewer files",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/developer-tooling/spec.md:6"
+        }
+      ],
+      "evidence": [
+        ".cursor/agents/code-reviewer.md:4",
+        "scripts/process-fsm/test_codex_agents.py:101"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Review stance lives in local reviewer agents",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/developer-tooling/spec.md:10",
+      "scenarios": [
+        {
+          "name": "Model changes without constraint changes",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/developer-tooling/spec.md:13"
+        }
+      ],
+      "evidence": [
+        ".cursor/agents/diff-reviewer.md:4",
+        "scripts/process-fsm/test_subagent_stop.py:394"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Design model checks use birth captures",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/impeccable-design-gate/spec.md:3",
+      "scenarios": [
+        {
+          "name": "Later critic on updated choice",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/impeccable-design-gate/spec.md:6"
+        }
+      ],
+      "evidence": [
+        ".cursor/skills/covenant-flow/SKILL.md:26",
+        "scripts/process-fsm/model_selection.py:248",
+        "scripts/process-fsm/test_model_selection.py:92"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Model audit uses historical captures",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/kaizen-continuous-improvement/spec.md:3",
+      "scenarios": [
+        {
+          "name": "Model edited after the card",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/kaizen-continuous-improvement/spec.md:6"
+        }
+      ],
+      "evidence": [
+        ".cursor/skills/kaizen/SKILL.md:42",
+        "scripts/process-fsm/model_proxy.py:22",
+        "scripts/process-fsm/test_model_selection.py:106"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Critics inherit model, not transcript",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/llm-flow-emission/spec.md:3",
+      "scenarios": [
+        {
+          "name": "Choice changes after author",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/llm-flow-emission/spec.md:6"
+        }
+      ],
+      "evidence": [
+        ".cursor/skills/covenant-flow/SKILL.md:66",
+        "scripts/process-fsm/model_selection.py:70",
+        "scripts/process-fsm/test_model_selection.py:84"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Machine selection is the sole operational source",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:3",
+      "scenarios": [
+        {
+          "name": "Shared choice across consumers",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:6"
+        },
+        {
+          "name": "Configuration invalid or absent",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:10"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_selection.py:51",
+        "scripts/process-fsm/test_model_selection.py:24",
+        "scripts/process-fsm/test_model_selection.py:57"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Capabilities govern explicit routing for every harness",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:14",
+      "scenarios": [
+        {
+          "name": "Cursor model-only route",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:17"
+        },
+        {
+          "name": "Codex paired route",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:21"
+        },
+        {
+          "name": "Grok effort capability",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:25"
+        },
+        {
+          "name": "dsh native selection",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:29"
+        },
+        {
+          "name": "OpenCode selection",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:33"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_selection.py:189",
+        "scripts/process-fsm/model_selection_lib.js:67",
+        "scripts/process-fsm/test_model_selection_adapters.py:33",
+        "scripts/process-fsm/test_model_selection_adapters.py:60",
+        "scripts/process-fsm/test_model_selection_adapters.py:121"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Captures preserve running agents and coherent waves",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:37",
+      "scenarios": [
+        {
+          "name": "Editing during an agent run",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:40"
+        },
+        {
+          "name": "Editing between reviewers",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:44"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_selection.py:223",
+        "scripts/process-fsm/model_selection.py:248",
+        "scripts/process-fsm/test_model_selection.py:92",
+        "scripts/process-fsm/test_model_selection_adapters.py:44"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Migration preserves choices without pin side effects",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:48",
+      "scenarios": [
+        {
+          "name": "Existing local configuration during pin",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:51"
+        },
+        {
+          "name": "Missing inherited route",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:55"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_selection.py:304",
+        "scripts/process-fsm/test_model_selection.py:179",
+        "scripts/process-fsm/test_model_selection.py:167",
+        "scripts/process-fsm/test_codex_installer.py:155"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "Requested and observed evidence remain distinct",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:59",
+      "scenarios": [
+        {
+          "name": "Payload returned without model trace",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/machine-model-selection/spec.md:62"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_proxy.py:10",
+        "scripts/process-fsm/test_model_selection.py:117"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "dsh plugin sanitizes rejected reasoning effort on every model request",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/process-harness/spec.md:3",
+      "scenarios": [
+        {
+          "name": "Invalid effort on managed child",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/process-harness/spec.md:6"
+        }
+      ],
+      "evidence": [
+        "scripts/process-fsm/model_selection_lib.js:47",
+        "scripts/process-fsm/test_model_selection_adapters.py:91"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    },
+    {
+      "requirement": "dsh child agentCtx sanitizes reasoning effort outside installModelSelection",
+      "spec": "openspec/changes/card-1080-modelos-locais/specs/process-harness/spec.md:10",
+      "scenarios": [
+        {
+          "name": "Child after machine edit",
+          "spec": "openspec/changes/card-1080-modelos-locais/specs/process-harness/spec.md:13"
+        }
+      ],
+      "evidence": [
+        ".dsh/plugin/process-fsm-guard.js:212",
+        "scripts/process-fsm/test_model_selection_adapters.py:133"
+      ],
+      "coverage": "implementation and automated contract coverage; native limits kept separately"
+    }
+  ],
+  "ui": "none; prototype comparison not applicable",
+  "opencode_todos": {
+    "read_only": true,
+    "matched_card_sessions": 0,
+    "pending_todos": 0,
+    "method": "directory/title/slug match card1080 plus recursive descendants"
+  },
+  "checks": {
+    "openspec_strict": "PASS",
+    "openspec_all": {
+      "passed": 208,
+      "failed": 0
+    },
+    "postqa_checklist": "PASS exit0",
+    "qa_positive_evidence_revalidation": [
+      "Cursor",
+      "Grok",
+      "Codex diff-reviewer",
+      "Codex code-reviewer"
+    ],
+    "canonical_stubs": [
+      "Grok PASS",
+      "dsh PASS",
+      "OpenCode PASS"
+    ]
+  },
+  "runtime_limits": [
+    "Cursor named Task/Desktop+SSH not native-observed; automated named/generalPurpose contract coverage exists",
+    "OpenCode positive native coverage pending; safe refusal conforms to approved conditional Design",
+    "dsh positive native coverage waived_by_user, never PASS"
+  ],
+  "source_evidence": "qa-closeout.json"
+}

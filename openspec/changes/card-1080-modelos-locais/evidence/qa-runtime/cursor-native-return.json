@@ -1,0 +1,31 @@
+{
+  "type": "tool_call",
+  "subtype": "completed",
+  "call_id": "tool_844b0350-fdff-4027-86f2-dab82e4267a",
+  "session_id": "d5ab2f22-d48f-4477-a109-2b20f053348e",
+  "timestamp_ms": 1791502746570,
+  "result": {
+    "success": {
+      "conversationSteps": [
+        {
+          "assistantMessage": {
+            "text": "`LOCAL_SELECTION_PROBE_OK`"
+          }
+        }
+      ],
+      "agentId": "0e8c7336-e08f-4f82-8a35-fd1bd646ff2d",
+      "isBackground": false,
+      "durationMs": "4805",
+      "backgroundReason": "SUBAGENT_BACKGROUND_REASON_UNSPECIFIED"
+    }
+  },
+  "source_sha256": "cbe2b0855d674a9385f9d0ca0bd6061f5b3549cc577e278cf62e0fdc4158558f",
+  "requested_native_arguments": {
+    "description": "same-card-search 1080 cf=b38dc7e2-9591-4059-a45f-bcb8e8cc5566",
+    "subagentType": {
+      "unspecified": {}
+    },
+    "model": "composer-2.5",
+    "agentId": "add6127b-7601-4647-86ae-6193396ac726"
+  }
+}

@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 import pytest
+from model_selection_fixtures import machine_models
+from model_selection import resolve, save_capture
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parents[1]
@@ -63,11 +65,12 @@ def _release_section() -> str:
     return text.split("## Release", 1)[1]
 
 
-def test_release_section_drops_t18_label_and_points_codex_at_map():
+def test_release_section_drops_t18_label_and_uses_birth_capture():
     release = _release_section()
     assert "Pré-requisito (T18)" not in release
     assert "juizo" in release.lower() or "juízo" in release
-    assert "execucao.codex" in release
+    assert "check_runtime_model(..., capture=...)" in release
+    assert "Nenhum modelo de outro cliente é obrigatório" in release
     assert "nao_homologar" in SKILL.read_text(encoding="utf-8")
     assert "Pré-requisito (T18)" not in AGENTS.read_text(encoding="utf-8")
 
@@ -429,7 +432,7 @@ def test_runtime_model_check_has_no_fallback_or_auto(tmp_path: Path):
         encoding="utf-8",
     )
     match = check_runtime_model(
-        root=tmp_path, client=CLIENT_CODEX, runtime_slug="gpt-6-luna", runtime_effort="max"
+        root=tmp_path, client=CLIENT_CODEX, runtime_slug="gpt-6-luna", runtime_effort="max", capture=resolve("codex", "execucao", role="fecho-lote")
     )
     assert match.ok is True
     diverge = check_runtime_model(
@@ -437,15 +440,26 @@ def test_runtime_model_check_has_no_fallback_or_auto(tmp_path: Path):
         client=CLIENT_CODEX,
         runtime_slug="gpt-6-sol",
         client_can_route=False,
+        capture=resolve("codex", "execucao", role="fecho-lote"),
     )
     assert diverge.ok is False
     assert diverge.routed is False
     assert "do not claim routing occurred" in diverge.message
     auto = check_runtime_model(
-        root=tmp_path, client=CLIENT_CURSOR, runtime_slug="composer-2.5", auto_claimed=True
+        root=tmp_path, client=CLIENT_CURSOR, runtime_slug="cursor-execucao", auto_claimed=True, capture=resolve("cursor", "execucao", role="fecho-lote")
     )
     assert auto.auto_claimed is True
     assert auto.ok is False
+
+
+def test_release_entry_point_keeps_provider_and_variant_observations(tmp_path: Path):
+    capture = resolve("opencode", "execucao", role="fecho-lote")
+    facts = dict(root=tmp_path, client="opencode", capture=capture,
+                 runtime_slug="test-model", runtime_provider="test-provider",
+                 runtime_variant="high")
+    assert check_runtime_model(**facts).ok
+    assert not check_runtime_model(**dict(facts, runtime_provider="other-provider")).ok
+    assert not check_runtime_model(**dict(facts, runtime_variant="")).ok
 
 
 def test_replay_package_membership_and_duplicate_policy():

@@ -1,0 +1,66 @@
+{
+  "implementation_status": "15/16; task3.4 complete, task4.4 after-qa runtime",
+  "nucleus_root": "/srv/apps/dev/covenant-flow-worktrees/card-1080-modelos-locais",
+  "nucleus_tests": {
+    "harness": {
+      "passed": 622,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 56.68
+    },
+    "focused": {
+      "passed": 126,
+      "failed": 0,
+      "installer_real_tests": 6
+    },
+    "codex_impeccable_node": {
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "consumer_tests": {
+    "previous_full_harness": {
+      "passed": 673,
+      "skipped": 7,
+      "failed": 0
+    },
+    "after_shared_release_refactor_and_installer_test_update": {
+      "passed": 84,
+      "skipped": 6,
+      "failed": 0,
+      "seconds": 9.79
+    }
+  },
+  "consumer_installer_skips": "install.sh is a nucleus artifact; equivalent six tests executed and passed there",
+  "openspec_strict": "valid",
+  "diff_check_both": "clean",
+  "task_gate_precommit": null,
+  "review_wave": "not executed by Apply; parent must attest real same-turn read-only wave",
+  "migration": {
+    "applied_by": "parent",
+    "action": "create_only",
+    "target": "/home/ubuntu/.config/covenant-flow/model-selection.yaml",
+    "validate": "ten selections passed",
+    "source_sha256": "6167e38fd93f8f00577de4adab6f73ab0c0f6942d72f610e85e989d78eabe9c4",
+    "existing_overwritten": false
+  },
+  "native_probes": {
+    "grok": {
+      "attempt": "real CLI startup",
+      "result": "Not signed in",
+      "child_created": false,
+      "observed_model": "unavailable"
+    },
+    "cursor": {
+      "attempt": "controlled CLI Plan probe",
+      "result": "Plan approval required; no approval/bypass",
+      "child_created": false,
+      "observed_child_model": "unavailable"
+    },
+    "dsh": "capture prepared; native enabled path/runtime proof still after-qa",
+    "opencode": "installed task equivalent unavailable; explicit residual",
+    "codex": "parent will conduct read-only review/native trace"
+  },
+  "trust": "pin does not confer hook trust; operator review remains required",
+  "publication": "none"
+}

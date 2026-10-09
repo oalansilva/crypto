@@ -1,0 +1,28 @@
+{
+  "child_id": "01a11e0f-7ca0-71f0-85ee-266fcbb553e1",
+  "parent_id": "01a11e0e-aa32-7341-ab4d-22cbead0f5e6",
+  "session_directory": "/home/ubuntu/.grok/sessions/%2Fsrv%2Fapps%2Fdev%2Fcriptofarol%2Fcrypto-worktrees%2Fcard-1080-modelos-locais/01a11e0f-7ca0-71f0-85ee-266fcbb553e1",
+  "current_model_id": "grok-4.6",
+  "session_kind": "subagent",
+  "completion_events": [
+    {
+      "ts": "2026-10-09T00:28:16.502Z",
+      "type": "turn_ended",
+      "outcome": "completed"
+    }
+  ],
+  "source_digests": {
+    "summary.json": "70e93fb1217f72a5e596109f31f753336eafc03ec7545d50871e72c4ec99131a",
+    "usage.json": "fcb1f426b07a157879ba8808aa5f5188acaf704781bd20f920aeb9fe2c12e68a",
+    "events.jsonl": "0b4edc946ed4f87f3deb401550f82c9d5346a9c71d565001e16253c814ec5cc9"
+  },
+  "own_usage": {
+    "sessionId": "01a11e0f-7ca0-71f0-85ee-266fcbb553e1",
+    "primaryModelId": "grok-4.6-build",
+    "model_ids": [
+      "grok-4.6-build"
+    ],
+    "modelCalls": 1
+  },
+  "qa_source_sha256": "60e34837090056734c57bfc6d527c8f08363cb62a3e684ed1507fd22253e47d1"
+}
