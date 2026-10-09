@@ -3,28 +3,28 @@
 ## Purpose
 Contrato multi-cliente do processo: núcleo = verdade; adapters Cursor, Grok e OpenCode = tradução. Proíbe dual-write da lei.
 ## Requirements
-### Requirement: Process law has one nucleus and four adapters
-The process SHALL have a single nucleus and four client adapters. The nucleus is `.cursor/process-fsm.yaml` (T0–T17, I1–I9, 12 column names, events, `context_file`, `enabled_tools` — **not** `product_globs`/`design_globs`), `scripts/process-fsm/`, the canonical skill files, and the short root `AGENTS.md`. Consumer parameters (`product_globs`, `design_globs`, board ids) live in `.covenant-flow/overlay.yaml` and are NOT a second law table. The Cursor adapter is `.cursor/hooks.json`, `.cursor/hooks/*`, `.cursor/rules/harness.mdc`, and `.cursor/commands/`. The Grok adapter is `.grok/hooks/`, generated Moore paging under `.grok/rules/`, and skill stubs under `.grok/skills/`. The OpenCode adapter is `.opencode/plugin/` (auto-loaded `*.js` / `*.ts`), Moore inject via `experimental.chat.system.transform`, and skill stubs under `.opencode/skills/` only for skills the OpenCode 1.18.18 binary does not discover. The dsh adapter is `.dsh/plugin/` (Cordis `apply(ctx)`), Moore inject via `ctx.systemPrompt.section`, and skill stubs under `.dsh/skills/` only for skills dsh does not discover (it discovers `.dsh/skills` and `.agents/skills`, not `.cursor/skills`). A change of column, invariant, or Moore `context_file` text MUST be made once in the yaml (and in a skill only when the change is *how* to work). A change of product glob, design glob, or board ids MUST be made once in the overlay. Adapters SHALL compile law from the yaml and globs/board ids from the overlay. Missing or invalid overlay SHALL fail closed for **product writes**; paging/`sessionStart` remains fail-open (unbound page) and MUST NOT dump the overlay body. Adapters MUST NOT copy T0–T17, I1–I9, or the 12-column runbook. Codex home skills and Hermes skill symlinks MUST NOT be an active contract. The lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` as kaizen contract) MUST remain forbidden. `opencode.json` MUST NOT be an active contract of model, MCP, or permission. The fourth harness (dsh) MUST NOT be a source of law: it is a skin, not a second yaml.
+### Requirement: Process law has one nucleus and five adapters
+The process SHALL have a single nucleus and five client adapters. The nucleus is `.cursor/process-fsm.yaml` (T0–T18, I1–I9, 12 column names, events, `context_file`, `enabled_tools` — **not** `product_globs`/`design_globs`), `scripts/process-fsm/`, the canonical skill files, and the short root `AGENTS.md`. Consumer parameters (`product_globs`, `design_globs`, board ids) live in `.covenant-flow/overlay.yaml` and are NOT a second law table. The Cursor adapter is `.cursor/hooks.json`, `.cursor/hooks/*`, `.cursor/rules/harness.mdc`, and `.cursor/commands/`. The Grok adapter is `.grok/hooks/`, generated Moore paging under `.grok/rules/`, and skill stubs under `.grok/skills/`. The OpenCode adapter is `.opencode/plugin/` (auto-loaded `*.js` / `*.ts`), Moore inject via `experimental.chat.system.transform`, and skill stubs under `.opencode/skills/` only for skills the OpenCode 1.18.18 binary does not discover. The dsh adapter is `.dsh/plugin/` (Cordis `apply(ctx)`), Moore inject via `ctx.systemPrompt.section`, and skill stubs under `.dsh/skills/` only for skills dsh does not discover. The fifth Codex local adapter is project-scoped `.codex/` hooks and thin skill bridges under `.agents/skills/`; CLI and IDE local use the same adapter. A change of column, invariant, or Moore `context_file` text MUST be made once in the yaml (and in a skill only when the change is *how* to work). A change of product glob, design glob, or board ids MUST be made once in the overlay. All adapters SHALL compile law from the yaml and globs/board ids from the overlay. Missing or invalid overlay SHALL fail closed for **product writes**; paging/`sessionStart` remains fail-open (unbound/unread page) and MUST NOT dump the overlay body. Adapters MUST NOT copy T0–T18, I1–I9, or the 12-column runbook. Codex home skills and Hermes skill symlinks MUST NOT be an active contract. The lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` as kaizen contract) MUST remain forbidden. `opencode.json` MUST NOT be an active contract of model, MCP, or permission. Neither dsh nor Codex SHALL be a source of law.
 
-#### Scenario: One yaml change reaches four adapters
-- **WHEN** a column, invariant, or `context_file` stub is changed in `.cursor/process-fsm.yaml`
-- **THEN** the Cursor, Grok, OpenCode, and dsh Guard/paging paths compile that law from the yaml
-- **AND** no second copy of the table exists in `.grok/rules/`, `.cursor/rules/`, `.opencode/`, or `.dsh/`
+#### Scenario: One yaml change reaches five adapters
+- **WHEN** a column, invariant, or `context_file` stub changes in `.cursor/process-fsm.yaml`
+- **THEN** Cursor, Grok, OpenCode, dsh, and Codex Guard/paging paths compile that law from the yaml
+- **AND** no second table exists in any adapter directory
 
 #### Scenario: Dual-write of the law is forbidden
-- **WHEN** a reviewer inspects `.cursor/rules/`, `.grok/rules/`, `.opencode/`, and `.dsh/`
-- **THEN** none of those directories contains a T0–T17 table, I1–I9 list, or 12-column procedure
-- **AND** a Grok, OpenCode, or dsh skill stub MUST NOT contain the runbook copied from `.cursor/skills/`
+- **WHEN** a reviewer inspects `.cursor/rules/`, `.grok/rules/`, `.opencode/`, `.dsh/`, `.codex/`, and Codex skill bridges
+- **THEN** none contains a copied T0–T18 table, invariant list, or 12-column procedure
+- **AND** every skill bridge points to the canonical file instead of copying its runbook
 
-#### Scenario: Glob change in overlay reaches four Guards
-- **WHEN** a product glob is changed in `.covenant-flow/overlay.yaml`
-- **THEN** Cursor, Grok, OpenCode, and dsh Guards classify writes using that overlay glob
-- **AND** the glob MUST NOT be re-declared as yaml law in packaged `process-fsm.yaml`
+#### Scenario: Glob change in overlay reaches five Guards
+- **WHEN** a product glob changes in `.covenant-flow/overlay.yaml`
+- **THEN** all five Guards classify a corresponding write using the changed overlay glob
+- **AND** the glob is not redeclared as yaml law or Codex-local policy
 
-#### Scenario: Fourth harness is not the law
-- **WHEN** a reviewer inspects `.dsh/` and `scripts/process-fsm/`
-- **THEN** `.dsh/` contains only translation (plugin, stubs, patch ids)
-- **AND** T0–T17 / I1–I9 remain only in `.cursor/process-fsm.yaml`
+#### Scenario: Fifth harness is not the law
+- **WHEN** a reviewer inspects `.codex/` and `scripts/process-fsm/`
+- **THEN** `.codex/` contains only event translation/configuration
+- **AND** state/event law remains in `.cursor/process-fsm.yaml`
 
 ### Requirement: Skill stubs are a bridge not a second runbook
 Grok SHALL discover process skills via `.grok/skills/<name>/SKILL.md` stubs for every `SKILL.md` directory under `.cursor/skills/` (including `covenant-flow`, `covenant-flow-environments`, `implantar`, `github-project-board`, `kaizen`, and `openspec-*`). Each stub MUST keep the same skill `name`, MUST instruct the agent to Read the canonical `.cursor/skills/<name>/SKILL.md` and follow it (client is Grok Build; pass `spawn_subagent` `model` from `juizo.grok` or `execucao.grok` in `.cursor/model-map.yaml`; do not omit `model`; do not inherit the picker), and MUST NOT copy the runbook body. The stub MUST NOT map Cursor Task `inherit` to `spawn_subagent` inherit. Stub body (non-empty lines after frontmatter) MUST be at most 8 lines. Stubs MUST be generated from canonical frontmatter plus a fixed body template so description drift is caught in CI. Git mode of canonical skills remains a regular file (not a Hermes symlink). Cursor compatibility scanning `.cursor/skills/` MAY remain enabled; the stub is still the versioned Grok skin because `.grok/skills/` wins name dedup.
@@ -42,23 +42,19 @@ Grok SHALL discover process skills via `.grok/skills/<name>/SKILL.md` stubs for 
 - **THEN** the stub generator check in `pytest scripts/process-fsm` fails
 
 ### Requirement: Always-on delta lives in AGENTS.md
-The short always-on law (resolve `(q, bound_card, q_git)`, chat wording is not authorization, NLU is not δ, `Em Refinamento` is the entry column, `Todo` is not implementation, Design columns must not be skipped, overlay is on-demand, Alan-only T1/T7/T15, T16 is `process_event fechar_release`) SHALL live in the root `AGENTS.md` stub so Cursor, Grok Build, OpenCode, and dsh ingest it. `AGENTS.md` MUST remain at most 40 non-empty lines and MUST point to the consumer `overlay_doc` path (Cripto: `docs/crypto-overlay.md`) for ports/Drive/PostgreSQL/release. It MUST name Cursor Agent, Grok Build, OpenCode, and dsh as clients. It MUST state that the four clients are cooperative. It MUST NOT state that Cursor Auto is allowed. It MUST NOT contain `Auto permitido`. It MUST state that Grok Build, OpenCode, and dsh remain cooperative until their deny essays PASS. The deny-essay clause MUST NOT apply to Cursor (Cursor is cooperative by contract). It MUST NOT claim Auto OpenCode, Auto Grok, Auto dsh, or Auto Cursor. It MUST NOT include the 12-column runbook or `release-guard pre`/`post` snippets. The file header MUST NOT say the stub is “não always-on” after this change. Naming dsh in the stub MUST NOT depend on overlay key `clients.dsh`. Overlay `clients.*.auto` MUST NOT interpolate the stub text.
+The short always-on law (resolve `(q, bound_card, q_git)`, chat wording is not authorization, NLU is not δ, `Em Refinamento` is the entry column, `Todo` is not implementation, Design columns must not be skipped, overlay is on-demand, Alan-only T1/T7/T15/T18, T16 is `process_event fechar_release`) SHALL live in the root `AGENTS.md` stub so Cursor, Grok Build, OpenCode, dsh, and Codex local ingest it. `AGENTS.md` MUST remain at most 40 non-empty lines and MUST point to the consumer `overlay_doc` path (Cripto: `docs/crypto-overlay.md`) for ports/Drive/PostgreSQL/release. It MUST name all five clients and state they are cooperative. It MUST NOT claim Auto for any client, interpolate `clients.*.auto`, contain `Auto permitido`, or copy the 12-column runbook or `release-guard pre`/`post` snippets. Its header MUST NOT say the stub is “não always-on”. The deny-essay clause for Grok/OpenCode/dsh/Codex MUST NOT turn Cursor into an Auto claim. Naming Codex or dsh MUST NOT depend on a new overlay key.
 
-#### Scenario: Four clients read the same always-on stub
-- **WHEN** a Cursor session, a Grok session, an OpenCode session, and a dsh session start in the repo
-- **THEN** all four load root `AGENTS.md`
-- **AND** that file states that chat wording is not δ and that `Todo` is not implementation
-- **AND** it states Alan-only T1/T7/T15
-- **AND** it names Cursor Agent, Grok Build, OpenCode, and dsh
-- **AND** it does not claim Cursor Auto, Grok Auto, OpenCode Auto, or dsh Auto is active
-- **AND** it does not contain `Auto permitido`
-- **AND** it does not contain `scripts/release-guard pre`
-- **AND** it names the consumer `overlay_doc` path (Cripto: `docs/crypto-overlay.md`)
+#### Scenario: Five clients read the same stub
+- **WHEN** sessions in the five clients start in the repo
+- **THEN** each loads root `AGENTS.md` with the same δ/Status/human-gate guidance
+- **AND** Codex CLI and IDE local see the same file
+- **AND** the stub names all five clients, Alan-only T1/T7/T15/T18 and consumer `overlay_doc`
+- **AND** it contains no Auto claim, `Auto permitido`, FSM table, or release script body
 
-#### Scenario: Yaml auto does not drive the stub
-- **WHEN** overlay `clients.cursor.auto` is `true` or `false`
-- **THEN** `render_agents()` emits the same hardcoded cooperative client lines
-- **AND** the stub still does not contain `Auto permitido`
+#### Scenario: Overlay auto flags do not drive the stub
+- **WHEN** an overlay `clients.*.auto` value changes
+- **THEN** `render_agents()` still emits cooperative client wording
+- **AND** it does not say `Auto permitido`
 
 ### Requirement: Grok Auto is gated on the deny essay
 Until a human essay on the same worktree shows that an illegal product Write with `q_git=develop` is denied in **both** Cursor and Grok Build, Grok Build MUST be treated as cooperative, not Auto. `process_event` remains the only Agent Status mover in both clients. Agent MUST NOT `item-edit` Status.
@@ -561,4 +557,3 @@ The dsh Guard SHALL treat a dead provider turn as class `dsh_dead_turn`: empty r
 - **THEN** `next()` is called
 - **AND** the listener does not return `{ kind: "retry" }`
 - **AND** a third automatic retry MUST NOT occur
-

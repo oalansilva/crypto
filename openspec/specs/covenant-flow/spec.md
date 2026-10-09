@@ -4,11 +4,11 @@
 TBD - created by archiving change card-773-covenant-flow. Update Purpose after archive.
 ## Requirements
 ### Requirement: Product repository is oalansilva/covenant-flow
-The portable process product SHALL live in the private GitHub repository `oalansilva/covenant-flow` (display name Covenant Flow). The nucleus SHALL be `process-fsm.yaml`, `scripts/process-fsm/` (`guard`, `resolve`, `process_event`, `paging`, goldens), and the canonical skill files. Product and skill names MUST NOT contain `alan`. The product MUST NOT ship Funil Cripto copy, `PRODUCT.md` / `DESIGN.md` / token-sheet content, or PostgreSQL as an always-on of the package. The product SHALL ship four client adapters (`.cursor/`, `.grok/`, `.opencode/`, `.dsh/`). The product MUST NOT vendor `deepseek-ai/deepseek-harness`.
+The portable process product SHALL live in the private GitHub repository `oalansilva/covenant-flow` (display name Covenant Flow). The nucleus SHALL be `process-fsm.yaml`, `scripts/process-fsm/` (`guard`, `resolve`, `process_event`, `paging`, goldens), and the canonical skill files. Product and skill names MUST NOT contain `alan`. The product MUST NOT ship Funil Cripto copy, `PRODUCT.md` / `DESIGN.md` / token-sheet content, or PostgreSQL as an always-on of the package. The product SHALL ship five client adapters (`.cursor/`, `.grok/`, `.opencode/`, `.dsh/`, `.codex/` plus Codex skill bridges under `.agents/skills/`). It MUST NOT vendor `deepseek-ai/deepseek-harness`.
 
 #### Scenario: Fresh clone of the product repo
-- **WHEN** a machine clones `oalansilva/covenant-flow` at tag `v1.1.0`
-- **THEN** the tree contains the nucleus, the 20 canonical skills, four client adapters including `.dsh/`, `install.sh`, and the overlay template
+- **WHEN** a machine clones a product tag that includes the fifth adapter
+- **THEN** the tree contains the nucleus, canonical skills, all five adapters, `install.sh`, and the overlay template
 - **AND** no skill directory or product name contains `alan`
 - **AND** no Funil Cripto or token-sheet brand content is in the package
 - **AND** the DeepSeek Harness monorepo is not vendored
@@ -72,27 +72,34 @@ Overlay `board.status_options` SHALL map each of the 12 column **names** from `p
 - **AND** Guard product writes deny
 
 ### Requirement: implantar copies nucleus adapters agents skills helpers and the consumer commits them
-Skill `implantar` (Portuguese) plus `install.sh --pin` SHALL copy into the consumer: the nucleus (`process-fsm.yaml` and `scripts/process-fsm/`), the four adapters (`.cursor/`, `.grok/`, `.opencode/`, `.dsh/`), `.agents/skills/` (`impeccable`, `design-critic`, `playwright-cli`), helpers (`publish-openspec-card-artifacts.sh`, generic `release-guard`, dsh boot helper), and the template `AGENTS.md`. `install.sh --pin` SHALL copy `.dsh/` **always**, including when overlay omits `clients.dsh`. The consumer git SHALL commit those trees (not gitignore, not submodule pointers). On Cripto, which already has `scripts/process-fsm/`, pin SHALL update them to the overlay-reading Guard. The overlay SHALL record `pin` as a semver tag `vMAJOR.MINOR.PATCH`. Updating SHALL mean re-implantar plus commit of the diff. Bump MUST preserve project overlay keys (board, environments, globs, `overlay_doc`) and refresh nucleus/skins/helpers + `pin`. v1 MUST NOT use submodule, native marketplace, or template-clone as the primary channel.
+Skill `implantar` (Portuguese) plus `install.sh --pin` SHALL copy into the consumer the nucleus (`process-fsm.yaml`, `scripts/process-fsm/`), five adapters (`.cursor/`, `.grok/`, `.opencode/`, `.dsh/`, `.codex/`), `.agents/skills/` (Impeccable, design-critic, playwright-cli and Codex bridges), helpers (`publish-openspec-card-artifacts.sh`, generic `release-guard`, dsh boot helper), and the template `AGENTS.md`. `install.sh --pin` SHALL copy `.dsh/` and `.codex/` **always**, independent of optional `clients.*` overlay entries. Existing unrelated Codex hooks and Impeccable provider files MUST be preserved or an unsafe conflict MUST fail visibly. For `.cursor/model-map.yaml`, the pin SHALL read the **target consumer file** at installation time, preserve top-level `juizo.label/slug`, `execucao.label/slug`, and every `forbid` entry, and add only the Codex subblocks; a local conflict MUST cause visible refusal or an explicit inspected merge, never silent overwrite from the product or Design worktree. The consumer git SHALL commit those trees (not gitignore, not submodule pointers). On Cripto, which already has `scripts/process-fsm/`, pin SHALL update them to the overlay-reading Guard. The overlay SHALL record `pin` as a semver tag `vMAJOR.MINOR.PATCH`. Updating SHALL mean re-implantar plus commit of the diff. Bump MUST preserve project overlay keys (board, environments, globs, `overlay_doc`) and refresh nucleus/skins/helpers + `pin`. v1 MUST NOT use submodule, native marketplace, or template-clone as the primary channel.
 
-#### Scenario: Pin materializes nucleus skins helpers in consumer git
-- **WHEN** overlay is valid and `implantar --pin v1.2.3` completes
-- **THEN** `.cursor/`, `.grok/`, `.opencode/`, and `.dsh/` exist in the consumer
-- **AND** `scripts/process-fsm/` (overlay-reading Guard) exists in the consumer
-- **AND** `.agents/skills/` for impeccable, design-critic, and playwright-cli exist
-- **AND** helpers and generated `AGENTS.md` exist
-- **AND** those trees are committed in that consumer git
-- **AND** overlay contains `pin: v1.2.3`
-- **AND** stubs are at most 8 non-empty body lines
-- **AND** `.grok/` and `.opencode/` contain no T0–T17 or I1–I9 table
+#### Scenario: Pin materializes five adapters in consumer git
+- **WHEN** overlay is valid and `implantar --pin <tag>` completes
+- **THEN** `.cursor/`, `.grok/`, `.opencode/`, `.dsh/`, `.codex/`, and required `.agents/skills/` bridges/providers exist in the consumer
+- **AND** the shared `scripts/process-fsm/`, helpers, and generated `AGENTS.md` exist
+- **AND** those trees are committed in the consumer git and overlay `pin` equals `<tag>`
+- **AND** bridge stubs remain thin and no adapter copies the FSM table
 
 #### Scenario: Bump is re-implant plus commit
-- **WHEN** the consumer moves pin from `v1.2.3` to `v1.3.0`
-- **THEN** nucleus, skins, and helpers are copied again and the diff is committed
-- **AND** board, environments, globs, and `overlay_doc` are not reset to template empties
+- **WHEN** the consumer moves from one valid pin tag to the next
+- **THEN** nucleus, skins, bridges, and helpers are copied again and their diff is committed
+- **AND** board, environments, globs, `overlay_doc`, and unrelated Codex hook entries are not reset
+
+#### Scenario: Unsafe hook conflict stops installation
+- **WHEN** a consumer has a conflicting or malformed `.codex/hooks.json` that cannot be merged without loss
+- **THEN** `implantar --pin` fails visibly
+- **AND** it does not report a successful half-applied pin
+
+#### Scenario: Target model map survives the pin
+- **WHEN** the consumer's Cursor top-level model values or `forbid` entries differ from the product source or Design worktree at pin time
+- **THEN** the installed map retains the consumer's current `juizo.label/slug`, `execucao.label/slug`, and all `forbid` entries
+- **AND** only the Codex subblocks are added
+- **AND** an incompatible conflict produces visible refusal or an explicit inspected merge, not a successful silent overwrite
 
 #### Scenario: Submodule is not the v1 channel
 - **WHEN** a consumer is implanted on v1
-- **THEN** `.cursor/` is not a git submodule pointer as the primary install
+- **THEN** no adapter is a git submodule pointer as the primary install
 - **AND** skins are not gitignored
 
 ### Requirement: Canonical skill set is twenty names without alan
@@ -110,19 +117,22 @@ The product SHALL ship exactly these operational skills: `covenant-flow` (former
 - **THEN** operational runbooks load `covenant-flow` and `covenant-flow-environments`
 - **AND** `alan-workflow*` remain only if still in the alias window before unique pin, then only the new names
 
-### Requirement: Four adapters ship in every consumer
-Every implanted consumer SHALL receive the Cursor adapter (`.cursor/hooks.json` `sessionStart`, `preToolUse` failClosed, `beforeShellExecution`, `afterFileEdit`/`stop` Impeccable, `harness.mdc`, `/opsx-*` commands), the Grok adapter (`.grok/hooks/` `SessionStart`, `PreToolUse`, `PostToolUse`, `Stop`), the OpenCode 1.18.18 adapter (`.opencode/plugin/` `tool.execute.before` throw on deny, `experimental.chat.system.transform`, `tool.execute.after` + `session.idle` fail-open), and the dsh adapter (`.dsh/plugin/` `tools/pre-execute` `{ kind: 'deny' }` fail-closed, `systemPrompt.section` Moore, `tools/post-execute` + `agent/turn-stopping` fail-open). Adapters SHALL translate only. Dual-write of T0–T17 / I1–I9 into `.grok/`, `.opencode/`, or `.dsh/` remains forbidden. Lock machine and `opencode.json` as model/MCP/permission contract remain forbidden. The fourth harness (dsh) MUST NOT be a source of law.
+### Requirement: Five adapters ship in every consumer
+Every implanted consumer SHALL receive the Cursor adapter (`.cursor/hooks.json` `sessionStart`, `preToolUse` failClosed, `beforeShellExecution`, `afterFileEdit`/`stop` Impeccable, `harness.mdc`, `/opsx-*` commands), the Grok adapter (`.grok/hooks/` `SessionStart`, `PreToolUse`, `PostToolUse`, `Stop`), the OpenCode 1.18.18 adapter (`.opencode/plugin/` `tool.execute.before` throw on deny, `experimental.chat.system.transform`, `tool.execute.after` + `session.idle` fail-open), the dsh adapter (`.dsh/plugin/` `tools/pre-execute` `{ kind: 'deny' }` fail-closed, `systemPrompt.section` Moore, `tools/post-execute` + `agent/turn-stopping` fail-open), and the Codex local adapter (`.codex/` hooks `SessionStart`, `PreToolUse`, `PostToolUse`, `Stop`, plus `.agents/skills/` bridges). Each adapter SHALL translate only to the shared Guard, paging, process events, and Impeccable detector. Dual-write of T0–T18 or I1–I9 into any adapter remains forbidden. The lock machine and `opencode.json` as a model/MCP/permission contract remain forbidden. Codex hook coverage is a cooperative guardrail until local CLI and IDE deny essays demonstrate the covered routes; no adapter or `AGENTS.md` may claim Codex Auto.
 
-#### Scenario: Write product on integration branch denies on four clients
-- **WHEN** Cripto is pinned in the card worktree and `q_git` is the integration branch
-- **THEN** an illegal product Write is denied on Cursor, Grok Build, OpenCode 1.18.18, and dsh (plugin loaded)
-- **AND** no adapter copy of T0–T17 exists
+#### Scenario: Integration branch denies on five clients
+- **WHEN** Cripto is pinned and a covered product Write is attempted with `q_git=develop`
+- **THEN** Cursor, Grok Build, OpenCode 1.18.18, dsh, and trusted Codex local hooks deny it
+- **AND** no adapter contains a copied FSM table
 
 #### Scenario: Current Cripto skins stay until pin
-- **WHEN** Apply has not yet committed the pin in consumer git
-- **THEN** existing Cripto `.cursor/` `.grok/` `.opencode/` skins MUST NOT be deleted as a prelude
-- **AND** they are replaced by implantar at pin, not deleted earlier
-- **AND** `.dsh/` appears at pin, not before Pronto para Dev
+- **WHEN** Apply has not committed the new pin in consumer git
+- **THEN** existing Cripto `.cursor/`, `.grok/`, `.opencode/`, and `.dsh/` skins remain in place
+- **AND** the fifth adapter appears through the pin after `Pronto para Dev`, not through an early product edit
+
+#### Scenario: Codex coverage remains cooperative
+- **WHEN** the Codex local hook is not trusted or a tool path bypasses `PreToolUse`
+- **THEN** the essay records that gap and the product does not claim Auto for Codex
 
 ### Requirement: Apply pins Cripto in the worktree and does not live-switch the host
 Creating the GitHub product repository and pinning Cripto SHALL happen only while card #773 has `Status=Pronto para Dev`. Apply SHALL (a) build the product tree out of band, (b) fill Cripto `.covenant-flow/overlay.yaml` while this worktree still uses the current yaml-globs Guard, (c) then `implantar --pin` **and** switch Guard/`page()` to overlay in the **same** pin commit. Empty overlay mid-Apply is not a success path; `--init` on Cripto MUST be followed immediately by filling required keys before enabling fail-closed overlay Guard. The pin commit SHALL include `.cursor/`, `.grok/`, `.opencode/`, overlay, `scripts/process-fsm/`, `.agents/skills/` (`impeccable`, `design-critic`, `playwright-cli`), and generated `AGENTS.md`. Apply MUST NOT switch this machine's day-to-day Cursor/Grok/OpenCode from `alan-workflow*` to `covenant-flow*`. Live host rename SHALL happen only after #773 `Status=Pronto` (T16 / published lote). Until Pronto, live host stays `alan-workflow` and new names exist only in sandbox or in the pinned worktree git.
@@ -662,4 +672,73 @@ This change SHALL ship in product `oalansilva/covenant-flow` as tag **`v1.1.16`*
 - **AND** the `## Grill-card` section of `covenant-flow` contains `card nítido; sem grill`
 - **AND** overlay contains `pin: v1.1.16` or the next unused patch tag Apply confirmed on origin
 - **AND** grill-card stubs under `.grok/` `.dsh/` `.opencode/` remain at most 8 non-empty body lines
+
+### Requirement: Release runbook names resolved-package archive on release-* as the official path
+The canonical skill `.cursor/skills/covenant-flow/SKILL.md` Release section and overlay_doc publication path B SHALL state that, after an explicit closeout pedido, OpenSpec archive of Homologado package changes is written on `release-*` when that branch is the closeout git, using Guard `decide()` with per-change card id + live `Homologado` Status. The skill MUST state that `bound_card=⊥` does not block that archive, that a declared card list or the branch name alone does not authorize it, and that Alan MUST NOT be asked for an extra operational confirmation of this path (T7 remains the Design gate). Worktree-of-card + cherry-pick MUST NOT be documented as the official archive. #1059 SHALL consume this same Guard contract and MUST NOT ship a second archive-allow implementation. Product writes on `develop`/`release-*` remain deny. The skill MUST NOT dump the 12-column runbook. `AGENTS.md` MUST NOT grow this rule. Client stubs under `.dsh/skills/`, `.grok/skills/`, and `.opencode/skills/` MUST stay at most 8 non-empty body lines. `.cursor/process-fsm.yaml` MUST NOT gain state, event, hook, or `enabled_tools`. This card MUST NOT execute a release and MUST NOT absorb #1059 continuity, questions, manifesto, evidence, or general closeout.
+
+#### Scenario: Release section names official archive without extra confirmation
+- **WHEN** `.cursor/skills/covenant-flow/SKILL.md` Release section is read
+- **THEN** it states that archive of Homologado OpenSpec changes on `release-*` is the official path after an explicit pedido
+- **AND** it states that `bound_card=⊥` is not the archive deny and that Alan is not re-asked to authorize that path
+- **AND** it does not prescribe card-worktree cherry-pick as the official archive
+- **AND** `AGENTS.md` does not contain a T0–T17 table
+
+#### Scenario: Overlay path B matches the Guard contract
+- **WHEN** overlay_doc publication path B is read
+- **THEN** it instructs to commit the OpenSpec archive on `release-*`
+- **AND** it does not require publishing the archive in a `card-<id>-*` worktree first
+
+#### Scenario: #1059 consumes this contract
+- **WHEN** #1059 specifies archive/closeout write control
+- **THEN** it reuses `scripts/process-fsm/guard.py` `decide()` as specified here
+- **AND** it MUST NOT add a parallel allow for `openspec/changes/**` on `release-*`
+
+#### Scenario: FSM table stays untouched
+- **WHEN** a reviewer inspects this change's diff
+- **THEN** `.cursor/process-fsm.yaml` has no new state, event, hook, or `enabled_tools`
+- **AND** `scripts/process-fsm/process_event.py` is not required to change for this archive allow
+
+### Requirement: Release parent model prerequisite is not T18
+The Release section of `.cursor/skills/covenant-flow/SKILL.md` SHALL keep the existing rule that T16 and `fecho-lote` require the parent chat to be the vigente `execucao` slug from `.cursor/model-map.yaml`. That prerequisite MUST NOT be labeled T18. T18 MUST remain Alan's `nao_homologar` gesture. The section MUST NOT tell release closeout to use "the same model as the parent chat" instead of the `execucao` band. Codex closeout MUST read `execucao.codex` from the same map. The file `.cursor/model-map.yaml` MUST NOT be edited by this requirement. `AGENTS.md` MUST NOT gain this rule.
+
+#### Scenario: Release section no longer names the parent prerequisite T18
+- **WHEN** the Release section of `.cursor/skills/covenant-flow/SKILL.md` is read
+- **THEN** it does not contain the label `Pré-requisito (T18)` for the execução parent rule
+- **AND** it still refuses a `juizo` parent chat for T16 and `fecho-lote`
+- **AND** the `nao_homologar` description of T18 elsewhere in the skill remains
+
+#### Scenario: Release does not inherit the design same-model sentence
+- **WHEN** an operator closes a release from the runbook
+- **THEN** the parent and `fecho-lote` use the `execucao` band of `.cursor/model-map.yaml`
+- **AND** the overlay sentence about Design critique using the same model as the chat is not applied as a release gate
+
+### Requirement: Authorized release archives without the generic menu
+The Release section SHALL state that, for an explicitly requested release, sync and archive of completed Homologado package changes on `release-*` proceed without the generic `openspec-archive-change` reconfirmation menu by reusing #1022 `decide()`. The section and the overlay release sentences MUST NOT copy a second allow-list and MUST NOT instruct a card worktree plus cherry-pick, including as a way to bypass the guard. Until that `decide()` is in the tree, an archive deny MUST be stated as a real block that points at #1022. Conflict without a resolution, discard, or a real human exception MUST still be asked as such. Silence MUST NOT count as approval. This requirement MUST NOT change `guard.decide()` and MUST NOT add an FSM event.
+
+#### Scenario: Runbook does not require the archive menu
+- **WHEN** the Release section is read during an explicitly requested closeout
+- **THEN** it tells the agent to sync and archive completed changes without the generic menu
+- **AND** it names #1022 `decide()` as the archive-write contract, forbids a second allow-list, and does not instruct a card worktree plus cherry-pick
+
+#### Scenario: Unbound release deny points at #1022
+- **WHEN** archive on unbound `release-*` is denied with `fail_closed` because #1022 `decide()` is not in the tree yet
+- **THEN** the Release section tells the agent to stop and point at #1022
+- **AND** it does not instruct a card worktree plus cherry-pick
+
+#### Scenario: Unresolved conflict is still a question
+- **WHEN** archive sync hits a conflict that has no resolution
+- **THEN** the runbook requires that conflict to be presented as a human decision
+- **AND** it forbids treating elapsed silence as approval
+
+### Requirement: Package branch deletion order matches the existing post gate
+The Release section and the release sentences of `docs/crypto-overlay.md` SHALL agree that package branches listed in `RELEASE_BRANCHES` are deleted before `release-guard post` PASS and before cards move to `Pronto`, matching the existing post-release cleanup gate. They MUST NOT say that those branches are deleted only after the cards are already `Pronto`. In-flight worktrees and `PRESERVED_BRANCHES` MUST remain preserved. This requirement MUST NOT weaken branch protection or `qa-gate`.
+
+#### Scenario: Overlay and skill name the same deletion order
+- **WHEN** the Release section and the overlay release branch-deletion sentences are read
+- **THEN** both require package branches in `RELEASE_BRANCHES` to be absent before `post` PASS and before `Pronto`
+- **AND** neither instructs deletion only after the cards have moved to `Pronto`
+
+#### Scenario: Preserved in-flight branches stay
+- **WHEN** a branch is listed in `PRESERVED_BRANCHES` or still has an active worktree and is not part of the package deletion set
+- **THEN** the aligned sentences do not require deleting it to close the package
 

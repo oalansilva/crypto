@@ -176,4 +176,3 @@ The kaizen skill SHALL read issue body, comments, and labels over REST (`gh api 
 - **WHEN** a contributor reads `.cursor/skills/kaizen/SKILL.md`
 - **THEN** the file SHALL contain `sessões de grelha por card`
 - **AND** SHALL contain `Em Refinamento vs Design`
-

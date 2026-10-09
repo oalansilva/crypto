@@ -1,5 +1,37 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-10-09 — Kaizen release (cards 1022, 1042, 1059, 1061)
+
+Auditoria executada após o deploy `f94868d5bf09a1c12286be860e097c046b92264c`, com os quatro cards ainda Homologado. Fontes: fotografia do Project 1 (400 itens), comentários REST dos quatro cards, Git/worktrees/stashes, guard audit, OpenSpec global, watcher final do PR #1082 e traces nativos Codex desta release. Nenhum status foi alterado pela auditoria.
+
+#### Métricas e limites das fontes
+
+- Board: 303 Pronto, 51 Em Refinamento, 35 Cancelado, 4 Done, 4 Homologado e 3 Aprovação de Design na fotografia anterior à materialização. Responsável/Prioridade/Tipo dos quatro cards conferidos; #1042/#1061 regularizados.
+- Git: 47 branches preexistentes classificadas para preservação; stash 0. Guard audit PASS, 0 blockers e 31 avisos. O sync normal main → develop e a limpeza declarada precedem o post final.
+- OpenSpec: 202/202 válidos na release, quatro archives completos, 42 arquivos com integridade preservada. F-1/#1022 encerrado: decide vivo autorizou o archive em release-* com pacote Homologado resolvido.
+- CI: PR #1082 com todos os checks iniciados pass; qa-gate/deploy-staging skipped para base main. PROD: cinco units persistentes reiniciadas, duas oneshot excluídas; três URLs públicas HTTP 200.
+- Sessões de grelha por card: #1042 = 0 pelo comentário exato `card nítido; sem grill`. #1022/#1059/#1061 = indisponível: a fonte canônica Cursor agent-transcripts existe, mas não forneceu sessões correlacionáveis por título/mensagem de usuário a estes cards. Ausência de fonte não foi contada como zero.
+- Em Refinamento vs Design: total de grelha indisponível; handoffs REST mostram dois proxies Design em #1022 e três em #1059. Não representam contagem autoritativa de spawns nem uma coorte dos próximos dez cards; a média-alvo ≤1,5 não é declarada atingida/falhada.
+- Proxy modelo: #1042 tem onze linhas históricas (incluem duas tentativas inválidas); #1022 tem duas, #1059 três e #1061 nenhuma. A escolha mudou durante o histórico: não se compara um proxy antigo à seleção atual para inferir violação. Nesta onda de release, dois proxies têm captura explícita e metadados observados Sol/high/read-only, filhos distintos completed com payload e verify-wave PASS.
+
+#### Achados e recomendações
+
+- **F-1 [P2 mecânico] encoder Codex de perguntas diverge do schema real** — `release_closeout.py:454` retorna question/choices; a ferramenta espera questions. A release chamou a ferramenta real com formato correto, sem aceitar silêncio. Recomendação: corrigir contrato e validar envio real no novo #1083.
+- **F-2 [P2 mecânico] helper legado aceita esforço observado ausente** — `release_closeout.py:1013`, residual de review; a captura estrita e comparação observada usadas nesta operação fecharam a evidência. Correção estrutural já coberta por #1080, ainda Done e fora deste pacote.
+- **F-3 [P2] cobertura histórica de proxies e grelha incompleta** — fontes REST e Cursor não permitem atribuição completa por card. Recomendações existentes #909 e #963, ambos Em Refinamento; sem novos cards ou números inventados.
+- **F-4 [P2] campos obrigatórios faltaram antes do closeout** — #1042/#1061 regularizados e verificados. Prevenção coberta por #910, Em Refinamento.
+- **Resolvido operacionalmente:** checklist inicialmente invocado sem change; executado nos quatro contextos reais com o mesmo diff, todos PASS. Validação frontend movida para dist isolado; bundle DEV restaurado de develop após falha de permissões no dist canônico. Sem mudança em gate/FSM para produzir sucesso.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #1083 | P2 | F-1 schema de perguntas Codex | Em Refinamento |
+| (não criado) seleção e esforço observados estritos | P2 | F-2 | coberto por #1080 |
+| (não criado) proxies REST por spawn | P2 | F-3 | coberto por #909 |
+| (não criado) reconciliar sessões de grelha | P2 | F-3 | coberto por #963 |
+| (não criado) campos Project antes de Homologado | P2 | F-4 | coberto por #910 |
+
 ## 2026-09-26 — Kaizen release (release 2026-09-26, cards 1043, 1030, 1025, 1036, 1029, 1008, 1006, 1001, 994, 1015, 1017, 1028)
 
 - **Release/card**: 12 cards `Homologado` → PR #1053 `release-2026-09-26` → `main`, merge `66f07aff0e040319d62353b8e756abc2bcebc85d`; deploy PROD no mesmo commit. Health `/api/health`, `/` e `/monitor` validados.

@@ -262,4 +262,3 @@ A `bloqueia_merge: sim` field on a P3 or other non-P0 finding SHALL be residual 
 - **THEN** the parent records it as residual
 - **AND** MUST NOT spawn another Apply or wave for it
 - **AND** MUST NOT ask «autorizar extra / aceitar residual»
-
