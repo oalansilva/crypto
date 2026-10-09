@@ -1039,6 +1039,27 @@ openspec_terminal_changes_check() {
           warn "$detail"
         fi
         ;;
+      Homologado)
+        # Card #1059: completed Homologado package changes must be archived
+        # before post PASS. In-progress stays informational. Cards outside
+        # RELEASE_CARDS are not archived by this check.
+        if [[ "$progress" == "complete" ]]; then
+          local in_package=0
+          if [[ -n "$CANONICAL_CARDS" ]] && printf ' %s ' " $CANONICAL_CARDS " | grep -q " $card_num "; then
+            in_package=1
+          fi
+          if [[ "$in_package" -eq 1 ]]; then
+            terminal_pending=$((terminal_pending + 1))
+            local homologado_detail
+            homologado_detail="OpenSpec completed change of Homologado package card is still active (sync and archive): $change_name (card #$card_num is Homologado, progress=complete, mapping=$mapping, $package_set)"
+            if [[ "$strict" -eq 1 ]]; then
+              blocker "$homologado_detail"
+            else
+              warn "$homologado_detail"
+            fi
+          fi
+        fi
+        ;;
       "")
         ambiguity_pending=$((ambiguity_pending + 1))
         warn "OpenSpec change mapped to card without status in snapshot: $change_name (card #$card_num, progress=$progress, mapping=$mapping, $package_set)"
