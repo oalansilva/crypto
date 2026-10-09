@@ -64,11 +64,33 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
   fi
 
   echo "Restarting canonical DEV services..."
+  # The scalp loop holds a DB transaction across network waits. Stop it before
+  # the backend runs schema migration, or ALTER TABLE waits forever and :8004
+  # never listens.
+  systemctl stop "$DEV_RUNTIME_WORKER_UNIT" || true
   systemctl restart \
     "$DEV_BACKEND_UNIT" \
     "$DEV_FRONTEND_UNIT" \
-    "$DEV_RUNTIME_WORKER_UNIT" \
     "$DEV_DISCOVERY_WORKER_UNIT"
+
+  backend_up=0
+  for _ in $(seq 1 30); do
+    if curl -fsS --max-time 2 "http://127.0.0.1:${DEV_BACKEND_PORT}/api/health" >/dev/null \
+      && curl -fsS --max-time 2 "http://127.0.0.1:${DEV_FRONTEND_PORT}/" >/dev/null; then
+      backend_up=1
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$backend_up" -ne 1 ]]; then
+    echo "DEV backend did not become healthy before starting the scalp worker." >&2
+    systemctl --no-pager --lines=20 status \
+      "$DEV_BACKEND_UNIT" \
+      "$DEV_FRONTEND_UNIT" \
+      "$DEV_DISCOVERY_WORKER_UNIT" >&2 || true
+    exit 1
+  fi
+  systemctl start "$DEV_RUNTIME_WORKER_UNIT"
 
   for _ in $(seq 1 30); do
     if curl -fsS --max-time 2 "http://127.0.0.1:${DEV_BACKEND_PORT}/api/health" >/dev/null \

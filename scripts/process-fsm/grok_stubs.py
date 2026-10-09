@@ -36,7 +36,7 @@ def stub_body(name: str, canonical_dir: str) -> str:
         f"# {name}\n"
         "\n"
         f"Cliente: Grok Build. MUST Read `{canonical_dir}/SKILL.md` and follow it as the runbook.\n"
-        "Map Cursor Task `inherit` to `spawn_subagent` inherit. Do not copy the runbook here.\n"
+        "No Grok, `spawn_subagent` passa `model` de `juizo.grok` ou `execucao.grok` em `.cursor/model-map.yaml`. Não omite `model`. Não herda o picker. Do not copy the runbook here.\n"
     )
 
 

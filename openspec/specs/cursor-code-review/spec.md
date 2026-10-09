@@ -62,7 +62,7 @@ If either local reviewer Task fails to spawn or returns zero messages/parts, the
 - **THEN** the Code Review stage remains incomplete until a successful local review or an explicit fallback after the error is recorded
 
 ### Requirement: Process reviewer MUST stay read-only and use Composer execução model
-The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: true` and `model` equal to `execucao.slug` from `.cursor/model-map.yaml` (redundant pin). During Code Review the primary session SHALL materialize the interval under review (uncommitted patch versus HEAD before the commit; `origin/<integration_branch>...HEAD` after it exists) and SHALL launch one Task with that `execucao.slug` instructed not to edit, whose prompt is that file's body plus `review_diff_path:` (and optional `## Diff` bytes). The parent MAY spawn that reviewer as `generalPurpose` with the agent-file body **or** as named `subagent_type` `code-reviewer`; destape matcher covers both. The spawn MUST still include `review_diff_path:` and the exact Task `description` in the awaiting sidecar. The spawn MUST NOT inherit the Design or Apply transcript. The spawn MUST NOT inherit the parent picker and MUST NOT use Grok or `composer-2.5-fast`. The child MUST NOT run git to obtain the interval. It SHALL review process/contract (OpenSpec vs implementation, Design approval evidence, status non-regression). It MUST NOT duplicate diff-reviewer defect hunting and MUST NOT edit files. It MUST NOT read `.impeccable/critique/`. The versus-`develop` comparison is owned by `diff-reviewer` after the commit and before `Status=QA`. Published output MUST be findings or `No findings.` Review constraints SHALL be in these two agent files (optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`. The law is the Task `model` parameter on both spawn paths plus the map file.
+The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: true` and `model` equal to the Cursor `execucao.slug` from `.cursor/model-map.yaml` (redundant pin). That pin MUST remain `composer-2.5` and MUST NOT become `grok-4.6`. During Code Review the Cursor primary session SHALL materialize the interval under review (uncommitted patch versus HEAD before the commit; `origin/<integration_branch>...HEAD` after it exists) and SHALL launch one Task with that `execucao.slug` instructed not to edit, whose prompt is that file's body plus `review_diff_path:` (and optional `## Diff` bytes). The parent MAY spawn that reviewer as `generalPurpose` with the agent-file body **or** as named `subagent_type` `code-reviewer`; destape matcher covers both. The spawn MUST still include `review_diff_path:` and the exact Task `description` in the awaiting sidecar. The spawn MUST NOT inherit the Design or Apply transcript. On Cursor, the spawn MUST NOT inherit the parent picker and MUST NOT use a Grok slug or `composer-2.5-fast`. On Grok Build, `code-reviewer` MUST be spawned with `spawn_subagent` `model` equal to `execucao.grok.slug` (`grok-4.6`), MUST NOT omit `model`, and MUST NOT inherit the picker. The child MUST NOT run git to obtain the interval. It SHALL review process/contract (OpenSpec vs implementation, Design approval evidence, status non-regression). It MUST NOT duplicate diff-reviewer defect hunting and MUST NOT edit files. It MUST NOT read `.impeccable/critique/`. The versus-`develop` comparison is owned by `diff-reviewer` after the commit and before `Status=QA`. Published output MUST be findings or `No findings.` Review constraints SHALL be in these two agent files (optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`. The law is the spawn `model` parameter on both spawn paths plus the map file.
 
 #### Scenario: Process reviewer does not mutate
 - **WHEN** the process reviewer Task runs during Code Review
@@ -71,11 +71,26 @@ The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: tr
 - **AND** it MUST NOT load the Impeccable snapshot
 
 #### Scenario: Process reviewer has no parent Design chat
-- **WHEN** `code-reviewer` is spawned
+- **WHEN** `code-reviewer` is spawned on Cursor
 - **THEN** the prompt is the versioned file plus the parent-materialized interval
 - **AND** it does not include the Design or Apply transcript
 - **AND** it MUST NOT ask the child to run git
 - **AND** the Task `model` is the `execucao.slug` from `.cursor/model-map.yaml`
+
+#### Scenario: Grok process reviewer uses grok-4.6
+- **WHEN** `code-reviewer` is spawned on Grok Build
+- **THEN** `spawn_subagent` `model` is `grok-4.6`
+- **AND** the spawn MUST NOT omit `model` or inherit the picker
+- **AND** the child remains read-only
+
+### Requirement: Grok diff reviewer uses execucao.grok
+On Grok Build, `diff-reviewer` SHALL be spawned with `model` equal to `execucao.grok.slug` (`grok-4.6`). The parent MUST NOT omit `model` and MUST NOT inherit the picker. The reviewer MUST NOT be refused because it runs on Grok. On Cursor, `diff-reviewer` SHALL keep using top-level `execucao.slug` and MUST NOT switch to `grok-4.6`. Interval materialization, read-only behavior, and the same-turn wave MUST remain as already specified.
+
+#### Scenario: Grok diff reviewer is grok-4.6
+- **WHEN** Code Review on Grok Build spawns `diff-reviewer`
+- **THEN** `model` is `grok-4.6`
+- **AND** the spawn does not inherit the picker
+- **AND** a Cursor `diff-reviewer` spawn still uses `composer-2.5`
 
 ### Requirement: Pre-commit reviewers are a same-turn wave
 While `Status=Code Review` and before any implementation commit, after the parent has materialized the uncommitted interval, the parent SHALL launch `diff-reviewer` and `code-reviewer` in the **same** parent turn, both read-only, both with `review_diff_path:` (optional `## Diff` bytes). MAY spawn each as `generalPurpose` with the agent-file body **or** as named `subagent_type`. Host serialization of the two Tasks MUST NOT fail this requirement. Destape of the first MUST NOT spawn the second. Closing review versus `develop` after the commit remains **one** wave and is outside this card's pingue-pongue. This requirement MUST NOT change `process-fsm.yaml` and MUST NOT reopen destape matching (#879).
@@ -247,4 +262,3 @@ A `bloqueia_merge: sim` field on a P3 or other non-P0 finding SHALL be residual 
 - **THEN** the parent records it as residual
 - **AND** MUST NOT spawn another Apply or wave for it
 - **AND** MUST NOT ask «autorizar extra / aceitar residual»
-
