@@ -4,32 +4,15 @@
 Contrato do adapter Cursor sobre o núcleo do processo (yaml + `scripts/process-fsm/` + `AGENTS.md`). Grok Build é o adapter irmão em `.grok/`; OpenCode 1.18.18 em `.opencode/plugin/`.
 ## Requirements
 ### Requirement: Versioned juízo/execução map file
-The Cursor adapter SHALL contain `.cursor/model-map.yaml` with two bands `juizo` and `execucao` (each with top-level `label` and `slug`) and a `forbid` list that SHALL include `composer-2.5-fast` and `inherit`. Top-level Cursor pairs SHALL remain juízo `Grok 4.6` / `cursor-grok-4.6-high` and execução `Composer 2.5` / `composer-2.5`. Existing `juizo.codex` SHALL remain `GPT-6 Sol` / `gpt-6-sol` / effort `high`. Existing `execucao.codex` SHALL remain `GPT-6 Luna` / `gpt-6-luna` / effort `max`. Each band SHALL also contain a `grok` object, sibling of `codex`, with `label`, `slug`, and `effort` equal to `high`: `juizo.grok` is `Grok 4.7` / `grok-4.7` / effort `high`; `execucao.grok` is `Grok 4.6` / `grok-4.6` / effort `high`. The file SHALL NOT be a per-role map. Isolated Cursor Task children SHALL pass the top-level band slug as the Task `model` parameter on both spawn paths. The Grok Build parent SHALL pass `juizo.grok.slug` or `execucao.grok.slug` as `spawn_subagent` `model` and MUST NOT read the Cursor top-level slug or the Codex pair for that spawn. Missing file, unreadable YAML, missing `juizo`/`execucao` keys, missing or empty `juizo.grok` or `execucao.grok`, a Cursor slug listed in `forbid`, or a Grok slug the host does not accept SHALL be a visible refusal. The Grok host accepts only `grok-4.5`, `grok-4.6`, `grok-4.7`, and `grok-4.7-build-fast`. The parent MUST NOT omit `model`, MUST NOT pass `inherit`, MUST NOT inherit the picker, and MUST NOT silently substitute the Cursor slug, the Codex slug, or another host-accepted slug (including `grok-4.7-build-fast`) for the Grok pair. Codex `resolve_pair` / `pin_codex_map` MUST NOT drop or reject the `grok` sibling and MUST NOT change the Codex pairs.
+The adapter SHALL version routing policy and forbidden models, including composer-2.5-fast and inherit, while operational selections SHALL come solely from the machine-model-selection contract. The legacy `.cursor/model-map.yaml` SHALL NOT supply spawn choices or fallback. All five clients SHALL have distinct juizo/execucao selections and capability validation. Cursor and Grok migration SHALL preserve their existing choices; Codex SHALL initialize to the choices explicitly requested in this change. Missing/invalid configuration or unsupported host values SHALL cause visible refusal without picker inheritance or substitution.
 
-#### Scenario: Map file is the slug source
-- **WHEN** a Cursor parent spawns a juízo or execução child
-- **THEN** it Reads `.cursor/model-map.yaml`
-- **AND** the Task `model` is `juizo.slug` or `execucao.slug` according to the role group in the covenant-flow runbook
-- **AND** the spawn MUST NOT use a slug from `forbid`
-- **AND** the spawn MUST NOT use `juizo.grok.slug` or `execucao.grok.slug`
+#### Scenario: New spawn reads local selection
+- **WHEN** a parent spawns a child
+- **THEN** the selected client's band is resolved from machine configuration and its supported parameters are passed explicitly
 
-#### Scenario: Missing or forbidden map is refused
-- **WHEN** `.cursor/model-map.yaml` is absent, unreadable, missing `juizo`/`execucao` keys, or the chosen slug is in `forbid`
-- **THEN** the operator-facing chat shows a visible refusal
-- **AND** the child MUST NOT run under the parent picker
-- **AND** the parent MUST NOT retry with `inherit`
-
-#### Scenario: Grok pair is present and Cursor and Codex pairs stay
-- **WHEN** `.cursor/model-map.yaml` is read after this change
-- **THEN** `juizo.grok` is label `Grok 4.7`, slug `grok-4.7`, and effort `high`
-- **AND** `execucao.grok` is label `Grok 4.6`, slug `grok-4.6`, and effort `high`
-- **AND** top-level `juizo.slug` remains `cursor-grok-4.6-high` and top-level `execucao.slug` remains `composer-2.5`
-- **AND** `juizo.codex` remains `gpt-6-sol` with effort `high` and `execucao.codex` remains `gpt-6-luna` with effort `max`
-
-#### Scenario: Missing Grok pair is a visible refusal
-- **WHEN** a Grok Build parent would spawn a juízo or execução child and `juizo.grok` or `execucao.grok` is missing or has an empty slug
-- **THEN** the operator-facing chat shows a visible refusal
-- **AND** the parent MUST NOT omit `model`, inherit the picker, or substitute the Cursor or Codex slug
+#### Scenario: Legacy map only
+- **WHEN** only the Git map exists
+- **THEN** the parent refuses with a migration diagnostic instead of using it as fallback
 
 ### Requirement: Cursor is the versioned development harness
 The repository SHALL contain a versioned Cursor **adapter** under `.cursor/` (rules, skills, commands, hooks) that compiles the process nucleus (`.cursor/process-fsm.yaml` + `scripts/process-fsm/` + root `AGENTS.md`). Cursor is not the only versioned client: Grok Build has a sibling adapter under `.grok/`, OpenCode 1.18.18 has a sibling adapter under `.opencode/plugin/` (auto-load; no `opencode.json`), and dsh has a sibling adapter under `.dsh/plugin/` (Cordis native; no Claude `hooks.json` Guard). The repo MUST NOT restore the lock machine (`design_spawn_stage`, `design_artifact_write`, lease, packet, attestation, `opencode.db` as kaizen contract). `opencode.json` MUST NOT be an active contract of model, MCP, or permission. `.cursor/rules/harness.mdc` SHALL identify the Cursor client (hooks + pointer to `.cursor/model-map.yaml` + skill `covenant-flow`) and MUST NOT repeat the δ table or the 12-column runbook. The fourth harness (dsh) MUST NOT be a source of law.
@@ -59,34 +42,11 @@ Cursor SHALL load OpenSpec skills and `/opsx-*` commands that invoke the same `o
 - **AND** it MUST NOT invent artifacts outside `openspec instructions`
 
 ### Requirement: Role models by juízo and execução
-On the Cursor client, isolated Task children SHALL use the role model passed as the Task `model` parameter on both spawn paths (named `subagent_type` or `generalPurpose` with the agent-file body pasted). They MUST NOT inherit the parent chat picker. Juízo (grill-card, Design-autor, Design-critic, Assessment A/B) SHALL use the `juizo.slug` of `.cursor/model-map.yaml`. Execução (Apply-coluna, QA, `diff-reviewer`, `code-reviewer`, same-card explore/search, fecho-lote) SHALL use the `execucao.slug` of that file. Slugs listed in `forbid` (including `composer-2.5-fast` and `inherit`) MUST NOT be used. On the Grok Build client, the same juízo group SHALL use `juizo.grok.slug` and the same execução group SHALL use `execucao.grok.slug`, passed as `spawn_subagent` `model`. The Grok parent MUST NOT omit `model` and MUST NOT inherit the picker. Reviewers on Grok SHALL be spawned as execução on `execucao.grok`. The sentence that reviewers on Grok MUST NOT be used MUST NOT remain operative. The git MUST NOT force the parent picker; the runbook MUST NOT recommend a picker to the parent. OpenCode and dsh children SHALL keep inherit. Grok Build children MUST NOT keep inherit. The law is the spawn parameter plus the map file; agent-file YAML `model` is a redundant pin equal to the Cursor `execucao.slug`.
+Juizo SHALL include grill-card, Design-author, Design-critic and Assessments; execucao SHALL include Apply, QA, both reviewers, same-card search and fecho-lote. The client's machine selection SHALL be explicit on every supported native spawn path. No client SHALL inherit the picker. OpenCode/dsh SHALL use their native supported selection paths or refuse visibly. Agent-file YAML SHALL NOT pin an operational model. Parent-picker instructions, unrelated host restrictions and process gates SHALL remain unchanged.
 
-#### Scenario: Juízo spawn asks for the map juizo slug
-- **WHEN** the session spawns grill-card, Design-autor, Design-critic, or Assessment A/B on Cursor
-- **THEN** the Task `model` is the `juizo.slug` from `.cursor/model-map.yaml`
-- **AND** the child MUST NOT inherit the parent picker
-
-#### Scenario: Execução spawn asks for the map execucao slug
-- **WHEN** the session spawns Apply-coluna, QA, `diff-reviewer`, `code-reviewer`, same-card explore, or fecho-lote on Cursor
-- **THEN** the Task `model` is the `execucao.slug` from `.cursor/model-map.yaml`
-- **AND** it MUST NOT require a slug from `forbid`
-- **AND** it MUST NOT use `juizo.grok` or `execucao.grok` for those Cursor roles
-
-#### Scenario: Grok juízo reads juizo.grok
-- **WHEN** a Grok Build parent spawns grill-card, Design-autor, Design-critic, or Assessment A/B
-- **THEN** `spawn_subagent` `model` is `juizo.grok.slug` (`grok-4.7`)
-- **AND** the spawn MUST NOT omit `model` or inherit the picker
-
-#### Scenario: Grok execução reads execucao.grok
-- **WHEN** a Grok Build parent spawns Apply-coluna, QA, `diff-reviewer`, `code-reviewer`, same-card explore, or fecho-lote
-- **THEN** `spawn_subagent` `model` is `execucao.grok.slug` (`grok-4.6`)
-- **AND** the spawn MUST NOT omit `model` or inherit the picker
-
-#### Scenario: OpenCode and dsh keep inherit
-- **WHEN** OpenCode or dsh stubs are read
-- **THEN** they still map children to inherit
-- **AND** they MUST NOT copy the Cursor role table or `.cursor/model-map.yaml`
-- **AND** Grok stubs MUST NOT map children to inherit
+#### Scenario: Client-specific role
+- **WHEN** an execution reviewer is spawned on any supported client
+- **THEN** it receives that client's execution selection and cannot pass merely by matching a juizo selection
 
 ### Requirement: Design gate is process-based
 While `Status=Design`, the **parent** session SHALL spawn an isolated Design-author child (Task `model` = `juizo.slug` from `.cursor/model-map.yaml`, no parent transcript) to write OpenSpec artifacts and a navigable prototype when UI-impacting. After those artifacts exist, the parent SHALL spawn Assessment A and B as a wave (MUST NOT nest A/B inside the Design child) with the same juízo model. Isolated critics MUST NOT edit product code, `design.md`, or prototype files. They MAY write only `.impeccable/critique/**`. The parent MUST NOT author OpenSpec proposal/specs/tasks, prototype files, or `design.md` **except** that after A/B return with zero open P0/P1 the parent MUST write only the `## Design Critique` section (bullets, disposition, verdict, snapshot path). Open P0/P1 SHALL re-spawn the Design-author child with those findings in the prompt; the parent MUST NOT polish. `process_event submeter_design` SHALL stay on the parent. The agent MUST NOT implement product code until `Status=Pronto para Dev`.
@@ -171,52 +131,25 @@ The GitHub issue MAY originate the work. The grill SHALL remain the place the st
 - **AND** a `proposal.md` without those headings SHALL fail the golden
 
 ### Requirement: Code Review happy path MUST use Composer execução model
-On the Cursor client, the versioned `diff-reviewer` and `code-reviewer` Tasks MUST use the `execucao.slug` from `.cursor/model-map.yaml` on both spawn paths (named `subagent_type` or `generalPurpose` with the agent-file body). They MUST NOT inherit the parent picker and MUST NOT use `juizo.grok.slug`, `execucao.grok.slug`, or a slug from `forbid`. On the Grok Build client, the same two reviewers MUST be spawned and MUST use `execucao.grok.slug` (`grok-4.6`). They MUST NOT be refused as out of scope. They MUST NOT inherit the picker and MUST NOT omit `model`. Cursor Bugbot (`/review-bugbot`) MUST NOT be part of the product or the Code Review happy path. `/review-security` MAY run when Alan explicitly asks; it MUST NOT replace the local reviewers as the gate. Review constraints SHALL live in the two agent files (and optional consumer `REVIEW.md` without Bugbot), not in `BUGBOT.md`. Agent-file YAML MAY pin `model` equal to the Cursor `execucao.slug`; the law remains the spawn parameter plus the map file. That YAML pin MUST NOT be changed to `grok-4.6`.
+Both diff-reviewer and code-reviewer SHALL use the current client's captured machine execucao selection, with explicit native parameters and no versioned YAML model pin. Composer is a historical migration choice, not a permanent requirement. Grok reviewers SHALL remain supported. Bugbot MUST NOT be a product path; security review only when explicitly requested MUST NOT replace the local gate. Constraints SHALL remain in agent files and optional REVIEW.md without Bugbot.
 
-#### Scenario: Local reviewers use Composer execução
-- **WHEN** Code Review spawns `.cursor/agents/diff-reviewer.md` or `.cursor/agents/code-reviewer.md` on Cursor
-- **THEN** the child MUST use the `execucao.slug` from `.cursor/model-map.yaml`
-- **AND** the spawn MUST NOT omit `model` or pass `inherit`
-- **AND** the spawn MUST NOT use `grok-4.6`
-
-#### Scenario: Grok reviewers are born on grok-4.6
-- **WHEN** Code Review on Grok Build spawns `diff-reviewer` and `code-reviewer`
-- **THEN** each `spawn_subagent` `model` is `execucao.grok.slug` (`grok-4.6`)
-- **AND** the spawn MUST NOT omit `model` or inherit the picker
-- **AND** the runbook sentence `Revisores no Grok MUST NOT neste card` is not operative
-
-#### Scenario: Bugbot is not a product path
-- **WHEN** Code Review runs on a pinned consumer
-- **THEN** `/review-bugbot` MUST NOT run as the gate
-- **AND** `BUGBOT.md` MUST NOT be required
+#### Scenario: Review after operational choice change
+- **WHEN** local execucao changes before a new review wave
+- **THEN** both reviewers use the new client-specific choice without modifying agent files
 
 ### Requirement: Composer destape and resume keep execução slug
-When the Cursor parent resumes or destapes (`subagentStop` followup) an isolated execução child (Apply-coluna, QA, `diff-reviewer`, `code-reviewer`, same-card search, `fecho-lote`), the continued run MUST remain executed and billed as the `execucao.slug` from `.cursor/model-map.yaml`. Slugs in `forbid` (including `composer-2.5-fast`) MUST NOT be used for that continuation, including after destape or host `resume`. If the host resumes or bills the continuation as a forbidden slug, the parent SHALL treat that run as abort: it MUST NOT use that run as acceptance and MUST NOT call Task `resume` on it. The parent SHALL spawn a **new** Task with `model` equal to `execucao.slug` and a self-contained prompt (Task `resume` MUST NOT be used to change model). Same-card search on a bound card MUST NOT use subagent_type `explore` when the host maps `explore` to a forbidden slug; search SHALL use `generalPurpose` with `model` equal to `execucao.slug`. The `fecho-lote` child MUST NOT use destape sidecar; if the host auto-resumes a prior `fecho-lote` run, the parent MUST ignore that run.
+Cursor continuation SHALL retain the child's captured execution selection, including billing/runtime identity. Forbidden or divergent continuation SHALL be visibly rejected and MUST NOT count as acceptance or be resumed to repair its model. A new Task SHALL resolve the current machine choice explicitly. Same-card search SHALL use generalPurpose when explore routes to a forbidden model. Fecho-lote SHALL retain its prohibition on sidecar/destape and ignore host auto-resume.
 
-#### Scenario: Fast continuation after destape is refused
-- **WHEN** an execução child was spawned with `model` equal to `execucao.slug` and the host continues after destape or resume as `composer-2.5-fast`
-- **THEN** the parent MUST NOT treat that continuation as the passing child
-- **AND** the parent MUST NOT `resume` that run
-- **AND** the parent SHALL spawn a new Task with `model` equal to `execucao.slug` from `.cursor/model-map.yaml`
-
-#### Scenario: Same-card search avoids explore when mapped to fast
-- **WHEN** the parent needs codebase search on the same bound card on Cursor
-- **THEN** it SHALL use `generalPurpose` with `model` equal to `execucao.slug` from `.cursor/model-map.yaml`
-- **AND** it MUST NOT rely on subagent_type `explore` if that maps to `composer-2.5-fast`
+#### Scenario: Local edit during continuation
+- **WHEN** local execution selection changes while a child remains alive
+- **THEN** continuation retains its birth capture; only a new Task uses the updated choice
 
 ### Requirement: Grok execução resume outside grok-4.6 does not count
-When a Grok Build parent resumes or follows up an isolated execução child (Apply-coluna, QA, `diff-reviewer`, `code-reviewer`, same-card search, `fecho-lote`) on a model other than `execucao.grok.slug` (`grok-4.6`), including `grok-4.7-build-fast`, that run MUST NOT count. The parent SHALL show a visible failure and MUST NOT accept that run. The parent SHALL spawn a new child with `model` equal to `grok-4.6` and a self-contained prompt. This applies the already vigente resume law to the Grok pair Alan closed. It MUST NOT add `grok-4.7-build-fast` as the only forbidden token in place of equality with `grok-4.6`. The Cursor rule for `composer-2.5-fast` MUST remain.
+Grok continuation SHALL retain the execution selection captured at birth. Any different runtime model SHALL fail visibly, regardless of whether it is otherwise host-accepted. A replacement SHALL be a new child with current local selection and a self-contained prompt. grok-4.6 SHALL remain a migration value, not a hardcoded perpetual gate. Cursor forbidden-model restrictions SHALL remain intact.
 
-#### Scenario: Fast resume of a Grok execução child fails and is respawned
-- **WHEN** an execução child on Grok Build is resumed or followed up as `grok-4.7-build-fast` or any model other than `grok-4.6`
-- **THEN** the parent MUST NOT treat that continuation as the passing child
-- **AND** the parent spawns a new child with `model` `grok-4.6`
-- **AND** the chat shows a visible failure for the rejected continuation
-
-#### Scenario: Resume on grok-4.6 counts
-- **WHEN** an execução child on Grok Build continues on `grok-4.6`
-- **THEN** the parent MAY accept that continuation
-- **AND** it MUST NOT replace it with `grok-4.7` or `grok-4.7-build-fast`
+#### Scenario: Grok continuation diverges
+- **WHEN** a continuation uses a different model from its captured request
+- **THEN** it does not count and a new explicitly configured child is required
 
 ### Requirement: Release and lote closeout require Composer parent chat
 When the operator explicitly asks to close the lote, subir a release, or run T16 (`process_event fechar_release`), including the isolated `fecho-lote` kaizen child, the Cursor parent chat MUST use the `execucao.slug` from `.cursor/model-map.yaml`. This is the sole exception to silence about the parent picker on bound Cursor card chats. If the Cursor parent chat is the `juizo.slug` or any model other than `execucao.slug`, the parent SHALL refuse visibly: it MUST NOT run T16 or spawn `fecho-lote` in that chat and SHALL direct the operator to a new session with the vigente Cursor `execucao` label/slug. On Grok Build, the same closeout MUST use `execucao.grok` (`grok-4.6`) for the parent chat and for the `fecho-lote` child `model`. A Grok parent on `juizo.grok` (`grok-4.7`) or any model other than `grok-4.6` SHALL refuse visibly and MUST NOT run T16 or spawn `fecho-lote` in that chat. Grok closeout MUST NOT require `composer-2.5`. This Grok closeout is in scope of this card. Juízo remains only for juízo roles in the runbook grouping. The git MUST NOT force the parent picker via `AGENTS.md`, harness, or overlay `clients.*.auto`. The runbook MUST NOT recommend a parent picker on other `#<id>` card chats.
@@ -738,3 +671,4 @@ The finding schema and destape table SHALL NOT change the #893 silent ceiling: a
 - **THEN** the parent records residual on the Done handoff and the card comment
 - **AND** the parent MUST NOT spawn a third cycle
 - **AND** the parent MUST NOT ask «autorizar extra / aceitar residual»
+

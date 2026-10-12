@@ -29,7 +29,7 @@ The authenticated app SHALL show new users a concise onboarding prompt that expl
 
 ### Requirement: Help center explains the recommended beta journey
 
-The app SHALL provide a Help route (`/help`) that explains the recommended order of the main screens in simple Portuguese. The Help content outside the `OnboardingGuide` block (header intro, usage grid, quick actions) SHALL admit comprar / stop / vender Spot **no Farol** no Operar (opcional; nunca saque; confirmação por clique) and the optional directional BTCUSDT scalp on the Monitor (default off; while on, post-only without per-order confirmation; never saque). It SHALL correct “saldos read-only” as the only truth. It SHALL NOT say «nao e bot» / «não é bot 24/7» as an absolute.
+The app SHALL provide a Help route (`/help`) that explains the recommended order of the main screens in simple Portuguese. The Help content outside the `OnboardingGuide` block (header intro, usage grid, quick actions) SHALL admit comprar / stop / vender Spot **no Farol** no Operar (opcional; nunca saque; confirmação por clique). It SHALL NOT mention a scalper, scalp, or Scalp BTCUSDT. It SHALL NOT announce that a scalper was removed. It SHALL correct “saldos read-only” as the only truth. It SHALL NOT say «nao e bot» / «não é bot 24/7» as an absolute that denies Operar.
 
 #### Scenario: User opens Help
 
@@ -52,8 +52,9 @@ The app SHALL provide a Help route (`/help`) that explains the recommended order
 - **WHEN** a tester reads `/help` outside the `OnboardingGuide` block (help-usage-grid Carteira, header intro, guardrail)
 - **THEN** the Carteira section SHALL NOT say “saldos read-only” as the only wallet truth
 - **AND** it SHALL explain leitura para Home/Carteira e, com permissão Spot Trade (sem saque) opcional, possibilidade de comprar / stop / vender Spot **no Farol** após confirmação no Operar (nunca saque)
-- **AND** it SHALL admit the optional Monitor scalp (default off; never saque)
-- **AND** it SHALL NOT say «nao e bot» or «não é bot 24/7» as an absolute
+- **AND** it SHALL NOT mention scalper, scalp, or Scalp BTCUSDT
+- **AND** it SHALL NOT announce that a scalper was removed
+- **AND** it SHALL NOT say «nao e bot» or «não é bot 24/7» as an absolute that denies Operar
 - **AND** the intro SHALL reflect the same optional Spot distinction if it mentions carteira
 - **AND** the page SHALL NOT claim the Farol never sends orders
 
@@ -62,7 +63,7 @@ The app SHALL provide a Help route (`/help`) that explains the recommended order
 - **Given** `/help` com `OnboardingGuide` embutido
 - **WHEN** `/help` is rendered with embedded `OnboardingGuide`
 - **THEN** the `OnboardingGuide` component SHALL still satisfy the Q7=B negative check (no Operar naming, no lie)
-- **AND** the surrounding Help grid/intro SHALL satisfy Spot admission and the optional-scalp admission, without contaminating the guide itself
+- **AND** the surrounding Help grid/intro SHALL satisfy Spot admission without a scalp admission, without contaminating the guide itself
 
 ### Requirement: Onboarding remains responsive
 The onboarding prompt and Help route SHALL be usable on desktop and mobile without broken text, overlap, or horizontal scrolling.
@@ -84,3 +85,17 @@ The change SHALL NOT introduce flag/toggle/indicador de ensaio nem absorver issu
 - **Given** board com #463/#637/#692 como issues próprias (critério 7)
 - **WHEN** este card fecha
 - **THEN** #463, #637, #692 continuam issues próprias, sem arquivos deles alterados por este card
+
+### Requirement: Meu Perfil and Binance credentials copy omit the scalper
+Meu Perfil and the Binance credentials form SHALL describe leitura for Home/Carteira and optional Spot Trade (no withdraw) for Operar on the Monitor. They SHALL NOT say that the same Spot key feeds a BTCUSDT scalper, and SHALL NOT announce that a scalper was removed.
+
+#### Scenario: Profile copy without scalp
+- **WHEN** an authenticated user opens Meu Perfil
+- **THEN** the page SHALL NOT mention scalper or scalp
+- **AND** it SHALL still explain optional Spot for Operar (nunca saque)
+
+#### Scenario: Credentials copy without scalp
+- **WHEN** an authenticated user reads Credenciais da Binance
+- **THEN** the help and description SHALL NOT mention scalper or scalp
+- **AND** leitura and optional Spot Trading for Operar SHALL remain
+

@@ -75,26 +75,18 @@ The `/opsx:apply` skill SHALL include a mandatory step for `UI impact: affected`
 - **THEN** the skill instructs loading `frontend/public/prototypes/<slug>/` before coding UI
 
 ### Requirement: Versioned local reviewer subagents exist
-The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md`, each with `readonly: true` and YAML `model` equal to `execucao.slug` from `.cursor/model-map.yaml`. The YAML `model` is a redundant pin; the law is the Task `model` parameter of the spawn plus the map file. Neither file SHALL declare `model: inherit`.
+The repository SHALL retain diff-reviewer.md and code-reviewer.md with readonly: true and no operational YAML model pin. Their runtime models SHALL come from explicit captured machine execucao parameters, never inherit. Tooling SHALL NOT require a Git edit when the operator changes models.
 
-#### Scenario: Reviewer files are versioned
-- **WHEN** a Cursor Agent session starts in the repo
-- **THEN** both agent files are available for delegation during Code Review
-- **AND** each MUST declare `readonly: true` and `model` equal to `execucao.slug` from `.cursor/model-map.yaml`
-- **AND** neither MUST declare `model: inherit`
+#### Scenario: Inspect reviewer files
+- **WHEN** reviewer agent files are inspected after migration
+- **THEN** both exist and remain readonly, with no fixed model or inherit value
 
 ### Requirement: Review stance lives in local reviewer agents
-The repository SHALL contain `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md`, each with `readonly: true` and YAML `model` equal to `execucao.slug` from `.cursor/model-map.yaml`, and those files SHALL carry review constraints (Design/`Pronto para Dev` not skippable, no secrets in commits, consumer overlay `runtime.database` when present, tests when backend changes, Playwright visual when UI changes). `REVIEW.md` MAY exist and MUST NOT mention Bugbot. `BUGBOT.md` MUST NOT exist. Cursor Bugbot MUST NOT be the Code Review path.
+Readonly reviewer files SHALL retain constraints on Design/Pronto para Dev, secrets, consumer database requirements, backend tests and visual checks for UI. They SHALL NOT pin operational model values; spawns SHALL use machine selections. Optional REVIEW.md MUST NOT mention Bugbot; BUGBOT.md and Cursor Bugbot MUST NOT be the review path.
 
-#### Scenario: Reviewer files carry the stance
-- **WHEN** a local `diff-reviewer` run starts
-- **THEN** `.cursor/agents/diff-reviewer.md` exists and encodes the review constraints
-- **AND** `.cursor/BUGBOT.md` does not exist
-
-#### Scenario: Nested BUGBOT.md is gone
-- **WHEN** the reviewed diff includes `backend/` or `frontend/` files
-- **THEN** no nested `BUGBOT.md` is required
-- **AND** the same agent files apply
+#### Scenario: Model changes without constraint changes
+- **WHEN** execution model changes locally
+- **THEN** reviewer constraints remain versioned and active without rewriting the files
 
 ### Requirement: Consumer git commits materialized harness skins
 A pinned consumer SHALL keep `.cursor/`, `.grok/`, `.opencode/`, `scripts/process-fsm/`, `.agents/skills/` (impeccable, design-critic, playwright-cli), and generated `AGENTS.md` as committed trees produced by `implantar --pin`. Those paths MUST NOT be gitignored as the install method and MUST NOT be a submodule as the v1 channel.
