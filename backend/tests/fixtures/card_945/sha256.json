@@ -9762,11 +9762,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "62a437f1903f6e2a5093d5a4a0a9e6f03c67ec29fb93bc426249089c80c06824",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "f3c046f2ffa2ea3359ac4a243088b861c2d1c8c995c6d6a298c0e8a0e6995f25"
@@ -9778,11 +9780,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "62a437f1903f6e2a5093d5a4a0a9e6f03c67ec29fb93bc426249089c80c06824",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "f3c046f2ffa2ea3359ac4a243088b861c2d1c8c995c6d6a298c0e8a0e6995f25"
@@ -9794,11 +9798,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "d1d20004305b4caddb35c372ec9e60cdd30e9de918700fd2c150478410e43de9",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "5538bb5a8f51472c20084f74056ba1fbe96811270cb7fee90693e1132a44dbb0"
@@ -9810,11 +9816,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "857693639725726bd8c88dfb1b4c92138eb933ff148df53b18ea45b2cdd327e7",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "d1ba9e954a00e6ffd03d4c4093a31f76811b90b51bb19cd1489a8f37751a086c"
@@ -9826,11 +9834,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "857693639725726bd8c88dfb1b4c92138eb933ff148df53b18ea45b2cdd327e7",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "d1ba9e954a00e6ffd03d4c4093a31f76811b90b51bb19cd1489a8f37751a086c"
@@ -9842,11 +9852,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "857693639725726bd8c88dfb1b4c92138eb933ff148df53b18ea45b2cdd327e7",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "d1ba9e954a00e6ffd03d4c4093a31f76811b90b51bb19cd1489a8f37751a086c"
@@ -9858,11 +9870,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "857693639725726bd8c88dfb1b4c92138eb933ff148df53b18ea45b2cdd327e7",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "d1ba9e954a00e6ffd03d4c4093a31f76811b90b51bb19cd1489a8f37751a086c"
@@ -9874,11 +9888,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "03bd000c509cc8f4f57dc70657e0990404af982e592e3791edad3fa02597f27d",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "cc929a9355074d76ff8e18a5a51ce2c27bc57cef6bc303763a1ddfe64cd70bd9"
@@ -9890,11 +9906,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "03bd000c509cc8f4f57dc70657e0990404af982e592e3791edad3fa02597f27d",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "cc929a9355074d76ff8e18a5a51ce2c27bc57cef6bc303763a1ddfe64cd70bd9"
@@ -9906,11 +9924,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "03bd000c509cc8f4f57dc70657e0990404af982e592e3791edad3fa02597f27d",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "cc929a9355074d76ff8e18a5a51ce2c27bc57cef6bc303763a1ddfe64cd70bd9"
@@ -9922,11 +9942,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "03bd000c509cc8f4f57dc70657e0990404af982e592e3791edad3fa02597f27d",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "cc929a9355074d76ff8e18a5a51ce2c27bc57cef6bc303763a1ddfe64cd70bd9"
@@ -9938,11 +9960,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "bda97c1f1e29eca1ac8eead18825a92bb39004bc2fcf72132e6f5bda0a5eefd0",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "d6b69dc9c9e48f290a341f4c335ad0358104945e821d2b6270feb88470297f28"
@@ -9954,11 +9978,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "62a437f1903f6e2a5093d5a4a0a9e6f03c67ec29fb93bc426249089c80c06824",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "f3c046f2ffa2ea3359ac4a243088b861c2d1c8c995c6d6a298c0e8a0e6995f25"
@@ -9970,11 +9996,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "bda97c1f1e29eca1ac8eead18825a92bb39004bc2fcf72132e6f5bda0a5eefd0",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "d6b69dc9c9e48f290a341f4c335ad0358104945e821d2b6270feb88470297f28"
@@ -9986,11 +10014,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "bda97c1f1e29eca1ac8eead18825a92bb39004bc2fcf72132e6f5bda0a5eefd0",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "d6b69dc9c9e48f290a341f4c335ad0358104945e821d2b6270feb88470297f28"
@@ -10002,11 +10032,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "bda97c1f1e29eca1ac8eead18825a92bb39004bc2fcf72132e6f5bda0a5eefd0",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "d6b69dc9c9e48f290a341f4c335ad0358104945e821d2b6270feb88470297f28"
@@ -10018,11 +10050,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "09b06d7d9002ebc37f996b194543a1b0ca4b8b61ae7b747d648c19dc9ec9f49b",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "d80b6a2dfe938b5280e4f300ed4a7bb217be8892aecaa79bc0f45cf1ca135b2d"
@@ -10034,11 +10068,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "09b06d7d9002ebc37f996b194543a1b0ca4b8b61ae7b747d648c19dc9ec9f49b",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "d80b6a2dfe938b5280e4f300ed4a7bb217be8892aecaa79bc0f45cf1ca135b2d"
@@ -10050,11 +10086,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "09b06d7d9002ebc37f996b194543a1b0ca4b8b61ae7b747d648c19dc9ec9f49b",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "d80b6a2dfe938b5280e4f300ed4a7bb217be8892aecaa79bc0f45cf1ca135b2d"
@@ -10066,11 +10104,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "09b06d7d9002ebc37f996b194543a1b0ca4b8b61ae7b747d648c19dc9ec9f49b",
         "bb_middle": "b7a7346f02915a7b7797747a4a765fc280892c77cf5cba9c1cb76b1c5e091fcb",
         "bb_upper": "d80b6a2dfe938b5280e4f300ed4a7bb217be8892aecaa79bc0f45cf1ca135b2d"
@@ -10082,11 +10122,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "327ac8ecd49e3a994acf6d825190550b4e6c69d88123aac72dfed6f34b012879",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "3848944e587da156d737fe1fe4cb7f81f0b23e73824681174b06108684c3b123"
@@ -10098,11 +10140,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "327ac8ecd49e3a994acf6d825190550b4e6c69d88123aac72dfed6f34b012879",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "3848944e587da156d737fe1fe4cb7f81f0b23e73824681174b06108684c3b123"
@@ -10114,11 +10158,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "327ac8ecd49e3a994acf6d825190550b4e6c69d88123aac72dfed6f34b012879",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "3848944e587da156d737fe1fe4cb7f81f0b23e73824681174b06108684c3b123"
@@ -10130,11 +10176,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "62a437f1903f6e2a5093d5a4a0a9e6f03c67ec29fb93bc426249089c80c06824",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "f3c046f2ffa2ea3359ac4a243088b861c2d1c8c995c6d6a298c0e8a0e6995f25"
@@ -10146,11 +10194,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "327ac8ecd49e3a994acf6d825190550b4e6c69d88123aac72dfed6f34b012879",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "3848944e587da156d737fe1fe4cb7f81f0b23e73824681174b06108684c3b123"
@@ -10162,11 +10212,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "f6e70edb037945aabd9f6465efc912bae81c19d45cd4f5bf0ba601375dad706e",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "bfc42e303a5a270e156fbff7de508d4cae07e7727b019b1b1df818bdd89fc244"
@@ -10178,11 +10230,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "f6e70edb037945aabd9f6465efc912bae81c19d45cd4f5bf0ba601375dad706e",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "bfc42e303a5a270e156fbff7de508d4cae07e7727b019b1b1df818bdd89fc244"
@@ -10194,11 +10248,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "f6e70edb037945aabd9f6465efc912bae81c19d45cd4f5bf0ba601375dad706e",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "bfc42e303a5a270e156fbff7de508d4cae07e7727b019b1b1df818bdd89fc244"
@@ -10210,11 +10266,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "f6e70edb037945aabd9f6465efc912bae81c19d45cd4f5bf0ba601375dad706e",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "bfc42e303a5a270e156fbff7de508d4cae07e7727b019b1b1df818bdd89fc244"
@@ -10226,11 +10284,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "e810d151c7e3be39e93307658d233e4498c109c42886b70e61cd6dde2345ce60",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "e242035345d26e1da04b2fc6d8d70d1ac4ccceace403921e26606fc4630c4e1c"
@@ -10242,11 +10302,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "e810d151c7e3be39e93307658d233e4498c109c42886b70e61cd6dde2345ce60",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "e242035345d26e1da04b2fc6d8d70d1ac4ccceace403921e26606fc4630c4e1c"
@@ -10258,11 +10320,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "e810d151c7e3be39e93307658d233e4498c109c42886b70e61cd6dde2345ce60",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "e242035345d26e1da04b2fc6d8d70d1ac4ccceace403921e26606fc4630c4e1c"
@@ -10274,11 +10338,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "e810d151c7e3be39e93307658d233e4498c109c42886b70e61cd6dde2345ce60",
         "bb_middle": "e42155d0f26ffcf392d8e3e39adeb693ff58b388c2e8404d0164852357a94736",
         "bb_upper": "e242035345d26e1da04b2fc6d8d70d1ac4ccceace403921e26606fc4630c4e1c"
@@ -10290,11 +10356,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "efc8aa53e447e28a085993c4a4fd04eea6501602f82ff13b0d0762e1d5fb9d2c",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "61db68c86a9f35b867d7ce8bb448b4a5d6eebfa0c4b837cdd5c21f46e2445e46"
@@ -10306,11 +10374,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "62a437f1903f6e2a5093d5a4a0a9e6f03c67ec29fb93bc426249089c80c06824",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "f3c046f2ffa2ea3359ac4a243088b861c2d1c8c995c6d6a298c0e8a0e6995f25"
@@ -10322,11 +10392,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "efc8aa53e447e28a085993c4a4fd04eea6501602f82ff13b0d0762e1d5fb9d2c",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "61db68c86a9f35b867d7ce8bb448b4a5d6eebfa0c4b837cdd5c21f46e2445e46"
@@ -10338,11 +10410,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "efc8aa53e447e28a085993c4a4fd04eea6501602f82ff13b0d0762e1d5fb9d2c",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "61db68c86a9f35b867d7ce8bb448b4a5d6eebfa0c4b837cdd5c21f46e2445e46"
@@ -10354,11 +10428,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "efc8aa53e447e28a085993c4a4fd04eea6501602f82ff13b0d0762e1d5fb9d2c",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "61db68c86a9f35b867d7ce8bb448b4a5d6eebfa0c4b837cdd5c21f46e2445e46"
@@ -10370,11 +10446,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "6cdefcda7cab228395f95326b7588b460bd17c26e2df6e9232c0abfcbd5964b2",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "8b683e2bec8741fdbca1d34af0c725082e21f8bca8c0433edaa6fb2b16a1ab41"
@@ -10386,11 +10464,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "6cdefcda7cab228395f95326b7588b460bd17c26e2df6e9232c0abfcbd5964b2",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "8b683e2bec8741fdbca1d34af0c725082e21f8bca8c0433edaa6fb2b16a1ab41"
@@ -10402,11 +10482,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "6cdefcda7cab228395f95326b7588b460bd17c26e2df6e9232c0abfcbd5964b2",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "8b683e2bec8741fdbca1d34af0c725082e21f8bca8c0433edaa6fb2b16a1ab41"
@@ -10418,11 +10500,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "6cdefcda7cab228395f95326b7588b460bd17c26e2df6e9232c0abfcbd5964b2",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "8b683e2bec8741fdbca1d34af0c725082e21f8bca8c0433edaa6fb2b16a1ab41"
@@ -10434,11 +10518,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "112fffcf104e3920470fe31c32ccb02a1f6f315a72406e6b3f82298d00b71721",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "24ba0b9c219188bb23d437090792b858f63560519f4362e386275bada8b191c2"
@@ -10450,11 +10536,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "112fffcf104e3920470fe31c32ccb02a1f6f315a72406e6b3f82298d00b71721",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "24ba0b9c219188bb23d437090792b858f63560519f4362e386275bada8b191c2"
@@ -10466,11 +10554,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_10": "146421d4edca9d1b28a4b3b8f495715790657e57c273880fbb57577b36c7a07c",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "112fffcf104e3920470fe31c32ccb02a1f6f315a72406e6b3f82298d00b71721",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "24ba0b9c219188bb23d437090792b858f63560519f4362e386275bada8b191c2"
@@ -10482,11 +10572,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "62a437f1903f6e2a5093d5a4a0a9e6f03c67ec29fb93bc426249089c80c06824",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "f3c046f2ffa2ea3359ac4a243088b861c2d1c8c995c6d6a298c0e8a0e6995f25"
@@ -10498,11 +10590,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "5cb2f1c3233c6c6070f13977a3772aac80d39a87c3d67ad95f6193d02878064d",
         "bb_lower": "112fffcf104e3920470fe31c32ccb02a1f6f315a72406e6b3f82298d00b71721",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "24ba0b9c219188bb23d437090792b858f63560519f4362e386275bada8b191c2"
@@ -10514,11 +10608,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "112fffcf104e3920470fe31c32ccb02a1f6f315a72406e6b3f82298d00b71721",
         "bb_middle": "d6dd440c7da60a8cde62ef530c59b3d70bb9ebc1d30840a8a55a7f02783c36f5",
         "bb_upper": "24ba0b9c219188bb23d437090792b858f63560519f4362e386275bada8b191c2"
@@ -10530,11 +10626,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "62a437f1903f6e2a5093d5a4a0a9e6f03c67ec29fb93bc426249089c80c06824",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "f3c046f2ffa2ea3359ac4a243088b861c2d1c8c995c6d6a298c0e8a0e6995f25"
@@ -10546,11 +10644,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "816052cceaf43fcac238ff8f1f86ebfb0781c5fed1f19144d876d737da7db936",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "5b6d2bf789fc9c6240043064df450da3a08bed981fd47748e8a1add09bf1bc55",
         "bb_lower": "d1d20004305b4caddb35c372ec9e60cdd30e9de918700fd2c150478410e43de9",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "5538bb5a8f51472c20084f74056ba1fbe96811270cb7fee90693e1132a44dbb0"
@@ -10562,11 +10662,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "59bcbcc55b0eefd5644e3653b29a8e373b049924508b30734b249a4c6211eec5",
         "RSI_18": "8efa175bd072ea6c2507a985e39218138d3c17b47c71c839a239a0d5cec5941b",
+        "adx_threshold": "1fcb33d18153bfb64282db4e0f2390c14648aa5c66c69307c27877e34c37f32b",
         "bb_lower": "d1d20004305b4caddb35c372ec9e60cdd30e9de918700fd2c150478410e43de9",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "5538bb5a8f51472c20084f74056ba1fbe96811270cb7fee90693e1132a44dbb0"
@@ -10578,11 +10680,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "01b7bb02d89f51bd9dfba933a3de018b4d2adf30fb71c92a1a45b46633957be8",
         "RSI_14": "8268155c663967ed5f399cd397774ede2e2469dc784b7ded32b51100da174ead",
+        "adx_threshold": "13980cc4757ede086284f92e0db25d288cfd655fb6f2973f3c4b167f316e1031",
         "bb_lower": "d1d20004305b4caddb35c372ec9e60cdd30e9de918700fd2c150478410e43de9",
         "bb_middle": "f7e2aa237a2c1d4fc04fef6db405b498d1638269332a11162ba23fd45cbca366",
         "bb_upper": "5538bb5a8f51472c20084f74056ba1fbe96811270cb7fee90693e1132a44dbb0"
@@ -10594,11 +10698,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "3eeece6a83844d4b2b75ed09821df798945a0b508da402688fea91e325d9a2c6",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "a3080aba6d15b08605fd0b524b7159b3f6fdc45d5a1c1662c03ed27a6c5b4a36"
@@ -10610,11 +10716,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "3eeece6a83844d4b2b75ed09821df798945a0b508da402688fea91e325d9a2c6",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "a3080aba6d15b08605fd0b524b7159b3f6fdc45d5a1c1662c03ed27a6c5b4a36"
@@ -10626,11 +10734,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "88fbe8656cc03d4d8b7d8fb215b80967df61b179b744c93c53230b4003fdaea0",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "ff41939ebfd2ce68b7d27a5b4238f08e42c766eff1a19b7b010f259febeab0ef"
@@ -10642,11 +10752,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "0962c583bbbd751f1f7f0a36dc27e05782e726cbdf93072bbed1b06a2c8e3257",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "622b00bd0f3549dd4b1a6c105eb5ce02833b6f2b8b43dc884e72708f9cd05593"
@@ -10658,11 +10770,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "0962c583bbbd751f1f7f0a36dc27e05782e726cbdf93072bbed1b06a2c8e3257",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "622b00bd0f3549dd4b1a6c105eb5ce02833b6f2b8b43dc884e72708f9cd05593"
@@ -10674,11 +10788,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "0962c583bbbd751f1f7f0a36dc27e05782e726cbdf93072bbed1b06a2c8e3257",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "622b00bd0f3549dd4b1a6c105eb5ce02833b6f2b8b43dc884e72708f9cd05593"
@@ -10690,11 +10806,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "0962c583bbbd751f1f7f0a36dc27e05782e726cbdf93072bbed1b06a2c8e3257",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "622b00bd0f3549dd4b1a6c105eb5ce02833b6f2b8b43dc884e72708f9cd05593"
@@ -10706,11 +10824,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "5b2ff2c594abce9dba4cd536385ccb9657e8204097d2f6ec3a53063e5ee48b56",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "f6a8adb8566b156b3ec2a004d6f369a9250d6d7606200efed30ee90945a616ff"
@@ -10722,11 +10842,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "5b2ff2c594abce9dba4cd536385ccb9657e8204097d2f6ec3a53063e5ee48b56",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "f6a8adb8566b156b3ec2a004d6f369a9250d6d7606200efed30ee90945a616ff"
@@ -10738,11 +10860,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "5b2ff2c594abce9dba4cd536385ccb9657e8204097d2f6ec3a53063e5ee48b56",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "f6a8adb8566b156b3ec2a004d6f369a9250d6d7606200efed30ee90945a616ff"
@@ -10754,11 +10878,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "5b2ff2c594abce9dba4cd536385ccb9657e8204097d2f6ec3a53063e5ee48b56",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "f6a8adb8566b156b3ec2a004d6f369a9250d6d7606200efed30ee90945a616ff"
@@ -10770,11 +10896,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "a3e82354c61af9a3d4823ab9f54895aa75d19b7e2146f550babe162f7204a0c5",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "15bf5d70c14589b2a5b0ba0e67dcceef83266edcec409d34b1c8f89b702ff68e"
@@ -10786,11 +10914,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "3eeece6a83844d4b2b75ed09821df798945a0b508da402688fea91e325d9a2c6",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "a3080aba6d15b08605fd0b524b7159b3f6fdc45d5a1c1662c03ed27a6c5b4a36"
@@ -10802,11 +10932,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "a3e82354c61af9a3d4823ab9f54895aa75d19b7e2146f550babe162f7204a0c5",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "15bf5d70c14589b2a5b0ba0e67dcceef83266edcec409d34b1c8f89b702ff68e"
@@ -10818,11 +10950,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "a3e82354c61af9a3d4823ab9f54895aa75d19b7e2146f550babe162f7204a0c5",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "15bf5d70c14589b2a5b0ba0e67dcceef83266edcec409d34b1c8f89b702ff68e"
@@ -10834,11 +10968,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "a3e82354c61af9a3d4823ab9f54895aa75d19b7e2146f550babe162f7204a0c5",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "15bf5d70c14589b2a5b0ba0e67dcceef83266edcec409d34b1c8f89b702ff68e"
@@ -10850,11 +10986,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "0c87e81704ac8246648020c1adc7c6d2b7b6b1eb7a4f58a092a35957e93f4ba0",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "358aed822f73a4f3dfbdc37b5076e73785b8c83f69f805a3b39c67e4d7531f01"
@@ -10866,11 +11004,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "0c87e81704ac8246648020c1adc7c6d2b7b6b1eb7a4f58a092a35957e93f4ba0",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "358aed822f73a4f3dfbdc37b5076e73785b8c83f69f805a3b39c67e4d7531f01"
@@ -10882,11 +11022,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "0c87e81704ac8246648020c1adc7c6d2b7b6b1eb7a4f58a092a35957e93f4ba0",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "358aed822f73a4f3dfbdc37b5076e73785b8c83f69f805a3b39c67e4d7531f01"
@@ -10898,11 +11040,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "0c87e81704ac8246648020c1adc7c6d2b7b6b1eb7a4f58a092a35957e93f4ba0",
         "bb_middle": "2dce1817448a245521092bdda347cbe1a5e5fb09879a1d67c3321d3f30eb80ad",
         "bb_upper": "358aed822f73a4f3dfbdc37b5076e73785b8c83f69f805a3b39c67e4d7531f01"
@@ -10914,11 +11058,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "7ce74cb5ad86929c34f42fe51b5fc9093354e257f68634e04d65135f789c589f",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "c37f03709e6192b7dc5464b4ec1a9f61454db76d24f29cd303de3d76cc8547cf"
@@ -10930,11 +11076,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "7ce74cb5ad86929c34f42fe51b5fc9093354e257f68634e04d65135f789c589f",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "c37f03709e6192b7dc5464b4ec1a9f61454db76d24f29cd303de3d76cc8547cf"
@@ -10946,11 +11094,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "7ce74cb5ad86929c34f42fe51b5fc9093354e257f68634e04d65135f789c589f",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "c37f03709e6192b7dc5464b4ec1a9f61454db76d24f29cd303de3d76cc8547cf"
@@ -10962,11 +11112,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "3eeece6a83844d4b2b75ed09821df798945a0b508da402688fea91e325d9a2c6",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "a3080aba6d15b08605fd0b524b7159b3f6fdc45d5a1c1662c03ed27a6c5b4a36"
@@ -10978,11 +11130,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "7ce74cb5ad86929c34f42fe51b5fc9093354e257f68634e04d65135f789c589f",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "c37f03709e6192b7dc5464b4ec1a9f61454db76d24f29cd303de3d76cc8547cf"
@@ -10994,11 +11148,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "6ed43f1f48aac58fb0781bd09cc8d5f2631569fafdd28fd62de8db0c5c70c770",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "f5bb52734e2dfbef420da4cf5547f8cf81ff76541497c1dee31fb330b44be568"
@@ -11010,11 +11166,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "6ed43f1f48aac58fb0781bd09cc8d5f2631569fafdd28fd62de8db0c5c70c770",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "f5bb52734e2dfbef420da4cf5547f8cf81ff76541497c1dee31fb330b44be568"
@@ -11026,11 +11184,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "6ed43f1f48aac58fb0781bd09cc8d5f2631569fafdd28fd62de8db0c5c70c770",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "f5bb52734e2dfbef420da4cf5547f8cf81ff76541497c1dee31fb330b44be568"
@@ -11042,11 +11202,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "6ed43f1f48aac58fb0781bd09cc8d5f2631569fafdd28fd62de8db0c5c70c770",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "f5bb52734e2dfbef420da4cf5547f8cf81ff76541497c1dee31fb330b44be568"
@@ -11058,11 +11220,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "c590ab0b53f2fa65a74ef8f1bfb2437f01c7b0b095969c2bdb2881db3ecb7bbc",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "d083ab6c3b1fb85d81a98671cac237c0c87d9b4204e9cf9bc6ce0df8fed273fd"
@@ -11074,11 +11238,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "c590ab0b53f2fa65a74ef8f1bfb2437f01c7b0b095969c2bdb2881db3ecb7bbc",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "d083ab6c3b1fb85d81a98671cac237c0c87d9b4204e9cf9bc6ce0df8fed273fd"
@@ -11090,11 +11256,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "c590ab0b53f2fa65a74ef8f1bfb2437f01c7b0b095969c2bdb2881db3ecb7bbc",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "d083ab6c3b1fb85d81a98671cac237c0c87d9b4204e9cf9bc6ce0df8fed273fd"
@@ -11106,11 +11274,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "c590ab0b53f2fa65a74ef8f1bfb2437f01c7b0b095969c2bdb2881db3ecb7bbc",
         "bb_middle": "4c6c2b3d0c1bed4a932db74cb5e87a958f8c1b7f7a5eac12f93f0a2b428f177f",
         "bb_upper": "d083ab6c3b1fb85d81a98671cac237c0c87d9b4204e9cf9bc6ce0df8fed273fd"
@@ -11122,11 +11292,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "3f4621a34f5de7f92a143f58aec8675c7591df05decf7e306bc265ff2a5097db",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "f9af8f63e0e5b2f8b98d41ac1880fa23b602d9b47d35aa5434269a728b711b40"
@@ -11138,11 +11310,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "3eeece6a83844d4b2b75ed09821df798945a0b508da402688fea91e325d9a2c6",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "a3080aba6d15b08605fd0b524b7159b3f6fdc45d5a1c1662c03ed27a6c5b4a36"
@@ -11154,11 +11328,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "3f4621a34f5de7f92a143f58aec8675c7591df05decf7e306bc265ff2a5097db",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "f9af8f63e0e5b2f8b98d41ac1880fa23b602d9b47d35aa5434269a728b711b40"
@@ -11170,11 +11346,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "3f4621a34f5de7f92a143f58aec8675c7591df05decf7e306bc265ff2a5097db",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "f9af8f63e0e5b2f8b98d41ac1880fa23b602d9b47d35aa5434269a728b711b40"
@@ -11186,11 +11364,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "3f4621a34f5de7f92a143f58aec8675c7591df05decf7e306bc265ff2a5097db",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "f9af8f63e0e5b2f8b98d41ac1880fa23b602d9b47d35aa5434269a728b711b40"
@@ -11202,11 +11382,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "9296ae2c3459dfc3a70244aa3228e4e268a65a510ca807a2cd1321b48835ac10",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "672fff534754a872e7802d8c87acd198626a812f92192a13799964cb173f3739"
@@ -11218,11 +11400,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "9296ae2c3459dfc3a70244aa3228e4e268a65a510ca807a2cd1321b48835ac10",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "672fff534754a872e7802d8c87acd198626a812f92192a13799964cb173f3739"
@@ -11234,11 +11418,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "9296ae2c3459dfc3a70244aa3228e4e268a65a510ca807a2cd1321b48835ac10",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "672fff534754a872e7802d8c87acd198626a812f92192a13799964cb173f3739"
@@ -11250,11 +11436,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "9296ae2c3459dfc3a70244aa3228e4e268a65a510ca807a2cd1321b48835ac10",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "672fff534754a872e7802d8c87acd198626a812f92192a13799964cb173f3739"
@@ -11266,11 +11454,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "0dcb447e5c0a818650b9a4d0826aa665eb947d23a416df1c0cf74a40845b7d7f",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "274daf21545c69a159827d0fae884052763c0f1b7fb1220e00726ed64e8e7eea"
@@ -11282,11 +11472,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "0dcb447e5c0a818650b9a4d0826aa665eb947d23a416df1c0cf74a40845b7d7f",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "274daf21545c69a159827d0fae884052763c0f1b7fb1220e00726ed64e8e7eea"
@@ -11298,11 +11490,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_10": "03d410851c7d30ce4837fd147973745fd30c744450f5248903d690eb078fcbbd",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "0dcb447e5c0a818650b9a4d0826aa665eb947d23a416df1c0cf74a40845b7d7f",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "274daf21545c69a159827d0fae884052763c0f1b7fb1220e00726ed64e8e7eea"
@@ -11314,11 +11508,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "3eeece6a83844d4b2b75ed09821df798945a0b508da402688fea91e325d9a2c6",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "a3080aba6d15b08605fd0b524b7159b3f6fdc45d5a1c1662c03ed27a6c5b4a36"
@@ -11330,11 +11526,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "86ad1b68ffa328489996be8133eceba0c2f6df60b1488112743b0b6aa6815f26",
         "bb_lower": "0dcb447e5c0a818650b9a4d0826aa665eb947d23a416df1c0cf74a40845b7d7f",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "274daf21545c69a159827d0fae884052763c0f1b7fb1220e00726ed64e8e7eea"
@@ -11346,11 +11544,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "0dcb447e5c0a818650b9a4d0826aa665eb947d23a416df1c0cf74a40845b7d7f",
         "bb_middle": "d7e100cfb5355ae6f9d33662ed8dca46c87a456edadba42690097ba6430bff5a",
         "bb_upper": "274daf21545c69a159827d0fae884052763c0f1b7fb1220e00726ed64e8e7eea"
@@ -11362,11 +11562,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "3eeece6a83844d4b2b75ed09821df798945a0b508da402688fea91e325d9a2c6",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "a3080aba6d15b08605fd0b524b7159b3f6fdc45d5a1c1662c03ed27a6c5b4a36"
@@ -11378,11 +11580,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "4f4588f09dc9f08684780a48821bbd1e1825015e0d7198b9fc1f4d771c2168a3",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "5d2ccb0133e882fe9ec7adfb815a393d01e3fc374a131eb4f0b061da8bb91a89",
         "bb_lower": "88fbe8656cc03d4d8b7d8fb215b80967df61b179b744c93c53230b4003fdaea0",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "ff41939ebfd2ce68b7d27a5b4238f08e42c766eff1a19b7b010f259febeab0ef"
@@ -11394,11 +11598,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "dfb056aea249116742b9469d8747308c3d78199985c69cc93b0a25c1b2c360c1",
         "RSI_18": "1269f818f8f8e5edd44573435241617e2f21a2c584bcfdf0983e2c165ef34c87",
+        "adx_threshold": "3b6515638b00450ed5966d6b9e24a21fb46eff42cbe6527a63b51c14cfaf751d",
         "bb_lower": "88fbe8656cc03d4d8b7d8fb215b80967df61b179b744c93c53230b4003fdaea0",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "ff41939ebfd2ce68b7d27a5b4238f08e42c766eff1a19b7b010f259febeab0ef"
@@ -11410,11 +11616,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "5317e5b8bdbccd65ca105c2f9a558313044ca26bcb80fd175074813fd665af36",
         "RSI_14": "0f23790c7c480cba796b9fb1db4c6d774c2cd4f0f1f84f92fd3fb413016c3f6b",
+        "adx_threshold": "468d088d5d8bbb0186bc1ad7965806c4ddc4c7d9349898c5718ccc99aa28faa8",
         "bb_lower": "88fbe8656cc03d4d8b7d8fb215b80967df61b179b744c93c53230b4003fdaea0",
         "bb_middle": "18d9a345728227c4689ba69d4dac81bafe95da51c8082c2672af50bfaf2fd56f",
         "bb_upper": "ff41939ebfd2ce68b7d27a5b4238f08e42c766eff1a19b7b010f259febeab0ef"
@@ -11426,11 +11634,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "2af9aadede2f1dfbc466f7661346c470bd6589272c47feb504921a364e2a2f0c",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "9227a9664c7dcd52abdebad5b9bc7ad92a908db89a13321695e59e2a0052b3c4"
@@ -11442,11 +11652,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "2af9aadede2f1dfbc466f7661346c470bd6589272c47feb504921a364e2a2f0c",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "9227a9664c7dcd52abdebad5b9bc7ad92a908db89a13321695e59e2a0052b3c4"
@@ -11458,11 +11670,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "6ef74b98948a2f41bc0fdbf7c93da8a9a37bf0d2918c3983c082017821d07612",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "22f991c33c958ac4fd9c1914f491b1600b602e57ad9f6fdccdd6238ee7c903d7"
@@ -11474,11 +11688,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "01f611bf2b8f58f1d4d9ff3485ec7c238a59fc71d9f141d3b0c3f4b0b4e63bd8",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "b874c6ff2540013fa76928a7dd3b6ba6cff5dd54925736fe33fadacc2870f4b4"
@@ -11490,11 +11706,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "01f611bf2b8f58f1d4d9ff3485ec7c238a59fc71d9f141d3b0c3f4b0b4e63bd8",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "b874c6ff2540013fa76928a7dd3b6ba6cff5dd54925736fe33fadacc2870f4b4"
@@ -11506,11 +11724,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "01f611bf2b8f58f1d4d9ff3485ec7c238a59fc71d9f141d3b0c3f4b0b4e63bd8",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "b874c6ff2540013fa76928a7dd3b6ba6cff5dd54925736fe33fadacc2870f4b4"
@@ -11522,11 +11742,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "01f611bf2b8f58f1d4d9ff3485ec7c238a59fc71d9f141d3b0c3f4b0b4e63bd8",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "b874c6ff2540013fa76928a7dd3b6ba6cff5dd54925736fe33fadacc2870f4b4"
@@ -11538,11 +11760,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "906b8324a8991cfdd74e36e258addacc02742a9ed8b1c12163a6ffb20117c9aa",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "0cb6f25cdc637cb7448efc5214304b4ae3d056f4c2f28d3ab75c52df36b4118b"
@@ -11554,11 +11778,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "906b8324a8991cfdd74e36e258addacc02742a9ed8b1c12163a6ffb20117c9aa",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "0cb6f25cdc637cb7448efc5214304b4ae3d056f4c2f28d3ab75c52df36b4118b"
@@ -11570,11 +11796,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "906b8324a8991cfdd74e36e258addacc02742a9ed8b1c12163a6ffb20117c9aa",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "0cb6f25cdc637cb7448efc5214304b4ae3d056f4c2f28d3ab75c52df36b4118b"
@@ -11586,11 +11814,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "906b8324a8991cfdd74e36e258addacc02742a9ed8b1c12163a6ffb20117c9aa",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "0cb6f25cdc637cb7448efc5214304b4ae3d056f4c2f28d3ab75c52df36b4118b"
@@ -11602,11 +11832,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "9bad1dc415db79176ecce5b2fc347268c7f3b30499390a1568ec278e704e44e3",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "8332644f74f709e9497327996975b85bbd067f88ce22957163066c3e85b0ca23"
@@ -11618,11 +11850,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "2af9aadede2f1dfbc466f7661346c470bd6589272c47feb504921a364e2a2f0c",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "9227a9664c7dcd52abdebad5b9bc7ad92a908db89a13321695e59e2a0052b3c4"
@@ -11634,11 +11868,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "9bad1dc415db79176ecce5b2fc347268c7f3b30499390a1568ec278e704e44e3",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "8332644f74f709e9497327996975b85bbd067f88ce22957163066c3e85b0ca23"
@@ -11650,11 +11886,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "9bad1dc415db79176ecce5b2fc347268c7f3b30499390a1568ec278e704e44e3",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "8332644f74f709e9497327996975b85bbd067f88ce22957163066c3e85b0ca23"
@@ -11666,11 +11904,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "9bad1dc415db79176ecce5b2fc347268c7f3b30499390a1568ec278e704e44e3",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "8332644f74f709e9497327996975b85bbd067f88ce22957163066c3e85b0ca23"
@@ -11682,11 +11922,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "1e9dd8569a759613aff92ebfe01aa5fc5ea80d2aec0da4cba4135057f542d731",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "b7c50eec7f0620e35d2ab7030fee4d3a3576c15002338e309c282bc4dbfb9892"
@@ -11698,11 +11940,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "1e9dd8569a759613aff92ebfe01aa5fc5ea80d2aec0da4cba4135057f542d731",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "b7c50eec7f0620e35d2ab7030fee4d3a3576c15002338e309c282bc4dbfb9892"
@@ -11714,11 +11958,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "1e9dd8569a759613aff92ebfe01aa5fc5ea80d2aec0da4cba4135057f542d731",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "b7c50eec7f0620e35d2ab7030fee4d3a3576c15002338e309c282bc4dbfb9892"
@@ -11730,11 +11976,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "1e9dd8569a759613aff92ebfe01aa5fc5ea80d2aec0da4cba4135057f542d731",
         "bb_middle": "6e99a3690c8f7e03cfdde4db804fbb4c9cf7c68905c29e03b467b9bf11c6e590",
         "bb_upper": "b7c50eec7f0620e35d2ab7030fee4d3a3576c15002338e309c282bc4dbfb9892"
@@ -11746,11 +11994,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "e0d8c07a71f82b8f33b44cb0cb0423eb05c7166987aaab6505e4f646eb8b4fec",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "f8c8d294d7317e218f0428e889acca33d15b76206d4a383b32fc19f36ca21320"
@@ -11762,11 +12012,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "e0d8c07a71f82b8f33b44cb0cb0423eb05c7166987aaab6505e4f646eb8b4fec",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "f8c8d294d7317e218f0428e889acca33d15b76206d4a383b32fc19f36ca21320"
@@ -11778,11 +12030,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "e0d8c07a71f82b8f33b44cb0cb0423eb05c7166987aaab6505e4f646eb8b4fec",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "f8c8d294d7317e218f0428e889acca33d15b76206d4a383b32fc19f36ca21320"
@@ -11794,11 +12048,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "2af9aadede2f1dfbc466f7661346c470bd6589272c47feb504921a364e2a2f0c",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "9227a9664c7dcd52abdebad5b9bc7ad92a908db89a13321695e59e2a0052b3c4"
@@ -11810,11 +12066,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "e0d8c07a71f82b8f33b44cb0cb0423eb05c7166987aaab6505e4f646eb8b4fec",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "f8c8d294d7317e218f0428e889acca33d15b76206d4a383b32fc19f36ca21320"
@@ -11826,11 +12084,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "4c5724ce32d4ca9e4102d04efc693c01bd80842cf21ce07c76bf32184381161f",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "1b37d669b2bf8708fe3bf1fcb9b6888d398d9f655adcd5d0a73c3b965058509a"
@@ -11842,11 +12102,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "4c5724ce32d4ca9e4102d04efc693c01bd80842cf21ce07c76bf32184381161f",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "1b37d669b2bf8708fe3bf1fcb9b6888d398d9f655adcd5d0a73c3b965058509a"
@@ -11858,11 +12120,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "4c5724ce32d4ca9e4102d04efc693c01bd80842cf21ce07c76bf32184381161f",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "1b37d669b2bf8708fe3bf1fcb9b6888d398d9f655adcd5d0a73c3b965058509a"
@@ -11874,11 +12138,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "4c5724ce32d4ca9e4102d04efc693c01bd80842cf21ce07c76bf32184381161f",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "1b37d669b2bf8708fe3bf1fcb9b6888d398d9f655adcd5d0a73c3b965058509a"
@@ -11890,11 +12156,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "2dc58912765af2500089d8f417bb043c23a7e4b7e203bb1b23d74155de87fdf7",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "e20f649f908b5c788e1a8b60f2aba7e9938428bb2bcc60b270b40c0030fc0cdc"
@@ -11906,11 +12174,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "2dc58912765af2500089d8f417bb043c23a7e4b7e203bb1b23d74155de87fdf7",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "e20f649f908b5c788e1a8b60f2aba7e9938428bb2bcc60b270b40c0030fc0cdc"
@@ -11922,11 +12192,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "2dc58912765af2500089d8f417bb043c23a7e4b7e203bb1b23d74155de87fdf7",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "e20f649f908b5c788e1a8b60f2aba7e9938428bb2bcc60b270b40c0030fc0cdc"
@@ -11938,11 +12210,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "2dc58912765af2500089d8f417bb043c23a7e4b7e203bb1b23d74155de87fdf7",
         "bb_middle": "7ffa8c236c9f9b1e081b309ac65060e6f69194a4e741dea38954a2297c7a0e96",
         "bb_upper": "e20f649f908b5c788e1a8b60f2aba7e9938428bb2bcc60b270b40c0030fc0cdc"
@@ -11954,11 +12228,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "f4c6108eaaf04e4e9390c0af0e6ab550dd3d7f72cea4a8734360a520156b7c98",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "0420d9ec7e5ad8ac7827854e79bf210cea657c6f27d8381cb9b25fd77531071b"
@@ -11970,11 +12246,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "2af9aadede2f1dfbc466f7661346c470bd6589272c47feb504921a364e2a2f0c",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "9227a9664c7dcd52abdebad5b9bc7ad92a908db89a13321695e59e2a0052b3c4"
@@ -11986,11 +12264,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "f4c6108eaaf04e4e9390c0af0e6ab550dd3d7f72cea4a8734360a520156b7c98",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "0420d9ec7e5ad8ac7827854e79bf210cea657c6f27d8381cb9b25fd77531071b"
@@ -12002,11 +12282,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "f4c6108eaaf04e4e9390c0af0e6ab550dd3d7f72cea4a8734360a520156b7c98",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "0420d9ec7e5ad8ac7827854e79bf210cea657c6f27d8381cb9b25fd77531071b"
@@ -12018,11 +12300,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "f4c6108eaaf04e4e9390c0af0e6ab550dd3d7f72cea4a8734360a520156b7c98",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "0420d9ec7e5ad8ac7827854e79bf210cea657c6f27d8381cb9b25fd77531071b"
@@ -12034,11 +12318,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "be890a1df4b468b30ed97c477a16235dc4e02f2dd6fbccf8fa815281852c969c",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "5786cb9ab987921a01870e6ad83e41c46d8f9407835571a5c8227105bd627acd"
@@ -12050,11 +12336,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "be890a1df4b468b30ed97c477a16235dc4e02f2dd6fbccf8fa815281852c969c",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "5786cb9ab987921a01870e6ad83e41c46d8f9407835571a5c8227105bd627acd"
@@ -12066,11 +12354,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "be890a1df4b468b30ed97c477a16235dc4e02f2dd6fbccf8fa815281852c969c",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "5786cb9ab987921a01870e6ad83e41c46d8f9407835571a5c8227105bd627acd"
@@ -12082,11 +12372,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "be890a1df4b468b30ed97c477a16235dc4e02f2dd6fbccf8fa815281852c969c",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "5786cb9ab987921a01870e6ad83e41c46d8f9407835571a5c8227105bd627acd"
@@ -12098,11 +12390,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "382d111d790a661bd878fe6a0049f1d701199dd78ed40e2dde83e05156d7b6fb",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "d9fe89e8c2cc1e7eeb552d080fae0169d81b41bcc47be2166c2c01cf262d2712"
@@ -12114,11 +12408,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "382d111d790a661bd878fe6a0049f1d701199dd78ed40e2dde83e05156d7b6fb",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "d9fe89e8c2cc1e7eeb552d080fae0169d81b41bcc47be2166c2c01cf262d2712"
@@ -12130,11 +12426,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_10",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_10": "abde2cca52ab13094dfff59fba053ae08b42f8ba8b8787442bd80d213e99c10e",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "382d111d790a661bd878fe6a0049f1d701199dd78ed40e2dde83e05156d7b6fb",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "d9fe89e8c2cc1e7eeb552d080fae0169d81b41bcc47be2166c2c01cf262d2712"
@@ -12146,11 +12444,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "2af9aadede2f1dfbc466f7661346c470bd6589272c47feb504921a364e2a2f0c",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "9227a9664c7dcd52abdebad5b9bc7ad92a908db89a13321695e59e2a0052b3c4"
@@ -12162,11 +12462,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "5bca3a825a57513f92df23273a5ea0ff5a869f8c81cf5779992ed2ff0a3682ff",
         "bb_lower": "382d111d790a661bd878fe6a0049f1d701199dd78ed40e2dde83e05156d7b6fb",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "d9fe89e8c2cc1e7eeb552d080fae0169d81b41bcc47be2166c2c01cf262d2712"
@@ -12178,11 +12480,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "382d111d790a661bd878fe6a0049f1d701199dd78ed40e2dde83e05156d7b6fb",
         "bb_middle": "66e420878d661b2339c1b3f2e25ad845bc28ddfa72f243168c4ebe5dfc7a0d04",
         "bb_upper": "d9fe89e8c2cc1e7eeb552d080fae0169d81b41bcc47be2166c2c01cf262d2712"
@@ -12194,11 +12498,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "2af9aadede2f1dfbc466f7661346c470bd6589272c47feb504921a364e2a2f0c",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "9227a9664c7dcd52abdebad5b9bc7ad92a908db89a13321695e59e2a0052b3c4"
@@ -12210,11 +12516,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_14"
+        "ADX_14",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_14": "7ff8d3ad2a05e23d20ad5face3b9d71dfbe229398e156aea7fe38a82016ad608",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "ad5b7245878da1015feaea6c3208f460d8bb993ece6cd12da595f173b211dca2",
         "bb_lower": "6ef74b98948a2f41bc0fdbf7c93da8a9a37bf0d2918c3983c082017821d07612",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "22f991c33c958ac4fd9c1914f491b1600b602e57ad9f6fdccdd6238ee7c903d7"
@@ -12226,11 +12534,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_18",
-        "ADX_18"
+        "ADX_18",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_18": "75dfdec720a439fd0422909f8ba759c604b2ebbe1a069563ef15eee308d2bf8a",
         "RSI_18": "c2cff24b0807f1afd6eee5fff339dc30614c5cfe6717c4839e6ca71dcf5743b2",
+        "adx_threshold": "29f327489bb38ef0c93823627be727bd98e606477f5935511360b89ccc782a57",
         "bb_lower": "6ef74b98948a2f41bc0fdbf7c93da8a9a37bf0d2918c3983c082017821d07612",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "22f991c33c958ac4fd9c1914f491b1600b602e57ad9f6fdccdd6238ee7c903d7"
@@ -12242,11 +12552,13 @@
         "bb_middle",
         "bb_lower",
         "RSI_14",
-        "ADX_10"
+        "ADX_10",
+        "adx_threshold"
       ],
       "sha256": {
         "ADX_10": "1050925034852068b70e61085778c52df513c7ab73ebea74c36c029e1ab16fd3",
         "RSI_14": "c98cac000f650d7481b19cb1cb531dffc99a9ca4defc3731ca2a1bd752e4a89d",
+        "adx_threshold": "b3ef8a3c5d38f1d3ab6a22e3f7f93baa749abab3102b8ee163a2991ebc5fc154",
         "bb_lower": "6ef74b98948a2f41bc0fdbf7c93da8a9a37bf0d2918c3983c082017821d07612",
         "bb_middle": "c7c965c6dfa44af8153cfa6a8910b513b1c43e3b1b4403c97fa793549aecb208",
         "bb_upper": "22f991c33c958ac4fd9c1914f491b1600b602e57ad9f6fdccdd6238ee7c903d7"

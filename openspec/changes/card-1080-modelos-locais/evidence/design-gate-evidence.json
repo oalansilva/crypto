@@ -1,0 +1,14 @@
+{
+  "source": "/home/ubuntu/.codex/sessions/2026/10/08/rollout-2026-10-08T20-24-07-01a11d30-021c-7b21-ab05-28808c264476.jsonl",
+  "line": 731,
+  "timestamp": "2026-10-08T21:03:50.521Z",
+  "session_id": "01a11d30-021c-7b21-ab05-28808c264476",
+  "turn_id": "01a11d54-1dd3-7e33-ba7c-8c5447e1082a",
+  "observed_transition": {
+    "result": "transition",
+    "state": "Pronto para Dev",
+    "to": "Em desenvolvimento",
+    "reason": "T8"
+  },
+  "meaning": "Board Pronto para Dev observed by successful T8 after human Design gate; no separate actor inference."
+}

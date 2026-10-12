@@ -23,6 +23,7 @@ from app.models_discovery import (
     DiscoveryResult,
     DiscoverySweep,
 )
+from app.metrics.backtest_execution_costs import fees_slippage_record
 from app.metrics.performance import CAGR_ABS_CEILING
 from app.metrics.risk_adjusted import CALMAR_ABS_CEILING
 from app.services.discovery_service import (
@@ -49,13 +50,20 @@ def resolve_optimizer_date_range(
         return start_date, end_date
 
     period_type = snapshot.get("period_type")
-    if period_type not in {"6m", "2y"}:
-        return None, None
-
     from dateutil.relativedelta import relativedelta
 
     end = (now or datetime.now(timezone.utc)).date()
-    delta = relativedelta(months=6) if period_type == "6m" else relativedelta(years=2)
+    deltas: dict[str, relativedelta] = {
+        "15d": relativedelta(days=15),
+        "1m": relativedelta(months=1),
+        "3m": relativedelta(months=3),
+        "6m": relativedelta(months=6),
+        "1y": relativedelta(years=1),
+        "2y": relativedelta(years=2),
+    }
+    delta = deltas.get(period_type)
+    if delta is None:
+        return None, None
     return (end - delta).isoformat(), end.isoformat()
 
 
@@ -344,7 +352,7 @@ def run_combination(
         expected_candles=expected_candles,
         observed_valid_candles=observed_valid_candles,
         coverage=coverage,
-        fees_slippage={"fees": 0.001, "slippage": 0.001},
+        fees_slippage=fees_slippage_record(combination.timeframe),
         metrics=metrics_snapshot,
     )
 
@@ -398,7 +406,7 @@ def run_combination(
             expected_candles=expected_candles,
             observed_valid_candles=observed_valid_candles,
             coverage=coverage,
-            fees_slippage={"fees": 0.001, "slippage": 0.001},
+            fees_slippage=fees_slippage_record(combination.timeframe),
             metrics=persisted_metrics,
             trades_count=trades_count,
             win_rate=best_metrics.get("win_rate"),

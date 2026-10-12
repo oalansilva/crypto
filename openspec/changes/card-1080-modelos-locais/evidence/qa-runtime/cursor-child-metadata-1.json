@@ -1,0 +1,12 @@
+{
+  "child_id": "0e8c7336-e08f-4f82-8a35-fd1bd646ff2d",
+  "database": "/home/ubuntu/.cursor/chats/7a64586a82682acacccf753f9de6e902/0e8c7336-e08f-4f82-8a35-fd1bd646ff2d/store.db",
+  "records": [
+    {
+      "blob_id": "0c7587371580dd3967daf14a6ac7863b81a6e4bc0983828877f5a231378447d9",
+      "role": "assistant",
+      "observed_model": "composer-2.5",
+      "blob_sha256": "0c7587371580dd3967daf14a6ac7863b81a6e4bc0983828877f5a231378447d9"
+    }
+  ]
+}

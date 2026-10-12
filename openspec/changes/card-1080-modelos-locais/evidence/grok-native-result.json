@@ -1,0 +1,10 @@
+{
+  "client": "grok",
+  "version": "1.0.25 (f7e67d6988e2)",
+  "requested_capture": "grok-native-birth.json",
+  "exit_code": 1,
+  "error": "Not signed in",
+  "native_child_attempt": "not_executed",
+  "observed_model": "unavailable",
+  "successful_coverage": false
+}

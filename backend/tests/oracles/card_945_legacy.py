@@ -23,6 +23,11 @@ import numpy as np
 import pandas as pd
 import talib
 
+from app.metrics.backtest_execution_costs import (
+    long_trade_profit_frac,
+    short_trade_profit_frac,
+)
+
 from app.strategies.combos.helpers import HELPER_FUNCTIONS
 from src.data.incremental_loader import IncrementalLoader
 
@@ -91,11 +96,23 @@ class LegacyComboStrategy:
             return default
 
     @staticmethod
-    def _coerce_float(value: Any, default: float = 0.0) -> float:
+    def _coerce_float(value: Any, default: float | None = 0.0) -> float | None:
+        if value is None:
+            if default is None:
+                return None
+            try:
+                return float(default)
+            except (TypeError, ValueError):
+                return None
         try:
             return float(value)
-        except Exception:
-            return float(default)
+        except (TypeError, ValueError):
+            if default is None:
+                return None
+            try:
+                return float(default)
+            except (TypeError, ValueError):
+                return None
 
     @staticmethod
     def _required_columns(indicator: Dict[str, Any]) -> list[str]:
@@ -154,6 +171,26 @@ class LegacyComboStrategy:
             if length is None:
                 return []
             return [alias if alias else f"VOL_SMA_{length}"]
+        if ind_type == "donchian":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            alias_prefix = alias if alias else "DON"
+            return [
+                f"{alias_prefix}_upper",
+                f"{alias_prefix}_middle",
+                f"{alias_prefix}_lower",
+            ]
+        if ind_type == "kc":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            alias_prefix = alias if alias else "KC"
+            return [
+                f"{alias_prefix}_upper",
+                f"{alias_prefix}_middle",
+                f"{alias_prefix}_lower",
+            ]
         if alias:
             return [alias]
         return []
@@ -295,7 +332,14 @@ class LegacyComboStrategy:
                     if length is None:
                         raise RuntimeError("Invalid length for SMA")
                     col_name = alias if alias else f"SMA_{length}"
-                    df[col_name] = talib.SMA(df["close"], timeperiod=length)
+                    sma_series = talib.SMA(df["close"], timeperiod=length)
+                    df[col_name] = sma_series
+                    raw_pullback = params.get("pullback_pct")
+                    pullback_pct = (
+                        self._coerce_float(raw_pullback) if raw_pullback is not None else None
+                    )
+                    if pullback_pct is not None and alias:
+                        df[f"{alias}_pullback"] = sma_series * (1.0 + float(pullback_pct) / 100.0)
 
                 elif ind_type == "rsi":
                     length = self._coerce_int(params.get("length", 14), default=14)
@@ -306,6 +350,12 @@ class LegacyComboStrategy:
                     df[col_name] = rsi_series
                     if alias and alias != col_name:
                         df[alias] = rsi_series
+                    oversold = self._coerce_float(params.get("oversold"), default=None)
+                    if oversold is not None:
+                        df["rsi_oversold"] = float(oversold)
+                    overbought = self._coerce_float(params.get("overbought"), default=None)
+                    if overbought is not None:
+                        df["rsi_overbought"] = float(overbought)
 
                 elif ind_type == "macd":
                     fast = self._coerce_int(params.get("fast", 12), default=12)
@@ -366,6 +416,9 @@ class LegacyComboStrategy:
                     # Support stable alias when provided (e.g. "adx")
                     if alias and alias != col_name:
                         df[alias] = df[col_name]
+                    threshold = self._coerce_float(params.get("threshold"), default=None)
+                    if threshold is not None:
+                        df["adx_threshold"] = float(threshold)
 
                 elif ind_type == "roc":
                     length = self._coerce_int(params.get("length", 20), default=20)
@@ -382,7 +435,11 @@ class LegacyComboStrategy:
                     if length is None:
                         raise RuntimeError("Invalid length for VOLUME_SMA")
                     col_name = alias if alias else f"VOL_SMA_{length}"
-                    df[col_name] = talib.SMA(df["volume"], timeperiod=length)
+                    vol_avg = talib.SMA(df["volume"], timeperiod=length)
+                    multiplier = self._coerce_float(params.get("multiplier"), default=None)
+                    if multiplier is not None:
+                        vol_avg = vol_avg * float(multiplier)
+                    df[col_name] = vol_avg
 
                 else:
                     raise RuntimeError(
@@ -824,7 +881,11 @@ TRADING_FEE = 0.00075  # Binance 0.075%
 
 
 def simulate_execution_with_15m(
-    df_daily_signals: pd.DataFrame, df_15m: pd.DataFrame, stop_loss: float, direction: str = "long"
+    df_daily_signals: pd.DataFrame,
+    df_15m: pd.DataFrame,
+    stop_loss: float,
+    direction: str = "long",
+    slippage: float = 0.0,
 ) -> List[Dict]:
     """
     Simulate trade execution using 15-minute candles for realistic stop/target validation.
@@ -942,13 +1003,11 @@ def simulate_execution_with_15m(
 
         last_exit_time = final_exit_time
         if is_short:
-            profit = (
-                entry_price * (1 - TRADING_FEE) - float(final_exit_price) * (1 + TRADING_FEE)
-            ) / (entry_price * (1 - TRADING_FEE))
+            profit = short_trade_profit_frac(
+                entry_price, float(final_exit_price), slippage=slippage
+            )
         else:
-            profit = (
-                (final_exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-            ) / (entry_price * (1 + TRADING_FEE))
+            profit = long_trade_profit_frac(entry_price, float(final_exit_price), slippage=slippage)
 
         signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
         trades.append(
@@ -969,7 +1028,9 @@ def simulate_execution_with_15m(
     return trades
 
 
-def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
+def extract_trades_from_signals(
+    df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
+):
     """
     Extract trades from signals with consistent logic:
     - Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
@@ -1006,14 +1067,13 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: st
                 position["exit_time"] = idx.isoformat()
                 position["exit_price"] = exact_stop_price
                 if is_short:
-                    # Short PnL: sold at entry*(1-fee), buy back at exit*(1+fee); profit when exit < entry
-                    position["profit"] = (
-                        entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)
-                    ) / (entry_price * (1 - TRADING_FEE))
+                    position["profit"] = short_trade_profit_frac(
+                        entry_price, exact_stop_price, slippage=slippage
+                    )
                 else:
-                    position["profit"] = (
-                        (exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-                    ) / (entry_price * (1 + TRADING_FEE))
+                    position["profit"] = long_trade_profit_frac(
+                        entry_price, exact_stop_price, slippage=slippage
+                    )
                 position["exit_reason"] = "stop_loss"
                 position["signal_type"] = "Stop"
                 trades.append(position)
@@ -1034,13 +1094,13 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: st
             position["exit_time"] = idx.isoformat()
             position["exit_price"] = exit_price
             if is_short:
-                position["profit"] = (
-                    entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)
-                ) / (entry_price * (1 - TRADING_FEE))
+                position["profit"] = short_trade_profit_frac(
+                    entry_price, exit_price, slippage=slippage
+                )
             else:
-                position["profit"] = (
-                    (exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-                ) / (entry_price * (1 + TRADING_FEE))
+                position["profit"] = long_trade_profit_frac(
+                    entry_price, exit_price, slippage=slippage
+                )
             position["exit_reason"] = "signal"
             position["signal_type"] = "Close entry(s) order..."
             trades.append(position)
@@ -1059,6 +1119,7 @@ def extract_trades_with_mode(
     df_15m_cache: Optional[pd.DataFrame] = None,
     direction: str = "long",
     return_mode: bool = False,
+    slippage: float = 0.0,
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
@@ -1078,7 +1139,7 @@ def extract_trades_with_mode(
     df_exec = df_with_signals.copy()
 
     if not deep_backtest:
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
     logger = logging.getLogger(__name__)
@@ -1087,7 +1148,7 @@ def extract_trades_with_mode(
         logger.warning(
             "Deep Backtesting requires symbol and date range. Falling back to fast mode."
         )
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
     try:
@@ -1107,7 +1168,7 @@ def extract_trades_with_mode(
         if df_15m.empty:
             if df_15m_cache is None:  # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
             return (trades, "fast_1d") if return_mode else trades
 
         # Coverage guard: we need 15m for the current day of each trade to simulate stop/target correctly.
@@ -1144,24 +1205,28 @@ def extract_trades_with_mode(
                         str(intraday_start),
                         str(intraday_end),
                     )
-                trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+                trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
                 return (trades, "fast_1d") if return_mode else trades
         except Exception:
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
             return (trades, "fast_1d") if return_mode else trades
 
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
 
         trades = simulate_execution_with_15m(
-            df_daily_signals=df_exec, df_15m=df_15m, stop_loss=stop_loss, direction=direction
+            df_daily_signals=df_exec,
+            df_15m=df_15m,
+            stop_loss=stop_loss,
+            direction=direction,
+            slippage=slippage,
         )
         return (trades, "deep_15m") if return_mode else trades
 
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
 

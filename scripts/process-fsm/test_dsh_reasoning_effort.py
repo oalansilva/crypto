@@ -419,7 +419,8 @@ process.stdout.write(JSON.stringify({{ applySpawn, applyNext, grill, grillNext }
     proc = _node(code)
     assert proc.returncode == 0, proc.stderr
     data = json.loads(proc.stdout)
-    assert data["applyNext"] is True
+    assert data["applyNext"] is False
+    assert "reason=model_selection" in data["applySpawn"]["reason"]
     assert data["applySpawn"]["kind"] != "deny" or "dsh_reasoning_effort_spawn" not in (
         data["applySpawn"].get("reason") or ""
     )

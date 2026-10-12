@@ -10,6 +10,15 @@ import {
   ACTIVE_RESTORE_BACKOFF_MS,
   ACTIVE_RESTORE_MAX_ATTEMPTS,
 } from '../lib/discoveryActiveRestoreConfig'
+import {
+  customPeriodImpediments,
+  DISCOVERY_DEFAULT_PERIOD,
+  isPeriodKey,
+  PERIOD_OPTIONS,
+  periodDisplayLabel,
+  periodPayloadForApi,
+  type PeriodKey,
+} from '../lib/sweepPeriod'
 import { formatCompoundReturn, type CompoundReturnSource } from '../lib/compoundReturn'
 import { SelectionWorkbench } from '../components/SelectionWorkbench'
 import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
@@ -217,6 +226,16 @@ function fmtPct(v: number | null | undefined): string {
   const percentage = Math.abs(v) <= 1 ? v * 100 : v
   return `${percentage.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
 }
+
+const DISCOVERY_SWING_TIMEFRAME_OPTIONS: { id: string; label: string }[] = [
+  { id: '15m', label: '15 minutos' },
+  { id: '1h', label: '1 hora' },
+  { id: '4h', label: '4 horas' },
+  { id: '1d', label: '1 dia' },
+]
+
+const DISCOVERY_COST_NOTE =
+  'taxa 0,075% · slippage do timeframe (0,02% em 4h e 1d · 0,03% em 1h · 0,05% em 15m) · sem campo para alterar'
 function compoundSource(row: LeaderboardRow): CompoundReturnSource {
   const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics : null
   return {
@@ -339,7 +358,9 @@ export function DiscoveryPage() {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
   const [timeframes, setTimeframes] = useState<string[]>(['1d'])
   const [directions, setDirections] = useState<string[]>(['long'])
-  const [period, setPeriod] = useState<'6m' | '2y' | 'all'>('all')
+  const [period, setPeriod] = useState<PeriodKey>(DISCOVERY_DEFAULT_PERIOD)
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
   const [draftMetric, setDraftMetric] = useState<Metric>('calmar_ratio')
   const [metric, setMetric] = useState<Metric>('calmar_ratio')
   // Workbench
@@ -516,8 +537,15 @@ export function DiscoveryPage() {
     setTimeframes(axes.timeframes?.length ? axes.timeframes : [])
     setDirections(axes.directions?.length ? axes.directions : ['long'])
     const periodType = snapshot.period_type
-    if (periodType === '6m' || periodType === '2y' || periodType === 'all') {
+    if (isPeriodKey(periodType)) {
       setPeriod(periodType)
+      if (periodType === 'custom') {
+        setCustomStartDate(snapshot.start_date ?? '')
+        setCustomEndDate(snapshot.end_date ?? '')
+      } else {
+        setCustomStartDate('')
+        setCustomEndDate('')
+      }
     }
     setPreflight(snapshot)
     setDraftFrozen(true)
@@ -545,7 +573,14 @@ export function DiscoveryPage() {
   const runPreflight = useCallback(async () => {
     if (recoveryStatus !== 'ready' || draftFrozen) return
     setStartError(null)
-    if (selectedTemplates.length === 0 || selectedSymbols.length === 0 || timeframes.length === 0 || directions.length === 0) {
+    const periodBlocked = customPeriodImpediments(period, customStartDate, customEndDate)
+    if (
+      selectedTemplates.length === 0 ||
+      selectedSymbols.length === 0 ||
+      timeframes.length === 0 ||
+      directions.length === 0 ||
+      periodBlocked.length > 0
+    ) {
       setPreflight(null)
       setSnapshotStale(false)
       return
@@ -562,7 +597,7 @@ export function DiscoveryPage() {
           symbols: selectedSymbols,
           timeframes,
           directions,
-          period_type: period,
+          ...periodPayloadForApi(period, customStartDate, customEndDate),
         }),
       })
       const data = await res.json()
@@ -578,7 +613,17 @@ export function DiscoveryPage() {
     } finally {
       setPreflightLoading(false)
     }
-  }, [draftFrozen, recoveryStatus, selectedTemplates, selectedSymbols, timeframes, directions, period])
+  }, [
+    customEndDate,
+    customStartDate,
+    draftFrozen,
+    recoveryStatus,
+    selectedTemplates,
+    selectedSymbols,
+    timeframes,
+    directions,
+    period,
+  ])
 
   useEffect(() => {
     if (recoveryStatus !== 'ready' || draftFrozen) return
@@ -587,7 +632,17 @@ export function DiscoveryPage() {
     return () => {
       if (preflightTimer.current !== null) window.clearTimeout(preflightTimer.current)
     }
-  }, [selectedTemplates, selectedSymbols, timeframes, directions, period, draftFrozen, runPreflight])
+  }, [
+    customEndDate,
+    customStartDate,
+    selectedTemplates,
+    selectedSymbols,
+    timeframes,
+    directions,
+    period,
+    draftFrozen,
+    runPreflight,
+  ])
 
   const axisCount = [
     ...(committedSelection.templates.mode === 'all'
@@ -644,8 +699,10 @@ export function DiscoveryPage() {
   const impediments: string[] = []
   if (selectedTemplates.length === 0) impediments.push('Escolha ao menos 1 template.')
   if (selectedSymbols.length === 0) impediments.push('Escolha ao menos 1 símbolo.')
-  if (timeframes.length === 0) impediments.push('Escolha 1 timeframe (4h ou 1d).')
+  if (timeframes.length === 0) impediments.push('Escolha 1 timeframe (4h, 1h, 15m ou 1d).')
   if (directions.length === 0) impediments.push('Escolha a direção Long.')
+  impediments.push(...customPeriodImpediments(period, customStartDate, customEndDate))
+  if (preflight?.errors?.period) impediments.push(preflight.errors.period)
   if (overLimit) {
     impediments.push(
       `Reduza o escopo: ${axisCount} combinações passam do limite de ${preflight?.limits.max_total ?? '—'}.`,
@@ -745,7 +802,7 @@ export function DiscoveryPage() {
           symbols: selectedSymbols,
           timeframes,
           directions,
-          period_type: period,
+          ...periodPayloadForApi(period, customStartDate, customEndDate),
           snapshot_token: preflight.snapshot_token,
           snapshot_hash: preflight.snapshot_hash,
           idempotency_key: draftKey,
@@ -1138,6 +1195,9 @@ export function DiscoveryPage() {
     setSelectedSymbols([])
     setCommittedSelection(makeEmptySelection())
     setTimeframes(['1d'])
+    setPeriod(DISCOVERY_DEFAULT_PERIOD)
+    setCustomStartDate('')
+    setCustomEndDate('')
     setPreflight(null)
     setSnapshotStale(false)
     setStartError(null)
@@ -1473,7 +1533,7 @@ export function DiscoveryPage() {
       start: fmtDate(row.start_at),
       end: fmtDate(row.end_at),
       candles: `${row.observed_valid_candles ?? '—'}/${row.expected_candles ?? '—'} candles ${row.candle_source ?? '—'}${row.candle_version ? ` v${row.candle_version}` : ''}`,
-      fees: fee != null ? `fees ${fmtPct(fee)}` : '',
+      fees: fee != null ? `taxa ${fmtPct(fee)}` : '',
       slippage: slippage != null ? `slippage ${fmtPct(slippage)}` : '',
     }
   }, [rows])
@@ -1487,7 +1547,9 @@ export function DiscoveryPage() {
     return merged.length ? merged : symbols
   }, [preflight, viewSweep, rows, symbols])
   const activeSnapshotHash = activeSweep?.snapshot?.snapshot_hash ?? preflight?.snapshot_hash ?? null
-  const periodLabel = { '6m': '6 meses', '2y': '2 anos', all: 'Todo histórico' }[period]
+  const periodLabel = periodDisplayLabel(period)
+  const periodSummary =
+    preflightWindow.length > 0 ? `${periodLabel}${preflightWindow}` : periodLabel
 
   // Card 852: bloco inline por eixo (busca + marcar/desmarcar, sem modal).
   const renderInlineAxis = (axis: 'templates' | 'symbols') => {
@@ -1561,7 +1623,7 @@ export function DiscoveryPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Descoberta de estratégias swing</h1>
             <p className="mt-2 max-w-[72ch] text-sm text-[var(--text-tertiary)]">
-              Compare templates em 4h e 1d. Preflight, ranking e promoção usam evidência histórica;
+              Compare templates em 4h, 1h, 15m e 1d. Preflight, ranking e promoção usam evidência histórica;
               nenhum candidato é salvo sem revisão.
             </p>
           </div>
@@ -2159,22 +2221,22 @@ export function DiscoveryPage() {
               <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
                 <legend className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Timeframes swing</legend>
                 <div className="grid grid-cols-2 gap-2">
-                  {['4h', '1d'].map((tf) => (
-                    <label key={tf} className="relative">
+                  {DISCOVERY_SWING_TIMEFRAME_OPTIONS.map(({ id, label }) => (
+                    <label key={id} className="relative" data-testid={`timeframe-${id}`}>
                       <input
                         type="checkbox"
                         className="absolute h-0 w-0 opacity-0"
-                        checked={timeframes.includes(tf)}
-                        onChange={() => toggleList(timeframes, setTimeframes, tf)}
+                        checked={timeframes.includes(id)}
+                        onChange={() => toggleList(timeframes, setTimeframes, id)}
                       />
                       <span
                         className={`flex min-h-[44px] items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold ${
-                          timeframes.includes(tf)
+                          timeframes.includes(id)
                             ? 'border-[rgba(252,213,53,0.5)] bg-[rgba(252,213,53,0.1)] text-[var(--accent-primary)]'
                             : 'border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)]'
                         }`}
                       >
-                        {tf === '4h' ? '4 horas' : '1 dia'}
+                        {label}
                       </span>
                     </label>
                   ))}
@@ -2212,20 +2274,28 @@ export function DiscoveryPage() {
               </fieldset>
 
               {/* Período + Ranking */}
-              <label className="block">
-                <span className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Período histórico</span>
-                <select
-                  value={period}
-                  disabled={draftFrozen}
-                  onChange={(e) => setPeriod(e.target.value as '6m' | '2y' | 'all')}
-                  className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
-                >
-                  <option value="all">Todo o histórico</option>
-                  <option value="2y">Últimos 2 anos</option>
-                  <option value="6m">Últimos 6 meses</option>
-                </select>
-              </label>
-              <label className="block">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block min-w-0">
+                  <span className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Período histórico</span>
+                  <select
+                    value={period}
+                    disabled={draftFrozen}
+                    data-testid="sel-period"
+                    aria-label="Período histórico"
+                    onChange={(e) => {
+                      const next = e.target.value
+                      if (isPeriodKey(next)) setPeriod(next)
+                    }}
+                    className="w-full min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                  >
+                    {PERIOD_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block min-w-0">
                 <span className="mb-2 block text-[13px] font-semibold text-[var(--text-secondary)]">Ranking principal</span>
                 <select
                   value={draftMetric}
@@ -2236,7 +2306,36 @@ export function DiscoveryPage() {
                   <option value="calmar_ratio">Calmar (recomendado)</option>
                   <option value="delta_cagr_vs_bh">CAGR vs Buy &amp; Hold</option>
                 </select>
-              </label>
+                </label>
+              </div>
+              {period === 'custom' ? (
+                <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <label className="block min-w-0">
+                    <span className="mb-2 block text-xs font-semibold text-[var(--text-secondary)]">Data Inicial</span>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      disabled={draftFrozen}
+                      data-testid="date-start"
+                      aria-label="Data Inicial"
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-full min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                    />
+                  </label>
+                  <label className="block min-w-0">
+                    <span className="mb-2 block text-xs font-semibold text-[var(--text-secondary)]">Data Final</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      disabled={draftFrozen}
+                      data-testid="date-end"
+                      aria-label="Data Final"
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-full min-h-[44px] rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                    />
+                  </label>
+                </div>
+              ) : null}
             </div>
           </article>
 
@@ -2282,6 +2381,12 @@ export function DiscoveryPage() {
                       <b>{axisCount} combinações</b> · — · {periodLabel}
                     </>
                   )}
+                </p>
+                <p
+                  className="mt-3 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5 text-[12px] text-[var(--text-tertiary)]"
+                  data-testid="cost-note"
+                >
+                  {DISCOVERY_COST_NOTE}
                 </p>
                 {impediments.length > 0 && !preflightLoading ? (
                   <div
@@ -2352,7 +2457,9 @@ export function DiscoveryPage() {
               <div className="my-3.5">
                 <div className="flex justify-between gap-3 py-1.5 text-sm text-[var(--text-tertiary)]">
                   <span>Período</span>
-                  <b className="font-semibold text-[var(--text-secondary)]">{periodLabel}</b>
+                  <b className="font-semibold text-[var(--text-secondary)]" data-testid="pf-period">
+                    {periodSummary}
+                  </b>
                 </div>
                 <div className="flex justify-between gap-3 py-1.5 text-sm text-[var(--text-tertiary)]">
                   <span>Estimativa</span>
@@ -2545,8 +2652,9 @@ export function DiscoveryPage() {
                     className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
                   >
                     <option value="all">Todos</option>
-                    <option value="4h">4h</option>
-                    <option value="1d">1d</option>
+                    {DISCOVERY_SWING_TIMEFRAME_OPTIONS.map(({ id }) => (
+                      <option key={id} value={id}>{id}</option>
+                    ))}
                   </select>
                 </label>
                 <button

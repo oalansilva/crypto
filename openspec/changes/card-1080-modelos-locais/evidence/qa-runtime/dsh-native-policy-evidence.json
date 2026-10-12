@@ -1,0 +1,18 @@
+[
+  {
+    "file": "/tmp/card1080-qa/dsh-sessions/--srv-apps-dev-criptofarol-crypto-worktrees-card-1080-modelos-locais--/session-a9e95fd5-8a17-4dd5-964a-5468adaea73c/session.v3.jsonl.zstd",
+    "event": {
+      "type": "subagent/model-selection-policy",
+      "seq": 3,
+      "time": 1791502851858,
+      "data": {
+        "allowedModels": [
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          }
+        ]
+      }
+    }
+  }
+]

@@ -39,6 +39,9 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "quant_btc_1d_long_dual_momentum_chain_w3_20260629": "BTC 1D Long — ROC Duplo: Tendência Rápida",
     "quant_btc_1d_long_ma_breakout_chain_w4_20260629": "BTC 1D Long — Médias + ROC: Cruzamento",
     "quant_btc_1d_long_ma_trend_chain_w5_20260629": "BTC 1D Long — Médias: Alinhamento Triplo",
+    "donchian_volume_breakout": "Canal Donchian + volume",
+    "bollinger_squeeze": "Squeeze de Bollinger",
+    "long_ma_pullback_rsi_adx": "Pullback média longa + RSI + ADX",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
@@ -140,6 +143,15 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     ),
     "quant_btc_1d_long_ma_trend_chain_w5_20260629": (
         "No BTC em 1D, exige alinhamento e cruzamento entre três médias para abrir Long; encerra quando a média rápida cruza abaixo da referência longa."
+    ),
+    "donchian_volume_breakout": (
+        "Opera rompimento acima do canal de Donchian somente com volume acima da média; encerra quando o preço perde a referência central do canal."
+    ),
+    "bollinger_squeeze": (
+        "Aguarda compressão das Bandas de Bollinger dentro do Keltner e entra no rompimento para cima; sai no retorno à média das bandas ou quando a compressão se dissolve."
+    ),
+    "long_ma_pullback_rsi_adx": (
+        "Em tendência acima da média longa, busca pullback com RSI em sobrevenda e ADX confirmando força; encerra na perda da média longa ou quando o RSI recupera a zona de sobrecompra."
     ),
 }
 

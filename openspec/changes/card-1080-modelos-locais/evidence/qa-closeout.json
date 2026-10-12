@@ -1,0 +1,270 @@
+{
+  "card": 1080,
+  "tasks": {
+    "complete": 16,
+    "total": 16,
+    "task_4_4": "complete within explicitly authorized QA scope"
+  },
+  "consumer": {
+    "path": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1080-modelos-locais",
+    "commit": "697247bd63377db84c3a5bc4baf9a2859683825a",
+    "pr": "https://github.com/oalansilva/crypto/pull/1081"
+  },
+  "nucleus": {
+    "path": "/srv/apps/dev/covenant-flow-worktrees/card-1080-modelos-locais",
+    "commit": "d807a49",
+    "pr": "https://github.com/oalansilva/covenant-flow/pull/6"
+  },
+  "qa_finished_at": "2026-10-09T00:30:55.956034+00:00",
+  "runtime_matrix": [
+    {
+      "client": "Cursor CLI",
+      "version": "2026.10.01-e373342",
+      "route": "Task generalPurpose composer-2.5",
+      "result": "PASS",
+      "observed": "composer-2.5 from child response providerOptions.cursor.modelName",
+      "status": "completed",
+      "payload": "LOCAL_SELECTION_PROBE_OK",
+      "artifact": "qa-runtime/cursor-native-evidence.json",
+      "deny": "preToolUse denied missing capture; no child; cursor-deny-events.jsonl",
+      "scope": "CLI default permission; Desktop+SSH not observed here"
+    },
+    {
+      "client": "Codex CLI",
+      "version": "0.162.0",
+      "route": "native Agent reviewers gpt-6.1-sol/high",
+      "result": "PASS existing final wave",
+      "observed": "gpt-6.1-sol/high, read-only sandbox, own session_meta/turn_context/task_complete traces",
+      "status": "completed",
+      "payload_returned": true,
+      "artifact": "qa-runtime/codex-wave-2-existing.json",
+      "wave": "1080-review-2"
+    },
+    {
+      "client": "dsh",
+      "version": "0.1.5-rc.2",
+      "route": "native subagent modelSelectionSettings DeepSeek Flash/high",
+      "result": "waived_by_user",
+      "observed_child": "unavailable",
+      "status": "not_spawned",
+      "payload_returned": false,
+      "obstacle": "QUOTA: Insufficient Balance; request_id452c8faa-73a0-47e4-9ab1-fba68fad16f9; root request failed before native child birth",
+      "artifact": "qa-runtime/dsh-native-evidence.json",
+      "native_policy_artifact": "qa-runtime/dsh-native-policy-evidence.json",
+      "configuration": "Temporary settings and scoped native delegation composition; consumer guard retained; original settings unchanged",
+      "waiver_url": "https://github.com/oalansilva/crypto/issues/1080#issuecomment-6071728818",
+      "successful": false
+    },
+    {
+      "client": "Grok Build",
+      "version": "1.0.25 (f7e67d6988e2)",
+      "route": "spawn_subagent grok-4.6",
+      "result": "PASS",
+      "observed_child": "grok-4.6 from own session runtime; billing backend grok-4.6-build from own usage",
+      "status": "completed",
+      "payload_returned": true,
+      "artifact": "qa-runtime/grok-native-evidence-3.json",
+      "payload": "LOCAL_SELECTION_PROBE_OK",
+      "child_id": "01a11e0f-7ca0-71f0-85ee-266fcbb553e1",
+      "capture": "/tmp/card1080-qa/grok-birth-3.json",
+      "permission": "native one-call approval option3 Yes; cancelled noninteractive predecessor preserved"
+    },
+    {
+      "client": "OpenCode",
+      "version": "1.18.32",
+      "route": "native task explicit provider/model/variant",
+      "result": "DENY expected residual from approved Design",
+      "observed_child": "unavailable",
+      "status": "refused_capability_unavailable",
+      "payload_returned": false,
+      "obstacle": "Installed native task schema does not accept explicit route while preserving its lifecycle and permissions",
+      "evidence": "consumer docs/model-selection.md and existing Apply contract/capability evidence; no new positive native attempt"
+    }
+  ],
+  "coverage_limits": [
+    "Cursor CLI generalPurpose observed; Desktop+SSH and named Task not observed here, limitation retained",
+    "OpenCode native task capability absent is approved Design residual, no simulated child",
+    "dsh waived_by_user, no native child PASS"
+  ],
+  "user_waivers": [
+    {
+      "client": "dsh",
+      "state": "waived_by_user",
+      "requested_wording": "ignore o dh",
+      "interpreted_by_parent": "Dispensar ensaio dsh do card1080",
+      "evidence_url": "https://github.com/oalansilva/crypto/issues/1080#issuecomment-6071728818",
+      "runtime_success": false,
+      "previous_obstacle_preserved": "QUOTA: Insufficient Balance before spawn; no completed/payload"
+    }
+  ],
+  "ci": {
+    "consumer_run": "https://github.com/oalansilva/crypto/actions/runs/37860399915",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "697247bd63377db84c3a5bc4baf9a2859683825a",
+    "checks": [
+      {
+        "name": "backend-format",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "qa-policy",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "frontend-lint",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "changes",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "frontend-build",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "frontend-tests",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "process-fsm",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "backend-tests",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "backend-unit-tests",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "openspec-validate",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "new-route-playwright-coverage",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "e2e-playwright",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "backend-coverage-gate",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "qa-gate",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "deploy-staging",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ],
+    "artifacts": [
+      "ci-final.txt",
+      "ci-final.json",
+      "pr-checks-final.json"
+    ],
+    "nucleus": "No checks reported on PR6",
+    "latest_check_file": "ci-resume-current.txt"
+  },
+  "artifact_manifest": [
+    {
+      "path": "qa-runtime/cursor-native-evidence.json",
+      "source": "/tmp/card1080-qa/cursor-native-evidence.json",
+      "sha256": "792309238f4fc5b3bbc3e149ab13c288bc3d81b156943a2d722fe78e328a0975"
+    },
+    {
+      "path": "qa-runtime/cursor-child-metadata-1.json",
+      "source": "/tmp/card1080-qa/cursor-child-metadata-1.json",
+      "sha256": "5226b4bec50890d76ad7528a1eea8c9cddda6c69664c42f46a079dfb1a2a918b"
+    },
+    {
+      "path": "qa-runtime/codex-wave-2-existing.json",
+      "source": "/tmp/card1080-qa/codex-wave-2-existing.json",
+      "sha256": "038cbf4499fc3132fa84c9923ce07c57e555dde1d4781dd41d88a5364a7d771d"
+    },
+    {
+      "path": "qa-runtime/grok-native-evidence-3.json",
+      "source": "/tmp/card1080-qa/grok-native-evidence-3.json",
+      "sha256": "edfdfae7a2c8914b5f5dafd1b56a71fa7b30fcf5b4070d5f39d58a4ff6dd1354"
+    },
+    {
+      "path": "qa-runtime/grok-native-return-3.json",
+      "source": "/tmp/card1080-qa/grok-native-return-3.json",
+      "sha256": "6868949c016d6857fb51866012e7cd95fa09b1511c9382eb41e4544f3d7a7b19"
+    },
+    {
+      "path": "qa-runtime/grok-native-permission-3.json",
+      "source": "/tmp/card1080-qa/grok-native-permission-3.json",
+      "sha256": "699c527fb24c57fde079c6684ed57c3f3fc410999b6169d0829a4d829f8a2e77"
+    },
+    {
+      "path": "qa-runtime/dsh-user-waiver.json",
+      "source": "/tmp/card1080-qa/dsh-user-waiver.json",
+      "sha256": "21565b3f690695a4b73987bfc2e592db56a1e73c5fc6af4bea9f70a7fd203788"
+    },
+    {
+      "path": "qa-runtime/dsh-native-evidence.json",
+      "source": "/tmp/card1080-qa/dsh-native-evidence.json",
+      "sha256": "ec904469444a859f3bc5324fab521d856aa19ed5618fc2ed7886f3651d77d9a6"
+    },
+    {
+      "path": "qa-runtime/dsh-native-policy-evidence.json",
+      "source": "/tmp/card1080-qa/dsh-native-policy-evidence.json",
+      "sha256": "d58a7ff7514a0de2eae50cc274d38fab9abd9c3e333c8ba8be8beb2f0867de22"
+    },
+    {
+      "path": "qa-runtime/account-preservation.json",
+      "source": "/tmp/card1080-qa/account-preservation.json",
+      "sha256": "3530ca29b8da080f8b771f83a0b498d485988161b1457926ad5fce511b4dadc4"
+    },
+    {
+      "path": "qa-runtime/grok-child-runtime-3.json",
+      "source": "/tmp/card1080-qa/grok-child-runtime-3.json",
+      "sha256": "70fe83529148129d16aa6b98ded1c64db6a6b7d165bf5162928af4ac979db34d",
+      "transformation": "routing/status metadata only; usage amounts omitted",
+      "source_sha256": "60e34837090056734c57bfc6d527c8f08363cb62a3e684ed1507fd22253e47d1"
+    },
+    {
+      "path": "qa-runtime/cursor-native-return.json",
+      "source": "/tmp/card1080-qa/cursor-events-1.jsonl",
+      "sha256": "94f596993aee8ceef95a49395f0929543d1989acbdd5b73fa24550555e485da7",
+      "source_sha256": "cbe2b0855d674a9385f9d0ca0bd6061f5b3549cc577e278cf62e0fdc4158558f",
+      "transformation": "native Task completed result and routing only"
+    },
+    {
+      "path": "qa-runtime/cursor-native-deny.json",
+      "source": "/tmp/card1080-qa/cursor-deny-events.jsonl",
+      "sha256": "75796485c7da4a659eb510df9e3bb474803fed3b3d7ba78c6a0c0cee98a5c968",
+      "source_sha256": "c709e15126b07fc087806b40b01a00b43c1630b638545527a88403a8a2c03f4e",
+      "transformation": "native Task completed result and routing only"
+    }
+  ],
+  "qa_source_summary": {
+    "path": "/tmp/card1080-qa/qa-summary.json",
+    "sha256": "02b15f86f3af83fe8f641ef30aef20bacc0ad9c8c37492abf02a844288391693"
+  },
+  "historical_apply_evidence": "apply-resume-checks.json records earlier attempt, superseded only for current runtime coverage by this report",
+  "verification_report": "verification-report.md",
+  "scope": "No functional code/specs changed; dsh not PASS, OpenCode positive coverage remains pending residual, Cursor named/Desktop route not native-observed here"
+}

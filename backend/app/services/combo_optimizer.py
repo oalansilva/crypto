@@ -33,6 +33,12 @@ from app.services.market_data_providers import (
     validate_data_source_timeframe,
 )
 from src.data.incremental_loader import IncrementalLoader
+from app.metrics.backtest_execution_costs import (
+    TRADING_FEE,
+    long_trade_profit_frac,
+    short_trade_profit_frac,
+    slippage_for_timeframe,
+)
 from app.services.deep_backtest import simulate_execution_with_15m
 from app.metrics.indicators import ensure_ta_lib_context_columns
 
@@ -123,13 +129,17 @@ def _init_worker_logging():
 # -----------------------------------------------------------------------------
 # SHARED LOGIC HELPER
 # -----------------------------------------------------------------------------
-def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
+def extract_trades_from_signals(
+    df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
+):
     if _combo_optimizer_legacy():
-        return _legacy_extract_trades_from_signals(df_with_signals, stop_loss, direction)
-    return _fast_extract_trades_from_signals(df_with_signals, stop_loss, direction)
+        return _legacy_extract_trades_from_signals(df_with_signals, stop_loss, direction, slippage)
+    return _fast_extract_trades_from_signals(df_with_signals, stop_loss, direction, slippage)
 
 
-def _legacy_extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
+def _legacy_extract_trades_from_signals(
+    df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
+):
     """
     Extract trades from signals with consistent logic:
     - Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
@@ -143,7 +153,6 @@ def _legacy_extract_trades_from_signals(df_with_signals, stop_loss: float, direc
     - STOP LOSS ALWAYS has priority over exit signals
     - Stop loss is checked FIRST on each candle before checking exit signals
     """
-    TRADING_FEE = 0.00075  # Binance spot fee: 0.075%
     trades = []
     position = None
     is_short = (direction or "long").lower() == "short"
@@ -166,14 +175,13 @@ def _legacy_extract_trades_from_signals(df_with_signals, stop_loss: float, direc
                 position["exit_time"] = idx.isoformat()
                 position["exit_price"] = exact_stop_price
                 if is_short:
-                    # Short PnL: sold at entry*(1-fee), buy back at exit*(1+fee); profit when exit < entry
-                    position["profit"] = (
-                        entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)
-                    ) / (entry_price * (1 - TRADING_FEE))
+                    position["profit"] = short_trade_profit_frac(
+                        entry_price, exact_stop_price, slippage=slippage
+                    )
                 else:
-                    position["profit"] = (
-                        (exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-                    ) / (entry_price * (1 + TRADING_FEE))
+                    position["profit"] = long_trade_profit_frac(
+                        entry_price, exact_stop_price, slippage=slippage
+                    )
                 position["exit_reason"] = "stop_loss"
                 position["signal_type"] = "Stop"
                 trades.append(position)
@@ -194,13 +202,13 @@ def _legacy_extract_trades_from_signals(df_with_signals, stop_loss: float, direc
             position["exit_time"] = idx.isoformat()
             position["exit_price"] = exit_price
             if is_short:
-                position["profit"] = (
-                    entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)
-                ) / (entry_price * (1 - TRADING_FEE))
+                position["profit"] = short_trade_profit_frac(
+                    entry_price, exit_price, slippage=slippage
+                )
             else:
-                position["profit"] = (
-                    (exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-                ) / (entry_price * (1 + TRADING_FEE))
+                position["profit"] = long_trade_profit_frac(
+                    entry_price, exit_price, slippage=slippage
+                )
             position["exit_reason"] = "signal"
             position["signal_type"] = "Close entry(s) order..."
             trades.append(position)
@@ -209,8 +217,9 @@ def _legacy_extract_trades_from_signals(df_with_signals, stop_loss: float, direc
     return trades
 
 
-def _fast_extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
-    TRADING_FEE = 0.00075
+def _fast_extract_trades_from_signals(
+    df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
+):
     trades = []
     is_short = (direction or "long").lower() == "short"
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
@@ -242,13 +251,13 @@ def _fast_extract_trades_from_signals(df_with_signals, stop_loss: float, directi
                 pos["exit_time"] = iso[i]
                 pos["exit_price"] = exact_stop_price
                 if is_short:
-                    pos["profit"] = (
-                        entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)
-                    ) / (entry_price * (1 - TRADING_FEE))
+                    pos["profit"] = short_trade_profit_frac(
+                        entry_price, exact_stop_price, slippage=slippage
+                    )
                 else:
-                    pos["profit"] = (
-                        (exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-                    ) / (entry_price * (1 + TRADING_FEE))
+                    pos["profit"] = long_trade_profit_frac(
+                        entry_price, exact_stop_price, slippage=slippage
+                    )
                 pos["exit_reason"] = "stop_loss"
                 pos["signal_type"] = "Stop"
                 trades.append(pos)
@@ -270,13 +279,9 @@ def _fast_extract_trades_from_signals(df_with_signals, stop_loss: float, directi
             pos["exit_time"] = iso[i]
             pos["exit_price"] = exit_price
             if is_short:
-                pos["profit"] = (
-                    entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)
-                ) / (entry_price * (1 - TRADING_FEE))
+                pos["profit"] = short_trade_profit_frac(entry_price, exit_price, slippage=slippage)
             else:
-                pos["profit"] = (
-                    (exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-                ) / (entry_price * (1 + TRADING_FEE))
+                pos["profit"] = long_trade_profit_frac(entry_price, exit_price, slippage=slippage)
             pos["exit_reason"] = "signal"
             pos["signal_type"] = "Close entry(s) order..."
             trades.append(pos)
@@ -296,6 +301,7 @@ def extract_trades_with_mode(
     df_15m_cache: Optional[pd.DataFrame] = None,
     direction: str = "long",
     return_mode: bool = False,
+    slippage: float = 0.0,
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
@@ -315,7 +321,7 @@ def extract_trades_with_mode(
     df_exec = df_with_signals.copy() if _combo_optimizer_legacy() else df_with_signals
 
     if not deep_backtest:
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
     logger = logging.getLogger(__name__)
@@ -324,7 +330,7 @@ def extract_trades_with_mode(
         logger.warning(
             "Deep Backtesting requires symbol and date range. Falling back to fast mode."
         )
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
     try:
@@ -344,7 +350,7 @@ def extract_trades_with_mode(
         if df_15m.empty:
             if df_15m_cache is None:  # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
             return (trades, "fast_1d") if return_mode else trades
 
         # Coverage guard: we need 15m for the current day of each trade to simulate stop/target correctly.
@@ -388,24 +394,28 @@ def extract_trades_with_mode(
                         str(intraday_start),
                         str(intraday_end),
                     )
-                trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+                trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
                 return (trades, "fast_1d") if return_mode else trades
         except Exception:
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
             return (trades, "fast_1d") if return_mode else trades
 
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
 
         trades = simulate_execution_with_15m(
-            df_daily_signals=df_exec, df_15m=df_15m, stop_loss=stop_loss, direction=direction
+            df_daily_signals=df_exec,
+            df_15m=df_15m,
+            stop_loss=stop_loss,
+            direction=direction,
+            slippage=slippage,
         )
         return (trades, "deep_15m") if return_mode else trades
 
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
         return (trades, "fast_1d") if return_mode else trades
 
 
@@ -539,6 +549,8 @@ def _run_backtest_logic(
         direction = (params or {}).get("direction", "long")
         if direction not in ("long", "short"):
             direction = "long"
+        timeframe = (params or {}).get("timeframe")
+        slippage = slippage_for_timeframe(timeframe)
         derived_features = template_data.get("derived_features") or []
         strategy = ComboStrategy(
             indicators=indicators,
@@ -584,6 +596,7 @@ def _run_backtest_logic(
             until_str=until_str,
             df_15m_cache=df_15m_cache,
             direction=direction,
+            slippage=slippage,
         )
 
         # Construct full effective parameters (médias, stop) para log de "profit fora do range"
@@ -2149,8 +2162,8 @@ class ComboOptimizer:
             )
             deep_backtest = False
 
-        # Initialize best parameters (direction is fixed for the whole optimization)
-        best_params = {"direction": direction}
+        # Initialize best parameters (direction and timeframe are fixed for the whole optimization)
+        best_params = {"direction": direction, "timeframe": timeframe}
         best_metrics = None
 
         # Use ProcessPoolExecutor for parallel execution
@@ -2453,6 +2466,7 @@ class ComboOptimizer:
             direction = best_params.get("direction", "long")
             if direction not in ("long", "short"):
                 direction = "long"
+            final_slippage = slippage_for_timeframe(timeframe)
             trades, execution_mode = extract_trades_with_mode(
                 df_with_signals,
                 stop_loss,
@@ -2462,6 +2476,7 @@ class ComboOptimizer:
                 until_str=end_date,
                 direction=direction,
                 return_mode=True,
+                slippage=final_slippage,
             )
 
             # Recompute core metrics from final backtest trades (same set as returned to frontend)
@@ -2584,6 +2599,7 @@ class ComboOptimizer:
                 direction = best_params.get("direction", "long")
                 if direction not in ("long", "short"):
                     direction = "long"
+                holdout_slippage = slippage_for_timeframe(timeframe)
                 holdout_trades_raw, holdout_mode = extract_trades_with_mode(
                     df_holdout_signals,
                     stop_loss,
@@ -2597,6 +2613,7 @@ class ComboOptimizer:
                     ),
                     direction=direction,
                     return_mode=True,
+                    slippage=holdout_slippage,
                 )
                 holdout_trades = []
                 for trade in holdout_trades_raw:

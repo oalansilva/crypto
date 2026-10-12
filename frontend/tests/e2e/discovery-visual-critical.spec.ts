@@ -12,7 +12,7 @@ const PREFLIGHT = {
   axes: {
     templates: ['multi_ma_crossover', 'bollinger_breakout', 'ema_rsi_reversal'],
     symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT'],
-    timeframes: ['4h', '1d'],
+    timeframes: ['15m', '1h', '4h', '1d'],
     directions: ['long', 'short'],
   },
   raw_total: 48,
@@ -305,7 +305,11 @@ async function seedCard469PreflightSelection(page: Page) {
   await symDialog.getByTestId('select-all').click()
   await symDialog.getByRole('button', { name: 'Aplicar seleção' }).click()
   await expect(symDialog).toBeHidden()
-  await page.getByText('4 horas').click()
+  await page.getByTestId('timeframe-15m').click()
+  await page.getByTestId('timeframe-1h').click()
+  await page.getByTestId('timeframe-4h').click()
+  await expect(page.getByTestId('timeframe-1d')).toBeChecked()
+  await expect(page.getByText('taxa 0,075% · slippage do timeframe')).toBeVisible()
   await expect(page.getByTestId('planned-total')).toHaveText('46', { timeout: 15_000 })
 }
 
@@ -316,6 +320,7 @@ async function openDiscovery(page: Page) {
   }, STABLE_DRAFT_KEY)
   await page.goto('/combo/discovery')
   await expect(page.getByRole('heading', { name: 'Descoberta de estratégias swing' })).toBeVisible()
+  await expect(page.getByText('Compare templates em 4h, 1h, 15m e 1d.')).toBeVisible()
   // Modo Montar (default, sem sweep ativo) — rascunho novo vazio (card 952)
   await expect(page.getByTestId('planned-total')).toHaveText('—')
   await expect(page.getByTestId('template-count')).toContainText('0 de 4 selecionados')
@@ -343,6 +348,15 @@ async function openDiscovery(page: Page) {
   await expect(page.getByRole('columnheader', { name: 'Profit Factor', exact: true })).toHaveCount(0)
   await expect(page.getByTestId('sort-filter')).toBeVisible()
   await expect(page.getByLabel('Tabela rolável de candidatos')).toHaveAttribute('tabindex', '0')
+  await page.getByRole('tab', { name: 'Montar' }).click()
+  for (const tf of ['15m', '1h', '4h', '1d']) {
+    await expect(page.getByTestId(`timeframe-${tf}`)).toBeVisible()
+  }
+  await expect(page.getByText('taxa 0,075% · slippage do timeframe')).toBeVisible()
+  await page.getByRole('tab', { name: 'Decidir' }).click()
+  await expect(page.getByTestId('timeframe-filter')).toBeVisible()
+  await expect(page.getByTestId('timeframe-filter').locator('option[value="1h"]')).toHaveCount(1)
+  await expect(page.getByTestId('timeframe-filter').locator('option[value="15m"]')).toHaveCount(1)
   return captured
 }
 

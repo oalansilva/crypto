@@ -1,0 +1,45 @@
+{
+  "selection_capture": {
+    "arguments": {
+      "model": "deepseek-flash",
+      "provider": "deepseek-official",
+      "reasoning_effort": "high"
+    },
+    "attempt_id": "64175795-1df2-42e9-993f-e2cc05eee2c8",
+    "band": "execucao",
+    "capability_version": "dsh-subagent-selection-v1",
+    "capture_sha256": "0822b301e2af92816890bfe6787f95300705a831d88579c0688ea1901c2bcd03",
+    "client": "dsh",
+    "effective_sha256": "a4f133fb2a94cedce0fdd5757abd7ca16b081f545e79adad562a3cd7d6ec3578",
+    "policy_sha256": "f5ce0eb818f27797e0fca52037aef0af80cbe0c2305927b222ca8bec197f2d16",
+    "policy_version": 1,
+    "role": "same-card-search",
+    "selection": {
+      "effort": "high",
+      "label": "DeepSeek Flash",
+      "model": "deepseek-flash",
+      "provider": "deepseek-official"
+    },
+    "source_path": "/home/ubuntu/.config/covenant-flow/model-selection.yaml",
+    "source_sha256": "6167e38fd93f8f00577de4adab6f73ab0c0f6942d72f610e85e989d78eabe9c4",
+    "version": 1
+  },
+  "requested": {
+    "model": "deepseek-flash",
+    "provider": "deepseek-official",
+    "effort": "high",
+    "variant": "not_applicable"
+  },
+  "observed": {
+    "model": "unavailable",
+    "provider": "unavailable",
+    "effort": "unavailable",
+    "variant": "not_applicable"
+  },
+  "host": "dsh headless",
+  "host_version": "0.1.5-rc.2",
+  "status": "not_spawned",
+  "payload_returned": false,
+  "successful": false,
+  "obstacle": "QUOTA: Insufficient Balance before child spawn; request_id 452c8faa-73a0-47e4-9ab1-fba68fad16f9"
+}

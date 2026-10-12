@@ -1,0 +1,23 @@
+# Rotas efetivas não secretas inspecionadas em 2026-10-08; não é seleção ativa.
+opencode:
+  juizo:
+    label: Muse Spark 1.2 Contributor
+    provider: opencode-go
+    model: muse-spark-1.2-contributor
+    variant: xhigh
+  execucao:
+    label: Muse Spark 1.2 Contributor
+    provider: opencode-go
+    model: muse-spark-1.2-contributor
+    variant: xhigh
+dsh:
+  juizo:
+    label: DeepSeek Flash
+    provider: deepseek-official
+    model: deepseek-flash
+    effort: high
+  execucao:
+    label: DeepSeek Flash
+    provider: deepseek-official
+    model: deepseek-flash
+    effort: high

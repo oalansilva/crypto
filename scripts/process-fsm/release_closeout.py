@@ -149,16 +149,7 @@ class MergeSimulation:
     open_pr: bool
 
 
-@dataclass(frozen=True)
-class ModelCheck:
-    ok: bool
-    divergence: bool
-    auto_claimed: bool
-    routed: bool
-    message: str
-    map_slug: str = ""
-    runtime_slug: str = ""
-
+from release_model_selection import ModelCheck, load_execucao_pair, check_runtime_model
 
 def manifesto_dir(env: Mapping[str, str] | None = None) -> Path:
     source = env if env is not None else os.environ
@@ -970,84 +961,6 @@ def classify_tool_error(message: str) -> dict[str, Any]:
         klass = "other"
     return {"class": klass, "generalizes": False, "operation": "this_call_only"}
 
-
-def load_execucao_pair(root: str | Path, client: str) -> dict[str, str]:
-    path = Path(root) / ".cursor" / "model-map.yaml"
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    band = data.get(BAND_EXECUCAO) or {}
-    if client == CLIENT_CODEX:
-        entry = band.get("codex") or {}
-        key = "execucao.codex"
-    else:
-        entry = band
-        key = "execucao"
-    return {
-        "key": key,
-        "label": str(entry.get("label") or ""),
-        "slug": str(entry.get("slug") or ""),
-        "effort": str(entry.get("effort") or ""),
-    }
-
-
-def check_runtime_model(
-    *,
-    root: str | Path,
-    client: str,
-    runtime_slug: str,
-    runtime_effort: str = "",
-    client_can_route: bool = False,
-    auto_claimed: bool = False,
-) -> ModelCheck:
-    pair = load_execucao_pair(root, client)
-    if auto_claimed:
-        return ModelCheck(
-            ok=False,
-            divergence=True,
-            auto_claimed=True,
-            routed=False,
-            message="MUST NOT claim Auto mode; map is not edited; stop T16 on this runtime",
-            map_slug=pair["slug"],
-            runtime_slug=runtime_slug,
-        )
-    match = runtime_slug == pair["slug"] and (
-        not runtime_effort or not pair["effort"] or runtime_effort == pair["effort"]
-    )
-    if match:
-        return ModelCheck(
-            ok=True,
-            divergence=False,
-            auto_claimed=False,
-            routed=False,
-            message=f"{pair['key']} matches runtime {runtime_slug}",
-            map_slug=pair["slug"],
-            runtime_slug=runtime_slug,
-        )
-    if client_can_route:
-        return ModelCheck(
-            ok=False,
-            divergence=True,
-            auto_claimed=False,
-            routed=True,
-            message=(
-                f"runtime {runtime_slug} diverges from {pair['key']}={pair['slug']}; "
-                "route the preserved manifesto to the execucao session; do not edit the map"
-            ),
-            map_slug=pair["slug"],
-            runtime_slug=runtime_slug,
-        )
-    return ModelCheck(
-        ok=False,
-        divergence=True,
-        auto_claimed=False,
-        routed=False,
-        message=(
-            f"runtime {runtime_slug} diverges from {pair['key']}={pair['slug']}; "
-            "client cannot route sessions; declare the handoff; do not claim routing occurred; "
-            "do not edit the map; do not continue T16"
-        ),
-        map_slug=pair["slug"],
-        runtime_slug=runtime_slug,
-    )
 
 
 def _git_one(runner: Any, cwd: Path, args: Sequence[str]) -> str:

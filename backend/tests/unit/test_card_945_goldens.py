@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from app.metrics.backtest_execution_costs import slippage_for_timeframe
 from app.services.combo_optimizer import (
     _metrics_from_trades,
     extract_trades_from_signals,
@@ -469,19 +470,25 @@ def test_representative_winner_holdout_go_nogo(inch_1d, inch_15m, monkeypatch):
     holdout_frame = pd.concat([train.iloc[-burn:], holdout])
     holdout_eval_start = holdout.index.min()
     skip = {"avg_atr", "avg_adx", "error"}
+    slippage_1d = slippage_for_timeframe("1d")
 
-    def _eval_window(cls, extract_fn, metrics_fn, df_window):
+    def _eval_window(cls, extract_fn, metrics_fn, df_window, *, use_slippage=False):
         strat = _strategy(cls, td, params, direction=direction)
         df_sig = strat.generate_signals(df_window[OHLCV_COLS].copy())
-        trades = extract_fn(
-            df_sig,
-            strat.stop_loss,
+        extract_kwargs = dict(
             deep_backtest=True,
             symbol="1INCH/USDT",
             since_str=str(df_window.index.min().date()),
             until_str=str(df_window.index.max().date()),
             df_15m_cache=inch_15m,
             direction=direction,
+        )
+        if use_slippage:
+            extract_kwargs["slippage"] = slippage_1d
+        trades = extract_fn(
+            df_sig,
+            strat.stop_loss,
+            **extract_kwargs,
         )
         return trades, metrics_fn(trades, 100)
 
@@ -500,10 +507,14 @@ def test_representative_winner_holdout_go_nogo(inch_1d, inch_15m, monkeypatch):
         return {k: _jsonable(prod.get(k)) for k in keys}, {k: _jsonable(ora.get(k)) for k in keys}
 
     prod_train_trades, prod_train_metrics = _eval_window(
-        ComboStrategy, extract_trades_with_mode, _metrics_from_trades, train
+        ComboStrategy, extract_trades_with_mode, _metrics_from_trades, train, use_slippage=True
     )
     ora_train_trades, ora_train_metrics = _eval_window(
-        LegacyComboStrategy, oracle_extract_with_mode, oracle_metrics_from_trades, train
+        LegacyComboStrategy,
+        oracle_extract_with_mode,
+        oracle_metrics_from_trades,
+        train,
+        use_slippage=True,
     )
     assert prod_train_trades == ora_train_trades
     left, right = _core(prod_train_metrics, ora_train_metrics)
@@ -513,10 +524,18 @@ def test_representative_winner_holdout_go_nogo(inch_1d, inch_15m, monkeypatch):
     assert left == right
 
     prod_h_raw, _ = _eval_window(
-        ComboStrategy, extract_trades_with_mode, _metrics_from_trades, holdout_frame
+        ComboStrategy,
+        extract_trades_with_mode,
+        _metrics_from_trades,
+        holdout_frame,
+        use_slippage=True,
     )
     ora_h_raw, _ = _eval_window(
-        LegacyComboStrategy, oracle_extract_with_mode, oracle_metrics_from_trades, holdout_frame
+        LegacyComboStrategy,
+        oracle_extract_with_mode,
+        oracle_metrics_from_trades,
+        holdout_frame,
+        use_slippage=True,
     )
     prod_holdout = _holdout_trades(prod_h_raw)
     ora_holdout = _holdout_trades(ora_h_raw)

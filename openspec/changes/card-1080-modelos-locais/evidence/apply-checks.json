@@ -1,0 +1,23 @@
+{
+  "harness": {
+    "command": "python3 -m pytest -q scripts/process-fsm",
+    "passed": 673,
+    "skipped": 7,
+    "failed": 0,
+    "seconds": 52.31,
+    "skips": "4 installer absent consumer, 3 optional native dsh integration",
+    "warnings": "4 pre-existing pytest config options missing plugins"
+  },
+  "openspec": {
+    "command": "openspec validate card-1080-modelos-locais --strict",
+    "result": "valid"
+  },
+  "diff_check": "clean",
+  "task_gate_precommit": "tasks.md pending (3.4 unchecked without phase marker)",
+  "review_wave": "not executed; full checklist correctly refuses wave-same-turn absent",
+  "operator_selection_written": false,
+  "task_status": "14/16; 3.4 P0 external nucleus implementation, 4.4 after-qa runtime",
+  "metadata": "apply-runtime-metadata.json; pre-migration birth only",
+  "publication": "none",
+  "historical": "first handoff before authorized nucleus implementation and migration; current result in apply-resume-checks.json"
+}

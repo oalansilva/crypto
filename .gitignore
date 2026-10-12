@@ -27,6 +27,7 @@ data/*.parquet
 .vscode/
 .idea/
 .cursor/*
+!.cursor/model-policy.yaml
 !.cursor/commands/
 !.cursor/commands/**
 !.cursor/skills/
@@ -100,6 +101,7 @@ backend/runtime/
 **/checkpoints/
 **/cache/
 **/.cache/
+scripts/.jev_backtest_cache.json
 
 # Frontend dev outputs
 frontend/vite.out

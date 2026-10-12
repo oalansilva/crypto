@@ -1,0 +1,2 @@
+{"type": "system", "subtype": "init", "session_id": "f6f6c6b8-9a11-4f7c-aaf5-8351bfd60b1f", "model": "Composer 2.5", "permissionMode": "default", "cwd": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1080-modelos-locais"}
+{"native_child_attempt": "not_executed", "reason": "Controlled CLI probe started in Plan mode and required plan approval; no approval or mode bypass used", "observed_child_model": "unavailable", "successful_coverage": false}

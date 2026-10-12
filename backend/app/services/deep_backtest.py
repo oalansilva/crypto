@@ -14,19 +14,35 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-TRADING_FEE = 0.00075  # Binance 0.075%
+from app.metrics.backtest_execution_costs import (
+    TRADING_FEE,
+    long_trade_profit_frac,
+    short_trade_profit_frac,
+)
 
 
 def simulate_execution_with_15m(
-    df_daily_signals: pd.DataFrame, df_15m: pd.DataFrame, stop_loss: float, direction: str = "long"
+    df_daily_signals: pd.DataFrame,
+    df_15m: pd.DataFrame,
+    stop_loss: float,
+    direction: str = "long",
+    slippage: float = 0.0,
 ) -> List[Dict]:
     if os.environ.get("COMBO_OPTIMIZER_LEGACY") == "1":
-        return _legacy_simulate_execution_with_15m(df_daily_signals, df_15m, stop_loss, direction)
-    return _fast_simulate_execution_with_15m(df_daily_signals, df_15m, stop_loss, direction)
+        return _legacy_simulate_execution_with_15m(
+            df_daily_signals, df_15m, stop_loss, direction, slippage
+        )
+    return _fast_simulate_execution_with_15m(
+        df_daily_signals, df_15m, stop_loss, direction, slippage
+    )
 
 
 def _legacy_simulate_execution_with_15m(
-    df_daily_signals: pd.DataFrame, df_15m: pd.DataFrame, stop_loss: float, direction: str = "long"
+    df_daily_signals: pd.DataFrame,
+    df_15m: pd.DataFrame,
+    stop_loss: float,
+    direction: str = "long",
+    slippage: float = 0.0,
 ) -> List[Dict]:
     """
     Simulate trade execution using 15-minute candles for realistic stop/target validation.
@@ -144,13 +160,11 @@ def _legacy_simulate_execution_with_15m(
 
         last_exit_time = final_exit_time
         if is_short:
-            profit = (
-                entry_price * (1 - TRADING_FEE) - float(final_exit_price) * (1 + TRADING_FEE)
-            ) / (entry_price * (1 - TRADING_FEE))
+            profit = short_trade_profit_frac(
+                entry_price, float(final_exit_price), slippage=slippage
+            )
         else:
-            profit = (
-                (final_exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-            ) / (entry_price * (1 + TRADING_FEE))
+            profit = long_trade_profit_frac(entry_price, float(final_exit_price), slippage=slippage)
 
         signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
         trades.append(
@@ -193,7 +207,11 @@ def _asi8(index: pd.Index) -> np.ndarray:
 
 
 def _fast_simulate_execution_with_15m(
-    df_daily_signals: pd.DataFrame, df_15m: pd.DataFrame, stop_loss: float, direction: str = "long"
+    df_daily_signals: pd.DataFrame,
+    df_15m: pd.DataFrame,
+    stop_loss: float,
+    direction: str = "long",
+    slippage: float = 0.0,
 ) -> List[Dict]:
     trades = []
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
@@ -290,13 +308,11 @@ def _fast_simulate_execution_with_15m(
 
         last_exit_asi8 = final_exit_asi8
         if is_short:
-            profit = (
-                entry_price * (1 - TRADING_FEE) - float(final_exit_price) * (1 + TRADING_FEE)
-            ) / (entry_price * (1 - TRADING_FEE))
+            profit = short_trade_profit_frac(
+                entry_price, float(final_exit_price), slippage=slippage
+            )
         else:
-            profit = (
-                (final_exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
-            ) / (entry_price * (1 + TRADING_FEE))
+            profit = long_trade_profit_frac(entry_price, float(final_exit_price), slippage=slippage)
 
         signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
         if final_exit_iso is None:

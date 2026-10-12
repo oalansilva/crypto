@@ -1,0 +1,18 @@
+--- a/install.sh
++++ b/install.sh
+@@ -91,6 +91,7 @@
+ 
+ [[ "$PIN" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "pin must be vMAJOR.MINOR.PATCH, got ${PIN:-empty}"
+ [[ -d "$SOURCE/.cursor" ]] || die "source is not a covenant-flow tree: $SOURCE"
++[[ -f "$SOURCE/.cursor/model-policy.yaml" ]] || die "versioned model policy missing in source"
+ refuse_bad_channels
+ [[ -f "$TARGET/.covenant-flow/overlay.yaml" ]] || die "overlay missing; run --init and fill keys before --pin"
+ 
+@@ -103,6 +104,7 @@
+     raise SystemExit(f"overlay invalid: {exc}")
+ PY
+ 
++copy_tree "$SOURCE/.cursor/model-policy.yaml" "$TARGET/.cursor/model-policy.yaml"
+ copy_tree "$SOURCE/.cursor/process-fsm.yaml" "$TARGET/.cursor/process-fsm.yaml"
+ copy_tree "$SOURCE/.cursor/hooks.json" "$TARGET/.cursor/hooks.json"
+ copy_tree "$SOURCE/.cursor/hooks/" "$TARGET/.cursor/hooks/"

@@ -180,7 +180,7 @@ def test_exported_active_templates_have_specific_drift_safe_manifests():
     matrix_keys = {row["strategy_key"] for row in transparency_matrix()}
     exported_names = [template["name"] for template in exported]
 
-    assert len(exported) == 30
+    assert len(exported) == 33
     assert len(exported_names) == len(set(exported_names))
     assert sum(template["template_data"].get("direction") == "short" for template in exported) == 6
 

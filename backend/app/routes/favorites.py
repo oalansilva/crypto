@@ -595,7 +595,9 @@ def favorite_exists(
     strategy_name: str = Query(..., description="Template name"),
     symbol: str = Query(..., description="Symbol (e.g. ETH/USDT)"),
     timeframe: str = Query(..., description="Timeframe (e.g. 1d)"),
-    period_type: Optional[str] = Query(None, description="'6m' | '2y' | 'all'"),
+    period_type: Optional[str] = Query(None, description="Period key incl. custom/all"),
+    start_date: Optional[str] = Query(None, description="Custom period start (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Custom period end (YYYY-MM-DD)"),
     direction: Optional[str] = Query(
         None, description="'long' | 'short'; if omitted, any direction matches"
     ),
@@ -611,6 +613,11 @@ def favorite_exists(
     )
     if period_type is not None:
         q = q.filter(FavoriteStrategy.period_type == period_type)
+        if period_type == "custom":
+            if start_date is not None:
+                q = q.filter(FavoriteStrategy.start_date == start_date)
+            if end_date is not None:
+                q = q.filter(FavoriteStrategy.end_date == end_date)
     else:
         q = q.filter(
             FavoriteStrategy.start_date.is_(None),

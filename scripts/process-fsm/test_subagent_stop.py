@@ -395,7 +395,8 @@ def test_agents_require_review_diff_and_forbid_git_transcripts() -> None:
     for path in (DIFF_AGENT, CODE_AGENT):
         text = path.read_text(encoding="utf-8")
         assert "readonly: true" in text
-        assert f"model: {_execucao_slug()}" in text
+        assert "\nmodel:" not in text
+        assert "captured machine execucao selection" in text
         assert "ERROR: review-diff missing" in text
         assert "MUST NOT git" in text
         assert "MUST NOT transcripts" in text
@@ -404,9 +405,9 @@ def test_agents_require_review_diff_and_forbid_git_transcripts() -> None:
         assert "## Diff" in text
 
 
-def test_skill_t18_destape_resume_keeps_composer_slug() -> None:
+def test_skill_t18_destape_resume_keeps_birth_capture() -> None:
     text = SKILL.read_text(encoding="utf-8")
-    assert "Destape/resume mantém slug de execução" in text
+    assert "Destape/resume mantém captura de nascimento" in text
     assert ".cursor/model-map.yaml" in text
     assert "composer-2.5-fast" in text
     assert "MUST NOT `resume`" in text or "MUST NOT resume" in text
@@ -417,11 +418,12 @@ def test_skill_t18_destape_resume_keeps_composer_slug() -> None:
     assert "auto-resume" in text
 
 
-def test_skill_t18_release_refuses_grok_parent() -> None:
+def test_skill_t18_release_refuses_divergent_parent() -> None:
     text = SKILL.read_text(encoding="utf-8")
     release = text.split("## Release", 1)[1]
     assert "chat pai" in release or "chat pai MUST" in text
-    assert "execucao" in release or _execucao_slug() in release
+    assert "execução" in release
+    assert "check_runtime_model(..., capture=...)" in release
     assert "juizo" in release.lower() or "juízo" in release
     assert "process_event fechar_release" in text or "T16" in release
 

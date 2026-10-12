@@ -1,0 +1,11 @@
+{
+  "client": "dsh",
+  "status": "waived_by_user",
+  "successful": false,
+  "payload_returned": false,
+  "observed_child": "unavailable",
+  "wording": "ignore o dh",
+  "recorded_by_parent": "https://github.com/oalansilva/crypto/issues/1080#issuecomment-6071728818",
+  "previous_native_attempt": "dsh-native-evidence.json",
+  "adapter_and_tests_retained": true
+}

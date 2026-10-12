@@ -5,6 +5,14 @@ import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, Extern
 import { API_BASE_URL, apiUrl } from '../lib/apiBase'
 import { BackendLogViewer } from '../components/BackendLogViewer'
 import { authFetch } from '@/lib/authFetch'
+import {
+    comboPeriodHint,
+    customPeriodImpediments,
+    isPeriodKey,
+    PERIOD_OPTIONS,
+    resolvePeriodDates,
+    type PeriodKey,
+} from '../lib/sweepPeriod'
 
 interface TemplateMetadata {
     name: string
@@ -38,9 +46,9 @@ export function ComboConfigurePage() {
     const [logs, setLogs] = useState<string[]>([])
     const [logViewerOpen, setLogViewerOpen] = useState(false)
 
-    // Período: últimos 6 meses / 2 anos / todo o histórico
-    type PeriodKey = '6m' | '2y' | 'all'
     const [period, setPeriod] = useState<PeriodKey>('all')
+    const [customStartDate, setCustomStartDate] = useState('')
+    const [customEndDate, setCustomEndDate] = useState('')
 
     // Escopo: Todos (seleciona todos, desabilita caixa) ou Seleciona (usuário escolhe).
     type BatchScope = 'all' | 'selected'
@@ -192,20 +200,8 @@ export function ComboConfigurePage() {
         return selectedSymbols
     }
 
-    /** Últimos 6 meses, últimos 2 anos ou todo o histórico. */
     function getPeriodDates(): { start_date: string | null; end_date: string | null } {
-        if (period === 'all') return { start_date: null, end_date: null }
-        const end = new Date()
-        const start = new Date()
-        if (period === '6m') {
-            start.setMonth(start.getMonth() - 6)
-        } else {
-            start.setFullYear(start.getFullYear() - 2)
-        }
-        return {
-            start_date: start.toISOString().slice(0, 10),
-            end_date: end.toISOString().slice(0, 10)
-        }
+        return resolvePeriodDates(period, customStartDate, customEndDate)
     }
 
     function formatElapsed(sec: number): string {
@@ -237,6 +233,11 @@ export function ComboConfigurePage() {
     }
 
     const handleRun = async () => {
+        const periodIssues = customPeriodImpediments(period, customStartDate, customEndDate)
+        if (periodIssues.length) {
+            alert(periodIssues[0])
+            return
+        }
         const symbolsToRun = getBatchSymbols()
         if (batchScope === 'selected' && symbolsToRun.length === 0) {
             alert('Selecione ao menos um símbolo na lista acima.')
@@ -261,6 +262,10 @@ export function ComboConfigurePage() {
                 existsUrl.searchParams.set('timeframe', timeframe)
                 existsUrl.searchParams.set('period_type', period)
                 existsUrl.searchParams.set('direction', direction)
+                if (period === 'custom') {
+                    if (start_date) existsUrl.searchParams.set('start_date', start_date)
+                    if (end_date) existsUrl.searchParams.set('end_date', end_date)
+                }
                 const existsRes = await authFetch(existsUrl.toString())
                 if (existsRes.ok) {
                     const { exists } = await existsRes.json()
@@ -743,15 +748,48 @@ export function ComboConfigurePage() {
                                 </label>
                                 <select
                                     value={period}
-                                    onChange={(e) => setPeriod(e.target.value as PeriodKey)}
+                                    data-testid="sel-period"
+                                    aria-label="Período"
+                                    onChange={(e) => {
+                                        const next = e.target.value
+                                        if (isPeriodKey(next)) setPeriod(next)
+                                    }}
                                     className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
                                 >
-                                    <option value="6m" className="bg-zinc-900 text-zinc-900">Últimos 6 meses</option>
-                                    <option value="2y" className="bg-zinc-900 text-zinc-900">Últimos 2 anos</option>
-                                    <option value="all" className="bg-zinc-900 text-zinc-900">Todo o período</option>
+                                    {PERIOD_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value} className="bg-zinc-900 text-zinc-900">
+                                            {opt.label}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
+                        {period === 'custom' ? (
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <label className="block">
+                                    <span className="block text-sm font-semibold text-zinc-500 mb-2">Data Inicial</span>
+                                    <input
+                                        type="date"
+                                        value={customStartDate}
+                                        data-testid="date-start"
+                                        aria-label="Data Inicial"
+                                        onChange={(e) => setCustomStartDate(e.target.value)}
+                                        className="w-full min-h-[44px] glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
+                                    />
+                                </label>
+                                <label className="block">
+                                    <span className="block text-sm font-semibold text-zinc-500 mb-2">Data Final</span>
+                                    <input
+                                        type="date"
+                                        value={customEndDate}
+                                        data-testid="date-end"
+                                        aria-label="Data Final"
+                                        onChange={(e) => setCustomEndDate(e.target.value)}
+                                        className="w-full min-h-[44px] glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
+                                    />
+                                </label>
+                            </div>
+                        ) : null}
 
                         {/* Direction: Long / Short */}
                         <div className="mt-6">
@@ -839,11 +877,7 @@ export function ComboConfigurePage() {
                         <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-[16px]">
                             <p className="text-sm text-blue-300 flex items-center gap-2">
                                 <Calendar className="w-4 h-4" />
-                                {period === 'all'
-                                    ? 'Será usado todo o histórico disponível para os símbolos escolhidos.'
-                                    : period === '6m'
-                                        ? 'Serão usados os últimos 6 meses de dados.'
-                                        : 'Serão usados os últimos 2 anos de dados.'}
+                                {comboPeriodHint(period, customStartDate, customEndDate)}
                             </p>
                         </div>
                     </div>

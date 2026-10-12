@@ -36,7 +36,7 @@ from app.services.discovery_favorite_metrics import build_promoted_favorite_metr
 logger = logging.getLogger(__name__)
 
 # --- Limites e defaults (configuráveis/versionados; spec discovery-sweep) ---
-DISCOVERY_SWING_TIMEFRAMES = ("4h", "1d")
+DISCOVERY_SWING_TIMEFRAMES = ("15m", "1h", "4h", "1d")
 DISCOVERY_DIRECTIONS = ("long", "short")
 DEFAULT_MAX_TOTAL = int(__import__("os").getenv("DISCOVERY_MAX_TOTAL", "1000"))
 SNAPSHOT_TTL_SECONDS = int(__import__("os").getenv("DISCOVERY_SNAPSHOT_TTL", "600"))
@@ -366,9 +366,25 @@ class DiscoveryService:
         if not normalized_symbols:
             axis_errors["symbols"] = "pelo menos um símbolo é obrigatório"
         if not normalized_timeframes:
-            axis_errors["timeframes"] = "use um ou ambos de 4h/1d"
+            axis_errors["timeframes"] = "use 4h, 1h, 15m ou 1d"
+        rejected_tfs = sorted(
+            {tf for tf in timeframes if tf and tf not in DISCOVERY_SWING_TIMEFRAMES}
+        )
+        if rejected_tfs:
+            axis_errors["timeframes"] = "timeframes não suportados na Descoberta: " + ", ".join(
+                rejected_tfs
+            )
         if not normalized_directions:
             axis_errors["directions"] = "use long e/ou short"
+
+        from app.services.sweep_period import normalize_sweep_period
+
+        period_type, start_date, end_date, period_errors = normalize_sweep_period(
+            period_type=period_type,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        axis_errors.update(period_errors)
 
         catalog = {t["name"]: t for t in self.combo_service.list_templates().get("prebuilt", [])}
         catalog.update(

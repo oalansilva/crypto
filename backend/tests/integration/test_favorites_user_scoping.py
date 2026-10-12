@@ -279,6 +279,42 @@ def test_favorites_exists_and_mutations_are_scoped_per_user(tmp_path: Path):
     assert final_a[0].tier == 2
 
 
+def test_favorite_exists_distinguishes_custom_intervals(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        payload = _favorite_payload("Custom interval A")
+        payload.period_type = "custom"
+        payload.start_date = "2024-01-01"
+        payload.end_date = "2024-06-01"
+        favorites.create_favorite(payload, current_user_id="user-a", db=db)
+
+        same_interval = favorites.favorite_exists(
+            strategy_name="multi_ma_crossover",
+            symbol="BTC/USDT",
+            timeframe="1d",
+            period_type="custom",
+            start_date="2024-01-01",
+            end_date="2024-06-01",
+            direction="long",
+            current_user_id="user-a",
+            db=db,
+        )
+        other_interval = favorites.favorite_exists(
+            strategy_name="multi_ma_crossover",
+            symbol="BTC/USDT",
+            timeframe="1d",
+            period_type="custom",
+            start_date="2025-01-01",
+            end_date="2025-06-01",
+            direction="long",
+            current_user_id="user-a",
+            db=db,
+        )
+
+    assert same_interval.exists is True
+    assert other_interval.exists is False
+
+
 def test_common_user_cannot_update_admin_catalog_telegram_notification(tmp_path: Path, monkeypatch):
     SessionLocal = _session_factory(tmp_path)
     admin_id = str(uuid.uuid4())

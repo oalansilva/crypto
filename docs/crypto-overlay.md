@@ -512,6 +512,7 @@ Padrão de commit recomendado:
 ## Como rodar (VPS / dev)
 
 ### Backend (FastAPI)
+- O `runtime-worker` executa a fila da Descoberta e, quando a flag correspondente está ligada, a atualização de favoritos.
 - Porta padrão: **8003**
 - Logs (quando usamos nohup): `/tmp/uvicorn-8003.log`
 

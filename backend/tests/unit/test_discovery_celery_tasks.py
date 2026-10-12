@@ -9,8 +9,24 @@ from app.tasks import discovery_celery_tasks, discovery_tasks
 def test_resolve_optimizer_date_range_maps_discovery_periods():
     now = datetime(2026, 8, 15, 12, 0, tzinfo=timezone.utc)
 
+    assert discovery_tasks.resolve_optimizer_date_range({"period_type": "15d"}, now) == (
+        "2026-07-31",
+        "2026-08-15",
+    )
+    assert discovery_tasks.resolve_optimizer_date_range({"period_type": "1m"}, now) == (
+        "2026-07-15",
+        "2026-08-15",
+    )
+    assert discovery_tasks.resolve_optimizer_date_range({"period_type": "3m"}, now) == (
+        "2026-05-15",
+        "2026-08-15",
+    )
     assert discovery_tasks.resolve_optimizer_date_range({"period_type": "6m"}, now) == (
         "2026-02-15",
+        "2026-08-15",
+    )
+    assert discovery_tasks.resolve_optimizer_date_range({"period_type": "1y"}, now) == (
+        "2025-08-15",
         "2026-08-15",
     )
     assert discovery_tasks.resolve_optimizer_date_range({"period_type": "2y"}, now) == (
