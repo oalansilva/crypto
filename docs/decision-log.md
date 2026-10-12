@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-12 - Swing curto, retirada do scalper, períodos e seleção local (cards #1074, #1075, #1078, #1080)
+
+**Decisão homologada:** ampliar a ferramenta de Descoberta para 1h/15m, descontar slippage por timeframe e oferecer VWAP e três templates. Alan roda suas próprias varreduras e promove à mão; nenhuma estratégia foi aprovada como lucrativa por esta release.
+
+**Produto e operação:** retirar o scalper, suas cinco tabelas, loops, API e capabilities, preservando Operar, Carteira, worker de Descoberta/favoritos e migrações históricas. Combo e Descoberta recebem oito opções de período, incluindo datas personalizadas. Escolha de modelos/esforços por cliente/faixa passa a configuração local da máquina; regras, gates e capturas continuam verificáveis, sem inferir observado ou reivindicar Auto.
+
+**Residuais:** slippage do Combo avulso continua registrado no #1074; Donchian sem entrada e calendário mensal foram rastreados em #1086/#1087, em Em Refinamento. Classificações do review preservadas sob o teto já cumprido; nenhuma correção de produto foi antecipada no closeout.
+
+**Evidência:** PR de código #1088, PROD no SHA cae17c588b7aaf72f41738405907571a37f25248, migração 20261002_0001, cinco units persistentes ativos, health público 200 e API do scalp 404; nota canônica docs/release-2026-10-12.md. Atualização local e Drive preserva os documentos existentes.
+
 ## 2026-10-09 - Archive e adapters compartilhados no fechamento de release (cards #1022, #1042, #1059, #1061)
 
 **Decisão:** archive/sync de changes completas de um pacote Homologado ocorre na própria release-* quando o guard resolve os cards e seus estados vivos, sem inventar binding nem transição. Codex usa o quinto adapter, mesma FSM e revisão com pai e dois filhos nativos read-only; proxies são registrados após completed com payload e comparados ao runtime. Closeout mantém checkpoints e a autonomia operacional do pedido explícito. Grok usa juízo 4.7 e execução 4.6, sem herdar picker.

@@ -38,12 +38,18 @@ O leaderboard SHALL ter 1 controle de ordenação + 7 colunas de métrica visív
 
 ### Requirement: Full-history default period (ajuste Alan 2026-09-07)
 
-O preset default do seletor de período SHALL ser `Todo o histórico` (histórico completo); as opções menores (`Últimos 2 anos`, `Últimos 6 meses`) SHALL continuar disponíveis. O preflight default SHALL refletir o histórico cheio (`N combinações · ~T estimado · todo o histórico + datas da janela`, ex.: `24 combinações · ~2h 24min estimado · todo o histórico [01 jan 2017, 01 jan 2026)`); o rótulo do CTA default SHALL ser `Iniciar varredura — N, ~T` do histórico cheio. Trocar o preset SHALL atualizar preflight, CTA e rascunho congelado. Sem mudança de motor.
+O preset default do seletor de período na Descoberta SHALL ser `15 dias` (janela «últimos 15 dias» a contar de hoje). As opções SHALL ser a lista partilhada: `15 dias`, `1 mês`, `3 meses`, `6 meses`, `1 ano`, `2 anos`, `Personalizado`, `Todo o histórico`. O preflight default SHALL refletir essa janela (`N combinações · ~T estimado · 15 dias + datas da janela`). O rótulo do CTA default SHALL ser `Iniciar varredura — N, ~T` dessa janela. Trocar o preset SHALL atualizar preflight, CTA e rascunho congelado. Restore de uma varredura gravada SHALL reidratar o período do snapshot e SHALL NOT aplicar o default de 15 dias por cima. A marca inicial do Combo não faz parte deste requisito.
 
-#### Scenario: Default is full history
+#### Scenario: Default is 15 days
 
 - **WHEN** abro o modo `Montar` sem tocar no seletor de período
-- **THEN** vejo `Todo o histórico` selecionado, preflight com `N combinações · ~T · todo o histórico + datas da janela` e CTA `Iniciar varredura — N, ~T` do histórico cheio; opções menores seguem selecionáveis.
+- **THEN** vejo `15 dias` selecionado, preflight com `N combinações · ~T · 15 dias + datas da janela` e CTA `Iniciar varredura — N, ~T` dessa janela; as outras opções da lista partilhada seguem selecionáveis
+
+#### Scenario: Restore keeps the saved period
+
+- **WHEN** the operator reopens a saved sweep whose snapshot has a period other than 15 dias
+- **THEN** the screen shows that saved period
+- **AND** it does not force 15 dias
 
 ### Requirement: Inline selection, modal as advanced edit
 
@@ -282,4 +288,36 @@ Montar empty + «Acompanhando #—» SHALL NOT remain the stable state of this v
 - **WHEN** the operator looks at Descoberta
 - **THEN** «Tentar novamente» is not required to see Acompanhar
 - **AND** the red banner «Não foi possível verificar a varredura ativa» is not shown
+
+### Requirement: Montar shows 4h 1h 15m and 1d timeframes
+
+The Discovery Montar surface SHALL offer swing timeframe checkboxes for `15m`, `1h`, `4h` and `1d` on `/combo/discovery`. The heading SHALL say that templates are compared in 4h, 1h, 15m and 1d. The empty-axis impediment SHALL name those four values. Default selection on a new draft SHALL remain `1d` only. The surface SHALL NOT show 1m, 5m or 30m. The surface SHALL NOT show a daily-trend filter. The surface SHALL NOT show a field to change slippage.
+
+#### Scenario: Operator sees four swing timeframes
+
+- **WHEN** the operator opens Montar on a new draft
+- **THEN** the Timeframes swing axis shows 15 minutos, 1 hora, 4 horas and 1 dia
+- **AND** 1 dia is selected
+- **AND** 1m, 5m and 30m are absent
+
+#### Scenario: Heading names the four intervals
+
+- **WHEN** the operator reads the page heading
+- **THEN** the copy names 4h, 1h, 15m and 1d
+- **AND** it does not promise a 1D trend filter
+
+#### Scenario: Read-only cost, no slippage field
+
+- **WHEN** the operator looks at Preflight or the draft
+- **THEN** there is no control to edit slippage
+- **AND** any cost note is read-only (taxa 0,075% and slippage of the timeframe)
+
+### Requirement: Decidir filter and rows include 1h and 15m
+
+The leaderboard timeframe filter SHALL include `1h` and `15m` in addition to `4h` and `1d`. Ranked rows MAY show those timeframes. Selo GO/NO-GO, Promover à mão and the Discovery placar SHALL remain the same rule as today.
+
+#### Scenario: Filter lists 1h and 15m
+
+- **WHEN** the operator opens the timeframe filter after a sweep that included 1h and 15m
+- **THEN** the filter options include 1h and 15m as well as 4h and 1d
 

@@ -1,5 +1,41 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-10-12 — Kaizen release (cards 1074, 1075, 1078, 1080)
+
+Auditoria read-only do filho fecho-lote 01a12d79-4c87-7231-920c-dcfd4cbe4187, completed com payload. Captura histórica gpt-6.1-sol/high confirmada por metadata própria do runtime, host Codex CLI 0.162.1. Nenhuma mudança pelo filho. PROD publicado no SHA cae17c588b7aaf72f41738405907571a37f25248; migração/build/restart e saúde pública validados, com API scalp 404. O post/T16 seguem o sync e a limpeza declarada.
+
+### Métricas
+
+- Board inicial 401/401 itens; quatro Homologado no pacote. OpenSpec global 206/206 PASS; tasks dos quatro cards 67/67.
+- Quatro heads finais dos PRs #1076/#1077/#1079/#1081: 56 checks success no total, quatro deploy-staging skipped; qa-gate/E2E/unit/backend-format verdes.
+- Testes atuais: processo 680 passed/9 skipped; frontend 101 passed. Backend relacionado terminou: 134 passed, dois avisos em fixtures CAGR.
+- Pre inicial: 25 warnings, seis blockers (branches backup/local-map-b2cac2d5 e wip-board-prototype sem classificação, quatro comentários de homologação ausentes). Pai preservou branches e reconciliou comentários com Status vivo Homologado; Alan confirmou valores de campos. Pre reconciliado PASS, 27 warnings, zero blockers.
+- Transcripts Cursor deduplicados por nascimento: #1074 grill 6 (+2 resumes), Design 3; #1075 grill 1 (+2 resumes), Design 3; #1078 grill 1 (+1 resume), Design 3. #1080 grill indisponível nessa fonte; REST atesta Design Codex com dois filhos. Fonte /home/ubuntu/.cursor/projects/srv-apps-dev-criptofarol-source/agent-transcripts/.
+- Marcas REST sem grill em #1074/#1075 dão proxy zero, contradito pelos nascimentos observados. Média parcial Cursor 2,67 em três cards; coorte de dez cards não identificada, sem conclusão sobre meta.
+- Requested Cursor histórico Grok4.6 nas grelhas/Design; observed/capturas indisponíveis. #1080 dois reviewers Sol/high, probes Cursor Composer2.5 e Grok4.6 correspondem às capturas históricas. dsh waived_by_user, NÃO PASS; OpenCode recusa segura; sem extrapolar Cursor CLI para Desktop+SSH.
+
+### Achados
+
+F-1 P1: quatro cards chegaram Homologado sem comentário canônico, recorrência coberta por #658 em Em Refinamento.
+
+F-2 P1: marcadores de grelha/proxies REST divergem dos transcripts; observed/capturas históricas ausentes nos três cards Cursor. Reconciliação coberta por #963, publicação de proxies por #909 e excesso de grelha por #980, todos em fluxo na fotografia inicial.
+
+F-3 P2: Responsável/Prioridade ausentes nos quatro cards; Tipo em #1078/#1080. Coberto por #910 em Em Refinamento. Valores confirmados por Alan e registrados pelo pai neste fechamento.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| (não criado) comentário canônico na homologação | P1 | F-1 | coberto por #658 |
+| (não criado) reconciliação REST/transcripts/proxies | P1 | F-2 | coberto por #963 |
+| (não criado) campos obrigatórios antes de Homologado | P2 | F-3 | coberto por #910 |
+
+### Limitações
+
+CI dos heads finais não cobre todas as tentativas históricas. Tasks checked são evidência documental. Esta auditoria não prova deploy, archive/sync, post ou T16 desta release. Guard vivo confirmou allow e archive dos quatro cards em release-* unbound foi executado, com 101 arquivos intactos; global final 183/183. F-1/#1022 segue encerrada. Nenhum achado encerrado apenas por reconciliação retroativa.
+
+Defeitos de produto encontrados na onda de release: #1086 P1 Donchian e #1087 P2 calendário mensal, ambos criados em Em Refinamento com metadados. Residual prévio de slippage preservado no #1074; teto da coluna concluída não reaberto.
+
 ## 2026-10-09 — Kaizen release (cards 1022, 1042, 1059, 1061)
 
 Auditoria executada após o deploy `f94868d5bf09a1c12286be860e097c046b92264c`, com os quatro cards ainda Homologado. Fontes: fotografia do Project 1 (400 itens), comentários REST dos quatro cards, Git/worktrees/stashes, guard audit, OpenSpec global, watcher final do PR #1082 e traces nativos Codex desta release. Nenhum status foi alterado pela auditoria.
