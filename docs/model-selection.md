@@ -38,13 +38,13 @@ A conta dsh atual usa `deepseek-official/deepseek-flash`, effort high em agent-d
 
 ## Migração explícita preparada
 
-Artefatos não secretos em `openspec/changes/card-1080-modelos-locais/evidence/`: migration-routes.yaml, migration-plan.json e metadata deste Apply. O pai aplicou create_only na conta executora e validate passou nos dez pares, sem sobrescrever existente; source_sha256 `6167e38fd93f8f00577de4adab6f73ab0c0f6942d72f610e85e989d78eabe9c4`. Cursor mantém Grok 4.6/Composer 2.5; Grok mantém Grok 4.7/Grok 4.6. Codex inicia Astra/medium e Sol/high. OpenCode materializa `opencode-go/muse-spark-1.2-contributor` variant xhigh e dsh materializa DeepSeek Flash/high nos dois papéis, a partir das rotas existentes. Materializar configuração não torna capaz um host indisponível.
+Artefatos não secretos em `openspec/changes/archive/2026-10-12-card-1080-modelos-locais/evidence/`: migration-routes.yaml, migration-plan.json e metadata deste Apply. O pai aplicou create_only na conta executora e validate passou nos dez pares, sem sobrescrever existente; source_sha256 `6167e38fd93f8f00577de4adab6f73ab0c0f6942d72f610e85e989d78eabe9c4`. Cursor mantém Grok 4.6/Composer 2.5; Grok mantém Grok 4.7/Grok 4.6. Codex inicia Astra/medium e Sol/high. OpenCode materializa `opencode-go/muse-spark-1.2-contributor` variant xhigh e dsh materializa DeepSeek Flash/high nos dois papéis, a partir das rotas existentes. Materializar configuração não torna capaz um host indisponível.
 
 Para conta ainda sem seleção, operador/pai aplica um plano validado create_only. Nesta conta já foi aplicado; executar novamente preserva o arquivo existente e recusa sobrescrita:
 
 ```bash
 python3 scripts/process-fsm/model_selection.py migrate \
-  --plan openspec/changes/card-1080-modelos-locais/evidence/migration-plan.json
+  --plan openspec/changes/archive/2026-10-12-card-1080-modelos-locais/evidence/migration-plan.json
 python3 scripts/process-fsm/model_selection.py validate
 ```
 

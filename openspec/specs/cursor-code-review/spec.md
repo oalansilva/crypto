@@ -84,13 +84,11 @@ The versioned `.cursor/agents/code-reviewer.md` file SHALL declare `readonly: tr
 - **AND** the child remains read-only
 
 ### Requirement: Grok diff reviewer uses execucao.grok
-On Grok Build, `diff-reviewer` SHALL be spawned with `model` equal to `execucao.grok.slug` (`grok-4.6`). The parent MUST NOT omit `model` and MUST NOT inherit the picker. The reviewer MUST NOT be refused because it runs on Grok. On Cursor, `diff-reviewer` SHALL keep using top-level `execucao.slug` and MUST NOT switch to `grok-4.6`. Interval materialization, read-only behavior, and the same-turn wave MUST remain as already specified.
+The Grok diff reviewer SHALL use its captured machine execucao selection through explicit spawn_subagent model and supported parameters, never Cursor/Codex values or picker inheritance. grok-4.6 SHALL be a migration choice rather than a permanent operational pin. The exact-diff, readonly and same-wave contracts SHALL remain.
 
-#### Scenario: Grok diff reviewer is grok-4.6
-- **WHEN** Code Review on Grok Build spawns `diff-reviewer`
-- **THEN** `model` is `grok-4.6`
-- **AND** the spawn does not inherit the picker
-- **AND** a Cursor `diff-reviewer` spawn still uses `composer-2.5`
+#### Scenario: Grok execution changed locally
+- **WHEN** a new review wave starts after a valid local Grok edit
+- **THEN** both native reviewers use the new explicit selection without Git changes
 
 ### Requirement: Pre-commit reviewers are a same-turn wave
 While `Status=Code Review` and before any implementation commit, after the parent has materialized the uncommitted interval, the parent SHALL launch `diff-reviewer` and `code-reviewer` in the **same** parent turn, both read-only, both with `review_diff_path:` (optional `## Diff` bytes). MAY spawn each as `generalPurpose` with the agent-file body **or** as named `subagent_type`. Host serialization of the two Tasks MUST NOT fail this requirement. Destape of the first MUST NOT spawn the second. Closing review versus `develop` after the commit remains **one** wave and is outside this card's pingue-pongue. This requirement MUST NOT change `process-fsm.yaml` and MUST NOT reopen destape matching (#879).
@@ -173,24 +171,11 @@ On the dsh client, after the first this-class reasoning-effort rejection (400 / 
 - **AND** this requirement does not alter that path
 
 ### Requirement: Reviewer child MUST NOT fetch the interval via git or transcripts
-The versioned files `.cursor/agents/diff-reviewer.md` and `.cursor/agents/code-reviewer.md` SHALL remain `readonly: true` and SHALL declare `model` equal to `execucao.slug` from `.cursor/model-map.yaml` instead of `inherit`. Their bodies SHALL forbid the child from running git, from listing or Globbing `agent-transcripts` (or any agent transcript path), and from inventing the review interval by reading the working tree. The parent session SHALL materialize the interval before spawn and SHALL pass that `execucao.slug` on both spawn paths. Grelha, Apply, and QA MUST NOT receive this diff-paste contract.
+The versioned reviewer agents SHALL remain readonly without a model pin. Their bodies SHALL forbid fetching the interval with git, listing/Globbing transcripts or inventing the interval from the worktree. The parent SHALL materialize the interval before spawn and pass the client's captured machine execucao selection explicitly. Grelha, Apply and QA MUST NOT receive this diff-paste contract.
 
-#### Scenario: Reviewer does not run git
-- **WHEN** `diff-reviewer` or `code-reviewer` runs with a materialized interval in the prompt
-- **THEN** the child MUST NOT invoke git
-- **AND** it MUST NOT Glob or list agent transcripts
-- **AND** it reports findings or `No findings.` from the supplied interval only
-
-#### Scenario: Diff contract is Code Review only
-- **WHEN** the parent spawns grill, Apply, or QA
-- **THEN** those children are not required to receive `review_diff_path` or `## Diff`
-- **AND** this requirement does not apply to them
-
-#### Scenario: Agent header pins role model not inherit
-- **WHEN** the two agent files are read
-- **THEN** each declares `readonly: true`
-- **AND** each declares `model` equal to `execucao.slug` from `.cursor/model-map.yaml`
-- **AND** neither declares `model: inherit`
+#### Scenario: Reviewer launch after local edit
+- **WHEN** the parent starts a review wave
+- **THEN** each reviewer receives the materialized interval and captured client execution selection without reading git or transcripts
 
 ### Requirement: Missing review interval MUST fail visibly and stop
 If a Code Review spawn prompt contains neither a readable non-empty path after `review_diff_path:` nor non-empty bytes under a `## Diff` heading, the reviewer child SHALL print exactly `ERROR: review-diff missing` and SHALL stop. It MUST NOT continue the review by reading the repository, running git, or listing transcripts. Silent improvisation is forbidden.
@@ -262,3 +247,4 @@ A `bloqueia_merge: sim` field on a P3 or other non-P0 finding SHALL be residual 
 - **THEN** the parent records it as residual
 - **AND** MUST NOT spawn another Apply or wave for it
 - **AND** MUST NOT ask «autorizar extra / aceitar residual»
+

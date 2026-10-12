@@ -671,57 +671,14 @@ The Monitor list SHALL display the strategy timeframe next to the pair, offer a 
 - **AND** the chart shows a read-only label of that timeframe
 - **AND** MUST NOT show a timeframe selector
 
-### Requirement: Monitor hosts the directional scalp module without redesigning Operar
+### Requirement: Authenticated Monitor has no scalper module
+Authenticated `/monitor` SHALL NOT render the Scalp BTCUSDT module, switch, diagnosis, kill banner, or any other scalper element. The rest of the workbench SHALL remain: Em posição, Saída / cobertura, KPIs, filters, `table.signals`, and Operar. The page SHALL NOT announce that a scalper was removed. This card SHALL NOT add a catalog route and SHALL NOT restyle opportunity cards, signal states, or the Operar confirmation modal.
 
-`/monitor` SHALL host the per-user Scalp BTCUSDT module on the existing authenticated workbench. The board columns and Operar market-click flow SHALL remain. This card SHALL NOT restyle opportunity cards, signal states, or the Operar confirmation modal.
-
-#### Scenario: Board and Operar stay
-
-- **WHEN** the scalp module is present on `/monitor`
-- **THEN** `table.signals` SHALL still expose Status, Preço, Distância, Tags, Operar and Par / Estratégia
-- **AND** the Operar control SHALL still open the existing confirmed MARKET flow
-- **AND** turning the scalp on SHALL NOT remove or replace that Operar control
-
-### Requirement: Monitor scalp module gains a rolling 15 min lookback without redesigning the board or Operar
-
-Authenticated `/monitor` SHALL keep hosting the existing Scalp BTCUSDT module on the workbench. This card SHALL add the «últimos 15 min» lookback fact, hurdle, fee, default target 35 bp, default stop −28 bp, open position after fill, last-trade result and «posição presa» inside that module. The board columns and Operar market-click flow SHALL remain. This card SHALL NOT restyle opportunity cards, signal states, or the Operar confirmation modal. This card SHALL NOT add a catalog route and SHALL NOT change landing or Ajuda copy. This card SHALL NOT add a 1 / 2 / 5 minute horizon selector. This card SHALL NOT show «Jev no máximo 1 vez / 15 min». This card SHALL NOT add Monitor copy of the 1.5 s send-wait cap.
-
-#### Scenario: Board and Operar stay
-
-- **WHEN** the 15 min lookback delta is present on `/monitor`
-- **THEN** `table.signals` SHALL still expose Status, Preço, Distância, 7d, Risco até stop, Tags, Operar and Par / Estratégia
-- **AND** the Operar control SHALL still open the existing confirmed MARKET flow
-- **AND** turning the scalp on SHALL NOT remove or replace that Operar control
-
-#### Scenario: Not a new surface
-
-- **WHEN** the user looks for the lookback
-- **THEN** it SHALL be on `/monitor` inside the existing Scalp BTCUSDT module as the fact «últimos 15 min»
-- **AND** SHALL NOT require a new nav destination
-- **AND** SHALL NOT be a radio 1/2/5
-- **AND** SHALL NOT say «1 vez / 15 min»
-
-### Requirement: Scalp panel shows livro indisponível when the book is not fresh
-
-The Scalp BTCUSDT module already on authenticated `/monitor` SHALL show the exact copy «livro indisponível» when the scalp is ligado and the shared book stream is down or the touch `age_ms` is greater than 500. The per-user switch SHALL remain Ligado. The module SHALL NOT add a new catalog route. The module SHALL NOT live inside Operar. Existing visual states `off`, `on`, `kill` and `nokey` SHALL remain. This card SHALL NOT redesign the switch, T, clip, kill banner, board, or Operar.
-
-#### Scenario: Stream down while scalp is on
-
-- **WHEN** the authenticated user has the scalp ligado
-- **AND** the BTCUSDT book stream is down or the touch is older than 500 ms
-- **THEN** the scalp status line on `/monitor` SHALL show «livro indisponível»
-- **AND** the switch SHALL remain Ligado
+#### Scenario: Monitor without the scalper
+- **WHEN** an authenticated user opens `/monitor` on desktop or mobile
+- **THEN** no scalper or scalp element SHALL be visible
+- **AND** Em posição, Saída / cobertura, KPIs and filters SHALL still work as they do today
 - **AND** `table.signals` SHALL still expose Status, Preço, Distância, 7d, Risco até stop, Tags, Operar and Par / Estratégia
+- **AND** the Operar control SHALL still open the existing confirmed MARKET flow
+- **AND** the page SHALL NOT contain a banner or copy that the scalper left
 
-#### Scenario: Book returns while scalp stays on
-
-- **WHEN** the scalp is still ligado
-- **AND** the in-memory touch is fresh (`age_ms` ≤ 500)
-- **THEN** the status line SHALL NOT show «livro indisponível» as the live copy
-- **AND** the switch SHALL remain Ligado
-
-#### Scenario: Off kill and nokey stay as they are
-
-- **WHEN** the module is desligado, parado por kill, or sem chave Spot
-- **THEN** those states SHALL keep their existing copy and controls
-- **AND** this card SHALL NOT restyle the switch, T, clip, or kill banner
