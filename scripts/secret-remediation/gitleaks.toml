@@ -1,0 +1,15 @@
+title = "Card 1071: Gitleaks 8.24.3 plus known configuration keys"
+[extend]
+useDefault = true
+
+[[rules]]
+id = "historical-config-key"
+description = "Known credential assignments; classification remains pending"
+regex = '''(?i)(?:BINANCE_API_KEY|BINANCE_API_SECRET|API_SECRET|JWT_SECRET)\s*[=:]\s*["']?([^\s"'\r\n,;]{4,})'''
+secretGroup = 1
+
+[[rules]]
+id = "database-url-password"
+description = "Password embedded in database URL"
+regex = '''(?i)(?:postgres(?:ql)?(?:\+[a-z0-9]+)?|mysql)://[^\s/:]+:([^\s/@]+)@'''
+secretGroup = 1

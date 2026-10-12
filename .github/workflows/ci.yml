@@ -254,6 +254,13 @@ jobs:
           python -m pip install pytest pyyaml
           python -m pytest -q scripts/process-fsm
 
+      - name: Synthetic secret-remediation checks (no repository inventory)
+        run: |
+          python scripts/secret-remediation/install_scanner.py --restricted-root "$RUNNER_TEMP/card-1071-scanner"
+          CARD1071_GITLEAKS="$RUNNER_TEMP/card-1071-scanner/gitleaks" python -m pytest -q -c /dev/null -p no:cacheprovider scripts/secret-remediation
+          python -m pip install git-filter-repo==2.47.0
+          python scripts/secret-remediation/rehearsal.py --filter-repo "$(command -v git-filter-repo)" --restricted-root "$RUNNER_TEMP/card-1071-rehearsal"
+
   backend-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30

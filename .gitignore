@@ -141,6 +141,7 @@ artifacts-signals-*.png
 coverage.xml
 htmlcov/
 backups/
+/.local_backups/
 
 # impeccable-ignore-start
 # Ephemeral output, runtime state, and per-dev overrides.

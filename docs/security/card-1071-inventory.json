@@ -1,0 +1,891 @@
+{
+  "schema": 1,
+  "date": "2026-10-12",
+  "scanner": {
+    "name": "Gitleaks",
+    "version": "8.24.3",
+    "configuration": "default_plus_known_keys_v1",
+    "baseline": false,
+    "fingerprint_suppressions": "not_excluded_in_original_collection"
+  },
+  "coverage": [
+    {
+      "source": "local_refs",
+      "state": "collected",
+      "count": 119,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "worktrees",
+      "state": "collected",
+      "count": 41,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "stash",
+      "state": "collected",
+      "count": 0,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "reflogs",
+      "state": "collected",
+      "count": 2608,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "reachable_objects",
+      "state": "collected",
+      "count": 29926,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "tracked_tree",
+      "state": "collected",
+      "count": 4991,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "metadata",
+      "state": "collected",
+      "count": 8606,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "shallow",
+      "state": "incomplete",
+      "count": 1,
+      "owner": "operador",
+      "limitation": "checkout_shallow_historico_anterior_nao_comprovado"
+    },
+    {
+      "source": "remote_refs",
+      "state": "collected",
+      "count": 743,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "pull_requests",
+      "state": "collected",
+      "count": 663,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "releases",
+      "state": "collected",
+      "count": 9,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "actions_artifacts",
+      "state": "collected",
+      "count": 5982,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "actions_runs",
+      "state": "collected",
+      "count": 2613,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "actions_caches",
+      "state": "collected",
+      "count": 7,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "lfs",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "revisao_controlada_pendente"
+    },
+    {
+      "source": "remote_only_refs_content",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "acesso_ou_operacao_separada_necessaria_sem_contorno"
+    },
+    {
+      "source": "other_worktrees_content",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "acesso_ou_operacao_separada_necessaria_sem_contorno"
+    },
+    {
+      "source": "reflog_only_content",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "acesso_ou_operacao_separada_necessaria_sem_contorno"
+    },
+    {
+      "source": "actions_payloads_logs",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "acesso_ou_operacao_separada_necessaria_sem_contorno"
+    },
+    {
+      "source": "provider_caches",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "acesso_ou_operacao_separada_necessaria_sem_contorno"
+    },
+    {
+      "source": "lfs_payloads",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "acesso_ou_operacao_separada_necessaria_sem_contorno"
+    },
+    {
+      "source": "runtime_DEV",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "acesso_ou_operacao_separada_necessaria_sem_contorno"
+    },
+    {
+      "source": "runtime_PROD",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "acesso_ou_operacao_separada_necessaria_sem_contorno"
+    },
+    {
+      "source": "tag_messages",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "classificacao_controlada_adicional_necessaria"
+    },
+    {
+      "source": "path_ref_metadata",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "classificacao_controlada_adicional_necessaria"
+    },
+    {
+      "source": "current_untracked_content",
+      "state": "incomplete",
+      "count": null,
+      "owner": "operador",
+      "limitation": "classificacao_controlada_adicional_necessaria"
+    }
+  ],
+  "scans": [
+    {
+      "source": "history",
+      "state": "incomplete",
+      "count": 1269,
+      "pending_alerts": {
+        "first_id": "history-000001",
+        "last_id": "history-001269",
+        "count": 1269,
+        "classification": "possivel_segredo",
+        "result": "pendente",
+        "owner": "operador",
+        "environment": "indeterminado",
+        "invalidation_DEV": "pendente",
+        "invalidation_PROD": "pendente",
+        "proof_required": "classificacao_e_revogacao_autoritativa_ou_teste_conclusivo",
+        "service_counts": {
+          "credencial_config": 781,
+          "PostgreSQL": 417,
+          "possivel_segredo": 71
+        }
+      },
+      "observed_state_before_correction": "findings",
+      "limitations": [
+        "fingerprint_suppression_not_excluded_in_original_collection",
+        "corrected_recollection_pending"
+      ],
+      "owner": "operador",
+      "count_scope": "original_observations_not_complete_total"
+    },
+    {
+      "source": "tracked_content",
+      "state": "incomplete",
+      "count": 218,
+      "pending_alerts": {
+        "first_id": "tracked_content-000001",
+        "last_id": "tracked_content-000218",
+        "count": 218,
+        "classification": "possivel_segredo",
+        "result": "pendente",
+        "owner": "operador",
+        "environment": "indeterminado",
+        "invalidation_DEV": "pendente",
+        "invalidation_PROD": "pendente",
+        "proof_required": "classificacao_e_revogacao_autoritativa_ou_teste_conclusivo",
+        "service_counts": {
+          "possivel_segredo": 10,
+          "credencial_config": 148,
+          "PostgreSQL": 60
+        }
+      },
+      "observed_state_before_correction": "findings",
+      "limitations": [
+        "fingerprint_suppression_not_excluded_in_original_collection",
+        "corrected_recollection_pending",
+        "ancestor_symlinks_not_excluded_in_original_snapshot"
+      ],
+      "owner": "operador",
+      "count_scope": "original_observations_not_complete_total"
+    },
+    {
+      "source": "messages",
+      "state": "incomplete",
+      "count": 0,
+      "observed_state_before_correction": "no_findings",
+      "limitations": [
+        "fingerprint_suppression_not_excluded_in_original_collection",
+        "corrected_recollection_pending"
+      ],
+      "owner": "operador",
+      "count_scope": "original_observations_not_complete_total"
+    }
+  ],
+  "known_history": {
+    "state": "collected",
+    "keys": [
+      {
+        "id": "KEY-001",
+        "service": "BINANCE_API_KEY",
+        "presence": true,
+        "versions": 9,
+        "environment": "indeterminado",
+        "date": "2026-10-12",
+        "classification": "possivel_segredo",
+        "result": "pendente",
+        "reason": "comparacao_runtime_nao_autorizada",
+        "owner": "operador"
+      },
+      {
+        "id": "KEY-002",
+        "service": "BINANCE_API_SECRET",
+        "presence": true,
+        "versions": 9,
+        "environment": "indeterminado",
+        "date": "2026-10-12",
+        "classification": "possivel_segredo",
+        "result": "pendente",
+        "reason": "comparacao_runtime_nao_autorizada",
+        "owner": "operador"
+      },
+      {
+        "id": "KEY-003",
+        "service": "JWT_SECRET",
+        "presence": true,
+        "versions": 1,
+        "environment": "indeterminado",
+        "date": "2026-10-12",
+        "classification": "possivel_segredo",
+        "result": "pendente",
+        "reason": "comparacao_runtime_nao_autorizada",
+        "owner": "operador"
+      },
+      {
+        "id": "KEY-004",
+        "service": "VITE_API_URL",
+        "presence": true,
+        "versions": 15,
+        "environment": "indeterminado",
+        "date": "2026-10-12",
+        "classification": "configuracao_publica_a_confirmar",
+        "result": "pendente",
+        "reason": "comparacao_runtime_nao_autorizada",
+        "owner": "operador"
+      },
+      {
+        "id": "KEY-005",
+        "service": "WORKFLOW_DATABASE_URL",
+        "presence": true,
+        "versions": 2,
+        "environment": "indeterminado",
+        "date": "2026-10-12",
+        "classification": "possivel_segredo",
+        "result": "pendente",
+        "reason": "comparacao_runtime_nao_autorizada",
+        "owner": "operador"
+      }
+    ],
+    "limitation": "aliases_renames_valores_distintos_e_runtime_exigem_revisao_controlada"
+  },
+  "overall": "incomplete",
+  "revocation_proven": false,
+  "backup": {
+    "state": "classified",
+    "tables": [
+      {
+        "id": "TABLE-001",
+        "state": "classified",
+        "rows": 0,
+        "columns": [
+          {
+            "id": "COL-001",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-002",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-003",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-004",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-005",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-006",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-007",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-008",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-009",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-010",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-011",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-012",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-013",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          }
+        ],
+        "result": "pendente",
+        "reason": "validacao_semantica_retencao_e_remocao_historica"
+      },
+      {
+        "id": "TABLE-002",
+        "state": "classified",
+        "rows": 0,
+        "columns": [
+          {
+            "id": "COL-001",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-002",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-003",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-004",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          }
+        ],
+        "result": "pendente",
+        "reason": "validacao_semantica_retencao_e_remocao_historica"
+      },
+      {
+        "id": "TABLE-003",
+        "state": "classified",
+        "rows": 0,
+        "columns": [
+          {
+            "id": "COL-001",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-002",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-003",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-004",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-005",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-006",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-007",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-008",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-009",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-010",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-011",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-012",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-013",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-014",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-015",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-016",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-017",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-018",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-019",
+            "categories": {},
+            "result": "pendente",
+            "owner": "operador"
+          }
+        ],
+        "result": "pendente",
+        "reason": "validacao_semantica_retencao_e_remocao_historica"
+      },
+      {
+        "id": "TABLE-004",
+        "state": "classified",
+        "rows": 14,
+        "columns": [
+          {
+            "id": "COL-001",
+            "categories": {
+              "numeric": 14
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-002",
+            "categories": {
+              "text_pending": 14
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-003",
+            "categories": {
+              "text_pending": 14
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-004",
+            "categories": {
+              "numeric": 14
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-005",
+            "categories": {
+              "numeric": 14
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-006",
+            "categories": {
+              "numeric": 14
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-007",
+            "categories": {
+              "json_pending": 14
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-008",
+            "categories": {
+              "json_pending": 14
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-009",
+            "categories": {
+              "text_pending": 12,
+              "null": 2
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-010",
+            "categories": {
+              "text_pending": 12,
+              "null": 2
+            },
+            "result": "pendente",
+            "owner": "operador"
+          }
+        ],
+        "result": "pendente",
+        "reason": "validacao_semantica_retencao_e_remocao_historica"
+      },
+      {
+        "id": "TABLE-005",
+        "state": "classified",
+        "rows": 66,
+        "columns": [
+          {
+            "id": "COL-001",
+            "categories": {
+              "numeric": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-002",
+            "categories": {
+              "text_pending": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-003",
+            "categories": {
+              "text_pending": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-004",
+            "categories": {
+              "text_pending": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-005",
+            "categories": {
+              "text_pending": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-006",
+            "categories": {
+              "json_pending": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-007",
+            "categories": {
+              "json_pending": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-008",
+            "categories": {
+              "text_pending": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-009",
+            "categories": {
+              "text_pending": 63,
+              "null": 3
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-010",
+            "categories": {
+              "numeric": 65,
+              "null": 1
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-011",
+            "categories": {
+              "null": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-012",
+            "categories": {
+              "null": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          },
+          {
+            "id": "COL-013",
+            "categories": {
+              "text_pending": 66
+            },
+            "result": "pendente",
+            "owner": "operador"
+          }
+        ],
+        "result": "pendente",
+        "reason": "validacao_semantica_retencao_e_remocao_historica"
+      }
+    ],
+    "non_table_objects": 7,
+    "copy_read_only": true,
+    "extensions_disabled": true,
+    "result": "pendente"
+  },
+  "remote_coverage": {
+    "advertised_refs": 743,
+    "missing_objects": 141,
+    "state": "incomplete",
+    "owner": "operador",
+    "limitation": "clone_shallow_e_refs_remotas_exigem_clone_completo_dedicado"
+  },
+  "historical_variant_matrix": [
+    {
+      "id": "VAR-001",
+      "service": "BINANCE_API_KEY",
+      "presence": true,
+      "environment": "DEV",
+      "date": "2026-10-12",
+      "classification": "possivel_segredo",
+      "result": "pendente",
+      "reason": "comparacao_runtime_e_prova_de_invalidacao_nao_executadas",
+      "owner": "Alan_e_operador"
+    },
+    {
+      "id": "VAR-001",
+      "service": "BINANCE_API_KEY",
+      "presence": true,
+      "environment": "PROD",
+      "date": "2026-10-12",
+      "classification": "possivel_segredo",
+      "result": "pendente",
+      "reason": "comparacao_runtime_e_prova_de_invalidacao_nao_executadas",
+      "owner": "Alan_e_operador"
+    },
+    {
+      "id": "VAR-002",
+      "service": "BINANCE_API_SECRET",
+      "presence": true,
+      "environment": "DEV",
+      "date": "2026-10-12",
+      "classification": "possivel_segredo",
+      "result": "pendente",
+      "reason": "comparacao_runtime_e_prova_de_invalidacao_nao_executadas",
+      "owner": "Alan_e_operador"
+    },
+    {
+      "id": "VAR-002",
+      "service": "BINANCE_API_SECRET",
+      "presence": true,
+      "environment": "PROD",
+      "date": "2026-10-12",
+      "classification": "possivel_segredo",
+      "result": "pendente",
+      "reason": "comparacao_runtime_e_prova_de_invalidacao_nao_executadas",
+      "owner": "Alan_e_operador"
+    },
+    {
+      "id": "VAR-003",
+      "service": "WORKFLOW_DATABASE_URL",
+      "presence": true,
+      "environment": "DEV",
+      "date": "2026-10-12",
+      "classification": "possivel_segredo",
+      "result": "pendente",
+      "reason": "comparacao_runtime_e_prova_de_invalidacao_nao_executadas",
+      "owner": "operador"
+    },
+    {
+      "id": "VAR-003",
+      "service": "WORKFLOW_DATABASE_URL",
+      "presence": true,
+      "environment": "PROD",
+      "date": "2026-10-12",
+      "classification": "possivel_segredo",
+      "result": "pendente",
+      "reason": "comparacao_runtime_e_prova_de_invalidacao_nao_executadas",
+      "owner": "operador"
+    },
+    {
+      "id": "VAR-004",
+      "service": "JWT_SECRET",
+      "presence": true,
+      "environment": "DEV",
+      "date": "2026-10-12",
+      "classification": "possivel_segredo",
+      "result": "pendente",
+      "reason": "comparacao_runtime_e_prova_de_invalidacao_nao_executadas",
+      "owner": "operador"
+    },
+    {
+      "id": "VAR-004",
+      "service": "JWT_SECRET",
+      "presence": true,
+      "environment": "PROD",
+      "date": "2026-10-12",
+      "classification": "possivel_segredo",
+      "result": "pendente",
+      "reason": "comparacao_runtime_e_prova_de_invalidacao_nao_executadas",
+      "owner": "operador"
+    }
+  ]
+}
