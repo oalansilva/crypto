@@ -63,8 +63,11 @@ class Runtime:
         projects = self.home / "projects"
         found = {p.resolve() for p in projects.glob(f"*/{session}.jsonl")}
         if hint and hint != UNAVAILABLE:
-            found.add(Path(hint).resolve())
-        found = {p for p in found if p.name == f"{session}.jsonl" and projects in p.parents}
+            # The host moves the transcript when the session changes worktree: a hint to a vanished file is stale.
+            hinted = Path(hint).resolve()
+            if hinted.is_file():
+                found.add(hinted)
+        found = {p for p in found if p.name == f"{session}.jsonl" and projects in p.parents and p.is_file()}
         if not found:
             raise EvidenceError("source_unavailable", f"no transcript for session {session}")
         if len(found) != 1:

@@ -64,6 +64,10 @@ Onda de review: `claude_review.py verify-wave --wave-id <id> --sha256 <diff> --b
 
 Limpeza automática de transcripts (`cleanupPeriodDays`), arquivo truncado, versão não qualificada, filho de outra sessão ou digest de hooks alterado: coletar de novo no mesmo turno enquanto a fonte existir; origem irrecuperável ou divergente exige **nascimento novo**, nunca receipt retroativo. O trabalho e os artefatos do filho são preservados.
 
+Troca de worktree na mesma sessão (`EnterWorktree`) é suportada: o host move o transcript para o diretório do novo cwd, o hint inexistente do heartbeat é descartado e o heartbeat é atualizado no PreToolUse.
+
+A troca só segue `transcript_path` e `cwd`: o digest do heartbeat continua o do SessionStart, a única âncora dos hooks que o host carregou. Hooks alterados depois exigem reabrir a sessão (`hooks_changed`); a troca sem reabrir só vale entre worktrees com o mesmo digest revisado.
+
 ## Fecho de lote
 
 `claude_evidence.py observe-parent` lê modelo e esforço do último turno do pai; `release_model_selection.check_claude_parent` compara com a captura `claude/execucao`. Divergente ou `unavailable` recusa T16 e `fecho-lote` e pede sessão nova configurada (`/model` + `/effort`).

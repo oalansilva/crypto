@@ -208,6 +208,7 @@ def write_heartbeat(
     reviewed: bool,
     environ: Mapping[str, str] | None = None,
     version: str | None = None,
+    entrypoint: str | None = None,
 ) -> Path:
     env = os.environ if environ is None else environ
     if not re.fullmatch(r"[A-Za-z0-9_-]{8,128}", session_id):
@@ -221,7 +222,7 @@ def write_heartbeat(
             "transcript_path": transcript_path or UNAVAILABLE,
             "cwd": cwd,
             "host_version": version or host_version(env),
-            "entrypoint": env.get("CLAUDE_CODE_ENTRYPOINT") or UNAVAILABLE,
+            "entrypoint": entrypoint or env.get("CLAUDE_CODE_ENTRYPOINT") or UNAVAILABLE,
             "hooks_digest": digest,
             "reviewed": reviewed,
             "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

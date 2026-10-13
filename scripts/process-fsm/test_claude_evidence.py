@@ -29,6 +29,35 @@ def test_preflight_ready_reports_session_version_surface_and_parent_observation(
     assert pf["parent_observed"] == {"model": "claude-sonnet-5-5", "effort": "high"}
 
 
+def _move_transcript(world, slug="-slug-other"):
+    moved = world.home / "projects" / slug / f"{SESSION}.jsonl"
+    moved.parent.mkdir(parents=True, exist_ok=True)
+    world.parent.rename(moved)
+    return moved
+
+
+def test_stale_transcript_hint_is_dropped_when_the_host_moved_the_transcript(world):
+    stale = str(world.parent)
+    moved = _move_transcript(world)
+    assert world.runtime.parent_path(SESSION, stale) == moved.resolve()
+    assert world.runtime.parent_path(SESSION) == moved.resolve()
+
+
+def test_two_existing_transcripts_remain_a_source_conflict_and_none_unavailable(world):
+    hint = str(world.parent)
+    other = world.home / "projects" / "-slug-other" / f"{SESSION}.jsonl"
+    other.parent.mkdir(parents=True)
+    other.write_text(world.parent.read_text())
+    with pytest.raises(ev.EvidenceError) as e:
+        world.runtime.parent_path(SESSION, hint)
+    assert code(e) == "source_conflict"
+    other.unlink()
+    world.parent.unlink()
+    with pytest.raises(ev.EvidenceError) as e:
+        world.runtime.parent_path(SESSION, hint)
+    assert code(e) == "source_unavailable"
+
+
 def test_preflight_requires_a_session(world):
     with pytest.raises(ev.EvidenceError) as e:
         ev.preflight(root=world.repo, runtime=world.runtime, session="", environ={}, trust=trust_ok)
