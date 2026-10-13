@@ -1,0 +1,28 @@
+{
+  "cold": false,
+  "direction": "long",
+  "elapsed_s": 33.98250643897336,
+  "evictions": 0,
+  "failed_trials": 0,
+  "input_unchanged": true,
+  "label": "primary-4-baseline",
+  "max_cache_entries": 0,
+  "max_retained_bytes": 0,
+  "max_snapshots": 0,
+  "mode": "baseline",
+  "parent_peak_kib": 288960,
+  "parent_retained_after_execution": 0,
+  "preparation_jit_s": 0.0,
+  "result_sha256": "27b3d35b7e57213ac0308cfeb89b02d91a5a4c7da5b235ba21feab3b0156463f",
+  "rss_parent_workers_peak_kib": 1025892,
+  "startup_imports_fixtures_manifest_s": 1.415982756006997,
+  "symbol": "1INCH/USDT",
+  "template": "multi_ma_crossover",
+  "trials": 21210,
+  "worker_peaks_kib": {
+    "1665940": 249388,
+    "1665941": 246604,
+    "1665942": 244444
+  },
+  "workers": 3
+}

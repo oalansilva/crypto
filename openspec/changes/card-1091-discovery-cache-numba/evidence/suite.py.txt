@@ -1,0 +1,31 @@
+import os, sys, json, subprocess, statistics, time
+from pathlib import Path
+OUT = Path('/tmp/discovery-speed-v2'); PY = '/tmp/discovery-speed-v2-env/bin/python'
+deadline = time.monotonic() + 600
+while not (OUT/'validation.json').exists():
+    if time.monotonic() > deadline: raise RuntimeError('Validation not successful')
+    time.sleep(2)
+records = []
+def run(mode, label, template='multi_ma_crossover', symbol='1INCH/USDT', direction='long'):
+    print(json.dumps(dict(starting=label, mode=mode)), flush=True)
+    with (OUT/f'{label}.log').open('w') as log:
+        subprocess.run([PY, str(OUT/'experiment.py'), 'engine', '--mode', mode, '--run-id', label, '--template', template, '--symbol', symbol, '--direction', direction], stdout=log, stderr=subprocess.STDOUT, check=True, timeout=300, env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONHASHSEED='0'))
+    r = json.loads((OUT/f'{label}.summary.json').read_text()); records.append(r)
+    (OUT/'suite-progress.json').write_text(json.dumps(records, indent=2))
+    print(json.dumps({k:r[k] for k in ('run','elapsed_s','trials','failed_trials','result_sha256')}), flush=True)
+    return r
+for mode in ('baseline','fingerprint','numba','indicators','combined'):
+    run(mode, f'primary-{mode}-1')
+assert len({r['result_sha256'] for r in records}) == 1, 'Whole-result mismatch'
+best = min(records[2:], key=lambda r:r['elapsed_s'])['mode']
+for rep in range(2,6):
+    modes = ['baseline','fingerprint',best]
+    if rep % 2 == 0: modes.reverse()
+    for mode in modes: run(mode, f'primary-{mode}-{rep}')
+assert len({r['result_sha256'] for r in records}) == 1
+for label, template, symbol, direction in [('aave','multi_ma_crossover','AAVE/USDT','short'),('ema-rsi','ema_rsi','1INCH/USDT','long')]:
+    for mode in ('baseline',best): run(mode, f'{label}-{mode}', template, symbol, direction)
+    assert records[-1]['result_sha256'] == records[-2]['result_sha256']
+summary = dict(selected=best, medians={m:statistics.median(r['elapsed_s'] for r in records if r['mode']==m and r['run'].startswith('primary')) for m in ('baseline','fingerprint',best)}, all_full_results_exact=True, runs=records)
+(OUT/'suite-summary.json').write_text(json.dumps(summary, indent=2))
+print(json.dumps({k:v for k,v in summary.items() if k!='runs'}), flush=True)

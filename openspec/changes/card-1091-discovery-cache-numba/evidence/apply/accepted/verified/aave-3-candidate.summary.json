@@ -1,0 +1,29 @@
+{
+  "cold": false,
+  "direction": "short",
+  "elapsed_s": 29.223835652985144,
+  "evictions": 0,
+  "failed_trials": 0,
+  "input_unchanged": true,
+  "label": "aave-3-candidate",
+  "max_cache_entries": 836,
+  "max_retained_bytes": 42881043,
+  "max_snapshots": 1,
+  "mode": "candidate",
+  "parent_peak_kib": 385792,
+  "parent_retained_after_execution": 0,
+  "preparation_jit_s": 0.48326116905082017,
+  "profiled_diagnostic_run": false,
+  "result_sha256": "d4d210824750cd4152864464b94019b894d39a490651e0d06a6b540c931ef1ff",
+  "rss_parent_workers_peak_kib": 1224832,
+  "startup_imports_fixtures_manifest_s": 1.4734712569625117,
+  "symbol": "AAVE/USDT",
+  "template": "multi_ma_crossover",
+  "trials": 19158,
+  "worker_peaks_kib": {
+    "1695379": 283160,
+    "1695380": 282988,
+    "1695381": 279576
+  },
+  "workers": 3
+}

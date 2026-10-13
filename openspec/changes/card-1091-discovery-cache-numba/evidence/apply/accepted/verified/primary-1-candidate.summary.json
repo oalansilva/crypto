@@ -1,0 +1,29 @@
+{
+  "cold": false,
+  "direction": "long",
+  "elapsed_s": 39.95736049202969,
+  "evictions": 0,
+  "failed_trials": 0,
+  "input_unchanged": true,
+  "label": "primary-1-candidate",
+  "max_cache_entries": 1110,
+  "max_retained_bytes": 53640409,
+  "max_snapshots": 1,
+  "mode": "candidate",
+  "parent_peak_kib": 386320,
+  "parent_retained_after_execution": 0,
+  "preparation_jit_s": 0.4632835160009563,
+  "profiled_diagnostic_run": false,
+  "result_sha256": "27b3d35b7e57213ac0308cfeb89b02d91a5a4c7da5b235ba21feab3b0156463f",
+  "rss_parent_workers_peak_kib": 1264092,
+  "startup_imports_fixtures_manifest_s": 1.4830528380116448,
+  "symbol": "1INCH/USDT",
+  "template": "multi_ma_crossover",
+  "trials": 21210,
+  "worker_peaks_kib": {
+    "1688368": 294196,
+    "1688369": 291608,
+    "1688370": 295028
+  },
+  "workers": 3
+}

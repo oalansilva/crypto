@@ -872,6 +872,19 @@ class ComboStrategy:
         self, df: pd.DataFrame, entry_mask: pd.Series, exit_mask: pd.Series
     ) -> pd.DataFrame:
         """Event-oriented loop. Same comparisons as _legacy_position_loop."""
+        from app.services.combo_acceleration import enabled, positions
+        if enabled():
+            if not entry_mask.any():
+                return df.assign(signal=0, signal_reason="")
+            signals, reasons = positions(
+                np.ascontiguousarray(df["open"].to_numpy(dtype=np.float64)),
+                np.ascontiguousarray(df["low"].to_numpy(dtype=np.float64)),
+                np.ascontiguousarray(entry_mask.fillna(False).to_numpy(dtype=bool)),
+                np.ascontiguousarray(exit_mask.fillna(False).to_numpy(dtype=bool)),
+                float(self.stop_loss), self.direction == "long",
+            )
+            return df.assign(signal=signals, signal_reason=np.array(
+                ["", "entry", "stop_loss", "exit_logic"], dtype=object)[reasons])
         if not entry_mask.any():
             # Cache path skips generate_signals init; cached frames have no signal.
             return df.assign(signal=0, signal_reason="")

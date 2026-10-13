@@ -1,0 +1,58 @@
+         3779597 function calls (3650182 primitive calls) in 3.280 seconds
+
+   Ordered by: cumulative time
+   List reduced from 616 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      144    0.030    0.000    3.194    0.022 combo_optimizer.py:475(_run_backtest_logic)
+      144    0.007    0.000    0.887    0.006 combo_optimizer.py:312(extract_trades_with_mode)
+      144    0.001    0.000    0.763    0.005 deep_backtest.py:26(simulate_execution_with_15m)
+      144    0.010    0.000    0.761    0.005 deep_backtest.py:347(_compiled_simulate_execution_with_15m)
+      288    0.211    0.001    0.654    0.002 deep_backtest.py:198(_iso_array)
+      288    0.018    0.000    0.597    0.002 combo_strategy.py:513(_evaluate_logic_vectorized)
+      144    0.014    0.000    0.592    0.004 combo_strategy.py:311(calculate_indicators)
+     8352    0.033    0.000    0.540    0.000 frame.py:4337(__getitem__)
+      145    0.003    0.000    0.536    0.004 combo_cache.py:36(protect)
+     2594    0.025    0.000    0.474    0.000 base.py:567(to_numpy)
+   214921    0.458    0.000    0.460    0.000 datetimes.py:670(__iter__)
+6482/6194    0.006    0.000    0.458    0.000 {built-in method numpy.asarray}
+      145    0.000    0.000    0.434    0.003 base.py:659(to_numpy)
+      145    0.001    0.000    0.433    0.003 datetimes.py:663(__array__)
+      145    0.018    0.000    0.432    0.003 datetimelike.py:356(__array__)
+      720    0.006    0.000    0.418    0.001 frame.py:4559(__setitem__)
+      720    0.002    0.000    0.384    0.001 frame.py:4862(_set_item)
+     8352    0.009    0.000    0.369    0.000 frame.py:4966(_get_item)
+     8352    0.008    0.000    0.349    0.000 frame.py:4292(_ixs)
+2610/1157    0.012    0.000    0.347    0.000 {built-in method builtins.sum}
+      293    0.004    0.000    0.345    0.001 combo_cache.py:136(put)
+77739/293    0.157    0.000    0.341    0.001 combo_cache.py:71(retained_bytes)
+ 4802/879    0.002    0.000    0.338    0.000 combo_cache.py:105(<genexpr>)
+      720    0.007    0.000    0.335    0.000 frame.py:4846(_set_item_mgr)
+      148    0.000    0.000    0.335    0.002 combo_cache.py:166(__setitem__)
+      720    0.008    0.000    0.314    0.000 managers.py:1531(insert)
+      144    0.005    0.000    0.285    0.002 combo_strategy.py:871(_fast_position_loop)
+    70781    0.024    0.000    0.278    0.000 combo_cache.py:93(<genexpr>)
+      433    0.007    0.000    0.242    0.001 combo_cache.py:20(_hash_index)
+     1730    0.003    0.000    0.225    0.000 config.py:143(get_option)
+      144    0.001    0.000    0.223    0.002 frame.py:5649(assign)
+     1730    0.004    0.000    0.218    0.000 config.py:127(_get_single_key)
+     8352    0.014    0.000    0.216    0.000 frame.py:4954(_box_col_values)
+     1730    0.024    0.000    0.209    0.000 config.py:650(_select_options)
+1077553/1075679    0.178    0.000    0.205    0.000 {built-in method builtins.isinstance}
+     2593    0.024    0.000    0.202    0.000 series.py:369(__init__)
+      288    0.002    0.000    0.182    0.001 {built-in method builtins.eval}
+     1440    0.003    0.000    0.177    0.000 common.py:67(new_method)
+    84169    0.039    0.000    0.174    0.000 __init__.py:174(search)
+      576    0.001    0.000    0.159    0.000 combo_cache.py:13(index_identity)
+     9216    0.019    0.000    0.133    0.000 base.py:5384(__getitem__)
+      577    0.002    0.000    0.131    0.000 generic.py:6560(copy)
+    10080    0.070    0.000    0.127    0.000 array.py:722(__getitem__)
+      720    0.004    0.000    0.125    0.000 base.py:7143(insert)
+     8352    0.051    0.000    0.125    0.000 managers.py:1213(iget)
+      577    0.003    0.000    0.121    0.000 managers.py:726(copy)
+      721    0.018    0.000    0.119    0.000 base.py:2457(is_unique)
+      720    0.003    0.000    0.112    0.000 string_arrow.py:258(insert)
+      864    0.004    0.000    0.111    0.000 series.py:6726(_cmp_method)
+      720    0.006    0.000    0.109    0.000 base.py:2517(insert)
+
+

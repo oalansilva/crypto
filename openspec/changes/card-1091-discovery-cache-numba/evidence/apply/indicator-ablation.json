@@ -1,0 +1,95 @@
+{
+  "decision": "Excluded: screening does not demonstrate repeated full-engine additional gain",
+  "delivered": false,
+  "global_monkeypatch": false,
+  "scenarios": {
+    "aave": {
+      "exact": true,
+      "gain_pct": -3.19937168429556,
+      "individual_median_s": 0.8333548170048743,
+      "pairs": [
+        {
+          "individual": 0.8244505979819223,
+          "without": 0.7979118109797128
+        },
+        {
+          "individual": 0.8183371140039526,
+          "without": 0.9211780760088004
+        },
+        {
+          "individual": 0.8333548170048743,
+          "without": 0.7883202609955333
+        },
+        {
+          "individual": 0.8380011290428229,
+          "without": 0.8075192740070634
+        },
+        {
+          "individual": 0.8525752699933946,
+          "without": 0.9350724509567954
+        }
+      ],
+      "wins": 2,
+      "without_median_s": 0.8075192740070634
+    },
+    "ema-rsi": {
+      "exact": true,
+      "gain_pct": -5.932226046325817,
+      "individual_median_s": 0.8213599669979885,
+      "pairs": [
+        {
+          "individual": 0.9443135539768264,
+          "without": 0.7744706809753552
+        },
+        {
+          "individual": 0.8138618770171888,
+          "without": 0.7765877750352956
+        },
+        {
+          "individual": 0.9603567040176131,
+          "without": 0.7704076099907979
+        },
+        {
+          "individual": 0.8213599669979885,
+          "without": 0.7786374670104124
+        },
+        {
+          "individual": 0.8172157360240817,
+          "without": 0.7753636430134065
+        }
+      ],
+      "wins": 0,
+      "without_median_s": 0.7753636430134065
+    },
+    "primary": {
+      "exact": true,
+      "gain_pct": -21.999039832293256,
+      "individual_median_s": 0.9490917170187458,
+      "pairs": [
+        {
+          "individual": 0.9627043759683147,
+          "without": 0.8094896580441855
+        },
+        {
+          "individual": 0.8181499580387026,
+          "without": 0.7794643649831414
+        },
+        {
+          "individual": 0.8151732159894891,
+          "without": 0.7692200120072812
+        },
+        {
+          "individual": 0.9490917170187458,
+          "without": 0.7779501529876143
+        },
+        {
+          "individual": 0.953133543021977,
+          "without": 0.7739885640330613
+        }
+      ],
+      "wins": 0,
+      "without_median_s": 0.7779501529876143
+    }
+  },
+  "scope": "50 frozen trial batch, fingerprint+Numba both sides, single process"
+}

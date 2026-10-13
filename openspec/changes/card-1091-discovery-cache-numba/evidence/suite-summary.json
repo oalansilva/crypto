@@ -1,0 +1,1273 @@
+{
+  "selected": "combined",
+  "medians": {
+    "baseline": 34.185984809999354,
+    "fingerprint": 27.085885524982587,
+    "combined": 24.906971730990335
+  },
+  "all_full_results_exact": true,
+  "runs": [
+    {
+      "run": "primary-baseline-1",
+      "mode": "baseline",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 34.01920110901119,
+      "stages_s": 33.61926121200668,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 24.684949024987873
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.196419992018491
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.5636008949950337
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 5.1742913000052795
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-fingerprint-1",
+      "mode": "fingerprint",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 26.529933837999124,
+      "stages_s": 26.060642958036624,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 18.815803805016913
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.354192801984027
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.02779325802112
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 3.8628530930145644
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-numba-1",
+      "mode": "numba",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 25.126078655011952,
+      "stages_s": 24.733537013991736,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 18.07151864998741
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 0.8389651629840955
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.9881380519946106
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 3.834915149025619
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-indicators-1",
+      "mode": "indicators",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 27.297379928990267,
+      "stages_s": 26.910316770896316,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 19.389355179970153
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.1780191929428838
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.3383287849719636
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 4.0046136130113155
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-combined-1",
+      "mode": "combined",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 24.906971730990335,
+      "stages_s": 24.525069691007957,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 17.748655756004155
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.049959683965426
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.0434541080030613
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 3.683000143035315
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-combined-2",
+      "mode": "combined",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 24.66649596299976,
+      "stages_s": 24.290072721021716,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 17.8747462190222
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.0881123309955
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.7992245350033045
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 3.5279896360007115
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-fingerprint-2",
+      "mode": "fingerprint",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 27.418682117015123,
+      "stages_s": 27.041737674036995,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 19.782578254991677
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.0738972279941663
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.068911526002921
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 4.11635066504823
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-baseline-2",
+      "mode": "baseline",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 34.185984809999354,
+      "stages_s": 33.79229073796887,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 25.176254236954264
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.138230926997494
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.624011176987551
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 4.85379439702956
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-baseline-3",
+      "mode": "baseline",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 33.98823391296901,
+      "stages_s": 33.6145680990885,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 25.125137395050842
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.1417439820361324
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.5578916739905253
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 4.789795048011001
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-fingerprint-3",
+      "mode": "fingerprint",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 26.751578634022735,
+      "stages_s": 26.37601473100949,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 19.241686439025216
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.1198910679668188
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.1159717100090347
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 3.8984655140084215
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-combined-3",
+      "mode": "combined",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 25.022313071007375,
+      "stages_s": 24.634315367089584,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 17.837002279993612
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.349882354028523
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.8997610980295576
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 3.5476696350378916
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-combined-4",
+      "mode": "combined",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 25.554837798990775,
+      "stages_s": 25.1650195249822,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 18.135783092002384
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.22040912497323
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.9885380779742263
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 3.8202892300323583
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-fingerprint-4",
+      "mode": "fingerprint",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 30.697792107996065,
+      "stages_s": 30.31002133002039,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 22.74789839499863
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.200222062994726
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.309638562030159
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 4.052262309996877
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-baseline-4",
+      "mode": "baseline",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 35.072829797980376,
+      "stages_s": 34.68629059003433,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 25.8743594380212
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.1235928270034492
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.5766062409966253
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 5.111732084013056
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-baseline-5",
+      "mode": "baseline",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 36.3128630159772,
+      "stages_s": 35.92409047606634,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 26.700340203999076
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.2122620880254544
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.7200515780132264
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 5.291436606028583
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-fingerprint-5",
+      "mode": "fingerprint",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 27.085885524982587,
+      "stages_s": 26.708177178923506,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 19.46082097996259
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.1125811410020106
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.1159567979630083
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 4.018818259995896
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "primary-combined-5",
+      "mode": "combined",
+      "template": "multi_ma_crossover",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 24.50659835198894,
+      "stages_s": 24.125644426094368,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 17.492167365038767
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.142122253018897
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.9337424610275775
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 3.557612347009126
+        }
+      ],
+      "trials": 21210,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "f02c08d165e1fd78ee11790863be46a753af3d13153506be87e9792f556e9739",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_short": 15,
+        "sma_medium": 17,
+        "sma_long": 74,
+        "stop_loss": 0.072
+      },
+      "trades": 7,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -1.53 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -27.1% \u2264 -12.8%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.57 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.00 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.04",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.85 para -1.53 (reten\u00e7\u00e3o -180%; m\u00ednimo 50%; exigido 0.42)."
+        ],
+        "warnings": [],
+        "holdout_trades": 5,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "aave-baseline",
+      "mode": "baseline",
+      "template": "multi_ma_crossover",
+      "symbol": "AAVE/USDT",
+      "direction": "short",
+      "elapsed_s": 32.06475178000983,
+      "stages_s": 31.680793516046833,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 25.790357008052524
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.0330452849739231
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.967815037991386
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.889576185029
+        }
+      ],
+      "trials": 19158,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "485d168e70937934ed6427aa5865c77a502b22ef77751afe60a7cf735e20e581",
+      "winner": {
+        "direction": "short",
+        "timeframe": "1d",
+        "ema_short": 12,
+        "sma_medium": 14,
+        "sma_long": 87,
+        "stop_loss": 0.101
+      },
+      "trades": 15,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 15 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -0.72 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -50.4% \u2264 505.6%",
+          "Holdout (OOS) \u2014 Max Drawdown excessivo: 40.1% > 35.0%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.26 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.26 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.06",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.86 para -0.72 (reten\u00e7\u00e3o -83%; m\u00ednimo 50%; exigido 0.43)."
+        ],
+        "warnings": [],
+        "holdout_trades": 7,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "aave-combined",
+      "mode": "combined",
+      "template": "multi_ma_crossover",
+      "symbol": "AAVE/USDT",
+      "direction": "short",
+      "elapsed_s": 22.916514745971654,
+      "stages_s": 22.524148429045454,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 17.913422454032116
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 0.7645882639917545
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.750399272015784
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 2.0957384390057996
+        }
+      ],
+      "trials": 19158,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "485d168e70937934ed6427aa5865c77a502b22ef77751afe60a7cf735e20e581",
+      "winner": {
+        "direction": "short",
+        "timeframe": "1d",
+        "ema_short": 12,
+        "sma_medium": 14,
+        "sma_long": 87,
+        "stop_loss": 0.101
+      },
+      "trades": 15,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 15 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: -0.72 < 0.30",
+          "Holdout (OOS) \u2014 CAGR n\u00e3o supera Buy & Hold: -50.4% \u2264 505.6%",
+          "Holdout (OOS) \u2014 Max Drawdown excessivo: 40.1% > 35.0%",
+          "Holdout (OOS) \u2014 Calmar Ratio baixo: -1.26 < 1.0",
+          "Holdout (OOS) \u2014 Profit Factor baixo: 0.26 < 1.3",
+          "Holdout (OOS) \u2014 Expectancy negativa ou zero: $-0.06",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 7 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 0.86 para -0.72 (reten\u00e7\u00e3o -83%; m\u00ednimo 50%; exigido 0.43)."
+        ],
+        "warnings": [],
+        "holdout_trades": 7,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "ema-rsi-baseline",
+      "mode": "baseline",
+      "template": "ema_rsi",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 9.580416554003023,
+      "stages_s": 9.200317317969166,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 2.453373725002166
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 4.127453849010635
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.6370454789721407
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 0.982444264984224
+        }
+      ],
+      "trials": 2850,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "6877cdc63ac89b053cd643f7f886666a7ebc7287617ae6f177f6b5d7120cbb70",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_fast": 11,
+        "ema_slow": 25,
+        "stop_loss": 0.02,
+        "rsi_period": 7,
+        "rsi_min": 20,
+        "rsi_max": 60
+      },
+      "trades": 5,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: 0.26 < 0.30",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 2 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 1.17 para 0.26 (reten\u00e7\u00e3o 22%; m\u00ednimo 50%; exigido 0.59)."
+        ],
+        "warnings": [
+          "Holdout (OOS) \u2014 Calmar Ratio aceit\u00e1vel mas n\u00e3o excelente: 1.09 (excelente: \u22651.5)"
+        ],
+        "holdout_trades": 2,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    },
+    {
+      "run": "ema-rsi-combined",
+      "mode": "combined",
+      "template": "ema_rsi",
+      "symbol": "1INCH/USDT",
+      "direction": "long",
+      "elapsed_s": 8.826349308015779,
+      "stages_s": 8.438346459006425,
+      "stage_times": [
+        {
+          "stage": "_execute_opt_stages",
+          "seconds": 2.1377758720191196
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 4.187204518006183
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 1.4026900850003585
+        },
+        {
+          "stage": "_execute_r2r4_pooled",
+          "seconds": 0.7106759839807637
+        }
+      ],
+      "trials": 2850,
+      "cache_hits": 0,
+      "failed_trials": 0,
+      "result_sha256": "6877cdc63ac89b053cd643f7f886666a7ebc7287617ae6f177f6b5d7120cbb70",
+      "winner": {
+        "direction": "long",
+        "timeframe": "1d",
+        "ema_fast": 11,
+        "ema_slow": 25,
+        "stop_loss": 0.02,
+        "rsi_period": 7,
+        "rsi_min": 20,
+        "rsi_max": 60
+      },
+      "trades": 5,
+      "oos": {
+        "status": "NO-GO",
+        "reasons": [
+          "Treino (IS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 5 < 100",
+          "Holdout (OOS) \u2014 Sharpe Ratio muito baixo: 0.26 < 0.30",
+          "Holdout (OOS) \u2014 Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 2 < 20",
+          "Consist\u00eancia IS\u2192OOS \u2014 NO-GO: Sharpe caiu de 1.17 para 0.26 (reten\u00e7\u00e3o 22%; m\u00ednimo 50%; exigido 0.59)."
+        ],
+        "warnings": [
+          "Holdout (OOS) \u2014 Calmar Ratio aceit\u00e1vel mas n\u00e3o excelente: 1.09 (excelente: \u22651.5)"
+        ],
+        "holdout_trades": 2,
+        "execution_mode": "deep_15m",
+        "split_train_ratio": 0.7
+      },
+      "input_unchanged": true,
+      "cpu_count": 4,
+      "workers": 3
+    }
+  ]
+}

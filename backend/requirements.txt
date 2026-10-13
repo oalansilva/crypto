@@ -31,3 +31,7 @@ alembic>=1.16.0
 bcrypt>=5.0.0
 pyjwt>=2.12.0
 pydantic[email]>=2.9.0
+
+# Optional strict numerical acceleration (card #1091)
+numba==0.68.0
+llvmlite==0.50.0

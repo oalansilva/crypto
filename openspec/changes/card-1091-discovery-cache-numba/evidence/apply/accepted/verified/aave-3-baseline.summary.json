@@ -1,0 +1,29 @@
+{
+  "cold": false,
+  "direction": "short",
+  "elapsed_s": 33.332591698970646,
+  "evictions": 0,
+  "failed_trials": 0,
+  "input_unchanged": true,
+  "label": "aave-3-baseline",
+  "max_cache_entries": 0,
+  "max_retained_bytes": 0,
+  "max_snapshots": 0,
+  "mode": "baseline",
+  "parent_peak_kib": 288832,
+  "parent_retained_after_execution": 0,
+  "preparation_jit_s": 0.0,
+  "profiled_diagnostic_run": false,
+  "result_sha256": "d4d210824750cd4152864464b94019b894d39a490651e0d06a6b540c931ef1ff",
+  "rss_parent_workers_peak_kib": 989064,
+  "startup_imports_fixtures_manifest_s": 1.4729161990107968,
+  "symbol": "AAVE/USDT",
+  "template": "multi_ma_crossover",
+  "trials": 19158,
+  "worker_peaks_kib": {
+    "1694994": 232860,
+    "1694995": 238812,
+    "1694996": 235176
+  },
+  "workers": 3
+}

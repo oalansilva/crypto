@@ -138,6 +138,15 @@
       "evidence": "exact SHA256/equality goldens for indicators, masks, trades and metrics; never allclose"
     },
     {
+      "file": "backend/tests/unit/test_card_1091_acceleration.py",
+      "protected_behavior": "exact optional numerical kernels and immutable bounded discovery execution caches",
+      "production_reachability": "shared optimizer used by Discovery, laboratory, batch and favorites",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "frozen OHLCV, exact 568 numerical edges, adversarial snapshots/index/ABA/LRU and compiler fallback invariants"
+    },
+    {
       "file": "backend/tests/unit/test_card_1074_combo_templates.py",
       "protected_behavior": "card 1074 combo template and VWAP indicator smoke backtests",
       "production_reachability": "reachable",
