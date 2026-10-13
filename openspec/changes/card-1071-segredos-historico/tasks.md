@@ -21,8 +21,10 @@
 ## 4. Validação e handoff DEV
 
 - [x] 4.1 Executar checks proporcionais, validação OpenSpec estrita e verificar que arquivos/artefatos de implementação não contêm material restrito; entregar diff para revisão no fluxo normal.
-- [ ] 4.2 Validar CI/QA visual padrão e, após integração, restart/smoke DEV com evidência sanitizada de login, banco e serviço necessário. <!-- covenant-flow:after-qa -->
-- [ ] 4.3 Registrar handoff Done técnico com resultados DEV e registro operacional completo das pendências abaixo, responsável e condição de fechamento; não declarar incidente contido nem Pronto. <!-- covenant-flow:after-qa -->
+- [x] 4.2 Validar CI/QA visual padrão e, após integração, restart/smoke DEV com evidência sanitizada de login, banco e serviço necessário. Login QA não executado: dispensado explicitamente por Alan em 2026-10-13 ao responder “ignore isso” à pendência exclusiva desse teste. <!-- covenant-flow:after-qa -->
+- [x] 4.3 Registrar handoff Done técnico com resultados DEV e registro operacional completo das pendências abaixo, responsável e condição de fechamento; não declarar incidente contido nem Pronto. <!-- covenant-flow:after-qa -->
+
+Evidência pós-integração: [handoff DEV](handoff.md), 2026-10-12 UTC, revalidada em 2026-10-13 UTC; `develop` em `99a3070cd9d117539fe6de734361f07d5e1c4611`. CI/visual, integração/restart, saúde pública, PostgreSQL e workers principais comprovados. O scanner Telegram recusa intencionalmente o bot PROD em DEV; journal, configuração efetiva e smoke seguro da barreira comprovaram isolamento esperado, sem envio externo e sem defeito atribuído a #1071. O teste de login QA não foi executado por falta de canal protegido de credenciais; Alan dispensou exclusivamente esse teste em 2026-10-13 com “ignore isso”, permitindo o fechamento de 4.2 com essa limitação explícita. A dispensa não alcança invalidação de credenciais, testes de segurança JWT/Binance/banco, continuidade PROD, homologação ou release. Esses resultados não comprovam rotação nem remediação completa do incidente.
 
 ## 5. Registro operacional obrigatório da mesma entrega
 
