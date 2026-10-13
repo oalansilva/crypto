@@ -32,6 +32,236 @@ def candles():
     return load_ohlcv("1INCH/USDT", "1d").iloc[:80].copy(deep=True)
 
 
+@pytest.fixture
+def missing_numba_kernels(monkeypatch):
+    """Exercise fresh public adapters in-process without an importable compiler."""
+    monkeypatch.setitem(sys.modules, "numba", None)
+    return (
+        acceleration.OptionalKernel(acceleration.position_kernel, acceleration.positions.dtypes),
+        acceleration.OptionalKernel(acceleration.deep_kernel, acceleration.deep_execution.dtypes),
+    )
+
+
+@pytest.mark.parametrize(
+    "opens,lows,entries,exits,is_long,expected_signals,expected_reasons",
+    [
+        pytest.param(
+            [100.0] * 8,
+            [100, 100, 100, 94, 100, 100, 100, 100],
+            [1, 5],
+            [3, 7],
+            True,
+            [0, 0, 1, -1, 0, 0, 1, 0],
+            [0, 0, 1, 2, 0, 0, 1, 0],
+            id="stop-before-signal",
+        ),
+        pytest.param(
+            [100.0] * 6,
+            [100, 100, 100, 1, 100, 100],
+            [1],
+            [3],
+            False,
+            [0, 0, 1, 0, -1, 0],
+            [0, 0, 1, 0, 3, 0],
+            id="short-ignores-long-stop",
+        ),
+        pytest.param(
+            [100, 100, np.nan, 100, 100, 100],
+            [100.0] * 6,
+            [1],
+            [3],
+            True,
+            [0, 0, 1, 0, -1, 0],
+            [0, 0, 1, 0, 3, 0],
+            id="nan-entry-keeps-signal-exit",
+        ),
+        pytest.param(
+            [100, 100, 0, 100, 100, 100],
+            [100, 100, 0, 0, -1, 100],
+            [1],
+            [4],
+            True,
+            [0, 0, 1, 0, -1, 0],
+            [0, 0, 1, 0, 2, 0],
+            id="zero-over-zero-then-negative-infinity",
+        ),
+        pytest.param(
+            [100.0] * 5,
+            [100, 100, 100, np.nan, 100],
+            [1],
+            [4],
+            True,
+            [0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0],
+            id="nan-low-and-unexecutable-final-exit",
+        ),
+        pytest.param(
+            [100.0] * 3,
+            [100.0] * 3,
+            [0, 2],
+            [],
+            True,
+            [0, 0, 0],
+            [0, 0, 0],
+            id="first-entry-ignored-final-entry-unexecutable",
+        ),
+        pytest.param([], [], [], [], True, [], [], id="empty"),
+    ],
+)
+def test_positions_missing_numba_exact_edges(
+    missing_numba_kernels, opens, lows, entries, exits, is_long, expected_signals, expected_reasons
+):
+    kernel, _ = missing_numba_kernels
+    entry = np.zeros(len(opens), dtype=np.bool_)
+    exit_bits = entry.copy()
+    entry[entries] = True
+    exit_bits[exits] = True
+    with np.errstate(divide="ignore", invalid="ignore"):
+        signals, reasons = kernel(
+            np.array(opens, dtype=np.float64),
+            np.array(lows, dtype=np.float64),
+            entry,
+            exit_bits,
+            0.05,
+            is_long,
+        )
+    np.testing.assert_array_equal(signals, np.array(expected_signals, dtype=np.int64))
+    np.testing.assert_array_equal(reasons, np.array(expected_reasons, dtype=np.int64))
+    assert signals.dtype == reasons.dtype == np.dtype("int64")
+    assert kernel.unavailable and kernel.compiled is None
+
+
+@pytest.mark.parametrize("short,expected_price", [(False, 95.0), (True, 105.0)])
+def test_deep_missing_numba_first_stop_and_nan(missing_numba_kernels, short, expected_price):
+    _, kernel = missing_numba_kernels
+    base = 1_700_000_000_000_000_000
+    indices, prices = kernel(
+        np.array([base, base + 10, base + 20], dtype=np.int64),
+        np.array([100, 110, 123], dtype=np.float64),
+        np.array([100, 110, 123], dtype=np.float64),
+        np.array([1, 0, -1], dtype=np.int64),
+        np.array([base - 1, base, base + 1, base + 2, base + 3, base + 20], dtype=np.int64),
+        np.array([1, 100, np.nan, 95, 90, 1], dtype=np.float64),
+        np.array([200, 100, np.nan, 105, 110, 200], dtype=np.float64),
+        0.05,
+        short,
+    )
+    # The earlier row is outside the window, NaN never hits, and the first
+    # eligible stop wins over both a later stop and the daily signal exit.
+    np.testing.assert_array_equal(indices, np.array([[0, 2, 3]], dtype=np.int64))
+    np.testing.assert_array_equal(prices, np.array([expected_price], dtype=np.float64))
+    assert indices.dtype == np.dtype("int64")
+    assert kernel.unavailable and kernel.compiled is None
+
+
+@pytest.mark.parametrize("stop,entry_low", [(0.0, 1.0), (0.05, 100.0)])
+def test_deep_missing_numba_semiopen_window_and_disabled_stop(
+    missing_numba_kernels, stop, entry_low
+):
+    _, kernel = missing_numba_kernels
+    base = 1_700_000_000_000_000_000
+    indices, prices = kernel(
+        np.array([base, base + 10, base + 20], dtype=np.int64),
+        np.array([100, 110, 123], dtype=np.float64),
+        np.array([100, 110, 123], dtype=np.float64),
+        np.array([1, 0, -1], dtype=np.int64),
+        np.array([base - 1, base, base + 20], dtype=np.int64),
+        np.array([1, entry_low, 1], dtype=np.float64),
+        np.array([200, 100, 200], dtype=np.float64),
+        stop,
+        False,
+    )
+    # A stop before entry or exactly at exit is excluded: [entry, exit).
+    # With stop=0, even a qualifying low inside the window is ignored.
+    np.testing.assert_array_equal(indices, np.array([[0, 2, -1]], dtype=np.int64))
+    np.testing.assert_array_equal(prices, np.array([123.0]))
+    assert kernel.unavailable
+
+
+def test_deep_missing_numba_overlap_and_open_final_position(missing_numba_kernels):
+    _, kernel = missing_numba_kernels
+    base = 1_700_000_000_000_000_000
+    indices, prices = kernel(
+        base + np.arange(7, dtype=np.int64),
+        np.array([100, 101, 102, 103, 104, 105, 106], dtype=np.float64),
+        np.array([100, 101, 102, 103, 104, 105, 107], dtype=np.float64),
+        np.array([1, 1, -1, 1, -1, 1, 0], dtype=np.int64),
+        np.array([], dtype=np.int64),
+        np.array([], dtype=np.float64),
+        np.array([], dtype=np.float64),
+        0.05,
+        False,
+    )
+    # Entry 1 overlaps the first trade; entry 5 never exits. Neither yields
+    # a trade, while a later entry after the first exit remains eligible.
+    np.testing.assert_array_equal(indices, np.array([[0, 2, -1], [3, 4, -1]], dtype=np.int64))
+    np.testing.assert_array_equal(prices, np.array([102.0, 104.0]))
+    assert kernel.unavailable
+
+
+@pytest.mark.parametrize("near_maximum", [False, True])
+def test_deep_missing_numba_int64_final_stop_boundary(missing_numba_kernels, near_maximum):
+    _, kernel = missing_numba_kernels
+    if near_maximum:
+        maximum = np.iinfo(np.int64).max
+        times = np.array([maximum - 10, maximum - 2], dtype=np.int64)
+        intraday = np.array([maximum - 2, maximum], dtype=np.int64)
+        lows = np.array([100, 95], dtype=np.float64)
+    else:
+        base = 1_700_000_000_000_000_000
+        boundary = base + 10 + 86_400_000_000_000
+        times = np.array([base, base + 10], dtype=np.int64)
+        intraday = np.array([base + 10, boundary - 1, boundary], dtype=np.int64)
+        lows = np.array([100, 95, 1], dtype=np.float64)
+    indices, prices = kernel(
+        times,
+        np.array([100, 100], dtype=np.float64),
+        np.array([100, 101], dtype=np.float64),
+        np.array([0, 1], dtype=np.int64),
+        intraday,
+        lows,
+        np.full(len(lows), 100.0),
+        0.05,
+        False,
+    )
+    # Without a daily exit, a stop can close the position in the final day,
+    # including Timestamp.max when the synthetic next-day boundary overflows.
+    np.testing.assert_array_equal(indices, np.array([[1, -1, 1]], dtype=np.int64))
+    np.testing.assert_array_equal(prices, np.array([95.0]))
+    assert kernel.unavailable
+
+
+@pytest.mark.parametrize("failure", ["compiler", "cache"])
+def test_compiled_failure_returns_exact_python_positions_once(caplog, failure):
+    from numba.core.errors import NumbaError
+
+    kernel = acceleration.OptionalKernel(
+        acceleration.position_kernel, acceleration.positions.dtypes
+    )
+    calls = []
+
+    def failed(*args):
+        calls.append(args)
+        raise NumbaError("unsupported compiler") if failure == "compiler" else OSError("cache lost")
+
+    kernel.compiled = failed
+    args = (
+        np.full(5, 100.0),
+        np.array([100, 100, 100, 90, 100], dtype=np.float64),
+        np.array([False, True, False, False, False]),
+        np.zeros(5, dtype=np.bool_),
+        0.05,
+        True,
+    )
+    for _ in range(2):
+        signals, reasons = kernel(*args)
+        np.testing.assert_array_equal(signals, np.array([0, 0, 1, -1, 0], dtype=np.int64))
+        np.testing.assert_array_equal(reasons, np.array([0, 0, 1, 2, 0], dtype=np.int64))
+    assert len(calls) == 1 and kernel.unavailable and kernel.compiled is None
+    assert args[0].flags.writeable
+    assert caplog.text.count("using Python fallback") == 1
+
+
 def test_snapshot_private_complete_identity_and_transport():
     original = candles()
     a = cache.Snapshot(original, generation="run", source=("x", "1d"), role="train")
