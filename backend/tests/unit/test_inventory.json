@@ -147,6 +147,24 @@
       "evidence": "combo_templates_export bundles and synthetic OHLCV signal generation"
     },
     {
+      "file": "backend/tests/unit/test_card_1086_donchian_breakout.py",
+      "protected_behavior": "Donchian strict preceding-channel entry, causal next-open execution and template preservation",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "real ComboStrategy and Discovery trade extractor; fast/legacy across 4h, 1h and 15min; baseline export definitions"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1086_donchian_seed.py",
+      "protected_behavior": "corrected Donchian export reaches empty and existing catalogs idempotently",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "explicit postgres_isolation fixture; real initial seed and named refresh; other definitions and saved strategy preserved"
+    },
+    {
       "file": "backend/tests/unit/test_chart_pattern_service.py",
       "protected_behavior": "chart pattern detection",
       "production_reachability": "reachable",
