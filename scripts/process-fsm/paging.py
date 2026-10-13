@@ -52,6 +52,19 @@ CODEX_CLIENT_CONTEXT = (
     "Não encaminhe os reviewers para Cursor Task, `cursor-agent` ou Composer."
 )
 
+CLAUDE_CLIENT_CONTEXT = (
+    "Adapter Claude Code (não oficial; cooperativo; sem Auto). Skills: pontes "
+    "`.claude/skills/<nome>/SKILL.md` que mandam ler o canônico em `.cursor/skills/<nome>/SKILL.md`. "
+    "Filhos nascem como `Agent` com `model` e `effort` explícitos da captura local "
+    "(`model_selection.py resolve --client claude`), prompt autocontido com "
+    "`model_selection_capture:` e `runtime_evidence_birth:` (`claude_evidence.py prepare`); "
+    "filho não cria filho. No Code Review, `diff-reviewer` e `code-reviewer` nascem na mesma "
+    "mensagem, só com `Read|Grep|Glob`, e `claude_review.py verify-wave` confere a onda. "
+    "Proxies: `claude_proxy.py --birth <receipt>`, nunca observação manual. Hooks só valem "
+    "depois da revisão de confiança do operador (`claude_adapter.py trust --record`); hook "
+    "ausente ou não revisado não é proteção. Status avança só por `process_event --client claude`."
+)
+
 ResolveFn = Callable[..., dict[str, str | None]]
 StatusProvider = Callable[[str | None], str | None]
 
@@ -121,6 +134,7 @@ def page(
         "process-fsm page",
         f"q={q_display if q_display is not None else 'None'} bound_card={bound_display} q_git={git}",
         *([CODEX_CLIENT_CONTEXT] if client == "codex" else []),
+        *([CLAUDE_CLIENT_CONTEXT] if client == "claude" else []),
         f"enabled_events: {events}",
         "---",
         stub,

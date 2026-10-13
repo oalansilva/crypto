@@ -1,4 +1,4 @@
-"""Validate requested vs observed routing for all five native harnesses."""
+"""Validate requested vs observed routing for every native harness."""
 from __future__ import annotations
 from typing import Any
 from model_selection import validate_capture
@@ -22,11 +22,22 @@ def evidence(*, capture: dict, observed: dict[str, Any], host: str, host_version
             from codex_evidence import verify_evidence
             proof = verify_evidence(runtime_evidence)
             successful = (proof["birth"]["capture"] == birth and proof["host"] == host and proof["host_version"] == host_version and proof["status"] == status and proof["payload_returned"] == payload_returned and proof["requested"]["model"] == actual["model"] and proof["requested"]["reasoning_effort"] == actual["effort"])
+    if birth["client"] == "claude":
+        # Claude Code evidence comes only from its sealed transcript envelope;
+        # manual `observed` facts cannot prove a new Claude Code execution.
+        successful = False
+        if runtime_evidence is not None:
+            from claude_evidence import verify_evidence as verify_claude
+            proof = verify_claude(runtime_evidence)
+            last = proof["turns"][-1]["observed"]
+            successful = (proof["birth"]["capture"] == birth and proof["host"] == host and proof["host_version"] == host_version and proof["status"] == status and proof["payload_returned"] == payload_returned and last["model"] == actual["model"] and last["effort"] == actual["effort"] and proof["requested"] == {"model": requested["model"], "effort": requested["effort"]})
     result = {"selection_capture": birth, "requested": requested, "observed": actual,
             "host": host or UNAVAILABLE, "host_version": host_version or UNAVAILABLE,
             "status": status, "payload_returned": bool(payload_returned), "successful": successful}
-    if birth["client"] == "codex" and runtime_evidence is not None:
+    if birth["client"] in ("codex", "claude") and runtime_evidence is not None:
         result.update(runtime_evidence=str(runtime_evidence), evidence_sha256=proof["integrity_sha256"])
+    if birth["client"] == "claude" and runtime_evidence is not None:
+        result["surface"] = proof["surface"]
     return result
 
 

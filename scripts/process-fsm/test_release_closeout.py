@@ -690,3 +690,36 @@ def test_simulate_merge_reports_conflict_before_pr(tmp_path: Path):
     assert conflicted.ok is False
     assert conflicted.conflict is True
     assert conflicted.open_pr is False
+
+
+def test_claude_parent_must_be_observed_on_the_captured_execution_pair(tmp_path: Path, monkeypatch):
+    import claude_evidence as ev
+    from claude_fixtures import SESSION, World, assistant
+    from release_model_selection import check_claude_parent
+
+    world = World(tmp_path)
+    capture = resolve("claude", "execucao", role="fecho-lote")
+    facts = dict(root=world.repo, capture=capture, session=SESSION, runtime=world.runtime, environ=world.env)
+    # the parent is observed on Sonnet 5.5 / high = the captured claude/execucao pair
+    assert check_claude_parent(**facts).ok
+    # a later edit of the local selection does not change the obligation of a living parent
+    import yaml
+    path = Path.home() / ".config/covenant-flow/model-selection.yaml"
+    doc = yaml.safe_load(path.read_text())
+    doc["clients"]["claude"]["execucao"].update(model="claude-haiku-5-5", effort="medium")
+    path.write_text(yaml.safe_dump(doc))
+    assert check_claude_parent(**facts).ok
+    # wrong model, wrong effort, unobserved / unreadable parent: T16 and fecho-lote refused
+    for model, effort in (("claude-opus-5-5", "high"), ("claude-sonnet-5-5", "medium")):
+        world.rows.append(assistant(world.repo, model=model, effort=effort, content=[], msg_id=f"m-{model}-{effort}"))
+        world.flush()
+        refused = check_claude_parent(**facts)
+        assert refused.ok is False and refused.divergence and "new Claude Code session" in refused.message
+        world.rows.pop()
+        world.flush()
+    world.flush(truncate=True)
+    unobserved = check_claude_parent(**facts)
+    assert unobserved.ok is False and unobserved.runtime_slug == "unavailable" and "source_truncated" in unobserved.message
+    world.parent.unlink()
+    assert check_claude_parent(**facts).ok is False
+    assert check_claude_parent(**dict(facts, capture=None)).ok is False
