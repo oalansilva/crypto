@@ -334,6 +334,7 @@ def process_event(
     resolve_fn: Callable[..., dict[str, str | None]] = resolve,
     change_dir: Path | None = None,
     prototype_dir: Path | None = None,
+    client: str | None = None,
 ) -> dict[str, Any]:
     if event == "criar_card":
         return _payload(
@@ -353,6 +354,19 @@ def process_event(
     q = status if status is not None else resolved.get("q")
     git = q_git if q_git is not None else resolved.get("q_git")
     bound = bound_card if bound_card is not None else resolved.get("bound_card")
+    # Codex adds availability checks, never a new transition or permission.
+    # Other adapters retain their existing path. Conflicting explicit/native
+    # identity is refused rather than silently selecting a client.
+    native_codex = bool(os.environ.get("CODEX_THREAD_ID"))
+    active_client = client or os.environ.get("COVENANT_CLIENT") or ("codex" if native_codex else None)
+    if native_codex and active_client != "codex":
+        return _payload(result="reject", state=q, to=None, reason="codex_evidence:ambiguous_client")
+    if active_client == "codex" and event in {"iniciar_design", "recriticar", "submeter_design", "iniciar_apply", "pedir_review", "aceitar_sha", "integrar_develop"}:
+        from codex_evidence import EvidenceError, preflight
+        try:
+            preflight(root=workdir)
+        except (EvidenceError, OSError, ValueError) as exc:
+            return _payload(result="reject", state=q, to=None, reason=f"codex_evidence:{getattr(exc, 'code', 'invalid_input')}", message=str(exc))
     if event in HUMAN_EVENTS:
         return _payload(result="reject", state=q, to=None, reason="actor")
     provider = status_provider if status_provider is not None else github_status_provider
@@ -643,12 +657,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--card")
     parser.add_argument("--change")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--client", choices=("cursor", "codex", "grok", "opencode", "dsh"))
     args = parser.parse_args(argv)
     payload = process_event(
         args.event,
         card=args.card,
         change=args.change,
         dry_run=args.dry_run,
+        client=args.client,
         mover=None if args.dry_run else GhBoardMover(),
         checks_green_measurer=measure_checks_green,
         checks_green_classifier=classify_qa_gate,
