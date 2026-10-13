@@ -37,27 +37,16 @@ export function utcTodayIso(): string {
 function subtractFixedWindow(endIso: string, key: Exclude<PeriodKey, 'custom' | 'all'>): string {
   const [y, m, d] = endIso.split('-').map(Number)
   const end = new Date(Date.UTC(y, m - 1, d))
-  switch (key) {
-    case '15d':
-      end.setUTCDate(end.getUTCDate() - 15)
-      break
-    case '1m':
-      end.setUTCMonth(end.getUTCMonth() - 1)
-      break
-    case '3m':
-      end.setUTCMonth(end.getUTCMonth() - 3)
-      break
-    case '6m':
-      end.setUTCMonth(end.getUTCMonth() - 6)
-      break
-    case '1y':
-      end.setUTCFullYear(end.getUTCFullYear() - 1)
-      break
-    case '2y':
-      end.setUTCFullYear(end.getUTCFullYear() - 2)
-      break
-    default:
-      break
+  if (key === '15d') {
+    end.setUTCDate(end.getUTCDate() - 15)
+  } else {
+    const months = { '1m': 1, '3m': 3, '6m': 6, '1y': 12, '2y': 24 }[key]
+    // Shift directly from the original month; setters with its day can overflow.
+    const target = new Date(Date.UTC(y, m - 1 - months, 1))
+    const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0))
+      .getUTCDate()
+    target.setUTCDate(Math.min(d, lastDay))
+    return target.toISOString().slice(0, 10)
   }
   return end.toISOString().slice(0, 10)
 }
