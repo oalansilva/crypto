@@ -1,4 +1,5 @@
 """Private execution snapshots and a shared retained-byte/entry LRU budget."""
+
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -58,12 +59,18 @@ def protect(frame, *, register_index=True):
 
 class Snapshot:
     """Created only at internal execution boundaries, never from DataFrame attrs."""
+
     def __init__(self, frame, *, generation=None, source=(), role="train", limits=()):
         owned = frame.copy(deep=True)
         owned.index = frame.index.copy(deep=True)
         self._frame = protect(owned)
-        self.identity = (generation or uuid.uuid4().hex, tuple(source), role,
-                         tuple(limits), frame_identity(self._frame))
+        self.identity = (
+            generation or uuid.uuid4().hex,
+            tuple(source),
+            role,
+            tuple(limits),
+            frame_identity(self._frame),
+        )
 
     def __getstate__(self):
         return self._frame, self.identity
@@ -89,19 +96,27 @@ def retained_bytes(value, seen=None):
         # Walk owned buffers directly: DataFrame.memory_usage constructs a
         # Series for every column on every cache insertion, which dominates
         # shorter searches. Include metadata and complete backing allocations.
-        return (object.__sizeof__(value) + sys.getsizeof(value.__dict__)
-                + sys.getsizeof(value._mgr) + sys.getsizeof(value._flags)
-                + retained_bytes(value.attrs, seen)
-                + retained_bytes(value.index, seen) + retained_bytes(value.columns, seen)
-                + sum(sys.getsizeof(block) + retained_bytes(block.values, seen)
-                      for block in value._mgr.blocks))
+        return (
+            object.__sizeof__(value)
+            + sys.getsizeof(value.__dict__)
+            + sys.getsizeof(value._mgr)
+            + sys.getsizeof(value._flags)
+            + retained_bytes(value.attrs, seen)
+            + retained_bytes(value.index, seen)
+            + retained_bytes(value.columns, seen)
+            + sum(
+                sys.getsizeof(block) + retained_bytes(block.values, seen)
+                for block in value._mgr.blocks
+            )
+        )
     if isinstance(value, pd.Index):
         return object.__sizeof__(value) + int(value.memory_usage(deep=True))
     if isinstance(value, np.ndarray):
         if value.base is not None:
             return sys.getsizeof(value) + retained_bytes(value.base, seen)
-        return sys.getsizeof(value) + (sum(retained_bytes(x, seen) for x in value.flat)
-                                      if value.dtype.hasobject else 0)
+        return sys.getsizeof(value) + (
+            sum(retained_bytes(x, seen) for x in value.flat) if value.dtype.hasobject else 0
+        )
     if isinstance(value, pd.api.extensions.ExtensionArray):
         if hasattr(value, "_ndarray"):
             return object.__sizeof__(value) + retained_bytes(value._ndarray, seen)
@@ -109,8 +124,9 @@ def retained_bytes(value, seen=None):
             return object.__sizeof__(value) + int(value._pa_array.get_total_buffer_size())
         return object.__sizeof__(value) + int(value.nbytes)
     if isinstance(value, dict):
-        return sys.getsizeof(value) + sum(retained_bytes(k, seen) + retained_bytes(v, seen)
-                                        for k, v in value.items())
+        return sys.getsizeof(value) + sum(
+            retained_bytes(k, seen) + retained_bytes(v, seen) for k, v in value.items()
+        )
     if isinstance(value, (tuple, list)):
         return sys.getsizeof(value) + sum(retained_bytes(x, seen) for x in value)
     return sys.getsizeof(value)
@@ -154,8 +170,11 @@ class Budget:
         self.entries[full] = (value, size)
         self.bytes += size
         self.snapshots += namespace == "snapshots"
-        while (self.bytes > self.max_bytes or len(self.entries) > self.max_entries
-               or self.snapshots > self.max_snapshots):
+        while (
+            self.bytes > self.max_bytes
+            or len(self.entries) > self.max_entries
+            or self.snapshots > self.max_snapshots
+        ):
             old_key, (_, old_size) = self.entries.popitem(last=False)
             self.bytes -= old_size
             self.snapshots -= old_key[0] == "snapshots"
@@ -203,10 +222,12 @@ def execution_lifecycle(function):
     @wraps(function)
     def run(*args, **kwargs):
         from app.services.combo_acceleration import enabled
+
         active = enabled()
         try:
             return function(*args, **kwargs)
         finally:
             if active:
                 BUDGET.clear()
+
     return run

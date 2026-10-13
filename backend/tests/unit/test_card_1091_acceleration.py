@@ -1,4 +1,5 @@
 """Exact #1091 cache/compilation invariants; no temporal acceptance in CI."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -47,8 +48,12 @@ def test_snapshot_private_complete_identity_and_transport():
     assert cache.frame_identity(original) != cache.frame_identity(changed)
     assert cache.Snapshot(original, generation="run", role="holdout").identity != b.identity
     assert cache.Snapshot(original, generation="run", source=("y", "1d")).identity != b.identity
-    category_a = original.assign(regime=pd.Categorical(["trend"] * len(original), categories=["trend", "flat"]))
-    category_b = original.assign(regime=pd.Categorical(["trend"] * len(original), categories=["flat", "trend"]))
+    category_a = original.assign(
+        regime=pd.Categorical(["trend"] * len(original), categories=["trend", "flat"])
+    )
+    category_b = original.assign(
+        regime=pd.Categorical(["trend"] * len(original), categories=["flat", "trend"])
+    )
     assert cache.frame_identity(category_a) != cache.frame_identity(category_b)
     restored = pickle.loads(pickle.dumps(a))
     assert restored.identity == a.identity
@@ -95,7 +100,7 @@ def test_lru_limits_strong_refs_oversized_and_generation():
     large_base = np.ones(10000)
     budget.put("x", "small_view", large_base[:1])
     assert budget.get("x", "small_view") is None
-    metadata = pd.DataFrame({"close": [1.]})
+    metadata = pd.DataFrame({"close": [1.0]})
     metadata.attrs["large_buffer"] = large_base
     assert cache.retained_bytes(metadata) >= large_base.nbytes
     budget.put("x", "metadata", metadata)
@@ -115,6 +120,7 @@ def test_lifecycle_exception_and_success_release_references():
         if fail:
             raise ValueError("business error")
         return 3
+
     assert work(False) == 3 and cache.BUDGET.bytes == 0
     with pytest.raises(ValueError, match="business error"):
         work(True)
@@ -124,9 +130,13 @@ def test_lifecycle_exception_and_success_release_references():
 def test_mutated_external_aba_aliases_and_eviction(monkeypatch):
     meta = metadata_from_export(load_templates()["multi_ma_crossover"])
     data = candles()
+
     def run(df, params):
-        return co._run_backtest_logic(meta, params, df, False, "1INCH/USDT", "2023-01-01", "2025-01-01")
-    params = {"direction": "long", "stop_loss": .05, "timeframe": "1d"}
+        return co._run_backtest_logic(
+            meta, params, df, False, "1INCH/USDT", "2023-01-01", "2025-01-01"
+        )
+
+    params = {"direction": "long", "stop_loss": 0.05, "timeframe": "1d"}
     index_writable = data.index.asi8.flags.writeable
     a = run(data, params)
     assert data.index.asi8.flags.writeable == index_writable
@@ -141,8 +151,12 @@ def test_mutated_external_aba_aliases_and_eviction(monkeypatch):
     assert run(data, params) == a
     alias = meta["indicators"][0]["alias"]
     kind = meta["indicators"][0]["type"]
-    assert run(data, dict(params, **{alias: 10})) == run(data, dict(params, **{f"{kind}_{alias}": 10}))
-    assert run(data, dict(params, **{f"{alias}_length": 10})) == run(data, dict(params, **{alias: 10}))
+    assert run(data, dict(params, **{alias: 10})) == run(
+        data, dict(params, **{f"{kind}_{alias}": 10})
+    )
+    assert run(data, dict(params, **{f"{alias}_length": 10})) == run(
+        data, dict(params, **{alias: 10})
+    )
     before = set(cache.BUDGET.entries)
     run(data, dict(params, **{alias: 11}))
     assert set(cache.BUDGET.entries) != before
@@ -153,28 +167,37 @@ def test_mutated_external_aba_aliases_and_eviction(monkeypatch):
         cached["frame"]["close"].to_numpy(copy=False)[0] = 999
 
 
-def test_optional_kernel_signature_missing_compiler_cache_denied_and_business_error(monkeypatch, caplog):
+def test_optional_kernel_signature_missing_compiler_cache_denied_and_business_error(
+    monkeypatch, caplog
+):
     import numba
+
     arr = np.ones(3, dtype=np.float64)
     kernel = acceleration.OptionalKernel(lambda x: x + 1, (np.dtype("float64"),))
     np.testing.assert_array_equal(kernel(arr[::2]), arr[::2] + 1)
     assert "ineligible numerical signature" in caplog.text
+
     def denied(*args, **kwargs):
         if kwargs["cache"]:
             raise RuntimeError("no writable cache")
         return lambda function: function
+
     monkeypatch.setattr(numba, "njit", denied)
     kernel = acceleration.OptionalKernel(lambda x: x + 1, (np.dtype("float64"),))
     np.testing.assert_array_equal(kernel(arr), arr + 1)
     assert kernel.compiled is not None
+
     def unavailable(*args, **kwargs):
         raise ImportError("compiler unavailable")
+
     monkeypatch.setattr(numba, "njit", unavailable)
     kernel = acceleration.OptionalKernel(lambda x: x + 1, (np.dtype("float64"),))
     np.testing.assert_array_equal(kernel(arr), arr + 1)
     assert kernel.unavailable and "compiler unavailable" in caplog.text
+
     def business(x):
         raise ValueError("business failure")
+
     kernel = acceleration.OptionalKernel(business, (np.dtype("float64"),))
     kernel.compiled = business
     with pytest.raises(ValueError, match="business failure"):
@@ -216,18 +239,33 @@ print(json.dumps({'signals': signals['signal'].tolist(), 'reasons': signals['sig
                   'trades': trades}, sort_keys=True, default=str, allow_nan=True))
 """
     values = []
-    for disabled, legacy, mode in ((True, False, "normal"), (False, False, "normal"),
-                (True, True, "normal"), (False, True, "normal"), (False, False, "missing")):
-        env = dict(os.environ, PYTHONPATH=f"{root / 'backend'}:{root / 'backend/tests'}:{root}",
-                   PYTHONDONTWRITEBYTECODE="1", NUMBA_CACHE_DIR="/proc/card-1091-no-write")
+    for disabled, legacy, mode in (
+        (True, False, "normal"),
+        (False, False, "normal"),
+        (True, True, "normal"),
+        (False, True, "normal"),
+        (False, False, "missing"),
+    ):
+        env = dict(
+            os.environ,
+            PYTHONPATH=f"{root / 'backend'}:{root / 'backend/tests'}:{root}",
+            PYTHONDONTWRITEBYTECODE="1",
+            NUMBA_CACHE_DIR="/proc/card-1091-no-write",
+        )
         env.pop("COMBO_OPTIMIZER_LEGACY", None)
         env.pop("COMBO_OPTIMIZER_1091_DISABLED", None)
         if disabled:
             env["COMBO_OPTIMIZER_1091_DISABLED"] = "1"
         if legacy:
             env["COMBO_OPTIMIZER_LEGACY"] = "1"
-        result = subprocess.run([sys.executable, "-c", script, mode], cwd=root, env=env,
-                                text=True, capture_output=True, check=True)
+        result = subprocess.run(
+            [sys.executable, "-c", script, mode],
+            cwd=root,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
         values.append(json.loads(result.stdout))
     assert all(value == values[0] for value in values)
 
@@ -246,12 +284,12 @@ def test_deep_end_boundary_int64_overflow_matches_python(monkeypatch):
     maximum = np.iinfo(np.int64).max
     index = pd.DatetimeIndex(np.array([maximum - 10, maximum - 2], dtype="datetime64[ns]"))
     intraday_index = pd.DatetimeIndex(np.array([maximum - 2, maximum], dtype="datetime64[ns]"))
-    data = pd.DataFrame(dict(open=[100., 100.], close=[100., 100.], signal=[0, 1]), index=index)
-    intra = pd.DataFrame(dict(low=[100., 50.], high=[100., 100.]), index=intraday_index)
+    data = pd.DataFrame(dict(open=[100.0, 100.0], close=[100.0, 100.0], signal=[0, 1]), index=index)
+    intra = pd.DataFrame(dict(low=[100.0, 50.0], high=[100.0, 100.0]), index=intraday_index)
     monkeypatch.setenv("COMBO_OPTIMIZER_1091_DISABLED", "1")
-    expected = deep.simulate_execution_with_15m(data, intra, .05)
+    expected = deep.simulate_execution_with_15m(data, intra, 0.05)
     monkeypatch.delenv("COMBO_OPTIMIZER_1091_DISABLED")
-    actual = deep.simulate_execution_with_15m(data, intra, .05)
+    actual = deep.simulate_execution_with_15m(data, intra, 0.05)
     assert actual == expected and len(actual) == 1
 
 
@@ -263,15 +301,33 @@ def test_deep_daily_fallback_contracts(timeframe, coverage, monkeypatch):
         data.index = pd.date_range(data.index[0], periods=len(data), freq="4h", tz="UTC")
     meta = metadata_from_export(load_templates()["multi_ma_crossover"])
     from app.strategies.combos import ComboStrategy
-    strat = ComboStrategy(indicators=meta["indicators"], entry_logic=meta["entry_logic"], exit_logic=meta["exit_logic"], stop_loss=.05)
+
+    strat = ComboStrategy(
+        indicators=meta["indicators"],
+        entry_logic=meta["entry_logic"],
+        exit_logic=meta["exit_logic"],
+        stop_loss=0.05,
+    )
     intra = load_ohlcv("1INCH/USDT", "15m")
     if coverage == "empty":
         intra = intra.iloc[:0]
     elif coverage == "incomplete":
         intra = intra.iloc[:100]
+
     def run():
         signals = strat.generate_signals(data.copy())
-        return co.extract_trades_with_mode(signals, .05, True, "1INCH/USDT", "2023-01-01", "2025-01-01", intra, return_mode=True, slippage=.001)
+        return co.extract_trades_with_mode(
+            signals,
+            0.05,
+            True,
+            "1INCH/USDT",
+            "2023-01-01",
+            "2025-01-01",
+            intra,
+            return_mode=True,
+            slippage=0.001,
+        )
+
     monkeypatch.setenv("COMBO_OPTIMIZER_1091_DISABLED", "1")
     a = run()
     monkeypatch.delenv("COMBO_OPTIMIZER_1091_DISABLED")

@@ -1,4 +1,5 @@
 """Internal, optional #1091 numerical kernels. Business errors stay in Python."""
+
 from __future__ import annotations
 
 import logging
@@ -9,8 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 def enabled():
-    return not (os.getenv("COMBO_OPTIMIZER_1091_DISABLED") == "1"
-                or os.getenv("COMBO_OPTIMIZER_LEGACY") == "1")
+    return not (
+        os.getenv("COMBO_OPTIMIZER_1091_DISABLED") == "1"
+        or os.getenv("COMBO_OPTIMIZER_LEGACY") == "1"
+    )
 
 
 def position_kernel(opens, lows, entry, exit_bits, stop, is_long):
@@ -67,8 +70,11 @@ def deep_kernel(times, opens, closes, signals, intraday, lows, highs, stop, shor
         # Such a boundary includes every remaining intraday row; avoid the
         # signed overflow of the compiled arithmetic without changing it.
         beyond_int64 = x < 0 and times[-1] > np.iinfo(np.int64).max - 86400000000000
-        xt = times[x] if x >= 0 else (np.iinfo(np.int64).max if beyond_int64
-                                      else times[-1] + 86400000000000)
+        xt = (
+            times[x]
+            if x >= 0
+            else (np.iinfo(np.int64).max if beyond_int64 else times[-1] + 86400000000000)
+        )
         xp = opens[x] if x >= 0 else closes[-1]
         hit = -1
         if stop > 0:
@@ -93,6 +99,7 @@ def deep_kernel(times, opens, closes, signals, intraday, lows, highs, stop, shor
 
 class OptionalKernel:
     """Compile eligible arrays only; cache failure permits in-memory JIT."""
+
     def __init__(self, python, dtypes):
         self.python = python
         self.dtypes = dtypes
@@ -108,9 +115,10 @@ class OptionalKernel:
     def __call__(self, *args):
         if not enabled():
             return self.python(*args)
-        eligible = all(isinstance(a, np.ndarray) and a.ndim == 1
-                       and a.dtype == dtype and a.flags.c_contiguous
-                       for a, dtype in zip(args, self.dtypes))
+        eligible = all(
+            isinstance(a, np.ndarray) and a.ndim == 1 and a.dtype == dtype and a.flags.c_contiguous
+            for a, dtype in zip(args, self.dtypes)
+        )
         if not eligible:
             self.diagnostic("ineligible numerical signature")
             return self.python(*args)
@@ -118,20 +126,23 @@ class OptionalKernel:
         # warmup and real execution share the same Numba signature, without
         # changing a caller's buffers or creating another numeric copy.
         inputs = []
-        for array in args[:len(self.dtypes)]:
+        for array in args[: len(self.dtypes)]:
             view = array.view()
             view.flags.writeable = False
             inputs.append(view)
-        args = (*inputs, *args[len(self.dtypes):])
+        args = (*inputs, *args[len(self.dtypes) :])
         if not self.unavailable and self.compiled is None:
             try:
                 from numba import njit
+
                 try:
-                    self.compiled = njit(cache=True, fastmath=False, nogil=True,
-                                         error_model="numpy")(self.python)
+                    self.compiled = njit(
+                        cache=True, fastmath=False, nogil=True, error_model="numpy"
+                    )(self.python)
                 except RuntimeError:
-                    self.compiled = njit(cache=False, fastmath=False, nogil=True,
-                                         error_model="numpy")(self.python)
+                    self.compiled = njit(
+                        cache=False, fastmath=False, nogil=True, error_model="numpy"
+                    )(self.python)
             except (ImportError, OSError, RuntimeError) as exc:
                 self.unavailable = True
                 self.diagnostic(exc)
@@ -139,6 +150,7 @@ class OptionalKernel:
             # Only compiler/cache failures trigger fallback. Runtime business
             # exceptions such as ValueError or IndexError must propagate.
             from numba.core.errors import NumbaError
+
             try:
                 return self.compiled(*args)
             except (NumbaError, OSError) as exc:
@@ -148,17 +160,26 @@ class OptionalKernel:
         return self.python(*args)
 
 
-positions = OptionalKernel(position_kernel, (np.dtype("float64"), np.dtype("float64"),
-                                             np.dtype("bool"), np.dtype("bool")))
-deep_execution = OptionalKernel(deep_kernel, (np.dtype("int64"), np.dtype("float64"),
-                                             np.dtype("float64"), np.dtype("int64"),
-                                             np.dtype("int64"), np.dtype("float64"),
-                                             np.dtype("float64")))
+positions = OptionalKernel(
+    position_kernel, (np.dtype("float64"), np.dtype("float64"), np.dtype("bool"), np.dtype("bool"))
+)
+deep_execution = OptionalKernel(
+    deep_kernel,
+    (
+        np.dtype("int64"),
+        np.dtype("float64"),
+        np.dtype("float64"),
+        np.dtype("int64"),
+        np.dtype("int64"),
+        np.dtype("float64"),
+        np.dtype("float64"),
+    ),
+)
 
 
 def warm_kernels():
     a = np.ones(3, np.float64)
     b = np.array([False, True, False])
     t = np.arange(3, dtype=np.int64)
-    positions(a, a, b, b, .05, True)
-    deep_execution(t, a, a, np.array([0, 1, -1], np.int64), t, a, a, .05, False)
+    positions(a, a, b, b, 0.05, True)
+    deep_execution(t, a, a, np.array([0, 1, -1], np.int64), t, a, a, 0.05, False)

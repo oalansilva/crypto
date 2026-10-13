@@ -44,7 +44,16 @@ from app.metrics.backtest_execution_costs import (
 from app.services.deep_backtest import simulate_execution_with_15m
 from app.metrics.indicators import ensure_ta_lib_context_columns
 from app.services.combo_acceleration import enabled as acceleration_enabled
-from app.services.combo_cache import Snapshot, Cache, BUDGET, resolve, frame_identity, index_identity, protect, execution_lifecycle
+from app.services.combo_cache import (
+    Snapshot,
+    Cache,
+    BUDGET,
+    resolve,
+    frame_identity,
+    index_identity,
+    protect,
+    execution_lifecycle,
+)
 
 # -----------------------------------------------------------------------------
 # WORKER-SIDE INTRADAY CACHE (per process)
@@ -84,10 +93,15 @@ def _local_ohlcv_covers(loader, symbol: str, timeframe: str, end_date: str) -> b
         return False
 
 
-def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str, loader=None) -> Optional[pd.DataFrame]:
+def _worker_get_15m_cache(
+    symbol: str, since_str: str, until_str: str, loader=None
+) -> Optional[pd.DataFrame]:
     """Load (or reuse) the 15m DF in the current worker process."""
-    key = ((BUDGET.generation, symbol, since_str, until_str) if acceleration_enabled()
-           else (symbol, since_str, until_str))
+    key = (
+        (BUDGET.generation, symbol, since_str, until_str)
+        if acceleration_enabled()
+        else (symbol, since_str, until_str)
+    )
     if acceleration_enabled():
         cached = _BOUNDED_INTRADAY_CACHE.get(key)
         if cached is not None:
@@ -385,10 +399,17 @@ def extract_trades_with_mode(
                 str(intraday_start),
                 str(intraday_end),
             )
-            coverage_cache = _BOUNDED_COVERAGE_CACHE if acceleration_enabled() else _WORKER_COVERAGE_CACHE
+            coverage_cache = (
+                _BOUNDED_COVERAGE_CACHE if acceleration_enabled() else _WORKER_COVERAGE_CACHE
+            )
             if acceleration_enabled():
-                cov_key = (BUDGET.generation, symbol, index_identity(df_exec.index),
-                           index_identity(df_15m.index), *cov_key[1:])
+                cov_key = (
+                    BUDGET.generation,
+                    symbol,
+                    index_identity(df_exec.index),
+                    index_identity(df_15m.index),
+                    *cov_key[1:],
+                )
             cached_cov = None if _combo_optimizer_legacy() else coverage_cache.get(cov_key)
             if cached_cov is not None:
                 start_ok, end_ok = cached_cov
@@ -595,7 +616,9 @@ def _run_backtest_logic(
             cache_key = _indicator_cache_key(
                 indicators, entry_logic, exit_logic, derived_features, data_context
             )
-            indicator_cache = _BOUNDED_INDICATOR_CACHE if acceleration_enabled() else _WORKER_INDICATOR_CACHE
+            indicator_cache = (
+                _BOUNDED_INDICATOR_CACHE if acceleration_enabled() else _WORKER_INDICATOR_CACHE
+            )
             cached = indicator_cache.get(cache_key)
             if cached is None:
                 df_ind = strategy.calculate_indicators(df)
@@ -813,9 +836,17 @@ class ComboOptimizer:
     direction-aware combo trade extractor.
     """
 
-    def __init__(self, checkpoint_dir: str = "backend/data/checkpoints", *,
-                 combo_service=None, provider=None, loader=None, worker_loader=None, workers=None,
-                 worker_observer=None):
+    def __init__(
+        self,
+        checkpoint_dir: str = "backend/data/checkpoints",
+        *,
+        combo_service=None,
+        provider=None,
+        loader=None,
+        worker_loader=None,
+        workers=None,
+        worker_observer=None,
+    ):
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.combo_service = combo_service or ComboService()
@@ -1514,9 +1545,13 @@ class ComboOptimizer:
         # -----------------------------------------------------------
 
         if acceleration_enabled():
-            df = Snapshot(df, generation=getattr(self, "_execution_generation", None),
-                          source=(symbol, timeframe), role="train",
-                          limits=(start_date, end_date))
+            df = Snapshot(
+                df,
+                generation=getattr(self, "_execution_generation", None),
+                source=(symbol, timeframe),
+                role="train",
+                limits=(start_date, end_date),
+            )
         collected_candidates = []
         total_combinations_tested = 0  # Track total across all stages
 
@@ -1658,7 +1693,14 @@ class ComboOptimizer:
             ordered_batches: list = [None] * len(worker_batches)
             try:
                 futures = {
-                    exec_to_use.submit(partial(_worker_run_batch, intraday_loader=getattr(self, "_worker_loader", None), observer=getattr(self, "_worker_observer", None)), batch): i
+                    exec_to_use.submit(
+                        partial(
+                            _worker_run_batch,
+                            intraday_loader=getattr(self, "_worker_loader", None),
+                            observer=getattr(self, "_worker_observer", None),
+                        ),
+                        batch,
+                    ): i
                     for i, batch in enumerate(worker_batches)
                 }
                 for future in concurrent.futures.as_completed(futures):
@@ -1823,9 +1865,13 @@ class ComboOptimizer:
                 logging.warning("Failed to enrich DF with regime metrics: %s", exc)
 
         if acceleration_enabled():
-            df = Snapshot(df, generation=getattr(self, "_execution_generation", None),
-                          source=(symbol, timeframe), role="train",
-                          limits=(start_date, end_date))
+            df = Snapshot(
+                df,
+                generation=getattr(self, "_execution_generation", None),
+                source=(symbol, timeframe),
+                role="train",
+                limits=(start_date, end_date),
+            )
         branch_states = []
         for candidate in candidates:
             current_stages = copy.deepcopy(stages)
@@ -1848,7 +1894,15 @@ class ComboOptimizer:
             ordered = [None] * len(batches)
             if batches:
                 futures = {
-                    executor.submit(partial(_worker_run_batch, intraday_loader=getattr(self, "_worker_loader", None), observer=getattr(self, "_worker_observer", None)), batch): i for i, batch in enumerate(batches)
+                    executor.submit(
+                        partial(
+                            _worker_run_batch,
+                            intraday_loader=getattr(self, "_worker_loader", None),
+                            observer=getattr(self, "_worker_observer", None),
+                        ),
+                        batch,
+                    ): i
+                    for i, batch in enumerate(batches)
                 }
                 for future in concurrent.futures.as_completed(futures):
                     bidx = futures[future]
@@ -2095,7 +2149,9 @@ class ComboOptimizer:
             end_date = datetime.now().strftime("%Y-%m-%d")
 
         # Load data from selected provider (ccxt default; stooq for US stocks EOD)
-        provider = getattr(self, "_provider", None) or get_market_data_provider(selected_data_source)
+        provider = getattr(self, "_provider", None) or get_market_data_provider(
+            selected_data_source
+        )
         df = provider.fetch_ohlcv(
             symbol=symbol,
             timeframe=timeframe,
@@ -2518,9 +2574,13 @@ class ComboOptimizer:
 
             # Generate signals
             if acceleration_enabled():
-                df_final = Snapshot(df_final, generation=self._execution_generation,
-                                    source=(symbol, timeframe), role="final-train",
-                                    limits=(start_date, end_date)).copy_frame()
+                df_final = Snapshot(
+                    df_final,
+                    generation=self._execution_generation,
+                    source=(symbol, timeframe),
+                    role="final-train",
+                    limits=(start_date, end_date),
+                ).copy_frame()
             df_with_signals = strategy.generate_signals(df_final.copy())
 
             # Extract trades (same direction as optimization)
@@ -2529,9 +2589,17 @@ class ComboOptimizer:
             if direction not in ("long", "short"):
                 direction = "long"
             final_slippage = slippage_for_timeframe(timeframe)
-            final_intraday = (self._worker_loader.fetch_intraday_data(symbol=symbol, timeframe="15m",
-                              since_str=start_date, until_str=end_date, read_only=True)
-                              if getattr(self, "_worker_loader", None) is not None else None)
+            final_intraday = (
+                self._worker_loader.fetch_intraday_data(
+                    symbol=symbol,
+                    timeframe="15m",
+                    since_str=start_date,
+                    until_str=end_date,
+                    read_only=True,
+                )
+                if getattr(self, "_worker_loader", None) is not None
+                else None
+            )
             trades, execution_mode = extract_trades_with_mode(
                 df_with_signals,
                 stop_loss,
@@ -2539,8 +2607,11 @@ class ComboOptimizer:
                 symbol=symbol,
                 since_str=start_date,
                 until_str=end_date,
-                **({"df_15m_cache": final_intraday}
-                   if getattr(self, "_worker_loader", None) is not None else {}),
+                **(
+                    {"df_15m_cache": final_intraday}
+                    if getattr(self, "_worker_loader", None) is not None
+                    else {}
+                ),
                 direction=direction,
                 return_mode=True,
                 slippage=final_slippage,
@@ -2662,9 +2733,13 @@ class ComboOptimizer:
                 if df_train_tail_for_warmup is not None and not df_train_tail_for_warmup.empty:
                     holdout_frame = pd.concat([df_train_tail_for_warmup, df_holdout])
                 if acceleration_enabled():
-                    holdout_frame = Snapshot(holdout_frame, generation=self._execution_generation,
-                                             source=(symbol, timeframe), role="holdout-burnin",
-                                             limits=(str(holdout_eval_start), end_date)).copy_frame()
+                    holdout_frame = Snapshot(
+                        holdout_frame,
+                        generation=self._execution_generation,
+                        source=(symbol, timeframe),
+                        role="holdout-burnin",
+                        limits=(str(holdout_eval_start), end_date),
+                    ).copy_frame()
                 df_holdout_signals = strategy_holdout.generate_signals(holdout_frame.copy())
                 stop_loss = best_params.get("stop_loss", 0.0)
                 direction = best_params.get("direction", "long")
@@ -2682,10 +2757,19 @@ class ComboOptimizer:
                     until_str=(
                         str(holdout_frame.index.max().date()) if len(holdout_frame) else end_date
                     ),
-                    **({"df_15m_cache": self._worker_loader.fetch_intraday_data(
-                        symbol=symbol, timeframe="15m", since_str=start_date,
-                        until_str=end_date, read_only=True)}
-                       if getattr(self, "_worker_loader", None) is not None else {}),
+                    **(
+                        {
+                            "df_15m_cache": self._worker_loader.fetch_intraday_data(
+                                symbol=symbol,
+                                timeframe="15m",
+                                since_str=start_date,
+                                until_str=end_date,
+                                read_only=True,
+                            )
+                        }
+                        if getattr(self, "_worker_loader", None) is not None
+                        else {}
+                    ),
                     direction=direction,
                     return_mode=True,
                     slippage=holdout_slippage,

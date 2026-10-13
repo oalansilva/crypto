@@ -163,3 +163,44 @@ UI impact: none. Nenhum commit, push, deploy, mudança de coluna ou review
 foi executado pelo Apply. Modelo/esforço solicitados: `gpt-6.1-sol` / `high`;
 runtime/modelo/esforço observados: **unavailable** (o host não os expõe).
 Não se inferiu runtime a partir da seleção. Spawns deste Apply: zero.
+
+## Adendo T13 — formatação Black 26.10.1
+
+Sobre `HEAD=471015eeb6b832dd6d17b83fb08bda7bfcb4409d`, Black 26.10.1
+formatou somente os sete arquivos apontados pelo `backend-format` do CI.
+Os hashes SHA-256 abaixo comparam `git show HEAD:<arquivo>` com os bytes
+formatados. Para cada arquivo, a comparação direta de
+`ast.dump(ast.parse(source), include_attributes=False)` foi **igual**,
+sem considerar posições/atributos. Nenhuma lógica Python foi alterada.
+
+| Arquivo | SHA-256 antes | SHA-256 depois | AST igual |
+| --- | --- | --- | --- |
+| `backend/app/services/combo_acceleration.py` | `bf8d928fd0217fed43782763008ed38a5fec314ea74e7a9cbd517d722fa59b80` | `6bba8a528d9e7045f2143c507d51a51e231ff8b07d01c0016269cbfb93490958` | sim |
+| `backend/app/services/combo_cache.py` | `a4a9c50370407c62ea6e7301491e87530184d2337d131b267fe9b461c09b1488` | `a6b334a5472d2382b352ed8b4fd84f018f0a650c119202e3139e9d2d0ba8f329` | sim |
+| `backend/app/services/deep_backtest.py` | `fd67b45054a9b30c90eb80813f558475e42dea924496acfeb05ce51cacb232b7` | `74d62e4ff379cebd576486892a3d9093640ef687f00ab0f4bcdba2834cd12df5` | sim |
+| `backend/app/services/combo_optimizer.py` | `1f5b8de448856ac591edab2ae5f551813365d9880a71cbfe8f12fa775a4a3109` | `a95e8d31cdb825f3361d999215cf86e17b2f44d9f7f09c380c101abb94cc9e77` | sim |
+| `backend/app/strategies/combos/combo_strategy.py` | `d22d9a29b9acb956c332c49c782ccb37f3fa434d6e9ea0175782cdcd4ca8988b` | `90e19a3211a724c29812730d767f428a53755f4db13e604c5cc2504514b5cded` | sim |
+| `backend/scripts/discovery_benchmark_1091.py` | `48911d924f06a1e99824009f6d9f691815e9b57cc3e40b7379bdc45a22de2f64` | `bd0a573e5031b24a5f0c46bc42b42839daf953ed172ac54e19ff246551224161` | sim |
+| `backend/tests/unit/test_card_1091_acceleration.py` | `b636138d70940f45ac7c4c7c5645fa678a229c529d391b858004379aed3f9bf4` | `919efd862043eb9610fa42d49ade3422e474e9ed81583ced34ca416a423d15cc` | sim |
+
+Comandos executados no worktree, usando o ambiente isolado
+`/tmp/card-1091-clean-env` (Python 3.12.3, Black 26.10.1):
+
+- `python -m black --check backend` antes: exit 1, sete arquivos a formatar
+  e 330 inalterados. `python -m black` seguido dos sete paths absolutos da
+  tabela: exit 0, sete arquivos formatados.
+- `python -m black --check backend` depois: exit 0, 337 arquivos inalterados.
+- `PYTHONPATH=backend:backend/tests python -m pytest -q backend/tests/unit/test_card_1091_acceleration.py`:
+  exit 0, **16 passed, 1 warning in 24.76s**; aviso Pydantic preexistente
+  em `backend/app/config.py:21`.
+- `openspec validate card-1091-discovery-cache-numba --strict`: exit 0, valid.
+- `git diff --check`: exit 0, sem erros de whitespace.
+- `openspec instructions apply --change card-1091-discovery-cache-numba --json`:
+  exit 0, **all_done, 19/19**; aviso preexistente de `rules.tasks` preservado.
+
+As medições em `accepted/verified/` e seus manifestos brutos foram produzidos
+**antes desta formatação**. Os benchmarks não foram repetidos nem os
+manifestos reescritos; a igualdade das ASTs não é uma nova medição de
+desempenho. Modelo/esforço solicitados nesta correção: `gpt-6.1-sol` / `high`;
+modelo/esforço observados: **unavailable**, sem inferência pela captura
+`/tmp/card-1091-format-apply-model.json`. Spawns desta correção: zero.
