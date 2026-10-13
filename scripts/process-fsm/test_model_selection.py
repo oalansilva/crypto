@@ -107,7 +107,8 @@ def test_continuation_and_parent_release_use_birth_capture(machine_models, tmp_p
     first = resolve("codex", "execucao", role="fecho-lote")
     edit(machine_models, "codex", "execucao", model="gpt-6.1-sol", effort="high")
     facts = {"model": "gpt-6-luna", "effort": "max"}
-    assert verify_continuation(first, facts, host="Codex", host_version="0.162", status="completed", payload_returned=True)["successful"]
+    with pytest.raises(SelectionError):
+        verify_continuation(first, facts, host="Codex", host_version="0.162", status="completed", payload_returned=True)
     assert check_runtime_model(root=tmp_path, client="codex", runtime_slug="gpt-6-luna", runtime_effort="max", capture=first).ok
     assert not check_runtime_model(root=tmp_path, client="codex", runtime_slug="gpt-6.1-sol", runtime_effort="high", capture=first).ok
     assert not check_runtime_model(root=tmp_path, client="codex", runtime_slug="gpt-6-luna", capture=first).ok
