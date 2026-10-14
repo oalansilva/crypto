@@ -2,7 +2,7 @@ UI impact: none
 live_route: N/A — harness de processo, sem tela
 surface: none
 
-Ausência justificada: este card muda só o processo local (pontes, hooks, seleção de modelos, evidência e mensagens de terminal/handoff) do Claude Code. Não há tela, rota ou componente de produto. Prototype: N/A; nenhum HTML gerado ou copiado. Impeccable: N/A porque não existe superfície visual; crítica de Design e aprovação humana (T7) continuam obrigatórias.
+Ausência justificada: este card muda só o processo local (registro de hooks na conta, shim, pontes, hooks, seleção de modelos, evidência e mensagens de terminal/handoff) dos clientes do Covenant Flow. Não há tela, rota ou componente de produto. Prototype: N/A; nenhum HTML gerado ou copiado. Impeccable: N/A porque não existe superfície visual; crítica de Design e aprovação humana (T7) continuam obrigatórias.
 
 ## Context
 
@@ -36,8 +36,30 @@ Fontes: documentação oficial (`code.claude.com/docs/en/*`, para onde `docs.cla
 | Transcript do pai em `~/.claude/projects/<slug>/<session_id>.jsonl`; filho em `<session_id>/subagents/agent-<agentId>.jsonl` + `.meta.json` (`agentType`, `description`, `model` alias, `toolUseId`); registros `assistant` trazem `message.model` (id completo), `effort`, `perTurnEffort`, `requestedModel`, `isSidechain`, `agentId`, `sessionId`, `version`, `cwd`, `entrypoint`; o `toolUseResult` do pai traz `agentId`, `status` e `resolvedModel` | inspeção local desta sessão (pai e dois filhos `grill-card 1101`/`design-autor 1101`, todos `claude-opus-5-5`, `effort=medium`) | observado localmente; formato interno, não documentado como contrato. Os filhos nasceram **sem** `effort` explícito e rodaram em `medium`: o host não herda `high` do pai nem da seleção, por isso o adapter exige `effort` explícito em todo spawn (§2, §4) |
 | Ambiente dos comandos traz `CLAUDECODE=1`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_EFFORT`, `AI_AGENT=claude-code_<versão>_agent`, `CLAUDE_CODE_CHILD_SESSION=1` dentro de filho | inspeção local (valores secretos não registrados) | observado localmente |
 | Terminal, extensões VS Code/JetBrains e Desktop local leem os mesmos arquivos de settings; extensão e Desktop trazem cópia própria do Claude Code (versão pode diferir); Desktop tem sessões SSH que instalam o Claude Code no host remoto | docs `settings`, `vs-code`, `desktop` | provado (doc) |
-| Sessão de nuvem (claude.ai/code, `--cloud`) roda em VM com clone novo; lê `.claude/settings.json` (um repo), não lê `~/.claude/settings.json` nem `.claude/settings.local.json`; credenciais GitHub ficam fora da VM via proxy; subagentes de `.claude/agents/` funcionam; Remote Control permite dirigir uma sessão local a partir do navegador | docs `claude-code-on-the-web`, `settings` | provado (doc) |
+| Remote Control permite dirigir uma sessão local a partir do navegador (claude.ai/code); a sessão continua rodando na VM, com os arquivos da conta | docs `claude-code-on-the-web`, `settings` | provado (doc); sessão de nuvem fora do escopo (Non-Goals) |
 | `AskUserQuestion` disponível para o pai | tool usado pelas skills OpenSpec do repo | limites (nº de opções, uso em filho) a provar |
+
+### Rework de 2026-10-14: o que o piloto mostrou
+
+O adapter das seções 1–12 foi implementado (PR #1102, commits `bbb7c462`, `bb5a6c94`, `9dc6f043`) e chegou a QA. O piloto #703 expôs dois limites que Alan trouxe para este card (comentários `6167692629` e `6167788244`), e Alan devolveu o card a Design pelo board:
+
+- **Registro preso ao projeto.** O Claude Code carrega `.claude/settings.json` só do diretório de lançamento; `EnterWorktree` não dispara `SessionStart` nem recarrega hooks. Uma sessão aberta em `/source` (develop, ainda sem `.claude/`) e levada ao worktree do card roda sem processo (`hooks_inactive`, achado 13). O mesmo vale, por construção, para `.cursor/hooks.json`, `.codex/hooks.json`, `.grok/hooks/process-fsm.json`, `.opencode/plugin/` e o patch de `.dsh/`: todo cliente depende de a pasta de lançamento ter o pin. Cada repo precisa do pin para ter hooks, e o registro depende da pasta, não do card (achado 15). Por decisão de Alan (2026-10-14, comentário `6169060530`), o rework trata só Claude Code, Cursor, Codex e OpenCode; Grok Build e dsh ficam como estão.
+- **Versão fixa.** `claude_evidence.py` recusa qualquer host fora de `QUALIFIED_VERSIONS = ("2.1.296",)`; o host atualizou-se sozinho para 2.1.299 e todos os nascimentos pararam (`unverified`). `codex_evidence.py` tem a mesma trava: o driver é `codex_exec/0.162.1/rollout-v1` e qualquer outra `cli_version` é `unsupported_host`. Os coletores de Cursor, Grok, OpenCode e dsh não têm lista de versões (verificado no código: só `claude_evidence.py` e `codex_evidence.py`; o `host_min_version` da política é piso de capacidade, não lista).
+
+O rework mantém tudo das seções 1–12 que não trata de **onde** os hooks são registrados nem de **como** a versão do host é aceita, e acrescenta as seções 13–18.
+
+### Mecanismos globais de hook por host (para o rework)
+
+"Global" = escopo da conta do operador, carregado em qualquer pasta. Nada aqui está provado nesta conta; o ensaio do Apply (task 11.1) confirma cada linha antes de o pin tirar o registro de projeto daquele host. Os quatro hosts estão instalados nesta VM (`claude`, `cursor-agent`, `codex`, `opencode`) e todos são ensaiados.
+
+| Host | Registro de conta candidato | Registro de projeto que sai | Fonte | Situação |
+| --- | --- | --- | --- | --- |
+| Claude Code | bloco `hooks` em `~/.claude/settings.json` (escopo usuário; hooks de usuário e de projeto se somam) | bloco `hooks` de `.claude/settings.json` | doc `settings`/`hooks` | a ensaiar |
+| Cursor | `~/.cursor/hooks.json` (hooks de usuário) | entradas do Covenant Flow em `.cursor/hooks.json` | doc de hooks do Cursor | a ensaiar |
+| Codex CLI | `~/.codex/hooks.json` ou `[hooks]` em `~/.codex/config.toml` | `.codex/hooks.json` | camada de usuário do Codex; regra de confiança do host para hooks de usuário a provar | a ensaiar |
+| OpenCode | plugin global em `~/.config/opencode/plugin/` | auto-load de `.opencode/plugin/` | doc de plugins do OpenCode (global e projeto) | a ensaiar na versão instalada |
+
+Grok Build e dsh não entram na tabela: continuam com o registro de projeto atual (`.grok/hooks/process-fsm.json`, `.dsh/cordis.patch.yml` com `dsh_boot.sh`), sem shim, por decisão de Alan.
 
 ## Goals / Non-Goals
 
@@ -49,14 +71,19 @@ Fontes: documentação oficial (`code.claude.com/docs/en/*`, para onde `docs.cla
 - Falha visível por superfície, sem fallback.
 - Piloto empilhado e card real de troca de cliente, ambos com QA verde no Claude Code, como condição do T14 deste card (decisões de Alan no Design).
 - Entregar o adapter **não oficial**, travado por teste.
+- (Rework) Registro dos hooks na conta do operador para Claude Code, Cursor, Codex e OpenCode, com shim que descobre o consumidor pelo cwd e chama o adapter pinado; processo ativo depois da troca de worktree, sem depender da pasta de lançamento.
+- (Rework) Atualização do host não trava o processo: versão aceita pelo formato da fonte de evidência, nunca recusada só pelo número.
 
 **Non-Goals:**
 
 - Alterar T0–T18, estados, gates humanos, regras de release ou `.cursor/process-fsm.yaml`.
 - Copiar FSM, runbook, skills ou política de modelos para `.claude/`; segundo mapa de modelos.
-- Mudar o comportamento de Cursor, Codex, Grok, OpenCode ou dsh; código em `backend/` ou `frontend/src/`.
+- Mudar o comportamento de Cursor, Codex ou OpenCode além do registro dos hooks na conta (com a revisão por digest que ele exige) e da aceitação de versão do coletor Codex; código em `backend/` ou `frontend/src/`.
+- Grok Build e dsh (decisão de Alan, 2026-10-14): continuam exatamente como hoje, com o registro de projeto, os stubs e o comportamento atuais; sem registro na conta, sem shim, sem revisão por digest nova e sem a recusa por falta de shim. Levá-los para a conta é card de seguimento.
+- Levar para a conta a FSM, adapters, skills ou política: só o registro sai do repositório.
+- Travar a versão do host.
 - Reivindicar modo Auto; tratar o modo de permissão `auto`/`bypassPermissions` do Claude Code como autorização de processo.
-- Sessões de nuvem com seleção ou evidência próprias (não há `$HOME/.config/covenant-flow` nem transcripts locais lá): falham visivelmente neste card.
+- Sessões de nuvem (claude.ai/code em ambiente de nuvem): não são suportadas por este card (decisão de Alan, 2026-10-14: o Claude Code roda sempre local, pelo CLI). Nenhum requisito, cenário ou ensaio as cobre.
 - Oficialização: `AGENTS.md` (renderer `scripts/process-fsm/overlay.py` `render_agents` + pin, testes `test_overlay.py`/`test_paging.py`), linha "Cliente ativo" da skill e descrição do board. Vai para card de seguimento, com T1 de Alan, depois do piloto e da revisão de confiança (decisão (d) de Alan).
 
 ## Decisions
@@ -67,11 +94,11 @@ Fontes: documentação oficial (`code.claude.com/docs/en/*`, para onde `docs.cla
 
 `.claude/skills/<nome>/SKILL.md` são pontes com o mesmo frontmatter `name`/`description` do canônico e corpo "leia `.cursor/skills/<nome>/SKILL.md` completo; esta ponte não autoriza nem define estado", mais manifesto `.claude/skills/.covenant-flow-bridges.json` com SHA-256 de cada ponte. O conjunto é o mesmo das pontes Codex (manifesto atual com 18 skills). `impeccable` e `playwright-cli`, que em `.agents/skills/` são conteúdo vendorado e não pontes, ganham ponte apontando para o caminho vendorado existente. Gerador: generalizar `codex_skills.py` com diretório-alvo e nome de manifesto parametrizados (ou módulo fino `claude_skills.py` que o reutiliza) — detalhe de Apply (P3). Instalação recusa ponte local divergente do manifesto em vez de sobrescrever, como no Codex.
 
-### 2. Hooks: `.claude/settings.json` → `claude_adapter.py`, fail-closed
+### 2. Hooks: registro → `claude_adapter.py`, fail-closed
 
-Bloco `hooks` em `.claude/settings.json` (compartilhado, commitado), comandos `python3 "$CLAUDE_PROJECT_DIR/scripts/process-fsm/claude_adapter.py" <evento>` com `timeout` explícito e `onFailure: "block"` nos eventos que gateiam (requer 2.1.295+; versão menor = capacidade ausente, ver §7).
+Bloco `hooks` com `timeout` explícito e `onFailure: "block"` nos eventos que gateiam (requer 2.1.295+; versão menor = capacidade ausente, ver §7). Na primeira implementação ele ficou em `.claude/settings.json` (commitado) chamando `python3 "$CLAUDE_PROJECT_DIR/scripts/process-fsm/claude_adapter.py" <evento>`; o rework move o registro para `~/.claude/settings.json`, com comandos que chamam o shim, e o shim executa `claude_adapter.py <evento>` do worktree descoberto pelo cwd (§13). Eventos, matchers e comportamento abaixo não mudam.
 
-- `SessionStart` (matcher `startup|resume|clear|compact`): injeta `paging.page(client="claude")` como `additionalContext` — Moore page com `q`, `bound_card`, `q_git`, `enabled_events`, `context_file[Status]` e um bloco `CLAUDE_CLIENT_CONTEXT` curto (análogo a `CODEX_CLIENT_CONTEXT`). Falha de Status = `Status unread. Write produto deny.` Também grava um *heartbeat* da sessão (`session_id`, `transcript_path`, versão, entrypoint, digest da definição de hooks em uso) num diretório privado da conta, consumido pelo preflight (§6).
+- `SessionStart` (matcher `startup|resume|clear|compact`): injeta `paging.page(client="claude")` como `additionalContext` — Moore page com `q`, `bound_card`, `q_git`, `enabled_events`, `context_file[Status]` e um bloco `CLAUDE_CLIENT_CONTEXT` curto (análogo a `CODEX_CLIENT_CONTEXT`). Falha de Status = `Status unread. Write produto deny.` O *heartbeat* da sessão (`session_id`, `transcript_path`, versão, entrypoint, digest do registro), consumido pelo preflight (§6), passa a ser gravado pelo shim em qualquer pasta (§14).
 - `PreToolUse`, matcher `Bash|Edit|Write|MultiEdit|NotebookEdit|Agent`: normaliza nomes (`NotebookEdit` → rota de notebook do Guard; `MultiEdit` se existir no host — a provar) e chama `guard.decide()` com o mesmo `status_provider` do Codex. Deny = JSON `permissionDecision: "deny"` com o motivo do Guard. Exceção ou input inválido = deny (nunca exit 1, que a doc define como não bloqueante). Product globs, design globs, branch de integração e binding vêm do overlay, como hoje: em `develop`, em `Todo` ou sem card vinculado o produto é negado por comando e por edição; em `Design` passam `openspec/changes/**` e protótipos; produto só no worktree `card-<id>-*` depois de T8.
   - Em chamada de **subagente** (`agent_id` presente): `Agent` é sempre negado (filhos não criam netos; isso também cobre "Apply não spawna reviewers"); para `agent_type` `diff-reviewer`/`code-reviewer`, qualquer ferramenta fora de `Read|Grep|Glob` é negada (defesa em profundidade além da allowlist do agente).
   - `Agent` do pai: `validate_spawn("claude", tool_input)` contra a captura citada no prompt (`model_selection_capture:`), mais checagem do receipt de evidência (`runtime_evidence_birth:`) e das variáveis que sobrepõem a escolha (`CLAUDE_CODE_SUBAGENT_MODEL`, `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`, `CLAUDE_CODE_EFFORT_LEVEL`): qualquer uma definida = deny visível. `Agent` sem `model` ou sem `effort` = deny (sem herança): o host roda filho sem `effort` em `medium` (observado), então `effort` explícito por spawn é obrigatório.
@@ -83,7 +110,7 @@ Bloco `hooks` em `.claude/settings.json` (compartilhado, commitado), comandos `p
 
 Destape: no Claude Code o filho em primeiro plano devolve o resultado no próprio turno do pai, e o filho em background gera notificação de conclusão ao pai (comportamento observado nesta sessão; garantia formal a provar). Por isso o adapter não usa sidecar `awaiting-task.json` nem poke; o runbook ganha uma linha dizendo isso. Interrupção/erro do filho continua não sendo sucesso.
 
-Alternativas rejeitadas: hooks em `~/.claude/settings.json` (não versionados, não vão para nuvem, não reproduzíveis pelo pin); hooks em frontmatter de agente (só valem no filho e têm regra de confiança mais estrita); `permissions.deny` como Guard (estático, não conhece Status).
+Alternativas rejeitadas no primeiro Design: hooks em `~/.claude/settings.json` (não versionados, não reproduzíveis pelo pin). O rework inverte essa escolha só para o registro, por decisão de Alan (§13): a lógica continua versionada pelo pin. Continuam rejeitados hooks em frontmatter de agente (só valem no filho e têm regra de confiança mais estrita); `permissions.deny` como Guard (estático, não conhece Status).
 
 ### 3. Agentes de review: `.claude/agents/{diff-reviewer,code-reviewer}.md` só leitura
 
@@ -122,7 +149,7 @@ Resume/continuação: `canContinueAgent` existe no resultado do spawn; continua�
 `claude_evidence.py`, espelhando `codex_evidence.py`:
 
 - **Localizador**: `CLAUDE_CODE_SESSION_ID` + `transcript_path` do heartbeat do `SessionStart` (o input de hook traz `transcript_path`). Fonte autoritativa candidata: o JSONL do pai e `subagents/agent-<agentId>.jsonl` + `.meta.json` sob `~/.claude/projects/`. Leitura só leitura, sem mutação, exigindo linhas JSON completas (arquivo truncado = `source_truncated`).
-- **Qualificação por versão**: o driver declara as versões suportadas (`2.1.296` a qualificar no Apply com ensaio real). Outra versão = `unverified` e recusa nos gates, como no Codex; o formato não é contrato público, então mudança de schema vira `unsupported_schema` visível.
+- **Aceitação por formato** (rework, §17): a primeira implementação qualificava versão a versão (`QUALIFIED_VERSIONS`); agora o driver aceita qualquer versão cujos registros usados validem o schema `claude-transcript-v1`. O formato não é contrato público, então mudança real de schema vira `unsupported_schema` visível, citando o campo.
 - **`prepare`** (antes de cada nascimento): valida sessão ativa, cwd = worktree, entrypoint/superfície, captura, e grava receipt privado (0400) com `task_name` = `description` única com needle, digest da captura e do diff quando houver.
 - **`collect`** (após o retorno): acha no transcript do pai o `tool_use` `Agent` com aquela `description`, o `toolUseResult` (`agentId`, `resolvedModel`, `status`), o transcript do filho (`isSidechain`, `agentId`, `sessionId`), extrai modelo/esforço observados por turno, ferramentas usadas, término e payload retornado; sela com digests. `observed` nunca é copiado de `requested`; ausência = `unavailable` e reprova.
 - **`claude_proxy.py`** registra a linha de proxy (`proxy modelo: <papel> → <rótulo> (<slug>)`, cliente `claude`, superfície, versão, status, payload) a partir do envelope; `model_proxy.evidence` ganha o cliente `claude`.
@@ -130,7 +157,7 @@ Resume/continuação: `canContinueAgent` existe no resultado do spawn; continua�
 
 ### 6. `process_event --client claude` e preflight
 
-`--client` aceita `claude`. Detecção nativa: `CLAUDECODE=1` → `claude`; coexistência com `CODEX_THREAD_ID` → precedência do processo mais interno (Codex aninhado no `Bash` do Claude Code continua `codex`, ver P3 aceitos), senão `reject ambiguous_client`; `--client`/`COVENANT_CLIENT` divergente do nativo → `reject ambiguous_client` (generalização do caso Codex). Para o mesmo conjunto de eventos que hoje exige preflight Codex, `claude` exige `claude_evidence.preflight`: transcript da sessão legível e versão qualificada, heartbeat presente e com digest de hooks igual ao registro de confiança (§9). Hooks ausentes, desligados (`disableAllHooks`) ou não confiados tornam-se assim visíveis na primeira transição dependente, sem nova transição nem permissão na FSM. Eventos humanos (T1, T7, T15, T18) continuam `reject actor`; T16 continua `fechar_release`. `implemente` em `Todo` não tem aresta: a página Moore e o Guard produzem a frase com Status atual e "Apply só depois de Pronto para Dev (T7 teu)".
+`--client` aceita `claude`. Detecção nativa: `CLAUDECODE=1` → `claude`; coexistência com `CODEX_THREAD_ID` → precedência do processo mais interno (Codex aninhado no `Bash` do Claude Code continua `codex`, ver P3 aceitos), senão `reject ambiguous_client`; `--client`/`COVENANT_CLIENT` divergente do nativo → `reject ambiguous_client` (generalização do caso Codex). Para o mesmo conjunto de eventos que hoje exige preflight Codex, `claude` exige `claude_evidence.preflight`: transcript da sessão legível e com schema válido (§17), heartbeat do shim presente, digest do registro igual ao do heartbeat e digests de registro e adapter revisados (§15). Hooks ausentes, desligados (`disableAllHooks`) ou não confiados tornam-se assim visíveis na primeira transição dependente, sem nova transição nem permissão na FSM. Eventos humanos (T1, T7, T15, T18) continuam `reject actor`; T16 continua `fechar_release`. `implemente` em `Todo` não tem aresta: a página Moore e o Guard produzem a frase com Status atual e "Apply só depois de Pronto para Dev (T7 teu)".
 
 ### 7. Superfícies
 
@@ -141,9 +168,8 @@ Resume/continuação: `canContinueAgent` existe no resultado do spawn; continua�
 | Desktop, sessão SSH para a VM | Claude Code instalado pelo Desktop no host remoto | mesmos arquivos na VM (doc); a provar no piloto |
 | Desktop **Local** no Windows | máquina Windows | sem seleção local, sem `gh`/worktree da VM: resolver e Status falham visivelmente; nenhuma etapa avança |
 | Web claude.ai/code dirigindo sessão local por Remote Control | sessão CLI da VM | equivalente ao terminal (a provar no piloto) |
-| Web/`--cloud`, sessão de nuvem | VM Anthropic, clone novo | lê `.claude/settings.json` (hooks rodam), mas não há `$HOME/.config/covenant-flow` nem acesso garantido ao board: resolver falha (`model-selection.yaml` ausente) e Status fica `unread` → Write produto deny, nenhum filho nasce; falha visível, sem fallback |
 
-A superfície observada (`CLAUDE_CODE_ENTRYPOINT` e equivalentes de nuvem/remote, a provar) entra no heartbeat e no proxy.
+O Claude Code roda sempre local, pelo CLI na VM (decisão de Alan, 2026-10-14); sessão de nuvem está fora do escopo e não entra na matriz. A superfície observada (`CLAUDE_CODE_ENTRYPOINT` e equivalentes de remote, a provar) entra no heartbeat e no proxy.
 
 ### 8. Fecho de lote no Claude Code
 
@@ -151,7 +177,7 @@ Só por pedido explícito de Alan. Pré-requisito: o próprio pai é de execuç�
 
 ### 9. Revisão de confiança dos hooks
 
-Pin e instalação não dão confiança. Em sessão interativa o Claude Code segura hooks até o diálogo de confiança do workspace; em `-p`/SDK roda hooks commitados sem diálogo (doc) — portanto o diálogo do host não é a revisão exigida. A revisão é um ato explícito do operador: ler `.claude/settings.json` e `claude_adapter.py` (e módulos importados) e registrar `claude_adapter.py trust --record` num arquivo da conta (`$HOME/.config/covenant-flow/claude-hook-trust.json`) com os digests revisados. O heartbeat compara o digest em uso com o registro; divergência = página com `hooks não revisados`, deny de Write de produto e de `Agent`, preflight recusado. Nunca usar bypass, nem tratar hook ausente/não confiado como proteção.
+Pin e instalação não dão confiança. Em sessão interativa o Claude Code segura hooks até o diálogo de confiança do workspace; em `-p`/SDK roda hooks commitados sem diálogo (doc) — portanto o diálogo do host não é a revisão exigida. A revisão é um ato explícito do operador. Na primeira implementação: ler `.claude/settings.json` e `claude_adapter.py` (e módulos importados) e registrar `claude_adapter.py trust --record` em `$HOME/.config/covenant-flow/claude-hook-trust.json`. No rework ela vira revisão em duas partes (registro e adapter), comum a Claude Code, Cursor, Codex e OpenCode e conferida pelo shim antes de executar o adapter (§15). Digest não revisado = página com `hooks não revisados`, deny de Write de produto e de `Agent`, preflight recusado. Nunca usar bypass, nem tratar hook ausente/não confiado como proteção.
 
 ### 10. Troca de cliente entre etapas
 
@@ -171,7 +197,7 @@ O pai spawna `grill-card` (juízo, Opus 5.5 alto) e só faz relaying. Perguntas 
 
 **Ordem (decisão (a) de Alan).**
 
-1. Pré: QA do #1101 verde no SHA revisado; **sem** `integrar_develop`. Revisão de confiança registrada; seleção `claude` validada; driver de evidência qualificado na versão em uso.
+1. Pré: QA do #1101 verde no SHA revisado; **sem** `integrar_develop`. Shim instalado na conta e revisão de confiança (registro e adapter) registrada; seleção `claude` validada; schema de evidência válido na versão em uso (§17).
 2. Bloco `claude` acrescentado à seleção da conta (início da janela, §Migration Plan).
 3. Piloto e card de troca nascem em worktrees empilhados no HEAD revisado de `card-1101-claude-code-adapter` e vão até QA verde (piloto inteiro no Claude Code; card de troca com Design no Cursor/Codex e Apply no Claude Code).
 4. `review_process_checklist.py --phase postqa` do #1101 passa, incluindo `pilot_evidence`; então o pai chama `integrar_develop` do #1101 (T14).
@@ -193,12 +219,98 @@ Qualquer campo ausente, SHA sem QA verde, proxy faltante ou com cliente errado =
 
 1. Card piloto pequeno e real (escolhido por Alan em Em Refinamento; sem produto sensível), num chat Claude Code `#<id>` no terminal da VM: grelha → (Alan T1) → `iniciar_design` → Design-autor + crítico → `submeter_design` → (Alan T7) → `iniciar_apply` → Apply-coluna → `pedir_review` → onda de dois reviewers + `verify-wave` → commit/PR → `aceitar_sha` → QA verde. Cada filho com captura, receipt e proxy observado.
 2. Negativos no mesmo ambiente: `implemente` em `Todo` (nada muda, frase com Status); Write de produto em `develop` e sem card (Edit e Bash negados, readback igual); seleção `claude/execucao` com modelo inexistente (spawn recusado visivelmente); hooks com digest alterado (preflight recusa).
-3. Superfícies: o piloto registra, para IDE Remote-SSH, Desktop SSH, Remote Control pela web e sessão de nuvem, o resultado de SessionStart/deny/resolver/evidência; superfície sem capacidade fica como falha visível documentada.
+3. Superfícies: o piloto registra, para IDE Remote-SSH, Desktop SSH e Remote Control pela web, o resultado de SessionStart/deny/resolver/evidência; superfície sem capacidade fica como falha visível documentada.
 4. Fecho de lote: se houver lote no período, a parte do agente é conduzida no Claude Code; senão, ensaio do pré-requisito de T16 (recusa com pai em juízo, aceitação com pai em execução) sem `fechar_release`.
+
+### 13. Registro dos hooks na conta, para Claude Code, Cursor, Codex e OpenCode (rework; decisões de Alan)
+
+Três camadas, cada uma com um dono:
+
+1. **Registro** (conta, um por host): o mesmo conjunto de eventos, matchers, `timeout` e flags de bloqueio (`onFailure: "block"`, `failClosed`) que o registro de projeto tem hoje, mas cada comando chama o shim com o cliente e o evento (por exemplo `python3 "$HOME/.config/covenant-flow/shim/current/cf_shim.py" claude pre-tool-use`). No OpenCode, que carrega plugin JS em processo, o registro é um plugin global fino que encaminha ao mesmo contrato do shim (P3: subprocesso ou import do plugin pinado).
+2. **Shim** (conta, distribuído pelo `covenant-flow`): descobre o consumidor, confere compatibilidade e digest, executa o adapter pinado e traduz as próprias falhas para o formato de deny de cada host. Não tem FSM, Guard, paginação nem seleção de modelos.
+3. **Adapter** (consumidor, versionado pelo pin): o que existe hoje — `claude_adapter.py`, `codex_adapter.py`, `.cursor/hooks/*.sh`, plugins do OpenCode, `hook.mjs` do Impeccable — sem mudança de lei.
+
+Grok Build e dsh ficam fora das três camadas: o pin continua gravando o registro de projeto deles como hoje e o shim não é registrado nesses hosts. No manifesto, `registration` é por cliente: `account` para os quatro do escopo com mecanismo provado, `project` para Grok Build e dsh.
+
+Descoberta, a cada evento: cwd do payload do hook (`cwd` no Claude Code e no Codex; `workspace_roots` no Cursor; diretório do contexto no OpenCode), senão a raiz do workspace, senão o cwd do processo → `git rev-parse --show-toplevel` → `.covenant-flow/overlay.yaml`. Decisão por caso:
+
+| Situação | Comportamento |
+| --- | --- |
+| sem overlay, ou overlay sem `pin` | nada: sem página, sem deny, sem executar código do repo |
+| pin anterior ao registro na conta (sem manifesto de adapters) | nada para aquele host: o registro de projeto do pin antigo é o único que roda (sem execução dupla) |
+| manifesto com `registration: account` e tudo confere | executa o adapter do cliente com o payload original e devolve a resposta dele |
+| arquivo do manifesto ausente | `adapter_missing` visível |
+| arquivo diferente do manifesto | `adapter_divergent` visível |
+| digest do adapter não revisado | `hooks_unreviewed` visível, sem executar o adapter |
+| `shim_protocol` do manifesto não suportado | `shim_incompatible` visível, com o comando de atualização da conta |
+| raízes de workspace em consumidores diferentes | `consumer_ambiguous` visível |
+
+"Visível" segue o fail-closed de hoje: nos eventos que gateiam (pre-tool de escrita, shell e spawn) deny no formato nativo do host com motivo e recuperação; no início de sessão, o motivo vai na página; leitura não é bloqueada. Exceção ou timeout do adapter continua deny, como hoje.
+
+Por que manifesto: o shim precisa distinguir "pin antigo, registro no projeto" de "pin novo, adapter sumiu", que Alan quer como falha visível. O pin grava `.covenant-flow/adapters.json` (nome P3) com `registration`, `shim_protocol` e, por cliente, o ponto de entrada e a lista de arquivos do adapter.
+
+Claude Code: registro em `~/.claude/settings.json`, e não plugin. O plugin exige marketplace e habilitação por escopo; as user settings se fundem com o mesmo merger de `claude_hooks.py`/`codex_hooks.py`. A decisão de Alan permite marketplace só para o registro, então o plugin fica como alternativa se o ensaio mostrar limite das user settings. Em todos os hosts os registros de usuário e de projeto se somam; por isso o pin novo tira o registro do projeto e o shim não age em pins antigos (§16).
+
+Alternativas rejeitadas: manter o registro no projeto e exigir sessão por pasta (contraria o uso pedido por Alan); symlink de `.claude/` para a conta em cada repo (continua por pasta); copiar a lógica para a conta (segunda lei, fora da decisão).
+
+### 14. O processo segue a sessão para o worktree do card
+
+- **Heartbeat do shim.** No `SessionStart` de qualquer pasta, o shim grava na conta (`~/.config/covenant-flow/sessions/<cliente>/<sessão>.json`, 0600) a identidade da sessão, o localizador do transcript/rollout, a versão do host, a superfície, o digest do registro (§15) e o cwd de lançamento. Numa pasta sem pin esse registro privado é o único efeito: não há página, deny nem saída para a sessão. Ele é a âncora do "registro que o host carregou", e por isso não pode nascer depois. O heartbeat do Claude, que hoje `claude_trust.py` grava só quando o adapter roda, passa a ser este; `hooks_inactive` = sessão sem heartbeat do shim.
+- **Troca de worktree.** O shim guarda por sessão a última raiz de consumidor. No primeiro evento com raiz diferente, (a) o adapter da nova raiz é usado já nesse evento (Guard e spawn), e (b) a página Moore do card recém-vinculado é injetada. No Claude Code, (b) usa `additionalContext` de `PostToolUse` com matcher `EnterWorktree` e, se o host oferecer evento de mudança de cwd, esse evento (a provar). Nos outros hosts, (b) usa o mecanismo de contexto que cada um tiver; onde não houver, a página aparece no próximo início de sessão, e os gates já valem desde o primeiro evento. A troca continua seguindo só `transcript_path` e `cwd` (`9dc6f043`) e preserva o digest do registro.
+- **`$CLAUDE_PROJECT_DIR`** deixa de importar: o shim resolve o consumidor pelo cwd do payload, não pela pasta de lançamento. Isso fecha a dúvida aberta da onda `1101-fixwt-w2`.
+- Uma sessão `#<id>` aberta em `/source` continua entrando no worktree `card-<id>-*` por `EnterWorktree`, como manda o runbook; a diferença é que o processo fica ativo sem relançar a sessão.
+
+### 15. Revisão de confiança em duas partes (achado 6 e residual P2)
+
+Registro de confiança único na conta, comum aos clientes (`~/.config/covenant-flow/hook-trust.json`, versão 2), com entradas `{digest, part, client, files, recorded_at}`:
+
+- **Parte registro (R):** bloco de hooks da conta daquele host (JSON canônico) mais os arquivos do shim. O heartbeat guarda o R do início da sessão. R atual ≠ R do heartbeat → `hooks_changed` (o host ainda roda o registro antigo; exige sessão nova). R não revisado → `hooks_unreviewed`.
+- **Parte adapter (A):** todos os arquivos que o adapter do cliente pode executar, pela lista do manifesto: `scripts/process-fsm/` (sem testes), o diretório de handlers do cliente e a árvore inteira `.agents/skills/impeccable/scripts/**`. A árvore inteira fecha o P2 do `hook-lib.mjs` (cerca de 20 módulos de `detector/` e `lib/impeccable-config.mjs` por `import()` dinâmico), sem tentar seguir imports dinâmicos. A é conferido **pelo shim antes de executar**, não pelo próprio adapter; hoje o adapter confere o próprio digest, o que não protege contra um adapter alterado. A revisado vale no próximo evento sem reabrir a sessão; trocar entre worktrees com A diferentes e ambos revisados funciona.
+- `claude_adapter.py trust --record|--status` passa a delegar ao shim (`cf_shim.py trust`), que mostra R e A da pasta atual e grava os dois. As revisões v1 (`claude-hook-trust.json`) não são migradas: os digests mudam de qualquer forma, e o operador registra de novo.
+- Cursor e OpenCode passam a ter revisão por digest, porque o shim executa código do repo a partir de um hook da conta. Sem isso, qualquer repo clonado com overlay e pin teria código executado em toda chamada de ferramenta. Esse é o custo da decisão de Alan ("a revisão de confiança continua por digest") e aparece na migração (§16, passo 3). Grok Build e dsh não ganham revisão nova: não passam pelo shim.
+- O limite aceito continua: o agente pode tentar gravar a revisão; nesta conta o classificador de permissão do host negou a tentativa (achado 7). O endurecimento fica no card de seguimento.
+
+### 16. Pin, `implantar` e migração do registro
+
+- **`install.sh --pin` (tag nova):** continua "copiar e commitar" para núcleo, adapters, pontes, helpers e política. Deixa de gravar registro de hooks de Claude Code, Cursor, Codex e OpenCode no consumidor; remove dos registros de projeto desses quatro só as entradas do Covenant Flow, preservando as alheias (mesmo merger, recusa visível em JSON inválido ou conflito, sem escrita parcial); grava o manifesto de adapters. No OpenCode, os plugins do adapter saem do diretório que o host auto-carrega para um caminho que o plugin global importa (P3). Os registros de Grok Build (`.grok/hooks/process-fsm.json`) e dsh (`.dsh/cordis.patch.yml`, `dsh_boot.sh`) continuam gravados pelo pin como hoje.
+- **`install.sh --account` (novo, na conta, nada vai para git):** instala o shim versionado em `~/.config/covenant-flow/shim/<versão>/` com `current`; funde uma entrada por host do escopo instalado na máquina (Claude Code, Cursor, Codex, OpenCode; todos presentes nesta VM); `--check` mostra, por host do escopo, `registration=account|unproven|not_installed` (e `project` para pin antigo), shim ou registro faltando, a versão do shim e R/A revisados; `--remove` tira só as entradas do Covenant Flow. Idempotente, preserva o que é alheio, não lê nem grava a seleção de modelos e não grava confiança.
+- **Compatibilidade:** pins antigos continuam funcionando com o registro de projeto (o shim não age neles). O pin novo exige o shim instalado. Sem ele, a sessão fica sem hooks, e hoje só Claude Code e Codex têm preflight em `process_event`. Por isso o rework estende a recusa aos quatro clientes do escopo (spec `account-hook-shim`, "Account registration without the shim is refused visibly in every account-registered client"): num consumidor com o pin novo, para cada um desses clientes, as transições que hoje exigem o preflight Codex recusam com `hooks_inactive` quando falta o heartbeat do shim daquela sessão, quando falta o shim ou o registro na conta daquele cliente, ou quando o cliente está `registration=unproven`. A recusa cita o cliente e a recuperação (`install.sh --account` e sessão nova), e o `--check` mostra o host sem registro. É precondição de eventos que já existem, como o preflight Codex: não cria aresta e não muda Guard, paginação nem seleção. Está dentro do "Não entra", porque é a visibilidade do próprio registro na conta. Onde checar e como casar a sessão com o heartbeat em cada cliente é P3; um cliente que não exponha a sessão a `process_event` exige, no mínimo, shim e registro do cliente instalados e revisados.
+- **Cliente do escopo sem mecanismo global provado no ensaio** (decisão de Alan, 2026-10-14): fica só com a falha visível. O `--check` mostra `registration=unproven`, o manifesto não o declara `registration: account`, a lacuna vai para o card e nenhuma página, checagem ou handoff o apresenta como protegido. Ele fica sem registro do processo: não se mantém registro de projeto para ele nem se inventa outro mecanismo, e o `process_event` dependente dele recusa visivelmente com `hooks_inactive` citando `registration=unproven`. Grok Build e dsh não são casos de `unproven`: estão fora do escopo e mantêm o registro de projeto.
+- Neste repo: `.claude/settings.json` perde o bloco `hooks` e deixa de existir, pois não tem outras chaves. `CLAUDE.md`, `.claude/skills/` e `.claude/agents/` ficam: são descoberta, não registro.
+
+### 17. Versão do host aceita pelo formato (rework; decisão de Alan)
+
+- **Claude Code.** `QUALIFIED_VERSIONS` sai. O driver `claude-transcript-v1` declara, por tipo de registro usado, os campos obrigatórios e os tipos: `assistant` (`type`, `sessionId`, `version`, `entrypoint`, `cwd`, `message.id`, `message.model`, `effort`); `tool_use` do `Agent` no pai (`input.description`, `input.model`, `input.effort`, `input.subagent_type`); `toolUseResult` (`agentId`, `status`, `resolvedModel`); `.meta.json` do filho (`toolUseId`, `description`, `agentType`, `model`); registros do filho (`isSidechain`, `agentId`, `sessionId`); payload de `PreToolUse(Agent)` (`tool_input.effort`, como já é). Campos extras e tipos de registro não usados são ignorados. A validação roda onde o coletor lê: `prepare` valida o último `assistant` do pai, como sonda, antes do nascimento; `collect` valida todos os registros usados. Falta ou tipo diferente → `unsupported_schema` com tipo, campo e versão observada.
+- A versão observada vai para heartbeat, receipt, evidência e proxy, e nunca recusa sozinha. Um transcript com mais de uma versão (sessão retomada depois de atualização) é aceito se cada registro valida; a evidência guarda o conjunto. A identidade filho×pai usa os valores do pai no receipt (§18).
+- **Pisos de capacidade ficam:** `host_min_version` 2.1.292 (`effort` por invocação) e 2.1.295 (`onFailure: "block"`) recusam só hosts mais antigos, com `capability_unavailable`. `QUALIFIED_ENTRYPOINTS` também fica: é superfície, não versão, e segue a matriz da task 9.4.
+- **Codex.** O driver passa a `codex_exec/rollout-v1`. A checagem de `originator == codex_exec` fica (tipo de host); `cli_version` é registrada. O schema valida `session_meta`, `turn_context`, chamada/retorno nativos, `task_started`, `task_complete` e `agent_message`. A qualificação privada (`qualification.json`) vale por schema do driver, não por versão: a prova existente continua válida (aceitar o id antigo do driver como o mesmo schema é P3).
+- **Risco aceito:** formato igual com semântica nova. A mitigação são as checagens cruzadas que já existem: `resolvedModel` contra a captura, modelo e esforço por turno, filiação e payload. Divergência reprova em qualquer versão.
+- Alternativas rejeitadas: travar a versão do binário (impede atualização de segurança e não atende "nas próximas"); janela de qualificação por versão (ainda trava até o ensaio); aceitar qualquer versão sem schema (troca "trava" por "aceita errado").
+
+### 18. Achados do piloto: o que entra e o que fica fora
+
+Entram, porque tocam registro, sessão ou evidência:
+
+- **6 (digest em duas partes)** → §15.
+- **13 e 15 (sessão de `/source` sem hooks; registro preso ao projeto)** → §13, §14.
+- **10 (turno `<synthetic>`)**: o último `assistant` com `message.model == "<synthetic>"` (erro da API gravado pelo host) classifica o filho como `failed`, e o proxy registra a tentativa sem sucesso; não é `model_mismatch`. Um `<synthetic>` intermediário seguido de turnos reais é excluído da comparação de modelo e contado na evidência.
+- **11 (filho coletado após troca de worktree)**: a coleta compara cwd e versão do filho com os do pai **gravados no receipt** do nascimento, não com o cwd atual da sessão.
+- **1 (grelha com o card errado)**: com sessões nascendo em `/source`, a grelha roda sem vínculo de git. O receipt grava o card do `--task-name` (`grill-card <id> …`) quando o git não vincula card. Quando o git vincula outro card, `prepare` recusa com `card_mismatch`. Vale para todo papel: o id do `--task-name` precisa bater com o `bound_card` quando houver.
+- **P2 do `hook-lib.mjs` fora do digest** → §15, árvore inteira.
+- **P3 do texto do requisito de confiança** (só "hook definition and adapter") → corrigido no spec delta deste rework.
+- **9 e 14 (isolamento do host após `EnterWorktree`)**: só uma nota de uso no runbook (corpo por `--body-file` com path literal; comandos compostos com variável de shell podem ser recusados pelo host).
+
+Ficam fora, com seguimento:
+
+- **2 (Guard trata `>` entre aspas como redirecionamento)**: é o Guard compartilhado de todos os clientes, fora dos dois blocos do rework. Vai para card de seguimento.
+- **12 (protótipo 404 em card novo)**: é o serviço de protótipos do DEV (lista de worktrees montada no início), um problema de ambiente do consumidor, não do processo. Vai para card de seguimento, como o body já decide. Um passo de restart no runbook fica só como sugestão para esse card.
+- **7 (autoaprovação do `trust --record`)**: o limite já foi aceito por Alan; o endurecimento fica no card de seguimento.
+- **P2 de 3.7 (verificação antes da primeira escrita provada só com sintéticos)** e **P3 de 6.2 (`check_claude_parent` sem ponto de entrada)**: são residuais de review que este desenho não muda; continuam no piloto (9.2/9.3/9.6).
+- **P3 do `recorded_at` do heartbeat**: resolvido de passagem, porque o heartbeat do shim separa `recorded_at` (início da sessão) dos campos de troca.
 
 ## Risks / Trade-offs
 
-- [Transcript JSONL é formato interno, pode mudar sem aviso] → driver versionado por versão do host; schema desconhecido = `unsupported_schema`/`unverified` e gate recusa; nunca inferir.
+- [Transcript JSONL é formato interno, pode mudar sem aviso] → schema declarado por driver e validado onde se lê (§17); formato mudado = `unsupported_schema` citando o campo, e o gate recusa; nunca inferir. Versão nova com formato igual segue.
 - [`tool_input.effort` do `Agent` ausente ou com outro nome numa versão] → payload real gravado no ensaio por versão; campo ausente = deny `unsupported_schema` naquela versão; nunca validar só `model` nem ler o esforço da sessão.
 - [Filho sem `effort` explícito roda em `medium` (observado)] → deny de spawn sem `effort`; verificação antes da primeira escrita e por turno na coleta.
 - [Alias de família resolve para versão diferente do id selecionado, ou a organização substitui o modelo] → verificação de `resolvedModel` logo após o spawn, do transcript do filho antes da primeira escrita e de `message.model` na coleta; divergência invalida o filho.
@@ -207,9 +319,16 @@ Qualquer campo ausente, SHA sem QA verde, proxy faltante ou com cliente errado =
 - [Modo de permissão `auto`/`bypassPermissions` do Claude Code e Auto padrão na extensão VS Code] → o adapter não depende do modo de permissão; deny de hook vale em qualquer modo (comportamento em `bypassPermissions` a provar no Apply; se não valer, a superfície/modo é recusado pelo preflight).
 - [Filho pode criar netos] → deny de `Agent` com `agent_id` no `PreToolUse`.
 - [Rotas que não disparam `PreToolUse` (ferramentas MCP, LSP, Monitor etc.)] → ensaio lista rotas cobertas e não cobertas; não se afirma interceptação completa.
+- [Shim na conta executa código de qualquer repo com overlay e pin] → só executa adapter cujo digest A o operador revisou; repo sem pin não executa nada (§13, §15).
+- [Registro de usuário e de projeto se somam e o hook roda duas vezes] → o pin novo tira o registro do projeto; em pin antigo o shim não age (§16); teste de "uma execução por evento".
+- [Host do escopo sem mecanismo global, ou mecanismo diferente do previsto] → ensaio por host antes de o pin tirar o registro daquele host; sem prova, o host aparece como `registration=unproven` e fica só com a falha visível (§16).
+- [Mesmo formato com semântica nova numa versão futura] → checagens cruzadas de `resolvedModel`, modelo e esforço por turno, filiação e payload; divergência reprova (§17).
+- [Hash das árvores do adapter em toda chamada pesa] → cache por (path, tamanho, mtime, inode) na conta (P3); a árvore inteira é o preço de cobrir imports dinâmicos.
+- [Revisão por digest nova para Cursor e OpenCode trava sessões até o operador registrar] → passo explícito na migração, `--check` mostra o que falta; pins antigos não são afetados.
+- [Página não reinjetada no meio da sessão em host sem mecanismo de contexto] → os gates seguem o novo worktree desde o primeiro evento; a página aparece no próximo início de sessão; lacuna registrada por host.
 - [Worktree sem `.claude/skills` cai no checkout principal] → durante a janela, `develop` ainda não tem as pontes; piloto e card de troca rodam em worktrees empilhados que têm `.claude/` versionado; preflight compara manifesto do worktree.
 - [Limpeza de transcripts] → coleta no mesmo turno; nascimento novo se a fonte sumir.
-- [Sessão de nuvem sem seleção/board] → recusa visível; suporte de nuvem fica fora deste card.
+- [Pin novo numa conta sem o shim (máquina nova, `--remove`, outro operador)] → recusa `hooks_inactive` em cada cliente do escopo nas transições dependentes e `--check` com o host sem registro (§16).
 - [Bloco `claude` na seleção compartilhada quebra o resolver antigo de `develop` e dos outros worktrees durante a janela] → aceito por Alan (decisão (b)): demais cards pausados nesta conta, falha visível do resolver antigo até o T14 do #1101; piloto interrompido = remover o bloco com backup.
 - [#1101 parado em QA verde por mais tempo que o normal; `develop` pode andar (hotfix)] → janela curta com pausa; se `develop` andar, o #1101 é sincronizado pelo caminho existente e o QA reexecuta; os cards empilhados continuam com review só do próprio diff.
 - [Rebase dos cards empilhados muda o diff ou conflita] → prova por `patch-id`/digest; divergência ou conflito = causa visível para Alan, nunca T13 forçado nem nova onda silenciosa.
@@ -225,38 +344,50 @@ Detalhes de Apply aceitos na crítica, sem reabrir o Design:
 - Precedência de cliente: `CLAUDECODE=1` herdado por processo aninhado (Codex dentro do `Bash` do Claude Code) não pode transformar o Codex em `claude`; o sinal nativo do processo mais interno (`CODEX_THREAD_ID`) prevalece quando a herança é demonstrável, senão `ambiguous_client`. Teste mantém o comportamento atual do Codex.
 - Specs base `cursor-harness` ("All five clients"), `covenant-flow` ("five client adapters") e `process-harness` ("five adapters"): aceito manter a redação neste card, porque os cinco continuam sendo os clientes **oficiais**; o requisito novo de `claude-code-harness` cobre o adapter não oficial e o instalador. A atualização da contagem fica para o card de seguimento.
 - A afirmação "hooks rodam sem diálogo em `-p`/SDK" está marcada como **a provar** (tabela de capacidades); o desenho não depende dela.
+- (Rework) Nome e formato do manifesto de adapters (`.covenant-flow/adapters.json`), do diretório do shim e do heartbeat; linguagem do shim (Python, com plugin JS fino para o OpenCode) e se esse plugin encaminha por subprocesso ou importa o plugin pinado.
+- (Rework) Caminho não auto-carregado para os plugins do adapter OpenCode.
+- (Rework) Lista exata de arquivos de A por cliente; cache do hash; aceitar o id antigo do driver Codex na qualificação existente como o mesmo schema.
+- (Rework) Texto de requisitos base que ainda citam registro de projeto (`codex-harness` "project `PreToolUse` hook", `cursor-harness` Impeccable e `subagentStop`, `covenant-flow` "Five adapters ship"): vale o requisito `account-hook-shim` ("the same entries apply to the account registration"); a reescrita literal fica para o Apply ou para o arquivamento.
+- (Rework) O requisito "Unsupported host qualification" de #1095 (change ainda não arquivado) passa a ler-se como qualificação por schema do driver (§17); reconciliar o texto no arquivamento do lote.
+- (Rework) Formato exato do deny de cada host para as falhas do próprio shim e campo de cwd por host.
+- (Rework, crítica de 2026-10-14) Sessão de pins mistos: o Claude Code carrega o registro de projeto da pasta de **lançamento**. Testes nos dois sentidos ("lançada em pin antigo, entra em pin novo" e o inverso); o heartbeat registra o registro carregado no lançamento e a página avisa quando ele difere do pin do cwd.
+- (Rework, crítica de 2026-10-14) `QUALIFIED_ENTRYPOINTS`: valor de `entrypoint` desconhecido recusa citando o valor observado como mudança de formato ou superfície, nunca como versão.
+- (Rework, crítica de 2026-10-14) Pisos 2.1.292/2.1.295: de preferência detectados pela presença da capacidade (`tool_input.effort`, `onFailure`), com o número só como referência.
+- (Rework, crítica de 2026-10-14) Frase de §15 sobre o achado 7 reescrita como "classificador de permissão do host", sem citar modo Auto.
+- (Rework, crítica de 2026-10-14) Heartbeat privado gravado pelo shim em pasta sem pin: aceito, porque não tem efeito na sessão e é a âncora de `/source` → worktree (§14).
 - Também: generalizar `codex_skills.py`/`codex_hooks.py` ou módulos `claude_*`; nome/local do heartbeat, do registro de confiança e da declaração do gate de piloto; normalização de `NotebookEdit`/`MultiEdit` no Guard; forma de dividir perguntas do `AskUserQuestion`; nome do doc `docs/claude-runtime-evidence.md`.
 
 ## Migration Plan
 
-1. Apply no worktree do card (consumidor) e no worktree do nucleus `covenant-flow` (pin novo), como no #1080/#1042.
+1. Apply no worktree do card (consumidor) e no worktree do nucleus `covenant-flow` (shim, `install.sh --account`, manifesto, pin novo), como no #1080/#1042. Ensaio por host do mecanismo global (task 11.1) antes de tirar o registro de projeto de cada host.
 2. Review, commit, PR e QA verde do #1101 com o Claude Code não oficial; **sem** `integrar_develop` (exceção §12).
-3. Operador: revisão e registro de confiança dos hooks.
+3. Operador: `install.sh --account` (o shim não age em pins antigos: develop e os outros worktrees seguem como hoje) e revisão de confiança R e A por `cf_shim.py trust --record`, lendo o que vai ser executado. A partir daqui, o worktree do #1101 (pin novo, sem registro de projeto) roda pelo shim, e uma sessão lançada em `/source` que entra nele fica com o processo ativo.
 4. Início da janela do piloto (decisão (b) de Alan): os demais cards desta conta são pausados; backup da seleção da conta; bloco `claude` acrescentado + `model_selection.py validate` no worktree do #1101. Daqui até o T14 do #1101, o resolver antigo de `develop` e dos outros worktrees recusa o arquivo de forma visível — aceito.
-5. Piloto e card de troca em worktrees empilhados no HEAD revisado do #1101 até QA verde. Exceção à pausa: o card de troca faz o Design no Cursor ou no Codex nesse worktree empilhado (o resolver de lá já é novo).
-6. Checklist postqa do #1101 com `pilot_evidence` → T14 do #1101.
+5. Piloto (#703, parado em Design) e card de troca em worktrees empilhados no HEAD revisado do #1101 até QA verde, com sessões lançadas em `/source` quando possível. Exceção à pausa: o card de troca faz o Design no Cursor ou no Codex nesse worktree empilhado; o Cursor/Codex de lá passa pelo shim, porque o worktree já tem o pin novo.
+6. Checklist postqa do #1101 com `pilot_evidence` → T14 do #1101. O develop recebe o pin novo: os registros de projeto de Claude Code, Cursor, Codex e OpenCode saem (Grok Build e dsh mantêm os seus) e o shim passa a agir em `/source`.
 7. Piloto e card de troca rebaseados em `develop` com prova de diff idêntico → `qa-gate` → T14 de cada.
-8. Fim da janela: os cards pausados rebaseiam em `develop` antes de retomar (para ganhar o validador novo). Handoff de Done cita o card de seguimento de oficialização.
+8. Fim da janela: os cards pausados rebaseiam em `develop` antes de retomar (para ganhar o validador novo e o pin novo). Handoff de Done cita o card de seguimento de oficialização.
 
 Os passos 7–8 rodam depois do Done técnico do #1101 e ficam fora de `tasks.md`, porque o checklist postqa exige todas as tasks marcadas antes do T14; a task 10.2 os registra no card antes do T14.
 
-Piloto interrompido (antes do passo 6): remover o bloco `claude` da seleção da conta restaurando o backup, para que `develop` e os outros worktrees voltem a resolver; os cards pausados retomam; o #1101 fica em QA verde sem T14 e a causa é registrada no card.
+Piloto interrompido (antes do passo 6): remover o bloco `claude` da seleção da conta restaurando o backup, para que `develop` e os outros worktrees voltem a resolver; os cards pausados retomam; o #1101 fica em QA verde sem T14 e a causa é registrada no card. O shim pode ficar instalado: em pins antigos ele não age.
 
 O Apply ensaia a migração com cópia temporária do arquivo de seleção (validador novo aceita o bloco; validador antigo recusa visivelmente), sem tocar o arquivo real.
 
-Rollback: remover `CLAUDE.md`, `.claude/`, `scripts/process-fsm/claude_*.py`, o item `pilot_evidence` e o contrato `claude` da política, e o operador remover explicitamente o bloco `claude` da seleção local (com backup), porque o validador revertido o recusaria. Os demais clientes voltam ao estado anterior sem outra mudança.
+Rollback: remover `CLAUDE.md`, `.claude/`, `scripts/process-fsm/claude_*.py`, o item `pilot_evidence` e o contrato `claude` da política, e o operador remover explicitamente o bloco `claude` da seleção local (com backup), porque o validador revertido o recusaria. Rollback do registro: `install.sh --account --remove` e voltar ao pin anterior, que traz os registros de projeto de volta; o shim removido não deixa entradas alheias alteradas. Os demais clientes voltam ao estado anterior sem outra mudança.
 
 ## Open Questions
 
-Nenhuma aberta. Ordem piloto × T14, janela e prova da troca de cliente foram decididas por Alan no Design (decisões (a)–(d), registradas no body). Suporte real de nuvem (seleção e evidência na VM de nuvem) fica para card futuro, se Alan quiser.
+Nenhuma. As decisões de Alan de 2026-10-13 (a)–(d) e de 2026-10-14, incluindo as respostas às três Open Questions do rework (comentário `6169060530`: Grok Build e dsh fora; nuvem fora; a pergunta sobre hosts não instalados caiu), estão no body e não reabrem.
 
 ## Design Critique
 
-- P1-1 — oficialização sem aresta legal com piloto empilhado: disposition: resolvido no único rework; oficialização movida para card de seguimento (decisão de Alan).
-- P1-2 — trava "sem piloto não chega a Done" sem mecanismo: disposition: resolvido; cenário reescrito, exceção local ao T14 no mesmo turno e item `pilot_evidence` no checklist postqa.
-- P2-1 — review/rebase dos cards empilhados: disposition: resolvido (§12 "Review e rebase dos cards empilhados").
-- P2-2 — origem do esforço do filho: disposition: resolvido; só `tool_input.effort`, ausente = `unsupported_schema`.
-- P2-3 — modelo do filho verificado tarde: disposition: resolvido; verificação antes da primeira escrita, `model_mismatch`.
-- P3 — detalhes de Apply: disposition: aceitos em "P3 aceitos", sem reabrir como P0/P1.
-- verdict: REWORK → resolvido no único rework; uma autoria, uma crítica sem tela, um rework. Snapshot: `.impeccable/critique/1101-card-1101-claude-code-adapter-design-critic.md`.
-- Exceção de processo: filhos nascidos no Claude Code sem captura de modelo (cliente ainda não suportado), autorizado por Alan.
+Rodada de 2026-10-14 (crítica do rework, sem tela, teto 1+1+1). Snapshot: `.impeccable/critique/1101-card-1101-claude-code-adapter-design-critic-rework.md`.
+
+- P1-1 (contrato): a nuvem perdeu o Guard e o cenário ainda prometia negação. Disposition: resolvido no rework. O cenário e o requisito de superfícies (`claude-code-harness`) agora descrevem a nuvem como cooperativa sem Guard, com falha visível no resolver e no `process_event`, e a tabela de §7 diz o mesmo. A escolha entre aceitar a nuvem assim ou usar outro mecanismo foi para a Open Question 2 de Alan; o registro de projeto não foi reintroduzido.
+- P1-2 (contrato): sem shim, só Claude e Codex recusavam. Disposition: resolvido no rework. Requisito novo "Account registration without the shim is refused visibly in every client" (`account-hook-shim`) com cenários, §16 e task 11.8. Onde checar fica P3.
+- P1-3 (contrato/escopo): o spec fixava o default da OQ1. Disposition: resolvido no rework. `account-hook-shim`, `cursor-harness` e `process-harness` exigem só `registration=unproven` visível e remetem o tratamento à Open Question 1, que diz explicitamente que manter o registro de projeto conflita com o critério "não há nenhum".
+- P2-1 (escopo): a OQ3 reabria o protótipo 404. Disposition: resolvido no rework. A OQ3 foi removida e o achado 12 ficou só como seguimento (§18).
+- P3-1 a P3-5 (pins mistos, `QUALIFIED_ENTRYPOINTS`, pisos por capacidade, frase de §15, heartbeat em pasta sem pin): disposition: P3 aceitos, registrados em "P3 aceitos" para o Apply. A frase de §15 já foi reescrita.
+- Verdict: REWORK → resolvido no único rework (sem tela, 1 autor + 1 crítico + 1 rework). Open Questions 1–3 ficam para Alan antes do T7.
+- Decisões de Alan pós-T6 (2026-10-14): OQ1 → Grok/dsh fora; OQ2 → nuvem fora; OQ3 → caiu. Aplicadas no body, em `proposal.md`, neste design (§7, §13, §15, §16, Non-Goals) e nos specs `account-hook-shim`, `claude-code-harness`, `cursor-harness`, `process-harness` e `covenant-flow`; o cliente do escopo sem mecanismo global provado fica só com a falha visível (`registration=unproven`).

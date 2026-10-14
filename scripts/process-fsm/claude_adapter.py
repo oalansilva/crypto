@@ -159,6 +159,8 @@ def _refresh_heartbeat(event: Mapping[str, Any]) -> None:
     re-anchored to the current trust status. Best effort: a failure never changes the decision.
     """
 
+    if claude_trust.shim_verified() is not None:
+        return  # the account shim refreshes its own heartbeat on every event
     try:
         session_id = _text(event.get("session_id"))
         transcript = _text(event.get("transcript_path"))
@@ -240,7 +242,7 @@ def session_start(payload: Mapping[str, Any]) -> dict[str, Any]:
     try:
         status = trust_status()
         session_id = _text(payload.get("session_id")) or os.environ.get("CLAUDE_CODE_SESSION_ID") or ""
-        if session_id:
+        if session_id and claude_trust.shim_verified() is None:  # under the shim the heartbeat is the shim's
             claude_trust.write_heartbeat(
                 session_id=session_id,
                 transcript_path=_text(payload.get("transcript_path")) or "",
@@ -389,6 +391,8 @@ def dispatch(event_name: str, payload: Mapping[str, Any]) -> int:
 
 def trust_command(argv: list[str]) -> int:
     if argv == ["--record"]:
+        if claude_trust.account_pin():
+            return claude_trust.delegate_record()  # the account shim owns the record (registration + adapter)
         print(json.dumps(claude_trust.record(), sort_keys=True))
         return 0
     if argv in ([], ["--status"]):

@@ -64,7 +64,7 @@ Grill, Design author and critic, Assessment A/B, Apply, the two reviewers, QA an
 - **AND** the grill child writes the issue body
 
 ### Requirement: Claude Code children use the band selection with explicit model and effort
-Before each spawn the parent SHALL run `model_selection.py resolve --client claude --band <band> --role <role> --capture <path>` and pass the resolved native `model` and `effort` arguments to the `Agent` tool, citing the capture in the prompt. `juizo.claude` SHALL be `claude-opus-5-5` with effort `high` and `execucao.claude` SHALL be `claude-sonnet-5-5` with effort `high` in the operator's local selection. A local edit SHALL affect the next spawn of that band only, without changing other clients. A missing, forbidden, unsupported or unavailable model or effort, a host without per-invocation effort, or an environment override of subagent model or effort MUST fail visibly before or at spawn, with no omission, inheritance from the parent, or substitution. A runtime-resolved model different from the captured model MUST invalidate that child. Every spawn SHALL carry explicit `model` and `effort`, because the host runs a child without explicit effort at its default effort. The spawn hook SHALL read the requested effort only from the `Agent` call's `tool_input.effort`, never from the session-level effort field of the hook input or the environment; if a qualified host version does not expose that field, the spawn MUST be denied as `unsupported_schema` for that version and MUST NOT be accepted on `model` alone. Before a child's first file edit or write command, the adapter SHALL compare the latest model and effort in that child's transcript with the birth capture and MUST deny the write and mark the receipt `model_mismatch` when they diverge or cannot be read. Per-turn effort checks at collection SHALL remain.
+Before each spawn the parent SHALL run `model_selection.py resolve --client claude --band <band> --role <role> --capture <path>` and pass the resolved native `model` and `effort` arguments to the `Agent` tool, citing the capture in the prompt. `juizo.claude` SHALL be `claude-opus-5-5` with effort `high` and `execucao.claude` SHALL be `claude-sonnet-5-5` with effort `high` in the operator's local selection. A local edit SHALL affect the next spawn of that band only, without changing other clients. A missing, forbidden, unsupported or unavailable model or effort, a host without per-invocation effort, or an environment override of subagent model or effort MUST fail visibly before or at spawn, with no omission, inheritance from the parent, or substitution. A runtime-resolved model different from the captured model MUST invalidate that child. Every spawn SHALL carry explicit `model` and `effort`, because the host runs a child without explicit effort at its default effort. The spawn hook SHALL read the requested effort only from the `Agent` call's `tool_input.effort`, never from the session-level effort field of the hook input or the environment; if a host version does not expose that field, the spawn MUST be denied as `unsupported_schema` for that version and MUST NOT be accepted on `model` alone. Before a child's first file edit or write command, the adapter SHALL compare the latest model and effort in that child's transcript with the birth capture and MUST deny the write and mark the receipt `model_mismatch` when they diverge or cannot be read. Per-turn effort checks at collection SHALL remain.
 
 #### Scenario: Bands use Alan's values
 - **WHEN** the parent spawns one juízo and one execução child
@@ -94,15 +94,29 @@ Before each spawn the parent SHALL run `model_selection.py resolve --client clau
 - **AND** a new birth is required
 
 ### Requirement: Claude Code runtime evidence is collected and gates on absence
-The adapter SHALL prepare a birth receipt before each spawn and collect, after return, the observed model and effort, child identity, parent linkage, status, returned payload, host version and surface from the local Claude Code session and subagent transcripts, sealed with digests and kept separate from the requested capture. Evidence SHALL be accepted only for qualified host versions and schemas. Missing, divergent, truncated or foreign evidence MUST be `unavailable` or refused and MUST fail every gate that requires it; configuration or the child's own claim MUST NOT stand in for observation.
+The adapter SHALL prepare a birth receipt before each spawn and collect, after return, the observed model and effort, child identity, parent linkage, status, returned payload, host version and surface from the local Claude Code session and subagent transcripts, sealed with digests and kept separate from the requested capture. Evidence SHALL be accepted for any host version whose records match the `claude-transcript-v1` schema, as defined by `host-version-acceptance`; the observed host version SHALL be recorded and MUST NOT by itself refuse the evidence. Missing, divergent, truncated or foreign evidence MUST be `unavailable` or refused and MUST fail every gate that requires it; configuration or the child's own claim MUST NOT stand in for observation. A host-generated error turn (`<synthetic>` model) that ends the child SHALL classify the attempt as `failed`, never as `model_mismatch` and never as success. Identity checks between a child and its parent SHALL use the parent's cwd and host version recorded in the birth receipt, so a child born before the session switched worktree stays collectable. The birth receipt SHALL bind the card named in the task name when the session is on the integration branch or otherwise unbound (grill), and MUST refuse visibly when a bound card differs from the task-name card.
 
 #### Scenario: Completed child with matching evidence
 - **WHEN** a child returns completed with payload and the transcript shows the captured model and effort on every turn
 - **THEN** the proxy records client `claude`, requested and observed pairs, status and payload without manual input
 
 #### Scenario: Missing evidence fails the gate
-- **WHEN** the transcript is missing, truncated, of an unqualified version or belongs to another child
-- **THEN** the observation is `unavailable` and the dependent gate is refused visibly while artifacts are preserved
+- **WHEN** the transcript is missing, truncated, no longer matches the expected schema or belongs to another child
+- **THEN** the observation is `unavailable` or `unsupported_schema` and the dependent gate is refused visibly while artifacts are preserved
+
+#### Scenario: API error turn is a failed child
+- **WHEN** the child's last assistant record is a host-generated `<synthetic>` error turn (for example after HTTP 429)
+- **THEN** the proxy records the attempt as `failed` without success, and a new birth is required
+- **AND** the collector does not report `model_mismatch` for that turn
+
+#### Scenario: Child born before a worktree switch
+- **WHEN** a child was born while the session was in one worktree and the session moved to another worktree before collection
+- **THEN** collection compares the child's cwd and version with the parent values in the birth receipt and succeeds when they match
+
+#### Scenario: Grill outside a card worktree records the requested card
+- **WHEN** a `grill-card <id>` child is prepared in a session on the integration branch
+- **THEN** the receipt and proxy record card `<id>` from the task name
+- **AND** a session bound by git to a different card refuses the preparation visibly
 
 ### Requirement: Claude Code advances Status only through the shared FSM
 Claude Code sessions SHALL change Status only through `process_event --client claude` with events enabled by the FSM. The client SHALL be detected natively and conflicting client identity SHALL be refused. Transitions that depend on children SHALL require a passing Claude Code evidence preflight, including active, trusted hooks. Human gates T1, T7, T15 and T18 MUST remain Alan's; chat wording such as `implemente` MUST NOT authorize code outside Pronto para Dev. No state, event, edge or human gate SHALL be added or changed.
@@ -152,22 +166,30 @@ The Claude Code adapter SHALL run the shared Impeccable hook on `PostToolUse` fi
 - **THEN** the same detector guidance as in the other clients is added to the session context
 
 ### Requirement: Every Claude Code surface either works or fails visibly
-The flow SHALL apply to terminal (CLI), web (claude.ai/code), desktop and IDE surfaces. Where a surface lacks the guard, the model selection or the required evidence, the stage MUST fail visibly on that surface, without fallback to another surface or client. The observed surface SHALL be recorded in evidence.
+Claude Code SHALL run locally, through the CLI on the operator's VM. The flow SHALL apply to the terminal (CLI) and to the surfaces that drive that local session: IDE and desktop over SSH to the VM and the web through Remote Control. Where one of these surfaces lacks the guard, the model selection or the required evidence, the stage MUST fail visibly on that surface, without fallback to another surface or client. The observed surface SHALL be recorded in evidence.
 
-#### Scenario: Cloud session without local selection
-- **WHEN** a stage is attempted in a cloud session that has no local model selection or board access
-- **THEN** no child is spawned, product writing stays denied, and the failure reason is visible
+#### Scenario: Remote Control drives the local session
+- **WHEN** the web drives a Claude Code session running on the VM through Remote Control
+- **THEN** the page, the Guard, the model selection and the evidence are the same as in the terminal, and the evidence records the observed surface
 
 #### Scenario: IDE with an older embedded host
-- **WHEN** the IDE's embedded Claude Code version lacks per-invocation effort or an unqualified evidence schema
+- **WHEN** the IDE's embedded Claude Code version lacks per-invocation effort or its transcripts do not match the evidence schema
 - **THEN** the spawn or transition is refused visibly on that surface
 
 ### Requirement: Hooks protect only after operator trust review
-Claude Code project hooks SHALL count as protection only after the operator explicitly reviews the current hook definition and adapter and records their digests on the host account. Pinning, installation or the host's workspace trust dialog MUST NOT stand in for this review. A session whose hook digest differs from the record SHALL deny product writes and spawns and fail the evidence preflight. No bypass SHALL be used and no Auto mode SHALL be claimed.
+Claude Code hooks SHALL be registered in the operator account through the `account-hook-shim` (user settings), not in the repository, and SHALL count as protection only after the operator explicitly reviews and records, on the host account, both digest parts: the registration part (the account hook block and the shim) and the adapter part (the adapter's Python modules, the Impeccable `hook.mjs` and the whole `.agents/skills/impeccable/scripts/**` tree it can load, and the other files listed for `claude` in the pinned adapter manifest). Pinning, installation or the host's workspace trust dialog MUST NOT stand in for this review. A session whose adapter digest is not recorded SHALL deny product writes and spawns and fail the evidence preflight. A registration digest that differs from the one recorded at session start SHALL require reopening the session (`hooks_changed`); an adapter digest that changed to another reviewed digest SHALL NOT require reopening. No bypass SHALL be used and no Auto mode SHALL be claimed.
 
 #### Scenario: Changed adapter after review
-- **WHEN** `claude_adapter.py` or the hook block changes after the recorded review
+- **WHEN** `claude_adapter.py`, a module it imports or any file under `.agents/skills/impeccable/scripts/**` changes after the recorded review
 - **THEN** the session page reports unreviewed hooks, product writes and spawns are denied, and dependent transitions are refused
+
+#### Scenario: Reviewed adapter change without reopening
+- **WHEN** the adapter changes and the operator records the new adapter digest while the session stays open
+- **THEN** the next hook call accepts the new digest without `/exit`, and the session heartbeat keeps its registration digest
+
+#### Scenario: Registration change requires a new session
+- **WHEN** the account hook block or the shim changes after the session started
+- **THEN** dependent transitions and spawns are refused with `hooks_changed` until a new session starts
 
 ### Requirement: Pilot and client-switch cards gate Done técnico of the unofficial adapter
 This change SHALL deliver the Claude Code adapter as unofficial: neither `AGENTS.md`, the Project board description nor the canonical skill's active-client line SHALL name Claude Code as a client, and this change MUST NOT modify `AGENTS.md`, its renderer or pin, or the board description; officialization belongs to a separate follow-up card prioritized by Alan. The pilot is complete when a small real pilot card has traversed Em Refinamento → Design → approval → Apply → two reviews → QA green in Claude Code without skipping stages, with children, events and evidence recorded. The pilot and the client-switch card SHALL run stacked on the reviewed head of this change's branch, and each SHALL be reviewed only on its own diff against that head. This card MUST NOT reach Done técnico until both are QA green; the parent SHALL not call `integrar_develop` on this card's QA green in that case (local exception to same-turn T14), and `review_process_checklist.py --phase postqa` SHALL fail with `ERROR: process-checklist failed: pilot_evidence` unless the evidence names both cards, a QA-green SHA for each and a per-child proxy with client and observed model. The T14 guard in `process_event` SHALL remain unchanged. After this card's T14, each stacked card SHALL be rebased onto the integration branch, prove an identical diff and re-run only the QA gate before its own T14; a rebase conflict or a changed diff MUST surface as a visible cause to Alan, never as a forced T13.
@@ -192,12 +214,13 @@ This change SHALL deliver the Claude Code adapter as unofficial: neither `AGENTS
 - **AND** officialization is left to a follow-up card with Alan's T1
 
 ### Requirement: Installer reproduces the adapter and existing clients stay green
-The nucleus pin installer SHALL reproduce the Claude Code adapter in the Cripto consumer (bridges and manifest, settings hooks merged without dropping consumer hooks, agents, scripts, policy contract) and refuse visibly on conflicts. Specs and tests SHALL cover the new client, and the existing Cursor, Codex, Grok, OpenCode and dsh tests SHALL keep passing unchanged in behavior.
+The nucleus pin installer SHALL reproduce the Claude Code adapter in the Cripto consumer (bridges and manifest, agents, scripts, policy contract and the `claude` entry of the adapter manifest) without writing a hook registration into the consumer, and SHALL refuse visibly on conflicts. The account installer SHALL register the Claude Code shim in the operator's user settings, preserving foreign hooks. Specs and tests SHALL cover the new client, and the existing Cursor, Codex, Grok, OpenCode and dsh tests SHALL keep passing, changed only where the Cursor, Codex or OpenCode hook registration moved to the account or the Codex collector accepts versions by schema; Grok and dsh tests SHALL not change.
 
 #### Scenario: Pin installs the adapter
 - **WHEN** the new pin is installed into a consumer fixture
-- **THEN** the Claude Code files match the manifest, the resolver accepts `--client claude`, and existing hooks of the consumer are preserved
+- **THEN** the Claude Code files match the manifest, the resolver accepts `--client claude`, and no `.claude/settings.json` hook block of the Covenant Flow is written
+- **AND** foreign hooks already in the consumer's `.claude/settings.json` are preserved
 
 #### Scenario: Existing clients unchanged
 - **WHEN** the process-fsm test suite runs after the change
-- **THEN** all tests for the five existing clients pass
+- **THEN** all tests for the five existing clients pass, with only registration-location and version-acceptance expectations updated

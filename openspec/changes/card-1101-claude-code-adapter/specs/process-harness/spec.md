@@ -19,3 +19,32 @@ The short always-on law (resolve `(q, bound_card, q_git)`, chat wording is not a
 - **WHEN** a Claude Code session starts in the repo
 - **THEN** it loads `AGENTS.md` through `CLAUDE.md`
 - **AND** `AGENTS.md` does not name Claude Code as a client
+
+### Requirement: Process law has one nucleus and five adapters
+The process SHALL have a single nucleus and five client adapters. The nucleus is `.cursor/process-fsm.yaml` (T0–T18, I1–I9, 12 column names, events, `context_file`, `enabled_tools` — **not** `product_globs`/`design_globs`), `scripts/process-fsm/`, the canonical skill files, and the short root `AGENTS.md`. Consumer parameters (`product_globs`, `design_globs`, board ids) live in `.covenant-flow/overlay.yaml` and are NOT a second law table. From the account-registration pin onward, hook registration is not part of the Claude Code, Cursor, Codex or OpenCode adapters: their hooks are registered in the operator account through the `account-hook-shim`, which calls the adapter pinned in the consumer; their adapter files below remain in the consumer, their project registration files named below apply only to pins older than account registration, and one of them whose global mechanism is not proven follows the `account-hook-shim` rule for `registration=unproven`. The Grok and dsh adapters, including their project registration, stay unchanged by this change. The Cursor adapter is `.cursor/hooks.json`, `.cursor/hooks/*`, `.cursor/rules/harness.mdc`, and `.cursor/commands/`. The Grok adapter is `.grok/hooks/`, generated Moore paging under `.grok/rules/`, and skill stubs under `.grok/skills/`. The OpenCode adapter is `.opencode/plugin/` (auto-loaded `*.js` / `*.ts`), Moore inject via `experimental.chat.system.transform`, and skill stubs under `.opencode/skills/` only for skills the OpenCode 1.18.18 binary does not discover. The dsh adapter is `.dsh/plugin/` (Cordis `apply(ctx)`), Moore inject via `ctx.systemPrompt.section`, and skill stubs under `.dsh/skills/` only for skills dsh does not discover. The fifth Codex local adapter is the `.codex/` hook handlers (registered in the account by the shim, or project-scoped on older pins) and thin skill bridges under `.agents/skills/`; CLI and IDE local use the same adapter. A change of column, invariant, or Moore `context_file` text MUST be made once in the yaml (and in a skill only when the change is *how* to work). A change of product glob, design glob, or board ids MUST be made once in the overlay. All adapters SHALL compile law from the yaml and globs/board ids from the overlay. Missing or invalid overlay SHALL fail closed for **product writes**; paging/`sessionStart` remains fail-open (unbound/unread page) and MUST NOT dump the overlay body. Adapters MUST NOT copy T0–T18, I1–I9, or the 12-column runbook. Codex home skills and Hermes skill symlinks MUST NOT be an active contract. The lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` as kaizen contract) MUST remain forbidden. `opencode.json` MUST NOT be an active contract of model, MCP, or permission. Neither dsh nor Codex SHALL be a source of law.
+
+#### Scenario: One yaml change reaches five adapters
+- **WHEN** a column, invariant, or `context_file` stub changes in `.cursor/process-fsm.yaml`
+- **THEN** Cursor, Grok, OpenCode, dsh, and Codex Guard/paging paths compile that law from the yaml
+- **AND** no second table exists in any adapter directory
+
+#### Scenario: Dual-write of the law is forbidden
+- **WHEN** a reviewer inspects `.cursor/rules/`, `.grok/rules/`, `.opencode/`, `.dsh/`, `.codex/`, and Codex skill bridges
+- **THEN** none contains a copied T0–T18 table, invariant list, or 12-column procedure
+- **AND** every skill bridge points to the canonical file instead of copying its runbook
+
+#### Scenario: Glob change in overlay reaches five Guards
+- **WHEN** a product glob changes in `.covenant-flow/overlay.yaml`
+- **THEN** all five Guards classify a corresponding write using the changed overlay glob
+- **AND** the glob is not redeclared as yaml law or Codex-local policy
+
+#### Scenario: Registration lives in the account
+- **WHEN** a reviewer inspects a consumer pinned with the account-registration pin
+- **THEN** no Claude Code, Cursor, Codex or OpenCode Covenant Flow hook registration is versioned in the consumer
+- **AND** the Grok and dsh project registrations are unchanged
+- **AND** the adapter handlers and `scripts/process-fsm/` remain in the consumer and compile law from the yaml and overlay
+
+#### Scenario: Fifth harness is not the law
+- **WHEN** a reviewer inspects `.codex/` and `scripts/process-fsm/`
+- **THEN** `.codex/` contains only event translation/configuration
+- **AND** state/event law remains in `.cursor/process-fsm.yaml`
