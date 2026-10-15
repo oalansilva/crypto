@@ -57,7 +57,7 @@ Nota: use as skills do projeto disponíveis aos clientes quando aplicável (`.cu
 ## 7. Integração e verificação local
 
 - [x] 7.1 `python3 -m pytest scripts/process-fsm` e testes do nucleus verdes; testes de Cursor, Codex, OpenCode, Grok Build e dsh inalterados e verdes; `openspec validate card-1103-claude-desktop-ssh --strict` verde. Nota: nucleus verde; consumidor após pin (o pytest do consumidor com o código novo só roda depois do pin, feito pelo pai/Alan). (consumidor pós-pin v1.1.21: 1201 passed, 35 skipped; nucleus 1230 passed, 6 skipped)
-- [x] 7.2 Tag do nucleus e pin no consumidor, comparando overlay, política e adapters antes/depois; Alan instala o shim novo com `install.sh --account`, revisa R e A em bash comum e abre sessão nova. <!-- covenant-flow:after-commit --> (pin v1.1.21 = nucleus 87de5c4, tag local; `install.sh --account` shim 1.1.0 e `trust --record` R=13104473 A=f5ca56cc por Alan, 2026-10-15; movida para antes do Code Review por decisão de Alan)
+- [x] 7.2 Tag do nucleus e pin no consumidor, comparando overlay, política e adapters antes/depois; Alan instala o shim novo com `install.sh --account`, revisa R e A em bash comum e abre sessão nova. (pin v1.1.21 = nucleus 87de5c4, tag local; `install.sh --account` shim 1.1.0 e `trust --record` R=13104473 A=f5ca56cc por Alan, 2026-10-15; movida para antes do Code Review por decisão de Alan) <!-- covenant-flow:after-commit -->
 
 ## 8. Ensaio real pelo app (Alan opera no Windows; design §11)
 
