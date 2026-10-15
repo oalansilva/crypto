@@ -172,3 +172,9 @@ Comandos (venv compartilhado, PostgreSQL privado `/tmp/card-1093-integration-202
 - `black --check` nos 6 arquivos Python tocados: sem alterações pendentes. `openspec validate card-1093-discovery-memory --strict`: válido. `git diff --check`: sem saída.
 
 Limitações: o ensaio de `host_memory_pressure` usa relógio e `/proc/meminfo` simulados (não esgota memória real); `celery_loss` segue skipped por exigir o Redis privado; não houve execução em systemd real, DEV compartilhado ou PROD.
+
+## Correção de CI (QA PR #1105)
+
+- `backend-format`: `cache_1091_reference.py` reformatado com black 26.10.1 (mesma versão do CI, venv temporário fora do repo); `black --check backend` limpo (363 arquivos). Sem mudança de comportamento.
+- `backend-tests` (17 errors de setup): a fixture `sessions` de `test_discovery_memory_recovery.py` (também importada por `test_discovery_celery_loss.py`) passa a usar `allow_github_disposable=True`, como `conftest.py`/`test_discovery_service.py`; o teste de queda do DB só roda no cluster privado (`card-1093-integration` na URL) e faz skip no `postgres` descartável do CI; o `celery_loss` segue skip sem `CARD1093_BROKER` (sem Redis no job) e o subprocesso Celery recebe `backend` em `PYTHONPATH`/`cwd`.
+- `backend-unit-tests`: `test_cache_1091_is_reused_without_independent_budgets` passa `cwd` = `backend` e `backend` no `PYTHONPATH` do subprocesso (CI usa PYTHONPATH = raiz). Reprodução com `GITHUB_ACTIONS=true`, DB `postgres` descartável no cluster privado e PYTHONPATH = raiz: recovery + celery_loss + composition **16 passed, 2 skipped**; modo privado completo (outage incluso) **17 passed, 1 skipped**.

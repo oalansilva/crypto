@@ -25,7 +25,7 @@ from app.services.discovery_resources import OperationalFailure
 @pytest.fixture
 def sessions(monkeypatch):
     url = os.environ["DATABASE_URL"]
-    assert_safe_test_database_url(url, variable_name="DATABASE_URL")
+    assert_safe_test_database_url(url, variable_name="DATABASE_URL", allow_github_disposable=True)
     assert "card-1093-integration" in url or os.getenv("GITHUB_ACTIONS") == "true"
     engine = create_engine(url)
     for model in (
@@ -320,6 +320,8 @@ def test_database_outage_blocks_writes_and_restart_recovers_durable_claim(sessio
     import subprocess
     from sqlalchemy.exc import OperationalError
 
+    if "card-1093-integration" not in os.environ["DATABASE_URL"]:
+        pytest.skip("Requires the private PostgreSQL cluster that this test may stop/start")
     sweep = seed(sessions, 1)
     token = claim(sessions, sweep)
     with sessions() as db:

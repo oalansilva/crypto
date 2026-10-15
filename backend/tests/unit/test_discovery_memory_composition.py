@@ -38,9 +38,13 @@ def execute():
 assert execute()==7
 assert module.BUDGET.bytes == 0
 """
+    backend = Path(__file__).resolve().parents[2]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join([str(backend), *filter(None, [env.get("PYTHONPATH")])])
     result = subprocess.run(
         [sys.executable, "-c", source, str(fixture)],
-        env=os.environ.copy(),
+        env=env,
+        cwd=backend,
         text=True,
         capture_output=True,
         timeout=30,

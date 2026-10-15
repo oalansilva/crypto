@@ -26,7 +26,9 @@ def test_actual_celery_death_cleans_children_and_redelivery_obeys_backoff(sessio
     queue = "card1093-" + uuid.uuid4().hex
     marker = tmp_path / "group.pid"
     logfile = tmp_path / "celery.log"
+    backend = Path(__file__).resolve().parents[2]
     env = {**os.environ, "DISCOVERY_SPOOL_DIR": str(tmp_path)}
+    env["PYTHONPATH"] = os.pathsep.join([str(backend), *filter(None, [env.get("PYTHONPATH")])])
     env.pop("DISCOVERY_RESOURCE_PROFILE", None)
     assert ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) == 0
     command = [
@@ -48,7 +50,7 @@ def test_actual_celery_death_cleans_children_and_redelivery_obeys_backoff(sessio
     ]
     with logfile.open("w") as logs:
         worker = subprocess.Popen(
-            command, env=env, stdout=logs, stderr=logs, start_new_session=True
+            command, env=env, cwd=backend, stdout=logs, stderr=logs, start_new_session=True
         )
         try:
             app.send_task("card1093.private_loss", args=[sweep, str(marker)], queue=queue)
@@ -86,7 +88,7 @@ def test_actual_celery_death_cleans_children_and_redelivery_obeys_backoff(sessio
             with sessions() as db:
                 recovery.reconcile_expired(db, sweep)
             worker = subprocess.Popen(
-                command, env=env, stdout=logs, stderr=logs, start_new_session=True
+                command, env=env, cwd=backend, stdout=logs, stderr=logs, start_new_session=True
             )
             retry = app.send_task("card1093.private_loss", args=[sweep, str(marker)], queue=queue)
             assert retry.get(timeout=20) == "no_claim"
