@@ -154,7 +154,7 @@ Batch closeout in Claude Code SHALL start only on Alan's explicit request and fo
 - **THEN** T16 and `fecho-lote` are refused visibly and production is untouched
 
 ### Requirement: Impeccable guidance fires under the same conditions
-The Claude Code adapter SHALL run the shared Impeccable hook on `PostToolUse` file edits and on `Stop`, under the same conditions as the other clients, as advisory output that does not revert effects.
+The Claude Code adapter SHALL run the shared Impeccable hook (`.agents/skills/impeccable/scripts/hook.mjs`, started by `claude_adapter.py` with `IMPECCABLE_HOOK_HARNESS=claude`) on `PostToolUse` file edits and on `Stop`, under the same conditions as the other clients, as advisory output that does not revert effects. `hook.mjs` and everything it imports (the whole `.agents/skills/impeccable/scripts/` tree) are part of the adapter digest the operator reviews.
 
 #### Scenario: UI file edited in Claude Code
 - **WHEN** a UI file covered by Impeccable is edited in a Claude Code session

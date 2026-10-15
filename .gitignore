@@ -173,3 +173,5 @@ backups/
 # Claude Code local-only files
 .claude/settings.local.json
 CLAUDE.local.md
+# Folders the Claude desktop app creates for its worktree option: sessions without a card, never part of /source
+.claude/worktrees/
