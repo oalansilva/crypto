@@ -1,0 +1,130 @@
+{
+  "kind": "original",
+  "complete_runs": 3,
+  "historical_diversity": {
+    "baseline": "99a3070cd9d117539fe6de734361f07d5e1c4611",
+    "method_ast_identical": true,
+    "selected_trials": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ]
+  },
+  "exact_final_reference": [
+    {
+      "eligibility": "low_sample",
+      "train_trades": 2,
+      "holdout_trades": 1,
+      "parameters": {
+        "direction": "long",
+        "timeframe": "15m",
+        "ma_long_length": 160,
+        "ma_long_pullback_pct": 1.0,
+        "rsi_length": 18,
+        "rsi_oversold": 30,
+        "rsi_overbought": 59,
+        "adx_length": 10,
+        "adx_threshold": 24,
+        "stop_loss": 0.01
+      },
+      "metrics_sha256": "c56bc4fc33dd3ff629aa53d2e84db773aaf7c2811eeacef375aa215dc9f8464c",
+      "train_trades_sha256": "121669196cc66be5c7ffea0c346332c09063a7de793e97882818c9f295d5092a",
+      "holdout_trades_sha256": "a0baf7078a5ebd406e6f05e792904dbf05f478c88a2270eeeea5fb1b004bc730",
+      "verdict": "NO-GO"
+    },
+    {
+      "eligibility": "low_sample",
+      "train_trades": 2,
+      "holdout_trades": 1,
+      "parameters": {
+        "direction": "long",
+        "timeframe": "15m",
+        "ma_long_length": 160,
+        "ma_long_pullback_pct": 1.0,
+        "rsi_length": 18,
+        "rsi_oversold": 30,
+        "rsi_overbought": 59,
+        "adx_length": 10,
+        "adx_threshold": 24,
+        "stop_loss": 0.01
+      },
+      "metrics_sha256": "c56bc4fc33dd3ff629aa53d2e84db773aaf7c2811eeacef375aa215dc9f8464c",
+      "train_trades_sha256": "121669196cc66be5c7ffea0c346332c09063a7de793e97882818c9f295d5092a",
+      "holdout_trades_sha256": "a0baf7078a5ebd406e6f05e792904dbf05f478c88a2270eeeea5fb1b004bc730",
+      "verdict": "NO-GO"
+    },
+    {
+      "eligibility": "low_sample",
+      "train_trades": 2,
+      "holdout_trades": 1,
+      "parameters": {
+        "direction": "long",
+        "timeframe": "15m",
+        "ma_long_length": 160,
+        "ma_long_pullback_pct": 1.0,
+        "rsi_length": 18,
+        "rsi_oversold": 30,
+        "rsi_overbought": 59,
+        "adx_length": 10,
+        "adx_threshold": 24,
+        "stop_loss": 0.01
+      },
+      "metrics_sha256": "c56bc4fc33dd3ff629aa53d2e84db773aaf7c2811eeacef375aa215dc9f8464c",
+      "train_trades_sha256": "121669196cc66be5c7ffea0c346332c09063a7de793e97882818c9f295d5092a",
+      "holdout_trades_sha256": "a0baf7078a5ebd406e6f05e792904dbf05f478c88a2270eeeea5fb1b004bc730",
+      "verdict": "NO-GO"
+    }
+  ],
+  "post_cleanup_growth": {
+    "rss_bytes": {
+      "bytes": [
+        263892992,
+        281174016,
+        282238976
+      ],
+      "increments": [
+        17281024,
+        1064960
+      ]
+    },
+    "pss_bytes": {
+      "bytes": [
+        216541184,
+        233703424,
+        234768384
+      ],
+      "increments": [
+        17162240,
+        1064960
+      ]
+    },
+    "memory.current": {
+      "bytes": [
+        196907008,
+        214274048,
+        215379968
+      ],
+      "increments": [
+        17367040,
+        1105920
+      ]
+    }
+  }
+}

@@ -49,7 +49,12 @@ def test_engine_callers_share_combo_optimizer():
     assert regen.ComboOptimizer is ComboOptimizer
     src = Path(scan.__file__).read_text()
     assert "ComboOptimizer" in src
-    assert "run_optimization" in src
+    assert "run_supervised" in src
+    import app.services.discovery_supervisor as supervisor
+
+    supervised_src = Path(supervisor.__file__).read_text()
+    assert "from app.services.combo_optimizer import ComboOptimizer" in supervised_src
+    assert "ComboOptimizer().run_optimization" in supervised_src
     assert OUTBOX_MAX_PER_SWEEP == 1
 
 
