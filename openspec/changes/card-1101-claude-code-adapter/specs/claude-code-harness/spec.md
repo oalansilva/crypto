@@ -142,11 +142,6 @@ A card SHALL be able to run different stages in different clients under the same
 - **THEN** Status advances by the same events
 - **AND** the handoff shows client and model of each child, including those of the Design stage
 
-#### Scenario: Real client-switch card proves the switch
-- **WHEN** the client-switch card, a small real card, runs its Design in Cursor or Codex and its Apply, review and QA in Claude Code until QA is green
-- **THEN** each Design child has runtime evidence from its own client and each Apply, review and QA child has a `claude` proxy with observed model
-- **AND** a contract rehearsal without a real card does not count as this proof
-
 ### Requirement: Claude Code conducts the agent part of batch closeout
 Batch closeout in Claude Code SHALL start only on Alan's explicit request and follow the same rules as other clients: the parent session's observed model and effort MUST match the captured `claude/execucao` selection, otherwise T16 and `fecho-lote` are refused and a new session is required; one isolated `fecho-lote` child runs with the captured execução pair; the parent calls `process_event fechar_release` only after the child completed and `release-guard post` passes. Nothing goes to production without Alan's explicit request and cards homologated by him.
 
@@ -166,11 +161,12 @@ The Claude Code adapter SHALL run the shared Impeccable hook on `PostToolUse` fi
 - **THEN** the same detector guidance as in the other clients is added to the session context
 
 ### Requirement: Every Claude Code surface either works or fails visibly
-Claude Code SHALL run locally, through the CLI on the operator's VM. The flow SHALL apply to the terminal (CLI) and to the surfaces that drive that local session: IDE and desktop over SSH to the VM and the web through Remote Control. Where one of these surfaces lacks the guard, the model selection or the required evidence, the stage MUST fail visibly on that surface, without fallback to another surface or client. The observed surface SHALL be recorded in evidence.
+Claude Code SHALL run locally, through the CLI on the operator's VM. This change SHALL prove the flow in the terminal (CLI) only; the surfaces that drive that local session (IDE and desktop over SSH to the VM, the web through Remote Control) are not claimed as proven by this change (Alan's decision, 2026-10-15; follow-up in #1103). Where any surface lacks the guard, the model selection or the required evidence, the stage MUST fail visibly on that surface, without fallback to another surface or client. The observed surface SHALL be recorded in evidence.
 
-#### Scenario: Remote Control drives the local session
-- **WHEN** the web drives a Claude Code session running on the VM through Remote Control
-- **THEN** the page, the Guard, the model selection and the evidence are the same as in the terminal, and the evidence records the observed surface
+#### Scenario: Terminal is the proven surface
+- **WHEN** a stage runs from a surface other than the terminal on the VM
+- **THEN** the evidence records the observed surface and nothing in this change presents that surface as proven
+- **AND** a missing guard, model selection or evidence on it fails visibly, without fallback
 
 #### Scenario: IDE with an older embedded host
 - **WHEN** the IDE's embedded Claude Code version lacks per-invocation effort or its transcripts do not match the evidence schema
@@ -191,22 +187,13 @@ Claude Code hooks SHALL be registered in the operator account through the `accou
 - **WHEN** the account hook block or the shim changes after the session started
 - **THEN** dependent transitions and spawns are refused with `hooks_changed` until a new session starts
 
-### Requirement: Pilot and client-switch cards gate Done técnico of the unofficial adapter
-This change SHALL deliver the Claude Code adapter as unofficial: neither `AGENTS.md`, the Project board description nor the canonical skill's active-client line SHALL name Claude Code as a client, and this change MUST NOT modify `AGENTS.md`, its renderer or pin, or the board description; officialization belongs to a separate follow-up card prioritized by Alan. The pilot is complete when a small real pilot card has traversed Em Refinamento → Design → approval → Apply → two reviews → QA green in Claude Code without skipping stages, with children, events and evidence recorded. The pilot and the client-switch card SHALL run stacked on the reviewed head of this change's branch, and each SHALL be reviewed only on its own diff against that head. This card MUST NOT reach Done técnico until both are QA green; the parent SHALL not call `integrar_develop` on this card's QA green in that case (local exception to same-turn T14), and `review_process_checklist.py --phase postqa` SHALL fail with `ERROR: process-checklist failed: pilot_evidence` unless the evidence names both cards, a QA-green SHA for each and a per-child proxy with client and observed model. The T14 guard in `process_event` SHALL remain unchanged. After this card's T14, each stacked card SHALL be rebased onto the integration branch, prove an identical diff and re-run only the QA gate before its own T14; a rebase conflict or a changed diff MUST surface as a visible cause to Alan, never as a forced T13.
+### Requirement: The adapter ships unofficial and integrates by the general T14 rule
+This change SHALL deliver the Claude Code adapter as unofficial: neither `AGENTS.md`, the Project board description nor the canonical skill's active-client line SHALL name Claude Code as a client, and this change MUST NOT modify `AGENTS.md`, its renderer or pin, or the board description; officialization belongs to a separate follow-up card prioritized by Alan, opened after this card's Done técnico. No pilot card, client-switch card or `pilot_evidence` gate SHALL condition this card's Done técnico (cancelled by Alan on 2026-10-15): this change MUST NOT declare the `pilot_evidence` gate, and after QA green and a passing `review_process_checklist.py --phase postqa` the parent SHALL call `integrar_develop` in the same turn, as for any card. The `pilot_evidence` checklist item SHALL stay available only for a change that declares it. The T14 guard in `process_event` SHALL remain unchanged.
 
-#### Scenario: Integration blocked while a stacked card lacks QA green
-- **WHEN** this card is QA green and the pilot or the client-switch card has no QA green recorded
-- **THEN** the parent does not call `integrar_develop` for this card
-- **AND** the postqa checklist fails with `ERROR: process-checklist failed: pilot_evidence`
-
-#### Scenario: Stacked order
-- **WHEN** this card is QA green and the pilot and the client-switch card both reach QA green on worktrees stacked on its reviewed head
-- **THEN** this card's T14 happens first, and only then each stacked card is rebased onto the integration branch and makes its own T14
-
-#### Scenario: Rebased stacked card keeps the reviewed diff
-- **WHEN** a stacked card is rebased after this card's T14
-- **THEN** its patch-id and diff digest equal those reviewed, and only the QA gate re-runs without a new review wave
-- **AND** a conflict or a different diff is reported to Alan as a visible cause without a forced T13
+#### Scenario: T14 without a pilot gate
+- **WHEN** this card is QA green and the postqa checklist passes
+- **THEN** the parent calls `integrar_develop` for this card in the same turn
+- **AND** the checklist does not evaluate `pilot_evidence`, because this change does not declare it
 
 #### Scenario: Adapter stays unofficial
 - **WHEN** this change is integrated

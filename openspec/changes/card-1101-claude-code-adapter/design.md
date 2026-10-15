@@ -19,7 +19,7 @@ Precedente a espelhar: o adapter Codex (#1042) e a evidência de runtime Codex (
 
 ### Capacidades do Claude Code levantadas para este Design
 
-Fontes: documentação oficial (`code.claude.com/docs/en/*`, para onde `docs.claude.com/en/docs/claude-code/*` redireciona) lida em 2026-10-13, e inspeção local desta conta (Claude Code `2.1.296`, `entrypoint=cli`) sobre a própria sessão deste Design. "Provado" aqui significa documentado ou observado localmente; nada disso substitui o ensaio do Apply nem o piloto.
+Fontes: documentação oficial (`code.claude.com/docs/en/*`, para onde `docs.claude.com/en/docs/claude-code/*` redireciona) lida em 2026-10-13, e inspeção local desta conta (Claude Code `2.1.296`, `entrypoint=cli`) sobre a própria sessão deste Design. "Provado" aqui significa documentado ou observado localmente; nada disso substitui o ensaio do Apply (8.2, 15.2).
 
 | Capacidade | Fonte | Situação |
 | --- | --- | --- |
@@ -69,7 +69,6 @@ Grok Build e dsh não entram na tabela: continuam com o registro de projeto atua
 - Guard de escrita e de nascimento no Claude Code equivalente ao Codex, fail-closed em erro, timeout e configuração ausente.
 - Evidência de runtime coletada dos transcripts locais, vinculada a nascimento, com recusa quando ausente ou divergente.
 - Falha visível por superfície, sem fallback.
-- Piloto empilhado e card real de troca de cliente, ambos com QA verde no Claude Code, como condição do T14 deste card (decisões de Alan no Design).
 - Entregar o adapter **não oficial**, travado por teste.
 - (Rework) Registro dos hooks na conta do operador para Claude Code, Cursor, Codex e OpenCode, com shim que descobre o consumidor pelo cwd e chama o adapter pinado; processo ativo depois da troca de worktree, sem depender da pasta de lançamento.
 - (Rework) Atualização do host não trava o processo: versão aceita pelo formato da fonte de evidência, nunca recusada só pelo número.
@@ -84,7 +83,8 @@ Grok Build e dsh não entram na tabela: continuam com o registro de projeto atua
 - Travar a versão do host.
 - Reivindicar modo Auto; tratar o modo de permissão `auto`/`bypassPermissions` do Claude Code como autorização de processo.
 - Sessões de nuvem (claude.ai/code em ambiente de nuvem): não são suportadas por este card (decisão de Alan, 2026-10-14: o Claude Code roda sempre local, pelo CLI). Nenhum requisito, cenário ou ensaio as cobre.
-- Oficialização: `AGENTS.md` (renderer `scripts/process-fsm/overlay.py` `render_agents` + pin, testes `test_overlay.py`/`test_paging.py`), linha "Cliente ativo" da skill e descrição do board. Vai para card de seguimento, com T1 de Alan, depois do piloto e da revisão de confiança (decisão (d) de Alan).
+- Oficialização: `AGENTS.md` (renderer `scripts/process-fsm/overlay.py` `render_agents` + pin, testes `test_overlay.py`/`test_paging.py`), linha "Cliente ativo" da skill e descrição do board. Vai para card de seguimento, com T1 de Alan, depois do Done técnico deste card e da revisão de confiança (decisão (d) de Alan; sem depender de piloto, cancelado em 2026-10-15, §12).
+- Prova em outras harnesses e superfícies (decisão de Alan, 2026-10-15): piloto empilhado, card de troca de cliente, ensaio deny pelo registro da conta em Cursor/Codex/OpenCode e matriz de superfícies (IDE/Desktop SSH, Remote Control) ficam fora deste card; o app desktop é o #1103.
 
 ## Decisions
 
@@ -165,11 +165,11 @@ Resume/continuação: `canContinueAgent` existe no resultado do spawn; continua�
 | --- | --- | --- |
 | Terminal (CLI) na VM | conta executora | caminho de referência; tudo disponível |
 | IDE (VS Code/JetBrains) via Remote-SSH na VM | Claude Code embarcado na extensão, mesma conta | mesmos settings/hooks/skills (doc); versão própria da extensão checada pelo preflight; abaixo do mínimo = falha visível |
-| Desktop, sessão SSH para a VM | Claude Code instalado pelo Desktop no host remoto | mesmos arquivos na VM (doc); a provar no piloto |
+| Desktop, sessão SSH para a VM | Claude Code instalado pelo Desktop no host remoto | mesmos arquivos na VM (doc); fora deste card (ver #1103) |
 | Desktop **Local** no Windows | máquina Windows | sem seleção local, sem `gh`/worktree da VM: resolver e Status falham visivelmente; nenhuma etapa avança |
-| Web claude.ai/code dirigindo sessão local por Remote Control | sessão CLI da VM | equivalente ao terminal (a provar no piloto) |
+| Web claude.ai/code dirigindo sessão local por Remote Control | sessão CLI da VM | equivalente ao terminal (doc); fora deste card (ver #1103) |
 
-O Claude Code roda sempre local, pelo CLI na VM (decisão de Alan, 2026-10-14); sessão de nuvem está fora do escopo e não entra na matriz. A superfície observada (`CLAUDE_CODE_ENTRYPOINT` e equivalentes de remote, a provar) entra no heartbeat e no proxy.
+O Claude Code roda sempre local, pelo CLI na VM (decisão de Alan, 2026-10-14); sessão de nuvem está fora do escopo e não entra na matriz. Este card prova só o terminal (8.2, 15.2); as demais linhas não são reivindicadas como provadas aqui (decisão de Alan, 2026-10-15) e, em qualquer uma, capacidade ausente continua falha visível. A superfície observada (`CLAUDE_CODE_ENTRYPOINT` e equivalentes de remote, a provar) entra no heartbeat e no proxy.
 
 ### 8. Fecho de lote no Claude Code
 
@@ -183,44 +183,24 @@ Pin e instalação não dão confiança. Em sessão interativa o Claude Code seg
 
 Nada na FSM depende do cliente. Cada captura e cada proxy registram `client`; o handoff de cada etapa lista cliente e modelo observado por filho e repete os das etapas anteriores a partir dos comentários de handoff do card. Ex.: Design no Cursor (proxies `cursor`) e Apply no Claude Code (proxies `claude`) avançam pelos mesmos `iniciar_apply`/`pedir_review`/`aceitar_sha`/`integrar_develop`. Um filho nunca é transferido para outro cliente como fallback.
 
-Prova viva (decisão (c) de Alan): um **segundo card real pequeno** ("card de troca"), não ensaio de contrato. Design (autor + crítico) no Cursor ou no Codex, com a evidência de runtime daquele cliente (proxies `cursor` com o mecanismo do Cursor, ou `codex` com receipt/rollout de #1095); T7 de Alan; Apply, onda de review e QA no Claude Code até QA verde, com proxies `claude` por filho. O handoff de QA lista cliente e modelo observado de cada filho das duas etapas. O card de troca também roda empilhado: seu worktree nasce do HEAD revisado do #1101, porque o Apply no Claude Code precisa do adapter que ainda não está em `develop`. QA verde do card de troca é condição do T14 do #1101 (§12).
+A prova viva por card real de troca (decisão (c) de Alan) foi cancelada por Alan em 2026-10-15 (§12): o contrato acima fica coberto pelos testes de captura/proxy por cliente, sem card de troca neste card.
 
 ### 11. Grelha em Em Refinamento
 
 O pai spawna `grill-card` (juízo, Opus 5.5 alto) e só faz relaying. Perguntas fechadas vão por `AskUserQuestion` com **todas** as opções que o filho listou; se o host limitar o número de opções abaixo do que o filho trouxe, o pai divide em perguntas encadeadas ou lista as opções numeradas no texto da mesma pergunta — nunca colapsa para a recomendada. O limite exato e o comportamento em filho são a provar no Apply (detalhe de Apply, P3). O filho escreve o body do issue; `criar_card` continua fora de `process_event`.
 
-### 12. Adapter não oficial, piloto empilhado e card de troca
+### 12. Adapter não oficial; piloto e card de troca cancelados
 
-**Não oficial (decisão (d) de Alan).** Neste card, `AGENTS.md`, a descrição do Project 1 e a linha "Cliente ativo" da skill/runbook não citam o Claude Code como cliente; `CLAUDE.md` e `.claude/` existem como pontes, sem afirmação de cliente. Um teste (tarefa 6.4) trava isso. Nada no diff do #1101 muda `AGENTS.md`, `scripts/process-fsm/overlay.py` (`render_agents`), o pin do `AGENTS.md`, `test_overlay.py`/`test_paging.py` na parte de clientes oficiais ou a descrição do board. Isso tudo é o card de seguimento, aberto depois do piloto e da revisão de confiança, com T1 de Alan; o handoff de Done do #1101 o cita.
+**Não oficial (decisão (d) de Alan).** Neste card, `AGENTS.md`, a descrição do Project 1 e a linha "Cliente ativo" da skill/runbook não citam o Claude Code como cliente; `CLAUDE.md` e `.claude/` existem como pontes, sem afirmação de cliente. Um teste (tarefa 6.4) trava isso. Nada no diff do #1101 muda `AGENTS.md`, `scripts/process-fsm/overlay.py` (`render_agents`), o pin do `AGENTS.md`, `test_overlay.py`/`test_paging.py` na parte de clientes oficiais ou a descrição do board. Isso tudo é o card de seguimento, aberto depois do Done técnico do #1101, com T1 de Alan; o handoff de Done do #1101 o cita.
 
-**Piloto concluído** = um card piloto pequeno e real percorre no Claude Code Em Refinamento → Design → T7 → Apply → onda de dois reviewers → QA **verde**, com filhos, eventos e evidência (captura, receipt, proxy observado `claude` por filho) registrados. O T14 do piloto não faz parte da definição; ele vem depois do T14 do #1101.
+**Cancelado (decisão de Alan, 2026-10-15: "quanto aos ensaios em outra harness fora daqui nao vamos fazer agora"; "o 15.3 e o card piloto vamos cancelar siga sem eles").** Saem deste card, sem substituto:
 
-**Ordem (decisão (a) de Alan).**
+- o piloto empilhado (card real percorrendo o fluxo no Claude Code sobre o HEAD revisado do #1101) e o card real de troca de cliente (decisões (a) e (c) do Design de 2026-10-13), com a ordem empilhada, o review por diff empilhado e o rebase com prova por `patch-id`;
+- o gate `pilot_evidence` deste change: a declaração `pilot-evidence-gate.json` sai do change, e por isso `review_process_checklist.py --phase postqa` não avalia o item (ele só roda quando o change declara o gate; o código da task 6.5 fica, inativo, disponível para outro change que o declare);
+- a exceção local ao "T14 no mesmo turno do verde": o T14 do #1101 segue a regra geral — depois do QA verde e do checklist `postqa` (sem `pilot_evidence`), o pai chama `integrar_develop` no mesmo turno;
+- a matriz de superfícies (IDE Remote-SSH, Desktop SSH, Remote Control) e o ensaio deny pelo registro da conta em Cursor, Codex e OpenCode (15.3): prova de outras harnesses e superfícies fica fora deste card (o app desktop é o #1103).
 
-1. Pré: QA do #1101 verde no SHA revisado; **sem** `integrar_develop`. Shim instalado na conta e revisão de confiança (registro e adapter) registrada; seleção `claude` validada; schema de evidência válido na versão em uso (§17).
-2. Bloco `claude` acrescentado à seleção da conta (início da janela, §Migration Plan).
-3. Piloto e card de troca nascem em worktrees empilhados no HEAD revisado de `card-1101-claude-code-adapter` e vão até QA verde (piloto inteiro no Claude Code; card de troca com Design no Cursor/Codex e Apply no Claude Code).
-4. `review_process_checklist.py --phase postqa` do #1101 passa, incluindo `pilot_evidence`; então o pai chama `integrar_develop` do #1101 (T14).
-5. Piloto e card de troca são rebaseados em `develop` e fazem seus T14.
-
-**Exceção local ao "T14 no mesmo turno do verde".** A skill manda o pai chamar `integrar_develop` no mesmo turno do filho QA verde. Para o #1101, e só para ele, essa regra fica suspensa entre o passo 1 e o passo 4: QA verde do #1101 não dispara T14; o pai registra no card "QA verde; T14 aguarda piloto e card de troca (decisão (a) de Alan)" e encerra o turno. O guard de T14 em `process_event` não muda: a espera é garantida pelo item `pilot_evidence` do checklist postqa e pela regra do pai, não por aresta nova. Para o piloto e o card de troca, a regra também fica suspensa entre o QA verde empilhado e o rebase (passo 5); depois do rebase volta a valer.
-
-**Item `pilot_evidence`** em `review_process_checklist.py --phase postqa`. Ativo só quando o change ligado declara o gate (declaração versionada no próprio change, criada no Apply; changes sem declaração não mudam). Lê um JSON de evidência (`--pilot-evidence <path>`, não versionado) e só passa com:
-
-- ids do card piloto e do card de troca, diferentes entre si e do #1101;
-- para cada um, o SHA que teve `qa-gate` success na branch empilhada, conferido no GitHub como no QA;
-- para cada filho de cada card, o proxy com cliente e modelo observado: todos `claude` no piloto; no card de troca, filhos de Design em `cursor` ou `codex` e filhos de Apply/review/QA em `claude`.
-
-Qualquer campo ausente, SHA sem QA verde, proxy faltante ou com cliente errado = `ERROR: process-checklist failed: pilot_evidence` (bloqueio visível). O guard de T14 continua o mesmo.
-
-**Review e rebase dos cards empilhados (P2-1).** A base do review do piloto é o HEAD revisado do #1101: o pai materializa só `<HEAD #1101>..<HEAD piloto>`, e os dois reviewers nunca recebem o diff do #1101. Depois do T14 do #1101, o piloto é rebaseado em `develop` (`rebase --onto develop <HEAD #1101>`). O pai prova que o diff do piloto é idêntico ao revisado (`git patch-id --stable` igual e digest do diff materializado igual) e só reexecuta o `qa-gate` no SHA novo, sem nova onda de review. Diff diferente ou conflito de rebase = causa visível para Alan no card, sem resolução silenciosa e **nunca** T13 forçado para destravar. O mesmo vale para o card de troca.
-
-**Plano do piloto.**
-
-1. Card piloto pequeno e real (escolhido por Alan em Em Refinamento; sem produto sensível), num chat Claude Code `#<id>` no terminal da VM: grelha → (Alan T1) → `iniciar_design` → Design-autor + crítico → `submeter_design` → (Alan T7) → `iniciar_apply` → Apply-coluna → `pedir_review` → onda de dois reviewers + `verify-wave` → commit/PR → `aceitar_sha` → QA verde. Cada filho com captura, receipt e proxy observado.
-2. Negativos no mesmo ambiente: `implemente` em `Todo` (nada muda, frase com Status); Write de produto em `develop` e sem card (Edit e Bash negados, readback igual); seleção `claude/execucao` com modelo inexistente (spawn recusado visivelmente); hooks com digest alterado (preflight recusa).
-3. Superfícies: o piloto registra, para IDE Remote-SSH, Desktop SSH e Remote Control pela web, o resultado de SessionStart/deny/resolver/evidência; superfície sem capacidade fica como falha visível documentada.
-4. Fecho de lote: se houver lote no período, a parte do agente é conduzida no Claude Code; senão, ensaio do pré-requisito de T16 (recusa com pai em juízo, aceitação com pai em execução) sem `fechar_release`.
+Não muda: FSM, guard de T14 em `process_event`, gates humanos, seleção de modelos, caráter não oficial e o card de seguimento de oficialização (que deixa de depender do piloto). O que o ensaio real já provou no terminal da VM fica como prova deste card (8.2, 8.3, 15.2). Textos fora deste change que ainda citam o piloto (linha de superfícies da skill `covenant-flow`, `docs/claude-runtime-evidence.md` e a janela de `docs/model-selection.md`, todos vindos do pin `v1.1.20`) são alinhados no card de seguimento de oficialização, que já muda a skill e o pin.
 
 ### 13. Registro dos hooks na conta, para Claude Code, Cursor, Codex e OpenCode (rework; decisões de Alan)
 
@@ -282,7 +262,7 @@ Registro de confiança único na conta, comum aos clientes (`~/.config/covenant-
 
 - **Claude Code.** `QUALIFIED_VERSIONS` sai. O driver `claude-transcript-v1` declara, por tipo de registro usado, os campos obrigatórios e os tipos: `assistant` (`type`, `sessionId`, `version`, `entrypoint`, `cwd`, `message.id`, `message.model`, `effort`); `tool_use` do `Agent` no pai (`input.description`, `input.model`, `input.effort`, `input.subagent_type`); `toolUseResult` (`agentId`, `status`, `resolvedModel`); `.meta.json` do filho (`toolUseId`, `description`, `agentType`, `model`); registros do filho (`isSidechain`, `agentId`, `sessionId`); payload de `PreToolUse(Agent)` (`tool_input.effort`, como já é). Campos extras e tipos de registro não usados são ignorados. A validação roda onde o coletor lê: `prepare` valida o último `assistant` do pai, como sonda, antes do nascimento; `collect` valida todos os registros usados. Falta ou tipo diferente → `unsupported_schema` com tipo, campo e versão observada.
 - A versão observada vai para heartbeat, receipt, evidência e proxy, e nunca recusa sozinha. Um transcript com mais de uma versão (sessão retomada depois de atualização) é aceito se cada registro valida; a evidência guarda o conjunto. A identidade filho×pai usa os valores do pai no receipt (§18).
-- **Pisos de capacidade ficam:** `host_min_version` 2.1.292 (`effort` por invocação) e 2.1.295 (`onFailure: "block"`) recusam só hosts mais antigos, com `capability_unavailable`. `QUALIFIED_ENTRYPOINTS` também fica: é superfície, não versão, e segue a matriz da task 9.4.
+- **Pisos de capacidade ficam:** `host_min_version` 2.1.292 (`effort` por invocação) e 2.1.295 (`onFailure: "block"`) recusam só hosts mais antigos, com `capability_unavailable`. `QUALIFIED_ENTRYPOINTS` também fica: é superfície, não versão, e segue a tabela de §7 (só `cli` provado neste card).
 - **Codex.** O driver passa a `codex_exec/rollout-v1`. A checagem de `originator == codex_exec` fica (tipo de host); `cli_version` é registrada. O schema valida `session_meta`, `turn_context`, chamada/retorno nativos, `task_started`, `task_complete` e `agent_message`. A qualificação privada (`qualification.json`) vale por schema do driver, não por versão: a prova existente continua válida (aceitar o id antigo do driver como o mesmo schema é P3).
 - **Risco aceito:** formato igual com semântica nova. A mitigação são as checagens cruzadas que já existem: `resolvedModel` contra a captura, modelo e esforço por turno, filiação e payload. Divergência reprova em qualquer versão.
 - Alternativas rejeitadas: travar a versão do binário (impede atualização de segurança e não atende "nas próximas"); janela de qualificação por versão (ainda trava até o ensaio); aceitar qualquer versão sem schema (troca "trava" por "aceita errado").
@@ -305,7 +285,7 @@ Ficam fora, com seguimento:
 - **2 (Guard trata `>` entre aspas como redirecionamento)**: é o Guard compartilhado de todos os clientes, fora dos dois blocos do rework. Vai para card de seguimento.
 - **12 (protótipo 404 em card novo)**: é o serviço de protótipos do DEV (lista de worktrees montada no início), um problema de ambiente do consumidor, não do processo. Vai para card de seguimento, como o body já decide. Um passo de restart no runbook fica só como sugestão para esse card.
 - **7 (autoaprovação do `trust --record`)**: o limite já foi aceito por Alan; o endurecimento fica no card de seguimento.
-- **P2 de 3.7 (verificação antes da primeira escrita provada só com sintéticos)** e **P3 de 6.2 (`check_claude_parent` sem ponto de entrada)**: são residuais de review que este desenho não muda; continuam no piloto (9.2/9.3/9.6).
+- **P2 de 3.7 (verificação antes da primeira escrita provada só com sintéticos)** e **P3 de 6.2 (`check_claude_parent` sem ponto de entrada)**: são residuais de review que este desenho não muda; diziam "continuam no piloto" (9.2/9.3/9.6) e, com o piloto cancelado (§12), passam a residual registrado no #1103.
 - **P3 do `recorded_at` do heartbeat**: resolvido de passagem, porque o heartbeat do shim separa `recorded_at` (início da sessão) dos campos de troca.
 
 ## Risks / Trade-offs
@@ -326,12 +306,10 @@ Ficam fora, com seguimento:
 - [Hash das árvores do adapter em toda chamada pesa] → cache por (path, tamanho, mtime, inode) na conta (P3); a árvore inteira é o preço de cobrir imports dinâmicos.
 - [Revisão por digest nova para Cursor e OpenCode trava sessões até o operador registrar] → passo explícito na migração, `--check` mostra o que falta; pins antigos não são afetados.
 - [Página não reinjetada no meio da sessão em host sem mecanismo de contexto] → os gates seguem o novo worktree desde o primeiro evento; a página aparece no próximo início de sessão; lacuna registrada por host.
-- [Worktree sem `.claude/skills` cai no checkout principal] → durante a janela, `develop` ainda não tem as pontes; piloto e card de troca rodam em worktrees empilhados que têm `.claude/` versionado; preflight compara manifesto do worktree.
+- [Worktree sem `.claude/skills` cai no checkout principal] → até o T14 do #1101, `develop` ainda não tem as pontes; só o worktree do #1101 tem `.claude/` versionado; preflight compara manifesto do worktree.
 - [Limpeza de transcripts] → coleta no mesmo turno; nascimento novo se a fonte sumir.
 - [Pin novo numa conta sem o shim (máquina nova, `--remove`, outro operador)] → recusa `hooks_inactive` em cada cliente do escopo nas transições dependentes e `--check` com o host sem registro (§16).
-- [Bloco `claude` na seleção compartilhada quebra o resolver antigo de `develop` e dos outros worktrees durante a janela] → aceito por Alan (decisão (b)): demais cards pausados nesta conta, falha visível do resolver antigo até o T14 do #1101; piloto interrompido = remover o bloco com backup.
-- [#1101 parado em QA verde por mais tempo que o normal; `develop` pode andar (hotfix)] → janela curta com pausa; se `develop` andar, o #1101 é sincronizado pelo caminho existente e o QA reexecuta; os cards empilhados continuam com review só do próprio diff.
-- [Rebase dos cards empilhados muda o diff ou conflita] → prova por `patch-id`/digest; divergência ou conflito = causa visível para Alan, nunca T13 forçado nem nova onda silenciosa.
+- [Bloco `claude` na seleção compartilhada quebra o resolver antigo de `develop` e dos outros worktrees até o T14 do #1101] → aceito por Alan (decisão (b)): demais cards pausados nesta conta, falha visível do resolver antigo até o T14; sem piloto, o intervalo é só QA verde → T14 no mesmo turno; T14 que não acontecer = restaurar o backup.
 - [`CLAUDECODE=1` herdado por processo aninhado (ex.: Codex rodando no `Bash` do Claude Code)] → precedência do sinal nativo mais interno (P3 abaixo), com teste que mantém o Codex como hoje.
 
 ## P3 aceitos
@@ -360,25 +338,22 @@ Detalhes de Apply aceitos na crítica, sem reabrir o Design:
 ## Migration Plan
 
 1. Apply no worktree do card (consumidor) e no worktree do nucleus `covenant-flow` (shim, `install.sh --account`, manifesto, pin novo), como no #1080/#1042. Ensaio por host do mecanismo global (task 11.1) antes de tirar o registro de projeto de cada host.
-2. Review, commit, PR e QA verde do #1101 com o Claude Code não oficial; **sem** `integrar_develop` (exceção §12).
-3. Operador: `install.sh --account` (o shim não age em pins antigos: develop e os outros worktrees seguem como hoje) e revisão de confiança R e A por `cf_shim.py trust --record`, lendo o que vai ser executado. A partir daqui, o worktree do #1101 (pin novo, sem registro de projeto) roda pelo shim, e uma sessão lançada em `/source` que entra nele fica com o processo ativo.
-4. Início da janela do piloto (decisão (b) de Alan): os demais cards desta conta são pausados; backup da seleção da conta; bloco `claude` acrescentado + `model_selection.py validate` no worktree do #1101. Daqui até o T14 do #1101, o resolver antigo de `develop` e dos outros worktrees recusa o arquivo de forma visível — aceito.
-5. Piloto (#703, parado em Design) e card de troca em worktrees empilhados no HEAD revisado do #1101 até QA verde, com sessões lançadas em `/source` quando possível. Exceção à pausa: o card de troca faz o Design no Cursor ou no Codex nesse worktree empilhado; o Cursor/Codex de lá passa pelo shim, porque o worktree já tem o pin novo.
-6. Checklist postqa do #1101 com `pilot_evidence` → T14 do #1101. O develop recebe o pin novo: os registros de projeto de Claude Code, Cursor, Codex e OpenCode saem (Grok Build e dsh mantêm os seus) e o shim passa a agir em `/source`.
-7. Piloto e card de troca rebaseados em `develop` com prova de diff idêntico → `qa-gate` → T14 de cada.
-8. Fim da janela: os cards pausados rebaseiam em `develop` antes de retomar (para ganhar o validador novo e o pin novo). Handoff de Done cita o card de seguimento de oficialização.
+2. Operador: `install.sh --account` (o shim não age em pins antigos: develop e os outros worktrees seguem como hoje) e revisão de confiança R e A por `cf_shim.py trust --record`, lendo o que vai ser executado. A partir daqui, o worktree do #1101 (pin novo, sem registro de projeto) roda pelo shim, e uma sessão lançada em `/source` que entra nele fica com o processo ativo. (Feito: 8.3, 15.2.)
+3. Bloco `claude` na seleção da conta (decisão (b) de Alan), com backup da seleção e os demais cards desta conta pausados; até o T14 do #1101, o resolver antigo de `develop` e dos outros worktrees recusa o arquivo de forma visível — aceito.
+4. Review, commit, PR e QA verde do #1101 com o Claude Code não oficial; checklist `postqa` (sem `pilot_evidence`, §12) → T14 do #1101 no mesmo turno do verde (regra geral). O develop recebe o pin novo: os registros de projeto de Claude Code, Cursor, Codex e OpenCode saem (Grok Build e dsh mantêm os seus) e o shim passa a agir em `/source`.
+5. Depois do T14: os cards pausados rebaseiam em `develop` antes de retomar (para ganhar o validador novo e o pin novo). Handoff de Done cita o card de seguimento de oficialização.
 
-Os passos 7–8 rodam depois do Done técnico do #1101 e ficam fora de `tasks.md`, porque o checklist postqa exige todas as tasks marcadas antes do T14; a task 10.2 os registra no card antes do T14.
+O passo 5 roda depois do Done técnico do #1101 e fica fora de `tasks.md`, porque o checklist postqa exige todas as tasks marcadas antes do T14; a task 10.2 o registra no card antes do T14. Piloto empilhado e card de troca (antigos passos 4–7) foram cancelados por Alan em 2026-10-15 (§12).
 
-Piloto interrompido (antes do passo 6): remover o bloco `claude` da seleção da conta restaurando o backup, para que `develop` e os outros worktrees voltem a resolver; os cards pausados retomam; o #1101 fica em QA verde sem T14 e a causa é registrada no card. O shim pode ficar instalado: em pins antigos ele não age.
+Se o #1101 não chegar ao T14 (QA vermelho sem conserto, rollback): restaurar o backup da seleção da conta, para que `develop` e os outros worktrees voltem a resolver; os cards pausados retomam; a causa é registrada no card. O shim pode ficar instalado: em pins antigos ele não age.
 
 O Apply ensaia a migração com cópia temporária do arquivo de seleção (validador novo aceita o bloco; validador antigo recusa visivelmente), sem tocar o arquivo real.
 
-Rollback: remover `CLAUDE.md`, `.claude/`, `scripts/process-fsm/claude_*.py`, o item `pilot_evidence` e o contrato `claude` da política, e o operador remover explicitamente o bloco `claude` da seleção local (com backup), porque o validador revertido o recusaria. Rollback do registro: `install.sh --account --remove` e voltar ao pin anterior, que traz os registros de projeto de volta; o shim removido não deixa entradas alheias alteradas. Os demais clientes voltam ao estado anterior sem outra mudança.
+Rollback: remover `CLAUDE.md`, `.claude/`, `scripts/process-fsm/claude_*.py`, o item `pilot_evidence` (inativo neste change) e o contrato `claude` da política, e o operador remover explicitamente o bloco `claude` da seleção local (com backup), porque o validador revertido o recusaria. Rollback do registro: `install.sh --account --remove` e voltar ao pin anterior, que traz os registros de projeto de volta; o shim removido não deixa entradas alheias alteradas. Os demais clientes voltam ao estado anterior sem outra mudança.
 
 ## Open Questions
 
-Nenhuma. As decisões de Alan de 2026-10-13 (a)–(d) e de 2026-10-14, incluindo as respostas às três Open Questions do rework (comentário `6169060530`: Grok Build e dsh fora; nuvem fora; a pergunta sobre hosts não instalados caiu), estão no body e não reabrem.
+Nenhuma. As decisões de Alan de 2026-10-15 (piloto, card de troca, `pilot_evidence` e 15.3 cancelados; outras harnesses e superfícies fora deste card, §12), as de 2026-10-13 (a)–(d) — (a) e (c) cancelados em 2026-10-15 — e as de 2026-10-14, incluindo as respostas às três Open Questions do rework (comentário `6169060530`: Grok Build e dsh fora; nuvem fora; a pergunta sobre hosts não instalados caiu), estão no body ou no card e não reabrem.
 
 ## Design Critique
 

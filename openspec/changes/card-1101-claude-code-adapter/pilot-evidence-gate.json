@@ -1,6 +1,0 @@
-{
-  "version": 1,
-  "gate": "pilot_evidence",
-  "card": "1101",
-  "description": "Done técnico of #1101 requires a QA-green pilot card and a QA-green client-switch card (design.md section 12). review_process_checklist.py --phase postqa reads --pilot-evidence <path>."
-}
