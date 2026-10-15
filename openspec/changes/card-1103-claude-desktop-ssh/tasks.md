@@ -44,7 +44,7 @@ Nota: use as skills do projeto disponíveis aos clientes quando aplicável (`.cu
 - [x] 5.3 Guard: destino de redirecionamento resolvido; fora do repo não é escrita de produto; `>>` dentro de heredoc é texto; dentro do repo continua negado (R33); testes dos três cenários. (nucleus: `guard.py`; `test_residual_1101.py`)
 - [x] 5.4 `submeter_design` (T5) exige `UI impact`/`live_route`/`surface` parseáveis pelo parser de `design_clone_gate.py`, citando o token faltante (R28); testes. (nucleus: `design_clone_gate.design_token_gap` usado pelo precommit e por `process_event`; `test_residual_1101.py`)
 - [x] 5.5 `claude_evidence` (`extract`/`_handbacks`) reconhece o retorno em segundo plano (design §9): `queue-operation` `enqueue` com `<task-notification>` aceito só com `<task-id>`==`agentId` e `<tool-use-id>`==`call.id`; `<status>` completed→`completed` com payload de `<result>`, failed→`failed`, killed→`interrupted`; spawn `async_launched` aceito com `resolvedModel` igual à captura, ou checado no retorno/turnos do filho quando o spawn não traz `resolvedModel`; forma desconhecida = `unsupported_schema` citando o campo. Fixtures reais sanitizadas em `claude_fixtures.py`: do 2.1.300 CLI (este card, agentIds `af0a1917b83c8aa19` e `aacea23e2dfb0ccf9`) e do app; testes dos cenários de "Background child handback is recognized" (completed com payload, failed, `tool-use-id` divergente não aceito, forma desconhecida = `unsupported_schema`). (nucleus: `claude_evidence._returns`/`extract`/`note_resolved_model`; fixtures reais `APP_SESSION_2_1_295` e `CLI_BACKGROUND_2_1_300`; `test_claude_desktop_surface.py`)
-- [ ] 5.6 Depois da 5.5, recoletar no Apply os proxies do Design-autor, do crítico e do rework do Design do #1103 (receipts em `.cursor/tmp/claude-evidence/` do worktree) e registrar no card o resultado de cada um (status e par observado = captura, ou o motivo).
+- [x] 5.6 Depois da 5.5, recoletar no Apply os proxies do Design-autor, do crítico e do rework do Design do #1103 (receipts em `.cursor/tmp/claude-evidence/` do worktree) e registrar no card o resultado de cada um (status e par observado = captura, ou o motivo). (feito: 5 proxies `completed`, observado = captura; comentário no #1103)
 
 ## 6. Testes, regras, docs e notas do #1101
 
@@ -56,8 +56,8 @@ Nota: use as skills do projeto disponíveis aos clientes quando aplicável (`.cu
 
 ## 7. Integração e verificação local
 
-- [ ] 7.1 `python3 -m pytest scripts/process-fsm` e testes do nucleus verdes; testes de Cursor, Codex, OpenCode, Grok Build e dsh inalterados e verdes; `openspec validate card-1103-claude-desktop-ssh --strict` verde. Nota: nucleus verde; consumidor após pin (o pytest do consumidor com o código novo só roda depois do pin, feito pelo pai/Alan).
-- [ ] 7.2 Tag do nucleus e pin no consumidor, comparando overlay, política e adapters antes/depois; Alan instala o shim novo com `install.sh --account`, revisa R e A em bash comum e abre sessão nova. <!-- covenant-flow:after-commit -->
+- [x] 7.1 `python3 -m pytest scripts/process-fsm` e testes do nucleus verdes; testes de Cursor, Codex, OpenCode, Grok Build e dsh inalterados e verdes; `openspec validate card-1103-claude-desktop-ssh --strict` verde. Nota: nucleus verde; consumidor após pin (o pytest do consumidor com o código novo só roda depois do pin, feito pelo pai/Alan). (consumidor pós-pin v1.1.21: 1201 passed, 35 skipped; nucleus 1230 passed, 6 skipped)
+- [x] 7.2 Tag do nucleus e pin no consumidor, comparando overlay, política e adapters antes/depois; Alan instala o shim novo com `install.sh --account`, revisa R e A em bash comum e abre sessão nova. <!-- covenant-flow:after-commit --> (pin v1.1.21 = nucleus 87de5c4, tag local; `install.sh --account` shim 1.1.0 e `trust --record` R=13104473 A=f5ca56cc por Alan, 2026-10-15; movida para antes do Code Review por decisão de Alan)
 
 ## 8. Ensaio real pelo app (Alan opera no Windows; design §11)
 
