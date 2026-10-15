@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parents[1]
 sys.path.insert(0, str(ROOT))
 
+from adapter_manifest import ENTRYPOINTS  # noqa: E402
+from shim_fixtures import registered_account, registered_document, shim_call  # noqa: E402
 from subagent_stop import (  # noqa: E402
     FOLLOWUP_APPLY,
     FOLLOWUP_DESIGN_AUTOR,
@@ -30,7 +32,6 @@ from subagent_stop import (  # noqa: E402
 
 SKILL = REPO / ".cursor" / "skills" / "covenant-flow" / "SKILL.md"
 MODEL_MAP = REPO / ".cursor" / "model-map.yaml"
-HOOKS = REPO / ".cursor" / "hooks.json"
 
 
 def _execucao_slug() -> str:
@@ -509,9 +510,14 @@ def test_skill_s2_sidecar_and_order() -> None:
     assert "commit só depois dos dois" in text
 
 
-def test_hooks_matcher_covers_named_reviewers() -> None:
-    hooks = json.loads(HOOKS.read_text(encoding="utf-8"))
+def test_account_registration_matcher_covers_named_reviewers(monkeypatch, tmp_path: Path) -> None:
+    # `subagentStop` is registered in the operator account (`~/.cursor/hooks.json` from `install.sh --account`), not in
+    # the consumer: the matcher, loop limit and non-blocking policy are checked on what `account_install` generates.
+    registered_account(monkeypatch, tmp_path, ["cursor"])
+    hooks = registered_document("cursor")
     destape = hooks["hooks"]["subagentStop"]
+    assert shim_call(destape[0]["command"]) == ("cursor", "subagent-stop")
+    assert ENTRYPOINTS["cursor"]["subagent-stop"] == ["bash", ".cursor/hooks/process-fsm-subagent-stop.sh"]
     matcher = destape[0]["matcher"]
     assert "generalPurpose" in matcher
     assert "diff-reviewer" in matcher

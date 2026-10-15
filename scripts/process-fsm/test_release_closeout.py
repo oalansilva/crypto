@@ -75,10 +75,15 @@ def test_release_section_drops_t18_label_and_uses_birth_capture():
     assert "Pré-requisito (T18)" not in AGENTS.read_text(encoding="utf-8")
 
 
+def _overlay_text() -> str:
+    # The overlay doc is consumer-owned product data: absent in the nucleus checkout.
+    return OVERLAY.read_text(encoding="utf-8") if OVERLAY.is_file() else ""
+
+
 def test_release_section_and_overlay_archive_use_1022_decide():
     release = _release_section()
-    overlay = OVERLAY.read_text(encoding="utf-8")
-    for text in (release, overlay):
+    overlay = _overlay_text()
+    for text in (release, overlay) if overlay else (release,):
         assert "decide()" in text
         assert "#1022" in text
         assert "worktree" in text.lower()
@@ -91,8 +96,8 @@ def test_release_section_and_overlay_archive_use_1022_decide():
 
 def test_release_branch_deletion_before_post_and_pronto():
     release = _release_section()
-    overlay = OVERLAY.read_text(encoding="utf-8")
-    for text in (release, overlay):
+    overlay = _overlay_text()
+    for text in (release, overlay) if overlay else (release,):
         assert "antes" in text and "post" in text and "Pronto" in text
         assert "PRESERVED_BRANCHES" in text
         assert "qa-gate" in text
