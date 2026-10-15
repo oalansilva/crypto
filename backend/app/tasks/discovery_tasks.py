@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from app.database import SessionLocal
 from app.models_discovery import (
@@ -136,8 +136,23 @@ def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
     recount), sem reescrever `state`/`completed_at`; o caminho
     `running → completed` exige `state == running` relido sob lock.
     """
-    rows = db.query(DiscoveryCombination).filter(DiscoveryCombination.sweep_id == sweep.id).all()
+    # O input_snapshot (candles congelados) não é necessário para contar estados.
+    rows = (
+        db.query(DiscoveryCombination)
+        .options(defer(DiscoveryCombination.input_snapshot))
+        .filter(DiscoveryCombination.sweep_id == sweep.id)
+        .all()
+    )
     now = datetime.now(timezone.utc)
+    before = (
+        sweep.state,
+        sweep.succeeded,
+        sweep.failed,
+        sweep.skipped,
+        sweep.insufficient_sample,
+        sweep.processed,
+    )
+    touched = False
 
     if sweep.state == "cancelling" or sweep.state in TERMINAL_STATES:
         # Cancelamento prevalece / re-finalizador terminal: pendentes viram
@@ -148,6 +163,7 @@ def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
                 r.lease_owner = None
                 r.lease_expires_at = None
                 r.updated_at = now
+                touched = True
 
     succeeded = sum(1 for r in rows if r.state == "succeeded")
     failed = sum(1 for r in rows if r.state == "failed")
@@ -162,7 +178,6 @@ def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
     sweep.skipped = skipped
     sweep.insufficient_sample = insufficient_sample
     sweep.processed = processed
-    sweep.updated_at = now
 
     if sweep.state == "cancelling" and pending == 0 and running == 0:
         sweep.state = "cancelled"
@@ -186,6 +201,18 @@ def _reconcile_locked(sweep: DiscoverySweep, db: Session) -> dict[str, Any]:
     elif sweep.state == "paused":
         # Sem transição automática; contadores atualizados apenas.
         pass
+    # Polling periódico (dispatcher/reconciler) não deve reescrever o sweep
+    # quando nada mudou: updated_at só avança em mudança real.
+    after = (
+        sweep.state,
+        sweep.succeeded,
+        sweep.failed,
+        sweep.skipped,
+        sweep.insufficient_sample,
+        sweep.processed,
+    )
+    if touched or after != before:
+        sweep.updated_at = now
     db.flush()
     return {
         "state": sweep.state,
@@ -235,84 +262,76 @@ def run_combination(
         combination.timeframe,
         combination.direction,
     )
-    sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == combination.sweep_id).first()
-    if not sweep:
-        combination.state = "skipped"
-        combination.updated_at = datetime.now(timezone.utc)
-        db.commit()
-        return
-    # Recheck transacional do estado: pause/cancel não podem iniciar otimização.
-    # Sob `cancelling` a combinação volta a `pending` (o reconcile a marca
-    # `skipped`); sob terminal (`cancelled`/outros) vai direto a `skipped` —
-    # o pré-check nunca cria `pending` sobre terminal (card #853).
-    if sweep.state != "running":
-        if sweep.state in TERMINAL_STATES:
-            combination.state = "skipped"
-        else:
-            combination.state = "pending"
-        combination.lease_owner = None
-        combination.lease_expires_at = None
-        combination.updated_at = datetime.now(timezone.utc)
-        db.commit()
-        return
+    from app.services.discovery_recovery import (
+        Possession,
+        locked_possession,
+        LostPossession,
+        heartbeat,
+        fail,
+        settled,
+    )
+    from app.services.discovery_supervisor import run_supervised
+    from app.services.discovery_resources import OperationalFailure, CalculationFailure
 
-    snapshot = sweep.snapshot or {}
-    start_date, end_date = resolve_optimizer_date_range(snapshot)
-    try:
-        insufficient, listing_len, train_len = evaluate_listing_sample(
-            symbol=combination.symbol,
-            timeframe=combination.timeframe,
-            start_date=start_date,
-            end_date=end_date,
-        )
-    except Exception as exc:
-        logger.warning(
-            "Discovery listing fetch failed: %s %s: %s",
-            combination.sweep_id,
-            combination.id,
-            exc,
-        )
-        combination.state = "failed"
-        combination.attempts += 1
-        combination.updated_at = datetime.now(timezone.utc)
-        db.commit()
+    token = Possession.of(combination)
+    if token.owner != owner:
         return
-    if insufficient:
-        _persist_insufficient_sample(
-            db,
-            combination,
-            owner,
-            listing_len=listing_len,
-            train_len=train_len,
+    try:
+        sweep, combination, _ = locked_possession(db, token)
+        inputs = combination.input_snapshot or {}
+        snapshot = inputs.get("snapshot") or sweep.snapshot or {}
+        db.rollback()
+
+        def beat(events, supervisor):
+            with SessionLocal() as beat_db:
+                heartbeat(beat_db, token, events, supervisor)
+
+        result = run_supervised(
+            {
+                "template_name": combination.template_id,
+                "symbol": combination.symbol,
+                "timeframe": combination.timeframe,
+                "direction": combination.direction,
+                "start_date": inputs.get("start_date"),
+                "end_date": inputs.get("end_date"),
+                "template_metadata": inputs.get("template_metadata"),
+                "candle_manifest": inputs.get("candle_manifest"),
+            },
+            beat,
         )
+        sweep, combination, _ = locked_possession(db, token)
+        inputs = combination.input_snapshot or inputs
+        if result.get("insufficient"):
+            _persist_insufficient_sample(
+                db,
+                combination,
+                owner,
+                listing_len=result["listing_len"],
+                train_len=result["train_len"],
+                token=token,
+            )
+            return
+    except LostPossession:
+        db.rollback()
+        logger.warning("Discovery stale writer rejected token=%s", token)
+        return
+    except Exception as exc:
+        db.rollback()
+        code = getattr(exc, "code", type(exc).__name__)
+        logger.warning("Discovery attempt failed token=%s code=%s", token, code)
+        try:
+            fail(
+                db,
+                token,
+                code,
+                operational=not isinstance(exc, (CalculationFailure, ValueError)),
+                counters=getattr(exc, "counters", None),
+            )
+        except LostPossession:
+            db.rollback()
         return
 
     service = DiscoveryService()
-    from app.services.combo_optimizer import ComboOptimizer
-
-    try:
-        optimizer = ComboOptimizer()
-        result = optimizer.run_optimization(
-            template_name=combination.template_id,
-            symbol=combination.symbol,
-            timeframe=combination.timeframe,
-            data_source="ccxt",
-            start_date=start_date,
-            end_date=end_date,
-            direction=combination.direction,
-            deep_backtest=True,
-            split_train_ratio=DISCOVERY_SPLIT_TRAIN_RATIO,
-        )
-    except Exception as exc:
-        logger.warning(
-            "Discovery combination failed: %s %s: %s", combination.sweep_id, combination.id, exc
-        )
-        combination.state = "failed"
-        combination.attempts += 1
-        combination.updated_at = datetime.now(timezone.utc)
-        db.commit()
-        return
-
     best_metrics = dict(result.get("best_metrics") or {})
     trades = result.get("trades") or []
     candles = result.get("candles") or []
@@ -328,7 +347,7 @@ def run_combination(
     coverage = min(1.0, (observed_valid_candles / expected_candles) if expected_candles else 0.0)
     trades_count = len(trades)
 
-    metadata = service.combo_service.get_template_metadata(combination.template_id) or {}
+    metadata = inputs.get("template_metadata") or {}
     identity = build_strategy_identity(
         template_id=combination.template_id,
         parameters=parameters,
@@ -348,7 +367,10 @@ def run_combination(
         start_at=start_at,
         end_at=end_at,
         candle_source=result.get("data_source"),
-        candle_version=None,
+        candle_version=(inputs.get("candle_manifest") or {})
+        .get("files", {})
+        .get("candles", {})
+        .get("sha256"),
         expected_candles=expected_candles,
         observed_valid_candles=observed_valid_candles,
         coverage=coverage,
@@ -377,7 +399,7 @@ def run_combination(
             "insufficient_sample" if existing.eligibility == "insufficient_sample" else "succeeded"
         )
         combination.result_id = existing.id
-        combination.lease_owner = owner
+        settled(db, combination, "succeeded")
         combination.updated_at = datetime.now(timezone.utc)
         db.commit()
         return
@@ -402,7 +424,10 @@ def run_combination(
             start_at=start_at,
             end_at=end_at,
             candle_source=result.get("data_source"),
-            candle_version=None,
+            candle_version=(inputs.get("candle_manifest") or {})
+            .get("files", {})
+            .get("candles", {})
+            .get("sha256"),
             expected_candles=expected_candles,
             observed_valid_candles=observed_valid_candles,
             coverage=coverage,
@@ -426,7 +451,7 @@ def run_combination(
     )
     combination.state = "succeeded"
     combination.result_id = result_id
-    combination.lease_owner = owner
+    settled(db, combination, "succeeded")
     combination.updated_at = datetime.now(timezone.utc)
     db.commit()
     logger.info(
@@ -445,8 +470,13 @@ def _persist_insufficient_sample(
     *,
     listing_len: int,
     train_len: int,
+    token=None,
 ) -> None:
     """Persist a Decidir-visible result without running the optimizer grid."""
+    from app.services.discovery_recovery import Possession, locked_possession, settled
+
+    token = token or Possession.of(combination)
+    _, combination, _ = locked_possession(db, token)
     service = DiscoveryService()
     now = datetime.now(timezone.utc)
     metadata = service.combo_service.get_template_metadata(combination.template_id) or {}
@@ -469,7 +499,7 @@ def _persist_insufficient_sample(
     if existing:
         combination.state = "insufficient_sample"
         combination.result_id = existing.id
-        combination.lease_owner = owner
+        settled(db, combination, "insufficient_sample")
         combination.updated_at = now
         db.commit()
         return
@@ -528,7 +558,7 @@ def _persist_insufficient_sample(
     )
     combination.state = "insufficient_sample"
     combination.result_id = result_id
-    combination.lease_owner = owner
+    settled(db, combination, "insufficient_sample")
     combination.updated_at = now
     db.commit()
     logger.info(

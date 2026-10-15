@@ -5,16 +5,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEV_ROOT="/srv/apps/dev/criptofarol/source"
 PROD_ROOT="/srv/apps/prod/criptofarol/source"
 DRY_RUN=0
+DISCOVERY_ONLY=0
 ROOT_DIR="$SCRIPT_DIR"
 
 usage() {
-  echo "Usage: $0 [--dry-run] [--root $DEV_ROOT|$PROD_ROOT]" >&2
+  echo "Usage: $0 [--dry-run] [--discovery-only] [--root $DEV_ROOT|$PROD_ROOT]" >&2
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)
       DRY_RUN=1
+      shift
+      ;;
+    --discovery-only)
+      DISCOVERY_ONLY=1
       shift
       ;;
     --root)
@@ -55,6 +60,13 @@ else
     "criptofarol-prod-runtime-worker.service"
     "criptofarol-prod-discovery-worker.service"
   )
+  BACKEND_DROPIN_DIR=""
+  BACKEND_DROPIN_FILE=""
+fi
+
+if [[ "$DISCOVERY_ONLY" -eq 1 ]]; then
+  [[ "$TARGET" == "dev" ]] || { echo 'Discovery-only cutover is DEV-only.' >&2; exit 2; }
+  UNITS=("criptofarol-dev-discovery-worker.service")
   BACKEND_DROPIN_DIR=""
   BACKEND_DROPIN_FILE=""
 fi
@@ -103,10 +115,25 @@ if [[ "${EUID}" -ne 0 ]]; then
     if [[ "$ROOT_DIR" != "$SCRIPT_DIR" ]]; then
       extra=(--root "$ROOT_DIR")
     fi
+    if [[ "$DISCOVERY_ONLY" -eq 1 ]]; then extra+=(--discovery-only); fi
     exec sudo -n "$0" "${extra[@]}"
   fi
   echo "Root privileges are required to install $TARGET discovery workers." >&2
   exit 1
+fi
+
+# Applying a lower envelope to a running legacy tree may cause immediate OOM.
+# Drain/stop only Discovery first; fail closed if any old descendant remains.
+if [[ "$TARGET" == "dev" ]]; then
+  if systemctl is-active --quiet criptofarol-dev-discovery-worker.service; then
+    echo "Stop/drain DEV Discovery and verify empty cgroup before installing limits." >&2
+    exit 1
+  fi
+  group="$(systemctl show criptofarol-dev-discovery-worker.service -p ControlGroup --value)"
+  if [[ -n "$group" && -r "/sys/fs/cgroup$group/cgroup.procs" ]] && [[ -s "/sys/fs/cgroup$group/cgroup.procs" ]]; then
+    echo "Legacy Discovery descendants remain; refusing coexistence." >&2
+    exit 1
+  fi
 fi
 
 for unit in "${UNITS[@]}"; do

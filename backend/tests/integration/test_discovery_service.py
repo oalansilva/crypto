@@ -2206,13 +2206,20 @@ class TestCancelReconcile:
         db.close()
 
     def test_47_run_precheck_returns_pending_under_cancelling_skipped_under_terminal(
-        self, engine_factory
+        self, engine_factory, monkeypatch
     ):
-        """4.7: combinação reclamada antes do cancel, cujo `run_combination`
-        roda já sob `cancelling`, volta a `pending` (reconcile marca
-        `skipped`); sob `cancelled` vai direto a `skipped`."""
+        """4.7 (adaptado ao ledger do card #1093): a posse da combinação é o
+        lease/geração do ledger. Sob sweep terminal, `run_combination` rejeita
+        o escritor sem iniciar otimização nem escrever; leases vencidos sob
+        `cancelling`/terminal nunca viram `pending`: o reconciler os marca
+        `skipped` e o reconcile fecha o cancelamento."""
+        from app.services import discovery_supervisor
         from app.tasks.discovery_tasks import reconcile_sweep, run_combination
 
+        def _optimizer_must_not_start(*_args, **_kwargs):
+            raise AssertionError("optimizer started under a terminal sweep")
+
+        monkeypatch.setattr(discovery_supervisor, "run_supervised", _optimizer_must_not_start)
         engine = engine_factory()
         db = _session_factory(engine)()
         service = DiscoveryService()
@@ -2225,18 +2232,28 @@ class TestCancelReconcile:
         )
         claimed = service.claim_combinations("sw-race-47", owner="w1", db=db)
         assert len(claimed) == 1
+        assert claimed[0].state == "running" and claimed[0].attempts == 1
         db.query(DiscoverySweep).filter(DiscoverySweep.id == "sw-race-47").update(
             {DiscoverySweep.state: "cancelling"}, synchronize_session=False
         )
+        db.query(DiscoveryCombination).filter(DiscoveryCombination.id == claimed[0].id).update(
+            {
+                DiscoveryCombination.lease_expires_at: datetime.now(timezone.utc).replace(
+                    tzinfo=None
+                )
+                - timedelta(seconds=1)
+            },
+            synchronize_session=False,
+        )
         db.commit()
-        run_combination(db, claimed[0], owner="w1")
+        assert service.release_expired_leases(db) == 1
         db.refresh(claimed[0])
-        assert claimed[0].state == "pending"
+        assert claimed[0].state == "skipped" and claimed[0].lease_owner is None
         summary = reconcile_sweep("sw-race-47", db)
         assert summary["state"] == "cancelled"
         db.refresh(claimed[0])
         assert claimed[0].state == "skipped"
-        # Sob terminal não se cria `pending`: direto a `skipped`.
+        # Sob terminal não se cria `pending`: escritor rejeitado, lease vencido -> `skipped`.
         self._seed(
             db,
             "sw-term-47",
@@ -2251,6 +2268,19 @@ class TestCancelReconcile:
             .first()
         )
         run_combination(db, combo, owner="w1")
+        db.refresh(combo)
+        assert combo.state == "running"  # rejeitado pelo fencing: nenhuma escrita
+        db.query(DiscoveryCombination).filter(DiscoveryCombination.id == combo.id).update(
+            {
+                DiscoveryCombination.lease_expires_at: datetime.now(timezone.utc).replace(
+                    tzinfo=None
+                )
+                - timedelta(seconds=1)
+            },
+            synchronize_session=False,
+        )
+        db.commit()
+        assert service.release_expired_leases(db) == 1
         db.refresh(combo)
         assert combo.state == "skipped"
         assert (
@@ -2679,7 +2709,9 @@ class TestOrchestratorTasks:
         db.commit()
         run_combination(db, combo, owner="w1")
         db.refresh(combo)
-        assert combo.state == "skipped"
+        # Card #1093: sem sweep não há posse válida; o escritor é rejeitado pelo
+        # fencing do ledger sem iniciar otimização nem escrever na combinação.
+        assert combo.state == "running"
         db.close()
 
     def test_expected_candles_and_coverage_in_runner(self):

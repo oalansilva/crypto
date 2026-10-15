@@ -13,6 +13,7 @@ Features:
 
 import json
 import concurrent.futures
+import multiprocessing
 import hashlib
 import os
 import time
@@ -26,6 +27,9 @@ import pandas as pd
 # Log 15m coverage warning only once per symbol per process (avoids thousands of identical lines)
 _deep_coverage_warned: set = set()
 
+from app.services.discovery_budget_cache import Cache, BUDGET, bounded_execution
+from app.services.discovery_resources import ResourceProfile, CalculationFailure, track_pool
+from app.services.discovery_stream import ResultSpool, execute_stream, report
 from app.services.combo_service import ComboService
 from app.services.market_data_providers import (
     get_market_data_provider,
@@ -48,9 +52,9 @@ from app.metrics.indicators import ensure_ta_lib_context_columns
 # IMPORTANT:
 # - This cache lives inside each ProcessPoolExecutor worker process.
 # - It only becomes effective if we reuse the same executor across stages/rounds.
-_WORKER_15M_CACHE: Dict[str, Any] = {"key": None, "df": None}
-_WORKER_INDICATOR_CACHE: Dict[Any, Any] = {}
-_WORKER_COVERAGE_CACHE: Dict[Any, Any] = {}
+_WORKER_15M_CACHE = Cache("intraday")
+_WORKER_INDICATOR_CACHE = Cache("indicators")
+_WORKER_COVERAGE_CACHE = Cache("coverage")
 
 
 def _combo_optimizer_legacy() -> bool:
@@ -79,20 +83,24 @@ def _local_ohlcv_covers(loader, symbol: str, timeframe: str, end_date: str) -> b
 
 def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Optional[pd.DataFrame]:
     """Load (or reuse) the 15m DF in the current worker process."""
-    key = (symbol, since_str, until_str)
-    if _WORKER_15M_CACHE.get("key") == key and _WORKER_15M_CACHE.get("df") is not None:
-        return _WORKER_15M_CACHE["df"]
+    key = (symbol, since_str, until_str, os.getenv("DISCOVERY_FROZEN_INPUT_DIR"))
+    cached = _WORKER_15M_CACHE.get(key)
+    if cached is not None:
+        return cached
 
-    loader = IncrementalLoader()
-    df_15m = loader.fetch_intraday_data(
-        symbol=symbol,
-        timeframe="15m",
-        since_str=since_str,
-        until_str=until_str,
-        read_only=True,
-    )
-    _WORKER_15M_CACHE["key"] = key
-    _WORKER_15M_CACHE["df"] = df_15m
+    from app.services.discovery_inputs import read
+
+    df_15m = read("intraday")
+    if df_15m is None:
+        loader = IncrementalLoader()
+        df_15m = loader.fetch_intraday_data(
+            symbol=symbol,
+            timeframe="15m",
+            since_str=since_str,
+            until_str=until_str,
+            read_only=True,
+        )
+    _WORKER_15M_CACHE[key] = df_15m
     return df_15m
 
 
@@ -112,6 +120,11 @@ def split_train_holdout(df: pd.DataFrame, train_ratio: float) -> tuple[pd.DataFr
 # WORKER LOGGING (ProcessPoolExecutor workers run in separate processes)
 # -----------------------------------------------------------------------------
 def _init_worker_logging():
+    from app.services.discovery_supervisor import parent_death_signal, register_pool_worker
+
+    parent_death_signal()
+    register_pool_worker()
+    BUDGET.clear()
     """Configura logging nos workers para gravar em full_execution_log.txt (mesmo arquivo do main)."""
     log_file = Path(__file__).resolve().parents[2] / "full_execution_log.txt"
     root = logging.getLogger()
@@ -338,14 +351,7 @@ def extract_trades_with_mode(
             df_15m = df_15m_cache
         else:
             # Fetch 15m data
-            loader = IncrementalLoader()
-            df_15m = loader.fetch_intraday_data(
-                symbol=symbol,
-                timeframe="15m",
-                since_str=since_str,
-                until_str=until_str,
-                read_only=True,
-            )
+            df_15m = _worker_get_15m_cache(symbol, since_str, until_str)
 
         if df_15m.empty:
             if df_15m_cache is None:  # Only warn if we tried to fetch it
@@ -420,27 +426,41 @@ def extract_trades_with_mode(
 
 
 def _window_identity(df: pd.DataFrame) -> tuple:
-    ohlcv = np.ascontiguousarray(
-        df[["open", "high", "low", "close", "volume"]].to_numpy(dtype=np.float64)
-    )
     return (
-        int(pd.Timestamp(df.index[0]).value),
-        int(pd.Timestamp(df.index[-1]).value),
-        int(len(df)),
-        hashlib.sha256(ohlcv.tobytes()).hexdigest(),
+        repr([(col, str(dtype)) for col, dtype in zip(df.columns, df.dtypes)]),
+        repr((df.index.names, str(df.index.dtype))),
+        hashlib.sha256(pd.util.hash_pandas_object(df, index=True).to_numpy().tobytes()).hexdigest(),
     )
 
 
 def _indicator_cache_key(
-    indicators, entry_logic, exit_logic, derived_features, df: pd.DataFrame
+    indicators,
+    entry_logic,
+    exit_logic,
+    derived_features,
+    df: pd.DataFrame,
+    binding=None,
+    window_identity=None,
 ) -> tuple:
     return (
+        binding,
         json.dumps(indicators, sort_keys=True, default=str),
         entry_logic,
         exit_logic,
         json.dumps(derived_features or [], sort_keys=True, default=str),
-        _window_identity(df),
+        window_identity if window_identity is not None else _window_identity(df),
     )
+
+
+def _optimizer_context(df, template_metadata):
+    """Context enrichment cannot manufacture a competing bound producer."""
+    had_adx = "ADX_14" in df.columns
+    df = ensure_ta_lib_context_columns(df)
+    if template_metadata.get("name") == "long_ma_pullback_rsi_adx" and not had_adx:
+        # This diagnostic column is generated here, not supplied by the user.
+        # The declared ADX producer will calculate its own effective period.
+        df = df.drop(columns=["ADX_14"], errors="ignore")
+    return df
 
 
 # -----------------------------------------------------------------------------
@@ -456,6 +476,7 @@ def _run_backtest_logic(
     until_str,
     df_15m_cache=None,
     initial_capital=100,
+    window_identity=None,
 ):
     """
     Core backtest logic shared by single and batch workers.
@@ -467,6 +488,11 @@ def _run_backtest_logic(
     try:
         # Reconstruct strategy logic locally to avoid DB connection in worker
         indicators = template_data["indicators"]
+        from app.strategies.combos.indicator_binding import capture_binding
+
+        binding = capture_binding(
+            template_data.get("name"), indicators, template_data.get("derived_features")
+        )
         entry_logic = template_data["entry_logic"]
         exit_logic = template_data["exit_logic"]
         stop_loss = template_data.get("stop_loss", 0.015)
@@ -558,13 +584,14 @@ def _run_backtest_logic(
             exit_logic=exit_logic,
             stop_loss=stop_loss,
             direction=direction,
+            indicator_binding=binding,
         )
 
         if _combo_optimizer_legacy():
             df_with_signals = strategy._legacy_generate_signals(df.copy())
         else:
             cache_key = _indicator_cache_key(
-                indicators, entry_logic, exit_logic, derived_features, df
+                indicators, entry_logic, exit_logic, derived_features, df, binding, window_identity
             )
             cached = _WORKER_INDICATOR_CACHE.get(cache_key)
             if cached is None:
@@ -573,15 +600,13 @@ def _run_backtest_logic(
                     entry_mask = strategy._evaluate_logic_vectorized(df_ind, entry_logic)
                     exit_mask = strategy._evaluate_logic_vectorized(df_ind, exit_logic)
                 except Exception as exc:
-                    print(f"Error in vectorized logic: {exc}")
-                    entry_mask = pd.Series(False, index=df_ind.index)
-                    exit_mask = pd.Series(False, index=df_ind.index)
-                _WORKER_INDICATOR_CACHE[cache_key] = {
+                    raise CalculationFailure("calculation_error") from exc
+                cached = {
                     "frame": df_ind,
                     "entry": np.ascontiguousarray(entry_mask.fillna(False).astype(bool).to_numpy()),
                     "exit": np.ascontiguousarray(exit_mask.fillna(False).astype(bool).to_numpy()),
                 }
-                cached = _WORKER_INDICATOR_CACHE[cache_key]
+                _WORKER_INDICATOR_CACHE[cache_key] = cached
             work = cached["frame"].copy(deep=False)
             entry_mask = pd.Series(cached["entry"], index=work.index)
             exit_mask = pd.Series(cached["exit"], index=work.index)
@@ -715,6 +740,8 @@ def _worker_run_batch(batch_args):
     symbol = first_arg[6]
     since_str = first_arg[7]
     until_str = first_arg[8]
+    # The batch's input frame is immutable and shared by all its trials.
+    window_identity = _window_identity(first_arg[2])
 
     if deep_backtest:
         try:
@@ -737,6 +764,7 @@ def _worker_run_batch(batch_args):
             since_str,
             until_str,
             df_15m_cache,  # Pass the cached data
+            window_identity=window_identity if df is first_arg[2] else None,
         )
 
         # Wrap result to match single worker structure
@@ -762,6 +790,10 @@ def _worker_run_batch(batch_args):
                 }
             )
 
+    if results:
+        from app.services.discovery_resources import telemetry
+
+        results[0]["worker_telemetry"] = telemetry()
     return results
 
 
@@ -1448,7 +1480,7 @@ class ComboOptimizer:
         if df is not None and not df.empty and "regime" not in df.columns:
             try:
                 df = df.copy()
-                df = ensure_ta_lib_context_columns(df)
+                df = _optimizer_context(df, template_metadata)
 
                 # Regime Classification with NaN handling
                 sma_col = "SMA_50"
@@ -1479,254 +1511,77 @@ class ComboOptimizer:
             stage_best_value = None
             stage_best_sharpe = float("-inf")
 
-            worker_args = []
+            profile = ResourceProfile.optimizer(max_workers)
 
-            if is_grid_mode:
-                param_names = stage_param
-                value_lists = stage_values
-                for combo in itertools.product(*value_lists):
-                    test_params = best_params.copy()
-
-                    # --- HEURISTIC FILTER: Multi MA Logic ---
-                    # Optimization: Skip combinations where Short >= Inter or Inter >= Long
-                    # This dramatically reduces search space for "Cruzamento Medias" strategy.
-
-                    # 1. Identify params by common aliases
-                    p_short = None
-                    p_inter = None
-                    p_long = None
-
-                    # Map loop values to temp dict for checking
-                    # If param not in loop (grid), check best_params (fixed context)
-                    current_combo = dict(zip(param_names, combo))
-                    full_context = {**best_params, **current_combo}
-
-                    for k, v in full_context.items():
-                        k_lower = k.lower()
-                        # Check aliases (suffix match to handle prefixes like 'ema_short')
-                        if (
-                            k_lower.endswith("media_curta")
-                            or k_lower.endswith("ema_short")
-                            or k_lower.endswith("sma_short")
-                        ):
-                            p_short = v
-                        elif k_lower.endswith("media_inter") or k_lower.endswith("sma_medium"):
-                            p_inter = v
-                        elif k_lower.endswith("media_longa") or k_lower.endswith("sma_long"):
-                            p_long = v
-
-                    # 2. Check Logical Constraint if all 3 are present
-                    if p_short is not None and p_inter is not None and p_long is not None:
-                        # Ensure values are comparable numbers
-                        try:
-                            if not (float(p_short) < float(p_inter) < float(p_long)):
-                                continue  # SKIP INVALID COMBINATION
-                        except (ValueError, TypeError):
-                            pass  # customized params might be non-numeric, ignore filter
-
-                    # ----------------------------------------
-
-                    for pname, pval in zip(param_names, combo):
-                        test_params[pname] = pval
-                    combo_dict = dict(zip(param_names, combo))
-                    worker_args.append(
-                        (
-                            template_metadata,
-                            test_params,
-                            df,
-                            param_names,
-                            combo_dict,
-                            deep_backtest,
-                            symbol,
-                            start_date,
-                            end_date,
-                        )
+            def arguments():
+                for trial, args in enumerate(
+                    self._stage_worker_args(
+                        stage,
+                        best_params,
+                        df,
+                        deep_backtest,
+                        symbol,
+                        start_date,
+                        end_date,
+                        template_metadata,
                     )
-            else:
-                for value in stage_values:
-                    test_params = best_params.copy()
-                    if stage_param != "timeframe":
-                        test_params[stage_param] = value
-                        worker_args.append(
-                            (
-                                template_metadata,
-                                test_params,
-                                df,
-                                stage_param,
-                                value,
-                                deep_backtest,
-                                symbol,
-                                start_date,
-                                end_date,
-                            )
-                        )
+                ):
+                    yield args[:9] + (trial,)
 
-            if not worker_args:
-                continue
-
-            # Log combinations count for this stage
-            combinations_count = len(worker_args)
-            stage_name = f"Round {round_num} - Stage: {stage_param if not is_grid_mode else 'Grid(' + ','.join(stage_param) + ')'}"
-            logging.info(f"🔢 {stage_name}: Testing {combinations_count} combinations")
-            total_combinations_tested += combinations_count
-
-            results = []
-            BATCH_SIZE = 200
-            tagged_args = []
-            for trial_index, args in enumerate(worker_args):
-                if isinstance(args, tuple) and len(args) >= 9:
-                    tagged_args.append(args[:9] + (trial_index,))
-                else:
-                    tagged_args.append(args)
-            worker_args = tagged_args
-            worker_batches = [
-                worker_args[i : i + BATCH_SIZE] for i in range(0, len(worker_args), BATCH_SIZE)
-            ]
-
-            total_batches = len(worker_batches)
-            logging.info(
-                f"📦 Dividido em {total_batches} batches de até {BATCH_SIZE} combinações cada"
+            planned = sum(
+                1
+                for _ in self._stage_worker_args(
+                    stage,
+                    best_params,
+                    None,
+                    deep_backtest,
+                    symbol,
+                    start_date,
+                    end_date,
+                    template_metadata,
+                )
             )
-            logging.info(f"⚙️  Usando {max_workers} workers em paralelo")
-
-            import concurrent.futures
-
-            start_time = time.time()
-            completed_batches = 0
-            processed_combinations = 0
-
-            local_executor: Optional[concurrent.futures.ProcessPoolExecutor] = None
+            if not planned:
+                continue
+            logging.info(
+                "Round %s stage %s planned=%s workers=%s",
+                round_num,
+                stage_param,
+                planned,
+                profile.effective_workers,
+            )
+            local_executor = None
             exec_to_use = executor
             if exec_to_use is None:
-                # Backward-compatible fallback: create a pool just for this call.
                 local_executor = concurrent.futures.ProcessPoolExecutor(
-                    max_workers=max_workers, initializer=_init_worker_logging
+                    max_workers=profile.effective_workers,
+                    mp_context=multiprocessing.get_context("spawn"),
+                    initializer=_init_worker_logging,
                 )
                 exec_to_use = local_executor
-
-            futures = {}
-            ordered_batches: list = [None] * len(worker_batches)
+                track_pool(local_executor)
             try:
-                futures = {
-                    exec_to_use.submit(_worker_run_batch, batch): i
-                    for i, batch in enumerate(worker_batches)
-                }
-                for future in concurrent.futures.as_completed(futures):
-                    batch_idx = futures[future]
-                    try:
-                        batch_results = future.result()
-                        ordered_batches[batch_idx] = batch_results
-
-                        # Update progress
-                        completed_batches += 1
-                        processed_combinations += len(worker_batches[batch_idx])
-
-                        # Calculate progress metrics
-                        progress_pct = (completed_batches / total_batches) * 100
-                        elapsed_time = time.time() - start_time
-
-                        # Estimate time remaining
-                        if completed_batches > 0:
-                            avg_time_per_batch = elapsed_time / completed_batches
-                            remaining_batches = total_batches - completed_batches
-                            estimated_remaining = avg_time_per_batch * remaining_batches
-
-                            # Format time
-                            elapsed_min = int(elapsed_time / 60)
-                            elapsed_sec = int(elapsed_time % 60)
-                            remaining_min = int(estimated_remaining / 60)
-                            remaining_sec = int(estimated_remaining % 60)
-
-                            logging.info(
-                                f"✅ Batch {completed_batches}/{total_batches} completo "
-                                f"({progress_pct:.1f}%) | "
-                                f"Processadas: {processed_combinations:,}/{combinations_count:,} | "
-                                f"Tempo: {elapsed_min}m{elapsed_sec}s | "
-                                f"Restante: ~{remaining_min}m{remaining_sec}s"
-                            )
-                    except Exception as e:
-                        logging.warning(f"⚠️ Batch {batch_idx} falhou: {e}")
-                        pass
-            except KeyboardInterrupt:
-                # Do NOT shutdown a shared executor; just cancel pending futures.
-                try:
-                    for f in futures:
-                        f.cancel()
-                except Exception:
-                    pass
-                raise
+                with ResultSpool(profile) as spool:
+                    counters = execute_stream(
+                        exec_to_use, _worker_run_batch, arguments, planned, spool, profile
+                    )
+                    total_combinations_tested += counters["executed"]
+                    scored_results = spool.ranked(
+                        0,
+                        best_params,
+                        stage,
+                        return_top_n * 2 if is_grid_mode and return_top_n > 1 else 1,
+                    )
+                if not scored_results:
+                    raise CalculationFailure("empty_stage")
+                if is_grid_mode and return_top_n > 1:
+                    collected_candidates.extend(scored_results)
+                top = scored_results[0]
+                best_metrics = top["metrics"]
+                best_params = top["params"]
             finally:
                 if local_executor is not None:
-                    local_executor.shutdown(wait=True)
-
-            total_time = time.time() - start_time
-            total_min = int(total_time / 60)
-            total_sec = int(total_time % 60)
-            logging.info(
-                f"🏁 Stage completo em {total_min}m{total_sec}s | Total processado: {processed_combinations:,} combinações"
-            )
-
-            results = []
-            for batch_results in ordered_batches:
-                if batch_results:
-                    results.extend(batch_results)
-            results.sort(key=lambda r: r.get("trial_index", 0))
-            valid_results = [r for r in results if r["success"]]
-
-            if valid_results:
-                sharpes = [r["metrics"]["sharpe_ratio"] for r in valid_results]
-                returns = [r["metrics"]["total_return"] for r in valid_results]
-                min_s, max_s = min(sharpes), max(sharpes)
-                min_r, max_r = min(returns), max(returns)
-                range_s = max_s - min_s
-                range_r = max_r - min_r
-
-                # Score all results
-                scored_results = []
-                for res in valid_results:
-                    m = res["metrics"]
-                    s = m["sharpe_ratio"]
-                    r = m["total_return"]
-                    ns = (s - min_s) / range_s if range_s > 0 else 0
-                    nr = (r - min_r) / range_r if range_r > 0 else 0
-                    score = (0.7 * ns) + (0.3 * nr)
-
-                    # Construct full params for this result
-                    result_params = best_params.copy()
-                    if is_grid_mode:
-                        result_params.update(res["value"])
-                    else:
-                        result_params[stage_param] = res["value"]
-
-                    scored_results.append(
-                        {
-                            "params": result_params,
-                            "metrics": m,
-                            "score": score,
-                            "trial_index": res.get("trial_index", 0),
-                        }
-                    )
-
-                # Sort by score, then original trial index so as_completed cannot decide ties.
-                scored_results.sort(key=lambda x: (-x["score"], x["trial_index"]))
-
-                # If we are in Grid Mode and collecting candidates for branching
-                if is_grid_mode and return_top_n > 1:
-                    collected_candidates.extend(
-                        scored_results[: return_top_n * 2]
-                    )  # Keep a few more for distance filtering
-
-                # Update best for standard greedy flow
-                top = scored_results[0]
-                stage_best_value = (
-                    top["params"][stage_param]
-                    if not is_grid_mode
-                    else {k: top["params"][k] for k in stage_param}
-                )
-                best_metrics = top["metrics"]
-
-                # Greedily update best_params for NEXT stage in this loop
-                best_params = top["params"]
+                    local_executor.shutdown(wait=True, cancel_futures=True)
 
         # Log total combinations tested
         logging.info(f"📊 Total combinations tested in this execution: {total_combinations_tested}")
@@ -1736,8 +1591,7 @@ class ComboOptimizer:
                 # Sort all collected candidates (if multiple grid stages existed, unlikely for 4D)
                 collected_candidates.sort(key=lambda x: x["score"], reverse=True)
                 return collected_candidates[: return_top_n * 2]
-            # All batches failed: return one fallback candidate so caller always gets list of {params, metrics, score}
-            return [{"params": best_params, "metrics": best_metrics or {}, "score": float("-inf")}]
+            raise CalculationFailure("empty_optimization")
 
         return best_params, best_metrics
 
@@ -1764,7 +1618,7 @@ class ComboOptimizer:
         if df is not None and not df.empty and "regime" not in df.columns:
             try:
                 df = df.copy()
-                df = ensure_ta_lib_context_columns(df)
+                df = _optimizer_context(df, template_metadata)
                 if "SMA_50" in df.columns:
                     df["regime"] = "Unknown"
                     df.loc[df["close"] > df["SMA_50"], "regime"] = "Bull"
@@ -1788,92 +1642,57 @@ class ComboOptimizer:
                 }
             )
 
-        def _submit_tagged(tagged):
-            BATCH_SIZE = 200
-            batches = [tagged[i : i + BATCH_SIZE] for i in range(0, len(tagged), BATCH_SIZE)]
-            ordered = [None] * len(batches)
-            if batches:
-                futures = {
-                    executor.submit(_worker_run_batch, batch): i for i, batch in enumerate(batches)
-                }
-                for future in concurrent.futures.as_completed(futures):
-                    bidx = futures[future]
-                    try:
-                        ordered[bidx] = future.result()
-                    except Exception as exc:
-                        logging.warning("Pooled R%s batch %s failed: %s", round_num, bidx, exc)
-            flat = []
-            for chunk in ordered:
-                if chunk:
-                    flat.extend(chunk)
-            return {r.get("trial_index"): r for r in flat}
-
-        def _greedy_update(state, stage, branch_rows):
-            valid_results = [row for row in branch_rows if row.get("success")]
-            if not valid_results:
-                return
-            is_grid_mode = stage.get("grid_mode", False)
-            stage_param = stage["parameter"]
-            sharpes = [row["metrics"]["sharpe_ratio"] for row in valid_results]
-            returns = [row["metrics"]["total_return"] for row in valid_results]
-            min_s, max_s = min(sharpes), max(sharpes)
-            min_r, max_r = min(returns), max(returns)
-            range_s = max_s - min_s
-            range_r = max_r - min_r
-            scored_results = []
-            best_params = state["params"]
-            for res in valid_results:
-                m = res["metrics"]
-                s = m["sharpe_ratio"]
-                r = m["total_return"]
-                ns = (s - min_s) / range_s if range_s > 0 else 0
-                nr = (r - min_r) / range_r if range_r > 0 else 0
-                score = (0.7 * ns) + (0.3 * nr)
-                result_params = best_params.copy()
-                if is_grid_mode:
-                    result_params.update(res["value"])
-                else:
-                    result_params[stage_param] = res["value"]
-                scored_results.append(
-                    {
-                        "params": result_params,
-                        "metrics": m,
-                        "score": score,
-                        "trial_index": res.get("trial_index", 0),
-                    }
-                )
-            scored_results.sort(key=lambda x: (-x["score"], x["trial_index"]))
-            top = scored_results[0]
-            state["params"] = top["params"]
-            state["metrics"] = top["metrics"]
-            state["score"] = top["metrics"].get("sharpe_ratio", top["score"])
-
+        profile = ResourceProfile.optimizer(max_workers)
         n_stages = max((len(state["stages"]) for state in branch_states), default=0)
         for stage_i in range(n_stages):
-            all_args = []
-            branch_ranges = []
-            for state in branch_states:
-                if stage_i >= len(state["stages"]):
-                    continue
-                stage = state["stages"][stage_i]
-                start = len(all_args)
-                worker_args = self._stage_worker_args(
-                    stage,
-                    state["params"],
-                    df,
-                    deep_backtest,
-                    symbol,
-                    start_date,
-                    end_date,
-                    template_metadata,
+            domains = [
+                (domain, state, state["stages"][stage_i])
+                for domain, state in enumerate(branch_states)
+                if stage_i < len(state["stages"])
+            ]
+            planned = sum(
+                sum(
+                    1
+                    for _ in self._stage_worker_args(
+                        stage,
+                        state["params"],
+                        None,
+                        deep_backtest,
+                        symbol,
+                        start_date,
+                        end_date,
+                        template_metadata,
+                    )
                 )
-                for args in worker_args:
-                    all_args.append(args[:9] + (len(all_args),))
-                branch_ranges.append((state, start, len(all_args), stage))
-            by_index = _submit_tagged(all_args)
-            for state, start, end, stage in branch_ranges:
-                branch_rows = [by_index[i] for i in range(start, end) if i in by_index]
-                _greedy_update(state, stage, branch_rows)
+                for _, state, stage in domains
+            )
+
+            def arguments():
+                trial = 0
+                for domain, state, stage in domains:
+                    for args in self._stage_worker_args(
+                        stage,
+                        state["params"],
+                        df,
+                        deep_backtest,
+                        symbol,
+                        start_date,
+                        end_date,
+                        template_metadata,
+                    ):
+                        yield args[:9] + (trial, domain)
+                        trial += 1
+
+            with ResultSpool(profile) as spool:
+                execute_stream(executor, _worker_run_batch, arguments, planned, spool, profile)
+                for domain, state, stage in domains:
+                    ranked = spool.ranked(domain, state["params"], stage, 1)
+                    if not ranked:
+                        continue  # A stage with zero legal trials keeps the reference state.
+                    top = ranked[0]
+                    state["params"] = top["params"]
+                    state["metrics"] = top["metrics"]
+                    state["score"] = top["metrics"].get("sharpe_ratio", top["score"])
 
         next_round_candidates = []
         for state in branch_states:
@@ -1912,7 +1731,6 @@ class ComboOptimizer:
         end_date,
         template_metadata,
     ):
-        worker_args = []
         stage_param = stage["parameter"]
         stage_values = stage["values"]
         is_grid_mode = stage.get("grid_mode", False)
@@ -1944,39 +1762,35 @@ class ComboOptimizer:
                         pass
                 for pname, pval in zip(param_names, combo):
                     test_params[pname] = pval
-                worker_args.append(
-                    (
-                        template_metadata,
-                        test_params,
-                        df,
-                        param_names,
-                        dict(zip(param_names, combo)),
-                        deep_backtest,
-                        symbol,
-                        start_date,
-                        end_date,
-                    )
+                yield (
+                    template_metadata,
+                    test_params,
+                    df,
+                    param_names,
+                    dict(zip(param_names, combo)),
+                    deep_backtest,
+                    symbol,
+                    start_date,
+                    end_date,
                 )
         else:
             for value in stage_values:
                 test_params = best_params.copy()
                 if stage_param != "timeframe":
                     test_params[stage_param] = value
-                    worker_args.append(
-                        (
-                            template_metadata,
-                            test_params,
-                            df,
-                            stage_param,
-                            value,
-                            deep_backtest,
-                            symbol,
-                            start_date,
-                            end_date,
-                        )
+                    yield (
+                        template_metadata,
+                        test_params,
+                        df,
+                        stage_param,
+                        value,
+                        deep_backtest,
+                        symbol,
+                        start_date,
+                        end_date,
                     )
-        return worker_args
 
+    @bounded_execution
     def run_optimization(
         self,
         template_name: str,
@@ -2038,6 +1852,10 @@ class ComboOptimizer:
 
         # Load data from selected provider (ccxt default; stooq for US stocks EOD)
         provider = get_market_data_provider(selected_data_source)
+        if os.getenv("DISCOVERY_FROZEN_INPUT_DIR"):
+            from app.services.discovery_inputs import FrozenProvider
+
+            provider = FrozenProvider()
         df = provider.fetch_ohlcv(
             symbol=symbol,
             timeframe=timeframe,
@@ -2075,7 +1893,11 @@ class ComboOptimizer:
                 df_train_tail_for_warmup = None
         # Workers will only READ the parquet slice (read_only=True) to avoid concurrent writes/corruption.
         # After prefetch, ensure 15m tail is up to end_date (self-healing: avoids stale cache for this symbol).
-        if deep_backtest and selected_data_source == "ccxt":
+        if (
+            deep_backtest
+            and selected_data_source == "ccxt"
+            and not os.getenv("DISCOVERY_FROZEN_INPUT_DIR")
+        ):
             period_end = end_date
             daily_covers = _local_ohlcv_covers(self.loader, symbol, timeframe, period_end)
             intra_covers = _local_ohlcv_covers(self.loader, symbol, "15m", period_end)
@@ -2167,8 +1989,7 @@ class ComboOptimizer:
         best_metrics = None
 
         # Use ProcessPoolExecutor for parallel execution
-        # Use max_workers = CPU count - 1 to leave one for the OS/Backend
-        max_workers = max(1, (os.cpu_count() or 2) - 1)
+        max_workers = ResourceProfile.optimizer().effective_workers
 
         # PHASE 2: Detect Grid Search and allow refinement
         # Grid Search finds the best region, then we refine it. Same logic for long and short (direction-agnostic).
@@ -2183,8 +2004,11 @@ class ComboOptimizer:
         # Reuse a single executor across all stages/rounds in this optimization.
         # This drastically reduces process spawn overhead and enables per-worker caches (e.g. 15m data).
         with concurrent.futures.ProcessPoolExecutor(
-            max_workers=max_workers, initializer=_init_worker_logging
+            max_workers=max_workers,
+            mp_context=multiprocessing.get_context("spawn"),
+            initializer=_init_worker_logging,
         ) as executor:
+            track_pool(executor)
             if has_grid_search and has_adaptive:
                 # -------------------------------------------------------------
                 # 4D ADAPTIVE OPTIMIZATION (MULTI-BRANCH)
@@ -2430,7 +2254,7 @@ class ComboOptimizer:
             # Enrich df_final with regime for heavy metrics calculation
             if "regime" not in df_final.columns:
                 try:
-                    df_final = ensure_ta_lib_context_columns(df_final)
+                    df_final = _optimizer_context(df_final, template_metadata)
 
                     # Use SMA_50 as fallback for better coverage (SMA_200 has more warmup NaNs)
                     if "SMA_50" not in df_final.columns and "SMA_200" in df_final.columns:
@@ -2460,6 +2284,7 @@ class ComboOptimizer:
 
             # Generate signals
             df_with_signals = strategy.generate_signals(df_final.copy())
+            report({"phase_complete": "final_signals"})
 
             # Extract trades (same direction as optimization)
             stop_loss = best_params.get("stop_loss", 0.0)
@@ -2478,6 +2303,7 @@ class ComboOptimizer:
                 return_mode=True,
                 slippage=final_slippage,
             )
+            report({"phase_complete": "final_execution"})
 
             # Recompute core metrics from final backtest trades (same set as returned to frontend)
             # Fixes Total Return / Win Rate mismatch vs. "List of trades" / Cumulative P&L
@@ -2532,6 +2358,8 @@ class ComboOptimizer:
                         "volume": float(row["volume"]),
                     }
                 )
+                if len(candles) % 1000 == 0:
+                    report({"phase_complete": f"final_candles:{len(candles)}"})
 
             # Extract indicator data (only numeric columns)
             indicator_data = {}
@@ -2573,11 +2401,7 @@ class ComboOptimizer:
                     continue
 
         except Exception as e:
-            logging.error(f"Final backtest failed: {e}")
-            trades = []
-            candles = []
-            indicator_data = {}
-            execution_mode = "fast_1d"
+            raise CalculationFailure("final_calculation_error") from e
 
         # Walk-forward holdout (card #470): backtest the best parameters on the
         # most recent fraction and compute GO/NO-GO verdict over holdout metrics.
@@ -2595,6 +2419,7 @@ class ComboOptimizer:
                 if df_train_tail_for_warmup is not None and not df_train_tail_for_warmup.empty:
                     holdout_frame = pd.concat([df_train_tail_for_warmup, df_holdout])
                 df_holdout_signals = strategy_holdout.generate_signals(holdout_frame.copy())
+                report({"phase_complete": "holdout_signals"})
                 stop_loss = best_params.get("stop_loss", 0.0)
                 direction = best_params.get("direction", "long")
                 if direction not in ("long", "short"):
@@ -2698,6 +2523,7 @@ class ComboOptimizer:
                     "execution_mode": holdout_mode,
                     "split_train_ratio": float(split_train_ratio),
                 }
+                report({"phase_complete": "holdout_complete"})
                 logging.info(
                     "Walk-forward holdout verdict: %s (%d trades, %d reasons)",
                     criteria_result.status,
@@ -2705,16 +2531,7 @@ class ComboOptimizer:
                     len(criteria_result.reasons),
                 )
             except Exception as exc:
-                logging.error("Walk-forward holdout backtest failed: %s", exc)
-                oos_metrics = None
-                oos_verdict = {
-                    "status": "ERROR",
-                    "reasons": [f"Holdout backtest falhou: {exc}"],
-                    "warnings": [],
-                    "holdout_trades": 0,
-                    "execution_mode": "holdout_error",
-                    "split_train_ratio": float(split_train_ratio),
-                }
+                raise CalculationFailure("holdout_calculation_error") from exc
 
         # COMPLETION SUMMARY (after final backtest so metrics match returned trades)
         logging.info("=" * 80)

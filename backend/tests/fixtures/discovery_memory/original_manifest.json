@@ -1,0 +1,20 @@
+{
+  "symbol": "BTC/USDT",
+  "timeframe": "15m",
+  "direction": "long",
+  "start_date": "2025-10-06",
+  "end_date": "2026-10-06",
+  "rows": 35041,
+  "train_rows": 24528,
+  "holdout_rows": 10513,
+  "burnin": 250,
+  "r1_trials": 492480,
+  "source": "/srv/apps/dev/criptofarol/source/data/storage/binance/BTC_USDT_15m.parquet",
+  "source_sha256": "06230fa6125f45ca8d042f939ca75c6344cd6224c7abffa1673cd3eda00742c7",
+  "source_mtime_ns": 1791848386758429722,
+  "parquet_sha256": "cbac63c0b7819408a1c9db0c08e01a4ecf3ad39935183b94e09506965e6e8bc1",
+  "candle_values_sha256": "e289e0c22e7e8c5fd2633456f87b6d9fd1ab017a5c777ff13f47234d1e0693f1",
+  "first": "2025-10-06 00:00:00+00:00",
+  "last": "2026-10-06 00:00:00+00:00",
+  "provenance": "Recovered 2026-10-13 from DEV cache written 2026-10-12. Journal identifies the same immutable historical window and row count; no historical byte digest was recorded, so historical byte identity is unproven."
+}

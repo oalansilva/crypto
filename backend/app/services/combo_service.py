@@ -155,6 +155,12 @@ class ComboService:
 
         # Extract template data
         indicators = metadata["indicators"]
+        from app.strategies.combos.indicator_binding import capture_binding
+
+        binding = capture_binding(template_name, indicators, metadata.get("derived_features"))
+        import copy
+
+        indicators = copy.deepcopy(indicators)
         entry_logic = metadata["entry_logic"]
         exit_logic = metadata["exit_logic"]
         stop_loss = metadata.get("stop_loss", 0.015)
@@ -202,6 +208,7 @@ class ComboService:
             stop_loss=stop_loss,
             derived_features=derived_features,
             direction=direction,
+            indicator_binding=binding,
         )
 
     def save_template(
