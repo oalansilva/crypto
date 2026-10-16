@@ -6,7 +6,7 @@
 
 **Harness:** adapter do Claude Code, cooperativo e não oficial, com a mesma FSM, skills e seleção de modelos (#1101), mais a orquestração pelo app desktop via SSH (#1103); evidência de execução do Codex coletada antes dos gates (#1095); preparação segura da remediação de segredos no histórico Git (#1071), sem reescrita de histórico nesta release.
 
-**Risco aceito e rastreado:** o teto de memória do #1093 vale só para a unit DEV; a Descoberta de PROD segue sem teto (MemoryHigh e MemoryMax infinitos) e o procedimento de migração em PROD não estava documentado. Decisão sobre aplicar o teto em PROD e o runbook ficam no #1110, em Em Refinamento. O #1103 foi homologado com 5 tarefas after-qa (ensaio real pelo app) ainda abertas, declaradas no card.
+**Risco aceito e rastreado:** o teto de memória do #1093 vale só para a unit DEV; a Descoberta de PROD segue sem teto (MemoryHigh e MemoryMax infinitos) e o procedimento de migração em PROD não estava documentado. Alan decidiu que o teto também é necessário em PROD, pois DEV e PROD dividem a máquina; aplicação e runbook ficam no #1110, em Em Refinamento. Sincronização com o Drive dispensada por Alan nesta release. O #1103 foi homologado com 5 tarefas after-qa (ensaio real pelo app) ainda abertas, declaradas no card.
 
 **Evidência:** PR de código #1108, PROD no SHA 27f120713692ab4cae9ec5abd1ebb0a4af2f7094, migração 20261013_0001 com backup antes, cinco units persistentes ativas, health público 200; nota canônica docs/release-2026-10-16.md. Kaizen: #1109, #1110 e #1111.
 
