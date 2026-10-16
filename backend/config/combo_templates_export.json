@@ -2569,7 +2569,7 @@
         {"type": "donchian", "alias": "dc", "params": {"length": 20}},
         {"type": "volume_sma", "alias": "vol_avg", "params": {"length": 20, "multiplier": 1.2}}
       ],
-      "entry_logic": "(close > dc_upper) & (volume > vol_avg)",
+      "entry_logic": "(close > dc_upper.shift(1)) & (volume > vol_avg)",
       "exit_logic": "close < dc_middle",
       "stop_loss": 0.025
     },

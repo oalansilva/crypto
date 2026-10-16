@@ -1,0 +1,142 @@
+import sys, os
+sys.dont_write_bytecode = True
+sys.path.append('/srv/apps/dev/criptofarol/source/backend/.venv/lib/python3.12/site-packages')
+sys.path.insert(0, '/tmp/discovery-speed-study-AbHBUx')
+import bench as b
+import numpy as np, pandas as pd, talib, numba, time, json, argparse, contextlib, io
+from pathlib import Path
+from collections import OrderedDict
+OUT = Path('/tmp/discovery-speed-v2'); b.OUT = OUT
+co = b.co; deep = b.deep; Strategy = b.ComboStrategy
+ORIG_CALC = Strategy.calculate_indicators
+ORIG_DEEP = deep._fast_simulate_execution_with_15m
+TALIB_ORIG = {n: getattr(talib, n) for n in ['EMA', 'SMA', 'RSI', 'MACD', 'BBANDS', 'ATR', 'ADX', 'ROC']}
+IND_CACHE = OrderedDict(); CTX = None; STATS = {'indicator_hits': 0, 'indicator_misses': 0}
+
+@numba.njit(cache=True, fastmath=False, nogil=True, error_model='numpy')
+def position_kernel(opens, lows, entry, exit, stop, is_long):
+    n = len(opens); signals = np.zeros(n, np.int64); reasons = np.zeros(n, np.int64); i = 1
+    while i < n:
+        while i < n and not entry[i]: i += 1
+        e = i + 1
+        if e >= n: break
+        signals[e] = 1; reasons[e] = 1; price = opens[e]; i = e + 1
+        while i < n:
+            if is_long and (lows[i] - price) / price <= -stop:
+                signals[i] = -1; reasons[i] = 2; i += 1; break
+            if exit[i]:
+                x = i + 1
+                if x >= n: i = n; break
+                signals[x] = -1; reasons[x] = 3; i = x + 1; break
+            i += 1
+    return signals, reasons
+
+def position_loop(self, df, entry_mask, exit_mask):
+    if not entry_mask.any(): return df.assign(signal=0, signal_reason='')
+    signals, reasons = position_kernel(np.ascontiguousarray(df['open'].to_numpy(dtype=np.float64)), np.ascontiguousarray(df['low'].to_numpy(dtype=np.float64)), np.ascontiguousarray(entry_mask.fillna(False).to_numpy(dtype=bool)), np.ascontiguousarray(exit_mask.fillna(False).to_numpy(dtype=bool)), float(self.stop_loss), self.direction == 'long')
+    return df.assign(signal=signals, signal_reason=np.array(['', 'entry', 'stop_loss', 'exit_logic'], dtype=object)[reasons])
+
+@numba.njit(cache=True, fastmath=False, nogil=True)
+def deep_kernel(times, opens, closes, signals, it, low, high, stop, short):
+    entries = np.flatnonzero(signals == 1); exits = np.flatnonzero(signals == -1)
+    result = np.zeros((len(entries), 4), np.float64); count = 0; last = -9223372036854775807
+    for e in entries:
+        t = times[e]
+        if t < last: continue
+        price = opens[e]; sp = price * (1 + stop) if short else price * (1 - stop)
+        p = np.searchsorted(times[exits], t, side='right')
+        x = exits[p] if p < len(exits) else -1
+        xt = times[x] if x >= 0 else times[-1] + 86400000000000
+        xp = opens[x] if x >= 0 else closes[-1]
+        hit = -1
+        if stop > 0:
+            start = np.searchsorted(it, t); end = np.searchsorted(it, xt)
+            for j in range(start, end):
+                if (short and high[j] >= sp) or (not short and low[j] <= sp):
+                    hit = j; xp = sp; xt = it[j]; break
+        if x < 0 and hit < 0: continue
+        last = xt; result[count, 0] = e; result[count, 1] = x; result[count, 2] = hit; result[count, 3] = xp; count += 1
+    return result[:count]
+
+def deep_loop(df_daily_signals, df_15m, stop_loss, direction='long', slippage=0.0):
+    df = df_daily_signals; intra = df_15m
+    short = (direction or 'long').lower() == 'short'; stop = float(stop_loss) if stop_loss is not None else 0.
+    times = deep._asi8(df.index); iso = deep._iso_array(df.index); ii = deep._iso_array(intra.index)
+    opens = df['open'].to_numpy(dtype=np.float64, copy=False)
+    rows = deep_kernel(times, opens, df['close'].to_numpy(dtype=np.float64, copy=False), df['signal'].to_numpy(copy=False), deep._asi8(intra.index), intra['low'].to_numpy(dtype=np.float64, copy=False), intra['high'].to_numpy(dtype=np.float64, copy=False), stop, short)
+    trades = []; profit_fn = deep.short_trade_profit_frac if short else deep.long_trade_profit_frac
+    for e, x, hit, xp in rows:
+        e = int(e); x = int(x); hit = int(hit); ep = float(opens[e]); xp = float(xp)
+        trades.append(dict(entry_time=iso[e], entry_price=ep, type='short' if short else 'long', exit_time=ii[hit] if hit >= 0 else iso[x], exit_price=xp, profit=profit_fn(ep, xp, slippage=slippage), exit_reason='stop_loss_15m' if hit >= 0 else 'signal_15m', signal_type='Stop' if hit >= 0 else 'Close entry(s) order...', entry_signal_type='Vender' if short else 'Comprar'))
+    return trades
+
+def cache_wrapper(name, fn):
+    def cached(*args, **kwargs):
+        if CTX is None: return fn(*args, **kwargs)
+        if not all(isinstance(a, pd.Series) and a.name in ('open', 'high', 'low', 'close', 'volume') for a in args): return fn(*args, **kwargs)
+        key = (CTX, name, tuple(a.name for a in args), tuple(sorted(kwargs.items())))
+        if key in IND_CACHE:
+            STATS['indicator_hits'] += 1; return IND_CACHE[key]
+        STATS['indicator_misses'] += 1
+        out = fn(*args, **kwargs); IND_CACHE[key] = out
+        if len(IND_CACHE) > 4096: IND_CACHE.popitem(last=False)
+        return out
+    return cached
+
+def calculate(self, df, *args, **kwargs):
+    global CTX
+    old = CTX; CTX = b.memo_identity(df)
+    try: return ORIG_CALC(self, df, *args, **kwargs)
+    finally: CTX = old
+
+def select(mode):
+    b.select_original(mode)
+    Strategy._fast_position_loop = position_loop if mode in ('numba', 'combined') else b.ORIG_LOOP
+    deep._fast_simulate_execution_with_15m = deep_loop if mode in ('numba', 'combined') else ORIG_DEEP
+    Strategy.calculate_indicators = calculate if mode in ('indicators', 'combined') else ORIG_CALC
+    for name, fn in TALIB_ORIG.items(): setattr(talib, name, cache_wrapper(name, fn) if mode in ('indicators', 'combined') else fn)
+    IND_CACHE.clear(); STATS.update(indicator_hits=0, indicator_misses=0)
+b.select_original = b.select; b.select = select
+
+def measured_batch(args):
+    before = STATS.copy(); start = time.perf_counter(); result = b.ORIG_BATCH(args)
+    record = dict(n=len(args), seconds=time.perf_counter()-start, hits=0, failures=sum(not r.get('success') for r in result), **{k: STATS[k]-before[k] for k in STATS})
+    with (OUT/f'{b.RUN_ID}.worker-{os.getpid()}.jsonl').open('a') as f: f.write(json.dumps(record)+'\n')
+    return result
+b.measured_batch = measured_batch
+
+def warm():
+    st = time.perf_counter(); ar = np.ones(3); bits = np.array([False, True, False]); ts = np.arange(3, dtype=np.int64)
+    position_kernel(ar, ar, bits, bits, .05, True)
+    deep_kernel(ts, ar, ar, np.array([0, 1, -1], np.int64), ts, ar, ar, .05, False)
+    df, _ = co.split_train_holdout(b.frame('1INCH/USDT', '1d'), .7)
+    signals = np.zeros(len(df), dtype=np.int64); signals[3] = 1; signals[12] = -1
+    deep_loop(df.assign(signal=signals), b.frame('1INCH/USDT', '15m'), .05)
+    position_kernel(np.ascontiguousarray(df['open'].to_numpy(dtype=np.float64)), np.ascontiguousarray(df['low'].to_numpy(dtype=np.float64)), np.zeros(len(df), dtype=bool), np.zeros(len(df), dtype=bool), .05, True)
+    return time.perf_counter()-st
+
+def validate():
+    params = json.loads((b.OUT_DIR/'r1_params.json').read_text()); count = 0; warnings = 0; st = time.perf_counter()
+    for symbol in ('1INCH/USDT', 'AAVE/USDT'):
+        train, _ = co.split_train_holdout(b.frame(symbol, '1d'), .7); intra = b.frame(symbol, '15m')
+        for name in b.TEMPLATES:
+            td = b.metadata_from_export(b.TEMPLATES[name]); capture = io.StringIO()
+            with contextlib.redirect_stdout(capture):
+                for direction in ('long', 'short'):
+                    rows = [dict(p, direction=direction, timeframe='1d') for p in params[name][:50]]; outputs = []
+                    for mode in ('baseline', 'numba', 'indicators', 'combined'):
+                        select(mode); vals = [co._run_backtest_logic(td, p, train, True, symbol, '2023-01-01', '2025-01-01', intra) for p in rows]
+                        assert not any('error' in metrics for metrics, _ in vals), (name, mode)
+                        outputs.append(b.canonical(vals))
+                    assert len(set(outputs)) == 1, (symbol, name, direction, 'metrics mismatch')
+                    count += len(rows)
+            warnings += capture.getvalue().count('Error in vectorized logic:')
+            print(json.dumps(dict(template=name, symbol=symbol, checked=count)), flush=True)
+    report = dict(unique_trials=count, variants=4, metrics_parameters_exact=True, existing_logic_warnings=warnings, elapsed_s=time.perf_counter()-st)
+    (OUT/'validation.json').write_text(json.dumps(report, indent=2)); print(report, flush=True)
+
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser(); ap.add_argument('action'); ap.add_argument('--mode', default='baseline'); ap.add_argument('--run-id', default='test'); ap.add_argument('--template', default='multi_ma_crossover'); ap.add_argument('--symbol', default='1INCH/USDT'); ap.add_argument('--direction', default='long'); args = ap.parse_args()
+    w = warm(); print(json.dumps(dict(jit_warmup_s=w)), flush=True)
+    if args.action == 'validate': validate()
+    else: b.run_engine(args)

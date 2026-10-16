@@ -40,6 +40,7 @@ class ComboStrategy:
         derived_features: Optional[List[Dict[str, Any]]] = None,
         force_recompute: bool = True,
         direction: str = "long",
+        indicator_binding=None,
     ):
         """
         Initialize combo strategy.
@@ -52,6 +53,7 @@ class ComboStrategy:
             stop_gain: Stop gain percentage (optional)
         """
         self.indicators = indicators
+        self.indicator_binding = indicator_binding
         self.entry_logic = entry_logic
         self.exit_logic = exit_logic
         self.stop_loss = stop_loss
@@ -559,6 +561,9 @@ class ComboStrategy:
             for col in df.columns:
                 local_context[col] = df[col]
 
+            if self.indicator_binding is not None:
+                local_context.update(self.indicator_binding.context(self.indicators, df))
+
             # Preflight: detect unknown identifiers early (avoids silent 0-trade runs)
             # This catches cases like `bb.upper` (mapped to bb_upper) when the column doesn't exist.
             tokens = set(re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", logic_expr))
@@ -584,6 +589,12 @@ class ComboStrategy:
             allowed = set(local_context.keys()) | reserved
             missing = sorted([t for t in tokens if t not in allowed])
             if missing:
+                if self.indicator_binding is not None:
+                    from .indicator_binding import IndicatorReferenceError
+
+                    raise IndicatorReferenceError(
+                        "indicator_reference_error: unknown identifiers " + ", ".join(missing)
+                    )
                 raise RuntimeError(
                     "Logic references unknown columns/functions: "
                     + ", ".join(missing)
@@ -750,6 +761,10 @@ class ComboStrategy:
 
         except Exception as e:
             # Fallback or strict error
+            from .indicator_binding import IndicatorReferenceError
+
+            if isinstance(e, IndicatorReferenceError):
+                raise
             raise RuntimeError(f"Error evaluating vectorized logic '{logic}': {str(e)}")
 
     def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -784,6 +799,8 @@ class ComboStrategy:
             entry_mask = self._evaluate_logic_vectorized(df, self.entry_logic)
             exit_mask = self._evaluate_logic_vectorized(df, self.exit_logic)
         except Exception as e:
+            if self.indicator_binding is not None:
+                raise
             print(f"Error in vectorized logic: {e}")
             return df
         return self._legacy_position_loop(df, entry_mask, exit_mask)
@@ -800,6 +817,8 @@ class ComboStrategy:
             entry_mask = self._evaluate_logic_vectorized(df, self.entry_logic)
             exit_mask = self._evaluate_logic_vectorized(df, self.exit_logic)
         except Exception as e:
+            if self.indicator_binding is not None:
+                raise
             print(f"Error in vectorized logic: {e}")
             return df
         return self._fast_position_loop(df, entry_mask, exit_mask)
@@ -872,6 +891,25 @@ class ComboStrategy:
         self, df: pd.DataFrame, entry_mask: pd.Series, exit_mask: pd.Series
     ) -> pd.DataFrame:
         """Event-oriented loop. Same comparisons as _legacy_position_loop."""
+        from app.services.combo_acceleration import enabled, positions
+
+        if enabled():
+            if not entry_mask.any():
+                return df.assign(signal=0, signal_reason="")
+            signals, reasons = positions(
+                np.ascontiguousarray(df["open"].to_numpy(dtype=np.float64)),
+                np.ascontiguousarray(df["low"].to_numpy(dtype=np.float64)),
+                np.ascontiguousarray(entry_mask.fillna(False).to_numpy(dtype=bool)),
+                np.ascontiguousarray(exit_mask.fillna(False).to_numpy(dtype=bool)),
+                float(self.stop_loss),
+                self.direction == "long",
+            )
+            return df.assign(
+                signal=signals,
+                signal_reason=np.array(["", "entry", "stop_loss", "exit_logic"], dtype=object)[
+                    reasons
+                ],
+            )
         if not entry_mask.any():
             # Cache path skips generate_signals init; cached frames have no signal.
             return df.assign(signal=0, signal_reason="")

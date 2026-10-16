@@ -1,0 +1,5 @@
+{"trials": 180, "failures": 0, "pid": 1680462, "peak_rss_kib": 230668, "retained_bytes": 13182090, "entries": 80, "snapshots": 1, "evictions": 0}
+{"trials": 200, "failures": 0, "pid": 1680462, "peak_rss_kib": 231052, "retained_bytes": 15219306, "entries": 133, "snapshots": 1, "evictions": 0}
+{"trials": 200, "failures": 0, "pid": 1680462, "peak_rss_kib": 248332, "retained_bytes": 30867535, "entries": 534, "snapshots": 1, "evictions": 0}
+{"trials": 200, "failures": 0, "pid": 1680462, "peak_rss_kib": 251404, "retained_bytes": 33140312, "entries": 593, "snapshots": 1, "evictions": 0}
+{"trials": 130, "failures": 0, "pid": 1680462, "peak_rss_kib": 252556, "retained_bytes": 34005175, "entries": 616, "snapshots": 1, "evictions": 0}

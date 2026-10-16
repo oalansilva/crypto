@@ -1,0 +1,83 @@
+{
+  "inspected_commit": "64c1b97aec75b250ad4f32c0fd20692cf7a5f5b5",
+  "experimental_artifacts": [
+    {
+      "source": "/tmp/discovery-speed-v2/report.json",
+      "artifact": "report.json",
+      "sha256": "a77dfa60aaa30694d965814d04cd4865faec235dcb7121f0d434d0907d71463c"
+    },
+    {
+      "source": "/tmp/discovery-speed-v2/suite-summary.json",
+      "artifact": "suite-summary.json",
+      "sha256": "5342afa2a89baf38a9a2190ceaf4a6a41aaa298a1feefc91b739a25baaa2dc23"
+    },
+    {
+      "source": "/tmp/discovery-speed-v2/validation.json",
+      "artifact": "validation.json",
+      "sha256": "f45bad510e4ab94b783acba1745386e5506bcf9244159f01d656133f93195e25"
+    },
+    {
+      "source": "/tmp/discovery-speed-v2/edge-validation.json",
+      "artifact": "edge-validation.json",
+      "sha256": "24d4e3d54c6aad1aa10f22472b77df9bb5a770fbacf9429eef7ae27c96e307c9"
+    },
+    {
+      "source": "/tmp/discovery-speed-v2/runtime.json",
+      "artifact": "runtime.json",
+      "sha256": "329a4f5b0b877cba8d3b684f4c92d5f5cfa0b2b83091b0ddeac703883b6fca1d"
+    },
+    {
+      "source": "/tmp/discovery-speed-v2/experiment.py",
+      "artifact": "experiment.py.txt",
+      "sha256": "77131916aac43cfa2270cb0027442155e69cd207e79a0cf11949b0d1876e6628"
+    },
+    {
+      "source": "/tmp/discovery-speed-v2/suite.py",
+      "artifact": "suite.py.txt",
+      "sha256": "4b0822cc2b0615f9a3d2653f76683e2a348b25d446024cd6f9330d573ff270a3"
+    },
+    {
+      "source": "/tmp/discovery-speed-study-AbHBUx/bench.py",
+      "artifact": "bench.py.txt",
+      "sha256": "0c636e229f8e35c5d0f745c2605171ab96aba77250b8ac601a442a620285c3f2"
+    }
+  ],
+  "fixture_inventory_at_design": [
+    {
+      "path": "backend/tests/fixtures/card_945/ohlcv/1INCH_USDT_15m.parquet",
+      "bytes": 2166519,
+      "sha256": "1331ff7a731a261fd8064de26af8f1d8fcae59a76ef4400e395cd06a8badfb48"
+    },
+    {
+      "path": "backend/tests/fixtures/card_945/ohlcv/1INCH_USDT_1d.parquet",
+      "bytes": 40392,
+      "sha256": "87704030ae35074851a8c6e794dd4464b747ea9da2b4642fc0dcee5558778394"
+    },
+    {
+      "path": "backend/tests/fixtures/card_945/ohlcv/AAVE_USDT_15m.parquet",
+      "bytes": 2375043,
+      "sha256": "7add33311aece29784f806e5054238229b4eabc52b4a5aefb7e85f600b38a7ab"
+    },
+    {
+      "path": "backend/tests/fixtures/card_945/ohlcv/AAVE_USDT_1d.parquet",
+      "bytes": 37487,
+      "sha256": "594c04cfeb4d5600a4dcd9f1e7da126513fea880f4400a815872226a083af747"
+    },
+    {
+      "path": "backend/tests/fixtures/card_945/r1_params.json",
+      "bytes": 67991,
+      "sha256": "8f9a14b005d135e1557de1a4fe4164fb18c7f6dd08fad3a73eac1fa0d5afca42"
+    },
+    {
+      "path": "backend/tests/fixtures/card_945/sha256.json",
+      "bytes": 2817831,
+      "sha256": "c333bd584920e145948bcb1e5d2baf95dcea9918e50bf9a764a8126f1d3a5f6f"
+    },
+    {
+      "path": "backend/tests/fixtures/card_945/versions.json",
+      "bytes": 127,
+      "sha256": "ec82a3604fce23597323f68ec7862d5d3a2e60c9120d4efcfc9308fd91df85a7"
+    }
+  ],
+  "note": "Hashes observed in Design; not proof that historical experiment ran this exact revision."
+}

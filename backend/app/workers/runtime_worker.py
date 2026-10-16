@@ -44,6 +44,26 @@ async def discovery_outbox_loop(stop_event: asyncio.Event, poll_seconds: int = 1
             logger.warning("Discovery outbox dispatch failed (retry next poll): %s", exc)
 
 
+async def discovery_reconciler_loop(stop_event: asyncio.Event, poll_seconds: int = 30) -> None:
+    """Runs outside Discovery's cgroup, at startup and every thirty seconds."""
+    from app.database import SessionLocal
+    from app.services.discovery_recovery import reconcile_expired
+
+    def repair():
+        with SessionLocal() as db:
+            return reconcile_expired(db)
+
+    while not stop_event.is_set():
+        try:
+            await asyncio.to_thread(repair)
+        except Exception:
+            logger.exception("Discovery external reconciliation unavailable; no admission")
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=poll_seconds)
+        except asyncio.TimeoutError:
+            pass
+
+
 from app.services.signal_monitor import signal_monitor
 import app.models  # noqa: F401
 import app.models_signal_history  # noqa: F401
@@ -126,6 +146,7 @@ async def _run(stop_event: asyncio.Event) -> None:
     _initialize_runtime_state()
     favorite_refresh_task: asyncio.Task | None = None
     discovery_dispatch_task: asyncio.Task | None = None
+    discovery_repair_task: asyncio.Task | None = None
 
     if run_signal_monitor:
         signal_monitor.start()
@@ -140,12 +161,17 @@ async def _run(stop_event: asyncio.Event) -> None:
         logger.info("Favorite backtest refresh loop started.")
 
     if run_discovery_dispatcher:
+        discovery_repair_task = asyncio.create_task(discovery_reconciler_loop(stop_event))
         discovery_dispatch_task = asyncio.create_task(discovery_outbox_loop(stop_event))
         logger.info("Discovery outbox dispatcher loop started.")
 
     try:
         await stop_event.wait()
     finally:
+        if discovery_repair_task is not None:
+            discovery_repair_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await discovery_repair_task
         if discovery_dispatch_task is not None:
             discovery_dispatch_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

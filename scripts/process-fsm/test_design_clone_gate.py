@@ -29,13 +29,9 @@ R1_SHA256 = "068581d6b9b2171b7534cb1250575bf4a61ea9b0e428047ffff387e98341efd7"
 PANEL_INDEX = ROOT / "fixtures" / "790-panel-index.html"
 SIBLING_CLONE = ROOT / "fixtures" / "790-sibling-landing-clone.html"
 V4_CLONE = ROOT / "fixtures" / "v4-landing-clone.html"
-AUTH_ROUTES = {
-    "/monitor",
-    "/favorites",
-    "/combo/discovery",
-    "/combo/select",
-    "/combo/results",
-}
+# Routes every catalog must carry. The catalog is consumer data (the nucleus ships a seed and the pin
+# never overwrites it), so a consumer may add routes: the test asserts a superset, not equality.
+BASE_AUTH_ROUTES = {"/monitor", "/favorites", "/combo/discovery", "/combo/select"}
 LANDING_TEXTS = (
     "Comprar ou vender cripto? O Cripto Farol responde.",
     "FAQ",
@@ -118,11 +114,15 @@ def _proto(tmp_path: Path, html: str, name: str = "index.html") -> Path:
     return proto
 
 
-def test_seeded_catalog_has_five_auth_routes_and_public_landing():
+def test_catalog_has_base_auth_routes_and_public_landing():
     data = load_catalog_file(default_catalog_path())
     assert data.get("version") == 1
     routes = routes_from_catalog(data)
-    assert set(routes) == AUTH_ROUTES | {"landing"}
+    assert set(routes) >= BASE_AUTH_ROUTES | {"landing"}
+    for route in set(routes) - BASE_AUTH_ROUTES - {"landing"}:
+        assert route.startswith("/")
+        assert routes[route].get("kind", "authenticated") == "authenticated"
+        assert routes[route].get("selectors") or routes[route].get("texts")
     monitor = routes["/monitor"]
     assert monitor.get("kind") == "authenticated"
     assert monitor.get("kind") != "public"
@@ -333,3 +333,16 @@ def test_landing_declared_without_head_key_refuses(tmp_path: Path):
     catalog.write_text(SEEDED, encoding="utf-8")
     assert "landing" not in routes_from_catalog(load_head_catalog(repo))
     assert clone_gate_ok(change, proto, repo) is False
+
+
+def test_the_cripto_catalog_requires_combo_results():
+    # The catalog is consumer data: the nucleus ships a seed without the Cripto routes, so this holds only where the
+    # Cripto's own overlay document lives. Absent here = an explicit skip, never a silent pass (R23).
+    overlay_doc = ROOT.parents[1] / "docs" / "crypto-overlay.md"
+    if not overlay_doc.is_file():
+        import pytest
+
+        pytest.skip("route-landmarks.yaml is the Cripto's consumer data here only; no docs/crypto-overlay.md in this tree")
+    routes = routes_from_catalog(load_catalog_file(default_catalog_path()))
+    assert "/combo/results" in routes
+    assert routes["/combo/results"].get("kind", "authenticated") == "authenticated" and routes["/combo/results"].get("selectors")

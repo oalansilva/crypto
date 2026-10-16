@@ -1,0 +1,204 @@
+"""Isolated experiments; patches live only in this process. No product edits."""
+import os
+os.environ['PYTHONDONTWRITEBYTECODE']='1'
+os.environ['DATABASE_URL']='postgresql://unused:unused@127.0.0.1:1/unused'
+os.environ['MARKET_OHLCV_VERIFY_POLICIES']='0'
+os.environ.pop('COMBO_OPTIMIZER_LEGACY',None)
+import sys, json, time, hashlib, logging, inspect, textwrap, copy, argparse
+from pathlib import Path
+from collections import OrderedDict
+ROOT=Path('/srv/apps/dev/criptofarol/source')
+OUT=Path(__file__).resolve().parent
+sys.path[:0]=[str(ROOT),str(ROOT/'backend'),str(ROOT/'backend/tests')]
+import numpy as np
+import pandas as pd
+from app.services import combo_optimizer as co
+from app.services import deep_backtest as deep
+from app.strategies.combos import ComboStrategy
+from oracles._build_card_945 import load_ohlcv, load_templates, metadata_from_export, apply_param_overrides, OUT_DIR, OHLCV_DIR
+logging.disable(logging.CRITICAL)
+TEMPLATES=load_templates()
+FRAMES={}
+ORIG_ID=co._window_identity
+ORIG_LOOP=ComboStrategy._fast_position_loop
+ORIG_LOGIC=co._run_backtest_logic
+ORIG_BATCH=co._worker_run_batch
+WINDOW_CACHE=OrderedDict()
+TRIAL_CACHE=OrderedDict()
+COUNTERS={'calls':0,'hits':0}
+RUN_ID=''
+
+def canonical(obj):
+    return json.dumps(obj,sort_keys=True,separators=(',',':'),default=str,allow_nan=True)
+
+def digest(obj):
+    return hashlib.sha256(canonical(obj).encode()).hexdigest()
+
+def frame(symbol,tf):
+    key=(symbol,tf)
+    if key not in FRAMES: FRAMES[key]=load_ohlcv(symbol,tf)
+    return FRAMES[key]
+
+def memo_identity(df):
+    # Bounded strong references prevent object-id reuse. Only frozen OHLCV frames.
+    key=id(df)
+    if key not in WINDOW_CACHE:
+        WINDOW_CACHE[key]=(df,ORIG_ID(df))
+        if len(WINDOW_CACHE)>32: WINDOW_CACHE.popitem(last=False)
+    return WINDOW_CACHE[key][1]
+
+def shallow_assign(df,**columns):
+    out=df.copy(deep=False)
+    for key,value in columns.items(): out[key]=value
+    return out
+
+loop_source=textwrap.dedent(inspect.getsource(ORIG_LOOP)).replace('df.assign(', '_bench_assign(df, ')
+loop_globals=dict(ORIG_LOOP.__globals__,_bench_assign=shallow_assign)
+exec(compile(loop_source,'<benchmark-shallow-loop>','exec'),loop_globals)
+SHALLOW_LOOP=loop_globals['_fast_position_loop']
+
+def memo_logic(template_data,params,df,deep_backtest,symbol,since_str,until_str,df_15m_cache=None,initial_capital=100):
+    COUNTERS['calls']+=1
+    key=(canonical(template_data),canonical(params),memo_identity(df),bool(deep_backtest),symbol,since_str,until_str,
+         memo_identity(df_15m_cache) if df_15m_cache is not None and not df_15m_cache.empty else None,initial_capital)
+    if key in TRIAL_CACHE:
+        COUNTERS['hits']+=1
+        return copy.deepcopy(TRIAL_CACHE[key])
+    value=ORIG_LOGIC(template_data,params,df,deep_backtest,symbol,since_str,until_str,df_15m_cache,initial_capital)
+    TRIAL_CACHE[key]=copy.deepcopy(value)
+    if len(TRIAL_CACHE)>30000: TRIAL_CACHE.popitem(last=False)
+    return value
+
+def clear_caches():
+    WINDOW_CACHE.clear(); TRIAL_CACHE.clear()
+    co._WORKER_INDICATOR_CACHE.clear(); co._WORKER_COVERAGE_CACHE.clear()
+    deep._ISO_CACHE.clear()
+    co._WORKER_15M_CACHE.update(key=None,df=None)
+    COUNTERS.update(calls=0,hits=0)
+
+def select(mode):
+    co._window_identity=ORIG_ID if mode=='baseline' else memo_identity
+    ComboStrategy._fast_position_loop=SHALLOW_LOOP if mode in ('shallow','memo') else ORIG_LOOP
+    co._run_backtest_logic=memo_logic if mode=='memo' else ORIG_LOGIC
+    clear_caches()
+
+class FixtureService:
+    def get_template_metadata(self,name): return metadata_from_export(TEMPLATES[name])
+    def create_strategy(self,template_name,parameters=None):
+        meta=self.get_template_metadata(template_name)
+        inds,stop=apply_param_overrides(meta,parameters or {})
+        return ComboStrategy(indicators=inds,entry_logic=meta['entry_logic'],exit_logic=meta['exit_logic'],
+                             stop_loss=stop,direction=(parameters or {}).get('direction','long'),
+                             derived_features=meta.get('derived_features') or [])
+
+class FixtureProvider:
+    def fetch_ohlcv(self,**kwargs): return frame(kwargs['symbol'],kwargs['timeframe']).copy()
+
+class FixtureLoader:
+    def fetch_intraday_data(self,**kwargs): return frame(kwargs['symbol'],'15m')
+    def check_intraday_availability(self,symbol,*args,**kwargs):
+        return {'available':True,'coverage':{'end':str(frame(symbol,'15m').index.max())}}
+    def _get_parquet_path(self,symbol,timeframe):
+        return str(OHLCV_DIR/(symbol.replace('/','_')+'_'+timeframe+'.parquet'))
+
+def init_worker():
+    logging.disable(logging.CRITICAL)
+
+def measured_batch(args):
+    before=COUNTERS.copy()
+    start=time.perf_counter()
+    result=ORIG_BATCH(args)
+    record={'n':len(args),'seconds':time.perf_counter()-start,'hits':COUNTERS['hits']-before['hits'],
+            'failures':sum(not r.get('success') for r in result)}
+    with (OUT/f'{RUN_ID}.worker-{os.getpid()}.jsonl').open('a') as f: f.write(json.dumps(record)+'\n')
+    return result
+
+def run_engine(args):
+    global RUN_ID
+    RUN_ID=args.run_id
+    # Both baseline and variants use exactly the same frozen providers and metadata.
+    frame(args.symbol,'1d'); frame(args.symbol,'15m')
+    originals={k:ORIG_ID(v) for k,v in FRAMES.items()}
+    select(args.mode)
+    co.get_market_data_provider=lambda *a,**k:FixtureProvider()
+    co.IncrementalLoader=FixtureLoader
+    co._init_worker_logging=init_worker
+    co._worker_run_batch=measured_batch
+    opt=object.__new__(co.ComboOptimizer)
+    opt.checkpoint_dir=OUT/'checkpoints'
+    opt.combo_service=FixtureService(); opt.loader=FixtureLoader()
+    times=[]
+    for name in ('_execute_opt_stages','_execute_r2r4_pooled'):
+        original=getattr(opt,name)
+        def timed(*a,_original=original,_name=name,**k):
+            start=time.perf_counter(); result=_original(*a,**k)
+            times.append({'stage':_name,'seconds':time.perf_counter()-start})
+            return result
+        setattr(opt,name,timed)
+    started=time.perf_counter()
+    result=opt.run_optimization(template_name=args.template,symbol=args.symbol,timeframe='1d',data_source='ccxt',
+                               start_date='2023-01-01',end_date='2025-01-01',direction=args.direction,
+                               deep_backtest=True,split_train_ratio=.7,job_id='benchmark-fixed')
+    elapsed=time.perf_counter()-started
+    assert result.get('execution_mode')=='deep_15m',result.get('execution_mode')
+    assert result.get('oos_verdict',{}).get('status') in ('GO','NO-GO'),result.get('oos_verdict')
+    assert result.get('oos_verdict',{}).get('execution_mode')=='deep_15m'
+    assert originals=={k:ORIG_ID(v) for k,v in FRAMES.items()},'Input modified'
+    raw=canonical(result)
+    (OUT/f'{RUN_ID}.result.json').write_text(raw)
+    workers=[]
+    for path in OUT.glob(f'{RUN_ID}.worker-*.jsonl'):
+        workers.extend(json.loads(line) for line in path.read_text().splitlines())
+    summary={'run':RUN_ID,'mode':args.mode,'template':args.template,'symbol':args.symbol,'direction':args.direction,
+             'elapsed_s':elapsed,'stages_s':sum(r['seconds'] for r in times),'stage_times':times,
+             'trials':sum(r['n'] for r in workers),'cache_hits':sum(r['hits'] for r in workers),
+             'failed_trials':sum(r['failures'] for r in workers),'result_sha256':hashlib.sha256(raw.encode()).hexdigest(),
+             'winner':result['best_parameters'],'trades':len(result['trades']),'oos':result['oos_verdict'],
+             'input_unchanged':True,'cpu_count':os.cpu_count(),'workers':max(1,(os.cpu_count() or 2)-1)}
+    (OUT/f'{RUN_ID}.summary.json').write_text(json.dumps(summary,indent=2))
+    print(json.dumps(summary),flush=True)
+
+def run_validation():
+    params=json.loads((OUT_DIR/'r1_params.json').read_text())
+    checked=0; messages=0
+    import contextlib,io
+    started=time.perf_counter()
+    for symbol in ('1INCH/USDT','AAVE/USDT'):
+        train,_=co.split_train_holdout(frame(symbol,'1d'),.7)
+        intra=frame(symbol,'15m')
+        for name in TEMPLATES:
+            td=metadata_from_export(TEMPLATES[name])
+            for direction in ('long','short'):
+                rows=[dict(p,direction=direction,timeframe='1d') for p in params[name][:50]]
+                outputs=[]
+                capture=io.StringIO()
+                with contextlib.redirect_stdout(capture):
+                    for mode in ('baseline','fingerprint','shallow','memo'):
+                        select(mode)
+                        values=[co._run_backtest_logic(td,p,train,True,symbol,'2023-01-01','2025-01-01',intra) for p in rows]
+                        assert not any('error' in metrics for metrics,_ in values),(symbol,name,direction,mode)
+                        outputs.append(canonical(values))
+                        # Cache hits must return exactly the same payload.
+                        if mode=='memo':
+                            repeated=[co._run_backtest_logic(td,p,train,True,symbol,'2023-01-01','2025-01-01',intra) for p in rows]
+                            assert canonical(repeated)==outputs[-1]
+                assert len(set(outputs))==1,(symbol,name,direction,'different results')
+                messages+=capture.getvalue().count('Error in vectorized logic:')
+                checked+=len(rows)
+            print(json.dumps({'validation_template':name,'symbol':symbol,'checked':checked}),flush=True)
+    report={'checked_unique_trials':checked,'variants':4,'repeated_cache_payloads_equal':True,
+            'metrics_and_parameters_exact':True,'baseline_and_variants_logic_warnings':messages,
+            'elapsed_s':time.perf_counter()-started}
+    (OUT/'validation.json').write_text(json.dumps(report,indent=2))
+    print(json.dumps(report),flush=True)
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser()
+    parser.add_argument('action',choices=['engine','validate'])
+    parser.add_argument('--mode',choices=['baseline','fingerprint','shallow','memo'],default='baseline')
+    parser.add_argument('--template',default='multi_ma_crossover')
+    parser.add_argument('--symbol',default='1INCH/USDT')
+    parser.add_argument('--direction',default='long')
+    parser.add_argument('--run-id',default='initial')
+    args=parser.parse_args()
+    run_engine(args) if args.action=='engine' else run_validation()

@@ -45,7 +45,7 @@ OUTBOX_POLL_LIMIT = 100
 OUTBOX_BATCH_SIZE = 20
 OUTBOX_MAX_GLOBAL = 8
 OUTBOX_MAX_PER_SWEEP = 1
-CLAIM_BATCH = 20
+CLAIM_BATCH = 1
 
 
 # Teto de sweeps `cancelled` com resíduo varridos por dispatch (card #853,
@@ -955,12 +955,28 @@ class DiscoveryService:
             for row in rows
         ]
 
+    def _has_pending(self, sweep_id: str, db: Session) -> bool:
+        return (
+            db.query(DiscoveryCombination.id)
+            .filter(
+                DiscoveryCombination.sweep_id == sweep_id,
+                DiscoveryCombination.state == "pending",
+            )
+            .first()
+            is not None
+        )
+
     def _claimable_pending(self, sweep_id: str, db: Session) -> int:
         return (
             db.query(DiscoveryCombination)
             .filter(
                 DiscoveryCombination.sweep_id == sweep_id,
                 DiscoveryCombination.state == "pending",
+                DiscoveryCombination.attempts < 3,
+                __import__("sqlalchemy").or_(
+                    DiscoveryCombination.next_attempt_at.is_(None),
+                    DiscoveryCombination.next_attempt_at <= func.now(),
+                ),
             )
             .count()
         )
@@ -1315,26 +1331,38 @@ class DiscoveryService:
                 if own_session:
                     session.rollback()
                 return []
-            now = _utcnow()
+            from app.services.discovery_recovery import claim_attempt, now as database_now
+
+            now = database_now(session)
+            if (
+                session.query(DiscoveryCombination)
+                .filter(
+                    DiscoveryCombination.sweep_id == sweep_id,
+                    DiscoveryCombination.state == "running",
+                )
+                .count()
+            ):
+                return []
             claimed: list[DiscoveryCombination] = []
             rows = (
                 session.query(DiscoveryCombination)
                 .filter(
                     DiscoveryCombination.sweep_id == sweep_id,
                     DiscoveryCombination.state == "pending",
+                    DiscoveryCombination.attempts < 3,
+                    __import__("sqlalchemy").or_(
+                        DiscoveryCombination.next_attempt_at.is_(None),
+                        DiscoveryCombination.next_attempt_at <= now,
+                    ),
                 )
                 .order_by(DiscoveryCombination.id.asc())
-                .limit(limit)
+                .limit(min(limit, 1))
                 .with_for_update(skip_locked=True)
                 .all()
             )
             for row in rows:
-                row.state = "running"
-                row.attempts += 1
-                row.lease_owner = owner
-                row.lease_expires_at = now + timedelta(seconds=LEASE_SECONDS)
-                row.updated_at = now
-                claimed.append(row)
+                if claim_attempt(session, locked, row, now):
+                    claimed.append(row)
             try:
                 session.commit()
             except Exception:
@@ -1347,88 +1375,17 @@ class DiscoveryService:
                 session.close()
 
     def _release_expired_leases_for_sweep(self, db: Session, sweep_id: str) -> int:
-        """Release escopado ao sweep, flush-only sem commit próprio (card #853, P1).
+        from app.services.discovery_recovery import reconcile_expired
 
-        Único release permitido nos caminhos de cancelamento (finalizador do
-        orquestrador) e no repair: roda dentro do commit por sweep junto ao
-        reconcile do MESMO sweep, preservando o invariante "nenhum `pending`
-        sobrevive ao commit". Vale também sob `cancelled`, onde `running` de
-        lease expirado e worker morto só converge via release → `pending`
-        transitório → `skipped` no mesmo commit.
-        """
-        now = _utcnow()
-        expired = (
-            db.query(DiscoveryCombination)
-            .filter(
-                DiscoveryCombination.sweep_id == sweep_id,
-                DiscoveryCombination.state == "running",
-                DiscoveryCombination.lease_expires_at.isnot(None),
-                DiscoveryCombination.lease_expires_at < now,
-            )
-            .all()
-        )
-        for row in expired:
-            if row.result_id:
-                result = (
-                    db.query(DiscoveryResult).filter(DiscoveryResult.id == row.result_id).first()
-                )
-                if result is not None and result.eligibility == "insufficient_sample":
-                    row.state = "insufficient_sample"
-                else:
-                    row.state = "succeeded"
-            else:
-                row.state = "pending"
-                row.lease_owner = None
-                row.lease_expires_at = None
-            row.updated_at = now
-        db.flush()
-        return len(expired)
+        return reconcile_expired(db, sweep_id=sweep_id, commit=False)
 
     def release_expired_leases(self, db: Session | None = None) -> int:
         from app.database import SessionLocal
+        from app.services.discovery_recovery import reconcile_expired
 
         session = db or SessionLocal()
         try:
-            now = _utcnow()
-            # O release global NUNCA cobre sweeps `cancelling`/`cancelled`
-            # (card #853, P1): todo `running → pending` desses sweeps acontece
-            # somente dentro de um commit que contém o reconcile do mesmo
-            # sweep (helper escopado acima).
-            from sqlalchemy import select
-
-            fenced_sweeps = (
-                select(DiscoverySweep.id)
-                .where(DiscoverySweep.state.in_(("cancelling", "cancelled")))
-                .subquery()
-            )
-            expired = (
-                session.query(DiscoveryCombination)
-                .filter(
-                    DiscoveryCombination.state == "running",
-                    DiscoveryCombination.lease_expires_at.isnot(None),
-                    DiscoveryCombination.lease_expires_at < now,
-                    ~DiscoveryCombination.sweep_id.in_(fenced_sweeps),
-                )
-                .all()
-            )
-            for row in expired:
-                if row.result_id:
-                    result = (
-                        session.query(DiscoveryResult)
-                        .filter(DiscoveryResult.id == row.result_id)
-                        .first()
-                    )
-                    if result is not None and result.eligibility == "insufficient_sample":
-                        row.state = "insufficient_sample"
-                    else:
-                        row.state = "succeeded"
-                else:
-                    row.state = "pending"
-                    row.lease_owner = None
-                    row.lease_expires_at = None
-                row.updated_at = now
-            session.commit()
-            return len(expired)
+            return reconcile_expired(session)
         finally:
             if db is None:
                 session.close()
@@ -1445,6 +1402,11 @@ class DiscoveryService:
                 .filter(
                     DiscoveryCombination.sweep_id == sweep_id,
                     DiscoveryCombination.state == "pending",
+                    DiscoveryCombination.attempts < 3,
+                    __import__("sqlalchemy").or_(
+                        DiscoveryCombination.next_attempt_at.is_(None),
+                        DiscoveryCombination.next_attempt_at <= func.now(),
+                    ),
                 )
                 .count()
             )
@@ -1573,6 +1535,9 @@ class DiscoveryService:
         published = 0
         try:
             now = _utcnow()
+            from app.services.discovery_recovery import reconcile_expired
+
+            reconcile_expired(session)
             self._repair_incomplete_sweeps(session)
             # Redelivery: intents entregues há mais de OUTBOX_REDELIVERY_SECONDS
             # voltam a pending (broker caiu antes do ACK; at-least-once).
@@ -1615,6 +1580,17 @@ class DiscoveryService:
                 if global_running >= OUTBOX_MAX_GLOBAL:
                     break
                 if per_sweep_running.get(intent.sweep_id, 0) >= OUTBOX_MAX_PER_SWEEP:
+                    continue
+                # Only hold the wake-up while pending rows exist but all wait for
+                # backoff/budget; finalizer intents (no pending rows, e.g.
+                # `cancelling` with running leases) must still be delivered.
+                if self._claimable_pending(intent.sweep_id, session) <= 0 and self._has_pending(
+                    intent.sweep_id, session
+                ):
+                    continue
+                from app.services.discovery_recovery import circuit
+
+                if circuit(session).opened_at:
                     continue
                 intent.attempts += 1
                 intent.updated_at = now

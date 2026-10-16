@@ -4,7 +4,7 @@
 TBD - created by archiving change card-1080-modelos-locais. Update Purpose after archive.
 ## Requirements
 ### Requirement: Machine selection is the sole operational source
-The process SHALL resolve selections from `$HOME/.config/covenant-flow/model-selection.yaml` on the executing host/account, independently of repository or worktree. Schema version 1 SHALL distinguish all five clients and juizo/execucao. Rules, roles, forbidden models and capability translations SHALL remain versioned. Operational edits SHALL require no card, commit or release after initial process migration. Repository overrides, picker inheritance and fallback to the old Git map MUST NOT occur.
+The process SHALL resolve selections from `$HOME/.config/covenant-flow/model-selection.yaml` on the executing host/account, independently of repository or worktree. Schema version 1 SHALL distinguish all six clients (cursor, codex, grok, opencode, dsh, claude) and juizo/execucao. Rules, roles, forbidden models and capability translations SHALL remain versioned. Operational edits SHALL require no card, commit or release after initial process migration. Repository overrides, picker inheritance and fallback to the old Git map MUST NOT occur.
 
 #### Scenario: Shared choice across consumers
 - **WHEN** the operator changes Codex juizo locally and spawns from two migrated repositories and worktrees on that account
@@ -14,8 +14,12 @@ The process SHALL resolve selections from `$HOME/.config/covenant-flow/model-sel
 - **WHEN** the file, selected client/band, required parameter or compatible schema is missing or invalid
 - **THEN** spawn fails visibly with path/client/band/reason and no substituted selection
 
+#### Scenario: Claude entry is independent
+- **WHEN** the operator edits `clients.claude.execucao` locally
+- **THEN** the next Claude Code execução spawn uses the new pair and the selections of the other five clients are unchanged
+
 ### Requirement: Capabilities govern explicit routing for every harness
-Cursor, Codex, Grok Build, OpenCode and dsh SHALL each route configured models explicitly through a supported native path. Effort or variant SHALL be supplied only when supported and required when the selected contract requires it. Capabilities SHALL come from the host schema/catalogue or tested adapter contract, not user assertions. Unsupported selections or unavailable routing SHALL fail visibly before creating an incorrectly configured child. Host/provider rejection MUST NOT trigger another model. A denied path MUST NOT be reported as proven successful coverage.
+Cursor, Codex, Grok Build, OpenCode, dsh and Claude Code SHALL each route configured models explicitly through a supported native path. Effort or variant SHALL be supplied only when supported and required when the selected contract requires it. Capabilities SHALL come from the host schema/catalogue or tested adapter contract, not user assertions. Unsupported selections or unavailable routing SHALL fail visibly before creating an incorrectly configured child. Host/provider rejection MUST NOT trigger another model. A denied path MUST NOT be reported as proven successful coverage.
 
 #### Scenario: Cursor model-only route
 - **WHEN** Cursor spawns either named Task or generalPurpose
@@ -36,6 +40,12 @@ Cursor, Codex, Grok Build, OpenCode and dsh SHALL each route configured models e
 #### Scenario: OpenCode selection
 - **WHEN** OpenCode provides a native child-session route preserving task restrictions and return semantics
 - **THEN** that route receives explicit providerID/modelID and supported variant; otherwise the adapter refuses visibly and coverage stays pending
+
+#### Scenario: Claude Code paired route
+- **WHEN** Claude Code spawns a juizo or execucao subagent
+- **THEN** the `Agent` call carries the native encoding of the captured model and the captured effort, initially Opus 5.5/high and Sonnet 5.5/high
+- **AND** a host without per-invocation effort, or an environment override of subagent model or effort, is refused visibly before the child is created
+- **AND** a call without explicit `model` and `effort` is refused rather than left to the host's default effort
 
 ### Requirement: Captures preserve running agents and coherent waves
 Every new spawn SHALL reread configuration and capture immutable requested parameters, client, band, policy/capability version and source digest. Guards SHALL validate the role's band. Continuation, proxies and audits SHALL compare against that capture rather than a subsequently edited file. Reviewer/A-B waves SHALL reread before each child and reject a partial wave if that band's effective choice changes; unrelated changes SHALL NOT invalidate it. Existing agents SHALL NOT change models. Author and later critic MAY have different choices when a local edit intervenes, while both remain juizo.

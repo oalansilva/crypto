@@ -116,17 +116,6 @@ def test_evaluate_listing_enough_bars_is_sufficient(monkeypatch):
     assert insufficient is False
 
 
-class _BoomOptimizer:
-    def __init__(self, *_a, **_k):
-        raise AssertionError("ComboOptimizer must not be constructed on listing cut")
-
-    def generate_stages(self, *_a, **_k):
-        raise AssertionError("generate_stages must not run on listing cut")
-
-    def run_optimization(self, *_a, **_k):
-        raise AssertionError("run_optimization must not run on listing cut")
-
-
 def _patch_metadata(monkeypatch) -> None:
     from app.services.combo_service import ComboService
 
@@ -140,6 +129,45 @@ def _patch_metadata(monkeypatch) -> None:
             "optimization_schema": {},
         },
     )
+
+
+TEMPLATE_METADATA = {
+    "name": "MACD_Cross",
+    "direction": "long",
+    "indicators": [],
+    "optimization_schema": {},
+}
+
+
+def _grant_possession(db, combo, *, owner: str = "worker-876") -> None:
+    """Card #1093: ownership is the durable ledger lease (owner/attempt/generation)."""
+    from app.models_discovery import DiscoveryAttempt
+
+    stamp = datetime.now(timezone.utc).replace(tzinfo=None)
+    combo.state = "running"
+    combo.lease_owner = owner
+    combo.lease_expires_at = stamp + timedelta(seconds=300)
+    combo.heartbeat_at = combo.progress_at = stamp
+    if not combo.attempts:
+        combo.attempts = 1
+    if not combo.lease_generation:
+        combo.lease_generation = 1
+    if db.get(DiscoveryAttempt, (combo.id, combo.attempts)) is None:
+        db.add(
+            DiscoveryAttempt(
+                combination_id=combo.id,
+                attempt_seq=combo.attempts,
+                owner=owner,
+                generation=combo.lease_generation,
+                state="running",
+                started_at=stamp,
+                heartbeat_at=stamp,
+                progress_at=stamp,
+                profile={},
+                counters={},
+            )
+        )
+    db.commit()
 
 
 def _seed_running(db, *, sweep_id: str, total: int = 1):
@@ -163,14 +191,59 @@ def _seed_running(db, *, sweep_id: str, total: int = 1):
         timeframe="1d",
         direction="long",
         state="running",
+        input_snapshot={
+            "snapshot": {"period_type": "all"},
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "template_metadata": TEMPLATE_METADATA,
+        },
     )
     db.add(sweep)
     db.add(combo)
     db.commit()
+    _grant_possession(db, combo)
     return sweep, combo
 
 
+def _patch_supervised(monkeypatch, *, result=None, error=None) -> dict:
+    """Replace the supervised optimizer boundary (spawn supervisor) with a stub."""
+    calls = {"n": 0}
+
+    def run_supervised(config, beat):
+        calls["n"] += 1
+        if error is not None:
+            raise error
+        return result
+
+    monkeypatch.setattr("app.services.discovery_supervisor.run_supervised", run_supervised)
+    return calls
+
+
+def _optimizer_result(start: datetime, end: datetime) -> dict:
+    return {
+        "best_metrics": {
+            "sharpe_ratio": 1.2,
+            "profit_factor": 1.5,
+            "max_drawdown": 0.15,
+            "win_rate": 0.55,
+            "cagr": 0.42,
+            "calmar_ratio": 2.8,
+            "benchmark": {"cagr": 0.18},
+        },
+        "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 40,
+        "candles": [
+            {"timestamp_utc": start.isoformat(), "close": 1.0},
+            {"timestamp_utc": end.isoformat(), "close": 1.0},
+        ],
+        "best_parameters": {"direction": "long"},
+        "data_source": "ccxt",
+    }
+
+
 class TestRunCombinationListingGate:
+    """The listing gate now runs inside the supervised child (card #1093); the
+    parent persists the `insufficient` outcome without ever running the grid."""
+
     def test_short_daily_listing_skips_grid(
         self, postgres_isolation, unit_database_url, monkeypatch
     ):
@@ -182,9 +255,10 @@ class TestRunCombinationListingGate:
         Session = sessionmaker(bind=engine)
         db = Session()
         _sweep, combo = _seed_running(db, sweep_id="sw-876-short")
-        _patch_provider(monkeypatch, _ohlcv_frame(27))
         _patch_metadata(monkeypatch)
-        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", _BoomOptimizer)
+        calls = _patch_supervised(
+            monkeypatch, result={"insufficient": True, "listing_len": 27, "train_len": 18}
+        )
 
         started = time.monotonic()
         try:
@@ -192,6 +266,7 @@ class TestRunCombinationListingGate:
             elapsed = time.monotonic() - started
             db.refresh(combo)
             result = db.query(DiscoveryResult).filter(DiscoveryResult.id == combo.result_id).one()
+            assert calls["n"] == 1
             assert elapsed < 5
             assert combo.state == "insufficient_sample"
             assert result.eligibility == "insufficient_sample"
@@ -213,42 +288,15 @@ class TestRunCombinationListingGate:
         Session = sessionmaker(bind=engine)
         db = Session()
         _sweep, combo = _seed_running(db, sweep_id="sw-876-ok")
-        _patch_provider(monkeypatch, _ohlcv_frame(50))
         _patch_metadata(monkeypatch)
         start = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end = datetime(2024, 1, 2, tzinfo=timezone.utc)
-        constructed = {"n": 0}
-
-        class FakeOptimizer:
-            def __init__(self):
-                constructed["n"] += 1
-
-            def run_optimization(self, **_kwargs):
-                return {
-                    "best_metrics": {
-                        "sharpe_ratio": 1.2,
-                        "profit_factor": 1.5,
-                        "max_drawdown": 0.15,
-                        "win_rate": 0.55,
-                        "cagr": 0.42,
-                        "calmar_ratio": 2.8,
-                        "benchmark": {"cagr": 0.18},
-                    },
-                    "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 40,
-                    "candles": [
-                        {"timestamp_utc": start.isoformat(), "close": 1.0},
-                        {"timestamp_utc": end.isoformat(), "close": 1.0},
-                    ],
-                    "best_parameters": {"direction": "long"},
-                    "data_source": "ccxt",
-                }
-
-        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", FakeOptimizer)
+        calls = _patch_supervised(monkeypatch, result=_optimizer_result(start, end))
         try:
             run_combination(db, combo, owner="worker-876")
             db.refresh(combo)
             result = db.query(DiscoveryResult).filter(DiscoveryResult.id == combo.result_id).one()
-            assert constructed["n"] == 1
+            assert calls["n"] == 1
             assert combo.state == "succeeded"
             assert result.eligibility == "eligible"
         finally:
@@ -419,6 +467,9 @@ def _result_kwargs(combo, *, result_id: str, eligibility: str, identity: str):
 
 class TestRunCombinationBranches:
     def test_fetch_exception_marks_failed(self, postgres_isolation, unit_database_url, monkeypatch):
+        """Card #1093: a recoverable fetch/operational error consumes the attempt,
+        releases the lease and schedules a durable retry (backoff >= 60 s) instead
+        of failing the combination on the first occurrence."""
         engine = create_engine(unit_database_url)
         Base.metadata.create_all(bind=engine)
         _ensure_schema(engine)
@@ -426,29 +477,16 @@ class TestRunCombinationBranches:
         db = Session()
         _sweep, combo = _seed_running(db, sweep_id="sw-876-boom")
         _patch_metadata(monkeypatch)
-
-        class BoomProvider:
-            def fetch_ohlcv(self, **_kwargs):
-                raise RuntimeError("timeout")
-
-        monkeypatch.setattr(
-            "app.services.market_data_providers.get_market_data_provider",
-            lambda *_a, **_k: BoomProvider(),
-        )
-        monkeypatch.setattr(
-            "app.services.market_data_providers.resolve_data_source_for_symbol",
-            lambda *_a, **_k: "ccxt",
-        )
-        monkeypatch.setattr(
-            "app.services.market_data_providers.validate_data_source_timeframe",
-            lambda *_a, **_k: "ccxt",
-        )
+        _patch_supervised(monkeypatch, error=RuntimeError("timeout"))
         try:
             run_combination(db, combo, owner="worker-876")
             db.refresh(combo)
-            assert combo.state == "failed"
+            assert combo.state == "pending"
             assert combo.attempts == 1
             assert combo.result_id is None
+            assert combo.lease_owner is None
+            assert combo.last_failure_code == "RuntimeError"
+            assert combo.next_attempt_at is not None
         finally:
             db.close()
 
@@ -463,9 +501,10 @@ class TestRunCombinationBranches:
         Session = sessionmaker(bind=engine)
         db = Session()
         _sweep, combo = _seed_running(db, sweep_id="sw-876-empty")
-        _patch_provider(monkeypatch, pd.DataFrame())
         _patch_metadata(monkeypatch)
-        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", _BoomOptimizer)
+        _patch_supervised(
+            monkeypatch, result={"insufficient": True, "listing_len": 0, "train_len": 0}
+        )
         try:
             run_combination(db, combo, owner="worker-876")
             db.refresh(combo)
@@ -487,15 +526,18 @@ class TestRunCombinationBranches:
         Session = sessionmaker(bind=engine)
         db = Session()
         _sweep, combo = _seed_running(db, sweep_id="sw-876-redeliver")
-        _patch_provider(monkeypatch, _ohlcv_frame(27))
         _patch_metadata(monkeypatch)
-        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", _BoomOptimizer)
+        _patch_supervised(
+            monkeypatch, result={"insufficient": True, "listing_len": 27, "train_len": 18}
+        )
         try:
             run_combination(db, combo, owner="worker-876")
             db.refresh(combo)
             first_id = combo.result_id
-            combo.state = "running"
-            db.commit()
+            # Redelivery: a new claim grants a fresh lease/generation on the same row.
+            combo.attempts += 1
+            combo.lease_generation += 1
+            _grant_possession(db, combo)
             run_combination(db, combo, owner="worker-876")
             db.refresh(combo)
             assert combo.state == "insufficient_sample"
@@ -515,7 +557,6 @@ class TestRunCombinationBranches:
         Session = sessionmaker(bind=engine)
         db = Session()
         _sweep, combo = _seed_running(db, sweep_id="sw-876-opt-exist")
-        _patch_provider(monkeypatch, _ohlcv_frame(50))
         _patch_metadata(monkeypatch)
         identity = build_strategy_identity(
             template_id=combo.template_id,
@@ -523,12 +564,7 @@ class TestRunCombinationBranches:
             symbol=combo.symbol,
             timeframe=combo.timeframe,
             direction=combo.direction,
-            template_metadata={
-                "name": "MACD_Cross",
-                "direction": "long",
-                "indicators": [],
-                "optimization_schema": {},
-            },
+            template_metadata=TEMPLATE_METADATA,
         )
         db.add(
             DiscoveryResult(
@@ -543,29 +579,7 @@ class TestRunCombinationBranches:
         db.commit()
         start = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end = datetime(2024, 1, 2, tzinfo=timezone.utc)
-
-        class FakeOptimizer:
-            def run_optimization(self, **_kwargs):
-                return {
-                    "best_metrics": {
-                        "sharpe_ratio": 1.2,
-                        "profit_factor": 1.5,
-                        "max_drawdown": 0.15,
-                        "win_rate": 0.55,
-                        "cagr": 0.42,
-                        "calmar_ratio": 2.8,
-                        "benchmark": {"cagr": 0.18},
-                    },
-                    "trades": [{"entry_time": start.isoformat(), "profit": 0.1}] * 40,
-                    "candles": [
-                        {"timestamp_utc": start.isoformat(), "close": 1.0},
-                        {"timestamp_utc": end.isoformat(), "close": 1.0},
-                    ],
-                    "best_parameters": {"direction": "long"},
-                    "data_source": "ccxt",
-                }
-
-        monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", FakeOptimizer)
+        _patch_supervised(monkeypatch, result=_optimizer_result(start, end))
         try:
             run_combination(db, combo, owner="worker-876")
             db.refresh(combo)

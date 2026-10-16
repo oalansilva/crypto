@@ -138,6 +138,15 @@
       "evidence": "exact SHA256/equality goldens for indicators, masks, trades and metrics; never allclose"
     },
     {
+      "file": "backend/tests/unit/test_card_1091_acceleration.py",
+      "protected_behavior": "exact optional numerical kernels and immutable bounded discovery execution caches",
+      "production_reachability": "shared optimizer used by Discovery, laboratory, batch and favorites",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "frozen OHLCV, exact 568 numerical edges, adversarial snapshots/index/ABA/LRU and compiler fallback invariants"
+    },
+    {
       "file": "backend/tests/unit/test_card_1074_combo_templates.py",
       "protected_behavior": "card 1074 combo template and VWAP indicator smoke backtests",
       "production_reachability": "reachable",
@@ -145,6 +154,24 @@
       "regression_risk": "medium",
       "decision": "keep",
       "evidence": "combo_templates_export bundles and synthetic OHLCV signal generation"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1086_donchian_breakout.py",
+      "protected_behavior": "Donchian strict preceding-channel entry, causal next-open execution and template preservation",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "real ComboStrategy and Discovery trade extractor; fast/legacy across 4h, 1h and 15min; baseline export definitions"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1086_donchian_seed.py",
+      "protected_behavior": "corrected Donchian export reaches empty and existing catalogs idempotently",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "explicit postgres_isolation fixture; real initial seed and named refresh; other definitions and saved strategy preserved"
     },
     {
       "file": "backend/tests/unit/test_chart_pattern_service.py",
@@ -451,6 +478,51 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "link token, portfolio scope, and position matrix assertions"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_indicator_binding.py",
+      "protected_behavior": "card 1093 runtime RSI_14/ADX_14 effective-period binding for long_ma_pullback_rsi_adx",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "all 121 RSI/ADX period pairs vs independent TA-Lib oracle, alias/collision/unknown identifiers fail explicitly, A-B-A cache identity, spawn workers keep oracle ranking"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_inputs.py",
+      "protected_behavior": "card 1093 frozen parquet inputs reused by retries and orphan cleanup",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "frozen snapshot hash/identity corruption detection and owner-proven orphan removal under tmp_path"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_memory.py",
+      "protected_behavior": "card 1093 bounded-memory Discovery stream, spool, cache and honest counters",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "last-batch extrema/ties/NaN/inf goldens, spool quota, pool loss, calculation error barrier, cache eviction, admission profile, R1 and R2-R4 domains, systemctl telemetry degrades to empty on timeout/missing binary"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_memory_composition.py",
+      "protected_behavior": "card 1093 composition with the #1091 aggregate LRU cache API",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "single shared cache budget reused through the bridge, no independent budgets"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_supervisor.py",
+      "protected_behavior": "card 1093 spawn supervisor cleanup of lost child, supervisor and principal process groups",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "process-group TERM/KILL/reap within the 20 s ceiling for lost child/supervisor/principal, MemAvailable<2 GiB for 30 s aborts with host_memory_pressure and recovery resets the window"
     },
     {
       "file": "backend/tests/unit/test_telegram_alert_scan_wrapper.py",

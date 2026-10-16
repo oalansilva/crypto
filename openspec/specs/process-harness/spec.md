@@ -4,7 +4,7 @@
 Contrato multi-cliente do processo: núcleo = verdade; adapters Cursor, Grok e OpenCode = tradução. Proíbe dual-write da lei.
 ## Requirements
 ### Requirement: Process law has one nucleus and five adapters
-The process SHALL have a single nucleus and five client adapters. The nucleus is `.cursor/process-fsm.yaml` (T0–T18, I1–I9, 12 column names, events, `context_file`, `enabled_tools` — **not** `product_globs`/`design_globs`), `scripts/process-fsm/`, the canonical skill files, and the short root `AGENTS.md`. Consumer parameters (`product_globs`, `design_globs`, board ids) live in `.covenant-flow/overlay.yaml` and are NOT a second law table. The Cursor adapter is `.cursor/hooks.json`, `.cursor/hooks/*`, `.cursor/rules/harness.mdc`, and `.cursor/commands/`. The Grok adapter is `.grok/hooks/`, generated Moore paging under `.grok/rules/`, and skill stubs under `.grok/skills/`. The OpenCode adapter is `.opencode/plugin/` (auto-loaded `*.js` / `*.ts`), Moore inject via `experimental.chat.system.transform`, and skill stubs under `.opencode/skills/` only for skills the OpenCode 1.18.18 binary does not discover. The dsh adapter is `.dsh/plugin/` (Cordis `apply(ctx)`), Moore inject via `ctx.systemPrompt.section`, and skill stubs under `.dsh/skills/` only for skills dsh does not discover. The fifth Codex local adapter is project-scoped `.codex/` hooks and thin skill bridges under `.agents/skills/`; CLI and IDE local use the same adapter. A change of column, invariant, or Moore `context_file` text MUST be made once in the yaml (and in a skill only when the change is *how* to work). A change of product glob, design glob, or board ids MUST be made once in the overlay. All adapters SHALL compile law from the yaml and globs/board ids from the overlay. Missing or invalid overlay SHALL fail closed for **product writes**; paging/`sessionStart` remains fail-open (unbound/unread page) and MUST NOT dump the overlay body. Adapters MUST NOT copy T0–T18, I1–I9, or the 12-column runbook. Codex home skills and Hermes skill symlinks MUST NOT be an active contract. The lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` as kaizen contract) MUST remain forbidden. `opencode.json` MUST NOT be an active contract of model, MCP, or permission. Neither dsh nor Codex SHALL be a source of law.
+The process SHALL have a single nucleus and five client adapters. The nucleus is `.cursor/process-fsm.yaml` (T0–T18, I1–I9, 12 column names, events, `context_file`, `enabled_tools` — **not** `product_globs`/`design_globs`), `scripts/process-fsm/`, the canonical skill files, and the short root `AGENTS.md`. Consumer parameters (`product_globs`, `design_globs`, board ids) live in `.covenant-flow/overlay.yaml` and are NOT a second law table. From the account-registration pin onward, hook registration is not part of the Claude Code, Cursor, Codex or OpenCode adapters: their hooks are registered in the operator account through the `account-hook-shim`, which calls the adapter pinned in the consumer; their adapter files below remain in the consumer, their project registration files named below apply only to pins older than account registration, and one of them whose global mechanism is not proven follows the `account-hook-shim` rule for `registration=unproven`. The Grok and dsh adapters, including their project registration, stay unchanged by this change. The Cursor adapter is `.cursor/hooks.json`, `.cursor/hooks/*`, `.cursor/rules/harness.mdc`, and `.cursor/commands/`. The Grok adapter is `.grok/hooks/`, generated Moore paging under `.grok/rules/`, and skill stubs under `.grok/skills/`. The OpenCode adapter is `.opencode/plugin/` (auto-loaded `*.js` / `*.ts`), Moore inject via `experimental.chat.system.transform`, and skill stubs under `.opencode/skills/` only for skills the OpenCode 1.18.18 binary does not discover. The dsh adapter is `.dsh/plugin/` (Cordis `apply(ctx)`), Moore inject via `ctx.systemPrompt.section`, and skill stubs under `.dsh/skills/` only for skills dsh does not discover. The fifth Codex local adapter is the `.codex/` hook handlers (registered in the account by the shim, or project-scoped on older pins) and thin skill bridges under `.agents/skills/`; CLI and IDE local use the same adapter. A change of column, invariant, or Moore `context_file` text MUST be made once in the yaml (and in a skill only when the change is *how* to work). A change of product glob, design glob, or board ids MUST be made once in the overlay. All adapters SHALL compile law from the yaml and globs/board ids from the overlay. Missing or invalid overlay SHALL fail closed for **product writes**; paging/`sessionStart` remains fail-open (unbound/unread page) and MUST NOT dump the overlay body. Adapters MUST NOT copy T0–T18, I1–I9, or the 12-column runbook. Codex home skills and Hermes skill symlinks MUST NOT be an active contract. The lock machine (`design-planner` lease, packet, `design_artifact_write`, attestation, `opencode.db` as kaizen contract) MUST remain forbidden. `opencode.json` MUST NOT be an active contract of model, MCP, or permission. Neither dsh nor Codex SHALL be a source of law.
 
 #### Scenario: One yaml change reaches five adapters
 - **WHEN** a column, invariant, or `context_file` stub changes in `.cursor/process-fsm.yaml`
@@ -20,6 +20,12 @@ The process SHALL have a single nucleus and five client adapters. The nucleus is
 - **WHEN** a product glob changes in `.covenant-flow/overlay.yaml`
 - **THEN** all five Guards classify a corresponding write using the changed overlay glob
 - **AND** the glob is not redeclared as yaml law or Codex-local policy
+
+#### Scenario: Registration lives in the account
+- **WHEN** a reviewer inspects a consumer pinned with the account-registration pin
+- **THEN** no Claude Code, Cursor, Codex or OpenCode Covenant Flow hook registration is versioned in the consumer
+- **AND** the Grok and dsh project registrations are unchanged
+- **AND** the adapter handlers and `scripts/process-fsm/` remain in the consumer and compile law from the yaml and overlay
 
 #### Scenario: Fifth harness is not the law
 - **WHEN** a reviewer inspects `.codex/` and `scripts/process-fsm/`
@@ -42,7 +48,7 @@ Grok SHALL discover process skills via `.grok/skills/<name>/SKILL.md` stubs for 
 - **THEN** the stub generator check in `pytest scripts/process-fsm` fails
 
 ### Requirement: Always-on delta lives in AGENTS.md
-The short always-on law (resolve `(q, bound_card, q_git)`, chat wording is not authorization, NLU is not δ, `Em Refinamento` is the entry column, `Todo` is not implementation, Design columns must not be skipped, overlay is on-demand, Alan-only T1/T7/T15/T18, T16 is `process_event fechar_release`) SHALL live in the root `AGENTS.md` stub so Cursor, Grok Build, OpenCode, dsh, and Codex local ingest it. `AGENTS.md` MUST remain at most 40 non-empty lines and MUST point to the consumer `overlay_doc` path (Cripto: `docs/crypto-overlay.md`) for ports/Drive/PostgreSQL/release. It MUST name all five clients and state they are cooperative. It MUST NOT claim Auto for any client, interpolate `clients.*.auto`, contain `Auto permitido`, or copy the 12-column runbook or `release-guard pre`/`post` snippets. Its header MUST NOT say the stub is “não always-on”. The deny-essay clause for Grok/OpenCode/dsh/Codex MUST NOT turn Cursor into an Auto claim. Naming Codex or dsh MUST NOT depend on a new overlay key.
+The short always-on law (resolve `(q, bound_card, q_git)`, chat wording is not authorization, NLU is not δ, `Em Refinamento` is the entry column, `Todo` is not implementation, Design columns must not be skipped, overlay is on-demand, Alan-only T1/T7/T15/T18, T16 is `process_event fechar_release`) SHALL live in the root `AGENTS.md` stub so Cursor, Grok Build, OpenCode, dsh, and Codex local ingest it; Claude Code SHALL ingest the same stub through a root `CLAUDE.md` that only imports `AGENTS.md`. `AGENTS.md` MUST remain at most 40 non-empty lines and MUST point to the consumer `overlay_doc` path (Cripto: `docs/crypto-overlay.md`) for ports/Drive/PostgreSQL/release. It MUST name all five official clients and state they are cooperative. Claude Code is not an official client: `AGENTS.md` MUST NOT name it as a client, and naming it requires a separate follow-up change (renderer `render_agents`, pin and board description). It MUST NOT claim Auto for any client, interpolate `clients.*.auto`, contain `Auto permitido`, or copy the 12-column runbook or `release-guard pre`/`post` snippets. Its header MUST NOT say the stub is “não always-on”. The deny-essay clause for Grok/OpenCode/dsh/Codex MUST NOT turn Cursor into an Auto claim. Naming Codex or dsh MUST NOT depend on a new overlay key.
 
 #### Scenario: Five clients read the same stub
 - **WHEN** sessions in the five clients start in the repo
@@ -55,6 +61,11 @@ The short always-on law (resolve `(q, bound_card, q_git)`, chat wording is not a
 - **WHEN** an overlay `clients.*.auto` value changes
 - **THEN** `render_agents()` still emits cooperative client wording
 - **AND** it does not say `Auto permitido`
+
+#### Scenario: Claude Code reads the stub without being named
+- **WHEN** a Claude Code session starts in the repo
+- **THEN** it loads `AGENTS.md` through `CLAUDE.md`
+- **AND** `AGENTS.md` does not name Claude Code as a client
 
 ### Requirement: Grok Auto is gated on the deny essay
 Until a human essay on the same worktree shows that an illegal product Write with `q_git=develop` is denied in **both** Cursor and Grok Build, Grok Build MUST be treated as cooperative, not Auto. `process_event` remains the only Agent Status mover in both clients. Agent MUST NOT `item-edit` Status.
@@ -517,4 +528,44 @@ The dsh Guard SHALL treat a dead provider turn as class `dsh_dead_turn`: empty r
 - **THEN** `next()` is called
 - **AND** the listener does not return `{ kind: "retry" }`
 - **AND** a third automatic retry MUST NOT occur
+
+### Requirement: Design submission checks the gate tokens
+`process_event submeter_design` (T5) SHALL parse the bound change's `design.md` with the same parser used by the precommit checklist and SHALL refuse when any of `UI impact`, `live_route` or `surface` is missing or invalid, naming the token (R28, findings 27/28 of #1101). This brings forward a check that already exists; it adds no transition or actor.
+
+#### Scenario: design.md without live_route
+- **WHEN** the parent calls `submeter_design` and `design.md` has no parseable `live_route` line
+- **THEN** T5 is refused naming `live_route` and Status stays `Design`
+
+#### Scenario: No-screen design with tokens
+- **WHEN** `design.md` starts with `UI impact: none`, `live_route: N/A — <justification>` and `surface: none`
+- **THEN** the token check passes
+
+### Requirement: Rules and runbook describe the account registration
+`.cursor/rules/harness.mdc`, the nucleus `rules.md` and the `covenant-flow` skill SHALL describe hooks as "account registration (`install.sh --account`) → shim → pinned adapter" and SHALL NOT cite project `.cursor/hooks.json` or `.codex/hooks.json` as the active registration (R25, R31). The runbook SHALL say that commands for the operator are pasted in plain bash without `!` and without `cd … &&` (R29), that after an account review a new session is needed before `prepare` stops reporting `hooks_inactive` (R30), and how to work through the desktop app (open in `/source` with the app's worktree option off, `#<id>` → `EnterWorktree`, app folder = no card). `host-mechanisms.md` of #1101 SHALL list page reinjection per host (R17). A session opened in `/source` SHALL receive the page (R34).
+
+#### Scenario: Rules no longer point to project hook files
+- **WHEN** a test scans the rule files and the skill
+- **THEN** no active-registration text cites `.cursor/hooks.json` or `.codex/hooks.json` of the project
+
+#### Scenario: Session opened in /source
+- **WHEN** a Claude Code session, in the terminal or the app, starts in `/source` on the current pin
+- **THEN** the page is injected with `q_git=develop` and the `EnterWorktree` instruction
+
+### Requirement: Residual tests prove what they claim
+The Impeccable-through-shim Guard test SHALL use a logging stub and assert it ran with empty stderr (R22); the design clone gate test SHALL require `/combo/results` in the Cripto catalog (R23); the release closeout test SHALL `pytest.skip` explicitly when `docs/crypto-overlay.md` is absent (R24).
+
+#### Scenario: Impeccable stub did not run
+- **WHEN** the shim route to `impeccable.sh` is broken
+- **THEN** the Guard test fails because the stub log is empty
+
+#### Scenario: Overlay doc missing
+- **WHEN** `docs/crypto-overlay.md` is absent
+- **THEN** the release closeout test reports an explicit skip
+
+### Requirement: The #1101 OpenSpec records its supersessions before archive
+Before the #1101 change is archived, its artifacts SHALL carry supersession notes: tasks 3.2 and 7.1 "superseded by 11.4/11.5" (R32); 6.5 without the gate declaration, 2.4 with the old window and 9.3 with `implemente` in `Todo` without live proof (R36); and the Impeccable requirement citing `hook.mjs` (R26).
+
+#### Scenario: Archive check
+- **WHEN** the #1101 change is validated for archive
+- **THEN** each listed task and requirement carries its supersession note
 

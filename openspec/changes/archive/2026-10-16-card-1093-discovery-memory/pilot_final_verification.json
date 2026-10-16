@@ -1,0 +1,51 @@
+{
+  "kind": "pilot",
+  "complete_runs": 1,
+  "historical_diversity": {
+    "baseline": "99a3070cd9d117539fe6de734361f07d5e1c4611",
+    "method_ast_identical": true,
+    "selected_trials": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ]
+  },
+  "exact_final_reference": [
+    {
+      "parameters": {
+        "direction": "long",
+        "timeframe": "15m",
+        "ma_long_length": 200,
+        "ma_long_pullback_pct": 2.0,
+        "rsi_length": 20,
+        "rsi_oversold": 40,
+        "rsi_overbought": 65,
+        "adx_length": 20,
+        "adx_threshold": 22,
+        "stop_loss": 0.0
+      },
+      "metrics_sha256": "7ed55022e9c34c3579a130aeecf437952a5b1c25d6e90ce0f4c7bca333f68e66",
+      "train_trades_sha256": "24527e52391853016cf741a7e76c428a89646eafb0a5315ee9d5be9bb41080c6",
+      "holdout_trades_sha256": "6df47585a9a75a626ca7db5f00a72d32bc56757942b2bfd225bf9937fc1c05d8",
+      "verdict": "NO-GO"
+    }
+  ],
+  "post_cleanup_growth": {}
+}

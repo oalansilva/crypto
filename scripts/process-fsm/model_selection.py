@@ -20,7 +20,7 @@ import yaml
 
 POLICY_PATH = Path(__file__).resolve().parents[2] / ".cursor/model-policy.yaml"
 BANDS = ("juizo", "execucao")
-CLIENTS = ("cursor", "codex", "grok", "opencode", "dsh")
+CLIENTS = ("cursor", "codex", "grok", "opencode", "dsh", "claude")
 
 
 class SelectionError(ValueError):
@@ -120,7 +120,7 @@ def validate_document(data: Any) -> dict:
         raise SelectionError("schema must contain only version: 1 and clients")
     clients = data["clients"]
     if not isinstance(clients, dict) or set(clients) - set(CLIENTS):
-        raise SelectionError("clients must contain only cursor/codex/grok/opencode/dsh")
+        raise SelectionError("clients must contain only cursor/codex/grok/opencode/dsh/claude")
     for client, bands in clients.items():
         if not isinstance(bands, dict) or set(bands) - set(BANDS):
             raise SelectionError(f"{client}: only juizo/execucao bands are allowed")
@@ -134,7 +134,106 @@ def validate_document(data: Any) -> dict:
     return data
 
 
-def validate_entry(client: str, band: str, entry: Any, *, catalogue: Mapping | None = None) -> dict:
+def claude_host_alias(model: str, pol: Mapping | None = None) -> str:
+    """Family alias the Claude Code Agent tool accepts for a selected full model id."""
+    aliases = (pol or policy())["clients"]["claude"]["host_model_aliases"]
+    for prefix, alias in aliases.items():
+        if model == prefix or model.startswith(prefix + "-"):
+            return alias
+    raise SelectionError(f"capability_unavailable: no Claude Code host alias for model {model!r}; known families: {', '.join(aliases)}")
+
+
+def _version_tuple(text: str) -> tuple[int, ...]:
+    match = re.match(r"\d+(?:\.\d+)*", text.strip())
+    if not match:
+        raise ValueError(text)
+    return tuple(int(part) for part in match[0].split("."))
+
+
+def claude_version_from_env(environ: Mapping[str, str] | None = None) -> str | None:
+    """Pure: host version from `AI_AGENT` (`claude-code_2-1-296_agent` on the real host; dots also accepted), normalized to dots."""
+    env = os.environ if environ is None else environ
+    match = re.fullmatch(r"claude-code_(\d+(?:[.-]\d+)*)(?:_.*)?", env.get("AI_AGENT", ""))
+    return match[1].replace("-", ".") if match else None
+
+
+# Hooks with `onFailure: "block"` (the account registration's PreToolUse) exist from this host version on; per-invocation
+# effort needs the lower `host_min_version` of the policy. The code applies both (R14), the policy file is untouched.
+CLAUDE_HOOK_MIN_VERSION = "2.1.295"
+
+
+def claude_in_session(environ: Mapping[str, str] | None = None) -> bool:
+    """True inside a Claude Code session (terminal or desktop app): its Bash tool and hooks carry `CLAUDECODE`."""
+    env = os.environ if environ is None else environ
+    return bool(str(env.get("CLAUDECODE", "")).strip())
+
+
+def claude_detect_version(environ: Mapping[str, str] | None = None) -> str | None:
+    """Host version of the session (`AI_AGENT`); `claude --version` only outside a Claude Code session.
+
+    Inside a session the `claude` on PATH is another binary than the running host (the terminal one is 2.1.300 while the
+    desktop app runs its own copy at 2.1.295), so measuring it would certify the wrong host: the session version is
+    unreadable instead, and the caller fails visibly.
+    """
+    version = claude_version_from_env(environ)
+    if version:
+        return version
+    if claude_in_session(environ):
+        return None
+    try:
+        out = subprocess.run(["claude", "--version"], capture_output=True, text=True, timeout=5, check=True).stdout
+        return ".".join(str(n) for n in _version_tuple(out))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+
+
+def claude_host_checks(contract: Mapping, facts: Mapping | None = None) -> None:
+    """Per-invocation effort needs the minimum host; env overrides void the explicit pair.
+
+    `facts` may inject {"version": ..., "environ": {...}} (tests); default is the live process.
+    """
+    facts = facts or {}
+    env = facts.get("environ", os.environ)
+    active = [name for name in contract["env_overrides"] if str(env.get(name, "")).strip()]
+    if active:
+        raise SelectionError(
+            "capability_unavailable: " + ", ".join(active)
+            + " overrides the per-spawn model/effort; unset it before spawning, no fallback"
+        )
+    version = facts["version"] if "version" in facts else claude_detect_version(env)
+    minimum = contract["host_min_version"]
+    try:
+        ok = version is not None and _version_tuple(version) >= _version_tuple(minimum)
+    except ValueError:
+        ok = False
+    if not ok:
+        if version is None and claude_in_session(env):
+            surface = str(env.get("CLAUDE_CODE_ENTRYPOINT") or "unknown")
+            raise SelectionError(
+                f"capability_unavailable: Claude Code host version is not readable from this session (no AI_AGENT on surface {surface}); "
+                f"the `claude` binary on PATH is never queried inside a session, so per-invocation effort cannot be proven (needs >= {minimum}); no fallback"
+            )
+        raise SelectionError(
+            f"capability_unavailable: Claude Code host version {version or 'undetectable'} lacks per-invocation effort (needs >= {minimum}); no fallback"
+        )
+
+
+def claude_hook_check(version: str | None, environ: Mapping[str, str] | None = None) -> None:
+    """Births and hook-dependent transitions need blocking hooks (host >= 2.1.295); below it `capability_unavailable`."""
+    env = os.environ if environ is None else environ
+    try:
+        ok = version is not None and _version_tuple(version) >= _version_tuple(CLAUDE_HOOK_MIN_VERSION)
+    except ValueError:
+        ok = False
+    if not ok:
+        surface = str(env.get("CLAUDE_CODE_ENTRYPOINT") or "unknown")
+        raise SelectionError(
+            f"capability_unavailable: Claude Code host version {version or 'undetectable'} on surface {surface} lacks hooks with onFailure=block "
+            f"(needs >= {CLAUDE_HOOK_MIN_VERSION}); a missing hook is never protection, no fallback"
+        )
+
+
+def validate_entry(client: str, band: str, entry: Any, *, catalogue: Mapping | None = None, host_checks: bool = True) -> dict:
     p = policy()
     if client not in CLIENTS or band not in BANDS:
         raise SelectionError(f"unknown client/band {client}/{band}")
@@ -181,6 +280,12 @@ def validate_entry(client: str, band: str, entry: Any, *, catalogue: Mapping | N
         efforts = {x["effort"] for x in model.get("supported_reasoning_levels", [])}
         if entry["effort"] not in efforts:
             raise SelectionError(f"{client}/{band}: unsupported effort {entry['effort']!r} for {entry['model']}")
+    if client == "claude":
+        claude_host_alias(entry["model"], p)
+        if entry["effort"] not in p["clients"]["claude"]["efforts"]:
+            raise SelectionError(f"{client}/{band}: unsupported effort {entry['effort']!r} for {entry['model']}; supported: {', '.join(p['clients']['claude']['efforts'])}")
+        if host_checks:
+            claude_host_checks(p["clients"]["claude"], catalogue)
     # dsh effort compatibility is checked against llm.resolveModelInfo by the
     # active adapter before birth, rather than a perpetual effort allowlist.
     return copy.deepcopy(entry)
@@ -191,19 +296,21 @@ def native_arguments(client: str, entry: dict) -> dict:
         return {"model": entry["model"]}
     if client == "codex":
         return {"model": entry["model"], "reasoning_effort": entry["effort"]}
+    if client == "claude":
+        return {"model": claude_host_alias(entry["model"]), "effort": entry["effort"]}
     if client == "dsh":
         return {"provider": entry["provider"], "model": entry["model"], **({"reasoning_effort": entry["effort"]} if "effort" in entry else {})}
     return {"model": {"providerID": entry["provider"], "modelID": entry["model"]}, **({"variant": entry["variant"]} if "variant" in entry else {})}
 
 
-def resolve(client: str, band: str, *, role: str | None = None, catalogue: Mapping | None = None) -> dict:
+def resolve(client: str, band: str, *, role: str | None = None, catalogue: Mapping | None = None, host_checks: bool = True) -> dict:
     path = selection_path()
     if role is not None and role_band(role) != band:
         raise SelectionError(f"{path} {client}/{band}: role {role} requires {role_band(role)}")
     try:
         document, body = read_yaml(path)
         validate_document(document)
-        entry = validate_entry(client, band, document["clients"].get(client, {}).get(band), catalogue=catalogue)
+        entry = validate_entry(client, band, document["clients"].get(client, {}).get(band), catalogue=catalogue, host_checks=host_checks)
     except SelectionError as exc:
         raise SelectionError(f"{path} {client}/{band}: {exc}") from exc
     p = policy()
@@ -375,7 +482,7 @@ def main(argv: list[str] | None = None) -> int:
                 save_capture(args.capture, out)
         elif args.command == "validate":
             validate_document(read_yaml(selection_path())[0])
-            out = [resolve(c, b) for c in CLIENTS for b in BANDS]
+            out = [resolve(c, b, host_checks=False) for c in CLIENTS for b in BANDS]
         elif args.command == "migration-plan":
             out = migration_plan(args.legacy, read_yaml(args.routes)[0] if args.routes else {})
         elif args.command == "migrate":

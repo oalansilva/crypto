@@ -1,0 +1,58 @@
+         2690095 function calls (2591092 primitive calls) in 2.099 seconds
+
+   Ordered by: cumulative time
+   List reduced from 632 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      200    0.016    0.000    2.011    0.010 combo_optimizer.py:475(_run_backtest_logic)
+      200    0.009    0.000    0.997    0.005 combo_optimizer.py:312(extract_trades_with_mode)
+      200    0.001    0.000    0.844    0.004 deep_backtest.py:26(simulate_execution_with_15m)
+      200    0.013    0.000    0.842    0.004 deep_backtest.py:347(_compiled_simulate_execution_with_15m)
+      400    0.222    0.001    0.700    0.002 deep_backtest.py:198(_iso_array)
+      200    0.006    0.000    0.376    0.002 combo_strategy.py:871(_fast_position_loop)
+      484    0.003    0.000    0.316    0.001 frame.py:4559(__setitem__)
+ 1018/725    0.010    0.000    0.309    0.000 {built-in method builtins.sum}
+       61    0.003    0.000    0.305    0.005 combo_cache.py:136(put)
+       32    0.000    0.000    0.303    0.009 combo_cache.py:166(__setitem__)
+      200    0.001    0.000    0.303    0.002 frame.py:5649(assign)
+ 72171/61    0.142    0.000    0.302    0.005 combo_cache.py:71(retained_bytes)
+  974/183    0.000    0.000    0.301    0.002 combo_cache.py:105(<genexpr>)
+      484    0.002    0.000    0.283    0.001 frame.py:4862(_set_item)
+    70781    0.026    0.000    0.283    0.000 combo_cache.py:93(<genexpr>)
+     3132    0.014    0.000    0.230    0.000 frame.py:4337(__getitem__)
+      484    0.004    0.000    0.227    0.000 frame.py:4846(_set_item_mgr)
+      429    0.006    0.000    0.224    0.001 combo_cache.py:20(_hash_index)
+      484    0.006    0.000    0.213    0.000 managers.py:1531(insert)
+      800    0.001    0.000    0.210    0.000 combo_cache.py:13(index_identity)
+     1542    0.007    0.000    0.185    0.000 config.py:143(get_option)
+     1542    0.003    0.000    0.175    0.000 config.py:127(_get_single_key)
+     1542    0.019    0.000    0.167    0.000 config.py:650(_select_options)
+     3132    0.004    0.000    0.153    0.000 frame.py:4966(_get_item)
+825347/824293    0.132    0.000    0.149    0.000 {built-in method builtins.isinstance}
+     3132    0.003    0.000    0.145    0.000 frame.py:4292(_ixs)
+   155413    0.144    0.000    0.145    0.000 datetimes.py:670(__iter__)
+    66649    0.032    0.000    0.140    0.000 __init__.py:174(search)
+      400    0.003    0.000    0.139    0.000 combo_optimizer.py:664(_safe_mean)
+     2318    0.020    0.000    0.132    0.000 base.py:567(to_numpy)
+5978/5578    0.006    0.000    0.130    0.000 {built-in method numpy.asarray}
+       29    0.001    0.000    0.120    0.004 combo_cache.py:36(protect)
+       56    0.004    0.000    0.120    0.002 combo_strategy.py:513(_evaluate_logic_vectorized)
+       28    0.003    0.000    0.115    0.004 combo_strategy.py:311(calculate_indicators)
+     1193    0.012    0.000    0.113    0.000 series.py:369(__init__)
+      400    0.002    0.000    0.108    0.000 series.py:6422(dropna)
+      400    0.001    0.000    0.104    0.000 missing.py:649(remove_na_arraylike)
+      858    0.001    0.000    0.103    0.000 {built-in method builtins.repr}
+      429    0.001    0.000    0.101    0.000 frozen.py:115(__repr__)
+      429    0.001    0.000    0.100    0.000 frozen.py:110(__str__)
+       29    0.000    0.000    0.099    0.003 base.py:659(to_numpy)
+  858/429    0.003    0.000    0.099    0.000 printing.py:174(pprint_thing)
+       29    0.000    0.000    0.099    0.003 datetimes.py:663(__array__)
+       29    0.010    0.000    0.099    0.003 datetimelike.py:356(__array__)
+      429    0.003    0.000    0.099    0.000 hashing.py:84(hash_pandas_object)
+     4332    0.011    0.000    0.094    0.000 base.py:5384(__getitem__)
+     3132    0.006    0.000    0.093    0.000 frame.py:4954(_box_col_values)
+      429    0.003    0.000    0.091    0.000 printing.py:103(_pprint_seq)
+    67209    0.045    0.000    0.081    0.000 __init__.py:280(_compile)
+      484    0.003    0.000    0.080    0.000 base.py:7143(insert)
+
+

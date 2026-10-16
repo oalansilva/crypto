@@ -1,0 +1,58 @@
+         1203814 function calls (1126417 primitive calls) in 0.766 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1342 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        2    0.022    0.011    0.589    0.294 combo_optimizer.py:312(extract_trades_with_mode)
+    71252    0.025    0.000    0.315    0.000 combo_cache.py:93(<genexpr>)
+        4    0.010    0.003    0.315    0.079 deep_backtest.py:198(_iso_array)
+        2    0.000    0.000    0.311    0.155 deep_backtest.py:26(simulate_execution_with_15m)
+        2    0.000    0.000    0.311    0.155 deep_backtest.py:347(_compiled_simulate_execution_with_15m)
+        6    0.003    0.001    0.297    0.050 combo_cache.py:136(put)
+        5    0.000    0.000    0.297    0.059 combo_cache.py:166(__setitem__)
+  71301/6    0.139    0.000    0.294    0.049 combo_cache.py:71(retained_bytes)
+    30/16    0.001    0.000    0.294    0.018 {built-in method builtins.sum}
+    63/18    0.000    0.000    0.294    0.016 combo_cache.py:105(<genexpr>)
+        9    0.004    0.000    0.266    0.030 threading.py:637(wait)
+        9    0.002    0.000    0.238    0.026 discovery_benchmark_1091.py:404(rss_tree_kib)
+       18    0.003    0.000    0.155    0.009 pathlib.py:1024(read_text)
+        8    0.000    0.000    0.111    0.014 threading.py:323(wait)
+       34    0.091    0.003    0.111    0.003 {method 'acquire' of '_thread.lock' objects}
+540245/540203    0.079    0.000    0.081    0.000 {built-in method builtins.isinstance}
+       18    0.015    0.001    0.078    0.004 pathlib.py:1007(open)
+        1    0.000    0.000    0.073    0.073 combo_optimizer.py:2843(_build_strategy_transparency_result)
+       18    0.046    0.003    0.057    0.003 {built-in method _io.open}
+       18    0.038    0.002    0.057    0.003 {method 'read' of '_io.TextIOWrapper' objects}
+    75879    0.049    0.000    0.050    0.000 datetimes.py:670(__iter__)
+        1    0.000    0.000    0.049    0.049 strategy_transparency.py:517(build_strategy_transparency)
+      513    0.002    0.000    0.046    0.000 frame.py:1538(iterrows)
+       20    0.032    0.002    0.043    0.002 {method '__exit__' of '_io._IOBase' objects}
+        2    0.000    0.000    0.042    0.021 strategy_transparency.py:1(<module>)
+        1    0.014    0.014    0.040    0.040 strategy_transparency.py:675(attach_timestamped_series)
+      544    0.003    0.000    0.035    0.000 series.py:369(__init__)
+      4/1    0.000    0.000    0.023    0.023 <frozen importlib._bootstrap>:1349(_find_and_load)
+      3/1    0.000    0.000    0.023    0.023 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+      3/1    0.000    0.000    0.022    0.022 <frozen importlib._bootstrap>:911(_load_unlocked)
+      2/1    0.000    0.000    0.022    0.022 <frozen importlib._bootstrap_external>:989(exec_module)
+      6/2    0.000    0.000    0.021    0.011 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+      2/1    0.000    0.000    0.021    0.021 {built-in method builtins.exec}
+     16/9    0.000    0.000    0.020    0.002 {built-in method builtins.__build_class__}
+        7    0.000    0.000    0.019    0.003 _model_construction.py:89(__new__)
+    71298    0.019    0.000    0.019    0.000 {built-in method sys.getsizeof}
+   142809    0.016    0.000    0.016    0.000 {built-in method builtins.id}
+     2565    0.003    0.000    0.016    0.000 series.py:945(__getitem__)
+    71334    0.014    0.000    0.014    0.000 {method 'add' of 'set' objects}
+      554    0.006    0.000    0.012    0.000 construction.py:531(sanitize_array)
+     2035    0.002    0.000    0.012    0.000 __init__.py:280(_compile)
+        2    0.000    0.000    0.012    0.006 combo_optimizer.py:3128(_calculate_heavy_metrics)
+        7    0.000    0.000    0.012    0.002 _model_construction.py:561(complete_model_class)
+        1    0.000    0.000    0.011    0.011 combo_strategy.py:755(generate_signals)
+        1    0.000    0.000    0.011    0.011 combo_strategy.py:791(_fast_generate_signals)
+     37/7    0.000    0.000    0.010    0.001 _generate_schema.py:794(generate_schema)
+     89/7    0.000    0.000    0.010    0.001 _generate_schema.py:1098(_generate_schema_inner)
+        6    0.000    0.000    0.010    0.002 datetimes.py:687(to_datetime)
+     13/7    0.000    0.000    0.010    0.001 _generate_schema.py:839(_model_schema)
+        9    0.000    0.000    0.009    0.001 combo_cache.py:20(_hash_index)
+
+
