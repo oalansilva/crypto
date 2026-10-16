@@ -123,15 +123,26 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 # Applying a lower envelope to a running legacy tree may cause immediate OOM.
-# Drain/stop only Discovery first; fail closed if any old descendant remains.
+# The caller (./restart, or the operator during the manual cutover) stops
+# Discovery first; this guard fails closed if it is still active or if any old
+# descendant remains. It never kills anything.
 if [[ "$TARGET" == "dev" ]]; then
-  if systemctl is-active --quiet criptofarol-dev-discovery-worker.service; then
-    echo "Stop/drain DEV Discovery and verify empty cgroup before installing limits." >&2
+  discovery_unit="criptofarol-dev-discovery-worker.service"
+  if systemctl is-active --quiet "$discovery_unit"; then
+    echo "DEV Discovery ($discovery_unit) is still active: memory limits were NOT applied (limites não aplicados). Stop/drain DEV Discovery and verify an empty cgroup before installing limits." >&2
     exit 1
   fi
-  group="$(systemctl show criptofarol-dev-discovery-worker.service -p ControlGroup --value)"
-  if [[ -n "$group" && -r "/sys/fs/cgroup$group/cgroup.procs" ]] && [[ -s "/sys/fs/cgroup$group/cgroup.procs" ]]; then
-    echo "Legacy Discovery descendants remain; refusing coexistence." >&2
+  group="$(systemctl show "$discovery_unit" -p ControlGroup --value)"
+  procs="/sys/fs/cgroup$group/cgroup.procs"
+  if [[ -n "$group" && -r "$procs" ]] && [[ -s "$procs" ]]; then
+    echo "Legacy Discovery descendants remain in cgroup $group: memory limits were NOT applied (limites não aplicados); refusing coexistence. Nothing was killed. Remaining processes:" >&2
+    while IFS= read -r pid; do
+      [[ -n "$pid" ]] || continue
+      cmd="$({ tr '\0' ' ' <"/proc/$pid/cmdline" | cut -c1-200; } 2>/dev/null || true)"
+      [[ -n "${cmd// /}" ]] || cmd="$(cat "/proc/$pid/comm" 2>/dev/null || true)"
+      echo "  PID $pid: ${cmd:-?}" >&2
+    done <"$procs"
+    echo "Stop or drain these processes (see docs/discovery-memory-operations.md), then run again." >&2
     exit 1
   fi
 fi
@@ -153,7 +164,27 @@ EOF
 fi
 
 systemctl daemon-reload
-systemctl enable --now "${UNITS[@]}"
-systemctl is-active "${UNITS[@]}"
+if ! systemctl enable --now "${UNITS[@]}"; then
+  if [[ "$TARGET" == "dev" ]]; then
+    echo "Failed to enable/start ${UNITS[*]}. The unit files were installed with the new limits, but the start was refused." >&2
+    echo "If this is the 4th start within 15 minutes, systemd's start limit (StartLimitBurst=3/900s, #1093) refused it: wait and repeat. No automatic reset-failed is done." >&2
+  else
+    echo "Failed to enable/start ${UNITS[*]}." >&2
+  fi
+  exit 1
+fi
+if ! systemctl is-active "${UNITS[@]}"; then
+  echo "Not every unit became active after enable --now: ${UNITS[*]}." >&2
+  if [[ "$TARGET" == "dev" ]]; then
+    for unit in "${UNITS[@]}"; do
+      for hold in "/run/systemd/system/$unit.d/card-1093-hold.conf" "/etc/systemd/system/$unit.d/card-1093-hold.conf"; do
+        if [[ -e "$hold" ]]; then
+          echo "The #1093 containment drop-in is still present and prevents the start: $hold" >&2
+        fi
+      done
+    done
+  fi
+  exit 1
+fi
 
 echo "Installed canonical $TARGET discovery dispatcher and Celery worker."
