@@ -300,6 +300,15 @@
       "evidence": "27 daily bars skip ComboOptimizer; empty listing cut; sufficient listing still optimizes; insufficient-only → completed; skipped-only operational_failure remains"
     },
     {
+      "file": "backend/tests/unit/test_discovery_ops_scripts.py",
+      "protected_behavior": "card 1110 operator scripts for the per-environment Discovery ceiling: admission probe against a unit cgroup and circuit acknowledgement for DEV or PROD",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "unit and cgroup derived from the environment, profile limits compared exactly, missing cgroup refused, circuit key pinned to --env, all under tmp_path with stubbed systemctl/session"
+    },
+    {
       "file": "backend/tests/unit/test_discovery_ranking_metrics.py",
       "protected_behavior": "discovery leaderboard ranking metrics and walk-forward 70/30 persistence",
       "production_reachability": "reachable",
@@ -622,6 +631,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL snapshot session fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_prod_discovery_installer.py",
+      "protected_behavior": "card 1110 PROD Discovery installer contract: idle ledger wait, deferral without touching the unit, stop only Discovery, leftover-process guard and unit ceilings",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "real installer copied to temp roots with stub systemctl/sleep and a fake probe; asserts call order, deferral exit 75, only the Discovery unit written, DEV guard unchanged"
     },
     {
       "file": "backend/tests/unit/test_retrospectives_flow.py",

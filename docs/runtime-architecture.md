@@ -113,6 +113,8 @@ systemctl status criptofarol-prod-discovery-worker.service --no-pager
 journalctl -u criptofarol-prod-discovery-worker.service -n 100 --no-pager
 ```
 
+Desde o #1110 a unit da Descoberta PROD tem teto de memória (4 GiB aviso, 5 GiB corte). O installer completo recusa reescrevê-la com a Descoberta ativa; para aplicar o teto numa unit já instalada use `./install-discovery-workers-systemd.sh --root /srv/apps/prod/criptofarol/source --discovery-only`, que espera por ausência de busca ativa (ver `docs/discovery-memory-operations.md`, seção "Discovery PROD"). Migração de banco em PROD: `docs/prod-migration-runbook.md`.
+
 Logs: `journalctl -u criptofarol-prod-runtime-worker.service` (dispatcher + refresh) e `journalctl -u criptofarol-prod-discovery-worker.service` (Celery). Smoke: um sweep em `https://criptofarol.com.br/discovery` sai de pending/queued e `/api/health` 200. Não reiniciar backend/frontend/leads por este installer.
 
 ### PROD (somente no release)
