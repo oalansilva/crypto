@@ -349,9 +349,7 @@ def test_prod_admission_refusal_does_not_claim_attempt_or_ack(tmp_path, monkeypa
     monkeypatch.setenv("DISCOVERY_RESOURCE_PROFILE", "prod")
     monkeypatch.delenv("DISCOVERY_INTERNAL_WORKERS", raising=False)
     monkeypatch.setattr(resources, "cgroup_path", lambda: tmp_path)
-    monkeypatch.setattr(
-        resources, "host_memory", lambda: {**HEALTHY_HOST, "MemAvailable": 7 * GiB}
-    )
+    monkeypatch.setattr(resources, "host_memory", lambda: {**HEALTHY_HOST, "MemAvailable": 7 * GiB})
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = None
     service = MagicMock()

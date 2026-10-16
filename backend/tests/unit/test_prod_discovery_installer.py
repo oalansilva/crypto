@@ -97,7 +97,10 @@ class Harness:
         self.etc = self.fake / "etc"
         self.cgroup = self.fake / "cgroup"
         self.stubs = tmp_path / "stubs"
-        self.roots = {"dev": (tmp_path / "dev-root").resolve(), "prod": (tmp_path / "prod-root").resolve()}
+        self.roots = {
+            "dev": (tmp_path / "dev-root").resolve(),
+            "prod": (tmp_path / "prod-root").resolve(),
+        }
         for d in (self.fake / "active", self.etc, self.stubs, *self.roots.values()):
             d.mkdir(parents=True, exist_ok=True)
         (self.fake / "calls.log").touch()
@@ -153,7 +156,13 @@ class Harness:
             ),
         }
         return subprocess.run(
-            ["bash", str(root / "install-discovery-workers-systemd.sh"), "--root", str(root), *args],
+            [
+                "bash",
+                str(root / "install-discovery-workers-systemd.sh"),
+                "--root",
+                str(root),
+                *args,
+            ],
             env=env,
             capture_output=True,
             text=True,
@@ -175,7 +184,9 @@ class Harness:
 
     def mutated(self):
         return [
-            c for c in self.calls if c.startswith(("stop", "daemon-reload", "enable", "restart", "start"))
+            c
+            for c in self.calls
+            if c.startswith(("stop", "daemon-reload", "enable", "restart", "start"))
         ]
 
 
@@ -218,7 +229,9 @@ def test_idle_prod_stops_only_discovery_installs_only_its_unit_and_starts_once(h
     assert "__ROOT_DIR__" not in h.unit_text(PROD_DISCOVERY)
     assert str(h.roots["prod"]) in h.unit_text(PROD_DISCOVERY)
     assert h.unit_text(PROD_RUNTIME) == SENTINEL and h.unit_text(PROD_BACKEND) == SENTINEL
-    assert not any(PROD_RUNTIME in c or PROD_BACKEND in c for c in calls if not c.startswith("is-active"))
+    assert not any(
+        PROD_RUNTIME in c or PROD_BACKEND in c for c in calls if not c.startswith("is-active")
+    )
     # D8 verification is printed with the properties the card demands.
     shown = [c for c in calls if c.startswith("show") and "MemoryHigh" in c][0]
     for prop in (

@@ -44,9 +44,7 @@ def test_unit_and_cgroup_are_derived_from_the_environment():
 
 
 @pytest.mark.parametrize("env", ["dev", "prod"])
-def test_admission_probe_passes_against_the_unit_cgroup_with_the_environment_profile(
-    tmp_path, env
-):
+def test_admission_probe_passes_against_the_unit_cgroup_with_the_environment_profile(tmp_path, env):
     probe = load("admission_probe")
     write_limits(tmp_path, ResourceProfile.named(env))
     result = probe.probe(env, group=tmp_path, spool_root=tmp_path, memory=HOST)

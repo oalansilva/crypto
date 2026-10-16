@@ -28,7 +28,11 @@ def test_discovery_worker_uses_solo_pool_for_nested_optimizer_workers():
 
 def test_dev_discovery_unit_carries_the_1110_ceiling():
     repo_root = Path(__file__).resolve().parents[3]
-    lines = (repo_root / "ops/systemd/criptofarol-dev-discovery-worker.service").read_text().splitlines()
+    lines = (
+        (repo_root / "ops/systemd/criptofarol-dev-discovery-worker.service")
+        .read_text()
+        .splitlines()
+    )
 
     # #1110: DEV warns at 3 GiB and cuts at 4 GiB (was 5/6 GiB in #1093).
     assert "MemoryHigh=3G" in lines and "MemoryMax=4G" in lines
