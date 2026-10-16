@@ -77,3 +77,18 @@ Entra pelo T14 normal; sem migração de banco nem mudança de unit. Rollback = 
 ## Open Questions
 
 Nenhuma de produto. Texto exato e idioma da mensagem são detalhe de Apply.
+
+## Design Critique
+
+Rodada única (sem tela: 1 autor + 1 crítico; sem rework). Gate: `UI impact` / `live_route` / `surface` parseáveis e ausência justificada; história do issue copiada sem invenção; cada critério de Entra com scenario e task de prova; escopo dentro de Não entra.
+
+- P2 · produto · decisão do Alan (2026-10-16): restarts seguidos com busca ativa podem abrir o circuito do #1093 e a 3ª interrupção encerra a busca. → **Aceitar e documentar** (task 2.4); sem mudança no circuito.
+- P2 · produto · decisão do Alan (2026-10-16): o 4º restart em 15 min é recusado pelo teto de partidas. → **Falhar com aviso claro** e repetir depois; sem `reset-failed` automático. Registrar também no guia de operação (task 2.4).
+- P3 · aceito (detalhe de Apply): parar no restart e manter o instalador como trava pura.
+- P3 · aceito (detalhe de Apply): Descoberta sobe antes do backend; se o religamento falhar, a mensagem diz em que estado o DEV ficou (decidir no Apply fail-fast vs. seguir e falhar no fim).
+- P3 · aceito (detalhe de Apply): restart não confere limites efetivos (a admissão da Descoberta já recusa); opcionalmente imprimir os três valores.
+- P3 · aceito (detalhe de Apply): texto da falha no idioma das mensagens atuais do restart, com "limites não aplicados", cgroup, PID e comando.
+- P3 · aceito (detalhe de Apply): drop-in de contenção do #1093 ainda presente impede a partida; detectar e dizer isso na mensagem.
+- P3 · aceito (detalhe de Apply): regressão dos testes de integração do #1093 exige PostgreSQL/Redis privados; confirmar ou registrar o motivo de pular, nunca o banco compartilhado.
+
+Verdict: aprovar.
