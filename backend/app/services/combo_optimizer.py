@@ -769,6 +769,26 @@ def _worker_run_backtest(args):
         }
 
 
+def adopt_index(frame: pd.DataFrame) -> pd.DataFrame:
+    """Give an external frame a private registered index so its identity is O(1).
+
+    An external index can be mutated through its backing array, so it never
+    receives a memo token and every trial would hash it in full. The index (only)
+    is deep-copied once, frozen and registered in the bounded ``indices``
+    namespace; columns stay shared and untouched. Already registered indices are
+    returned unchanged; an index too large for BUDGET simply keeps hashing.
+    """
+    index = frame.index
+    data = index._data
+    known = BUDGET.get("indices", (id(data), repr(index.dtype), repr(index.names)))
+    if known is not None and known[0] is data:
+        return frame
+    holder = protect(pd.DataFrame(index=index.copy(deep=True)))
+    adopted = frame.copy(deep=False)
+    adopted.index = holder.index
+    return adopted
+
+
 def _worker_run_batch(batch_args, intraday_loader=None, observer=None):
     """
     Optimized worker for Grid Search BATCH execution.
@@ -801,6 +821,10 @@ def _worker_run_batch(batch_args, intraday_loader=None, observer=None):
     if deep_backtest:
         try:
             df_15m_cache = _worker_get_15m_cache(symbol, since_str, until_str, intraday_loader)
+            if acceleration_enabled() and df_15m_cache is not None:
+                # Every trial of the batch shares this frame: give its index a
+                # registered identity once instead of hashing it per trial.
+                df_15m_cache = adopt_index(df_15m_cache)
         except Exception as e:
             # proceed without cache
             pass

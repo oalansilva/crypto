@@ -578,3 +578,55 @@ def test_deep_daily_fallback_contracts(timeframe, coverage, monkeypatch):
     b = run()
     assert a == b
     assert b[1] == ("deep_15m" if coverage == "complete" else "fast_1d")
+
+
+def test_unregistered_intraday_index_hashed_once_per_batch(monkeypatch):
+    """An external 15m frame's index is hashed per batch, not per trial."""
+    data = candles()
+    meta = metadata_from_export(load_templates()["multi_ma_crossover"])
+    from app.strategies.combos import ComboStrategy
+
+    strat = ComboStrategy(
+        indicators=meta["indicators"],
+        entry_logic=meta["entry_logic"],
+        exit_logic=meta["exit_logic"],
+        stop_loss=0.05,
+    )
+    signals = strat.generate_signals(data.copy())
+    intra = load_ohlcv("1INCH/USDT", "15m")
+    hashed = []
+    original = cache._hash_index
+
+    def counting(index):
+        hashed.append(len(index))
+        return original(index)
+
+    monkeypatch.setattr(cache, "_hash_index", counting)
+    monkeypatch.setattr(co, "_worker_get_15m_cache", lambda *_a, **_k: intra)
+    trades = []
+
+    def fake_logic(*args, **_k):
+        df_15m_cache = args[7]
+        assert df_15m_cache is not intra
+        trades.append(
+            co.extract_trades_with_mode(
+                signals,
+                0.05,
+                True,
+                "1INCH/USDT",
+                "2023-01-01",
+                "2025-01-01",
+                df_15m_cache,
+            )
+        )
+        return {"total_trades": len(trades[-1])}, {}
+
+    monkeypatch.setattr(co, "_run_backtest_logic", fake_logic)
+    batch = [
+        ({}, {"p": i}, data, "p", i, True, "1INCH/USDT", "2023-01-01", "2025-01-01")
+        for i in range(4)
+    ]
+    results = co._worker_run_batch(batch)
+    assert len(results) == 4 and all(r["success"] for r in results)
+    assert trades[0] == trades[-1]
+    assert hashed.count(len(intra)) == 1

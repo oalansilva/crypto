@@ -35,3 +35,4 @@
 ## 6. Integração com #1093
 
 - [x] 6.1 Integrar com o limite de memória e a recuperação sem OOM do #1093 (merge de develop): caches de 15m/indicadores/cobertura passam pelo mesmo Cache/BUDGET limitado (64 MiB, 4.096 entradas, 32 snapshots) com Snapshot/Numba preservados, execução em streaming via ResultSpool e reversão `COMBO_OPTIMIZER_1091_DISABLED` mantida.
+- [x] 6.2 Corrigir o CI vermelho (timeout de `test_representative_winner_holdout_go_nogo`): o lote do worker registra uma vez, via `adopt_index`, o índice privado do 15m externo (cópia só do índice, congelada e dentro do `BUDGET`), em vez de recalcular o hash completo da identidade a cada tentativa (~85 mil hashes de 70 mil candles, ~91 s); teste em `test_card_1091_acceleration.py` trava uma contagem de hash por lote.
