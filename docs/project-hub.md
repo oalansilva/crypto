@@ -29,6 +29,7 @@ Aqui deve ficar:
 
 ## Status Atual
 
+- Release 2026-10-16 publicada em PROD (`27f12071`): #1071 remediação de segredos (preparação), #1086 Donchian, #1087 calendário mensal, #1091 Descoberta rápida, #1093 Descoberta sem OOM, #1095 evidência Codex, #1101 adapter Claude Code, #1103 app desktop via SSH e #1106 restart do DEV. Migração `20261013_0001`, serviços ativos e URL pública validados. Doc: `docs/release-2026-10-16.md`; teto de memória da Descoberta PROD e runbook de migração em #1110.
 - Release 2026-10-12 publicada em PROD (`cae17c58`): #1074 swing curto/VWAP/custos, #1075 remoção do scalper, #1078 períodos e #1080 seleção local de modelos. Migração `20261002_0001`, serviços ativos e URL pública validados. Doc: `docs/release-2026-10-12.md`; resíduos #1086/#1087 em Em Refinamento e slippage do Combo avulso no #1074.
 - Release 2026-10-09 publicada em PROD (`f94868d5`): #1022 guard de archive em release-*, #1042 adapter Codex, #1059 closeout Codex e #1061 juízo Grok 4.7/execução 4.6. Doc: `docs/release-2026-10-09.md`. #1074/#1075/#1078/#1080 ficaram fora daquele pacote e foram publicados no lote de 12/10.
 - Fase atual: fechamento do beta fechado.
