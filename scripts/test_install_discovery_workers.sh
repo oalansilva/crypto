@@ -45,6 +45,15 @@ else
   cat "$OUT"
   FAIL=$((FAIL + 1))
 fi
+assert_exit 0 "PROD discovery-only dry-run (#1110)" bash "$INSTALLER" --dry-run --discovery-only --root /srv/apps/prod/criptofarol/source
+if grep -qx 'units=criptofarol-prod-discovery-worker.service' "$OUT" && grep -q 'backend_dropin=none' "$OUT"; then
+  echo "PASS PROD discovery-only lists only the Discovery unit"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL PROD discovery-only should list only criptofarol-prod-discovery-worker.service"
+  cat "$OUT"
+  FAIL=$((FAIL + 1))
+fi
 if grep -q 'RUN_FAVORITE_BACKTEST_REFRESH=1' "$REPO/ops/systemd/criptofarol-prod-runtime-worker.service" \
   && grep -q 'RUN_DISCOVERY_OUTBOX_DISPATCHER=1' "$REPO/ops/systemd/criptofarol-prod-runtime-worker.service"; then
   echo "PASS PROD runtime worker keeps refresh + dispatcher"
@@ -126,6 +135,19 @@ else
   FAIL=$((FAIL + 1))
 fi
 
+# The guard judges cgroup.procs by content (cgroup v2 reports size 0 even with
+# PIDs): a blank file is empty and lets the install proceed.
+printf '\n' >"$TMP/cgroup/system.slice/criptofarol-dev-discovery-worker.service/cgroup.procs"
+# (the fake systemctl cannot finish the install, so only the guard verdict is checked)
+env PATH="$TMP/stubs:$PATH" bash "$FAKE_ROOT/install-discovery-workers-systemd.sh" --discovery-only >"$OUT" 2>"$ERR" || true
+if grep -q "Legacy Discovery descendants" "$ERR"; then
+  echo "FAIL DEV guard must treat blank cgroup.procs as empty (content, not size)"
+  cat "$ERR"
+  FAIL=$((FAIL + 1))
+else
+  echo "PASS DEV guard treats blank cgroup.procs as empty (content, not size)"
+  PASS=$((PASS + 1))
+fi
 : >"$TMP/cgroup/system.slice/criptofarol-dev-discovery-worker.service/cgroup.procs"
 touch "$FAKE_ACTIVE"
 assert_exit 1 "DEV guard refuses active Discovery unit" \

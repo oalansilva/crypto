@@ -26,6 +26,21 @@ def test_discovery_worker_uses_solo_pool_for_nested_optimizer_workers():
     assert "-Q discovery" in unit_source
 
 
+def test_dev_discovery_unit_carries_the_1110_ceiling():
+    repo_root = Path(__file__).resolve().parents[3]
+    lines = (
+        (repo_root / "ops/systemd/criptofarol-dev-discovery-worker.service")
+        .read_text()
+        .splitlines()
+    )
+
+    # #1110: DEV warns at 3 GiB and cuts at 4 GiB (was 5/6 GiB in #1093).
+    assert "MemoryHigh=3G" in lines and "MemoryMax=4G" in lines
+    assert "MemorySwapMax=512M" in lines
+    assert "Environment=DISCOVERY_RESOURCE_PROFILE=dev" in lines
+    assert not any(line in ("MemoryHigh=5G", "MemoryMax=6G") for line in lines)
+
+
 def test_dev_worktree_restart_fails_closed_before_legacy_runtime(tmp_path):
     repo_root = Path(__file__).resolve().parents[3]
     simulated_worktree = repo_root / ".restart-contract-test"
@@ -150,7 +165,7 @@ case "$cmd" in
     if [[ " ${rest[*]} " == *" ControlGroup "* ]]; then
       echo "/system.slice/$unit"
     else
-      echo "MemoryHigh=5368709120"
+      echo "MemoryHigh=3221225472"
     fi
     exit 0 ;;
   status)

@@ -187,6 +187,191 @@ def test_admission_refuses_unverified_and_requires_reserve(tmp_path, monkeypatch
         admission(profile, tmp_path, tmp_path, memory)
 
 
+def _write_limits(group, profile, **override):
+    group.mkdir(parents=True, exist_ok=True)
+    values = {
+        "memory.high": profile.memory_high,
+        "memory.max": profile.memory_max,
+        "memory.swap.max": profile.swap_max,
+        "memory.oom.group": 1,
+        **override,
+    }
+    for key, value in values.items():
+        (group / key).write_text(str(value))
+
+
+HEALTHY_HOST = {"MemTotal": 23 * GiB, "MemAvailable": 9 * GiB, "SwapFree": 2 * GiB}
+
+
+def test_environment_profiles_match_approved_limits():
+    dev, prod = ResourceProfile.named("dev"), ResourceProfile.named("prod")
+    assert (dev.memory_high, dev.memory_max, dev.swap_max) == (3 * GiB, 4 * GiB, 512 * 1024**2)
+    assert (prod.memory_high, prod.memory_max, prod.swap_max) == (4 * GiB, 5 * GiB, 512 * 1024**2)
+    assert ResourceProfile() == dev
+    assert dev.effective_workers == 1 and prod.effective_workers == 1
+
+
+def test_configured_profile_selected_by_environment_variable(monkeypatch):
+    monkeypatch.delenv("DISCOVERY_INTERNAL_WORKERS", raising=False)
+    monkeypatch.delenv("DISCOVERY_RESOURCE_PROFILE", raising=False)
+    assert ResourceProfile.configured().name == "dev"
+    monkeypatch.setenv("DISCOVERY_RESOURCE_PROFILE", "prod")
+    assert ResourceProfile.configured() == ResourceProfile.named("prod")
+    monkeypatch.setenv("DISCOVERY_RESOURCE_PROFILE", "staging")
+    with pytest.raises(OperationalFailure) as raised:
+        ResourceProfile.configured()
+    assert raised.value.code == "resource_budget_unavailable"
+    with pytest.raises(OperationalFailure):
+        admission(ResourceProfile(name="staging"), None, None, HEALTHY_HOST)
+
+
+@pytest.mark.parametrize("name", ["dev", "prod"])
+def test_named_profiles_require_exactly_one_worker(monkeypatch, name):
+    monkeypatch.setenv("DISCOVERY_RESOURCE_PROFILE", name)
+    monkeypatch.setenv("DISCOVERY_INTERNAL_WORKERS", "3")
+    with pytest.raises(OperationalFailure):
+        ResourceProfile.configured().effective_workers
+    monkeypatch.setenv("DISCOVERY_INTERNAL_WORKERS", "x")
+    with pytest.raises(OperationalFailure):
+        ResourceProfile.configured()
+
+
+@pytest.mark.parametrize(
+    "memory_max, expected",
+    [(4 * GiB, 1), (5 * GiB, 1), (7 * GiB, 2), (10 * GiB, 3)],
+)
+def test_worker_formula_uses_memory_max_minus_one_gib(memory_max, expected):
+    profile = replace(
+        ResourceProfile(), name="test", memory_max=memory_max, requested_workers=expected + 1
+    )
+    assert profile.effective_workers == expected
+
+
+def test_worker_formula_refuses_below_four_gib():
+    for memory_max in (3 * GiB, 4 * GiB - 1):
+        with pytest.raises(OperationalFailure):
+            replace(ResourceProfile(), memory_max=memory_max).effective_workers
+    with pytest.raises(OperationalFailure):
+        replace(ResourceProfile(), batch_size=0).effective_workers
+
+
+@pytest.mark.parametrize("name", ["dev", "prod"])
+def test_admission_accepts_each_profile_with_its_own_limits(tmp_path, name):
+    profile = ResourceProfile.named(name)
+    _write_limits(tmp_path, profile)
+    assert admission(profile, tmp_path, tmp_path, HEALTHY_HOST)["name"] == name
+
+
+@pytest.mark.parametrize("name", ["dev", "prod"])
+def test_admission_reserves_both_envelopes_plus_fourteen_gib(tmp_path, name):
+    profile = ResourceProfile.named(name)
+    _write_limits(tmp_path, profile)
+    assert resources.ENVELOPE_TOTAL == 9 * GiB
+    assert resources.HOST_RESERVE == 14 * GiB
+    # The real host has 23.41 GiB: it fits, and one byte less than 23 GiB does not.
+    assert admission(profile, tmp_path, tmp_path, {**HEALTHY_HOST, "MemTotal": 25_137_336_320})
+    with pytest.raises(OperationalFailure) as raised:
+        admission(profile, tmp_path, tmp_path, {**HEALTHY_HOST, "MemTotal": 23 * GiB - 1})
+    assert raised.value.code == "resource_budget_unavailable"
+
+
+@pytest.mark.parametrize("unit, expected", [("dev", "prod"), ("prod", "dev")])
+def test_admission_refuses_when_unit_and_profile_diverge(tmp_path, unit, expected):
+    _write_limits(tmp_path, ResourceProfile.named(unit))
+    with pytest.raises(OperationalFailure) as raised:
+        admission(ResourceProfile.named(expected), tmp_path, tmp_path, HEALTHY_HOST)
+    assert raised.value.code == "resource_budget_unavailable"
+    # Each single limit is compared exactly, not only the envelope.
+    profile = ResourceProfile.named("prod")
+    for key, value in (
+        ("memory.high", 5 * GiB),
+        ("memory.swap.max", 0),
+        ("memory.oom.group", 0),
+    ):
+        _write_limits(tmp_path, profile, **{key: value})
+        with pytest.raises(OperationalFailure):
+            admission(profile, tmp_path, tmp_path, HEALTHY_HOST)
+
+
+def test_admission_prod_waits_for_host_memory(tmp_path):
+    profile = ResourceProfile.named("prod")
+    _write_limits(tmp_path, profile)
+    with pytest.raises(OperationalFailure) as raised:
+        admission(profile, tmp_path, tmp_path, {**HEALTHY_HOST, "MemAvailable": 8 * GiB - 1})
+    assert raised.value.code == "resource_budget_unavailable"
+    assert admission(profile, tmp_path, tmp_path, {**HEALTHY_HOST, "MemAvailable": 8 * GiB})
+
+
+@pytest.mark.parametrize(
+    "cgroup, app_env, profile_env, expected",
+    [
+        ("criptofarol-prod-discovery-worker.service", "development", None, "prod"),
+        ("criptofarol-prod-runtime-worker.service", "development", "dev", "prod"),
+        ("criptofarol-dev-backend.service", "production", None, "dev"),
+        ("criptofarol-dev-discovery-worker.service", None, "prod", "dev"),
+        ("session-1.scope", "staging", None, "staging"),
+        ("session-1.scope", "staging", "dev", "dev"),
+        ("session-1.scope", None, None, "dev"),
+    ],
+)
+def test_discovery_environment_prefers_unit_name(
+    monkeypatch, tmp_path, cgroup, app_env, profile_env, expected
+):
+    monkeypatch.setattr(resources, "cgroup_path", lambda: tmp_path / "system.slice" / cgroup)
+    for variable, value in (("APP_ENV", app_env), ("DISCOVERY_RESOURCE_PROFILE", profile_env)):
+        if value is None:
+            monkeypatch.delenv(variable, raising=False)
+        else:
+            monkeypatch.setenv(variable, value)
+    assert resources.discovery_environment() == expected
+
+
+def test_discovery_environment_without_cgroup_info_falls_back(monkeypatch):
+    def unavailable():
+        raise OperationalFailure("resource_budget_unavailable")
+
+    monkeypatch.setattr(resources, "cgroup_path", unavailable)
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("DISCOVERY_RESOURCE_PROFILE", raising=False)
+    assert resources.discovery_environment() == "dev"
+    monkeypatch.setenv("APP_ENV", "prod")
+    assert resources.discovery_environment() == "prod"
+
+
+def test_prod_admission_refusal_does_not_claim_attempt_or_ack(tmp_path, monkeypatch):
+    """MemAvailable < 8 GiB: no combination reserved, no attempt/circuit failure, no ack."""
+    from unittest.mock import MagicMock
+    from app.tasks import discovery_celery_tasks as tasks
+    from app.services import discovery_recovery
+
+    profile = ResourceProfile.named("prod")
+    _write_limits(tmp_path, profile)
+    monkeypatch.setenv("DISCOVERY_RESOURCE_PROFILE", "prod")
+    monkeypatch.delenv("DISCOVERY_INTERNAL_WORKERS", raising=False)
+    monkeypatch.setattr(resources, "cgroup_path", lambda: tmp_path)
+    monkeypatch.setattr(resources, "host_memory", lambda: {**HEALTHY_HOST, "MemAvailable": 7 * GiB})
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = None
+    service = MagicMock()
+    monkeypatch.setattr(tasks, "SessionLocal", lambda: db)
+    monkeypatch.setattr(tasks, "DiscoveryService", lambda: service)
+    monkeypatch.setattr(discovery_recovery, "reconcile_expired", lambda *_: None)
+    recorded = MagicMock()
+    for name in ("claim_attempt", "failed_locked", "fail"):
+        monkeypatch.setattr(discovery_recovery, name, recorded)
+
+    result = tasks.run_sweep_orchestrator("sweep-1", 1)
+
+    assert result == {"state": "resource_budget_unavailable", "sweep_id": "sweep-1"}
+    service.claim_combinations.assert_not_called()
+    service.ack_outbox.assert_not_called()
+    service.ensure_sweep_wakeup.assert_not_called()
+    recorded.assert_not_called()
+    db.add.assert_not_called()
+    db.commit.assert_not_called()
+    db.close.assert_called_once()
+
+
 def test_r1_and_r2_r4_exact_same_domains(tmp_path, monkeypatch):
     monkeypatch.setenv("DISCOVERY_SPOOL_DIR", str(tmp_path))
     optimizer = object.__new__(opt.ComboOptimizer)
