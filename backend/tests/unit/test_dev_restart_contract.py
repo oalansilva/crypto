@@ -179,9 +179,7 @@ class RestartHarness:
         self.fake = (tmp_path / "fake").resolve()
         self.etc = self.fake / "etc"
         self.calls_log = self.fake / "calls.log"
-        self.procs_file = (
-            self.fake / "cgroup" / "system.slice" / DISCOVERY_UNIT / "cgroup.procs"
-        )
+        self.procs_file = self.fake / "cgroup" / "system.slice" / DISCOVERY_UNIT / "cgroup.procs"
         stubs = tmp_path / "stubs"
         for d in (self.root, self.fake, self.etc, stubs, self.procs_file.parent):
             d.mkdir(parents=True, exist_ok=True)
@@ -378,7 +376,9 @@ def test_restart_missing_installer_fails_before_stopping_discovery(harness):
     assert result.returncode != 0
     assert "install-discovery-workers-systemd.sh" in result.stderr
     assert "nothing was stopped" in result.stderr
-    assert not any(c.startswith(("stop", "daemon-reload", "enable", "restart")) for c in harness.calls)
+    assert not any(
+        c.startswith(("stop", "daemon-reload", "enable", "restart")) for c in harness.calls
+    )
     assert (harness.fake / "active" / DISCOVERY_UNIT).exists()
     assert harness.unit_text() == OLD_UNIT_CONTENT
 
@@ -431,7 +431,5 @@ def test_restart_source_does_not_restart_discovery_in_final_restart_call():
     )[0]
     restart_call = dev_block.rsplit("systemctl restart", 1)[1].split("\n\n", 1)[0]
     assert "DEV_DISCOVERY_WORKER_UNIT" not in restart_call
-    code = "\n".join(
-        line for line in dev_block.splitlines() if not line.lstrip().startswith("#")
-    )
+    code = "\n".join(line for line in dev_block.splitlines() if not line.lstrip().startswith("#"))
     assert "reset-failed" not in code
