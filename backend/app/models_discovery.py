@@ -88,6 +88,12 @@ class DiscoveryCombination(Base):
     attempts = Column(Integer, nullable=False, default=0)
     lease_owner = Column(String(128), nullable=True)
     lease_expires_at = Column(DateTime, nullable=True)
+    lease_generation = Column(Integer, nullable=False, default=0)
+    heartbeat_at = Column(DateTime, nullable=True)
+    progress_at = Column(DateTime, nullable=True)
+    next_attempt_at = Column(DateTime, nullable=True)
+    last_failure_code = Column(String(64), nullable=True)
+    input_snapshot = Column(JSON, nullable=True)
     result_id = Column(String(64), nullable=True)
     created_at = Column(DateTime, nullable=False, default=_utcnow)
     updated_at = Column(DateTime, nullable=False, default=_utcnow)
@@ -121,7 +127,7 @@ class DiscoveryResult(Base):
     start_at = Column(DateTime, nullable=False)
     end_at = Column(DateTime, nullable=False)
     candle_source = Column(String(32), nullable=True)
-    candle_version = Column(String(32), nullable=True)
+    candle_version = Column(String(64), nullable=True)
     expected_candles = Column(Integer, nullable=True)
     observed_valid_candles = Column(Integer, nullable=True)
     coverage = Column(Float, nullable=True)
@@ -210,3 +216,30 @@ class DiscoveryIdempotency(Base):
         UniqueConstraint("actor", "idempotency_key", name="uq_discovery_idempotency_actor_key"),
         Index("ix_discovery_idempotency_actor", "actor"),
     )
+
+
+class DiscoveryAttempt(Base):
+    __tablename__ = "discovery_attempts"
+    combination_id = Column(BigInteger, primary_key=True)
+    attempt_seq = Column(Integer, primary_key=True)
+    owner = Column(String(128), nullable=False)
+    generation = Column(Integer, nullable=False)
+    state = Column(String(24), nullable=False, default="running")
+    started_at = Column(DateTime, nullable=False)
+    heartbeat_at = Column(DateTime, nullable=False)
+    progress_at = Column(DateTime, nullable=False)
+    finished_at = Column(DateTime, nullable=True)
+    failure_code = Column(String(64), nullable=True)
+    profile = Column(JSON, nullable=False)
+    counters = Column(JSON, nullable=False, default=dict)
+    supervisor_pid = Column(Integer, nullable=True)
+    supervisor_start = Column(String(64), nullable=True)
+
+
+class DiscoveryCircuit(Base):
+    __tablename__ = "discovery_resource_circuits"
+    environment = Column(String(32), primary_key=True)
+    failures = Column(JSON, nullable=False, default=list)
+    opened_at = Column(DateTime, nullable=True)
+    acknowledged_at = Column(DateTime, nullable=True)
+    acknowledgements = Column(JSON, nullable=False, default=list)

@@ -1,0 +1,134 @@
+{
+  "run": 2,
+  "seconds": 23830.049931219022,
+  "telemetry": {
+    "pid": 1772037,
+    "rss_bytes": 281174016,
+    "pss_bytes": 233703424,
+    "memory.current": "214274048",
+    "memory.peak": "1810759680",
+    "memory.swap.current": "0",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "cache_bytes": 0,
+    "cache_entries": 0,
+    "cache_evictions": 0,
+    "systemd": {
+      "Result": "success",
+      "NRestarts": "0"
+    }
+  },
+  "cache_bytes": 0,
+  "sweep": "893dad0cac1d40c69970dbff3c841dc9",
+  "stage_manifest": {
+    "ac99d8ad34f64f37867a5b1a2509a3a3": {
+      "planned": 492480,
+      "executed": 492480,
+      "succeeded": 492480,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    },
+    "7b782dafd0cf42f583a9abf1b0df683c": {
+      "planned": 292500,
+      "executed": 292500,
+      "succeeded": 292500,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    },
+    "5d146cad75544c9dbd05c600e7c1729c": {
+      "planned": 148500,
+      "executed": 148500,
+      "succeeded": 148500,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    },
+    "946b94576d8a4befa793bee7ebdc7342": {
+      "planned": 72000,
+      "executed": 72000,
+      "succeeded": 72000,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    }
+  },
+  "result": {
+    "parameters": {
+      "direction": "long",
+      "timeframe": "15m",
+      "ma_long_length": 160,
+      "ma_long_pullback_pct": 1.0,
+      "rsi_length": 18,
+      "rsi_oversold": 30,
+      "rsi_overbought": 59,
+      "adx_length": 10,
+      "adx_threshold": 24,
+      "stop_loss": 0.01
+    },
+    "metrics": {
+      "total_trades": 2,
+      "win_rate": 1.0,
+      "total_return": 0.024999168719390674,
+      "total_return_pct": 2.4999168719390674,
+      "avg_profit": 0.012422426310463086,
+      "sharpe_ratio": 517.1638565135308,
+      "sortino_ratio": null,
+      "sortino_status": "degenerate",
+      "downside_deviation": 0.0,
+      "neg_return_count": 0,
+      "return_series_kind": "per_trade",
+      "profit_factor": 999.0,
+      "max_loss": 0.012398406019497262,
+      "max_consecutive_losses": 0,
+      "max_drawdown": 0.0,
+      "max_drawdown_pct": 0.0,
+      "expectancy": 0.012422426310463086,
+      "expectancy_pct": 1.2422426310463086,
+      "expectancy_usd_10k": 124.22426310463086,
+      "avg_atr": 269.91122555428086,
+      "avg_adx": 30.189178484157516,
+      "win_rate_bull": 0,
+      "win_rate_bear": 1.0,
+      "cagr": 0.03597516026741299,
+      "benchmark": {
+        "return_pct": -0.4820473792444582,
+        "cagr": -0.61027120821162,
+        "final_value": 51.795262075554184
+      },
+      "split_train_ratio": 0.7,
+      "split_applied": true,
+      "oos_metrics": {
+        "total_trades": 1,
+        "win_rate": 0.0,
+        "total_return": -0.006205216041772266,
+        "total_return_pct": -0.6205216041772266,
+        "avg_profit": -0.006205216041772294,
+        "sharpe_ratio": 0.0,
+        "sortino_ratio": null,
+        "sortino_status": "degenerate",
+        "downside_deviation": 0.0,
+        "neg_return_count": 1,
+        "return_series_kind": "per_trade",
+        "profit_factor": 0.0,
+        "max_loss": -0.006205216041772294,
+        "max_consecutive_losses": 1,
+        "max_drawdown": 0.006205216041772274,
+        "max_drawdown_pct": 0.6205216041772275,
+        "expectancy": -0.006205216041772294,
+        "expectancy_pct": -0.6205216041772295,
+        "expectancy_usd_10k": -62.052160417722945,
+        "cagr": -0.02062794342057206,
+        "calmar_ratio": -3.324290932291296,
+        "benchmark": {
+          "return_pct": 0.3408126079259793,
+          "cagr": 1.67177533592979,
+          "final_value": 134.08126079259793
+        }
+      }
+    },
+    "eligibility": "low_sample",
+    "candle_version": "ec8ce8127702d0a901872b25622a77724169d6ef88b74ffb08d839c06694b85a",
+    "evidence_fingerprint": "b038def72415d8f076729aca63ed24a2971e9c5fd4617a56b8361c0f937873b7"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "name": "long_ma_pullback_rsi_adx",
+  "template_data": {
+    "indicators": [
+      {
+        "type": "sma",
+        "alias": "ma_long",
+        "params": {
+          "length": 200,
+          "pullback_pct": 2.0
+        }
+      },
+      {
+        "type": "rsi",
+        "params": {
+          "length": 14,
+          "oversold": 40,
+          "overbought": 65
+        }
+      },
+      {
+        "type": "adx",
+        "params": {
+          "length": 14,
+          "threshold": 22
+        }
+      }
+    ],
+    "entry_logic": "(close > ma_long) & (close < ma_long_pullback) & (RSI_14 < rsi_oversold) & (ADX_14 > adx_threshold)",
+    "exit_logic": "(close < ma_long) | (RSI_14 > rsi_overbought)",
+    "stop_loss": 0.02
+  },
+  "optimization_schema": {
+    "parameters": {
+      "ma_long_length": {
+        "min": 100,
+        "max": 250,
+        "default": 200
+      },
+      "ma_long_pullback_pct": {
+        "min": 1.0,
+        "max": 3.0,
+        "default": 2.0
+      },
+      "rsi_length": {
+        "min": 10,
+        "max": 20,
+        "default": 14
+      },
+      "rsi_oversold": {
+        "min": 30,
+        "max": 45,
+        "default": 40
+      },
+      "rsi_overbought": {
+        "min": 55,
+        "max": 75,
+        "default": 65
+      },
+      "adx_length": {
+        "min": 10,
+        "max": 20,
+        "default": 14
+      },
+      "adx_threshold": {
+        "min": 18,
+        "max": 30,
+        "default": 22
+      },
+      "stop_loss": {
+        "min": 0.01,
+        "max": 0.035,
+        "default": 0.02
+      }
+    },
+    "correlated_groups": [
+      [
+        "ma_long_length",
+        "ma_long_pullback_pct",
+        "rsi_length",
+        "rsi_oversold",
+        "rsi_overbought",
+        "adx_length",
+        "adx_threshold",
+        "stop_loss"
+      ]
+    ]
+  },
+  "updated_at": "2026-10-03T14:35:39.166759"
+}

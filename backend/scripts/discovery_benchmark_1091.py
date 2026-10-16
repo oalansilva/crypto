@@ -297,7 +297,7 @@ def select(mode):
     cache.BUDGET.clear()
     co._WORKER_INDICATOR_CACHE.clear()
     co._WORKER_COVERAGE_CACHE.clear()
-    co._WORKER_15M_CACHE.update(key=None, df=None)
+    co._WORKER_15M_CACHE.clear()
     deep._ISO_CACHE.clear()
 
 

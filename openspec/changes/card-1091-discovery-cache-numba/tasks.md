@@ -31,3 +31,7 @@
 - [x] 5.2 Repetir cinco pares AAVE short e EMA+RSI/1INCH long, corrigindo regressão sustentada; executar ablação do cache indicador e registrar decisão final.
 - [x] 5.3 Medir primeira execução/JIT frio/quente e memória pai+workers, incluindo snapshots/transporte no tempo normal; demonstrar limites/evicção e reversão exata.
 - [x] 5.4 Versionar harness final, manifesto e relatórios brutos, documentar comandos reproduzíveis/limitações e executar validação OpenSpec estrita e checks pertinentes sem deadline temporal em CI.
+
+## 6. Integração com #1093
+
+- [x] 6.1 Integrar com o limite de memória e a recuperação sem OOM do #1093 (merge de develop): caches de 15m/indicadores/cobertura passam pelo mesmo Cache/BUDGET limitado (64 MiB, 4.096 entradas, 32 snapshots) com Snapshot/Numba preservados, execução em streaming via ResultSpool e reversão `COMBO_OPTIMIZER_1091_DISABLED` mantida.

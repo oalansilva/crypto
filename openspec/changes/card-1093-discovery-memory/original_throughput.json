@@ -1,0 +1,17 @@
+{
+  "sample_trials": 200,
+  "seconds": 3.7499997569830157,
+  "trials_per_second": 53.333336789575114,
+  "r1_estimate_seconds": 9233.999401594978,
+  "telemetry": {
+    "rss_bytes": 288825344,
+    "pss_bytes": 241798144,
+    "memory.current": "214872064",
+    "memory.peak": "219807744",
+    "memory.swap.current": "0",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+    "cache_bytes": 66004399,
+    "cache_entries": 13,
+    "cache_evictions": 30
+  }
+}

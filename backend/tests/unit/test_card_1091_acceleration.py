@@ -262,6 +262,20 @@ def test_compiled_failure_returns_exact_python_positions_once(caplog, failure):
     assert caplog.text.count("using Python fallback") == 1
 
 
+def test_snapshot_resolution_failure_is_attempt_error_metric(monkeypatch):
+    snapshot = cache.Snapshot(candles(), generation="run", source=("x", "1d"), role="train")
+
+    def broken(_snapshot):
+        raise RuntimeError("snapshot resolution failed")
+
+    monkeypatch.setattr(co, "acceleration_enabled", lambda: True)
+    monkeypatch.setattr(co, "resolve", broken)
+    metrics, params = co._run_backtest_logic({}, {"p": 1}, snapshot, False, "X", None, None)
+    assert metrics["error"] == "snapshot resolution failed"
+    assert metrics["total_trades"] == 0
+    assert params == {"p": 1}
+
+
 def test_snapshot_private_complete_identity_and_transport():
     original = candles()
     a = cache.Snapshot(original, generation="run", source=("x", "1d"), role="train")

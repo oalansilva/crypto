@@ -480,6 +480,51 @@
       "evidence": "link token, portfolio scope, and position matrix assertions"
     },
     {
+      "file": "backend/tests/unit/test_discovery_indicator_binding.py",
+      "protected_behavior": "card 1093 runtime RSI_14/ADX_14 effective-period binding for long_ma_pullback_rsi_adx",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "all 121 RSI/ADX period pairs vs independent TA-Lib oracle, alias/collision/unknown identifiers fail explicitly, A-B-A cache identity, spawn workers keep oracle ranking"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_inputs.py",
+      "protected_behavior": "card 1093 frozen parquet inputs reused by retries and orphan cleanup",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "frozen snapshot hash/identity corruption detection and owner-proven orphan removal under tmp_path"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_memory.py",
+      "protected_behavior": "card 1093 bounded-memory Discovery stream, spool, cache and honest counters",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "last-batch extrema/ties/NaN/inf goldens, spool quota, pool loss, calculation error barrier, cache eviction, admission profile, R1 and R2-R4 domains, systemctl telemetry degrades to empty on timeout/missing binary"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_memory_composition.py",
+      "protected_behavior": "card 1093 composition with the #1091 aggregate LRU cache API",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "single shared cache budget reused through the bridge, no independent budgets"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_supervisor.py",
+      "protected_behavior": "card 1093 spawn supervisor cleanup of lost child, supervisor and principal process groups",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "process-group TERM/KILL/reap within the 20 s ceiling for lost child/supervisor/principal, MemAvailable<2 GiB for 30 s aborts with host_memory_pressure and recovery resets the window"
+    },
+    {
       "file": "backend/tests/unit/test_telegram_alert_scan_wrapper.py",
       "protected_behavior": "BLOCK_PROD_BOT wrapper fail-closed",
       "production_reachability": "reachable",

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class DiscoveryOrchestratorTask(Task):
-    autoretry_for = (Exception,)
+    autoretry_for = ()
     retry_backoff = True
     retry_jitter = True
     acks_late = True
@@ -62,6 +62,19 @@ def run_sweep_orchestrator(sweep_id: str, generation: int) -> dict[str, Any]:
             # Caiu para terminal entre probe e lock: rollback e segue o caminho
             # normal, que re-finaliza resíduo sem sobrescrever o terminal.
             db.rollback()
+        from app.services.discovery_recovery import reconcile_expired
+
+        reconcile_expired(db, sweep_id)
+        import os
+
+        if os.getenv("DISCOVERY_RESOURCE_PROFILE"):
+            from app.services.discovery_resources import admission, OperationalFailure
+
+            try:
+                admission()
+            except OperationalFailure as exc:
+                logger.error("Discovery admission refused code=%s", exc.code)
+                return {"state": "resource_budget_unavailable", "sweep_id": sweep_id}
         claimed = service.claim_combinations(sweep_id, owner=f"orchestrator-{generation}", db=db)
         logger.info(
             "Discovery orchestrator started: sweep=%s generation=%s claimed=%s",
@@ -70,7 +83,7 @@ def run_sweep_orchestrator(sweep_id: str, generation: int) -> dict[str, Any]:
             len(claimed),
         )
         for combination in claimed:
-            run_combination(db, combination, owner=f"orchestrator-{generation}")
+            run_combination(db, combination, owner=combination.lease_owner)
             # Persist progress after each potentially long optimization so the
             # polling UI does not remain at 0 until the whole claim finishes.
             reconcile_sweep(sweep_id, db)
@@ -91,7 +104,7 @@ def run_sweep_orchestrator(sweep_id: str, generation: int) -> dict[str, Any]:
     bind=True,
     base=DiscoveryOrchestratorTask,
     name="app.tasks.discovery_celery_tasks.run_sweep_orchestrator_task",
-    max_retries=3,
+    max_retries=0,
 )
 def run_sweep_orchestrator_task(
     self: DiscoveryOrchestratorTask, sweep_id: str, generation: int

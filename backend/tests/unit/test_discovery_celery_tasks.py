@@ -104,58 +104,72 @@ def test_resolve_optimizer_date_range_other_modes(snapshot, expected):
 def test_run_combination_passes_calendar_window_to_optimizer(
     monkeypatch, reference, period, start_date, explicit_dates
 ):
-    class FrozenDatetime(datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return datetime.fromisoformat(f"{reference}T00:30:00+00:00")
-
-    # Stop at the optimizer boundary: this test must not execute a backtest or
-    # exercise unrelated result/ranking persistence.
-    class OptimizerBoundary(BaseException):
-        pass
-
-    optimizer_calls = []
-    listing_calls = []
-
-    class FakeOptimizer:
-        def run_optimization(self, **kwargs):
-            optimizer_calls.append(kwargs)
-            raise OptimizerBoundary()
+    """Card #1093: the calendar window is frozen at claim time and the supervised
+    run (optimizer boundary) receives exactly the frozen window."""
+    from app.services import discovery_recovery, discovery_supervisor
+    from app.services.combo_service import ComboService
 
     snapshot = {"period_type": period}
     if explicit_dates:
         snapshot.update(start_date=start_date, end_date=reference)
     sweep = SimpleNamespace(state="running", snapshot=snapshot)
-    query = SimpleNamespace(first=lambda: sweep)
-    query.filter = lambda *args: query
-    db = SimpleNamespace(query=lambda *args: query)
-    combination = SimpleNamespace(
+    stamp = datetime.fromisoformat(f"{reference}T00:30:00")  # DB clock, naive UTC
+    row = SimpleNamespace(
         id="calendar-combination",
         sweep_id="calendar-sweep",
         template_id="template",
         symbol="BTC/USDT",
         timeframe="1d",
         direction="long",
+        state="pending",
+        attempts=0,
+        lease_generation=0,
+        lease_owner=None,
+        lease_expires_at=None,
+        heartbeat_at=None,
+        progress_at=None,
+        next_attempt_at=None,
+        updated_at=None,
+        input_snapshot=None,
     )
+    added = []
+    db = SimpleNamespace(add=added.append, rollback=lambda: None)
+    monkeypatch.setattr(
+        discovery_recovery, "circuit", lambda _db: SimpleNamespace(opened_at=None, environment="t")
+    )
+    monkeypatch.setattr(ComboService, "get_template_metadata", lambda *_: {"name": "template"})
+    assert discovery_recovery.claim_attempt(db, sweep, row, stamp)
+    frozen = row.input_snapshot
+    assert (frozen["start_date"], frozen["end_date"]) == (start_date, reference)
 
-    def evaluate_listing_sample(**kwargs):
-        listing_calls.append(kwargs)
-        return False, 100, 70
+    # Stop at the optimizer boundary: this test must not execute a backtest or
+    # exercise unrelated result/ranking persistence.
+    class OptimizerBoundary(BaseException):
+        pass
 
-    monkeypatch.setattr(discovery_tasks, "datetime", FrozenDatetime)
-    monkeypatch.setattr(discovery_tasks, "evaluate_listing_sample", evaluate_listing_sample)
-    monkeypatch.setattr(discovery_tasks, "DiscoveryService", lambda: SimpleNamespace())
-    monkeypatch.setattr("app.services.combo_optimizer.ComboOptimizer", FakeOptimizer)
+    supervised_calls = []
+
+    def run_supervised(config, beat):
+        supervised_calls.append(config)
+        raise OptimizerBoundary()
+
+    monkeypatch.setattr(discovery_supervisor, "run_supervised", run_supervised)
+    monkeypatch.setattr(
+        discovery_recovery, "locked_possession", lambda _db, _token: (sweep, row, stamp)
+    )
     with pytest.raises(OptimizerBoundary):
-        discovery_tasks.run_combination(db, combination, "calendar-worker")
-    assert len(listing_calls) == len(optimizer_calls) == 1
-    for call in [*listing_calls, *optimizer_calls]:
-        assert (call["start_date"], call["end_date"]) == (start_date, reference)
+        discovery_tasks.run_combination(db, row, row.lease_owner)
+    assert len(supervised_calls) == 1
+    call = supervised_calls[0]
+    assert (call["start_date"], call["end_date"]) == (start_date, reference)
 
 
 def test_orchestrator_reconciles_progress_after_each_combination(monkeypatch):
     events: list[str] = []
-    combinations = [SimpleNamespace(id="c1"), SimpleNamespace(id="c2")]
+    combinations = [
+        SimpleNamespace(id="c1", lease_owner="o1"),
+        SimpleNamespace(id="c2", lease_owner="o2"),
+    ]
 
     class FakeService:
         def claim_combinations(self, sweep_id, owner, db):
@@ -192,6 +206,11 @@ def test_orchestrator_reconciles_progress_after_each_combination(monkeypatch):
 
     monkeypatch.setattr(discovery_celery_tasks, "DiscoveryService", FakeService)
     monkeypatch.setattr(discovery_celery_tasks, "SessionLocal", FakeDb)
+    # Lease/attempt reconciliation needs PostgreSQL clock; covered by
+    # integration/test_discovery_memory_recovery.py.
+    monkeypatch.setattr(
+        "app.services.discovery_recovery.reconcile_expired", lambda db, sweep_id: None
+    )
     monkeypatch.setattr(
         discovery_tasks,
         "run_combination",
@@ -220,7 +239,7 @@ def test_orchestrator_reconciles_progress_after_each_combination(monkeypatch):
 
 def test_orchestrator_rotates_wakeup_before_ack(monkeypatch):
     events: list[str] = []
-    combinations = [SimpleNamespace(id="c1")]
+    combinations = [SimpleNamespace(id="c1", lease_owner="o1")]
 
     class FakeService:
         def claim_combinations(self, sweep_id, owner, db):
@@ -257,6 +276,11 @@ def test_orchestrator_rotates_wakeup_before_ack(monkeypatch):
 
     monkeypatch.setattr(discovery_celery_tasks, "DiscoveryService", FakeService)
     monkeypatch.setattr(discovery_celery_tasks, "SessionLocal", FakeDb)
+    # Lease/attempt reconciliation needs PostgreSQL clock; covered by
+    # integration/test_discovery_memory_recovery.py.
+    monkeypatch.setattr(
+        "app.services.discovery_recovery.reconcile_expired", lambda db, sweep_id: None
+    )
     monkeypatch.setattr(
         discovery_tasks,
         "run_combination",

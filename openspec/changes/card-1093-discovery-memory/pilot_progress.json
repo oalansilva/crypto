@@ -1,0 +1,66 @@
+{
+  "run": "1",
+  "stage_manifest": {
+    "fe18760ca58e43268336a11b90d7677b": {
+      "planned": 1,
+      "executed": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    },
+    "9257971f67b341d395fd5d52aa36c3bb": {
+      "planned": 1,
+      "executed": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    },
+    "7492fbe751f4455294a506cf541c2bcb": {
+      "planned": 1,
+      "executed": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    },
+    "ab28ef76e8124e09a5363cae488846b8": {
+      "planned": 4,
+      "executed": 4,
+      "succeeded": 4,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    }
+  },
+  "latest": {
+    "stage_id": "ab28ef76e8124e09a5363cae488846b8",
+    "counters": {
+      "planned": 4,
+      "executed": 4,
+      "succeeded": 4,
+      "failed": 0,
+      "unknown": 0,
+      "remaining": 0
+    },
+    "pending_futures": 0,
+    "pending_bytes": 0,
+    "spool_bytes": 20517,
+    "worker_telemetry": {
+      "rss_bytes": 253153280,
+      "pss_bytes": 187328512,
+      "memory.current": "535056384",
+      "memory.peak": "542310400",
+      "memory.swap.current": "0",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "cache_bytes": 33565364,
+      "cache_entries": 6,
+      "cache_evictions": 0,
+      "systemd": {
+        "Result": "success",
+        "NRestarts": "0"
+      }
+    }
+  }
+}

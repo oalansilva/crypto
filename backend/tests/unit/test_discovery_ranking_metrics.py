@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import pytest
@@ -12,6 +12,74 @@ from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
 from app.services.combo_optimizer import _enrich_ranking_metrics
+
+COMBO_METADATA = {
+    "name": "MACD_Cross",
+    "direction": "long",
+    "indicators": [],
+    "optimization_schema": {},
+}
+
+
+@pytest.fixture(autouse=True)
+def _supervised_boundary(monkeypatch):
+    """Card #1093: the optimizer runs behind the spawn supervisor. These tests
+    exercise result persistence, so the supervised boundary is routed to the
+    (faked) ComboOptimizer with the window frozen at claim time."""
+
+    def run_supervised(config, beat):
+        from app.services import combo_optimizer
+        from app.tasks.discovery_tasks import DISCOVERY_SPLIT_TRAIN_RATIO
+
+        return combo_optimizer.ComboOptimizer().run_optimization(
+            template_name=config["template_name"],
+            symbol=config["symbol"],
+            timeframe=config["timeframe"],
+            data_source="ccxt",
+            start_date=config["start_date"],
+            end_date=config["end_date"],
+            direction=config["direction"],
+            deep_backtest=True,
+            split_train_ratio=DISCOVERY_SPLIT_TRAIN_RATIO,
+        )
+
+    monkeypatch.setattr("app.services.discovery_supervisor.run_supervised", run_supervised)
+
+
+def _grant_possession(db, combo, sweep, *, owner: str) -> None:
+    """Valid durable ledger lease (owner/attempt/generation) plus frozen inputs."""
+    from app.models_discovery import DiscoveryAttempt
+    from app.tasks.discovery_tasks import resolve_optimizer_date_range
+
+    stamp = datetime.now(timezone.utc).replace(tzinfo=None)
+    start_date, end_date = resolve_optimizer_date_range(sweep.snapshot or {})
+    combo.input_snapshot = {
+        "snapshot": sweep.snapshot,
+        "start_date": start_date,
+        "end_date": end_date,
+        "template_metadata": COMBO_METADATA,
+    }
+    combo.state = "running"
+    combo.attempts = 1
+    combo.lease_generation = 1
+    combo.lease_owner = owner
+    combo.lease_expires_at = stamp + timedelta(seconds=300)
+    combo.heartbeat_at = combo.progress_at = stamp
+    db.add(
+        DiscoveryAttempt(
+            combination_id=combo.id,
+            attempt_seq=1,
+            owner=owner,
+            generation=1,
+            state="running",
+            started_at=stamp,
+            heartbeat_at=stamp,
+            progress_at=stamp,
+            profile={},
+            counters={},
+        )
+    )
+    db.commit()
 
 
 def _sample_trades() -> list[dict]:
@@ -170,6 +238,7 @@ class TestDiscoveryRankingPersistence:
         db.add(sweep)
         db.add(combo)
         db.commit()
+        _grant_possession(db, combo, sweep, owner="worker-599")
 
         start = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end = datetime(2024, 12, 31, tzinfo=timezone.utc)
@@ -270,7 +339,9 @@ def _patch_combo_metadata(monkeypatch) -> None:
     _patch_listing_sufficient(monkeypatch)
 
 
-def _seed_running_combination(db, *, sweep_id: str, snapshot: dict | None = None):
+def _seed_running_combination(
+    db, *, sweep_id: str, snapshot: dict | None = None, owner: str = "worker-605"
+):
     from app.models_discovery import DiscoveryCombination, DiscoverySweep
 
     sweep = DiscoverySweep(
@@ -295,6 +366,7 @@ def _seed_running_combination(db, *, sweep_id: str, snapshot: dict | None = None
     db.add(sweep)
     db.add(combo)
     db.commit()
+    _grant_possession(db, combo, sweep, owner=owner)
     return combo
 
 
@@ -626,8 +698,8 @@ class TestDiscoveryWalkForwardPersistence:
 
         Session = sessionmaker(bind=engine)
         db = Session()
-        combo_absurd = _seed_running_combination(db, sweep_id="sw-wf-1e27")
-        combo_honest = _seed_running_combination(db, sweep_id="sw-wf-honest")
+        combo_absurd = _seed_running_combination(db, sweep_id="sw-wf-1e27", owner="worker-896")
+        combo_honest = _seed_running_combination(db, sweep_id="sw-wf-honest", owner="worker-896")
         start = datetime(2020, 10, 10, tzinfo=timezone.utc)
         end = datetime(2024, 2, 1, tzinfo=timezone.utc)
 
@@ -713,7 +785,7 @@ class TestDiscoveryWalkForwardPersistence:
 
         Session = sessionmaker(bind=engine)
         db = Session()
-        combo = _seed_running_combination(db, sweep_id="sw-wf-cagr-cap")
+        combo = _seed_running_combination(db, sweep_id="sw-wf-cagr-cap", owner="worker-896")
         start = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end = datetime(2024, 12, 31, tzinfo=timezone.utc)
 
