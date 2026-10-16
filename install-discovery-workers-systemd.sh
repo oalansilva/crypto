@@ -138,7 +138,7 @@ if [[ "$TARGET" == "dev" ]]; then
     echo "Legacy Discovery descendants remain in cgroup $group: memory limits were NOT applied (limites não aplicados); refusing coexistence. Nothing was killed. Remaining processes:" >&2
     while IFS= read -r pid; do
       [[ -n "$pid" ]] || continue
-      cmd="$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | cut -c1-200 || true)"
+      cmd="$({ tr '\0' ' ' <"/proc/$pid/cmdline" | cut -c1-200; } 2>/dev/null || true)"
       [[ -n "${cmd// /}" ]] || cmd="$(cat "/proc/$pid/comm" 2>/dev/null || true)"
       echo "  PID $pid: ${cmd:-?}" >&2
     done <"$procs"
@@ -165,8 +165,12 @@ fi
 
 systemctl daemon-reload
 if ! systemctl enable --now "${UNITS[@]}"; then
-  echo "Failed to enable/start ${UNITS[*]}. The unit files were installed with the new limits, but the start was refused." >&2
-  echo "If this is the 4th start within 15 minutes, systemd's start limit (StartLimitBurst=3/900s, #1093) refused it: wait and repeat. No automatic reset-failed is done." >&2
+  if [[ "$TARGET" == "dev" ]]; then
+    echo "Failed to enable/start ${UNITS[*]}. The unit files were installed with the new limits, but the start was refused." >&2
+    echo "If this is the 4th start within 15 minutes, systemd's start limit (StartLimitBurst=3/900s, #1093) refused it: wait and repeat. No automatic reset-failed is done." >&2
+  else
+    echo "Failed to enable/start ${UNITS[*]}." >&2
+  fi
   exit 1
 fi
 if ! systemctl is-active "${UNITS[@]}"; then

@@ -277,6 +277,9 @@ def _assert_stop_install_start_order(h: RestartHarness) -> None:
     # Exactly one Discovery start, and never a `restart` of it.
     assert calls.count("start-discovery") == 1
     assert not any(c.startswith("restart") and DISCOVERY_UNIT in c for c in calls), calls
+    # No plain `start <discovery>` besides the installer's `enable --now`.
+    assert not any(c.startswith(f"start {DISCOVERY_UNIT}") for c in calls), calls
+    assert sum(DISCOVERY_UNIT in c for c in calls if c.startswith("enable")) == 1
     # backend/frontend are still restarted.
     restart_line = calls[_index(calls, "restart ")]
     assert BACKEND_UNIT in restart_line and FRONTEND_UNIT in restart_line
@@ -362,6 +365,21 @@ def test_restart_leftover_process_that_vanished_is_listed_with_placeholder(harne
 
     assert result.returncode != 0
     assert "PID 2147483000: ?" in result.stderr
+    assert "No such file" not in result.stderr
+    assert harness.unit_text() == OLD_UNIT_CONTENT
+
+
+def test_restart_missing_installer_fails_before_stopping_discovery(harness):
+    (harness.root / "install-discovery-workers-systemd.sh").unlink()
+    harness.set_active(DISCOVERY_UNIT, RUNTIME_UNIT, BACKEND_UNIT, FRONTEND_UNIT)
+
+    result = harness.run()
+
+    assert result.returncode != 0
+    assert "install-discovery-workers-systemd.sh" in result.stderr
+    assert "nothing was stopped" in result.stderr
+    assert not any(c.startswith(("stop", "daemon-reload", "enable", "restart")) for c in harness.calls)
+    assert (harness.fake / "active" / DISCOVERY_UNIT).exists()
     assert harness.unit_text() == OLD_UNIT_CONTENT
 
 

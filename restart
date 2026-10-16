@@ -55,6 +55,13 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
     echo "Missing install-candle-writer-systemd.sh; candle writer timer not updated." >&2
   fi
 
+  # Fail before stopping anything: a missing installer must not leave Discovery
+  # stopped with nothing to start it again.
+  if [[ ! -x "$ROOT_DIR/install-discovery-workers-systemd.sh" ]]; then
+    echo "Missing or not executable install-discovery-workers-systemd.sh: nothing was stopped or restarted; DEV Discovery was left untouched." >&2
+    exit 1
+  fi
+
   # The installer refuses to apply memory limits while Discovery is active or
   # its cgroup still has processes (#1093). Stop Discovery here, always, so a
   # normal restart never trips that guard (#1106). An in-flight search is
@@ -79,13 +86,8 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
   # `reset-failed`; a start-limit refusal fails this restart with a clear
   # message and the operator repeats it later.
   echo "Ensuring DEV discovery workers..."
-  if [[ -x "$ROOT_DIR/install-discovery-workers-systemd.sh" ]]; then
-    if ! "$ROOT_DIR/install-discovery-workers-systemd.sh"; then
-      echo "DEV discovery workers were not installed/started (see above). The discovery worker was stopped by this restart and may still be stopped; backend, frontend and runtime worker were not restarted. Fix the cause and run ./restart again." >&2
-      exit 1
-    fi
-  else
-    echo "Missing install-discovery-workers-systemd.sh." >&2
+  if ! "$ROOT_DIR/install-discovery-workers-systemd.sh"; then
+    echo "DEV discovery workers were not installed/started (see above). The discovery worker was stopped by this restart and may still be stopped; backend, frontend and runtime worker were not restarted. Fix the cause and run ./restart again." >&2
     exit 1
   fi
   systemctl show "$DEV_DISCOVERY_WORKER_UNIT" -p MemoryHigh -p MemoryMax -p MemorySwapMax || true

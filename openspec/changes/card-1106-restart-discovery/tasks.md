@@ -26,6 +26,7 @@
 - Start-limit: se `enable --now` falha, o instalador cita `StartLimitBurst=3/900s` ("wait and repeat"); sem `reset-failed`. Se a Discovery não fica ativa, o instalador aponta o drop-in `card-1093-hold.conf` (em `/run` ou `/etc`) quando presente.
 - Limites efetivos: o `restart` só imprime `MemoryHigh/MemoryMax/MemorySwapMax` (informativo, `|| true`); a conferência é do QA abaixo.
 - Regressão do #1093 (`test_discovery_memory_recovery.py`, `test_discovery_celery_loss.py`): exige PostgreSQL/Redis privados. No Apply, o cluster `/tmp/card-1093-integration-20261013/pg` e o container `card-1093-redis` existem mas estão parados e `DATABASE_URL` privado não está definido; não foram religados nem apontados para o banco compartilhado. Os testes não foram executados; este card não toca o código do #1093.
+- Correção do Code Review (P3 mecânicos): `restart` checa o instalador (`-x`) antes do `stop`; stderr do cmdline de PID que sumiu fica limpo; mensagens de falha do `enable --now` com StartLimitBurst/#1093 só em DEV (genérica em PROD); teste de "um único start" também proíbe `start` avulso da Discovery.
 
 ## Roteiro de verificação no DEV (QA)
 
