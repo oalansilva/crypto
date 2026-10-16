@@ -1,0 +1,385 @@
+{
+  "primary": [
+    {
+      "mode": "baseline",
+      "n": 5,
+      "median_s": 34.185984809999354,
+      "min_s": 33.98823391296901,
+      "max_s": 36.3128630159772,
+      "speedup": 1.0,
+      "time_reduction_pct": 0.0,
+      "incremental_reduction_vs_fingerprint_pct": -26.213281003746445,
+      "indicator_hits": 0,
+      "indicator_misses": 0
+    },
+    {
+      "mode": "fingerprint",
+      "n": 5,
+      "median_s": 27.085885524982587,
+      "min_s": 26.529933837999124,
+      "max_s": 30.697792107996065,
+      "speedup": 1.2621328100374645,
+      "time_reduction_pct": 20.769035394118585,
+      "incremental_reduction_vs_fingerprint_pct": 0.0,
+      "indicator_hits": 0,
+      "indicator_misses": 0
+    },
+    {
+      "mode": "numba",
+      "n": 1,
+      "median_s": 25.126078655011952,
+      "min_s": 25.126078655011952,
+      "max_s": 25.126078655011952,
+      "speedup": 1.3605777996392685,
+      "time_reduction_pct": 26.501814136234547,
+      "incremental_reduction_vs_fingerprint_pct": 7.2355281431098595,
+      "indicator_hits": 0,
+      "indicator_misses": 0
+    },
+    {
+      "mode": "indicators",
+      "n": 1,
+      "median_s": 27.297379928990267,
+      "min_s": 27.297379928990267,
+      "max_s": 27.297379928990267,
+      "speedup": 1.2523540683731802,
+      "time_reduction_pct": 20.150377177357726,
+      "incremental_reduction_vs_fingerprint_pct": -0.780828833573155,
+      "indicator_hits": 4568,
+      "indicator_misses": 190
+    },
+    {
+      "mode": "combined",
+      "n": 5,
+      "median_s": 24.906971730990335,
+      "min_s": 24.50659835198894,
+      "max_s": 25.554837798990775,
+      "speedup": 1.3725468185866878,
+      "time_reduction_pct": 27.142740308873357,
+      "incremental_reduction_vs_fingerprint_pct": 8.044462094409043,
+      "indicator_hits": 23131,
+      "indicator_misses": 968
+    }
+  ],
+  "selected": "combined",
+  "full_runs": 21,
+  "logical_trials": 404586,
+  "all_full_results_exact": true,
+  "validation": {
+    "unique_trials": 2800,
+    "variants": 4,
+    "metrics_parameters_exact": true,
+    "existing_logic_warnings": 1712,
+    "elapsed_s": 108.71181175799575
+  },
+  "edge_validation": {
+    "position_cases": 288,
+    "deep_trade_cases": 280,
+    "exact_signals_reasons_and_trade_payloads": true,
+    "elapsed_s": 4.341240693000145
+  },
+  "persistent_pool": {
+    "mode": "combined",
+    "medians": {
+      "fresh": 23.35982700297609,
+      "persistent": 20.581720734015107
+    },
+    "speedup": 1.1349793005581719,
+    "time_reduction_pct": 11.892666279622045,
+    "results_exact": true,
+    "jobs": [
+      [
+        "ema_rsi",
+        "1INCH/USDT",
+        "long"
+      ],
+      [
+        "ema_rsi",
+        "1INCH/USDT",
+        "short"
+      ],
+      [
+        "ema_rsi",
+        "AAVE/USDT",
+        "long"
+      ]
+    ]
+  },
+  "optuna_method": "tpe; 192-trial train-only fixed normalization; 0.7 Sharpe + 0.3 return; target-step bounds; conditional MA ordering; 48-trial batches; final holdout never used for selection",
+  "optuna": [
+    {
+      "seed": 11,
+      "elapsed_s": 47.51574730698485,
+      "sampling_s": 42.88248074799776,
+      "evaluation_s": 4.10404106695205,
+      "budget": 2000,
+      "unique_parameter_sets": 1335,
+      "winner": {
+        "ema_short": 19,
+        "sma_medium": 21,
+        "sma_long": 90,
+        "stop_loss": 0.083,
+        "direction": "long",
+        "timeframe": "1d"
+      },
+      "search_score": 1.0445687344238421,
+      "grid_winner_same_objective_score": 1.011143829430552,
+      "speedup_vs_baseline": 0.7194664242389804,
+      "oos_return_pct": -15.683045129898876,
+      "oos_sharpe": -1.8965763890052347,
+      "oos_status": "NO-GO",
+      "grid_oos_return_pct": -17.248770477044882,
+      "grid_oos_sharpe": -1.5279043260531606
+    },
+    {
+      "seed": 29,
+      "elapsed_s": 48.91979892004747,
+      "sampling_s": 44.466741810843814,
+      "evaluation_s": 3.9370448219706304,
+      "budget": 2000,
+      "unique_parameter_sets": 1317,
+      "winner": {
+        "ema_short": 18,
+        "sma_medium": 20,
+        "sma_long": 89,
+        "stop_loss": 0.061,
+        "direction": "long",
+        "timeframe": "1d"
+      },
+      "search_score": 1.04011812086913,
+      "grid_winner_same_objective_score": 1.0090154477773046,
+      "speedup_vs_baseline": 0.6988169527407817,
+      "oos_return_pct": -19.789762004156586,
+      "oos_sharpe": -4.828858918363345,
+      "oos_status": "NO-GO",
+      "grid_oos_return_pct": -17.248770477044882,
+      "grid_oos_sharpe": -1.5279043260531606
+    },
+    {
+      "seed": 47,
+      "elapsed_s": 49.79071529797511,
+      "sampling_s": 45.00911567697767,
+      "evaluation_s": 4.254873266851064,
+      "budget": 2000,
+      "unique_parameter_sets": 1289,
+      "winner": {
+        "ema_short": 19,
+        "sma_medium": 21,
+        "sma_long": 90,
+        "stop_loss": 0.07,
+        "direction": "long",
+        "timeframe": "1d"
+      },
+      "search_score": 1.0256900150159542,
+      "grid_winner_same_objective_score": 0.9937968386215383,
+      "speedup_vs_baseline": 0.6865935668007892,
+      "oos_return_pct": -12.140337523224742,
+      "oos_sharpe": -1.8907182371528324,
+      "oos_status": "NO-GO",
+      "grid_oos_return_pct": -17.248770477044882,
+      "grid_oos_sharpe": -1.5279043260531606
+    }
+  ],
+  "limits": [
+    "Frozen in-memory market data; excludes exchange downloads, web latency, production queue and database persistence",
+    "Warm numeric kernels; compilation/import costs excluded from timed optimization",
+    "Each component screened once; baseline, fingerprint and selected combination repeated five times",
+    "Indicator cache prototype caches TA-Lib calls; DataFrame construction and logic evaluation remain",
+    "Existing template logic warnings reproduced across all variants; equivalence does not establish strategy validity",
+    "Optuna changes search and score normalization: pilot-based fixed training normalization, not stage-by-stage grid normalization; holdout not used for selection",
+    "Shared host, three workers; timing dispersion is reported",
+    "Persistent pool measured on three consecutive EMA+RSI jobs; existing full-indicator worker cache is unbounded, so continuous production use needs a memory bound and lifecycle policy",
+    "Reduced-search quality tested on one asset and one fixed holdout, with three seeds per budget; no generalization or equivalence claim",
+    "Random-2000 seed 47 exposed an extremely large negative holdout Sharpe (-3.20e14); the original metric is numerically unstable for nearly identical trade returns. Raw value retained; NO-GO gate preserved; this experiment did not change metrics"
+  ],
+  "python": "3.12.3",
+  "platform": "Linux-7.0.0-1012-oracle-aarch64-with-glibc2.39",
+  "cpu_count": 4,
+  "source_sha256": {
+    "/srv/apps/dev/criptofarol/source/backend/app/services/combo_optimizer.py": "a1ff676c8447c30da2ead06158cdf47bac20463f2b30f0c3ec587870f01edce9",
+    "/srv/apps/dev/criptofarol/source/backend/app/services/deep_backtest.py": "a4fa3326e1c84d60e27ed1d2eb4432a0b6f68b3086000b446cbea275c4e99372",
+    "/srv/apps/dev/criptofarol/source/backend/app/strategies/combos/combo_strategy.py": "fbdccfbe8ba601f2e86ed836e38221737be65375d873544cd6684766e34565de",
+    "/srv/apps/dev/criptofarol/source/backend/config/combo_templates_export.json": "cf0a2f2c686514b61176d34bbbc3ca880a9b6e3c012823333f9181909f544771",
+    "/srv/apps/dev/criptofarol/source/backend/tests/fixtures/card_945/ohlcv/AAVE_USDT_15m.parquet": "7add33311aece29784f806e5054238229b4eabc52b4a5aefb7e85f600b38a7ab",
+    "/srv/apps/dev/criptofarol/source/backend/tests/fixtures/card_945/ohlcv/1INCH_USDT_15m.parquet": "1331ff7a731a261fd8064de26af8f1d8fcae59a76ef4400e395cd06a8badfb48",
+    "/srv/apps/dev/criptofarol/source/backend/tests/fixtures/card_945/ohlcv/1INCH_USDT_1d.parquet": "87704030ae35074851a8c6e794dd4464b747ea9da2b4642fc0dcee5558778394",
+    "/srv/apps/dev/criptofarol/source/backend/tests/fixtures/card_945/ohlcv/AAVE_USDT_1d.parquet": "594c04cfeb4d5600a4dcd9f1e7da126513fea880f4400a815872226a083af747"
+  },
+  "script_sha256": {
+    "edge_checks.py": "0d34591508b629a5842dc90bf3977f01eee0f38cc589fc6675b36723cc174f61",
+    "experiment.py": "77131916aac43cfa2270cb0027442155e69cd207e79a0cf11949b0d1876e6628",
+    "suite.py": "4b0822cc2b0615f9a3d2653f76683e2a348b25d446024cd6f9330d573ff270a3",
+    "additional.py": "b3c94ce9b2de4aaf3405151daf49d4675e8874dca534ebb0de806ca23578a84e",
+    "report.py": "4f4befd0f128c273ab1d2d50661951d57159ceb579e07b5486245f4b875021ef",
+    "finish_suite.py": "d7530ee5aa339e3a38c45c0d9a75fa83c255f4c65243850a3cb0be32d5da0813"
+  },
+  "warmup_measurements": [
+    {
+      "run": "primary-baseline-1",
+      "jit_warmup_s": 4.217131696001161
+    },
+    {
+      "run": "primary-fingerprint-1",
+      "jit_warmup_s": 0.7191353689995594
+    },
+    {
+      "run": "primary-numba-1",
+      "jit_warmup_s": 0.7440158890094608
+    },
+    {
+      "run": "primary-indicators-1",
+      "jit_warmup_s": 0.709881013026461
+    },
+    {
+      "run": "primary-combined-1",
+      "jit_warmup_s": 0.7302778229932301
+    },
+    {
+      "run": "primary-combined-2",
+      "jit_warmup_s": 0.6844567899825051
+    },
+    {
+      "run": "primary-fingerprint-2",
+      "jit_warmup_s": 0.6796969120041467
+    },
+    {
+      "run": "primary-baseline-2",
+      "jit_warmup_s": 0.700863489008043
+    },
+    {
+      "run": "primary-baseline-3",
+      "jit_warmup_s": 0.684801816008985
+    },
+    {
+      "run": "primary-fingerprint-3",
+      "jit_warmup_s": 0.6910143719869666
+    },
+    {
+      "run": "primary-combined-3",
+      "jit_warmup_s": 0.686090653995052
+    },
+    {
+      "run": "primary-combined-4",
+      "jit_warmup_s": 0.6863556519965641
+    },
+    {
+      "run": "primary-fingerprint-4",
+      "jit_warmup_s": 0.6900871129473671
+    },
+    {
+      "run": "primary-baseline-4",
+      "jit_warmup_s": 0.7118744940380566
+    },
+    {
+      "run": "primary-baseline-5",
+      "jit_warmup_s": 0.6995016869623214
+    },
+    {
+      "run": "primary-fingerprint-5",
+      "jit_warmup_s": 0.6876653640065342
+    },
+    {
+      "run": "primary-combined-5",
+      "jit_warmup_s": 0.6856083479942754
+    },
+    {
+      "run": "aave-baseline",
+      "jit_warmup_s": 0.6939062000019476
+    },
+    {
+      "run": "aave-combined",
+      "jit_warmup_s": 0.6838288499857299
+    },
+    {
+      "run": "ema-rsi-baseline",
+      "jit_warmup_s": 0.6819306359975599
+    },
+    {
+      "run": "ema-rsi-combined",
+      "jit_warmup_s": 0.6846972919884138
+    }
+  ],
+  "failed_trials_total": 0,
+  "random_control": [
+    {
+      "seed": 11,
+      "budget": 2000,
+      "elapsed_s": 7.762956660008058,
+      "sampling_s": 0.6168553882744163,
+      "evaluation_s": 6.634994303050917,
+      "search_score": 1.0425696012794337,
+      "grid_winner_same_objective_score": 1.011143829430552,
+      "oos_return_pct": -21.995331816159723,
+      "oos_sharpe": -3.559755307407447,
+      "oos_status": "NO-GO",
+      "speedup_vs_baseline": 4.403732534810245
+    },
+    {
+      "seed": 29,
+      "budget": 2000,
+      "elapsed_s": 7.3197192149818875,
+      "sampling_s": 0.4221734998864122,
+      "evaluation_s": 6.382716000138316,
+      "search_score": 1.0215768381246888,
+      "grid_winner_same_objective_score": 1.0090154477773046,
+      "oos_return_pct": 74.45244136787717,
+      "oos_sharpe": 0.4740038687604942,
+      "oos_status": "NO-GO",
+      "speedup_vs_baseline": 4.670395653979187
+    },
+    {
+      "seed": 47,
+      "budget": 2000,
+      "elapsed_s": 7.640410166000947,
+      "sampling_s": 0.4216133779846132,
+      "evaluation_s": 6.477519302861765,
+      "search_score": 1.0287143210496135,
+      "grid_winner_same_objective_score": 0.9937968386215383,
+      "oos_return_pct": -12.140991375431053,
+      "oos_sharpe": -320496239564520.56,
+      "oos_status": "NO-GO",
+      "speedup_vs_baseline": 4.474365127951315
+    }
+  ],
+  "random_500": [
+    {
+      "seed": 11,
+      "budget": 500,
+      "elapsed_s": 2.8469910839921795,
+      "sampling_s": 0.30668330303160474,
+      "evaluation_s": 2.121220820117742,
+      "search_score": 1.0041784098190316,
+      "grid_winner_same_objective_score": 1.011143829430552,
+      "oos_return_pct": -19.053332437963412,
+      "oos_sharpe": -7.124567461156346,
+      "oos_status": "NO-GO",
+      "speedup_vs_baseline": 12.007759701889274
+    },
+    {
+      "seed": 29,
+      "budget": 500,
+      "elapsed_s": 2.2698827999993227,
+      "sampling_s": 0.1119096179609187,
+      "evaluation_s": 1.7619103319011629,
+      "search_score": 1.0031982820589171,
+      "grid_winner_same_objective_score": 1.0090154477773046,
+      "oos_return_pct": -10.964873981321366,
+      "oos_sharpe": -1.759675490401111,
+      "oos_status": "NO-GO",
+      "speedup_vs_baseline": 15.060682785036105
+    },
+    {
+      "seed": 47,
+      "budget": 500,
+      "elapsed_s": 2.5955375859630294,
+      "sampling_s": 0.11405691201798618,
+      "evaluation_s": 2.0869569908827543,
+      "search_score": 0.9999999999999707,
+      "grid_winner_same_objective_score": 0.9937968386215383,
+      "oos_return_pct": -18.13605051615177,
+      "oos_sharpe": -6.012312531658237,
+      "oos_status": "NO-GO",
+      "speedup_vs_baseline": 13.171061361192054
+    }
+  ]
+}

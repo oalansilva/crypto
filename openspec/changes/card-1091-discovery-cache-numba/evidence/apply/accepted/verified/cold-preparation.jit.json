@@ -1,0 +1,9 @@
+{
+  "cache_directory": "/tmp/card-1091-jit-preparation-1a1a1236",
+  "deep_compiled": true,
+  "label": "cold-preparation",
+  "peak_rss_kib": 794216,
+  "position_compiled": true,
+  "preparation_jit_s": 3.4390435009845532,
+  "startup_imports_manifest_s": 1.4269826840027235
+}

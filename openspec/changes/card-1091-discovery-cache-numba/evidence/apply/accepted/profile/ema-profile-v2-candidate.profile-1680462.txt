@@ -1,0 +1,58 @@
+         2642245 function calls (2542710 primitive calls) in 2.059 seconds
+
+   Ordered by: cumulative time
+   List reduced from 632 to 50 due to restriction <50>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      180    0.016    0.000    1.969    0.011 combo_optimizer.py:475(_run_backtest_logic)
+      180    0.008    0.000    0.954    0.005 combo_optimizer.py:312(extract_trades_with_mode)
+      180    0.001    0.000    0.812    0.005 deep_backtest.py:26(simulate_execution_with_15m)
+      180    0.009    0.000    0.810    0.005 deep_backtest.py:347(_compiled_simulate_execution_with_15m)
+      360    0.214    0.001    0.682    0.002 deep_backtest.py:198(_iso_array)
+      180    0.005    0.000    0.332    0.002 combo_strategy.py:871(_fast_position_loop)
+ 1053/680    0.010    0.000    0.311    0.000 {built-in method builtins.sum}
+       77    0.003    0.000    0.309    0.004 combo_cache.py:136(put)
+       40    0.000    0.000    0.306    0.008 combo_cache.py:166(__setitem__)
+      468    0.003    0.000    0.305    0.001 frame.py:4559(__setitem__)
+ 72555/77    0.145    0.000    0.305    0.004 combo_cache.py:71(retained_bytes)
+ 1238/231    0.000    0.000    0.304    0.001 combo_cache.py:105(<genexpr>)
+    70781    0.023    0.000    0.283    0.000 combo_cache.py:93(<genexpr>)
+      468    0.002    0.000    0.278    0.001 frame.py:4862(_set_item)
+      180    0.001    0.000    0.275    0.002 frame.py:5649(assign)
+     3294    0.015    0.000    0.242    0.000 frame.py:4337(__getitem__)
+      468    0.004    0.000    0.218    0.000 frame.py:4846(_set_item_mgr)
+      397    0.007    0.000    0.213    0.001 combo_cache.py:20(_hash_index)
+      468    0.005    0.000    0.204    0.000 managers.py:1531(insert)
+      720    0.002    0.000    0.194    0.000 combo_cache.py:13(index_identity)
+     1442    0.002    0.000    0.171    0.000 config.py:143(get_option)
+     1442    0.003    0.000    0.166    0.000 config.py:127(_get_single_key)
+     3294    0.004    0.000    0.161    0.000 frame.py:4966(_get_item)
+     1442    0.018    0.000    0.159    0.000 config.py:650(_select_options)
+       72    0.005    0.000    0.154    0.002 combo_strategy.py:513(_evaluate_logic_vectorized)
+     3294    0.004    0.000    0.153    0.000 frame.py:4292(_ixs)
+       36    0.004    0.000    0.151    0.004 combo_strategy.py:311(calculate_indicators)
+   159517    0.150    0.000    0.151    0.000 datetimes.py:670(__iter__)
+820398/819352    0.133    0.000    0.150    0.000 {built-in method builtins.isinstance}
+     2054    0.018    0.000    0.137    0.000 base.py:567(to_numpy)
+5429/5069    0.005    0.000    0.134    0.000 {built-in method numpy.asarray}
+       37    0.001    0.000    0.133    0.004 combo_cache.py:36(protect)
+    63145    0.030    0.000    0.132    0.000 __init__.py:174(search)
+      360    0.002    0.000    0.129    0.000 combo_optimizer.py:664(_safe_mean)
+     1225    0.012    0.000    0.115    0.000 series.py:369(__init__)
+       37    0.000    0.000    0.106    0.003 base.py:659(to_numpy)
+       37    0.000    0.000    0.106    0.003 datetimes.py:663(__array__)
+       37    0.011    0.000    0.105    0.003 datetimelike.py:356(__array__)
+      360    0.001    0.000    0.101    0.000 series.py:6422(dropna)
+      794    0.001    0.000    0.097    0.000 {built-in method builtins.repr}
+     3294    0.006    0.000    0.097    0.000 frame.py:4954(_box_col_values)
+      360    0.001    0.000    0.096    0.000 missing.py:649(remove_na_arraylike)
+      397    0.001    0.000    0.095    0.000 frozen.py:115(__repr__)
+      397    0.001    0.000    0.094    0.000 frozen.py:110(__str__)
+  794/397    0.003    0.000    0.093    0.000 printing.py:174(pprint_thing)
+      397    0.003    0.000    0.093    0.000 hashing.py:84(hash_pandas_object)
+     4374    0.011    0.000    0.092    0.000 base.py:5384(__getitem__)
+      397    0.003    0.000    0.085    0.000 printing.py:103(_pprint_seq)
+      468    0.003    0.000    0.079    0.000 base.py:7143(insert)
+      433    0.002    0.000    0.078    0.000 generic.py:6560(copy)
+
+

@@ -18,6 +18,8 @@ import hashlib
 import os
 import time
 import logging
+import uuid
+from functools import partial
 import itertools  # For Grid Search cartesian product
 from typing import Dict, List, Any, Optional
 from pathlib import Path
@@ -45,6 +47,15 @@ from app.metrics.backtest_execution_costs import (
 )
 from app.services.deep_backtest import simulate_execution_with_15m
 from app.metrics.indicators import ensure_ta_lib_context_columns
+from app.services.combo_acceleration import enabled as acceleration_enabled
+from app.services.combo_cache import (
+    Snapshot,
+    resolve,
+    frame_identity,
+    index_identity,
+    protect,
+    execution_lifecycle,
+)
 
 # -----------------------------------------------------------------------------
 # WORKER-SIDE INTRADAY CACHE (per process)
@@ -52,6 +63,9 @@ from app.metrics.indicators import ensure_ta_lib_context_columns
 # IMPORTANT:
 # - This cache lives inside each ProcessPoolExecutor worker process.
 # - It only becomes effective if we reuse the same executor across stages/rounds.
+# All worker caches share the single bounded retained-byte/entry LRU budget
+# (#1093 limits, #1091 combo_cache implementation). They are bounded whether or
+# not the #1091 acceleration is enabled.
 _WORKER_15M_CACHE = Cache("intraday")
 _WORKER_INDICATOR_CACHE = Cache("indicators")
 _WORKER_COVERAGE_CACHE = Cache("coverage")
@@ -81,9 +95,17 @@ def _local_ohlcv_covers(loader, symbol: str, timeframe: str, end_date: str) -> b
         return False
 
 
-def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Optional[pd.DataFrame]:
+def _worker_get_15m_cache(
+    symbol: str, since_str: str, until_str: str, loader=None
+) -> Optional[pd.DataFrame]:
     """Load (or reuse) the 15m DF in the current worker process."""
-    key = (symbol, since_str, until_str, os.getenv("DISCOVERY_FROZEN_INPUT_DIR"))
+    accelerated = acceleration_enabled()
+    frozen = os.getenv("DISCOVERY_FROZEN_INPUT_DIR")
+    key = (
+        (BUDGET.generation, symbol, since_str, until_str, frozen)
+        if accelerated
+        else (symbol, since_str, until_str, frozen)
+    )
     cached = _WORKER_15M_CACHE.get(key)
     if cached is not None:
         return cached
@@ -92,7 +114,7 @@ def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Option
 
     df_15m = read("intraday")
     if df_15m is None:
-        loader = IncrementalLoader()
+        loader = loader or IncrementalLoader()
         df_15m = loader.fetch_intraday_data(
             symbol=symbol,
             timeframe="15m",
@@ -100,6 +122,10 @@ def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Option
             until_str=until_str,
             read_only=True,
         )
+    if accelerated:
+        owned = df_15m.copy(deep=True)
+        owned.index = df_15m.index.copy(deep=True)
+        df_15m = protect(owned)
     _WORKER_15M_CACHE[key] = df_15m
     return df_15m
 
@@ -373,7 +399,16 @@ def extract_trades_with_mode(
                 str(intraday_start),
                 str(intraday_end),
             )
-            cached_cov = None if _combo_optimizer_legacy() else _WORKER_COVERAGE_CACHE.get(cov_key)
+            coverage_cache = _WORKER_COVERAGE_CACHE
+            if acceleration_enabled():
+                cov_key = (
+                    BUDGET.generation,
+                    symbol,
+                    index_identity(df_exec.index),
+                    index_identity(df_15m.index),
+                    *cov_key[1:],
+                )
+            cached_cov = None if _combo_optimizer_legacy() else coverage_cache.get(cov_key)
             if cached_cov is not None:
                 start_ok, end_ok = cached_cov
             else:
@@ -385,7 +420,7 @@ def extract_trades_with_mode(
                         start_ok = False
                 end_ok = intraday_end >= daily_end
                 if not _combo_optimizer_legacy():
-                    _WORKER_COVERAGE_CACHE[cov_key] = (start_ok, end_ok)
+                    coverage_cache[cov_key] = (start_ok, end_ok)
 
             if (not start_ok) or (not end_ok):
                 # Log only once per symbol per process to avoid flooding the log (e.g. 16k identical lines)
@@ -426,6 +461,10 @@ def extract_trades_with_mode(
 
 
 def _window_identity(df: pd.DataFrame) -> tuple:
+    if acceleration_enabled():
+        if isinstance(df, Snapshot):
+            return df.identity
+        return ("external", frame_identity(df))
     return (
         repr([(col, str(dtype)) for col, dtype in zip(df.columns, df.dtypes)]),
         repr((df.index.names, str(df.index.dtype))),
@@ -485,7 +524,10 @@ def _run_backtest_logic(
         initial_capital: Capital inicial em USD para cálculo de métricas (padrão: $100)
                         Usado para calcular Return e Profit Factor no estilo TradingView
     """
+    data_context = df
     try:
+        if isinstance(df, Snapshot):
+            df = resolve(df) if acceleration_enabled() else df.copy_frame()
         # Reconstruct strategy logic locally to avoid DB connection in worker
         indicators = template_data["indicators"]
         from app.strategies.combos.indicator_binding import capture_binding
@@ -591,7 +633,13 @@ def _run_backtest_logic(
             df_with_signals = strategy._legacy_generate_signals(df.copy())
         else:
             cache_key = _indicator_cache_key(
-                indicators, entry_logic, exit_logic, derived_features, df, binding, window_identity
+                indicators,
+                entry_logic,
+                exit_logic,
+                derived_features,
+                data_context,
+                binding,
+                window_identity,
             )
             cached = _WORKER_INDICATOR_CACHE.get(cache_key)
             if cached is None:
@@ -606,6 +654,11 @@ def _run_backtest_logic(
                     "entry": np.ascontiguousarray(entry_mask.fillna(False).astype(bool).to_numpy()),
                     "exit": np.ascontiguousarray(exit_mask.fillna(False).astype(bool).to_numpy()),
                 }
+                if acceleration_enabled():
+                    cached["frame"].index = cached["frame"].index.copy(deep=True)
+                    protect(cached["frame"])
+                    cached["entry"].flags.writeable = False
+                    cached["exit"].flags.writeable = False
                 _WORKER_INDICATOR_CACHE[cache_key] = cached
             work = cached["frame"].copy(deep=False)
             entry_mask = pd.Series(cached["entry"], index=work.index)
@@ -716,7 +769,27 @@ def _worker_run_backtest(args):
         }
 
 
-def _worker_run_batch(batch_args):
+def adopt_index(frame: pd.DataFrame) -> pd.DataFrame:
+    """Give an external frame a private registered index so its identity is O(1).
+
+    An external index can be mutated through its backing array, so it never
+    receives a memo token and every trial would hash it in full. The index (only)
+    is deep-copied once, frozen and registered in the bounded ``indices``
+    namespace; columns stay shared and untouched. Already registered indices are
+    returned unchanged; an index too large for BUDGET simply keeps hashing.
+    """
+    index = frame.index
+    data = index._data
+    known = BUDGET.get("indices", (id(data), repr(index.dtype), repr(index.names)))
+    if known is not None and known[0] is data:
+        return frame
+    holder = protect(pd.DataFrame(index=index.copy(deep=True)))
+    adopted = frame.copy(deep=False)
+    adopted.index = holder.index
+    return adopted
+
+
+def _worker_run_batch(batch_args, intraday_loader=None, observer=None):
     """
     Optimized worker for Grid Search BATCH execution.
     Uses worker-level 15m cache (per process) to eliminate redundant I/O.
@@ -736,6 +809,8 @@ def _worker_run_batch(batch_args):
     first_arg = batch_args[0]
     # unpacking args structure:
     # template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str
+    if acceleration_enabled() and isinstance(first_arg[2], Snapshot):
+        resolve(first_arg[2])
     deep_backtest = first_arg[5]
     symbol = first_arg[6]
     since_str = first_arg[7]
@@ -745,7 +820,11 @@ def _worker_run_batch(batch_args):
 
     if deep_backtest:
         try:
-            df_15m_cache = _worker_get_15m_cache(symbol, since_str, until_str)
+            df_15m_cache = _worker_get_15m_cache(symbol, since_str, until_str, intraday_loader)
+            if acceleration_enabled() and df_15m_cache is not None:
+                # Every trial of the batch shares this frame: give its index a
+                # registered identity once instead of hashing it per trial.
+                df_15m_cache = adopt_index(df_15m_cache)
         except Exception as e:
             # proceed without cache
             pass
@@ -794,6 +873,8 @@ def _worker_run_batch(batch_args):
         from app.services.discovery_resources import telemetry
 
         results[0]["worker_telemetry"] = telemetry()
+    if observer is not None:
+        observer(results)
     return results
 
 
@@ -805,11 +886,25 @@ class ComboOptimizer:
     direction-aware combo trade extractor.
     """
 
-    def __init__(self, checkpoint_dir: str = "backend/data/checkpoints"):
+    def __init__(
+        self,
+        checkpoint_dir: str = "backend/data/checkpoints",
+        *,
+        combo_service=None,
+        provider=None,
+        loader=None,
+        worker_loader=None,
+        workers=None,
+        worker_observer=None,
+    ):
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        self.combo_service = ComboService()
-        self.loader = IncrementalLoader()
+        self.combo_service = combo_service or ComboService()
+        self.loader = loader or IncrementalLoader()
+        self._provider = provider
+        self._worker_loader = worker_loader
+        self._workers = workers
+        self._worker_observer = worker_observer
 
     def generate_stages(
         self,
@@ -1447,6 +1542,14 @@ class ComboOptimizer:
 
         return selected
 
+    def _batch_worker(self):
+        """Batch worker; binds the optional test hooks only when they are set."""
+        loader = getattr(self, "_worker_loader", None)
+        observer = getattr(self, "_worker_observer", None)
+        if loader is None and observer is None:
+            return _worker_run_batch
+        return partial(_worker_run_batch, intraday_loader=loader, observer=observer)
+
     def _execute_opt_stages(
         self,
         stages,
@@ -1499,6 +1602,14 @@ class ComboOptimizer:
         # For Refinement (Sequential params), we follow the standard greedy path.
         # -----------------------------------------------------------
 
+        if acceleration_enabled() and df is not None:
+            df = Snapshot(
+                df,
+                generation=getattr(self, "_execution_generation", None),
+                source=(symbol, timeframe),
+                role="train",
+                limits=(start_date, end_date),
+            )
         collected_candidates = []
         total_combinations_tested = 0  # Track total across all stages
 
@@ -1563,7 +1674,7 @@ class ComboOptimizer:
             try:
                 with ResultSpool(profile) as spool:
                     counters = execute_stream(
-                        exec_to_use, _worker_run_batch, arguments, planned, spool, profile
+                        exec_to_use, self._batch_worker(), arguments, planned, spool, profile
                     )
                     total_combinations_tested += counters["executed"]
                     scored_results = spool.ranked(
@@ -1626,6 +1737,14 @@ class ComboOptimizer:
             except Exception as exc:
                 logging.warning("Failed to enrich DF with regime metrics: %s", exc)
 
+        if acceleration_enabled() and df is not None:
+            df = Snapshot(
+                df,
+                generation=getattr(self, "_execution_generation", None),
+                source=(symbol, timeframe),
+                role="train",
+                limits=(start_date, end_date),
+            )
         branch_states = []
         for candidate in candidates:
             current_stages = copy.deepcopy(stages)
@@ -1684,7 +1803,7 @@ class ComboOptimizer:
                         trial += 1
 
             with ResultSpool(profile) as spool:
-                execute_stream(executor, _worker_run_batch, arguments, planned, spool, profile)
+                execute_stream(executor, self._batch_worker(), arguments, planned, spool, profile)
                 for domain, state, stage in domains:
                     ranked = spool.ranked(domain, state["params"], stage, 1)
                     if not ranked:
@@ -1791,6 +1910,7 @@ class ComboOptimizer:
                     )
 
     @bounded_execution
+    @execution_lifecycle
     def run_optimization(
         self,
         template_name: str,
@@ -1821,6 +1941,9 @@ class ComboOptimizer:
         # If data_source is omitted, infer based on symbol:
         # - symbols without "/" are treated as US tickers -> stooq
         # - symbols with "/" are treated as crypto pairs -> ccxt
+        self._execution_generation = uuid.uuid4().hex
+        if acceleration_enabled():
+            BUDGET.begin(self._execution_generation)
         inferred = data_source
         if inferred is None or str(inferred).strip() == "":
             inferred = resolve_data_source_for_symbol(symbol, None)
@@ -1851,7 +1974,9 @@ class ComboOptimizer:
             end_date = datetime.now().strftime("%Y-%m-%d")
 
         # Load data from selected provider (ccxt default; stooq for US stocks EOD)
-        provider = get_market_data_provider(selected_data_source)
+        provider = getattr(self, "_provider", None) or get_market_data_provider(
+            selected_data_source
+        )
         if os.getenv("DISCOVERY_FROZEN_INPUT_DIR"):
             from app.services.discovery_inputs import FrozenProvider
 
@@ -1989,7 +2114,9 @@ class ComboOptimizer:
         best_metrics = None
 
         # Use ProcessPoolExecutor for parallel execution
-        max_workers = ResourceProfile.optimizer().effective_workers
+        # An explicit worker count (benchmark/tests) is only the unprofiled default;
+        # a configured #1093 resource profile still decides the effective workers.
+        max_workers = ResourceProfile.optimizer(getattr(self, "_workers", None)).effective_workers
 
         # PHASE 2: Detect Grid Search and allow refinement
         # Grid Search finds the best region, then we refine it. Same logic for long and short (direction-agnostic).
@@ -2283,6 +2410,14 @@ class ComboOptimizer:
             )
 
             # Generate signals
+            if acceleration_enabled():
+                df_final = Snapshot(
+                    df_final,
+                    generation=self._execution_generation,
+                    source=(symbol, timeframe),
+                    role="final-train",
+                    limits=(start_date, end_date),
+                ).copy_frame()
             df_with_signals = strategy.generate_signals(df_final.copy())
             report({"phase_complete": "final_signals"})
 
@@ -2292,6 +2427,17 @@ class ComboOptimizer:
             if direction not in ("long", "short"):
                 direction = "long"
             final_slippage = slippage_for_timeframe(timeframe)
+            final_intraday = (
+                self._worker_loader.fetch_intraday_data(
+                    symbol=symbol,
+                    timeframe="15m",
+                    since_str=start_date,
+                    until_str=end_date,
+                    read_only=True,
+                )
+                if getattr(self, "_worker_loader", None) is not None
+                else None
+            )
             trades, execution_mode = extract_trades_with_mode(
                 df_with_signals,
                 stop_loss,
@@ -2299,6 +2445,11 @@ class ComboOptimizer:
                 symbol=symbol,
                 since_str=start_date,
                 until_str=end_date,
+                **(
+                    {"df_15m_cache": final_intraday}
+                    if getattr(self, "_worker_loader", None) is not None
+                    else {}
+                ),
                 direction=direction,
                 return_mode=True,
                 slippage=final_slippage,
@@ -2418,6 +2569,14 @@ class ComboOptimizer:
                 holdout_frame = df_holdout
                 if df_train_tail_for_warmup is not None and not df_train_tail_for_warmup.empty:
                     holdout_frame = pd.concat([df_train_tail_for_warmup, df_holdout])
+                if acceleration_enabled():
+                    holdout_frame = Snapshot(
+                        holdout_frame,
+                        generation=self._execution_generation,
+                        source=(symbol, timeframe),
+                        role="holdout-burnin",
+                        limits=(str(holdout_eval_start), end_date),
+                    ).copy_frame()
                 df_holdout_signals = strategy_holdout.generate_signals(holdout_frame.copy())
                 report({"phase_complete": "holdout_signals"})
                 stop_loss = best_params.get("stop_loss", 0.0)
@@ -2435,6 +2594,19 @@ class ComboOptimizer:
                     ),
                     until_str=(
                         str(holdout_frame.index.max().date()) if len(holdout_frame) else end_date
+                    ),
+                    **(
+                        {
+                            "df_15m_cache": self._worker_loader.fetch_intraday_data(
+                                symbol=symbol,
+                                timeframe="15m",
+                                since_str=start_date,
+                                until_str=end_date,
+                                read_only=True,
+                            )
+                        }
+                        if getattr(self, "_worker_loader", None) is not None
+                        else {}
                     ),
                     direction=direction,
                     return_mode=True,

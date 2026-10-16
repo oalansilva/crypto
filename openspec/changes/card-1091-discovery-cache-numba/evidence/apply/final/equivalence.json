@@ -1,0 +1,9 @@
+{
+  "complete_indicators_masks_signals_trades_metrics": true,
+  "elapsed_s": 142.16270344494842,
+  "exact_edges": 568,
+  "exact_trials": 2800,
+  "preexisting_logic_warning_occurrences": 856,
+  "tolerance": 0,
+  "volatile_result_fields": []
+}

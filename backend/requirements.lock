@@ -4,3 +4,7 @@ TA-Lib==0.6.8
 numpy==2.4.6
 pandas==3.0.3
 pyarrow==24.0.0
+
+# Optional strict numerical acceleration (card #1091)
+numba==0.68.0
+llvmlite==0.50.0

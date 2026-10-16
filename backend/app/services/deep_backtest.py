@@ -13,6 +13,8 @@ import logging
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+from app.services.combo_acceleration import enabled, deep_execution
+from app.services.combo_cache import Cache, index_identity
 
 from app.metrics.backtest_execution_costs import (
     TRADING_FEE,
@@ -30,6 +32,10 @@ def simulate_execution_with_15m(
 ) -> List[Dict]:
     if os.environ.get("COMBO_OPTIMIZER_LEGACY") == "1":
         return _legacy_simulate_execution_with_15m(
+            df_daily_signals, df_15m, stop_loss, direction, slippage
+        )
+    if enabled():
+        return _compiled_simulate_execution_with_15m(
             df_daily_signals, df_15m, stop_loss, direction, slippage
         )
     return _fast_simulate_execution_with_15m(
@@ -186,17 +192,25 @@ def _legacy_simulate_execution_with_15m(
 
 
 _ISO_CACHE: dict = {}
+_BOUNDED_ISO_CACHE = Cache("iso")
 
 
 def _iso_array(index: pd.Index) -> np.ndarray:
     if len(index) == 0:
         return np.array([], dtype=object)
-    key = (int(pd.Timestamp(index[0]).value), int(pd.Timestamp(index[-1]).value), len(index))
-    cached = _ISO_CACHE.get(key)
+    key = (
+        index_identity(index)
+        if enabled()
+        else (int(pd.Timestamp(index[0]).value), int(pd.Timestamp(index[-1]).value), len(index))
+    )
+    cache = _BOUNDED_ISO_CACHE if enabled() else _ISO_CACHE
+    cached = cache.get(key)
     if cached is not None:
         return cached
     arr = np.array([pd.Timestamp(ts).isoformat() for ts in index], dtype=object)
-    _ISO_CACHE[key] = arr
+    if enabled():
+        arr.flags.writeable = False
+    cache[key] = arr
     return arr
 
 
@@ -331,4 +345,48 @@ def _fast_simulate_execution_with_15m(
             }
         )
 
+    return trades
+
+
+def _compiled_simulate_execution_with_15m(
+    df_daily_signals, df_15m, stop_loss, direction="long", slippage=0.0
+):
+    df = df_daily_signals
+    short = (direction or "long").lower() == "short"
+    stop = float(stop_loss) if stop_loss is not None else 0.0
+    opens = np.ascontiguousarray(df["open"].to_numpy(dtype=np.float64))
+    intra_times = _asi8(df_15m.index) if not df_15m.empty else np.array([], np.int64)
+    low = df_15m["low"].to_numpy(dtype=np.float64) if not df_15m.empty else np.array([], np.float64)
+    high = (
+        df_15m["high"].to_numpy(dtype=np.float64) if not df_15m.empty else np.array([], np.float64)
+    )
+    rows, prices = deep_execution(
+        np.ascontiguousarray(_asi8(df.index)),
+        opens,
+        np.ascontiguousarray(df["close"].to_numpy(dtype=np.float64)),
+        np.ascontiguousarray(df["signal"].to_numpy(dtype=np.int64)),
+        np.ascontiguousarray(intra_times),
+        np.ascontiguousarray(low),
+        np.ascontiguousarray(high),
+        stop,
+        short,
+    )
+    daily_iso, intra_iso = _iso_array(df.index), _iso_array(df_15m.index)
+    profit_fn = short_trade_profit_frac if short else long_trade_profit_frac
+    trades = []
+    for (e, x, hit), xp in zip(rows, prices):
+        ep, xp = float(opens[e]), float(xp)
+        trades.append(
+            dict(
+                entry_time=daily_iso[e],
+                entry_price=ep,
+                type="short" if short else "long",
+                exit_time=intra_iso[hit] if hit >= 0 else daily_iso[x],
+                exit_price=xp,
+                profit=profit_fn(ep, xp, slippage=slippage),
+                exit_reason="stop_loss_15m" if hit >= 0 else "signal_15m",
+                signal_type="Stop" if hit >= 0 else "Close entry(s) order...",
+                entry_signal_type="Vender" if short else "Comprar",
+            )
+        )
     return trades
