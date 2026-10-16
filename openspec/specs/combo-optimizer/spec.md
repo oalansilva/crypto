@@ -134,14 +134,14 @@ A representative combination `multi_ma_crossover` × `1INCH/USDT` × `1d` × lon
 
 ### Requirement: Speed only — identical talib calls and float expressions
 
-No trading rule or calculation SHALL change. Indicators SHALL still come from the same `talib.*` calls in `ComboStrategy.calculate_indicators` on the same series (same function, same arguments). The cache SHALL store the **output** of those calls and SHALL NOT reimplement EMA/SMA/RSI/MACD/BBANDS/ATR/ADX/ROC. Position loop, Deep 15m simulation, and `fast_1d` fallback SHALL be rewritten with the **same expressions** and the same float operation order, not «equivalent» formulas. PnL, fee `0.00075`, stop (`entry*(1-stop)` / `(low-entry)/entry <= -stop`), score `0.7*ns + 0.3*nr`, min/max normalization, and `_metrics_from_trades` / `_calculate_heavy_metrics` SHALL keep the current calls (no vectorized reductions that change pairwise summation). Grid, steps, round count, `top_k`, `BATCH_SIZE` meaning, `max_workers`, `short<inter<long` heuristic, `_select_top_candidates`, and holdout burn-in SHALL remain. Equivalence tests SHALL use exact equality (`np.testing.assert_array_equal`, identical trade fields) with zero `allclose` / `rtol` / rounding.
+No trading rule or calculation SHALL change except the explicit runtime binding of RSI_14/ADX_14 to effective candidate indicators in long_ma_pullback_rsi_adx, specified below. Thresholds, comparison operators and formulas SHALL remain unchanged. Indicators SHALL still come from the same `talib.*` calls in `ComboStrategy.calculate_indicators` on the same series (same function, same arguments). The cache SHALL store the **output** of those calls and SHALL NOT reimplement EMA/SMA/RSI/MACD/BBANDS/ATR/ADX/ROC. Position loop, Deep 15m simulation, and `fast_1d` fallback SHALL be rewritten with the **same expressions** and the same float operation order, not «equivalent» formulas. PnL, fee `0.00075`, stop (`entry*(1-stop)` / `(low-entry)/entry <= -stop`), score `0.7*ns + 0.3*nr`, min/max normalization, and `_metrics_from_trades` / `_calculate_heavy_metrics` SHALL keep the current calls (no vectorized reductions that change pairwise summation). Grid, steps, round count, `top_k`, `BATCH_SIZE` meaning, `short<inter<long` heuristic, `_select_top_candidates`, and holdout burn-in SHALL remain. Workers SHALL be configured by environment/resource budget; DEV uses one. Batches MAY shrink for byte limits without changing candidates. Equivalence tests SHALL use exact equality (`np.testing.assert_array_equal`, identical trade fields) with zero `allclose` / `rtol` / rounding.
 
 #### Scenario: Review sees no formula or talib change
 
 - **WHEN** review inspects `git diff` of this change
 - **THEN** there is no change to PnL / fee / stop / score / metrics formulas
 - **AND** `talib.*` calls keep the same function and arguments
-- **AND** only *when* and *how many times* a value is computed may change
+- **AND** outside the explicit RSI/ADX binding correction, only *when* and *how many times* a value is computed may change
 - **AND** the reviewer lists each rewritten function beside the original
 
 #### Scenario: Goldens reject tolerance
@@ -177,7 +177,7 @@ Each worker process SHALL cache indicators and entry/exit masks. The cache key S
 
 ### Requirement: One combination in flight and R2–R4 occupying the worker pool
 
-A sweep SHALL keep at most one combination in flight (`OUTBOX_MAX_PER_SWEEP=1`). Within a combination, R2–R4 SHALL submit the round's branch batches to the pool together (or with a batch smaller than 200) so the three workers stay busy, without changing per-round selection. Parallelizing branches inside a combination SHALL NOT raise sweep concurrency.
+A sweep SHALL keep at most one combination in flight (`OUTBOX_MAX_PER_SWEEP=1`). Within a combination, R2–R4 SHALL admit the round's branch batches incrementally, at most 2×effective_workers unconsumed futures and 64 MiB pending serialized bytes; DEV SHALL use one worker and batches of at most 200, without changing per-round selection. Parallelizing branches inside a combination SHALL NOT raise sweep concurrency.
 
 #### Scenario: Sweep still runs one combination at a time
 
@@ -186,11 +186,11 @@ A sweep SHALL keep at most one combination in flight (`OUTBOX_MAX_PER_SWEEP=1`).
 - **THEN** at most one combination is in flight
 - **AND** `OUTBOX_MAX_PER_SWEEP` remains 1
 
-#### Scenario: R2–R4 branches share the three workers
+#### Scenario: R2–R4 branches share configured workers
 
 - **GIVEN** a round with 10 independent branches
 - **WHEN** R2, R3, or R4 runs
-- **THEN** the pool receives that round's branch batches together
+- **THEN** the configured pool receives all branches through the bounded admission window
 - **AND** per-round candidate selection is unchanged
 
 ### Requirement: Deterministic result order before score
@@ -254,11 +254,11 @@ For frozen parquet of ≥ 2 symbols and **each** Discovery-accepted strategy, lo
 
 ### Requirement: Winner, holdout, and eligibility stay on Deep plus walk-forward
 
-On the representative combination over frozen parquet, `run_optimization` before and after the change with deterministic order SHALL yield the same `best_parameters`, `best_metrics`, holdout metrics, and GO/NO-GO verdict. Persisted eligibility (`eligible` / `low_sample` / `insufficient_sample`), ranking inputs, and winning parameters SHALL still come from the optimizer contract (Deep 15m + train/holdout), not from a fast-only grid. Preflight, create, lease, reconcile, and idempotent persistence SHALL remain unchanged.
+On representative previously valid combinations over frozen parquet, `run_optimization` before and after the change with deterministic order SHALL yield the same `best_parameters`, `best_metrics`, holdout metrics, and GO/NO-GO verdict. Persisted eligibility (`eligible` / `low_sample` / `insufficient_sample`), ranking inputs, and winning parameters SHALL still come from the optimizer contract (Deep 15m + train/holdout), not from a fast-only grid. Preflight/create SHALL remain unchanged. Lease/reconcile/persistence SHALL additionally enforce durable attempts and fencing from discovery-sweep; numeric output stays unchanged for previously valid cases. Previously invalid indicator-period candidates SHALL follow the approved independent corrected semantic oracle; a newly complete search MAY select different winners or GO/NO-GO outcomes without changing ranking formulas or coverage.
 
 #### Scenario: Representative winner matches across the change
 
-- **GIVEN** the representative combination on frozen parquet
+- **GIVEN** a previously valid representative combination on frozen parquet
 - **WHEN** `run_optimization` runs with deterministic order before and after the speed change
 - **THEN** `best_parameters`, `best_metrics`, holdout metrics, and GO/NO-GO are equal
 
@@ -331,4 +331,108 @@ Combo MAY continue to accept 1m, 5m and 30m as it already does; those intervals 
 
 - **WHEN** a template with daily VWAP or rolling VWAP is optimized on 15m, 1h or 4h
 - **THEN** signal generation completes without error
+
+### Requirement: Incremental acceleration preserves exact current engine results
+The shared combo engine SHALL preserve the post-945 engine's complete search, parameters, rounds, filters, scoring, tie-breaking, indicators, masks, trades, costs, train/holdout metrics and GO/NO-GO under #1091 acceleration. TA-Lib, PnL/metric formulas, public contracts and common Discovery/laboratory/batch/favorites consumers SHALL remain equivalent. Holdout SHALL NOT influence parameter selection.
+
+#### Scenario: Full reference optimization
+- **WHEN** both engines run frozen Multi-MA/1INCH/1d/long with Deep 15m, 70/30 split and three workers
+- **THEN** both execute 21,210 trials with zero failed trials and exactly equal complete results without tolerance or rounding
+- **AND** trade dates, prices, profit, exit reasons, indicators, masks and train/holdout outcomes match
+
+#### Scenario: Catalog and execution modes
+- **WHEN** 14 catalog templates, two symbols, long/short, 1d/4h, Deep and applicable daily fallback are exercised
+- **THEN** current-engine results and consumer contracts remain exact, including stop/signal conflicts and insufficient intraday coverage
+
+### Requirement: Cached execution is isolated immutable and bounded
+Caches SHALL reuse only equivalent complete data, indices, windows, resolved parameters and relevant execution contexts. They SHALL enforce retained-byte and entry limits and SHALL NOT expose mutable shared results. Train, holdout with burn-in and final evaluation SHALL preserve separate contexts and existing evaluation boundaries.
+
+#### Scenario: Data changes and repeated windows
+- **WHEN** an internal candle or timestamp changes while endpoints and length remain equal, or execution runs A then B then A
+- **THEN** each execution uses correct current data and produces the uncached result exactly
+
+#### Scenario: Mutation and eviction
+- **WHEN** a trial attempts to modify reused data or a cache reaches its limit
+- **THEN** another trial cannot observe changed shared data and eviction only causes recomputation within the budget
+
+#### Scenario: Holdout warmup
+- **WHEN** holdout uses train tail for indicator burn-in
+- **THEN** the existing burn-in and trade-entry filter remain exact without cache contamination or selection leakage
+
+### Requirement: Consistent measured incremental gain
+Acceptance SHALL use five alternating warmed pairs on identical hardware, frozen data and three workers with full equivalence. Optimized median SHALL be lower and at least three pairs SHALL improve. Twenty-five percent SHALL remain an objective, not a required floor. Evidence SHALL include individual durations, dispersion, code/dependencies, initial compilation and memory. CI correctness SHALL NOT use wall-clock deadlines.
+
+#### Scenario: Gain below objective
+- **WHEN** median and at least three pairs improve with exact results even below 25 percent
+- **THEN** the primary performance criterion passes without reducing search coverage, rounds or workers
+
+#### Scenario: Secondary cases and indicator cache
+- **WHEN** AAVE short and EMA+RSI/1INCH long receive five repeated pairs and indicator cache is compared against fingerprint plus Numba
+- **THEN** secondary scenarios show no sustained regression (worse median and majority worse), and indicator cache is included only with measured additional benefit within memory limits
+
+### Requirement: Fallback rollback and durable evidence
+The engine SHALL preserve validated rollback to the current post-945 engine independently from the pre-945 legacy switch. Missing/unsupported compilation SHALL use equivalent current Python execution with an operational diagnostic. Missing TA-Lib SHALL NOT introduce substitute indicators. Compatible pins, reproducible harness, input hashes and raw reports SHALL be durable; no new operator setting SHALL be introduced.
+
+#### Scenario: Compilation absent or incremental acceleration disabled
+- **WHEN** compilation is unavailable or all #1091 components are disabled in a fresh process
+- **THEN** the current post-945 result and public contract remain equivalent
+- **AND** the pre-945 switch retains its existing meaning and precedence
+
+#### Scenario: Reproduce evidence
+- **WHEN** a reviewer uses the versioned harness, frozen input manifest, revisions and dependency pins
+- **THEN** the evidence is reproducible without temporary investigation paths and JIT preparation is reported separately from warmed motor time
+
+### Requirement: Exact global ranking with bounded retention
+The optimizer SHALL lazily generate the identical grid/trial order and retain results within 128 MiB RAM and 2 GiB private disk spool per attempt. It SHALL calculate complete-domain extrema before scoring per stage/branch exactly as the reference, preserving float expressions, trial-index ties, intermediate candidates and diversity. Batch-local normalization and premature top-k SHALL NOT change output. Quota/I/O failure SHALL abort without truncating search.
+
+#### Scenario: Final batch changes the extrema
+- **WHEN** the last batch contains minimum/maximum metrics and score ties span batches
+- **THEN** winners, score, complete ordering, diversity and holdout match the applicable deterministic reference (historical valid cases or independent corrected semantic oracle) without tolerance or rounding
+
+#### Scenario: Spool quota exceeded
+- **WHEN** the 2 GiB quota or disk I/O fails
+- **THEN** the attempt fails operationally without publishing a provisional winner
+
+### Requirement: Incomplete trials cannot advance a round
+The optimizer SHALL record planned, executed, succeeded, failed, unknown and remaining per attempt/stage; executed=succeeded+failed and planned=executed+unknown+remaining. Executed SHALL count confirmed outcomes rather than submissions. Stages SHALL advance only when all planned trials are confirmed successful. Pool loss and calculation errors SHALL never yield fallback winners or silent success; valid no-signal calculations remain successful.
+
+#### Scenario: Pool dies after partial progress
+- **WHEN** 32,000 of 492,480 trials have confirmed outcomes and the pool breaks
+- **THEN** executed stays 32,000, submitted unconfirmed work is unknown and unsubmitted work remains remaining
+- **AND** no next round or successful combination is persisted
+
+#### Scenario: Valid no-signal calculation
+- **WHEN** a valid trial completes without signals
+- **THEN** it counts as successful with the same reference output
+
+### Requirement: Original strategy binds declared indicators to effective candidate periods
+For `long_ma_pullback_rsi_adx`, the runtime SHALL apply versioned policy `effective-indicators-v1` after checking the original declaration contains exactly one unaliased RSI and one unaliased ADX, both originally length 14. It SHALL preserve their identities before overrides and bind only whole expression identifiers RSI_14/ADX_14 to those instances' effective series, before unknown-identifier validation. This SHALL apply to entry/exit, optimizer, final training, holdout, Deep/fallback and other consumers of that template. The stored template SHALL NOT be migrated or mutated by this correction. Thresholds, operators, MA/pullback, stops, fees, TA-Lib formulas, grid, rounds, ranking normalization and tie-breaks SHALL remain unchanged.
+
+#### Scenario: Mixed candidate periods
+- **WHEN** the original strategy candidate has rsi_length=10 and adx_length=20
+- **THEN** entry RSI_14 and exit RSI_14 both use TA-Lib RSI length 10, and ADX_14 uses TA-Lib ADX length 20
+- **AND** other rules and the full R1 candidate set of 492,480 remain unchanged, followed by all subsequent generated rounds
+
+#### Scenario: Already valid candidate
+- **WHEN** the candidate uses RSI/ADX length 14/14
+- **THEN** indicator arrays, masks, trades, metrics and holdout equal the frozen valid baseline exactly without tolerance or rounding
+
+### Requirement: Binding validation rejects ambiguity without global reinterpretation
+The explicit binding SHALL use declared producer identity rather than string replacement, dataframe-name heuristics or first-match selection. Ambiguous/duplicate producers, conflicting symbol origins, missing effective series, incompatible original declarations and unknown identifiers SHALL raise indicator_reference_error as deterministic calculation_error, with no operational retry, false mask, winner or successful result. Existing stable aliases and unrelated literal references SHALL retain their meaning. Other templates SHALL retain their existing behavior; the correction SHALL NOT globally remap arbitrary period tokens. Cache identity SHALL include policy version, binding identity and effective parameters.
+
+#### Scenario: Unknown reference and ambiguous producer
+- **WHEN** logic references RSI_140 or ADX_99 without a declared valid producer, or the policy encounters duplicate RSI/ADX instances or symbol-origin collision
+- **THEN** evaluation fails explicitly rather than binding by similarity or returning a no-trade success
+
+#### Scenario: Compatibility and cache isolation
+- **WHEN** valid existing aliases/literal references and other templates run, or the original template runs A→B→A with changed periods
+- **THEN** existing reference semantics remain unchanged and no cached mask or indicator crosses incompatible effective bindings
+
+### Requirement: Newly valid search has an independent semantic baseline
+Previously invalid period candidates SHALL be compared exactly against a versioned independent oracle calculating TA-Lib at the effective periods and evaluating the original entry/exit expressions with explicit intended series. The oracle SHALL NOT call the new resolver. Tests SHALL cover every period pair present in the original 10..20 grid, mixed 10/14/20 periods, thresholds, entry/exit, warm-up NaNs, final/holdout and cache eviction. Previously valid cases SHALL retain the historical baseline. Full-search ranking SHALL compare against the corrected complete oracle, not prior incomplete output. Historical persisted results SHALL not be rewritten.
+
+#### Scenario: Restored coverage changes winner
+- **WHEN** previously invalid candidates now compute successfully and one wins the full search
+- **THEN** the new winner and GO/NO-GO MAY differ from prior incomplete output, but MUST exactly match the approved corrected oracle using unchanged ranking and all candidates
+- **AND** no tolerance, reduced grid, always-14 indicator or masked unknown reference is accepted
 

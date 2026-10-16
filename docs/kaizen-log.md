@@ -1,5 +1,58 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-10-16 — Kaizen release (cards 1071, 1086, 1087, 1091, 1093, 1095, 1101, 1103, 1106)
+
+Auditoria read-only do filho fecho-lote a4f91f089398023fc (Claude Code 2.1.299, app 2.42304.0, claude-desktop), completed com payload. Captura de nascimento claude-sonnet-5-5/high confirmada pelo transcript do próprio filho (78 de 78 mensagens). Nenhuma mudança pelo filho. PROD publicado no SHA 27f120713692ab4cae9ec5abd1ebb0a4af2f7094.
+
+### Métricas
+
+- Nove Homologado no pacote. OpenSpec global 192/192 PASS. Processo 1202 passed/35 skipped; frontend 134 passed.
+- PR #1108: 13 checks success e 2 skipped (qa-gate e deploy-staging não rodam em PR para main).
+- Pre inicial: 57 blockers de higiene (worktrees e branches fora do pacote). Passou com PRESERVED_BRANCHES listando todas as branches não-pacote e as duas do pacote vistas como não mergeadas.
+- Transcripts Cursor: nenhuma sessão na janela do pacote (a mais recente é de 2026-10-06). Claude Code: só /source tem transcripts; os worktrees dos cards têm 0 jsonl. Grelha confirmada em transcript: #1101 = 1 e #1103 = 1. Nos outros sete cards a contagem é só proxy REST (6 marcadores em 9 cards, 0,67 por card). Coorte de dez cards não identificada, sem conclusão sobre a meta de 1,5.
+- Em Refinamento vs Design (transcript): grelha 2, Design 3 (todos do #1101). Assessment A/B não são spawns.
+- Proxy modelo: 8 de 8 filhos históricos em /source batem na família do modelo; 3 foram lançados sem effort, todos antes do contrato exigir. O esforço observado de um filho é eco do parâmetro de spawn, não medição independente.
+
+### Achados
+
+F-1 P1: release-guard pre com 57 blockers de higiene, resolvidos só listando as branches em PRESERVED_BRANCHES. branch_merged compara com o develop atual e vê como não mergeada a branch cuja ponta é idêntica ao squash do PR quando cards posteriores mudam os mesmos arquivos (card-1093 e card-1101). Recorrente (#581 está Pronto). Card #1109.
+
+F-2 P1: Homologado sem comentário canônico e sem campos do board, pela terceira release seguida; o conserto veio no closeout. Coberto por #658 e #910, ambos em Em Refinamento; prioridade a elevar.
+
+F-3 P2: o campo Tipo do board não tem Harness; #1095, #1101 e #1103 ficaram como Operacao. Frente vazia em 5 dos 9 cards. Card #1111.
+
+F-4 P2: #1103 foi arquivado com 5 tarefas after-qa abertas (8.1 a 8.5). Estavam declaradas no comentário de Done, mas sem disposição formal, e o guard só checa tarefas em changes ativas. Coberto por #769 e #979.
+
+F-5 P2: o fechamento começou em Opus 5.5/medium e precisou migrar para Sonnet 5.5/high por exigência de claude/execucao; o esforço não pode ser alterado pela própria sessão. Sem card nesta rodada (limite de três).
+
+F-6 P3: rate limit GraphQL por gh project item-list repetido. Recorrência do #820, que está Pronto. Sem card nesta rodada.
+
+F-7 P2: o classificador do modo auto negou o merge do PR, a leitura de PROD e o fetch com sudo até autorização explícita de Alan; PROD é root:root. Coberto por #868 para a parte do source.
+
+F-8 P3: evidência de runtime não rastreada em worktree do #1095, preservada fora do repo.
+
+F-9 P1: a contenção de memória do #1093 existe só na unit DEV. A unit PROD da Descoberta segue com MemoryHigh e MemoryMax infinitos. Card #1110.
+
+F-10 P1: o procedimento de migração em PROD (parar workers, backup, migrar, subir) não está documentado; docs/discovery-memory-operations.md cobre só DEV. Card #1110.
+
+F-11 P3: Frente vazia em 5 cards do pacote. Coberto por #910.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #1109 | P1 | F-1 | Em Refinamento |
+| #1110 | P1 | F-9, F-10 | Em Refinamento |
+| #1111 | P2 | F-3 | Em Refinamento |
+| (não criado) comentário canônico e campos antes de Homologado | P1 | F-2, F-11 | coberto por #658 |
+| (não criado) campos obrigatórios antes de Homologado | P2 | F-2, F-11 | coberto por #910 |
+| (não criado) tarefas abertas no archive | P2 | F-4 | coberto por #769 |
+| (não criado) source de PROD pertence ao root | P2 | F-7 | coberto por #868 |
+
+### Limitações
+
+Transcripts Cursor sem sessão na janela e Claude Code só em /source: spawns de sete cards não são observáveis. A auditoria não prova deploy, archive/sync, post ou T16; o deploy está em docs/release-2026-10-16.md. F-1/#1022 (fail_closed em release-* unbound) encerrou pela segunda release seguida: o archive das nove changes foi gravado em release-2026-10-16 (commit b4ca0c67) sem worktree de card nem cherry-pick.
+
 ## 2026-10-12 — Kaizen release (cards 1074, 1075, 1078, 1080)
 
 Auditoria read-only do filho fecho-lote 01a12d79-4c87-7231-920c-dcfd4cbe4187, completed com payload. Captura histórica gpt-6.1-sol/high confirmada por metadata própria do runtime, host Codex CLI 0.162.1. Nenhuma mudança pelo filho. PROD publicado no SHA cae17c588b7aaf72f41738405907571a37f25248; migração/build/restart e saúde pública validados, com API scalp 404. O post/T16 seguem o sync e a limpeza declarada.
