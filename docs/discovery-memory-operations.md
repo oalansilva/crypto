@@ -20,6 +20,23 @@ Uma máscara runtime foi criada para a unit Discovery, porém o arquivo local em
 6. Verificar com `systemctl cat/show` MemoryAccounting, MemoryHigh=5368709120, MemoryMax=6442450944, MemorySwapMax=536870912, OOMPolicy=kill, KillMode=control-group, Restart=on-failure, RestartSec=60, StartLimitBurst=3/900 s e TimeoutStopSec=30. Limite de parada systemd é contenção final; cleanup interno deve terminar em ≤20 s. Confirmar spool persistente privado, nunca tmpfs, em `/var/tmp/criptofarol-dev-discovery`.
 7. Somente com código/schema compatíveis e limites verificados, remover o drop-in `card-1093-hold.conf` desta operação, executar `systemctl unmask --runtime criptofarol-dev-discovery-worker.service`, `daemon-reload` e iniciar somente Discovery. Verificar os arquivos reais do cgroup antes de aceitar trabalho. Se circuito estiver aberto, diagnosticar e reconhecer administrativamente conforme abaixo.
 
+## Discovery no restart normal do DEV (#1106)
+
+O `./restart` do DEV (T14 e restart manual) para a Discovery antes de instalar os units: `systemctl stop criptofarol-dev-discovery-worker.service` (síncrono: SIGTERM, SIGKILL após `TimeoutStopSec=30s`), depois `install-discovery-workers-systemd.sh`, que continua sendo a trava e liga a Discovery uma única vez com `enable --now`. A Discovery não faz parte do `systemctl restart` final de backend/frontend. Isso acontece em todo restart, mesmo com a unit igual ao template e mesmo com busca em andamento; o restart soma até ~60 s de parada e não espera a busca terminar. O restart só sai com sucesso com backend, frontend, worker de runtime e Discovery ativos.
+
+- **Falha do `stop`:** o restart sai com erro dizendo que a Discovery não parou e que os limites não foram aplicados; nada é instalado.
+- **Sobra de processo no cgroup:** o instalador recusa, sem matar nada, e lista o cgroup, cada PID com o comando e "limites não aplicados". Drenar a sobra conforme o Cutover coordenado e repetir o `./restart`. A Discovery fica parada até lá.
+- **Drop-in de contenção do #1093 ainda presente** (`card-1093-hold.conf`): impede a partida; o instalador diz isso quando a Discovery não fica ativa. Remover o hold só conforme o passo 7 do cutover.
+- **Falha após o `stop`:** o restart aborta antes de reiniciar backend, frontend e worker de runtime e avisa que a Discovery pode ter ficado parada.
+
+### Busca em andamento e restarts seguidos
+
+A parada interrompe a tentativa em curso. A lease expira (TTL 300 s), o reconciler marca `lease_interrupted` e a busca é reagendada com backoff 60/300 s, retomando com uma tentativa a menos. Cada interrupção é uma falha operacional do #1093: **3 interrupções em 15 min abrem o circuito do ambiente** (Discovery bloqueada até `acknowledge_circuit.py`) e a 3ª na mesma combinação fecha a busca com `resource_recovery_exhausted`. Decisão do Alan (2026-10-16): aceito, sem mudança no circuito. Evite restarts seguidos com busca ativa.
+
+### Teto de partidas (StartLimitBurst)
+
+A unit tem `StartLimitBurst=3` em `StartLimitIntervalSec=900`. Cada restart faz uma partida da Discovery, então o **4º restart em 15 min é recusado** pelo systemd (`start-limit-hit`) e o restart falha com aviso claro (o instalador cita o teto). Não há `reset-failed` automático, para não furar o limite do #1093: aguarde a janela passar e repita o `./restart`.
+
 ## Rollback conservador
 
 Bloquear admissão, parar Discovery e confirmar árvore vazia. Manter os limites e o ledger/resultados. Não executar downgrade destrutivo nem voltar ao worker sem fencing. Uma reversão de algoritmo só pode usar código compatível com posse/geração/schema e o mesmo envelope; na ausência desse adapter, manter Discovery parada até correção. Restaurar o hold exclusivo é reversível e impede restart externo do worker. Não remover drop-ins alheios. Os ensaios isolados cobrem parada/limpeza de árvore, migração aditiva/backfill, recusa de downgrade, lease revogada, escrita tardia rejeitada e reconhecimento administrativo com Discovery vazia.

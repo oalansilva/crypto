@@ -55,13 +55,40 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
     echo "Missing install-candle-writer-systemd.sh; candle writer timer not updated." >&2
   fi
 
+  # The installer refuses to apply memory limits while Discovery is active or
+  # its cgroup still has processes (#1093). Stop Discovery here, always, so a
+  # normal restart never trips that guard (#1106). An in-flight search is
+  # interrupted and resumes through the #1093 recovery path (lease expiry,
+  # lease_interrupted, backoff), spending one attempt. Nothing is killed
+  # beyond what `systemctl stop` itself does (SIGTERM, then SIGKILL after
+  # TimeoutStopSec).
+  echo "Stopping DEV discovery worker before applying its limits..."
+  if systemctl cat "$DEV_DISCOVERY_WORKER_UNIT" >/dev/null 2>&1; then
+    if ! systemctl stop "$DEV_DISCOVERY_WORKER_UNIT"; then
+      echo "DEV discovery worker did not stop ($DEV_DISCOVERY_WORKER_UNIT): memory limits were NOT applied (limites não aplicados); no unit was installed or restarted." >&2
+      exit 1
+    fi
+  else
+    echo "Discovery worker unit not installed yet; skipping stop."
+  fi
+
+  # Discovery is started exactly once, by the installer's `enable --now`, with
+  # the freshly written units. It must not be part of the `systemctl restart`
+  # below: two starts per restart would exhaust StartLimitBurst=3/900s (#1093)
+  # on the second restart within 15 minutes. There is no automatic
+  # `reset-failed`; a start-limit refusal fails this restart with a clear
+  # message and the operator repeats it later.
   echo "Ensuring DEV discovery workers..."
   if [[ -x "$ROOT_DIR/install-discovery-workers-systemd.sh" ]]; then
-    "$ROOT_DIR/install-discovery-workers-systemd.sh"
+    if ! "$ROOT_DIR/install-discovery-workers-systemd.sh"; then
+      echo "DEV discovery workers were not installed/started (see above). The discovery worker was stopped by this restart and may still be stopped; backend, frontend and runtime worker were not restarted. Fix the cause and run ./restart again." >&2
+      exit 1
+    fi
   else
     echo "Missing install-discovery-workers-systemd.sh." >&2
     exit 1
   fi
+  systemctl show "$DEV_DISCOVERY_WORKER_UNIT" -p MemoryHigh -p MemoryMax -p MemorySwapMax || true
 
   echo "Restarting canonical DEV services..."
   # Stop the runtime worker before the backend runs schema migration so a
@@ -69,8 +96,7 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
   systemctl stop "$DEV_RUNTIME_WORKER_UNIT" || true
   systemctl restart \
     "$DEV_BACKEND_UNIT" \
-    "$DEV_FRONTEND_UNIT" \
-    "$DEV_DISCOVERY_WORKER_UNIT"
+    "$DEV_FRONTEND_UNIT"
 
   backend_up=0
   for _ in $(seq 1 30); do
