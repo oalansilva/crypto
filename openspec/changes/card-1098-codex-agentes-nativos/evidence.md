@@ -1,6 +1,10 @@
 # Evidências de Apply — #1098
 
-## Estado atual — correção CI e aceites CLI, 18/10/2026
+## Estado atual — QA factual da CLI, 18/10/2026
+
+**32/32 aceites CLI; lifecycle final deste QA ainda cabe à coleta do pai após o retorno, antes do gate dependente.** O novo QA conferiu fontes pontuais do positivo Guard em Em desenvolvimento e dos denies reais por etapa/vínculo em QA, com hashes/readbacks (5.3). Alan confirmou abertura/inspeção do filho e forneceu sua tela real: estado/interrupção visíveis e entrada direta desabilitada. O pedido humano foi então encaminhado explicitamente pelo pai ao QA final e respondido pelo filho; essa orientação/retorno pelo chat pai atende aos controles disponíveis previstos no Design/docs, sem alegar mensagem humana nativa direta (5.1). A interrupção anterior de 17:23:23.527Z permanece aborto; este nascimento final é distinto. CI do SHA `bf7baf6f4bb16e051f467dc759cc06ae0b25ebc1` passou nos 14 checks aplicáveis do run `39148761164`, inclusive qa-gate; deploy-staging skipped, conforme watcher único. Onda final `ee97fca8ba6b7a1bc83bb36f`, sincronização real da skill/teste no nucleus, fontes Guard e origem exata da interação: [qa-cli-20261018.md](evidence/qa-cli-20261018.md). Mantidos dois P2 residuais, transferências ao #1128 e `internal_context_attestation=unavailable`. Não antecipa integração/Done.
+
+## Histórico — correção CI e aceites CLI, 18/10/2026
 
 Após T13 informado pelo pai, corrigidos somente o teste de paginação obsoleto e a frase do runbook sobre registro de hooks: **37 testes focados passaram**; adapter/manifesto/digest de confiança permanecem intactos. 5.2/5.4/5.7 reconciliadas com recusa real atual, onda de produto válida e matriz que distingue histórico/fixtures; **30/32**, sem QA global verde. 5.1 aguarda os controles reais observados por Alan. 5.3 permanece pendente: escrita/readback da fixture ignorada foram observados pela rota filha `functions.exec` → `exec_command`, inclusive com workdir=/tmp, mas o alvo absoluto continuava no mesmo card/etapa autorizados. Esse caso não comprova negativo fora do card/etapa, ausência de hook ou defeito. Faltam os negativos reais adequados em QA e fora do card seguro. Detalhes, hashes, patch mínimo do nucleus ainda não aplicado e receita segura para QA: [ci-and-cli-acceptance-20261018.md](evidence/ci-and-cli-acceptance-20261018.md).
 
