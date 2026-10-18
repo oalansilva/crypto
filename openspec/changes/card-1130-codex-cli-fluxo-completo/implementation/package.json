@@ -1,0 +1,193 @@
+{
+  "activation": "inactive; neither patch applied; adapter/trust/account unchanged",
+  "files": [
+    {
+      "bytes": 61379,
+      "candidate_sha256": "4fdac8b7a690ca9b8639ee77102c7dfd4a703e689ace1e36d71b44d423d8ab6a",
+      "consumer_before_sha256": "9f4a33da3265bf72ba5b9ce36724d2eb8e8fbcab70eb6749d8fec109496f09be",
+      "consumer_target": true,
+      "path": ".cursor/skills/covenant-flow/SKILL.md",
+      "source_before_sha256": "9f4a33da3265bf72ba5b9ce36724d2eb8e8fbcab70eb6749d8fec109496f09be"
+    },
+    {
+      "bytes": 14757,
+      "candidate_sha256": "a392818ea750edc668c2c6b5b5f44f308fcfc9396d405503a0adf7033f18ab16",
+      "consumer_before_sha256": "6715af2271b2736b1dbdda448f6793a1e200a3c91a78f2435f40eb91c1cda159",
+      "consumer_target": true,
+      "path": "docs/codex-native-capabilities.md",
+      "source_before_sha256": "969576f421cb116848309cf65ab40bc8d8608704404f750426d9d446d8718552"
+    },
+    {
+      "bytes": 19636,
+      "candidate_sha256": "2f095f9767d5db6789b05329d80f1ef7c998e64980adbb1b67df34100acbf2fc",
+      "consumer_before_sha256": "2f921f5f942c65ddfb8fa7a6453c3aa7ba5d8e8f8f39db4790dbee49e61c4092",
+      "consumer_target": true,
+      "path": "docs/codex-review-qualification.md",
+      "source_before_sha256": "2d3e1abbef97f084d81d4320897b1a4ebcf85203e53e448178571ef0469eccde"
+    },
+    {
+      "bytes": 17232,
+      "candidate_sha256": "445bd04a07e17aa605276d4ebaf65b6c7c899680fa6b64c3d2e5f4fdaa718c2e",
+      "consumer_before_sha256": "5778dfe29206561d04afb33cd353f16dc175ef73e4c6a38856f5f38d3f291f4e",
+      "consumer_target": true,
+      "path": "docs/codex-runtime-evidence.md",
+      "source_before_sha256": "cc828a87e7efb23e0138542703331b2f3fd9c8f18805358d2bd55e78415a7c4c"
+    },
+    {
+      "bytes": 10215,
+      "candidate_sha256": "3998caa3fa2605d0c0b707e0183c336803adbbd84fb56166290b999fe1f25ef6",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "docs/codex-terminal-flow.md",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 16225,
+      "candidate_sha256": "7af1756a7dc5e5309b5e9b150a4d5695f6c96f19d505dc339cfe3017cb2a5166",
+      "consumer_before_sha256": null,
+      "consumer_target": false,
+      "path": "install.sh",
+      "source_before_sha256": "f073082876a5fa2bab3898ffb5d338c22b304ae52041bbb432914db2deb7d2f5"
+    },
+    {
+      "bytes": 56400,
+      "candidate_sha256": "f81580ad6a83740aec11b3d8d1ab4c20afd877df7cdcedc2f3fc95f23096e486",
+      "consumer_before_sha256": "79fc746a254f64987c7aa3686584921a2df083f446e6376410075042a42d375e",
+      "consumer_target": true,
+      "path": "scripts/process-fsm/codex_evidence.py",
+      "source_before_sha256": "79fc746a254f64987c7aa3686584921a2df083f446e6376410075042a42d375e"
+    },
+    {
+      "bytes": 1416,
+      "candidate_sha256": "b6ccab103040ae3cfd97b787085ed5509bd0f8b07ffeffcf44be61ee26b9f302",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/codex_qualification.py",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 11251,
+      "candidate_sha256": "8a090a7e88bafc16589de283b9009f4107c8fd0c24ac932a833909265c03d01e",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/codex_qualification_index.py",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 22875,
+      "candidate_sha256": "d96cac5af5200f5064c60d45545c738ac32515e12904c7dde406dae99b0d3b9a",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/codex_terminal.py",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 9164,
+      "candidate_sha256": "ec801a7b6ee6fc8faf71ab23e01234f67fb79e8eaf112125df2cd126858aaa48",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/codex_terminal_review.py",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 5820,
+      "candidate_sha256": "f8285f9d71f81d4be734c3f08fd29a32e39ef97b38bfb036475ef7860d0a4b01",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/test_codex_qualification_index.py",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 3152,
+      "candidate_sha256": "2244e22865c13ad4f1456bfa5ff896d70e2682dfc3695e7a18825a02d82caaec",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/test_codex_refinement_binding.py",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 8467,
+      "candidate_sha256": "26f8c917d7fd22fb14dac09d0616c8c7df3326009e73b75f50d928a88c159fc8",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/test_codex_terminal.py",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 2600,
+      "candidate_sha256": "235c2eb7a9331337693423592b0ac41519aed4ce145449c72f43b3f20a229332",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/test_codex_terminal_install.py",
+      "source_before_sha256": null
+    },
+    {
+      "bytes": 4396,
+      "candidate_sha256": "194fde89a1cdddbd8119869e82f24e0528220e60b8f001c0549f1aa3cc29d857",
+      "consumer_before_sha256": null,
+      "consumer_target": true,
+      "path": "scripts/process-fsm/test_codex_terminal_review.py",
+      "source_before_sha256": null
+    }
+  ],
+  "new_revision_tag_pin": null,
+  "patches": {
+    "consumer.patch": {
+      "apply_check": "PASS",
+      "artifact": ".cursor/tmp/card-1130-delivery/consumer.patch",
+      "bytes": 111345,
+      "sha256": "5bda56407c646452f58324d4fec52fb0e34373e1071b45a0c5d0fd8cbb05bf2a"
+    },
+    "nucleus.patch": {
+      "apply_check": "PASS",
+      "artifact": ".cursor/tmp/card-1130-delivery/nucleus.patch",
+      "bytes": 107219,
+      "sha256": "b1492cf6a02ed03bf42950f5a4cabf1cb801b75ca0d88e6895a8fa3400f806da"
+    }
+  },
+  "schema": "card-1130-inactive-delta-v1",
+  "source": {
+    "consumer_head": "1a06caec",
+    "files": [
+      {
+        "consumer_base_sha256": "79fc746a254f64987c7aa3686584921a2df083f446e6376410075042a42d375e",
+        "path": "scripts/process-fsm/codex_evidence.py",
+        "source_sha256": "79fc746a254f64987c7aa3686584921a2df083f446e6376410075042a42d375e"
+      },
+      {
+        "consumer_base_sha256": null,
+        "path": "install.sh",
+        "source_sha256": "f073082876a5fa2bab3898ffb5d338c22b304ae52041bbb432914db2deb7d2f5"
+      },
+      {
+        "consumer_base_sha256": "9f4a33da3265bf72ba5b9ce36724d2eb8e8fbcab70eb6749d8fec109496f09be",
+        "path": ".cursor/skills/covenant-flow/SKILL.md",
+        "source_sha256": "9f4a33da3265bf72ba5b9ce36724d2eb8e8fbcab70eb6749d8fec109496f09be"
+      },
+      {
+        "consumer_base_sha256": "5778dfe29206561d04afb33cd353f16dc175ef73e4c6a38856f5f38d3f291f4e",
+        "path": "docs/codex-runtime-evidence.md",
+        "source_sha256": "cc828a87e7efb23e0138542703331b2f3fd9c8f18805358d2bd55e78415a7c4c"
+      },
+      {
+        "consumer_base_sha256": "6715af2271b2736b1dbdda448f6793a1e200a3c91a78f2435f40eb91c1cda159",
+        "path": "docs/codex-native-capabilities.md",
+        "source_sha256": "969576f421cb116848309cf65ab40bc8d8608704404f750426d9d446d8718552"
+      },
+      {
+        "consumer_base_sha256": "2f921f5f942c65ddfb8fa7a6453c3aa7ba5d8e8f8f39db4790dbee49e61c4092",
+        "path": "docs/codex-review-qualification.md",
+        "source_sha256": "2d3e1abbef97f084d81d4320897b1a4ebcf85203e53e448178571ef0469eccde"
+      },
+      {
+        "consumer_base_sha256": "c7494b94d8e2c0b18d10a3837bc8ee041ca8dfdbc97207fd39de373193e709d1",
+        "path": "scripts/process-fsm/codex_review_session.py",
+        "source_sha256": "c7494b94d8e2c0b18d10a3837bc8ee041ca8dfdbc97207fd39de373193e709d1"
+      }
+    ],
+    "pin_base": "v1.1.22",
+    "source_checkout": "/srv/apps/dev/covenant-flow-worktrees/card-1098-codex-agentes-nativos",
+    "source_head": "14aa9d6",
+    "source_state": "dirty #1098; captured bytes, no new revision/tag/pin claimed"
+  }
+}

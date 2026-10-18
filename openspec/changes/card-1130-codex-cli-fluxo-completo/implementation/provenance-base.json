@@ -1,0 +1,44 @@
+{
+  "source_checkout": "/srv/apps/dev/covenant-flow-worktrees/card-1098-codex-agentes-nativos",
+  "source_head": "14aa9d6",
+  "source_state": "dirty #1098; captured bytes, no new revision/tag/pin claimed",
+  "consumer_head": "1a06caec",
+  "pin_base": "v1.1.22",
+  "files": [
+    {
+      "path": "scripts/process-fsm/codex_evidence.py",
+      "source_sha256": "79fc746a254f64987c7aa3686584921a2df083f446e6376410075042a42d375e",
+      "consumer_base_sha256": "79fc746a254f64987c7aa3686584921a2df083f446e6376410075042a42d375e"
+    },
+    {
+      "path": "install.sh",
+      "source_sha256": "f073082876a5fa2bab3898ffb5d338c22b304ae52041bbb432914db2deb7d2f5",
+      "consumer_base_sha256": null
+    },
+    {
+      "path": ".cursor/skills/covenant-flow/SKILL.md",
+      "source_sha256": "9f4a33da3265bf72ba5b9ce36724d2eb8e8fbcab70eb6749d8fec109496f09be",
+      "consumer_base_sha256": "9f4a33da3265bf72ba5b9ce36724d2eb8e8fbcab70eb6749d8fec109496f09be"
+    },
+    {
+      "path": "docs/codex-runtime-evidence.md",
+      "source_sha256": "cc828a87e7efb23e0138542703331b2f3fd9c8f18805358d2bd55e78415a7c4c",
+      "consumer_base_sha256": "5778dfe29206561d04afb33cd353f16dc175ef73e4c6a38856f5f38d3f291f4e"
+    },
+    {
+      "path": "docs/codex-native-capabilities.md",
+      "source_sha256": "969576f421cb116848309cf65ab40bc8d8608704404f750426d9d446d8718552",
+      "consumer_base_sha256": "6715af2271b2736b1dbdda448f6793a1e200a3c91a78f2435f40eb91c1cda159"
+    },
+    {
+      "path": "docs/codex-review-qualification.md",
+      "source_sha256": "2d3e1abbef97f084d81d4320897b1a4ebcf85203e53e448178571ef0469eccde",
+      "consumer_base_sha256": "2f921f5f942c65ddfb8fa7a6453c3aa7ba5d8e8f8f39db4790dbee49e61c4092"
+    },
+    {
+      "path": "scripts/process-fsm/codex_review_session.py",
+      "source_sha256": "c7494b94d8e2c0b18d10a3837bc8ee041ca8dfdbc97207fd39de373193e709d1",
+      "consumer_base_sha256": "c7494b94d8e2c0b18d10a3837bc8ee041ca8dfdbc97207fd39de373193e709d1"
+    }
+  ]
+}
