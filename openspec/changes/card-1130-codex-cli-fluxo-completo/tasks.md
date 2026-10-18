@@ -4,6 +4,8 @@ Registro deste Apply: tasks de implementação marcadas referem-se ao candidato 
 
 Fases dos ensaios: as partes ainda pendentes de 3.4/3.5/4.3/4.4 são a aceitação do comportamento novo sob instalação canônica, não implementação/testes de contrato por fazer. Vencem em postpin: o adapter ativo anterior e o clone descartável não exercitam o índice/prepare/controller instalado. Diagnósticos e recusas reais já possíveis antes da instalação permanecem registrados, sem substituir esses ensaios. Justificativa por tarefa e vínculo à decisão 6 do Design: `evidence/phase-resolution.md`. Anotar a fase não marca conclusão, autoriza trust, dispensa etapa elegível ou libera T9 automaticamente; o checklist estrito e postpin continuam exigindo essas provas antes do fechamento/aceitação correspondente. O gate pré-commit de onda/verify-wave/checklist abaixo permanece obrigatório.
 
+Primeira correção após T10: ordem bootstrap → binding completo → recusa de rota corrigida no candidato e regressão a partir de checkpoint vazio nas duas superfícies; evidência em `evidence/review-correction-1.md`. O retorno de capacidade sem payload do outro reviewer mantém a onda anterior incompleta. Nenhuma task after-pin é promovida por essa correção.
+
 ## 1. Contratos e reprodução
 
 - [x] 1.1 Inventariar base integrada #1098, pendências CLI #1128 e estado vivo #1117; registrar em matriz as provas existentes como diagnóstico e as faltantes por etapa e rota.

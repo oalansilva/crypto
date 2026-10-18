@@ -12,9 +12,9 @@ Origem: nucleus `/srv/apps/dev/covenant-flow-worktrees/card-1098-codex-agentes-n
 
 | Artefato | SHA-256 / verificação |
 | --- | --- |
-| `implementation/package.json` | `9f237d884361342c36d115a3f2f2e8032489e2e14a4c0d8c9cdb4aeba008b0a3` |
-| `.cursor/tmp/card-1130-delivery/nucleus.patch` | `b1492cf6a02ed03bf42950f5a4cabf1cb801b75ca0d88e6895a8fa3400f806da`, 107219 bytes, `git apply --check --whitespace=error` PASS na origem real |
-| `.cursor/tmp/card-1130-delivery/consumer.patch` | `5bda56407c646452f58324d4fec52fb0e34373e1071b45a0c5d0fd8cbb05bf2a`, 111345 bytes, `git apply --check --whitespace=error` PASS no consumidor; exclui installer |
+| `implementation/package.json`, após primeira correção P1 | `de599a368b2b2d8214906af0ec1d28690cff4701d576ac449db2c02fe6d7e5af` |
+| `.cursor/tmp/card-1130-delivery/nucleus.patch` | `2e7047ed3346704dc5af394346ca7f7bb7e35c2aabf22651846784028a82efd3`, 110308 bytes, `git apply --check --whitespace=error` PASS na origem real |
+| `.cursor/tmp/card-1130-delivery/consumer.patch` | `c6ae9c2bc30234701d602cd3b21d66b837d38a8ec9cdcad7eabf354571b1e8b4`, 114434 bytes, `git apply --check --whitespace=error` PASS no consumidor; exclui installer |
 | Manifesto ativo, preservado | `3a90add2ddffa07963d28196b495e3ff435356a2d6a980c7e1a33d63dc28e0cb`; `adapter_manifest.py check --root .` PASS |
 | `codex_evidence.py` ativo, preservado | `79fc746a254f64987c7aa3686584921a2df083f446e6376410075042a42d375e` |
 
@@ -38,7 +38,7 @@ Os nascimentos Design autor/crítico #1130 já têm evidências verified. O pai 
 
 A cópia descartável de testes foi montada a partir do nucleus e do candidato em `.cursor/tmp/card-1130-candidate-test`; o adapter ativo não foi substituído. Fixtures usam contas/rollouts/targets descartáveis e não qualificam o runtime invocador. Installer foi exercitado em alvo limpo, com manifests/digests e redescoberta das fontes controladas, sem confiança gravada. A tag `v1.2.0` dos fixtures não é publicação real.
 
-Primeira rodada: 159 PASS. Rodada ampliada anterior: 631 PASS e uma falha do teste que pressupunha que o último evento do journal ainda era o pacote; esse teste foi corrigido para selecionar o evento por tipo. Regressão ampliada final: **639 PASS em 316,66s**, incluindo vínculos explícitos, seleção de release, installer limpo, evidence/context, Review/probe/session, process_event, release_closeout e checklist. Depois de completar os checkpoints de preparação antes de T3/T8/T11, a suite focada final do controller teve **16 PASS em 3,69s**, incluindo três casos novos que impedem nascimento antes do evento existente. Os quatro avisos são opções pytest não instaladas (`asyncio_mode` e opções de timeout); não houve teste pulado nessas execuções. As contagens se sobrepõem; não são 655 testes únicos.
+Histórico anterior à primeira correção P1: primeira rodada 159 PASS; ampliada anterior 631 PASS e uma falha do teste que pressupunha que o último evento do journal ainda era o pacote, corrigido para selecionar o evento por tipo. Regressão ampliada então final: **639 PASS em 316,66s**, incluindo vínculos explícitos, seleção de release, installer limpo, evidence/context, Review/probe/session, process_event, release_closeout e checklist. Depois dos checkpoints antes de T3/T8/T11, suite focada do controller **16 PASS em 3,69s**, incluindo três casos novos que impedem nascimento antes do evento existente. Esses resultados não são reexecução dos bytes corrigidos posteriormente. Os quatro avisos são opções pytest não instaladas (`asyncio_mode` e opções de timeout); não houve teste pulado nessas execuções. As contagens se sobrepõem; não são 655 testes únicos.
 
 `openspec validate card-1130-codex-cli-fluxo-completo --strict`: PASS, exit0. `git diff --check`: PASS nos arquivos rastreados; candidato é novo/untracked e sua validação efetiva inclui testes e os dois `git apply --check --whitespace=error`. Não foi rodado QA de produto nem release. Testes existentes de Review/probes, process_event, release_closeout e checklist são regressão de contrato, não novas provas vivas dessas etapas.
 
@@ -58,7 +58,7 @@ Projeção privada `.cursor/tmp/card-1130-continuation-0a18a05b90ba19a4.json`, S
 
 Readback adicional dos dois reviewers históricos #1098, somente ordinais 15/16: fontes e registros coincidem com hashes prévios; cada stdout nativo tem 65275 caracteres/JSON inválido e o retorno entregue 24105 caracteres/JSON inválido com rótulo de truncamento. Projeção privada `.cursor/tmp/card-1130-historical-delivery-readback.json`, SHA `65993f4a74d3b2be039962f07af85dcce1bf8107f88c34fa78113e7782adc90d`. Essa recusa de entrega histórica não é ensaio novo de chunk omitido no controller/rota independente exec. Fontes intactas, extrator histórico não executado.
 
-`review_process_checklist._check_tasks(..., phase="precommit")` retornou `tasks.md pending`; não é execução do checklist inteiro. A ajuda do controller candidato carregou no test tree sem ativação. Metadados nativos do principal registram literalmente `originator=codex-tui` e `source="vscode"`; não comprovam sozinhos a tela terminal. Nenhum código de execução mudou nesta continuação; não se repetiu a regressão já verde sem mudança que a justificasse. Manifesto do pacote e digests acima continuam aplicáveis.
+`review_process_checklist._check_tasks(..., phase="precommit")` retornou `tasks.md pending`; não é execução do checklist inteiro. A ajuda do controller candidato carregou no test tree sem ativação. Metadados nativos do principal registram literalmente `originator=codex-tui` e `source="vscode"`; não comprovam sozinhos a tela terminal. Nenhum código de execução mudou naquela continuação diagnóstica anterior; a correção P1 posterior e os testes de seus bytes estão registrados abaixo.
 
 ## Continuação: faseamento da aceitação instalada
 
@@ -66,7 +66,15 @@ O retorno `tasks.md pending` acima precede o faseamento fundamentado de 3.4/3.5/
 
 O pai informou conclusão do diagnóstico desta sessão: bootstrap read-only/binding e contexto PASS; ambos probes verified/completed/read-only; `codex_review_probe qualify=qualified`; `qualify-route` exit0, integrity SHA `a1d389d87a5ea35ddbe18f7a799c9219e4ede281add2a40f8736eca8c9fbfa5b`. Recusa nativa anterior `review_route_unqualified`, exit1, preservada. Coordenador `01a150d1-7438-7f01-ab8f-2dbaed690996`; pacotes/plan e identificadores dos filhos em [resolução de fases](phase-resolution.md), sob `.cursor/tmp/codex-evidence`. Evidência atribuída ao pai, sem ler controles/prompts: somente diagnóstico TUI→exec do adapter ativo, não produto/candidato ou principal exec independente. Não houve mudança em runtime, pacote, trust, instalação ou Git nesta continuação de faseamento.
 
-Verificação do faseamento com a função real `_check_tasks`: precommit `None`, postcommit recusa 6.1, postpin/postqa recusam 3.4, strict recusa tasks pendentes. Isso verifica apenas a barreira de tasks, não checklist/onda completos. OpenSpec strict e links/whitespace dos seis documentos PASS; pacote e adapter ativos conservam os digests anteriores. Nenhum dos sete checkboxes abertos foi marcado.
+Verificação do faseamento com a função real `_check_tasks`: precommit `None`, postcommit recusa 6.1, postpin/postqa recusam 3.4, strict recusa tasks pendentes. Isso verifica apenas a barreira de tasks, não checklist/onda completos. OpenSpec strict e links/whitespace dos seis documentos PASS naquela coleta; nenhum dos sete checkboxes abertos foi marcado. A correção P1 posterior altera apenas o candidato e não essas fases.
+
+## Primeira correção após T10
+
+O pai confirmou T10 → Em desenvolvimento e retomou este mesmo Apply/captura. O P1 verificado da onda `7bf356e19cca59aa59b4ae63` foi corrigido no candidato: lançamento bootstrap → binding completo → recusa nativa de rota → contexto/probes/qualificação. A regressão nova parte de checkpoint vazio nas duas superfícies e usa retornos dos helpers reais sobre fontes controladas. Suite focada corrigida: **7 PASS em 120,84s**, quatro avisos de configuração conhecidos, sem skips. O reviewer que falhou `Selected model is at capacity` não entregou payload; a onda anterior continua incompleta e não é prova de contexto excedido.
+
+Regressão ampliada dos bytes atuais: **439 PASS em 236,92s**, quatro avisos conhecidos, exit0 e sem skips; cobre dez arquivos de teste de índice/controller/installer/refinamento/evidence/context/Review/probe/session/checklist, sem repetir o arquivo da suite focada. Log privado `.cursor/tmp/card-1130-correction-1-regression.txt`, SHA `623c958982023bc97d60276c7c5c2236d985ace2c1f20a31942e2700ffd15d5f`.
+
+Arquivos, limites e verificação dos bytes novos estão em [review-correction-1.md](review-correction-1.md). Pacote/patches atuais na tabela acima foram regenerados após os testes, conservaram seus digests e passaram checks de aplicabilidade, sem aplicar nenhum deles. As tasks after-pin e a matriz integral permanecem pendentes; a nova onda do pai ainda é necessária.
 
 Tasks 5.5 (after-pin), 6.1 (after-commit) e 6.2 (after-qa) não foram antecipadas. O critério de verify-wave/checklist pré-commit foi separado como obrigação normativa do pai, sem checkbox circular no próprio diff. Onda produto/commit/closing/QA e atos humanos/release futuros atualizam a mesma matriz. Seus comandos operacionais continuam no runbook, no estado correto e pelo ator correto.
 

@@ -82,8 +82,8 @@
       "source_before_sha256": null
     },
     {
-      "bytes": 9164,
-      "candidate_sha256": "ec801a7b6ee6fc8faf71ab23e01234f67fb79e8eaf112125df2cd126858aaa48",
+      "bytes": 9394,
+      "candidate_sha256": "8f6eaaee1caae21a5ecc4ebc32dbf8e97283e6a4c9b23d29ed14e41dbccbaf67",
       "consumer_before_sha256": null,
       "consumer_target": true,
       "path": "scripts/process-fsm/codex_terminal_review.py",
@@ -122,8 +122,8 @@
       "source_before_sha256": null
     },
     {
-      "bytes": 4396,
-      "candidate_sha256": "194fde89a1cdddbd8119869e82f24e0528220e60b8f001c0549f1aa3cc29d857",
+      "bytes": 7201,
+      "candidate_sha256": "1bd891dd190abc7dde4c0e01d75dcfa0b5104b222ee73aec86e6c64eef57ccea",
       "consumer_before_sha256": null,
       "consumer_target": true,
       "path": "scripts/process-fsm/test_codex_terminal_review.py",
@@ -135,14 +135,14 @@
     "consumer.patch": {
       "apply_check": "PASS",
       "artifact": ".cursor/tmp/card-1130-delivery/consumer.patch",
-      "bytes": 111345,
-      "sha256": "5bda56407c646452f58324d4fec52fb0e34373e1071b45a0c5d0fd8cbb05bf2a"
+      "bytes": 114434,
+      "sha256": "c6ae9c2bc30234701d602cd3b21d66b837d38a8ec9cdcad7eabf354571b1e8b4"
     },
     "nucleus.patch": {
       "apply_check": "PASS",
       "artifact": ".cursor/tmp/card-1130-delivery/nucleus.patch",
-      "bytes": 107219,
-      "sha256": "b1492cf6a02ed03bf42950f5a4cabf1cb801b75ca0d88e6895a8fa3400f806da"
+      "bytes": 110308,
+      "sha256": "2e7047ed3346704dc5af394346ca7f7bb7e35c2aabf22651846784028a82efd3"
     }
   },
   "schema": "card-1130-inactive-delta-v1",

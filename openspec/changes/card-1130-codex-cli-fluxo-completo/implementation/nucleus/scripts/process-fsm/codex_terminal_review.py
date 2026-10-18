@@ -43,21 +43,11 @@ def advance_review(checkpoint, root, live, *, runtime):
             fail('review_diagnostic_authorization_missing', 'route bootstrap/context/probes are diagnostic work, never stage acceptance')
         package = cs.prepare(root=root, phase='bootstrap', runtime=runtime)
         append(checkpoint, root, 'review_package', package=package['package'], phase='bootstrap')
-        return issue(package['refusal_command'], phase='bootstrap-refusal', expected_exit=1)
+        return issue(package['command'], phase='bootstrap')
     path = Path(prepared[-1]['package'])
     package = cs.read_package(path)
     phase = package['phase']
     bootstrap = path if phase == 'bootstrap' else Path(package['bootstrap'])
-    if phase == 'bootstrap':
-        try:
-            observed, ref = cs.native_command(runtime, package['principal_thread'], cs.command(path, 'route-check'),
-                        root, after=package['before_record'], required_exit=1)
-            if observed.get('code') != 'review_route_unqualified' or observed.get('result') != 'blocked':
-                fail('review_route_refusal_invalid')
-        except ce.EvidenceError as exc:
-            if exc.code != 'review_launch_source_unavailable':
-                raise
-            return issue(cs.command(path, 'route-check'), phase='bootstrap-refusal', expected_exit=1)
     if not Path(package['events']).exists():
         if phase == 'review':
             if live['q'] != 'Code Review':
@@ -85,6 +75,19 @@ def advance_review(checkpoint, root, live, *, runtime):
         if phase == 'review' and live['q'] != 'Code Review':
             fail('review_stage_binding_mismatch', 'Status changed after launch; current product Review is not accepted')
         cs.binding(path, runtime=runtime, complete=True)
+        if phase == 'bootstrap':
+            # Route qualification itself requires a completed native launch.
+            # Record the expected unqualified-route refusal only after binding
+            # that launch; an absent/partial launch is never that refusal.
+            try:
+                observed, ref = cs.native_command(runtime, package['principal_thread'], cs.command(path, 'route-check'),
+                            root, after=package['before_record'], required_exit=1)
+            except ce.EvidenceError as exc:
+                if exc.code != 'review_launch_source_unavailable':
+                    raise
+                return issue(cs.command(path, 'route-check'), phase='bootstrap-refusal', expected_exit=1)
+            if observed.get('code') != 'review_route_unqualified' or observed.get('result') != 'blocked':
+                fail('review_route_refusal_invalid')
         proofs = [ce.collect(birth, runtime=runtime, wait_seconds=1) for birth in package.get('births', [])]
         if phase == 'context':
             cc.qualify(cc.plan_path(package['births'][0]), runtime=runtime)
