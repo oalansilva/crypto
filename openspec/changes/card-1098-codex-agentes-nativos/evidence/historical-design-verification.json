@@ -1,0 +1,60 @@
+[
+  {
+    "attempt_id": "c0b98157-626a-473d-ae04-8c2289e3a5ed",
+    "bound_card": "1098",
+    "child_thread": "01a14a21-1780-7da2-b600-bf0ca66fbd7d",
+    "context_isolation": "unavailable",
+    "host": "codex-tui",
+    "host_version": "0.163.0",
+    "integrity_sha256": "ae6d1b182a62f412b4fc00276ea5085683724a4d3acf4ee0a14b423e26bf8cbb",
+    "parent_thread": "01a14a14-8ad0-78b2-8278-c14aec2b4bf8",
+    "payload_returned": true,
+    "qualification": false,
+    "requested": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "medium"
+    },
+    "role": "design-autor",
+    "stage_contract": "historical lifecycle verification only; not full #1098 acceptance",
+    "status": "completed",
+    "turns": [
+      {
+        "observed": {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "medium"
+        },
+        "sandbox": "danger-full-access",
+        "turn_id": "01a14a21-17a8-7b51-9431-2ba77040dcf3"
+      }
+    ]
+  },
+  {
+    "attempt_id": "d14573c1-edee-498b-ad39-e15682602fa2",
+    "bound_card": "1098",
+    "child_thread": "01a14a23-e9af-70d1-8ccd-394c2ab40cae",
+    "context_isolation": "unavailable",
+    "host": "codex-tui",
+    "host_version": "0.163.0",
+    "integrity_sha256": "e8a3326e8b08e9e62fd1b99aa01297f6357b1411cc2ddbf8a4393577311da0f2",
+    "parent_thread": "01a14a14-8ad0-78b2-8278-c14aec2b4bf8",
+    "payload_returned": true,
+    "qualification": false,
+    "requested": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "medium"
+    },
+    "role": "design-critic",
+    "stage_contract": "historical lifecycle verification only; not full #1098 acceptance",
+    "status": "completed",
+    "turns": [
+      {
+        "observed": {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "medium"
+        },
+        "sandbox": "danger-full-access",
+        "turn_id": "01a14a23-e9d9-77d3-b031-978586349f6d"
+      }
+    ]
+  }
+]
