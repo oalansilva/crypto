@@ -1,0 +1,16 @@
+{
+  "bound_card": "1098",
+  "child_thread": "unavailable",
+  "code": "worktree_mismatch",
+  "detail": "worktree_mismatch: requested=/srv/apps/dev/covenant-flow-worktrees/card-1098-codex-agentes-nativos; session_cwd=/srv/apps/dev/criptofarol/crypto-worktrees/card-1098-codex-agentes-nativos; turn_cwd=/srv/apps/dev/criptofarol/crypto-worktrees/card-1098-codex-agentes-nativos; recovery=bind the native chat to the card worktree and verify its runtime cwd; shell workdir alone is not a session binding",
+  "host": "codex-tui",
+  "host_version": "0.163.0",
+  "observed": "unavailable",
+  "recovery": "bind the native chat to the card worktree and verify its runtime cwd; shell workdir alone is not a session binding",
+  "result": "blocked",
+  "root": "/srv/apps/dev/covenant-flow-worktrees/card-1098-codex-agentes-nativos",
+  "schema": "codex-rollout-evidence-v1",
+  "scope": "Real read-only preflight probe for a prospective birth; no child or stage work started by this probe.",
+  "session": "01a14a28-2482-7580-9090-d1ebb2dd8890",
+  "stage": "diagnostic"
+}
