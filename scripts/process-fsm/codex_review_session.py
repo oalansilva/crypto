@@ -31,6 +31,7 @@ for ancestor in Path(__file__).resolve().parents:
 
 import codex_evidence as ce
 import codex_context as cc
+import process_authority as pa
 from model_selection import resolve, save_capture, load_capture, validate_capture, compare_wave
 
 SCHEMA = "codex-dedicated-review-v1"
@@ -57,6 +58,10 @@ def read_package(path):
     if package.get("schema") != SCHEMA or package.get("state") != "pending_native_launch" or package.get("phase") not in PHASES:
         fail("review_package_invalid")
     root = Path(package["root"])
+    if "authority" in package:
+        verify_authority(package)
+    elif package["phase"] == "review":
+        fail("review_authority_missing", "prepare a fresh package with a consumer authority")
     inside(root, path)
     for name in ("events", "stderr", "prompt", "helper"):
         inside(root, package[name])
@@ -402,7 +407,7 @@ def resolve_plan(plan, *, runtime=None):
     return dict(plan, parent_thread=chain["coordinator_thread"], host="codex_exec")
 
 
-def prepare(*, root, phase, bootstrap=None, diff=None, runtime=None):
+def prepare(*, root, phase, bootstrap=None, diff=None, authority_root=None, runtime=None):
     rt = runtime or ce.Rollout()
     root = Path(root).resolve()
     if phase not in PHASES:
@@ -414,6 +419,16 @@ def prepare(*, root, phase, bootstrap=None, diff=None, runtime=None):
     card = __import__("re").match(r"card-(\d+)-", root.name)
     if not card:
         fail("worktree_mismatch")
+    authority = None
+    if bootstrap is not None and authority_root is None:
+        prior = read_package(inside(root, bootstrap))
+        if "authority" in prior:
+            authority_root = prior["authority"]["root"]
+    if authority_root is not None or phase == "review":
+        try:
+            authority = pa.capture(authority_root if authority_root is not None else root, card[1])
+        except pa.AuthorityError as exc:
+            fail("review_authority_invalid", str(exc))
     out = ce.destination(root)
     ce.check_writable_destination(out)
     token = secrets.token_hex(12)
@@ -427,7 +442,7 @@ def prepare(*, root, phase, bootstrap=None, diff=None, runtime=None):
     capture = path.with_suffix(".capture.json")
     save_capture(capture, cap)
     files = {str(capture): ce.digest(capture.read_bytes()), str(helper): ce.digest(helper.read_bytes())}
-    for name in ("codex_evidence.py", "codex_review_probe.py", "codex_context.py", "codex_review.py"):
+    for name in ("codex_evidence.py", "codex_review_probe.py", "codex_context.py", "codex_review.py", "process_authority.py", "overlay.py", "resolve.py", "fsm.py"):
         sibling = Path(__file__).with_name(name)
         files[str(sibling)] = ce.digest(sibling.read_bytes())
     p = {"schema": SCHEMA, "state": "pending_native_launch", "phase": phase, "root": str(root), "bound_card": card[1],
@@ -437,6 +452,8 @@ def prepare(*, root, phase, bootstrap=None, diff=None, runtime=None):
          "coordinator_capture": str(capture), "coordinator_selection": cap, "events": str(path.with_suffix(".events.jsonl")),
          "stderr": str(path.with_suffix(".stderr.txt")),
          "prompt": str(prompt_path), "files": files}
+    if authority is not None:
+        p["authority"] = authority
     if phase == "review":
         p["stage_receipt"] = str(path.with_suffix(".stage.json"))
         # The principal's query implementation and configured authority are
@@ -444,8 +461,6 @@ def prepare(*, root, phase, bootstrap=None, diff=None, runtime=None):
         for name in ("guard.py", "resolve.py", "graphql_quota.py", "overlay.py", "fsm.py"):
             source_file = inside(root, Path(__file__).with_name(name))
             files[str(source_file)] = ce.digest(source_file.read_bytes())
-        authority = inside(root, root / ".covenant-flow/overlay.yaml")
-        files[str(authority)] = ce.digest(authority.read_bytes())
         stage_binding(p, allowed={"Em desenvolvimento", "Code Review"})
     message = (f"# {card[1]} dedicated Codex coordinator. Worktree: {root}. Remain read-only throughout. "
                "Do not review, edit product, run git, change trust/permissions, process_event or substitute clients. "
@@ -458,6 +473,10 @@ def prepare(*, root, phase, bootstrap=None, diff=None, runtime=None):
     else:
         bootstrap = inside(root, bootstrap)
         b = read_package(bootstrap)
+        if "authority" in b:
+            if authority is not None and authority != b["authority"]:
+                fail("review_authority_changed", "continuation cannot rebind authority")
+            p["authority"] = b["authority"]
         chain = binding(bootstrap, runtime=rt)
         if chain["principal_thread"] != principal:
             fail("review_principal_mismatch")
@@ -635,11 +654,19 @@ def local_binding(package):
     return bound
 
 
+def verify_authority(package):
+    try:
+        return pa.verify(package["authority"], package["bound_card"])
+    except (pa.AuthorityError, KeyError) as exc:
+        fail("review_authority_invalid", str(exc))
+
+
 def stage_binding(package, *, allowed):
     bound = local_binding(package)
     try:
         from guard import github_status_provider
-        status = github_status_provider(bound["bound_card"])
+        verify_authority(package)
+        status = github_status_provider(bound["bound_card"], authority=package["authority"])
     except Exception as exc:
         fail("review_stage_query_failed", f"authoritative GitHub status query failed: {type(exc).__name__}: {exc}")
     if status is None:
@@ -654,7 +681,7 @@ def _clock_ms():
 
 
 def _stage_scope(p):
-    return {key: p[key] for key in ("root", "bound_card", "principal_thread", "principal_turn", "wave_id")} | {"package_sha256": p["integrity_sha256"]}
+    return {key: p[key] for key in ("root", "bound_card", "principal_thread", "principal_turn", "wave_id")} | {"package_sha256": p["integrity_sha256"], "authority_sha256": pa.digest(p["authority"])}
 
 
 def stage_check(path, *, runtime=None):
@@ -892,12 +919,13 @@ def main():
     prep = sub.add_parser("prepare")
     prep.add_argument("--root", required=True); prep.add_argument("--phase", choices=PHASES, required=True)
     prep.add_argument("--bootstrap"); prep.add_argument("--diff")
+    prep.add_argument("--authority-root", help="explicit consumer authority; native/product root stays --root")
     for action in ("launch", "inspect", "preflight", "binding", "qualify-route", "route-check", "stage-check"):
         sub.add_parser(action).add_argument("--package", required=True)
     args = parser.parse_args()
     try:
         if args.action == "prepare":
-            result = prepare(root=args.root, phase=args.phase, bootstrap=args.bootstrap, diff=args.diff)
+            result = prepare(root=args.root, phase=args.phase, bootstrap=args.bootstrap, diff=args.diff, authority_root=args.authority_root)
         elif args.action == "inspect":
             p = read_package(args.package)
             session = os.environ.get("CODEX_THREAD_ID")

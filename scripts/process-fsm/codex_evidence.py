@@ -286,7 +286,7 @@ def qualification_path(out, host):
     return Path(out) / name
 
 
-def preflight(*, root, capture=None, dest=DEFAULT_DEST, thread=None, qualification=False, review=False, runtime=None, stage=None):
+def preflight(*, root, capture=None, dest=DEFAULT_DEST, thread=None, qualification=False, review=False, runtime=None, stage=None, qualification_reference=None):
     review = review or stage in {"diff-reviewer", "code-reviewer", "Code Review", "pedir_review"}
     rt = runtime or Rollout()
     session = thread or os.environ.get("CODEX_THREAD_ID")
@@ -321,21 +321,21 @@ def preflight(*, root, capture=None, dest=DEFAULT_DEST, thread=None, qualificati
         validate_capture(load_capture(capture) if isinstance(capture, (str, Path)) else capture, client="codex")
     out = destination(root, dest)
     proof = None
+    capability_reference = None
     if not qualification:
+        from codex_qualification_index import Index
+        explicit = qualification_reference or os.environ.get("COVENANT_CODEX_QUALIFICATION")
+        legacy = [qualification_path(out, meta["originator"])]
+        # Migration is a bounded list of original references, never recursive
+        # discovery or a search through transcripts ordered by timestamps.
+        legacy += [Path(p) for p in os.environ.get("COVENANT_CODEX_LEGACY_QUALIFICATIONS", "").split(os.pathsep) if p]
         try:
-            qualified = json.loads(qualification_path(out, meta["originator"]).read_text())
-            check_seal(qualified)
-            proof = verify_evidence(qualified["evidence"], runtime=rt)
-            proof_parent = rt.session(proof["parent_thread"])[2]
-            if proof_parent["originator"] != meta["originator"]:
-                raise EvidenceError("unverified", "qualification belongs to another host surface")
-            if proof["driver"] not in ACCEPTED_DRIVERS or not proof["qualification"] or not qualified.get("refusal_codes"):
-                raise EvidenceError("unverified", "qualification lacks positive proof and real refusals")
-            refusals = [check_seal(json.loads(Path(p).read_text())) for p in qualified["refusals"]]
-            if [r.get("code") for r in refusals] != qualified["refusal_codes"] or any(r.get("attempt_id") != proof["attempt_id"] or r.get("result") != "blocked" for r in refusals):
-                raise EvidenceError("unverified", "qualification refusal integrity/binding mismatch")
-        except (OSError, ValueError, KeyError) as exc:
-            raise EvidenceError("unverified", str(exc), recovery="explicit qualification essay without product work or transition") from exc
+            proof, capability_reference = Index().discover(meta["originator"], explicit=explicit, legacy=legacy, runtime=rt)
+        except EvidenceError as exc:
+            # Preserve the existing public preflight classification while
+            # exposing the exact discovery failure to recovery/checkpoints.
+            raise EvidenceError("unverified", str(exc), recovery=exc.recovery,
+                                observed={"qualification_cause": exc.code}) from exc
     capabilities = stage_capabilities(proof=proof, parent_sandbox=turns[-1]["sandbox_policy"].get("type"))
     context_qualification = {"result": "unavailable", "code": "context_qualification_missing"}
     if not qualification:
@@ -384,10 +384,29 @@ def preflight(*, root, capture=None, dest=DEFAULT_DEST, thread=None, qualificati
             check_writable_destination(out)
     except OSError as exc:
         raise EvidenceError("destination_unwritable", str(exc)) from exc
-    return {"result": "ready", "session": session, "parent_turn": turns[-1]["turn_id"], "source": str(path), "driver": DRIVER if meta["originator"] == "codex_exec" else NATIVE_DRIVER, "host": meta["originator"], "host_version": meta["cli_version"], "schema": SCHEMA, "qualification": qualification, "parent_sandbox": turns[-1]["sandbox_policy"]["type"], "source_records": len(rows), "destination": str(out), "capabilities": capabilities, "context_qualification": context_qualification, "review_qualification": review_qualification}
+    return {"result": "ready", "session": session, "parent_turn": turns[-1]["turn_id"], "source": str(path), "driver": DRIVER if meta["originator"] == "codex_exec" else NATIVE_DRIVER, "host": meta["originator"], "host_version": meta["cli_version"], "schema": SCHEMA, "qualification": qualification, "parent_sandbox": turns[-1]["sandbox_policy"]["type"], "source_records": len(rows), "destination": str(out), "capabilities": capabilities, "capability_reference": capability_reference, "context_qualification": context_qualification, "review_qualification": review_qualification}
 
 
-def prepare(*, root, capture, task_name, dest=DEFAULT_DEST, qualification=False, review_diff_sha256=UNAVAILABLE, runtime=None, thread=None, wave_id=UNAVAILABLE, review_probe_plan=None, defer_review_turn=False, context_diagnostic=False):
+def refinement_binding(root, card):
+    """Explicit source/worktree refinement binding; never a product allow-list.
+
+    The live board is queried before preparation and again before native spawn.
+    Historical collection retains the state observed at birth, not today's q.
+    """
+    from resolve import resolve as resolve_card, UNBOUND
+    from guard import github_status_provider
+    if not str(card).isdigit():
+        raise EvidenceError("refinement_card_invalid")
+    local = resolve_card(root, root)
+    if str(local["bound_card"]) not in {UNBOUND, str(card)}:
+        raise EvidenceError("refinement_card_mismatch", f"expected={card}; observed={local['bound_card']}")
+    status = github_status_provider(str(card))
+    if status != "Em Refinamento":
+        raise EvidenceError("refinement_status_mismatch", f"#{card}: Status={status}")
+    return {"card": str(card), "status": status, "q_git": local["q_git"]}
+
+
+def prepare(*, root, capture, task_name, dest=DEFAULT_DEST, qualification=False, review_diff_sha256=UNAVAILABLE, runtime=None, thread=None, wave_id=UNAVAILABLE, review_probe_plan=None, defer_review_turn=False, context_diagnostic=False, card=None, qualification_reference=None):
     cap = validate_capture(load_capture(capture), client="codex")
     review = cap["role"] in {"code-reviewer", "diff-reviewer"}
     if context_diagnostic and not qualification:
@@ -396,14 +415,23 @@ def prepare(*, root, capture, task_name, dest=DEFAULT_DEST, qualification=False,
         raise EvidenceError("review_preparation_invalid")
     # Deferred receipts are private preparation, not permission to spawn/work.
     # The actual read-only turn is resolved only from the later native call.
-    pf = preflight(root=root, capture=cap, dest=dest, qualification=qualification or defer_review_turn, review=review and not defer_review_turn, runtime=runtime, thread=thread, stage=None if defer_review_turn else cap["role"])
+    pf = preflight(root=root, capture=cap, dest=dest, qualification=qualification or defer_review_turn, review=review and not defer_review_turn, runtime=runtime, thread=thread, stage=None if defer_review_turn else cap["role"], qualification_reference=qualification_reference)
     if not task_name or "/" in task_name:
         raise EvidenceError("invalid_task_name", task_name)
     if review and (len(review_diff_sha256) != 64 or any(c not in "0123456789abcdef" for c in review_diff_sha256)):
         raise EvidenceError("diff_unavailable")
     if review:
         check_writable_destination(Path(pf["destination"]))
+    refinement = None
+    if card is not None:
+        if cap["role"] != "grill-card" or qualification:
+            raise EvidenceError("refinement_card_invalid", "--card is only the explicit grill-card binding; diagnostics and product roles cannot adopt another card")
+        refinement = refinement_binding(root, card)
     birth = sealed({"schema": SCHEMA, "capture": cap, "capture_path": str(Path(capture).resolve()), "root": str(Path(root).resolve()), "bound_card": Path(root).name.split("-")[1] if Path(root).name.startswith("card-") else UNAVAILABLE, "attempt_id": cap["attempt_id"], "role": cap["role"], "band": cap["band"], "task_name": task_name, "parent_thread": pf["session"], "parent_turn": pf["parent_turn"], "before_record": pf["source_records"], "qualification": qualification, "review_diff_sha256": review_diff_sha256, "wave_id": wave_id, "driver": pf["driver"], "parent_host": pf["host"], "stage_contract": STAGE_CONTRACT, "stage_status": UNAVAILABLE, "work_release": "diagnostic_only" if qualification else "stage"})
+    if refinement is not None:
+        birth = sealed({**{k: v for k, v in birth.items() if k != "integrity_sha256"},
+                        "bound_card": str(card), "stage_status": refinement["status"],
+                        "refinement_binding": refinement})
     if context_diagnostic:
         birth = sealed({**{k: v for k, v in birth.items() if k != "integrity_sha256"}, "context_diagnostic": "codex-context-contract-v1"})
     if review_probe_plan:
@@ -428,6 +456,9 @@ def prepare(*, root, capture, task_name, dest=DEFAULT_DEST, qualification=False,
         birth.pop("integrity_sha256")
         birth["context_qualification"] = pf["context_qualification"]["qualification_path"]
         birth["context_scope_sha256"] = pf["context_qualification"]["scope_sha256"]
+        if pf.get("capability_reference") is not None:
+            birth["capability_reference"] = pf["capability_reference"]["receipt"]
+            birth["capability_identity"] = pf["capability_reference"]["identity"]
         birth = sealed(birth)
     target = Path(pf["destination"]) / f"{cap['attempt_id']}.birth.json"
     private_write(target, birth)
@@ -451,6 +482,11 @@ def check_prepared_spawn(arguments, root):
         raise EvidenceError("requested_mismatch")
     if arguments.get("fork_turns") != "none":
         raise EvidenceError("context_request_mismatch", "native child requires fork_turns=none; request is not effective isolation proof")
+    if birth.get("refinement_binding"):
+        bound = refinement_binding(root, birth["bound_card"])
+        if (birth["role"] != "grill-card" or bound != birth["refinement_binding"]
+                or re.search(r"#" + re.escape(birth["bound_card"]) + r"\b", prompt) is None):
+            raise EvidenceError("refinement_card_mismatch", "spawn must name exactly the explicitly bound card in its live refinement state")
     if birth.get("dedicated_package") and birth["role"] in {"diff-reviewer", "code-reviewer"} and arguments.get("agent_type") != birth["role"]:
         raise EvidenceError("role_mismatch", "dedicated Review requires the named native profile before birth")
     if birth.get("deferred_review_turn"):
@@ -471,7 +507,9 @@ def check_prepared_spawn(arguments, root):
     if birth.get("dedicated_package"):
         from codex_review_session import preflight as dedicated_preflight
         return dedicated_preflight(birth["dedicated_package"])
-    pf = preflight(root=root, capture=birth["capture"], dest=Path(match[1]).parent, qualification=birth["qualification"], review=birth["role"] in {"diff-reviewer", "code-reviewer"}, stage=birth["role"])
+    pf = preflight(root=root, capture=birth["capture"], dest=Path(match[1]).parent, qualification=birth["qualification"], review=birth["role"] in {"diff-reviewer", "code-reviewer"}, stage=birth["role"], qualification_reference=birth.get("capability_reference"))
+    if birth.get("capability_identity") and pf["capability_reference"]["identity"] != birth["capability_identity"]:
+        raise EvidenceError("qualification_reference_changed")
     if not birth["qualification"] and birth.get("stage_contract") == STAGE_CONTRACT:
         if pf["context_qualification"]["scope_sha256"] != birth["context_scope_sha256"]:
             raise EvidenceError("context_scope_mismatch")
@@ -508,6 +546,11 @@ def extract(birth, *, runtime=None):
     if original_capture != cap:
         raise EvidenceError("capture_changed", recovery="restore immutable birth capture or new birth required")
     parent_path, parent, parent_meta, parent_turns = rt.session(birth["parent_thread"])
+    if birth.get("capability_reference"):
+        from codex_qualification_index import Index
+        capability, reference = Index().discover(parent_meta["originator"], explicit=birth["capability_reference"], runtime=rt)
+        if reference["identity"] != birth.get("capability_identity"):
+            raise EvidenceError("qualification_reference_changed", "birth's original capability identity changed")
     if birth.get("parent_host", "codex_exec") != parent_meta["originator"]:
         raise EvidenceError("host_mismatch", "spawn session host differs from birth receipt")
     if birth["driver"] != NATIVE_DRIVER and parent_meta["originator"] != "codex_exec":
@@ -777,8 +820,10 @@ def main(argv=None):
         p.add_argument("--dest", type=Path, default=DEFAULT_DEST)
         p.add_argument("--qualification", action="store_true", help="explicit essay only; no product work or transition")
         p.add_argument("--thread", help="authoritative session id of the actual spawn session in the same card chat")
+        p.add_argument("--qualification-reference", type=Path, help="explicit immutable original capability receipt; context is still current-scope")
         if command == "prepare":
             p.add_argument("--task-name", required=True)
+            p.add_argument("--card", help="explicit issue binding for grill-card in source or its matching worktree")
             p.add_argument("--review-diff-sha256", default=UNAVAILABLE)
             p.add_argument("--wave-id", default=UNAVAILABLE)
             p.add_argument("--review-probe-plan", type=Path)

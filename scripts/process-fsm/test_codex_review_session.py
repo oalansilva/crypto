@@ -12,6 +12,7 @@ import codex_context as cc
 import codex_evidence as ce
 import codex_review_probe as rp
 import codex_review_session as cs
+import process_authority as pa
 from model_selection_fixtures import machine_models
 
 ORIGINAL_STAGE_BINDING = cs.stage_binding
@@ -48,16 +49,23 @@ class Dedicated:
         adapter = self.root / "scripts/process-fsm"
         adapter.mkdir(parents=True)
         for name in ("codex_review_session", "codex_review_probe", "codex_context", "codex_evidence", "codex_review",
-                     "guard", "resolve", "graphql_quota", "overlay", "fsm"):
+                     "guard", "resolve", "graphql_quota", "overlay", "fsm", "process_authority"):
             original = source / (name + ".py")
             if not original.is_file():
                 original = CONSUMER / "scripts/process-fsm" / (name + ".py")
             shutil.copyfile(original, adapter / (name + ".py"))
         monkeypatch.setattr(cs, "__file__", str(adapter / "codex_review_session.py"))
         monkeypatch.setattr(rp, "__file__", str(adapter / "codex_review_probe.py"))
+        (self.root / ".cursor").mkdir(exist_ok=True)
+        shutil.copyfile(CONSUMER / ".cursor/process-fsm.yaml", self.root / ".cursor/process-fsm.yaml")
         authority = self.root / ".covenant-flow/overlay.yaml"
         authority.parent.mkdir(parents=True)
-        authority.write_text("fixture_authority: true\n")
+        from test_overlay_fixtures import write_overlay
+        write_overlay(self.root)
+        import subprocess
+        subprocess.run(["git", "init", "--initial-branch", self.root.name, str(self.root)], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "commit", "--allow-empty", "-m", "fixture"], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(self.root), "remote", "add", "origin", "https://github.com/oalansilva/crypto.git"], check=True, capture_output=True)
         for role in cs.ROLES:
             profile = self.root / ".codex/agents" / (role + ".toml")
             profile.parent.mkdir(parents=True, exist_ok=True)
@@ -573,8 +581,9 @@ def test_product_status_comes_from_live_board_not_package(dedicated, monkeypatch
     import resolve
     import guard
     monkeypatch.setattr(resolve, "resolve", lambda *args: {"bound_card": "1098", "q_git": dedicated.root.name})
-    monkeypatch.setattr(guard, "github_status_provider", lambda card: "Design")
-    package = {"root": str(dedicated.root), "bound_card": "1098", "stage_status": "Code Review"}
+    monkeypatch.setattr(guard, "github_status_provider", lambda card, **kwargs: "Design")
+    package = {"root": str(dedicated.root), "bound_card": "1098", "stage_status": "Code Review",
+               "authority": pa.capture(dedicated.root, "1098")}
     with pytest.raises(ce.EvidenceError, match="q=Design"):
         ORIGINAL_STAGE_BINDING(package, allowed={"Code Review"})
 
@@ -585,7 +594,8 @@ def stage_package(dedicated):
     dedicated.bootstrap()
     path = Path(cs.prepare(root=dedicated.root, phase="context", bootstrap=dedicated.bootstrap_path, runtime=dedicated.rt)["package"])
     p = cs.read_package(path)
-    p.update(phase="review", stage_receipt=str(path.with_suffix(".stage.json")))
+    p.update(phase="review", stage_receipt=str(path.with_suffix(".stage.json")),
+             authority=pa.capture(dedicated.root, "1098"))
     p.pop("integrity_sha256")
     path.write_text(json.dumps(ce.sealed(p)))
     return path
@@ -653,14 +663,14 @@ def test_freshness_is_checked_after_other_preflight_prerequisites(dedicated, sta
 def test_authoritative_query_does_not_promote_missing_or_wrong_status(dedicated, stage_package, monkeypatch, status):
     import guard
     monkeypatch.setattr(cs, "stage_binding", ORIGINAL_STAGE_BINDING)
-    monkeypatch.setattr(guard, "github_status_provider", lambda card: status)
+    monkeypatch.setattr(guard, "github_status_provider", lambda card, **kwargs: status)
     with pytest.raises(ce.EvidenceError, match="review_stage_"):
         cs.stage_check(stage_package, runtime=dedicated.rt)
 
 
 def test_query_write_or_network_error_has_specific_diagnosis(dedicated, stage_package, monkeypatch):
     import guard
-    def unavailable(card):
+    def unavailable(card, **kwargs):
         raise FileNotFoundError("No usable temporary directory found")
     monkeypatch.setattr(cs, "stage_binding", ORIGINAL_STAGE_BINDING)
     monkeypatch.setattr(guard, "github_status_provider", unavailable)
@@ -712,7 +722,8 @@ import sys
 sys.dont_write_bytecode = True
 import importlib.util, json, os
 from pathlib import Path
-root, dependencies, instant = sys.argv[1:]
+root, dependencies, instant, *authority = sys.argv[1:]
+git_roots = [root, *authority]
 violations = []
 def deny(event, args):
     bad = False
@@ -724,7 +735,10 @@ def deny(event, args):
     elif event.startswith("socket."):
         bad = True
     elif event == "subprocess.Popen":
-        bad = args[1] != ["git", "-C", root, "rev-parse", "--abbrev-ref", "HEAD"]
+        bad = args[1] not in [["git", "-C", git_root, *tail] for git_root in git_roots for tail in (
+            ["rev-parse", "--abbrev-ref", "HEAD"], ["rev-parse", "--show-toplevel"],
+            ["config", "--local", "--no-includes", "--get", "remote.origin.url"],
+            ["rev-parse", "--absolute-git-dir"], ["rev-parse", "--git-common-dir"])]
     elif event == "sqlite3.connect":
         bad = not isinstance(args[0], str) or not args[0].endswith("?mode=ro")
     elif event == "import" and args[0] in {"guard", "graphql_quota"}:
@@ -749,13 +763,19 @@ print(json.dumps({"result": "ready", "violations": violations, "guard_imported":
 '''
 
 
-def test_full_product_preflight_cold_import_has_no_write_cache_or_network(dedicated, monkeypatch):
+@pytest.mark.parametrize("external_authority", [False, True])
+def test_full_product_preflight_cold_import_has_no_write_cache_or_network(dedicated, monkeypatch, tmp_path, external_authority):
     import os
     import subprocess
     import sys
     qualified_route(dedicated)
+    authority = None
+    if external_authority:
+        from test_process_authority import authority_tree
+        authority = authority_tree(tmp_path / "external" / dedicated.root.name)
+        (dedicated.root / ".covenant-flow/overlay.yaml").unlink()
     diff = dedicated.root / "product.patch"; diff.write_text("diff --git a/a b/a\n-old\n+new\n")
-    package = Path(cs.prepare(root=dedicated.root, phase="review", bootstrap=dedicated.bootstrap_path, diff=diff, runtime=dedicated.rt)["package"])
+    package = Path(cs.prepare(root=dedicated.root, phase="review", bootstrap=dedicated.bootstrap_path, diff=diff, runtime=dedicated.rt, authority_root=authority)["package"])
     dedicated.authorize(package)
     p = cs.read_package(package)
     dedicated.add_turn(dedicated.coordinator, "review-turn", p["coordinator_selection"]["arguments"])
@@ -767,7 +787,7 @@ def test_full_product_preflight_cold_import_has_no_write_cache_or_network(dedica
     (dedicated.root / ".git/refs/heads" / dedicated.root.name).write_text(head + "\n")
     (dedicated.root / ".git/objects/info/alternates").write_text(str((CONSUMER / objects).resolve()) + "\n")
     env = dict(os.environ, CODEX_THREAD_ID=dedicated.coordinator)
-    result = subprocess.run([sys.executable, "-I", "-c", AUDITED_PREFLIGHT, str(dedicated.root), str(CONSUMER / "scripts/process-fsm"), str(dedicated.now)],
+    result = subprocess.run([sys.executable, "-I", "-c", AUDITED_PREFLIGHT, str(dedicated.root), str(CONSUMER / "scripts/process-fsm"), str(dedicated.now), *([str(authority)] if authority else [])],
         cwd=dedicated.root, env=env, check=False, capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["violations"] == []
@@ -784,7 +804,10 @@ def test_launch_revalidates_status_and_binds_exclusive_receipt(dedicated, monkey
     def status(package, *, allowed):
         queries.append(allowed)
         return "Code Review"
+    real_run = cs.subprocess.run
     def native(argv, **kwargs):
+        if argv[0] == "git":
+            return real_run(argv, **kwargs)
         calls.append(argv)
         kwargs["stdout"].write((json.dumps({"type": "thread.started", "thread_id": dedicated.coordinator}) + "\n").encode())
         return __import__("subprocess").CompletedProcess(argv, 0, stderr=b"")
@@ -797,7 +820,7 @@ def test_launch_revalidates_status_and_binds_exclusive_receipt(dedicated, monkey
     with pytest.raises(FileExistsError): cs.launch(package)
     assert len(calls) == 1
     p = cs.read_package(package)
-    for relative in ("scripts/process-fsm/guard.py", ".covenant-flow/overlay.yaml"):
+    for relative in ("scripts/process-fsm/guard.py",):
         dependency = dedicated.root / relative
         assert str(dependency) in p["files"]
         original = dependency.read_bytes()
@@ -1177,3 +1200,54 @@ def test_shell_custom_tool_text_cannot_substitute_native_spawn_origin(dedicated)
     dedicated.flush(dedicated.coordinator)
     with pytest.raises(ce.EvidenceError, match='birth_mismatch'):
         ce.collect(p['births'][0], wait_seconds=0, runtime=dedicated.rt)
+
+
+def test_nucleus_without_overlay_uses_explicit_consumer_and_revalidates_every_reader(dedicated, tmp_path, monkeypatch):
+    """Full source-bound wave in the nucleus; authority data stays external."""
+    import guard
+    from test_process_authority import authority_tree
+    qualified_route(dedicated)
+    authority = authority_tree(tmp_path / 'consumer' / dedicated.root.name)
+    (dedicated.root / '.covenant-flow/overlay.yaml').unlink()
+    diff = dedicated.root / 'product.patch'; diff.write_text('diff --git a/a b/a\n-old\n+new\n')
+    monkeypatch.setattr(cs, 'stage_binding', ORIGINAL_STAGE_BINDING)
+    monkeypatch.setattr(cs, 'local_binding', ORIGINAL_LOCAL_BINDING)
+    queries = []
+    def status(card, *, authority):
+        queries.append(authority)
+        assert card == '1098'
+        assert authority['root'] != str(dedicated.root)
+        return 'Code Review'
+    monkeypatch.setattr(guard, 'github_status_provider', status)
+    prepared = cs.prepare(root=dedicated.root, phase='review', bootstrap=dedicated.bootstrap_path,
+                          diff=diff, authority_root=authority, runtime=dedicated.rt)
+    path = Path(prepared['package'])
+    package = cs.read_package(path)
+    assert package['root'] == str(dedicated.root)
+    assert package['authority']['root'] == str(authority)
+    assert package['diff'] == str(diff)
+    assert all(Path(name).is_relative_to(dedicated.root) for name in package['files'])
+    assert cs.inside(dedicated.root, package['stage_receipt'])
+    with pytest.raises(ce.EvidenceError): cs.inside(dedicated.root, authority / 'arbitrary-target')
+    ready = ce.preflight(root=dedicated.root, stage='pedir_review', runtime=dedicated.rt)
+    assert ready['package'] == str(path)
+    package = dedicated.finish_children(path)
+    proofs = [ce.collect(b, wait_seconds=0, runtime=dedicated.rt) for b in package['births']]
+    assert all(proof['status'] == 'completed' for proof in proofs)
+    assert len(queries) == 3  # prepare, principal T9 preflight, native stage-check; coordinator/collect are offline.
+    assert not (dedicated.root / '.covenant-flow/overlay.yaml').exists()
+    overlay = authority / '.covenant-flow/overlay.yaml'
+    overlay.write_text(overlay.read_text() + '\n# authority changed\n')
+    # Every entry rereads the pinned source before observing runtime, querying,
+    # launching, writing receipts or promoting a collected child.
+    for operation in (lambda: cs.read_package(path), lambda: cs.stage_check(path, runtime=dedicated.rt),
+                      lambda: cs.launch(path), lambda: cs.preflight(path, runtime=dedicated.rt),
+                      lambda: ce.collect(package['births'][0], wait_seconds=0, runtime=dedicated.rt)):
+        with pytest.raises(ce.EvidenceError, match='review_authority_invalid'):
+            operation()
+
+
+def test_review_missing_authority_has_specific_refusal_and_no_implicit_fallback(dedicated):
+    (dedicated.root / '.covenant-flow/overlay.yaml').unlink()
+    with pytest.raises(ce.EvidenceError, match='review_authority_invalid.*source_unavailable'):
+        cs.prepare(root=dedicated.root, phase='review', runtime=dedicated.rt)

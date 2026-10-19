@@ -1,5 +1,7 @@
 # Revisão Codex em coordenador dedicado read-only
 
+Adendo factual de 18/10/2026 (#1130): a onda de produto/verify-wave/checklist e QA da rota CLI interativa → exec foram comprovadas no fechamento #1098 (PR #1129, base consumidor `1a06caec`). A referência a produto pendente no histórico abaixo é anterior a esse fechamento. Principal exec independente pertence ao #1130; App/IDE ao #1128. Cada onda nova continua exigindo suas fontes, diff/SHA, Status e TTL. [Controller terminal de preparação automática](codex-terminal-flow.md).
+
 ## Protocolo de saída e diff grande
 
 O preflight pertence ao coordenador e deve rodar **uma vez** na fase preparada. O probe é o **primeiro comando de cada reviewer**, também **uma vez**. Duplicatas continuam invalidando a origem; truncamento ou dúvida não autorizam repetir tentativa de escrita. A falha deve voltar ao principal, sem parecer válido. O preflight usa orçamento explícito de 12000 tokens no comando e no wrapper; o probe e cada leitura usam 20000 no comando e 32000 no wrapper, com um resultado por saída.
@@ -12,7 +14,7 @@ O coletor reconstrói os bytes em ordem e confere o digest completo. Falta, dupl
 
 Não se executa `codex_review.py verify` isolado no filho: o helper realiza a verificação inicial, e `verify-wave`/checklist pertencem ao principal gravável **após** ambos os payloads e coleta. A ordem evita dependência circular e mantém a recusa por probe ou leitura ausente. Testes de contrato com diff de 700740 bytes e saídas truncadas não qualificam a nova versão da rota no host; o próximo ciclo real continua obrigatório.
 
-O principal do card permanece gravável. `codex_review_session.py` prepara e lança automaticamente um coordenador Codex dedicado com `exec --sandbox read-only`, e usa `exec ... resume <id>` para continuar a **mesma sessão**. Em18/10/2026, a rota diagnóstica TUI → exec foi qualificada na sessão `01a14c6d-8e42-79d3-bd0e-db78be7c3aca`: bootstrap/binding, contexto próprio, dois perfis nomeados/probes e lançamento/retorno reais PASS. [Provas sanitizadas e hashes](../openspec/changes/card-1098-codex-agentes-nativos/evidence/dedicated-diagnostic-pass-20261018.md). Principal exec/App/IDE → exec e onda de produto continuam pendentes; flags/TOML/testes não qualificam essas rotas. O agente não alterna permissões da sessão principal, muda trust/conta ou executa review no principal/coordenador. Outros estágios continuam nativos no chat do card; não há fallback para outro cliente.
+O principal do card permanece gravável. `codex_review_session.py` prepara e lança automaticamente um coordenador Codex dedicado com `exec --sandbox read-only`, e usa `exec ... resume <id>` para continuar a **mesma sessão**. Em18/10/2026, a rota diagnóstica TUI → exec foi qualificada na sessão `01a14c6d-8e42-79d3-bd0e-db78be7c3aca`: bootstrap/binding, contexto próprio, dois perfis nomeados/probes e lançamento/retorno reais PASS. [Provas sanitizadas e hashes](evidence/card-1098-dedicated-diagnostic-pass-20261018.md). Principal exec/App/IDE → exec e onda de produto continuam pendentes; flags/TOML/testes não qualificam essas rotas. O agente não alterna permissões da sessão principal, muda trust/conta ou executa review no principal/coordenador. Outros estágios continuam nativos no chat do card; não há fallback para outro cliente.
 
 O ciclo evita a dependência circular de um chat novo: bootstrap sem filhos → contexto diagnóstico sem ferramentas no filho → qualificação C/S persistida pelo principal → dois perfis nomeados em diagnóstico de probe → qualificação da rota → onda produto. Todas as fases nascem e continuam somente leitura no coordenador. Arquivos de preparo, capturas, fixtures e qualificações são gravados pelo principal entre retomadas nativas; o coordenador só lê e retorna. Atuação de produto exige Status vivo Code Review e os gates humanos existentes.
 
@@ -98,3 +100,44 @@ O principal vê o processo nativo de lançamento, seu estado/saída e os paths d
 Ausência de `CommandExecution`, schema exec incompatível, herança de sandbox divergente, hook/trust recusado, retorno sem payload ou impossibilidade de retomar a mesma sessão mantém a etapa bloqueada com código específico. Preserve arquivos/falhas; não reedite traces, receipts ou qualificações. Não retome filho divergente nem copie positivo de outra superfície. O protocolo histórico de alternância manual de permissões foi substituído para Review. O diagnóstico dedicado real qualifica a rota indicada; não conclui review/QA de produto, checklist, distribuição canônica nova ou substituição integral. Para `pedir_review`, o pai ainda prepara pacote `--phase review` sobre diff final e passa pelos gates vivos. Tasks pendentes sem anotação de fase continuam bloqueando o checklist precommit; não se declara esse gate verde com o diagnóstico.
 
 No diagnóstico anterior de18/10, coordenador `01a14c63-737e-7802-8620-2f8b343cfd0e`, os custom_tool_call `exec` observados eram chamadas de shell, sem spawn nativo. Um deles executou `inspect` com pacote context e falhou antes do filho. Após a correção integrada, o novo coordenador indicado acima produziu as chamadas nativas exigidas e passou na qualificação. O coletor continua exigindo origem nativa real: texto de shell/JavaScript, solicitação ou payload não fabrica filiação. O runtime observado tinha `multi_agent_version=v2`; listagem/configuração CLI não o reclassifica. Fontes e recusas anteriores foram preservadas.
+
+## Núcleo sem overlay: autoridade explícita
+
+O núcleo continua sem `.covenant-flow/overlay.yaml`. Execute o helper instalado
+no próprio worktree nativo e acrescente `--authority-root <worktree-consumidor>`
+a `codex_review_session.py prepare` (ou a `codex_terminal.py start --operation
+review`). Sem a opção, Review usa o próprio worktree consumidor. Não há busca
+implícita em outro checkout nem cópia de overlay. Nas continuações, o pacote
+bootstrap conserva a mesma autoridade; uma tentativa não pode trocá-la.
+
+A autoridade deve ser a raiz Git canônica de um worktree `card-N-*`, com branch
+igual ao nome da pasta e o mesmo card do núcleo. Seu origin GitHub deve coincidir
+com `overlay.repo`; overlay completo, repo, board, card, branch e hash dos bytes
+ficam fixados no pacote. Paths com symlink, overlay ancestral/ausente, origin não
+qualificado, identidade diferente ou fonte alterada recusam a tentativa. Somente
+dados são lidos no consumidor: nenhum helper ou módulo externo é executado.
+Raiz nativa, workspace roots, diff, capturas, helpers, fixtures e receipts continuam
+contidos no núcleo.
+
+Prepare e consultas vivas do principal usam essa autoridade; stage-check e
+launch exigem Code Review. O pacote e as fontes são revalidados também no
+preflight do coordenador e na coleta. O coordenador só relê dados e a prova
+nativa do principal, sem rede nem escrita; permanecem TTL de 120 segundos,
+ordenação dos comandos nativos, qualificação de contexto/rota/perfis e par
+read-only no mesmo turno. Pacotes anteriores sem binding de autoridade devem
+ser preservados e substituídos por um preparo novo.
+
+Para T9 a partir do núcleo, o pai executa, no cwd nativo do núcleo:
+
+```bash
+python3 scripts/process-fsm/process_event.py pedir_review --card N --client codex --authority-root <worktree-consumidor>
+```
+
+Essa extensão de `process_event` aceita somente `pedir_review` e
+`achar_bloqueante`, com cliente Codex. Consulta e edição do board usam a autoridade
+explícita e revalidada; T9 exige a mesma autoridade do pacote Review qualificado.
+Os artefatos de aprovação são lidos no worktree da autoridade, conservando I4:
+Design alterado continua devolvendo a Design antes de iniciar Review. Preflight,
+registro/trust e cwd observados continuam ligados ao núcleo. A opção não
+redireciona integração, release nem gates humanos; essas operações conservam
+seus contratos próprios.

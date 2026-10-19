@@ -1844,3 +1844,72 @@ def test_t5_scope_does_not_relax_future_native_stage_gates(
     assert out["result"] == "reject" and out["reason"] == "codex_evidence:stage_capability_missing"
     assert t5_basic_runtime["preflight"][0]["stage"] == event
     assert mover.calls == [] and sidecar_path(change).read_bytes() == before
+
+
+def external_review_trees(tmp_path):
+    from test_process_authority import authority_tree
+    authority = authority_tree(tmp_path / 'consumer' / 'card-1098-fixture')
+    native = authority_tree(tmp_path / 'nucleus' / 'card-1098-fixture')
+    (native / '.covenant-flow/overlay.yaml').unlink()
+    return native, authority
+
+
+@pytest.mark.parametrize('changed', [False, True])
+def test_explicit_review_authority_preserves_native_preflight_and_approval_invalidation(tmp_path, monkeypatch, changed):
+    import account_registration
+    import codex_evidence as ce
+    import codex_review_session as cs
+    import process_authority as pa
+    native, authority = external_review_trees(tmp_path)
+    change = authority / 'openspec/changes' / authority.name
+    change.mkdir(parents=True)
+    (change / 'design.md').write_text('approved')
+    sidecar_path(change).write_text(pe.compute_digest(change, None) + '\n')
+    if changed: (change / 'design.md').write_text('changed')
+    pinned = pa.capture(authority, '1098')
+    queries, preflights, registrations = [], [], []
+    monkeypatch.setattr(pe, 'native_client', lambda: 'codex')
+    monkeypatch.setattr(account_registration, 'require_active', lambda client, root: registrations.append(root))
+    monkeypatch.setattr(pe, 'github_status_provider', lambda card, **kwargs: queries.append(kwargs) or 'Em desenvolvimento')
+    monkeypatch.setattr(ce, 'preflight', lambda **kwargs: preflights.append(kwargs) or {'package': 'fixture-package'})
+    monkeypatch.setattr(cs, 'read_package', lambda path: {'authority': pinned})
+    mover = FakeMover()
+    result = process_event('pedir_review', cwd=native, card='1098', authority_root=authority,
+                           client='codex', mover=mover)
+    assert result['result'] == 'transition'
+    assert result['to'] == ('Design' if changed else 'Code Review')
+    assert mover.calls == [(1098, result['to'])]
+    assert registrations == [native]
+    assert preflights == ([] if changed else [{'root': native, 'stage': 'pedir_review'}])
+    assert queries == [{'authority': pinned}]
+    assert not (native / '.covenant-flow/overlay.yaml').exists()
+
+
+@pytest.mark.parametrize('fault', ['unqualified', 'package-authority', 'wrong-card', 'missing', 'wrong-status'])
+def test_explicit_review_authority_cannot_bypass_gates(tmp_path, monkeypatch, fault):
+    import account_registration
+    import codex_evidence as ce
+    import codex_review_session as cs
+    native, authority = external_review_trees(tmp_path)
+    monkeypatch.setattr(pe, 'native_client', lambda: 'codex')
+    monkeypatch.setattr(account_registration, 'require_active', lambda *args: None)
+    monkeypatch.setattr(pe, 'github_status_provider', lambda *args, **kwargs: 'Todo' if fault == 'wrong-status' else 'Em desenvolvimento')
+    def preflight(**kwargs):
+        if fault == 'unqualified': raise ce.EvidenceError('review_route_unqualified')
+        return {'package': 'fixture'}
+    monkeypatch.setattr(ce, 'preflight', preflight)
+    monkeypatch.setattr(cs, 'read_package', lambda path: {'authority': {'root': 'different'}})
+    if fault == 'missing': (authority / '.covenant-flow/overlay.yaml').unlink()
+    mover = FakeMover()
+    result = process_event('pedir_review', cwd=native, card='9000' if fault == 'wrong-card' else '1098',
+        authority_root=authority, client='codex', mover=mover, digest_changed=False)
+    assert result['result'] == 'reject'
+    assert mover.calls == []
+    if fault == 'unqualified': assert result['reason'] == 'codex_evidence:review_route_unqualified'
+    if fault == 'package-authority': assert result['reason'] == 'codex_evidence:review_authority_changed'
+
+
+@pytest.mark.parametrize('event', ['iniciar_apply', 'aceitar_sha', 'integrar_develop', 'fechar_release', 'aprovar_design', 'homologar'])
+def test_external_review_authority_does_not_expand_event_scope(tmp_path, event):
+    result = process_event(event, cwd=tmp_path, card='1098', authority_root=tmp_path)
+    assert result['result'] == 'reject' and result['reason'] == 'authority_scope'
