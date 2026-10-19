@@ -1,0 +1,321 @@
+{
+  "schema": "card-1130-pin-correction-v1",
+  "base_tag": "v1.1.23",
+  "base_commit": "c10fb7cf50bb09c87f7da8734f92688df8b1b789",
+  "base_tree": "740ca48994b452c642807cc87eb166261ba688e1",
+  "consumer_pre_pin": "cfaa6d949614b8d9b43b906e6b758530a5ef1287",
+  "target_tree": "45ac0dbd0333c1b453f06f397a41c156a03e7567",
+  "patch_sha256": "d0d2b61213c8b7d585e7e72c147d64e94feb684649297cf6a847d5468de1ce38",
+  "patch_bytes": 240731,
+  "changed_files": 34,
+  "git_apply_check": "PASS",
+  "applied_tree_equals_tested_candidate": true,
+  "files": [
+    {
+      "path": ".cursor/rules/harness.mdc",
+      "mode": "100644",
+      "base_sha256": "3c3ab8cf170f575dac85cd31ccddf95cb8fabeb74aea8250a75f4196607c8d50",
+      "target_sha256": "1deaac54353a358fe1b4543bc7e1ad4e615face332dcd71e6b9fbb88abbbe147",
+      "target_bytes": 523,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "1deaac54353a358fe1b4543bc7e1ad4e615face332dcd71e6b9fbb88abbbe147"
+    },
+    {
+      "path": "docs/claude-runtime-evidence.md",
+      "mode": "100644",
+      "base_sha256": "b8a9d94cd00c09de3f6e8405b9817dadb7d60f968e4b46a7fc6b28daf9753999",
+      "target_sha256": "90c0083a242848050a434e86e6852896aedcd91662e7481d70c1d3dda93dd80d",
+      "target_bytes": 12074,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": "e5db3ae00d8e39c41a695bec1de3c4ae1601a72653460032972b81af49479548"
+    },
+    {
+      "path": "docs/codex-review-qualification.md",
+      "mode": "100644",
+      "base_sha256": "ff6e22b767e82e7749d387e1ab30f5574646fedca7a2b6ff4f50a8d3c6b32bed",
+      "target_sha256": "3adeb53fe18f04731254644687ddf9c47ac98aa3578359a06e1385b9de92bcf7",
+      "target_bytes": 22675,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": "2f921f5f942c65ddfb8fa7a6453c3aa7ba5d8e8f8f39db4790dbee49e61c4092"
+    },
+    {
+      "path": "install.sh",
+      "mode": "100755",
+      "base_sha256": "7af1756a7dc5e5309b5e9b150a4d5695f6c96f19d505dc339cfe3017cb2a5166",
+      "target_sha256": "ce17270ee5476d906bd6fbc9767768de31c220c339655ff13a8951044aacb276",
+      "target_bytes": 16310,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": null
+    },
+    {
+      "path": "scripts/process-fsm/account_install.py",
+      "mode": "100644",
+      "base_sha256": "f25d58356bd2d7fc9738ca144da3741f309f64cf57e5466c19594fe4d8a89487",
+      "target_sha256": "51c7d0d787a2302353827ae39aa8cb01a9fe67540d3f5bb231a796152c505712",
+      "target_bytes": 19819,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "51c7d0d787a2302353827ae39aa8cb01a9fe67540d3f5bb231a796152c505712"
+    },
+    {
+      "path": "scripts/process-fsm/adapter_manifest.py",
+      "mode": "100644",
+      "base_sha256": "67e071917529879b6ca75d354e287409cced29472b33eea173d4bb73d5df6c11",
+      "target_sha256": "3a189275bca1af555ddfa295392b52c94fcd6102adbfc272cb4b93b7c83bd05c",
+      "target_bytes": 7190,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "3a189275bca1af555ddfa295392b52c94fcd6102adbfc272cb4b93b7c83bd05c"
+    },
+    {
+      "path": "scripts/process-fsm/cf_shim.py",
+      "mode": "100644",
+      "base_sha256": "434f0a58c65f825deb6d388dccaeb386caf9d40cddd36bdfe50a7cd2f2f3524a",
+      "target_sha256": "8ff9537b2cc86937334881bcfa0946294e998ac86f663002e50403215accc427",
+      "target_bytes": 44619,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "8ff9537b2cc86937334881bcfa0946294e998ac86f663002e50403215accc427"
+    },
+    {
+      "path": "scripts/process-fsm/cf_shim_opencode.js",
+      "mode": "100644",
+      "base_sha256": "149f899013db2454e488a264cc6fe2626c3b7a0cafb4c275a4bf438b3d13cc34",
+      "target_sha256": "fc0b38f8d914f7c8d898242121eae7901ba5d7f36f451272c7933a798bdc625d",
+      "target_bytes": 4071,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "fc0b38f8d914f7c8d898242121eae7901ba5d7f36f451272c7933a798bdc625d"
+    },
+    {
+      "path": "scripts/process-fsm/claude_adapter.py",
+      "mode": "100644",
+      "base_sha256": "ebc2f68e4776e6d0866b58c81ba73cb585b6e59c9ce58385ccfa1e77ebc76d0d",
+      "target_sha256": "47f72c30abda39e464790c9dfb5aa5625090bd4876da888a23a4e8fe35fd8433",
+      "target_bytes": 22084,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "47f72c30abda39e464790c9dfb5aa5625090bd4876da888a23a4e8fe35fd8433"
+    },
+    {
+      "path": "scripts/process-fsm/claude_evidence.py",
+      "mode": "100644",
+      "base_sha256": "753ee3b8461499efd4a0aa974de949b8b44b1b2c58a2aaf62081dd648e8e72f5",
+      "target_sha256": "6148c9981e65afb3103c7a2eafd7e42502dc7a035ded0c67991cc463c5ba0272",
+      "target_bytes": 49662,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "6148c9981e65afb3103c7a2eafd7e42502dc7a035ded0c67991cc463c5ba0272"
+    },
+    {
+      "path": "scripts/process-fsm/claude_fixtures.py",
+      "mode": "100644",
+      "base_sha256": "1e8b2a2c6a67861b32f915ef65d170d136b532c7f2e619db99b58940b636b28e",
+      "target_sha256": "a75b27ed39c3ab6d9190eee7a741a03c0acd667384a9258bb2b3064750be847f",
+      "target_bytes": 76096,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "a75b27ed39c3ab6d9190eee7a741a03c0acd667384a9258bb2b3064750be847f"
+    },
+    {
+      "path": "scripts/process-fsm/claude_proxy.py",
+      "mode": "100644",
+      "base_sha256": "8cf13a3cfc83ceba644bfad9a9e323c41b4d0c7e1f2e029c70b98e456f7ebbe5",
+      "target_sha256": "725fadef7acd232d1a3818ccf44926768910992f1cb94f01b04c0ff665c28077",
+      "target_bytes": 10525,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "725fadef7acd232d1a3818ccf44926768910992f1cb94f01b04c0ff665c28077"
+    },
+    {
+      "path": "scripts/process-fsm/claude_trust.py",
+      "mode": "100644",
+      "base_sha256": "c5b60c549cde6e6f381dea08bf8b1ad9e438838ffb7be3cdef3ad5506fd6cc52",
+      "target_sha256": "2b46a5f56f6278627815f945bfbf251ee50616888ac1ac6674611216bd5390a3",
+      "target_bytes": 12847,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "2b46a5f56f6278627815f945bfbf251ee50616888ac1ac6674611216bd5390a3"
+    },
+    {
+      "path": "scripts/process-fsm/codex_binding.py",
+      "mode": "100644",
+      "base_sha256": "13115941c4a23ae9b4a0aecfcfe8e65d1645218deba2624a26463eb08d9db4d5",
+      "target_sha256": "1e59db58d65898400abece395a9bd2d96ba8185119ceb94f429aa5bf9dbb92ca",
+      "target_bytes": 8516,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": "13115941c4a23ae9b4a0aecfcfe8e65d1645218deba2624a26463eb08d9db4d5"
+    },
+    {
+      "path": "scripts/process-fsm/codex_review_probe.py",
+      "mode": "100644",
+      "base_sha256": "413d37b8bf5d49132320ee4304d3b8e9a5f74af5dec986bfb8b5581be1cc836d",
+      "target_sha256": "03273f0f2fb475cdd85633b3f797721e0651f04cb77934b33d774a0d0581734f",
+      "target_bytes": 30612,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": "413d37b8bf5d49132320ee4304d3b8e9a5f74af5dec986bfb8b5581be1cc836d"
+    },
+    {
+      "path": "scripts/process-fsm/codex_review_session.py",
+      "mode": "100644",
+      "base_sha256": "e5dd7bf77578c64fc94a3d21e0e2d093741ece8f80efd3987411cf0a168c26d9",
+      "target_sha256": "757766c44c16b7f7e55a3bf8052765023f651e6380b59cf66e86605372d98284",
+      "target_bytes": 65226,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": "c7494b94d8e2c0b18d10a3837bc8ee041ca8dfdbc97207fd39de373193e709d1"
+    },
+    {
+      "path": "scripts/process-fsm/guard.py",
+      "mode": "100644",
+      "base_sha256": "06e50b95e00e6efac17d83ef98a07875775526b1bc7910910efca6e41f39e003",
+      "target_sha256": "a06665e5c97dde5e0056930b9cf25d82c3c9ca9b6101bb838726a5074c487898",
+      "target_bytes": 37173,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": "aeacb9c784ce7cb9b9327ad119a2a5f8f9098c82f6c4cb90a21ae3ac50b71bd5"
+    },
+    {
+      "path": "scripts/process-fsm/materialize_review_diff.py",
+      "mode": "100644",
+      "base_sha256": "593cec4fbcd097b5af889b86d2cfa5c396ec867c9bfbb6d0c3610e30d21f4903",
+      "target_sha256": "2fb84f0afc4b3ecc5e6c55807c87c98ba49c795835e30c1579abda5019e3d6ce",
+      "target_bytes": 7051,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "2fb84f0afc4b3ecc5e6c55807c87c98ba49c795835e30c1579abda5019e3d6ce"
+    },
+    {
+      "path": "scripts/process-fsm/model_selection.py",
+      "mode": "100644",
+      "base_sha256": "252bde52063eb96a4331b54c0e60f417e74deee78bc265d8799dc9b195cb1740",
+      "target_sha256": "65385c6487ffe491147d8d72ec37593e84cf56e849a970e5c553db9f64425eb8",
+      "target_bytes": 25590,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "65385c6487ffe491147d8d72ec37593e84cf56e849a970e5c553db9f64425eb8"
+    },
+    {
+      "path": "scripts/process-fsm/paging.py",
+      "mode": "100644",
+      "base_sha256": "4477334b363210737883577074787124cbc16514bd1d312adba1be9c702127c5",
+      "target_sha256": "a23216e5a51fa36c550644ee5aa5afaeb3b74370914e47c8ea8eb3cb3cf362cf",
+      "target_bytes": 9456,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "a23216e5a51fa36c550644ee5aa5afaeb3b74370914e47c8ea8eb3cb3cf362cf"
+    },
+    {
+      "path": "scripts/process-fsm/resolve.py",
+      "mode": "100644",
+      "base_sha256": "cff0ff6cbf32f95a3a5f6aff42b7c35f968bfb29157c8a64c741110893edf204",
+      "target_sha256": "8e5c72a3c0612af0a18f45a12652c26967f0a8bb9a5b716b5601e70a11948420",
+      "target_bytes": 5269,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "8e5c72a3c0612af0a18f45a12652c26967f0a8bb9a5b716b5601e70a11948420"
+    },
+    {
+      "path": "scripts/process-fsm/shim_fixtures.py",
+      "mode": "100644",
+      "base_sha256": "43049fc0cc2bff703c3e31e9a79655c0be74e5cd42d3825428f140393d4f0bc9",
+      "target_sha256": "a4be0914767836de14595c35dbd2fc61502d7a72dcb2f3651a2079a82ca93c60",
+      "target_bytes": 8141,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "a4be0914767836de14595c35dbd2fc61502d7a72dcb2f3651a2079a82ca93c60"
+    },
+    {
+      "path": "scripts/process-fsm/test_account_install.py",
+      "mode": "100644",
+      "base_sha256": "1756e8babf0cdd2819aa198ef9f0ea2ab13e24202cb4228bdfb7e9ff90aa0c68",
+      "target_sha256": "e2805aedde58932c22ea8cf51220df676ab90a2a1b3e8f152c9a047891552701",
+      "target_bytes": 28335,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "e2805aedde58932c22ea8cf51220df676ab90a2a1b3e8f152c9a047891552701"
+    },
+    {
+      "path": "scripts/process-fsm/test_account_installer.py",
+      "mode": "100644",
+      "base_sha256": "83377a28d30a1e967e32ce26c29c952ceecbbe249be4969df192b398cf196ce4",
+      "target_sha256": "841434a3be319bf9e32fdd5b699fe61faddce6da587204b63e207c59d1bc5794",
+      "target_bytes": 8952,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "841434a3be319bf9e32fdd5b699fe61faddce6da587204b63e207c59d1bc5794"
+    },
+    {
+      "path": "scripts/process-fsm/test_cf_shim.py",
+      "mode": "100644",
+      "base_sha256": "81d3e987a4e3afdb4f428c469c537f6fd0e9b8a3389b97bbe0693676d2d2039b",
+      "target_sha256": "ff16568a77d8e97516cd257b65b5e6d9f30d265b269b4107031e7eb0be545348",
+      "target_bytes": 32124,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "ff16568a77d8e97516cd257b65b5e6d9f30d265b269b4107031e7eb0be545348"
+    },
+    {
+      "path": "scripts/process-fsm/test_claude_account_trust.py",
+      "mode": "100644",
+      "base_sha256": "388d4efc4ef945bf31ac29e8ee3a12453406fb1d7623764fee43dc9bfd17557e",
+      "target_sha256": "d5e40646527a373c02999e721818adb067dff54ea504259ebdb4f3bfd664b2ca",
+      "target_bytes": 5250,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "d5e40646527a373c02999e721818adb067dff54ea504259ebdb4f3bfd664b2ca"
+    },
+    {
+      "path": "scripts/process-fsm/test_claude_evidence.py",
+      "mode": "100644",
+      "base_sha256": "f5ec26480d2a58bb7a7a740b52f3b243c60bef8bac932d2b460b002638e71ffa",
+      "target_sha256": "dfe114b90258693bf61fbeb304f23cf734e0b912fff206567ef06fe0586c61c6",
+      "target_bytes": 28890,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "dfe114b90258693bf61fbeb304f23cf734e0b912fff206567ef06fe0586c61c6"
+    },
+    {
+      "path": "scripts/process-fsm/test_claude_hooks.py",
+      "mode": "100644",
+      "base_sha256": "796e76e7f9236ed31b326662c008655031f848f4747f3a964595528e4d6cbd12",
+      "target_sha256": "80487c6f4f19684ff191fbf7ed7991f98becd11fb278e254f35b9ee66b91b47f",
+      "target_bytes": 6927,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "80487c6f4f19684ff191fbf7ed7991f98becd11fb278e254f35b9ee66b91b47f"
+    },
+    {
+      "path": "scripts/process-fsm/test_codex_review_probe.py",
+      "mode": "100644",
+      "base_sha256": "44b274a8b484e0f30f2a5a9b743aabde4f156763203168a65b2799f8e84bedab",
+      "target_sha256": "db5490e553f65a4336a560a23cfe57a21f020c8293241cce0ee2e4d28671dd4a",
+      "target_bytes": 27060,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": "44b274a8b484e0f30f2a5a9b743aabde4f156763203168a65b2799f8e84bedab"
+    },
+    {
+      "path": "scripts/process-fsm/test_codex_review_session.py",
+      "mode": "100644",
+      "base_sha256": "d431ade3dd967b9adf9c0451128c95714c5053a41f9b6e7c4cebbed7bec1b055",
+      "target_sha256": "efd37625e87ddae135b116116e87f5ee00646cb5dc662693710c51b7d30d6bab",
+      "target_bytes": 77325,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": "eeacc24b84de30fdbb7ba030d02a2a7df493409624906ee66889f3924ec408a6"
+    },
+    {
+      "path": "scripts/process-fsm/test_codex_terminal_install.py",
+      "mode": "100644",
+      "base_sha256": "235c2eb7a9331337693423592b0ac41519aed4ce145449c72f43b3f20a229332",
+      "target_sha256": "1046d0113605259c7385f79bbfe571090cbfc87714ed66870db80fde6537ff9f",
+      "target_bytes": 3192,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": null
+    },
+    {
+      "path": "scripts/process-fsm/test_design_clone_gate.py",
+      "mode": "100644",
+      "base_sha256": "88e1e0c772ceb95357cbd714777f345d17c79dd50ec2fb5b615d99e5f0a3839d",
+      "target_sha256": "4ebe0c3277ee05c9d1669e8fcae7ec9318e87fcd6b58746cf0c6b362dc2210c6",
+      "target_bytes": 13361,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "4ebe0c3277ee05c9d1669e8fcae7ec9318e87fcd6b58746cf0c6b362dc2210c6"
+    },
+    {
+      "path": "scripts/process-fsm/test_guard.py",
+      "mode": "100644",
+      "base_sha256": "478d475f64912e79190f0de8d6e425dc31dc9c0017d390d37d48baf3efa566ff",
+      "target_sha256": "adbe527de67770861d9439daa25f4d2738b8b6e8edbb2f404f8444137b019ab5",
+      "target_bytes": 52804,
+      "provenance": "restored-pre-pin-generic",
+      "pre_pin_sha256": "adbe527de67770861d9439daa25f4d2738b8b6e8edbb2f404f8444137b019ab5"
+    },
+    {
+      "path": "scripts/process-fsm/test_pin_correction.py",
+      "mode": "100644",
+      "base_sha256": null,
+      "target_sha256": "eb807164019f0d1cef46854b35de716ece0691860b8facfd30b9e12d82963402",
+      "target_bytes": 6341,
+      "provenance": "reconciled-or-new",
+      "pre_pin_sha256": null
+    }
+  ]
+}

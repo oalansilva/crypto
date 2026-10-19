@@ -1,0 +1,112 @@
+{
+  "schema": "card-1130-pin-correction-validation-v1",
+  "candidate_tree": "45ac0dbd0333c1b453f06f397a41c156a03e7567",
+  "patch_sha256": "d0d2b61213c8b7d585e7e72c147d64e94feb684649297cf6a847d5468de1ce38",
+  "working_directory": "candidate root reconstructed from v1.1.23 plus nucleus.patch",
+  "test_results": [
+    {
+      "log": "validation-logs/shared-final.log",
+      "sha256": "5620c8c284895c60bbc67fc009de7e0ec47249675c1f86004c3b30377300cb54",
+      "command": "python3 -m pytest -q scripts/process-fsm/test_cf_shim.py scripts/process-fsm/test_account_install.py scripts/process-fsm/test_account_installer.py scripts/process-fsm/test_claude_account_trust.py scripts/process-fsm/test_claude_desktop_surface.py scripts/process-fsm/test_claude_evidence.py scripts/process-fsm/test_claude_proxy.py scripts/process-fsm/test_claude_adapter.py scripts/process-fsm/test_claude_hooks.py scripts/process-fsm/test_residual_1101.py scripts/process-fsm/test_rules_and_runbook_text.py scripts/process-fsm/test_guard.py scripts/process-fsm/test_design_clone_gate.py scripts/process-fsm/test_codex_adapter.py scripts/process-fsm/test_process_authority.py scripts/process-fsm/test_process_event.py scripts/process-fsm/test_codex_terminal.py scripts/process-fsm/test_codex_terminal_install.py scripts/process-fsm/test_codex_qualification_index.py scripts/process-fsm/test_codex_refinement_binding.py --tb=short",
+      "summary": "1 failed, 762 passed, 3 skipped, 4 warnings in 96.78s (0:01:36)",
+      "historical_failed_run": true
+    },
+    {
+      "log": "validation-logs/shared-recheck.log",
+      "sha256": "02d9b0d8746599a324a5fbb3d9b0a63cb0ed9b3d26c8f7eae26f051be47c83c4",
+      "command": "python3 -m pytest -q scripts/process-fsm/test_rules_and_runbook_text.py scripts/process-fsm/test_residual_1101.py scripts/process-fsm/test_design_clone_gate.py --tb=short",
+      "summary": "54 passed, 3 skipped, 4 warnings in 3.57s",
+      "historical_failed_run": false
+    },
+    {
+      "log": "validation-logs/codex-final.log",
+      "sha256": "bb560b53d729375f020d144bae07c21cf262708c1ac8fe481efd3155bbd6a932",
+      "command": "python3 -m pytest -q -x scripts/process-fsm/test_codex_review_session.py scripts/process-fsm/test_codex_review_probe.py scripts/process-fsm/test_codex_terminal_review.py --tb=short",
+      "summary": "1 failed, 154 passed, 4 warnings in 252.00s (0:04:12)",
+      "historical_failed_run": true
+    },
+    {
+      "log": "validation-logs/codex-recheck.log",
+      "sha256": "8df68e0d2cc2121062a587b5ec5dcb7346a923f85adfccfaa106fd343b241181",
+      "command": "python3 -m pytest -q -k 'shell_custom or nucleus_without or authority' scripts/process-fsm/test_codex_review_session.py scripts/process-fsm/test_codex_review_probe.py scripts/process-fsm/test_codex_terminal_review.py --tb=short",
+      "summary": "15 passed, 216 deselected, 4 warnings in 25.52s",
+      "historical_failed_run": false
+    },
+    {
+      "log": "validation-logs/codex-delivery-final.log",
+      "sha256": "2c44733d8fc231fdd896aa4d0f7f679c10bfef779ccbfb1012b87fcec2e5bb81",
+      "command": "python3 -m pytest -q scripts/process-fsm/test_codex_review_probe.py scripts/process-fsm/test_codex_terminal_review.py --tb=short",
+      "summary": "74 passed, 4 warnings in 168.10s (0:02:48)",
+      "historical_failed_run": false
+    },
+    {
+      "log": "validation-logs/correction-final.log",
+      "sha256": "4f9e3f84af294e69e1685d406c65efc1a48e48dd16eace601cb10fb296d8875d",
+      "command": "python3 -m pytest -q scripts/process-fsm/test_pin_correction.py --tb=short",
+      "summary": "44 passed, 4 warnings in 100.87s (0:01:40)",
+      "historical_failed_run": false
+    },
+    {
+      "log": "validation-logs/large-diff-final.log",
+      "sha256": "9cf20e2a17f6d30c36a4fc7a2fdd46f57796697c5120556c364465c00a62383f",
+      "command": "python3 -m pytest -q -k large_diff scripts/process-fsm/test_pin_correction.py --tb=short",
+      "summary": "2 passed, 43 deselected, 4 warnings in 5.12s",
+      "historical_failed_run": false
+    },
+    {
+      "log": "validation-logs/compatibility-final.log",
+      "sha256": "77cc0c1a43bfb8369f73d0372214c646d931dce9edeb96f465596993f44981f2",
+      "command": "python3 -m pytest -q scripts/process-fsm/test_model_selection.py scripts/process-fsm/test_claude_process_event.py scripts/process-fsm/test_release_closeout.py scripts/process-fsm/test_codex_installer.py scripts/process-fsm/test_codex_evidence.py --tb=short",
+      "summary": "178 passed, 4 warnings in 40.44s",
+      "historical_failed_run": false
+    },
+    {
+      "log": "validation-logs/distribution-final.log",
+      "sha256": "65f6a5c60a84bb7647bdfdd1382b261eb9b64e7c1ea1905dfcc1de9835552f8a",
+      "command": "python3 -m pytest -q scripts/process-fsm/test_codex_terminal_install.py scripts/process-fsm/test_account_installer.py scripts/process-fsm/test_codex_installer.py --tb=short",
+      "summary": "15 passed, 4 warnings in 30.13s",
+      "historical_failed_run": false
+    },
+    {
+      "log": "validation-logs/binding-final.log",
+      "sha256": "13f571be4f6428488aa0053d47a4249680826e07c10712279b6961d7bc5cf6b4",
+      "command": "python3 -m pytest -q -k 'quoted_searches or static_real or dynamic_real' scripts/process-fsm/test_pin_correction.py scripts/process-fsm/test_codex_adapter.py --tb=short",
+      "summary": "25 passed, 63 deselected, 4 warnings in 0.34s",
+      "historical_failed_run": false
+    },
+    {
+      "log": "validation-logs/binding-distribution-final.log",
+      "sha256": "aee7fc9530aa810dc838b255d6cb6998137aea7755952b74d3e7cf8b63ff22f4",
+      "command": "python3 -m pytest -q scripts/process-fsm/test_codex_adapter.py scripts/process-fsm/test_codex_terminal_install.py --tb=short",
+      "summary": "42 passed, 4 warnings in 8.61s",
+      "historical_failed_run": false
+    }
+  ],
+  "counts_policy": "Runs overlap: do not add passed counts. Shared run sole documentation failure repaired by shared-recheck. Session run first 154 cases passed, then one expected-code assertion failed; codex-recheck covers that case and both remaining session cases (157 collected), plus overlapping earlier cases. Delivery modules separately: 74 pass. Correction suite: 44 pass; large-diff recheck covers its updated positive plus one new exact 67-page case; binding-final adds parse-only shell and re-enabled execution cases (47 cases total). Distribution/binding rechecks overlap earlier coverage.",
+  "session_inventory": {
+    "log": "validation-logs/codex-session-inventory.log",
+    "sha256": "ef145b5d69d80e034966a1b2cf9a372358392f116bb2c8824f5dc89a36ef6676",
+    "collected": 157
+  },
+  "live_acceptance": false,
+  "git_apply_check": "PASS",
+  "applied_tree_equals_tested_candidate": true,
+  "remaining_tasks": 7,
+  "requested": "gpt-6.1-sol/high",
+  "observed": "not inferred; parent collects native runtime after return",
+  "other_checks": [
+    {
+      "command": "bash -n install.sh (invoked by disposable syntax_check.py because active parser falsely classified its filename)",
+      "result": "PASS"
+    },
+    {
+      "command": "openspec validate card-1130-codex-cli-fluxo-completo --strict",
+      "result": "PASS"
+    }
+  ],
+  "correction_inventory": {
+    "log": "validation-logs/correction-inventory.log",
+    "sha256": "0f3521f07c429d4885204231d4d3ab99a6832cea618f091897f8451520da28b3",
+    "collected": 47
+  }
+}
