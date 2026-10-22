@@ -42,6 +42,9 @@ Este documento define o runtime operacional do Cripto Farol na VPS atual. A regr
 | `MARKET_OHLCV_SYMBOLS` | vazio | Lista explicita de simbolos; vazio resolve universo Binance USDT. |
 | `MARKET_OHLCV_SYMBOL_LIMIT` | `40` no writer | Limite padrao do timer para proteger a VPS; override via env. |
 | `MARKET_OHLCV_MAX_LAG_SECONDS_<TF>` | derivado do timeframe | Threshold de alerta de atraso por timeframe. |
+| `ASSET_CATALOG_REFRESH_ENABLED` | `1` | Liga a atualizacao periodica do catalogo de ativos (Binance e acoes/ETFs). Desligada sob pytest. |
+| `ASSET_CATALOG_REFRESH_INTERVAL_SECONDS` | `21600` | Intervalo entre atualizacoes do catalogo por classe de ativo (6 h). |
+| `ASSET_CATALOG_MIN_RESULT_RATIO` | `0.5` | Descarta a atualizacao se a nova lista tiver menos que essa fracao dos ativos anteriores. |
 | `BACKFILL_SCHEDULER_ENABLED` | `0` | Liga scheduler de backfill historico. |
 | `BINANCE_REALTIME_WORKER_ENABLED` | `0` | Liga worker externo de precos/top pairs. |
 | `BINANCE_REALTIME_ENABLED` | `0` | Liga connector realtime dentro do backend. Nao usar junto com o worker externo. |
@@ -66,7 +69,7 @@ MARKET_OHLCV_TIMEFRAMES=15m,1d \
 Comportamento esperado:
 
 - usa `market_ohlcv`;
-- resolve pares spot USDT ativos da Binance, salvo `MARKET_OHLCV_SYMBOLS` ou `MARKET_OHLCV_SYMBOL_LIMIT`;
+- le os cripto negociaveis do catalogo de ativos (salvo `MARKET_OHLCV_SYMBOLS` ou `MARKET_OHLCV_SYMBOL_LIMIT`); sem catalogo e sem exchangeInfo a rodada nao roda;
 - roda incrementalmente a partir do ultimo candle salvo, com overlap configuravel por `CRYPTO_CANDLES_INCREMENTAL_OVERLAP_CANDLES`;
 - usa lock exclusivo por ambiente (`/tmp/crypto-candle-writer-dev.lock` ou `...-prod.lock`);
 - grava estado (`...-state.json`) com status, runs, duracao e `lag_alerts`;

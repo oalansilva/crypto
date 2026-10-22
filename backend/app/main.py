@@ -3,6 +3,7 @@
 import asyncio
 import os
 import sys
+import threading
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -18,6 +19,7 @@ from app.config import get_settings
 from app.api import router
 from app.routes.favorites import router as favorites_router
 from app.routes.combo_routes import router as combo_router
+from app.routes.asset_catalog_routes import router as asset_catalog_router
 from app.routes.discovery_routes import router as discovery_router
 from app.routes.opportunity_routes import router as opportunity_router
 from app.routes.logs import router as logs_router
@@ -108,6 +110,9 @@ def seed_combo_templates_if_empty():
         logger.error(f"Error seeding combo_templates: {e}")
 
 
+_asset_catalog_stop = threading.Event()
+
+
 async def _start_noncritical_services() -> None:
     if should_start_ohlcv_ingestion():
         try:
@@ -134,6 +139,20 @@ async def _start_noncritical_services() -> None:
             logger.exception("Failed to start OHLCV backfill scheduler")
     else:
         logger.info("OHLCV backfill scheduler disabled by runtime flags")
+
+    # Catálogo de ativos Binance (#1117): atualização agendada por classe.
+    from app.services.asset_catalog_service import refresh_enabled, run_scheduler_loop
+
+    if refresh_enabled():
+        _asset_catalog_stop.clear()
+        threading.Thread(
+            target=run_scheduler_loop,
+            args=(_asset_catalog_stop,),
+            name="asset-catalog-scheduler",
+            daemon=True,
+        ).start()
+    else:
+        logger.info("Asset catalog scheduler disabled by ASSET_CATALOG_REFRESH_ENABLED")
 
 
 @asynccontextmanager
@@ -241,6 +260,7 @@ async def lifespan(app: FastAPI):
     await stop_signal_feed_snapshot_worker()
     signal_monitor.stop()
     await asyncio.to_thread(get_backfill_service().stop_scheduler)
+    _asset_catalog_stop.set()
 
 
 settings = get_settings()
@@ -295,6 +315,7 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(favorites_router)
 app.include_router(combo_router)
+app.include_router(asset_catalog_router)
 app.include_router(discovery_router)
 app.include_router(opportunity_router)
 app.include_router(logs_router)

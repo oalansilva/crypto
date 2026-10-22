@@ -147,6 +147,42 @@
       "evidence": "frozen OHLCV, exact 568 numerical edges, adversarial snapshots/index/ABA/LRU and compiler fallback invariants"
     },
     {
+      "file": "backend/tests/unit/test_card_1117_asset_catalog_adapters.py",
+      "protected_behavior": "adaptadores do catálogo Binance: reconciliação por ac, exclusões por motivo, mapa de estados e schema inesperado",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "parse_spot_exchange_info e parse_equity_payloads com payloads sintéticos, sem rede nem banco"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1117_asset_catalog_api.py",
+      "protected_behavior": "rotas /api/assets/catalog, compatibilidade de /exchanges/binance/symbols e recusa 422 estruturada em otimização e lote",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "TestClient com catálogo semeado no PostgreSQL de teste e isolamento por fixture unit_database_url"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1117_asset_catalog_migration.py",
+      "protected_behavior": "migração Alembic de asset_catalog e asset_catalog_refresh em schema privado",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "upgrade e downgrade reais, colunas conferidas contra os modelos, schema descartável"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1117_asset_catalog_service.py",
+      "protected_behavior": "catálogo persistido: atualização, removido preservado, falha sem esvaziar, pesquisa, Todos do filtro e validação das análises",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "refresh_group com fetchers falsos, consulta e guarda sobre o PostgreSQL de teste com isolamento por fixture unit_database_url"
+    },
+    {
       "file": "backend/tests/unit/test_card_1074_combo_templates.py",
       "protected_behavior": "card 1074 combo template and VWAP indicator smoke backtests",
       "production_reachability": "reachable",

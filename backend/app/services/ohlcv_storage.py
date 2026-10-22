@@ -917,6 +917,9 @@ class OhlcvIngestionService:
             return 0
 
         universe = resolve_binance_ohlcv_symbol_universe()
+        if not universe:
+            logger.error("[ohlcv] universo de símbolos indisponível; rodada não executada")
+            return 0
         offset = _read_ingestion_symbol_offset()
         priority_raw = os.getenv("MARKET_OHLCV_PRIORITY_SYMBOL", "").strip().upper()
         priority_symbols = [priority_raw] if priority_raw else None

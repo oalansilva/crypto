@@ -482,3 +482,4 @@ class OptimizationResult(Base):
 
 # Import onchain models so Base.metadata.create_all() picks them up
 from app.models_onchain import OnchainSignal, OnchainSignalHistory  # noqa: F401, E402
+from app.models_asset_catalog import AssetCatalog, AssetCatalogRefresh  # noqa: F401, E402

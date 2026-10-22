@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mockAssetCatalog } from './helpers/assetCatalogMock'
 
 // Card #837 — "Reload after cancel does not pin to the old run"
 // (openspec/specs/discovery-sweep/spec.md; tasks 3.4, 4.1, 4.2).
@@ -93,13 +94,8 @@ async function installStartMocks(page: Page, phase: { active: unknown[] }) {
       }),
     }),
   )
-  await page.route('**/api/exchanges/binance/symbols', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ symbols: ['BTC/USDT', 'ETH/USDT'] }),
-    }),
-  )
+  // Catálogo de ativos (#1117): o seletor do eixo Ativos lê /api/assets/catalog.
+  await mockAssetCatalog(page)
   await page.route('**/api/combos/discovery/sweeps/preflight', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SNAPSHOT) }),
   )
@@ -180,6 +176,7 @@ test('card 837 — reload após cancelar não prende à run morta; Iniciar cria 
   // Monta outra seleção (4h + template + símbolo; desmarca 1d) e inicia: nasce UMA varredura nova.
   await page.getByText('4 horas').click()
   await page.getByRole('checkbox', { name: 'Médias' }).first().click()
+  await page.getByTestId('asset-search').fill('BTC/USDT')
   await page.getByRole('checkbox', { name: 'BTC/USDT' }).first().click()
   await expect(page.getByTestId('start-sweep')).toBeEnabled()
   await page.getByText('1 dia').click()

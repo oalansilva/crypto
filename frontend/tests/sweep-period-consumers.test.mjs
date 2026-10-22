@@ -59,13 +59,16 @@ for (const [reference, period, start_date] of [
       templateName: 'template', timeframe: '1d', direction: 'long', params: [],
       batchScope: 'selected', deepBacktest: false, walkForwardEnabled: true, walkForwardTrainRatio: 0.7,
       batchStartTimeRef: { current: null }, getBatchSymbols: () => ['BTC/USDT'],
+      // #1117: o seletor de ativos decide o que roda; aqui nada fica de fora.
+      getRunBlock: () => null, getPartialNotice: () => null,
+      refusalMessage: (_detail, fallback) => fallback,
     }
     for (const name of [
       'setStartError', 'setPreflight', 'setSnapshotStale', 'setPreflightLoading', 'setPreflightError',
       'setBusy', 'setActiveSweep', 'setViewSweep', 'setMetric', 'setDraftFrozen', 'setPage', 'setMode',
       'setExpandedRows', 'setRows', 'setTotalMatched', 'setTotalAvailable', 'showToast', 'loadHistory',
       'loadPartials', 'setRunning', 'setBatchRunning', 'setBatchJobId', 'setBatchProgress', 'setBatchTotal',
-      'setBatchPauseCancelRequested', 'setClientElapsedSec',
+      'setBatchPauseCancelRequested', 'setClientElapsedSec', 'setRunNotice',
     ]) bindings[name] = () => {}
 
     bindings.setPreflight = (value) => { bindings.preflight = value }

@@ -21,6 +21,19 @@ import {
 } from '../lib/sweepPeriod'
 import { formatCompoundReturn, type CompoundReturnSource } from '../lib/compoundReturn'
 import { SelectionWorkbench } from '../components/SelectionWorkbench'
+import { AssetPicker } from '../components/AssetPicker'
+import {
+  fmtInt,
+  outEntries,
+  outOfSweepTitle,
+  outReason,
+  outWhy,
+  preflightExcludedLabel,
+  preflightRestLine,
+  selectionCounts,
+  type PreflightExcludedAsset,
+} from '../lib/assetSelection'
+import { useSelectionView } from '../lib/assetStore'
 import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
 import './DiscoveryPage.css'
 
@@ -28,6 +41,7 @@ type PreflightResult = {
   axes: { templates: string[]; symbols: string[]; timeframes: string[]; directions: string[] }
   raw_total: number
   exclusions: Record<string, { reasons: string[] }>
+  excluded_assets?: PreflightExcludedAsset[]
   excluded_count: number
   valid_total: number
   limits: { max_total: number }
@@ -297,21 +311,11 @@ const TEMPLATE_CATEGORIES: Record<string, string> = {
   breakout: 'Tendência',
 }
 
-const TOP_CODES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'AVAX', 'TRX', 'DOT'])
-
 function catalogFromTemplates(list: { name: string; display_name?: string; description: string }[]): CatalogItem[] {
   return list.map((t) => {
     const prefix = (t.name.split('_')[0] ?? 'outros').toLowerCase()
     const cat = TEMPLATE_CATEGORIES[prefix] ?? 'Outros'
     return { id: t.name, label: t.display_name || t.name, category: cat, meta: t.description || '' }
-  })
-}
-
-function catalogFromSymbols(list: string[]): CatalogItem[] {
-  return list.map((code) => {
-    const base = code.split('/')[0] ?? code
-    const cat = TOP_CODES.has(base) ? 'Alta liquidez' : 'Demais pares'
-    return { id: code, label: code, category: cat, meta: 'Spot · cotação USDT' }
   })
 }
 
@@ -351,8 +355,6 @@ function sameStringSet(a: string[], b: string[] | undefined): boolean {
 export function DiscoveryPage() {
   const navigate = useNavigate()
 
-  // Catálogos
-  const [symbols, setSymbols] = useState<string[]>([])
   // Seleção
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
@@ -365,10 +367,9 @@ export function DiscoveryPage() {
   const [metric, setMetric] = useState<Metric>('calmar_ratio')
   // Workbench
   const [workbenchOpen, setWorkbenchOpen] = useState(false)
-  const [workbenchTrigger, setWorkbenchTrigger] = useState<'templates' | 'symbols'>('templates')
+  const [workbenchTrigger] = useState<'templates' | 'symbols'>('templates')
   const workbenchTriggerRef = useRef<HTMLButtonElement | null>(null)
   const [templatesCatalog, setTemplatesCatalog] = useState<CatalogItem[]>([])
-  const [symbolsCatalog, setSymbolsCatalog] = useState<CatalogItem[]>([])
   const [committedSelection, setCommittedSelection] = useState<SelectionSnapshot>(() => makeEmptySelection())
   // Preflight
   const [preflight, setPreflight] = useState<PreflightResult | null>(null)
@@ -415,7 +416,7 @@ export function DiscoveryPage() {
   // do sweep escolhido). Eventos movem o modo; tabs permitem revisitar.
   const [mode, setMode] = useState<'montar' | 'acomp' | 'decidir'>('montar')
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [inlineQuery, setInlineQuery] = useState({ templates: '', symbols: '' })
+  const [inlineQuery, setInlineQuery] = useState({ templates: '' })
 
   const pollRef = useRef<number | null>(null)
   const preflightTimer = useRef<number | null>(null)
@@ -444,26 +445,22 @@ export function DiscoveryPage() {
 
   // ---- catalog helpers ----
 
+  // O eixo Ativos usa o seletor do catálogo; o workbench edita só os templates.
   function applySelectionFromWorkbench(state: SelectionSnapshot) {
     const t = [...(state.templates.mode === 'all'
       ? templatesCatalog.filter((i) => !state.templates.excluded.has(i.id))
       : [...state.templates.selected].map((id) => templatesCatalog.find((i) => i.id === id)).filter(Boolean))
     ] as CatalogItem[]
-    const s = [...(state.symbols.mode === 'all'
-      ? symbolsCatalog.filter((i) => !state.symbols.excluded.has(i.id))
-      : [...state.symbols.selected].map((id) => symbolsCatalog.find((i) => i.id === id)).filter(Boolean))
-    ] as CatalogItem[]
     setSelectedTemplates(t.map((i) => i.id))
-    setSelectedSymbols(s.map((i) => i.id))
-    setCommittedSelection(state)
+    setCommittedSelection((prev) => ({ ...prev, templates: state.templates }))
   }
 
   // summary helpers
-  function selectionSummary(axis: 'templates' | 'symbols') {
+  function selectionSummary(axis: 'templates') {
     const a = committedSelection[axis]
-    const total = axis === 'templates' ? templatesCatalog.length : symbolsCatalog.length
+    const total = templatesCatalog.length
     if (a.mode === 'all') {
-      const excluded = [...a.excluded].map((id) => (axis === 'templates' ? templatesCatalog : symbolsCatalog).find((i) => i.id === id)?.label ?? id)
+      const excluded = [...a.excluded].map((id) => templatesCatalog.find((i) => i.id === id)?.label ?? id)
       return {
         count: `${Math.max(0, total - a.excluded.size)} de ${total} selecionados`,
         detail: excluded.length ? `Catálogo inteiro · ${excluded.length} exceções` : 'Catálogo inteiro · nenhuma exceção',
@@ -472,7 +469,7 @@ export function DiscoveryPage() {
       }
     }
     const ids = [...a.selected]
-    const chips = ids.slice(0, 3).map((id) => (axis === 'templates' ? templatesCatalog : symbolsCatalog).find((i) => i.id === id)?.label ?? id)
+    const chips = ids.slice(0, 3).map((id) => templatesCatalog.find((i) => i.id === id)?.label ?? id)
     return {
       count: `${a.selected.size} de ${total} selecionados`,
       detail: 'Seleção manual',
@@ -511,22 +508,6 @@ export function DiscoveryPage() {
     })()
   }, [])
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/exchanges/binance/symbols`)
-        if (!res.ok) return
-        const data = await res.json()
-        const list: string[] = data.symbols || []
-        setSymbols(list)
-        const catS = catalogFromSymbols(list)
-        setSymbolsCatalog(catS)
-      } catch {
-        /* catálogo auxiliar */
-      }
-    })()
-  }, [])
-
   // ---------- Histórico ----------
   const hydrateFromSweep = useCallback((sweep: Sweep) => {
     const snapshot = sweep.snapshot
@@ -552,7 +533,7 @@ export function DiscoveryPage() {
     if (sweep.draft_key) setDraftKey(sweep.draft_key)
     setCommittedSelection({
       templates: { ...makeEmptyAxis(), selected: new Set(axes.templates || []) },
-      symbols: { ...makeEmptyAxis(), selected: new Set(axes.symbols || []) },
+      symbols: makeEmptyAxis(),
     })
     return true
   }, [])
@@ -644,15 +625,30 @@ export function DiscoveryPage() {
     runPreflight,
   ])
 
-  const axisCount = [
-    ...(committedSelection.templates.mode === 'all'
-      ? templatesCatalog.filter((i) => !committedSelection.templates.excluded.has(i.id))
-      : [...committedSelection.templates.selected].filter((id) => templatesCatalog.some((i) => i.id === id))),
-  ].length * [
-    ...(committedSelection.symbols.mode === 'all'
-      ? symbolsCatalog.filter((i) => !committedSelection.symbols.excluded.has(i.id))
-      : [...committedSelection.symbols.selected].filter((id) => symbolsCatalog.some((i) => i.id === id))),
-  ].length * timeframes.length * directions.length
+  // O que o catálogo diz da seleção: só cripto negociável roda; ações, ETFs e marcados ficam fora.
+  const { entries: selectionEntries } = useSelectionView(selectedSymbols)
+  const selCounts = useMemo(() => selectionCounts(selectionEntries), [selectionEntries])
+  const clientOutAssets = useMemo<PreflightExcludedAsset[]>(
+    () =>
+      outEntries(selectionEntries).map((entry) => ({
+        symbol: entry.symbol,
+        asset_class: entry.asset?.asset_class ?? null,
+        state: entry.asset?.state ?? null,
+        kind: entry.kind === 'marked' ? 'marked' : entry.kind === 'missing' ? 'missing' : 'class',
+        reason: outReason(entry),
+        combinations: 0,
+      })),
+    [selectionEntries],
+  )
+  const axisCount = selectedTemplates.length * selCounts.crypto * timeframes.length * directions.length
+  // Fora da varredura: o servidor é a fonte (conta combinações); sem preflight, a leitura da tela.
+  const outAssetsList: PreflightExcludedAsset[] = useMemo(() => {
+    const server = !draftFrozen ? preflight?.excluded_assets : undefined
+    if (server && server.length) return server
+    if (!clientOutAssets.length) return []
+    const perAsset = selectedTemplates.length * timeframes.length * directions.length
+    return clientOutAssets.map((asset) => ({ ...asset, combinations: perAsset }))
+  }, [clientOutAssets, directions.length, draftFrozen, preflight, selectedTemplates.length, timeframes.length])
   const overLimit = Boolean(preflight?.errors?.total)
   // Com varredura em curso, Iniciar de outra seleção fica bloqueado com aviso
   // para cancelar antes (card #837, aceite 4); a repetição da mesma seleção
@@ -698,7 +694,12 @@ export function DiscoveryPage() {
   // operação (nunca JSON técnico no caminho feliz).
   const impediments: string[] = []
   if (selectedTemplates.length === 0) impediments.push('Escolha ao menos 1 template.')
-  if (selectedSymbols.length === 0) impediments.push('Escolha ao menos 1 símbolo.')
+  if (selectedSymbols.length === 0) impediments.push('Escolha ao menos 1 ativo.')
+  else if (selCounts.crypto === 0) {
+    impediments.push(
+      `Nenhuma combinação válida: ${outWhy(selCounts)}. Inclua ao menos 1 par cripto negociável em USDT.`,
+    )
+  } else if (preflight?.errors?.symbols) impediments.push(preflight.errors.symbols)
   if (timeframes.length === 0) impediments.push('Escolha 1 timeframe (4h, 1h, 15m ou 1d).')
   if (directions.length === 0) impediments.push('Escolha a direção Long.')
   impediments.push(...customPeriodImpediments(period, customStartDate, customEndDate))
@@ -723,13 +724,12 @@ export function DiscoveryPage() {
 
   // Card 852: seleção inline (busca + marcar/desmarcar, sem modal). Espelha
   // o eixo no snapshot aplicado para que o contador inline reflita na hora.
-  const isInlineSelected = (axis: 'templates' | 'symbols', id: string): boolean => {
+  const isInlineSelected = (axis: 'templates', id: string): boolean => {
     const a = committedSelection[axis]
     return a.mode === 'all' ? !a.excluded.has(id) : a.selected.has(id)
   }
-  const toggleInline = (axis: 'templates' | 'symbols', id: string) => {
-    const catalog = axis === 'templates' ? templatesCatalog : symbolsCatalog
-    const ids = catalog.map((i) => i.id)
+  const toggleInline = (axis: 'templates', id: string) => {
+    const ids = templatesCatalog.map((i) => i.id)
     const prevAxis = committedSelection[axis]
     const selected = isInlineSelected(axis, id)
     const nextAxis = {
@@ -748,8 +748,7 @@ export function DiscoveryPage() {
       else nextAxis.selected.add(id)
       nextSelected = [...nextAxis.selected]
     }
-    if (axis === 'templates') setSelectedTemplates(nextSelected)
-    else setSelectedSymbols(nextSelected)
+    setSelectedTemplates(nextSelected)
     setCommittedSelection((prev) => ({ ...prev, [axis]: nextAxis }))
   }
 
@@ -1544,16 +1543,16 @@ export function DiscoveryPage() {
     const fromSnapshot = viewSweep?.snapshot?.axes?.symbols ?? preflight?.axes?.symbols ?? []
     const fromRows = [...new Set(rows.map((r) => r.symbol))]
     const merged = [...new Set([...fromSnapshot, ...fromRows])]
-    return merged.length ? merged : symbols
-  }, [preflight, viewSweep, rows, symbols])
+    return merged
+  }, [preflight, viewSweep, rows])
   const activeSnapshotHash = activeSweep?.snapshot?.snapshot_hash ?? preflight?.snapshot_hash ?? null
   const periodLabel = periodDisplayLabel(period)
   const periodSummary =
     preflightWindow.length > 0 ? `${periodLabel}${preflightWindow}` : periodLabel
 
   // Card 852: bloco inline por eixo (busca + marcar/desmarcar, sem modal).
-  const renderInlineAxis = (axis: 'templates' | 'symbols') => {
-    const catalog = axis === 'templates' ? templatesCatalog : symbolsCatalog
+  const renderInlineAxis = (axis: 'templates') => {
+    const catalog = templatesCatalog
     const query = inlineQuery[axis].toLowerCase()
     const filtered = query
       ? catalog.filter(
@@ -1561,7 +1560,7 @@ export function DiscoveryPage() {
         )
       : catalog
     const shown = filtered.slice(0, 30)
-    const searchLabel = axis === 'templates' ? 'Buscar templates' : 'Buscar símbolos'
+    const searchLabel = 'Buscar templates'
     return (
       <div className="mt-3">
         <input
@@ -1571,7 +1570,7 @@ export function DiscoveryPage() {
           onChange={(e) => setInlineQuery((prev) => ({ ...prev, [axis]: e.target.value }))}
           placeholder={searchLabel}
           aria-label={searchLabel}
-          data-testid={axis === 'templates' ? 'inline-templates-search' : 'inline-symbols-search'}
+          data-testid="inline-templates-search"
           className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
         />
         {catalog.length === 0 ? (
@@ -1579,7 +1578,7 @@ export function DiscoveryPage() {
         ) : (
           <div
             role="group"
-            aria-label={`${axis === 'templates' ? 'Templates' : 'Símbolos'} (seleção inline)`}
+            aria-label="Templates (seleção inline)"
             className="mt-2 flex max-h-[190px] flex-col gap-1.5 overflow-auto"
           >
             {shown.map((item) => (
@@ -2157,8 +2156,8 @@ export function DiscoveryPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 p-5 md:grid-cols-2">
-              {/* Templates — summary card */}
-              <section className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[#181a20] p-4">
+              {/* Templates — summary card (linha própria; o eixo Ativos ocupa a linha inteira abaixo) */}
+              <section className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[#181a20] p-4 md:col-span-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Templates</h3>
@@ -2167,7 +2166,7 @@ export function DiscoveryPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={(e) => { workbenchTriggerRef.current = e.currentTarget; setWorkbenchTrigger('templates'); setWorkbenchOpen(true) }}
+                    onClick={(e) => { workbenchTriggerRef.current = e.currentTarget; setWorkbenchOpen(true) }}
                     disabled={draftFrozen}
                     className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-40"
                     data-testid="edit-templates"
@@ -2187,35 +2186,17 @@ export function DiscoveryPage() {
                 {renderInlineAxis('templates')}
               </section>
 
-              {/* Symbols — summary card */}
-              <section className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[#181a20] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Símbolos</h3>
-                    <p className="mt-0.5 text-xs text-[var(--text-muted)]" data-testid="symbol-count">{selectionSummary('symbols').count}</p>
-                    <p className="mt-0.5 text-[11px] text-[#bfdbfe]" data-testid="symbol-axis-status">{selectionSummary('symbols').detail}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => { workbenchTriggerRef.current = e.currentTarget; setWorkbenchTrigger('symbols'); setWorkbenchOpen(true) }}
-                    disabled={draftFrozen}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-40"
-                    data-testid="edit-symbols"
-                    aria-haspopup="dialog"
-                    aria-controls="selection-workbench"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                    Edição avançada
-                  </button>
-                </div>
-                <div className="mt-2.5 flex min-h-[32px] gap-1.5 overflow-hidden">
-                  {selectionSummary('symbols').chips.map((label, idx) => (
-                    <span key={`sym-${label}-${idx}`} className="inline-flex min-h-[28px] max-w-[160px] items-center rounded border border-[var(--border-default)] bg-[var(--bg-primary)] px-2 py-1 text-[11px] text-[var(--text-secondary)] overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
-                  ))}
-                  {selectionSummary('symbols').extra ? <span className="inline-flex min-h-[28px] items-center rounded border border-dashed border-[var(--border-default)] px-2 py-1 text-[11px] text-[var(--text-tertiary)]">{selectionSummary('symbols').extra}</span> : null}
-                </div>
-                {renderInlineAxis('symbols')}
-              </section>
+              {/* Ativos — seletor do catálogo Binance (cripto, ações e ETFs) */}
+              <div className="min-w-0 md:col-span-2">
+                <AssetPicker
+                  title="Ativos"
+                  ariaLabel="Seletor de ativos da varredura"
+                  value={selectedSymbols}
+                  onChange={setSelectedSymbols}
+                  disabled={draftFrozen}
+                  classNote="Ações e ETFs ficam na seleção. Nesta etapa as análises rodam só com cripto; o Preflight mostra o que fica fora."
+                />
+              </div>
 
               {/* Timeframes */}
               <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
@@ -2354,7 +2335,11 @@ export function DiscoveryPage() {
                         : impediments.length > 0
                           ? 'Bloqueado — veja o que falta'
                           : preflight
-                            ? 'Pronto para iniciar'
+                            ? selCounts.out === 0
+                              ? 'Pronto para iniciar'
+                              : selCounts.marked + selCounts.missing === 0
+                                ? 'Pronto para iniciar · ações e ETFs fora'
+                                : `Pronto para iniciar · ${fmtInt(selCounts.out)} ${selCounts.out === 1 ? 'ativo fora' : 'ativos fora'}`
                             : 'Aguardando escopo'}
                 </p>
               </div>
@@ -2382,6 +2367,24 @@ export function DiscoveryPage() {
                     </>
                   )}
                 </p>
+                {outAssetsList.length > 0 ? (
+                  <div
+                    className="pf-out mt-3 rounded-md border border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.06)] p-2.5 text-[12px] text-[#fbbf24]"
+                    role="status"
+                    data-testid="preflight-class-out"
+                  >
+                    <strong>{outOfSweepTitle(outAssetsList)}</strong>
+                    <ul className="mt-1.5 list-disc pl-5 text-[var(--text-secondary)]">
+                      {outAssetsList.slice(0, 3).map((asset) => (
+                        <li key={asset.symbol} data-asset={asset.symbol}>
+                          {preflightExcludedLabel(asset)} — {asset.reason}.
+                        </li>
+                      ))}
+                      {preflightRestLine(outAssetsList, 3) ? <li>{preflightRestLine(outAssetsList, 3)}</li> : null}
+                      <li className="text-[var(--text-tertiary)]">Eles continuam na seleção do rascunho; nada é perdido.</li>
+                    </ul>
+                  </div>
+                ) : null}
                 <p
                   className="mt-3 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5 text-[12px] text-[var(--text-tertiary)]"
                   data-testid="cost-note"
@@ -2557,7 +2560,7 @@ export function DiscoveryPage() {
           open={workbenchOpen}
           initialAxis={workbenchTrigger}
           templates={templatesCatalog}
-          symbols={symbolsCatalog}
+          symbols={[]}
           committed={committedSelection}
           multiplier={timeframes.length * directions.length}
           onApply={applySelectionFromWorkbench}

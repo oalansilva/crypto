@@ -1,10 +1,22 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search, Pause, Square } from 'lucide-react'
+import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle } from 'lucide-react'
 import { API_BASE_URL, apiUrl } from '../lib/apiBase'
 import { BackendLogViewer } from '../components/BackendLogViewer'
+import { AssetPicker } from '../components/AssetPicker'
+import { BatchProgressPanel } from '../components/BatchProgressPanel'
+import { useBatchJob } from '../hooks/useBatchJob'
 import { authFetch } from '@/lib/authFetch'
+import {
+    TOP10_SYMBOLS,
+    blockedNotice,
+    partialNotice,
+    planRun,
+    refusalMessage,
+    runCopy,
+    type RunNotice,
+} from '../lib/assetSelection'
+import { tradableCrypto, useSelectionView } from '../lib/assetStore'
 import {
     comboPeriodHint,
     customPeriodImpediments,
@@ -50,52 +62,27 @@ export function ComboConfigurePage() {
     const [customStartDate, setCustomStartDate] = useState('')
     const [customEndDate, setCustomEndDate] = useState('')
 
-    // Escopo: Todos (seleciona todos, desabilita caixa) ou Seleciona (usuário escolhe).
-    type BatchScope = 'all' | 'selected'
-    const [batchScope, setBatchScope] = useState<BatchScope>('selected')
-    const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['BTC/USDT'])
-    const [leftHighlighted, setLeftHighlighted] = useState<string[]>([])
-    const [rightHighlighted, setRightHighlighted] = useState<string[]>([])
-    const [leftFilter, setLeftFilter] = useState('')
-
-    // Batch backtest
-    const [batchRunning, setBatchRunning] = useState(false)
-    const [batchJobId, setBatchJobId] = useState<string | null>(null)
-    const [batchPauseCancelRequested, setBatchPauseCancelRequested] = useState(false)
-    const [batchProgress, setBatchProgress] = useState<{
-        status: string
-        processed: number
-        total: number
-        succeeded: number
-        failed: number
-        skipped?: number
-        errors: Array<{ symbol: string; error: string }>
-        started_at: string | null
-        elapsed_sec: number
-        estimated_remaining_sec: number | null
-        current_symbol?: string | null
-    } | null>(null)
-    const [batchTotal, setBatchTotal] = useState(0)
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-    const batchStartTimeRef = useRef<number | null>(null)
-    const [clientElapsedSec, setClientElapsedSec] = useState(0)
-
-    // Fetch available symbols from Binance (crypto market)
-    const { data: cryptoSymbolsData } = useQuery({
-        queryKey: ['binance-symbols'],
-        queryFn: async () => {
-            const response = await fetch(`${API_BASE_URL}/exchanges/binance/symbols`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch symbols');
-            }
-            const data = await response.json();
-            return data.symbols as string[];
-        },
-        staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
-    });
-
-    const activeSymbols = cryptoSymbolsData ?? []
+    // Ativos: o seletor do catálogo (cripto, ações e ETFs). Padrão BTC/USDT, como no incumbente.
     const defaultSymbol = 'BTC/USDT'
+    const [selectedSymbols, setSelectedSymbols] = useState<string[]>([defaultSymbol])
+    const [runNotice, setRunNotice] = useState<RunNotice | null>(null)
+
+    // Batch backtest (progresso, Pausar e Encerrar compartilhados com a Otimização)
+    const {
+        batchRunning, setBatchRunning,
+        setBatchJobId,
+        batchPauseCancelRequested, setBatchPauseCancelRequested,
+        batchProgress, setBatchProgress,
+        batchTotal, setBatchTotal,
+        clientElapsedSec, setClientElapsedSec,
+        batchStartTimeRef,
+        handlePauseBatch, handleCancelBatch,
+    } = useBatchJob()
+
+    // O que roda e o que fica fora (ação, ETF e ativo marcado pela Binance).
+    const { entries: selectionEntries, loading: selectionLoading } = useSelectionView(selectedSymbols)
+    const plan = useMemo(() => planRun(selectionEntries), [selectionEntries])
+    const copy = runCopy(plan, 'combo')
 
     useEffect(() => {
         if (templateName) {
@@ -106,24 +93,6 @@ export function ComboConfigurePage() {
             }
         }
     }, [templateName])
-
-    useEffect(() => {
-        if (batchScope === 'all' && activeSymbols.length > 0) {
-            setSelectedSymbols([...activeSymbols])
-            return
-        }
-        if (batchScope === 'selected' && selectedSymbols.length === 0) {
-            setSelectedSymbols([defaultSymbol])
-        }
-    }, [activeSymbols, batchScope, defaultSymbol, selectedSymbols.length])
-
-    useEffect(() => {
-        setBatchScope('selected')
-        setSelectedSymbols([defaultSymbol])
-        setLeftHighlighted([])
-        setRightHighlighted([])
-        setLeftFilter('')
-    }, [defaultSymbol])
 
     const fetchMetadata = async () => {
         try {
@@ -195,41 +164,21 @@ export function ComboConfigurePage() {
         }
     }
 
-    const getBatchSymbols = (): string[] => {
-        if (batchScope === 'all') return activeSymbols
-        return selectedSymbols
+    // Só os pares cripto negociáveis rodam; ação, ETF e ativo marcado ficam de fora (#1117).
+    const getBatchSymbols = (): string[] => plan.runnable
+
+    // Aviso antes de rodar quando nada roda; devolve o aviso ou null (a seleção é mantida).
+    const getRunBlock = (): RunNotice | null => {
+        if (plan.mode === 'none') {
+            return { tone: 'warn', title: 'Escolha ao menos 1 ativo', body: 'Pesquise e marque um par cripto em USDT.' }
+        }
+        if (plan.mode === 'blocked') return blockedNotice(plan, 'combo')
+        return null
     }
+    const getPartialNotice = (): RunNotice | null => partialNotice(plan)
 
     function getPeriodDates(): { start_date: string | null; end_date: string | null } {
         return resolvePeriodDates(period, customStartDate, customEndDate)
-    }
-
-    function formatElapsed(sec: number): string {
-        const m = Math.floor(sec / 60)
-        const s = Math.floor(sec % 60)
-        return `${m}m ${s}s`
-    }
-
-    const handlePauseBatch = async () => {
-        if (!batchJobId || batchPauseCancelRequested) return
-        setBatchPauseCancelRequested(true)
-        try {
-            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/pause`, { method: 'POST' })
-            if (!res.ok) setBatchPauseCancelRequested(false)
-        } catch {
-            setBatchPauseCancelRequested(false)
-        }
-    }
-
-    const handleCancelBatch = async () => {
-        if (!batchJobId || batchPauseCancelRequested) return
-        setBatchPauseCancelRequested(true)
-        try {
-            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/cancel`, { method: 'POST' })
-            if (!res.ok) setBatchPauseCancelRequested(false)
-        } catch {
-            setBatchPauseCancelRequested(false)
-        }
     }
 
     const handleRun = async () => {
@@ -238,15 +187,19 @@ export function ComboConfigurePage() {
             alert(periodIssues[0])
             return
         }
-        const symbolsToRun = getBatchSymbols()
-        if (batchScope === 'selected' && symbolsToRun.length === 0) {
-            alert('Selecione ao menos um símbolo na lista acima.')
+        setRunNotice(null)
+        const blocked = getRunBlock()
+        if (blocked) {
+            // Nada é executado nem salvo; a seleção fica como está.
+            setRunNotice(blocked)
             return
         }
+        const symbolsToRun = getBatchSymbols()
         if (symbolsToRun.length === 0) {
             alert('Nenhum símbolo disponível.')
             return
         }
+        setRunNotice(getPartialNotice())
 
         const custom_ranges: Record<string, { min: number; max: number; step: number }> = {}
         params.forEach(p => {
@@ -292,7 +245,8 @@ export function ComboConfigurePage() {
                     })
                 })
                 if (!res.ok) {
-                    alert('Falha na otimização')
+                    const err = await res.json().catch(() => ({}))
+                    alert(refusalMessage(err?.detail, 'Falha na otimização'))
                     return
                 }
                 const result = await res.json()
@@ -395,7 +349,7 @@ export function ComboConfigurePage() {
             })
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}))
-                throw new Error(err.detail ?? 'Falha ao iniciar batch')
+                throw new Error(refusalMessage(err.detail, 'Falha ao iniciar batch'))
             }
             const data = await res.json()
             setBatchJobId(data.job_id)
@@ -406,89 +360,21 @@ export function ComboConfigurePage() {
         }
     }
 
-    useEffect(() => {
-        if (!batchJobId) return
-        const poll = async () => {
-            try {
-                const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}`)
-                if (!res.ok) return
-                const data = await res.json()
-                setBatchProgress(data)
-                if (['completed', 'failed', 'paused', 'cancelled'].includes(data.status)) {
-                    if (pollRef.current) {
-                        clearInterval(pollRef.current)
-                        pollRef.current = null
-                    }
-                    setBatchRunning(false)
-                    setBatchJobId(null)
-                    setBatchPauseCancelRequested(false)
-                    batchStartTimeRef.current = null
-                }
-            } catch {
-                /* ignore */
-            }
-        }
-        poll()
-        pollRef.current = setInterval(poll, 2000)
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current)
-        }
-    }, [batchJobId])
-
-    useEffect(() => {
-        if (!batchRunning) return
-        const t = setInterval(() => {
-            const start = batchStartTimeRef.current
-            if (start != null) setClientElapsedSec(Math.floor((Date.now() - start) / 1000))
-        }, 1000)
-        return () => clearInterval(t)
-    }, [batchRunning])
-
-    const selectTopSymbols = () => {
-        const list = activeSymbols
-        const top = list.filter(s => /^(BTC|ETH|BNB|SOL|XRP|ADA|DOGE|AVAX|MATIC|LINK)\/USDT$/i.test(s))
+    // Top 10: soma só os negociáveis da lista atual do catálogo (marcados e fora do catálogo ficam de fora).
+    const selectTopSymbols = async () => {
+        const tradable = await tradableCrypto(TOP10_SYMBOLS)
+        if (!tradable.length) return
         setSelectedSymbols(prev => {
             const next = new Set(prev)
-            top.forEach(x => next.add(x))
+            tradable.forEach(x => next.add(x))
             return [...next]
         })
-        setLeftHighlighted([])
-        setRightHighlighted([])
     }
 
-    const availableSymbols = activeSymbols.filter(s => !selectedSymbols.includes(s))
-    const leftFilterLower = leftFilter.trim().toLowerCase()
-    const availableFiltered = leftFilterLower
-        ? availableSymbols.filter(s => s.toLowerCase().includes(leftFilterLower))
-        : availableSymbols
-    const toggleLeft = (s: string) => {
-        setLeftHighlighted(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
-    }
-    const toggleRight = (s: string) => {
-        setRightHighlighted(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
-    }
-    const addSelected = () => {
-        if (leftHighlighted.length === 0) return
-        setSelectedSymbols(prev => [...prev, ...leftHighlighted])
-        setLeftHighlighted([])
-    }
-    const removeSelected = () => {
-        if (rightHighlighted.length === 0) return
-        setSelectedSymbols(prev => {
-            const next = prev.filter(s => !rightHighlighted.includes(s))
-            return next.length ? next : [defaultSymbol]
-        })
-        setRightHighlighted([])
-    }
-    const addAll = () => {
-        if (availableFiltered.length === 0) return
-        setSelectedSymbols(prev => [...prev, ...availableFiltered])
-        setLeftHighlighted([])
-    }
-    const clearToDefault = () => {
-        setSelectedSymbols([defaultSymbol])
-        setLeftHighlighted([])
-        setRightHighlighted([])
+    // Seleção vazia (último chip removido) volta ao padrão, como no incumbente.
+    const changeSymbols = (next: string[]) => {
+        setSelectedSymbols(next.length ? next : [defaultSymbol])
+        setRunNotice(null)
     }
 
     if (loading) {
@@ -568,161 +454,31 @@ export function ComboConfigurePage() {
                                 </div>
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-semibold text-zinc-500 mb-2">Escopo</label>
-                                <div className="flex flex-wrap gap-4 mb-4">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="scope"
-                                            checked={batchScope === 'all'}
-                                            onChange={() => {
-                                                setBatchScope('all')
-                                                setSelectedSymbols([...activeSymbols])
-                                                setLeftHighlighted([])
-                                                setRightHighlighted([])
-                                                setLeftFilter('')
-                                            }}
-                                            className="rounded-full border-zinc-300"
-                                        />
-                                        <span className="text-sm text-zinc-900">Todos</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="scope"
-                                            checked={batchScope === 'selected'}
-                                            onChange={() => {
-                                                setBatchScope('selected')
-                                                setSelectedSymbols(prev => (prev.length ? prev : [defaultSymbol]))
-                                                setLeftHighlighted([])
-                                                setRightHighlighted([])
-                                                setLeftFilter('')
-                                            }}
-                                            className="rounded-full border-zinc-300"
-                                        />
-                                        <span className="text-sm text-zinc-900">Seleciona</span>
-                                    </label>
-                                </div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">
                                     <DollarSign className="w-4 h-4 inline mr-1" />
                                     Ativos
                                 </label>
-                                <p className="text-xs text-zinc-400 mb-2">
-                                    {batchScope === 'all'
-                                        ? 'Todos selecionados. Otimizar 1: usa o primeiro; N: batch em todos.'
-                                        : <>1 ativo: otimiza o <strong>primeiro</strong>. N ativos: <strong>batch</strong> nos selecionados.</>}
+                                <p className="text-xs text-zinc-400 mb-2" data-testid="combo-scope-hint">
+                                    1 ativo: otimiza o <strong>primeiro</strong>. N ativos: <strong>batch</strong> nos selecionados.
                                 </p>
-                                {batchScope === 'all' ? (
-                                    <div className="py-6 rounded-[16px] bg-zinc-50 border border-zinc-200 text-center text-zinc-400 text-sm">
-                                        Modo Todos — todos os ativos do mercado selecionado serão usados. Altere para &quot;Seleciona&quot; para escolher ativos.
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="flex gap-2 mb-2">
-                                            <button
-                                                type="button"
-                                                onClick={selectTopSymbols}
-                                                className="text-xs px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-[16px] hover:bg-purple-500/30 transition-colors"
-                                            >
-                                                Top 10
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={clearToDefault}
-                                                className="text-xs px-3 py-1.5 bg-zinc-100 text-zinc-500 rounded-[16px] hover:bg-zinc-100 transition-colors"
-                                            >
-                                                Limpar (1 ativo)
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
-                                            <div className="flex flex-col min-h-0">
-                                                <div className="text-xs text-zinc-400 mb-1 font-medium">Selecione</div>
-                                                <div className="relative mb-1.5">
-                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                                    <input
-                                                        type="text"
-                                                        value={leftFilter}
-                                                        onChange={(e) => setLeftFilter(e.target.value)}
-                                                        placeholder="Filtrar ativo…"
-                                                        className="w-full pl-8 pr-3 py-1.5 rounded-[14px] border border-zinc-200 bg-white0 text-sm text-zinc-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
-                                                    />
-                                                </div>
-                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-[16px] border border-zinc-200 bg-white0 p-1 space-y-0.5">
-                                                    {availableFiltered.map(s => (
-                                                        <div
-                                                            key={s}
-                                                            onClick={() => toggleLeft(s)}
-                                                            onDoubleClick={() => { setSelectedSymbols(prev => [...prev, s]); setLeftHighlighted(prev => prev.filter(x => x !== s)) }}
-                                                            className={`px-3 py-1.5 rounded-[12px] text-sm cursor-pointer truncate ${leftHighlighted.includes(s) ? 'bg-blue-500/30 text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100'}`}
-                                                        >
-                                                            {s}
-                                                        </div>
-                                                    ))}
-                                                    {availableFiltered.length === 0 && (
-                                                        <div className="text-zinc-500 text-sm italic py-4 text-center">
-                                                            {availableSymbols.length === 0 ? 'Nenhum disponível' : 'Nenhum resultado para o filtro'}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col justify-center gap-1 py-6">
-                                                <button
-                                                    type="button"
-                                                    onClick={addSelected}
-                                                    disabled={leftHighlighted.length === 0}
-                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                    title="Adicionar selecionados"
-                                                >
-                                                    <ChevronRight className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={removeSelected}
-                                                    disabled={rightHighlighted.length === 0}
-                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                    title="Remover selecionados"
-                                                >
-                                                    <ChevronLeft className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={addAll}
-                                                    disabled={availableFiltered.length === 0}
-                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                    title={leftFilter.trim() ? 'Adicionar todos (filtrados)' : 'Adicionar todos'}
-                                                >
-                                                    <ChevronsRight className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={clearToDefault}
-                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 transition-colors"
-                                                    title="Limpar seleção"
-                                                >
-                                                    <ChevronsLeft className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                            <div className="flex flex-col min-h-0">
-                                                <div className="text-xs text-zinc-400 mb-1 font-medium">Selecionados</div>
-                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-[16px] border border-zinc-200 bg-white0 p-1 space-y-0.5">
-                                                    {selectedSymbols.map(s => (
-                                                        <div
-                                                            key={s}
-                                                            onClick={() => toggleRight(s)}
-                                                            onDoubleClick={() => setSelectedSymbols(prev => (prev.filter(x => x !== s).length ? prev.filter(x => x !== s) : [defaultSymbol]))}
-                                                            className={`px-3 py-1.5 rounded-[12px] text-sm cursor-pointer truncate ${rightHighlighted.includes(s) ? 'bg-blue-500/30 text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100'}`}
-                                                        >
-                                                            {s}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <p className="text-xs text-zinc-500 mt-1">
-                                            Clique para marcar; duplo clique para mover. Use os botões entre as listas para adicionar/remover.
-                                        </p>
-                                    </>
-                                )}
+                                <AssetPicker
+                                    value={selectedSymbols}
+                                    onChange={changeSymbols}
+                                    ariaLabel="Seletor de ativos"
+                                    clearTo={[defaultSymbol]}
+                                    clearLabel="Limpar (1 ativo)"
+                                    classNote="Ações e ETFs ficam na seleção. Nesta etapa a otimização roda só com pares cripto em USDT; ao otimizar, eles ficam fora com aviso."
+                                    extraActions={(
+                                        <button
+                                            type="button"
+                                            className="ap-btn"
+                                            data-testid="combo-top10"
+                                            onClick={() => void selectTopSymbols()}
+                                        >
+                                            Top 10
+                                        </button>
+                                    )}
+                                />
                             </div>
 
                             <div>
@@ -942,18 +698,18 @@ export function ComboConfigurePage() {
                                 ajuda
                             </span>
                         </h2>
-                        <p className="text-sm text-zinc-400 mb-4">
-                            {getBatchSymbols().length === 1
-                                ? '1 ativo selecionado: otimiza, salva em favoritos e abre a página de favoritos.'
-                                : batchScope === 'all'
-                                    ? 'Todos os pares: batch (pode demorar). Cada resultado é salvo em favoritos.'
-                                    : `${selectedSymbols.length} ativos: batch. Cada resultado é salvo em favoritos.`}
+                        <p
+                            className={`text-sm mb-4 ${copy.blocked ? 'text-amber-300' : 'text-zinc-400'}`}
+                            data-testid="combo-run-copy"
+                        >
+                            {copy.text}
                         </p>
 
                         <div className="flex flex-wrap items-center gap-4">
                             <button
                                 onClick={handleRun}
-                                disabled={batchRunning || running}
+                                disabled={batchRunning || running || selectionLoading}
+                                data-testid="combo-run"
                                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-zinc-900 font-bold py-4 px-10 rounded-[16px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
                             >
                                 {batchRunning || running ? (
@@ -979,85 +735,27 @@ export function ComboConfigurePage() {
                             </button>
                         </div>
 
-                        {batchRunning && (
-                            <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-[16px]">
-                                <div className="flex items-center gap-2 text-blue-300 font-medium mb-2">
-                                    <Settings className="w-4 h-4 animate-spin" />
-                                    {(batchProgress?.processed ?? 0)} de {batchProgress?.total ?? batchTotal} ativos
-                                </div>
-                                {batchProgress?.current_symbol && (
-                                    <p className="text-sm text-cyan-700/90 mb-2">
-                                        Ativo atual: <span className="font-medium">{batchProgress.current_symbol}</span>
-                                    </p>
-                                )}
-                                <div className="text-sm text-zinc-500 space-y-1">
-                                    <p>Tempo decorrido: {formatElapsed(clientElapsedSec)}</p>
-                                    {(() => {
-                                        const p = batchProgress?.processed ?? 0
-                                        const t = batchProgress?.total ?? batchTotal
-                                        const eta = batchProgress?.estimated_remaining_sec
-                                        if (p > 0 && p < t && eta != null) return <p>Tempo restante: ~{formatElapsed(Math.ceil(eta))}</p>
-                                        if (p > 0 && p < t) return <p>Tempo restante: calculando…</p>
-                                        return null
-                                    })()}
-                                </div>
-                                <div className="flex gap-2 mt-3">
-                                    <button
-                                        type="button"
-                                        onClick={handlePauseBatch}
-                                        disabled={batchPauseCancelRequested}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[16px] bg-amber-500/20 text-amber-700 border border-amber-500/40 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                                    >
-                                        <Pause className="w-4 h-4" />
-                                        Pausar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleCancelBatch}
-                                        disabled={batchPauseCancelRequested}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[16px] bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                                    >
-                                        <Square className="w-4 h-4" />
-                                        Encerrar
-                                    </button>
-                                </div>
+                        {runNotice ? (
+                            <div
+                                className={runNotice.tone === 'alert' ? 'ap-alert' : 'ap-warn'}
+                                role={runNotice.tone === 'alert' ? 'alert' : 'status'}
+                                data-testid="run-warning"
+                            >
+                                <strong>{runNotice.title}</strong>
+                                {runNotice.body}
                             </div>
-                        )}
+                        ) : null}
 
-                        {!batchRunning && batchProgress && ['completed', 'failed', 'paused', 'cancelled'].includes(batchProgress.status) && (
-                            <div className="mt-4 p-4 bg-zinc-50 border border-zinc-200 rounded-[16px] space-y-2">
-                                <p className="text-sm font-medium text-zinc-900">
-                                    {batchProgress.status === 'cancelled' && 'Encerrado pelo usuário. '}
-                                    {batchProgress.status === 'paused' && 'Pausado pelo usuário. '}
-                                    {batchProgress.succeeded} sucesso, {batchProgress.failed} falha
-                                    {(batchProgress.skipped ?? 0) > 0 && `, ${batchProgress.skipped} ignorado(s) (já em favoritos ou não suportados)`}.
-                                </p>
-                                {batchProgress.errors.length > 0 && (
-                                    <details className="text-xs text-zinc-400">
-                                        <summary>Erros por ativo</summary>
-                                        <ul className="mt-1 list-disc list-inside">
-                                            {batchProgress.errors.map((e, i) => (
-                                                <li key={i}>{e.symbol}: {e.error}</li>
-                                            ))}
-                                        </ul>
-                                    </details>
-                                )}
-                                <button
-                                    onClick={() => navigate('/favorites')}
-                                    className="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-700"
-                                >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Abrir Strategy Favorites
-                                </button>
-                                <button
-                                    onClick={() => navigate('/combo/discovery')}
-                                    className="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-700"
-                                >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Descoberta sistemática (varredura)
-                                </button>
-                            </div>
-                        )}
+                        <BatchProgressPanel
+                            batchRunning={batchRunning}
+                            batchProgress={batchProgress}
+                            batchTotal={batchTotal}
+                            clientElapsedSec={clientElapsedSec}
+                            pauseCancelRequested={batchPauseCancelRequested}
+                            onPause={handlePauseBatch}
+                            onCancel={handleCancelBatch}
+                            showDiscoveryLink
+                        />
                     </div>
                 </div>
             </main>

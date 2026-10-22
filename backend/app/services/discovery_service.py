@@ -89,6 +89,10 @@ INVALID_SELECTION_GUIDANCE = (
     "A seleção não é válida para iniciar. " "Ajuste a seleção, refaça o preflight e inicie de novo."
 )
 
+# Detalhe por combinação do que o catálogo deixa fora (ação, ETF e ativo marcado). O total
+# (`excluded_count`) e a contagem por ativo (`excluded_assets`) seguem exatos além do limite.
+CATALOG_EXCLUSION_DETAIL_LIMIT = 200
+
 STRUCTURE_VERSION = "discovery-structure-v1"
 QUANTUM_VERSION = "discovery-quantum-v1"
 CANONICAL_ALIASES = {
@@ -401,7 +405,13 @@ class DiscoveryService:
             except Exception:
                 template_meta[template] = {}
 
+        from app.services.asset_analysis_guard import discovery_symbol_reasons
+
+        catalog_reasons = discovery_symbol_reasons(normalized_symbols)
+
         exclusions: dict[str, dict[str, Any]] = {}
+        catalog_combinations: dict[str, int] = {}
+        catalog_detail = 0
         valid: list[dict[str, Any]] = []
         raw_total = (
             len(normalized_templates)
@@ -415,9 +425,24 @@ class DiscoveryService:
                     for direction in normalized_directions:
                         key = f"{template} × {symbol} × {timeframe} × {direction}"
                         reason = self._combination_reason(
-                            template, symbol, timeframe, direction, template_meta
+                            template,
+                            symbol,
+                            timeframe,
+                            direction,
+                            template_meta,
+                            catalog_reasons,
                         )
                         if reason:
+                            catalog_info = catalog_reasons.get(symbol)
+                            if catalog_info and reason == catalog_info["reason"]:
+                                # Milhares de ações e ETFs viram milhares de combinações
+                                # fora: o total é exato, o detalhe por combinação é limitado.
+                                catalog_combinations[symbol] = (
+                                    catalog_combinations.get(symbol, 0) + 1
+                                )
+                                catalog_detail += 1
+                                if catalog_detail > CATALOG_EXCLUSION_DETAIL_LIMIT:
+                                    continue
                             exclusions.setdefault(
                                 key,
                                 {
@@ -441,6 +466,21 @@ class DiscoveryService:
                         )
 
         valid_total = len(valid)
+        excluded_assets = self._excluded_assets(
+            normalized_symbols, catalog_reasons, catalog_combinations
+        )
+        if valid_total == 0 and excluded_assets and not axis_errors:
+            # Nada sobra para rodar por causa do catálogo: o Preflight bloqueia
+            # com o motivo, sem criar varredura (decisão 6).
+            only_class = all(item["kind"] == "class" for item in excluded_assets)
+            axis_errors["symbols"] = (
+                "Nenhuma combinação válida: análise ainda não disponível para ações e ETFs. "
+                "Inclua ao menos 1 par cripto negociável em USDT."
+                if only_class
+                else "Nenhuma combinação válida: os ativos escolhidos estão fora da análise "
+                "(ações, ETFs ou ativos marcados pela Binance). "
+                "Inclua ao menos 1 par cripto negociável em USDT."
+            )
         if valid_total > DEFAULT_MAX_TOTAL:
             axis_errors["total"] = f"total válido {valid_total} excede o limite {DEFAULT_MAX_TOTAL}"
 
@@ -477,6 +517,7 @@ class DiscoveryService:
             },
             "raw_total": raw_total,
             "exclusions": exclusions,
+            "excluded_assets": excluded_assets,
             "excluded_count": raw_total - valid_total,
             "valid_total": valid_total,
             "limits": {
@@ -502,6 +543,7 @@ class DiscoveryService:
         timeframe: str,
         direction: str,
         template_meta: dict[str, dict[str, Any]],
+        catalog_reasons: dict[str, dict[str, Any]] | None = None,
     ) -> str | None:
         from app.services.opportunity_service import is_excluded_symbol
 
@@ -509,11 +551,38 @@ class DiscoveryService:
             return "template não suportado"
         if is_excluded_symbol(symbol):
             return "símbolo excluído"
+        catalog_reason = (catalog_reasons or {}).get(symbol)
+        if catalog_reason:
+            return catalog_reason["reason"]
         meta = template_meta[template]
         template_direction = str(meta.get("direction") or "long")
         if direction == "short" and template_direction == "long":
             return "template não suporta short"
         return None
+
+    @staticmethod
+    def _excluded_assets(
+        symbols: list[str],
+        catalog_reasons: dict[str, dict[str, Any]],
+        combos_by_symbol: dict[str, int],
+    ) -> list[dict[str, Any]]:
+        """Ativos que o catálogo deixa fora da varredura, com motivo e combinações."""
+        assets = []
+        for symbol in symbols:
+            info = catalog_reasons.get(symbol)
+            if not info:
+                continue
+            assets.append(
+                {
+                    "symbol": symbol,
+                    "asset_class": info["asset_class"],
+                    "state": info["state"],
+                    "kind": info["kind"],
+                    "reason": info["reason"],
+                    "combinations": combos_by_symbol.get(symbol, 0),
+                }
+            )
+        return assets
 
     # --- Criação idempotente ----------------------------------------------
 

@@ -42,6 +42,7 @@ from app.services.batch_backtest_service import (
     request_cancel_batch,
 )
 from app.services.batch_backtest_queue import enqueue_batch_backtest
+from app.services.asset_analysis_guard import refusal_for_symbols
 from app.services.strategy_transparency import build_strategy_transparency
 from app.middleware.authMiddleware import get_current_admin
 
@@ -49,24 +50,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
 
 
-def _ensure_crypto_symbol(symbol: str) -> None:
-    if "/" not in str(symbol or "").strip():
-        raise HTTPException(
-            status_code=400,
-            detail="The MVP supports only crypto pairs such as BTC/USDT.",
-        )
+def _refuse_assets(symbols: List[str], *, new_analysis: bool) -> None:
+    """Recusa estruturada (422) de ação, ETF e, em análise nova, ativo marcado (#1117)."""
+    detail = refusal_for_symbols(symbols, new_analysis=new_analysis)
+    if detail is not None:
+        raise HTTPException(status_code=422, detail=detail)
 
 
-def _ensure_crypto_symbols(symbols: List[str]) -> None:
-    blocked = [symbol for symbol in symbols if "/" not in str(symbol or "").strip()]
-    if blocked:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "The MVP supports only crypto pairs such as BTC/USDT. "
-                f"Unsupported symbols: {', '.join(blocked[:5])}"
-            ),
-        )
+def _ensure_crypto_symbol(symbol: str, *, new_analysis: bool = False) -> None:
+    """Backtest (inclui reabrir resultados salvos): só ação e ETF são recusados."""
+    _refuse_assets([symbol], new_analysis=new_analysis)
+
+
+def _ensure_crypto_symbols(symbols: List[str], *, new_analysis: bool = False) -> None:
+    _refuse_assets(symbols, new_analysis=new_analysis)
 
 
 def _ensure_crypto_data_source(data_source: str) -> None:
@@ -663,7 +660,7 @@ async def optimize_combo_strategy(
         logger.info(
             f"Starting optimization for template: {request.template_name} on {request.symbol} {request.timeframe}"
         )
-        _ensure_crypto_symbol(request.symbol)
+        _ensure_crypto_symbol(request.symbol, new_analysis=True)
         data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
         _ensure_crypto_data_source(data_source)
 
@@ -758,7 +755,7 @@ async def start_batch_backtest(
     Poll GET /api/combos/backtest/batch/{job_id} for progress.
     """
     try:
-        _ensure_crypto_symbols(request.symbols)
+        _ensure_crypto_symbols(request.symbols, new_analysis=True)
         data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
         _ensure_crypto_data_source(data_source)
         job_id = str(uuid.uuid4())
