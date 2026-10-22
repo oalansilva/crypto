@@ -1,0 +1,113 @@
+# Regenera as imagens de referencia (baselines) dos testes visuais do Playwright
+# no runner fixo do CI. Card #1133, design D3/D4.
+#
+# Quando usar: so quando a versao fixa do Playwright ou o rotulo do runner mudam.
+# Cards de tela continuam atualizando baselines no DEV junto com a tela
+# (docs/crypto-overlay.md, secao de testes visuais).
+#
+# Como disparar:
+#   - Rotulo `regerar-baselines` no pull request (evento `labeled`).
+#     Para repetir o disparo no mesmo PR e preciso TIRAR o rotulo e REPOR:
+#     `labeled` so dispara quando o rotulo e adicionado. Alternativa:
+#     `workflow_dispatch` (Actions > playwright-baselines > Run workflow, escolhendo a
+#     branch), que so aparece depois que este arquivo existe na branch padrao.
+#
+# O que faz: roda `playwright test --update-snapshots=all` nos projetos visuais e
+# sobe o artefato `playwright-baselines-<run_id>` com:
+#   snapshots/                    as PNG novas, no caminho do repositorio
+#   comparacao/index.html         antes, depois e mascara de cada imagem
+#   comparacao/manifest.json      SHA-256 antes/depois, dimensoes, fracao de pixels
+#                                 diferentes e o conjunto (digest) das baselines
+#
+# O que NAO faz: nao grava no repositorio (contents: read), nao faz commit, nao e
+# dependencia do `qa-gate` nem de job algum do ci.yml, e nao aprova nada. A
+# aprovacao das imagens e um comentario de Alan no card (openspec/changes/
+# card-1133-ci-playwright-ubuntu26/design.md, D4).
+name: playwright-baselines
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate-baselines:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.label.name == 'regerar-baselines'
+    # A concorrencia fica no job (nao no workflow): outro rotulo no PR cria uma
+    # run cujo job e pulado pelo `if` e nao pode cancelar a regeneracao em curso.
+    concurrency:
+      group: playwright-baselines-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+    steps:
+      # Mesmo checkout do e2e-playwright do ci.yml (merge ref do PR).
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Install Playwright browsers
+        run: npx --prefix frontend playwright install --with-deps chromium
+
+      - name: Keep current baselines as "before"
+        run: |
+          mkdir -p "${RUNNER_TEMP}/baselines-before"
+          git ls-files -z 'frontend/tests/e2e/*-snapshots/*.png' \
+            | xargs -0 cp --parents -t "${RUNNER_TEMP}/baselines-before"
+          find "${RUNNER_TEMP}/baselines-before" -name '*.png' | wc -l
+
+      - name: Regenerate visual baselines
+        working-directory: frontend
+        run: >-
+          npx playwright test
+          --project=visual-desktop --project=visual-mobile
+          --update-snapshots=all
+          --output="${RUNNER_TEMP}/baselines-test-results"
+
+      - name: Set up Python for the comparison
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install comparison dependencies
+        run: python -m pip install --disable-pip-version-check "pillow==12.2.0" "numpy==2.4.6"
+
+      - name: Build before/after comparison
+        run: >-
+          python scripts/playwright_baselines_compare.py
+          --before "${RUNNER_TEMP}/baselines-before"
+          --repo-root "${GITHUB_WORKSPACE}"
+          --out "${RUNNER_TEMP}/baselines-artifact"
+
+      - name: Upload regenerated baselines and comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-baselines-${{ github.run_id }}
+          if-no-files-found: error
+          path: ${{ runner.temp }}/baselines-artifact
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-baselines-failure-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/baselines-test-results
+            frontend/playwright-report
