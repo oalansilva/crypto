@@ -1,4 +1,5 @@
 # file: backend/app/api.py
+import asyncio
 import os
 import threading
 import time
@@ -78,14 +79,19 @@ async def list_presets():
 
 @router.get("/exchanges/binance/symbols")
 async def get_binance_symbols():
-    """Get all available USDT trading pairs from Binance (excludes unsupported/delisted)."""
-    from app.services.exchange_service import ExchangeService
-    from app.services.opportunity_service import _is_unsupported_symbol
+    """Pares cripto USDT negociáveis, lidos do catálogo de ativos (#1117).
 
-    service = ExchangeService()
-    raw = service.fetch_binance_symbols()
-    symbols = [s for s in raw if not _is_unsupported_symbol(s)]
+    Mantido por compatibilidade; pausados e removidos não entram. Sem lista
+    válida de cripto a rota responde 503 com motivo, nunca lista vazia nem fixa.
+    """
+    from app.services.asset_catalog_service import list_tradable_crypto_symbols
 
+    symbols = await asyncio.to_thread(list_tradable_crypto_symbols)
+    if symbols is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Lista de cripto da Binance indisponível agora. Tente de novo em instantes.",
+        )
     return {"symbols": symbols, "count": len(symbols)}
 
 

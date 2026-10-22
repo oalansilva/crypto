@@ -52,10 +52,19 @@ def get_excluded_symbols() -> FrozenSet[str]:
     return _EXCLUDED
 
 
+# Pares legítimos cujo ativo base termina em UP (JUP, SYRUP) e que a regra de
+# sufixo não pode excluir. Revisão do card #1117 contra a lista spot USDT de
+# 20/10/2026: os tokens alavancados UP/DOWN não constam mais no spot, e estes
+# dois são os únicos falsos positivos da regra.
+LEGITIMATE_UP_DOWN_PAIRS: FrozenSet[str] = frozenset({"JUP/USDT", "SYRUP/USDT"})
+
+
 def _base_ends_with_up_or_down(symbol: str) -> bool:
     """True se o ativo base termina com UP ou DOWN (ex.: ADAUP/USDT, BNBDOWN/USDT)."""
     s = (symbol or "").strip().upper()
     if not s or "/" not in s:
+        return False
+    if s in LEGITIMATE_UP_DOWN_PAIRS:
         return False
     base = s.split("/", 1)[0]
     return base.endswith("DOWN") or base.endswith("UP")

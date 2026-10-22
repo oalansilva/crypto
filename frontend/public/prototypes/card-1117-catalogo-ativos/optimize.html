@@ -1,0 +1,658 @@
+<!doctype html>
+<!-- Prototype card-1117-catalogo-ativos extra — /combo/optimize clone+delta (NÃO é o canônico).
+  Clone: página viva /combo/optimize (ComboOptimizePage: Configuration + Results vazio) no shell AppNav, Combo ativo.
+  DELTA only: campo de texto livre Symbol vira o seletor de ativos (vários ativos, "Todos do filtro" com contagem);
+  1 ativo roda a otimização viva; N ativos rodam o lote vivo do Combo (uma otimização por ativo, resultado em favoritos);
+  aviso de classe e de ativo marcado antes e depois de rodar; ?symbol= fora do catálogo não marca nada.
+  Copy em inglês do incumbente mantida. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Combo — otimizar</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0e11'/%3E%3Crect x='3' y='3' width='10' height='10' fill='%23fcd535'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg-primary:#0b0e11; --bg-secondary:#181a20; --bg-elevated:#1e2329; --bg-input:#2b3139;
+      --accent:#fcd535; --accent-active:#f0b90b; --primary-disabled:#3a3a1f;
+      --success:#0ecb81; --danger:#f6465d; --danger-text:#ff8294; --info:#3b82f6; --warning:#f59e0b;
+      --text-primary:#fff; --text-secondary:#eaecef; --text-tertiary:#929aa5; --text-muted:#707a8a;
+      --border:#2b3139; --sidebar:224px; --header:80px; --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px;
+      --font:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      --numbers:"IBM Plex Sans","JetBrains Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    html{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font)}
+    body{margin:0;min-width:320px;min-height:100vh;background:var(--bg-primary);font-size:14px;line-height:1.5}
+    button,input,select{font:inherit;min-height:44px}
+    button{cursor:pointer}
+    button:disabled{cursor:not-allowed}
+    :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .icon{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sidebar{position:fixed;inset:0 auto 0 0;z-index:30;width:var(--sidebar);display:flex;flex-direction:column;padding:12px 10px;border-right:1px solid rgba(43,49,57,.72);background:rgba(24,26,32,.97)}
+    .brand{height:61px;display:flex;align-items:center;padding:0 8px 10px}.brand img{width:172px;height:48px;object-fit:contain;object-position:left center}
+    .workspace-card{margin:0 4px 16px;padding:10px 12px;border:1px solid rgba(43,49,57,.72);border-radius:var(--radius-lg);background:var(--bg-secondary)}
+    .meta-label{color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}.workspace-name{margin-top:4px;font-size:13px;font-weight:600}
+    .env{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:var(--text-tertiary);font-size:12px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--info)}.compact-env{margin:0;font-size:10px;font-weight:700}
+    nav{flex:1;overflow:auto}.nav-section{margin-bottom:18px}.nav-title{padding:0 9px 7px;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+    .nav-item{position:relative;display:flex;align-items:center;gap:10px;min-height:42px;margin-bottom:4px;padding:9px 12px;border:1px solid transparent;border-radius:var(--radius-lg);color:var(--text-tertiary);text-decoration:none;font-size:13px;font-weight:500}
+    .nav-item.active{border-color:rgba(252,213,53,.36);background:rgba(252,213,53,.10);color:var(--text-primary)}.nav-item.active:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:999px;background:var(--accent)}.nav-item.active .icon{color:var(--accent)}
+    .collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-top:1px solid rgba(43,49,57,.72);background:transparent;color:var(--text-tertiary)}
+    .topbar{position:fixed;left:var(--sidebar);right:0;top:0;z-index:20;height:var(--header);border-bottom:1px solid rgba(43,49,57,.72);background:rgba(11,14,17,.94)}.topbar-inner{max-width:1544px;height:100%;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.topbar-title{font-size:18px;font-weight:600}
+    .account{display:flex;align-items:center;gap:10px;min-height:50px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.avatar{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(252,213,53,.24);border-radius:50%;background:rgba(252,213,53,.10);color:var(--accent);font-weight:700}.account small{display:block;color:var(--text-muted);font-size:10px;letter-spacing:.15em;text-transform:uppercase}
+    .mobilebar{display:none}.main{margin-left:var(--sidebar);padding-top:var(--header)}.page{width:min(100%,880px);margin:0 auto;padding:24px 32px 52px}
+    .card{border:1px solid var(--border);border-radius:16px;background:var(--bg-elevated);margin-bottom:20px;padding:24px}
+    .card h2{margin:0 0 16px;font-size:20px}
+    .meta{margin:0 0 8px;color:var(--text-tertiary);font-size:13px}
+    .meta p{margin:4px 0 0;color:var(--text-secondary)}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .chip{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border:1px solid rgba(59,130,246,.35);border-radius:8px;color:#93c5fd;font-size:12px;font-weight:600}
+    code.logic{display:block;margin-top:6px;padding:12px;border-radius:12px;background:var(--bg-primary);color:var(--success);font-size:13px}
+    code.logic.exit{color:var(--danger-text)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .field span,.field-label{display:block;margin-bottom:8px;color:var(--text-tertiary);font-size:13px;font-weight:650}
+    .control,.config-control{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-input);color:var(--text-primary)}
+    .readonly{padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-secondary);color:var(--text-muted);font-size:13px}
+    .hint{margin:8px 0 0;padding:12px;border:1px solid rgba(59,130,246,.3);border-radius:12px;background:rgba(59,130,246,.08);color:#93c5fd;font-size:13px}
+    .imp{margin-top:10px;padding:10px 12px;border:1px solid rgba(245,158,11,.35);border-radius:12px;background:rgba(245,158,11,.06);color:#fbbf24;font-size:12px}
+    .imp ul{margin:6px 0 0;padding-left:18px;color:var(--text-secondary)}
+    .custom-dates{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    .check{display:flex;align-items:flex-start;gap:12px;margin-top:16px}
+    .check input{width:20px;height:20px;margin-top:2px;accent-color:var(--info)}
+    .cta{display:flex;align-items:center;justify-content:center;width:100%;margin-top:20px;min-height:44px;border:1px solid var(--accent);border-radius:12px;background:var(--accent);color:#181a20;font-weight:700}
+    .cta:disabled{border-color:var(--primary-disabled);background:var(--primary-disabled);color:var(--text-muted)}
+    @media(max-width:1023px){.sidebar,.topbar{display:none}.mobilebar{position:fixed;inset:0 0 auto 0;z-index:30;height:72px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,14,17,.96)}.menu-button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-elevated);color:var(--text-secondary)}.mobile-title{min-width:0;flex:1}.mobile-title strong,.mobile-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-title span{color:var(--text-muted);font-size:12px}.main{margin-left:0;padding-top:72px}.grid,.custom-dates{grid-template-columns:1fr}.page{padding:18px 16px 40px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+    /* DELTA #1117 — seletor de ativos (mesmo bloco em index.html, combo.html e optimize.html) */
+    .ap{min-width:0;padding:14px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-secondary);margin-bottom:14px}
+    .ap-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .ap-head h3{margin:0;color:var(--text-secondary);font-size:14px}
+    .ap-count{margin:2px 0 0;color:var(--text-tertiary);font-size:12px}
+    .ap-fresh{margin:2px 0 0;color:var(--text-tertiary);font-size:12px}
+    .ap-search{width:100%;margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-input);color:var(--text-primary)}
+    .ap-classes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .ap-class{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-tertiary);font-size:13px;font-weight:600}
+    .ap-class[aria-pressed="true"]{border-color:rgba(252,213,53,.5);background:rgba(252,213,53,.1);color:var(--accent)}
+    .ap-class .n{font-family:var(--numbers);font-size:12px;color:inherit;opacity:.85}
+    .ap-class.unavailable .n{color:var(--danger-text);opacity:1}
+    .ap-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;min-height:120px}
+    .ap-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;min-height:52px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-primary);cursor:pointer}
+    .ap-row input{width:18px;height:18px;min-height:18px;margin:0;accent-color:var(--accent)}
+    .ap-row.marked{border-style:dashed;cursor:default}
+    .ap-row input:disabled{opacity:.35;cursor:not-allowed}
+    .ap-id{min-width:0}
+    .ap-id strong{display:block;color:var(--text-primary);font-size:14px;font-family:var(--numbers)}
+    .ap-id span{display:block;overflow:hidden;color:var(--text-tertiary);font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+    .ap-facts{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;max-width:360px}
+    .fact{display:inline-flex;align-items:center;min-height:24px;padding:2px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-tertiary);font-size:12px;white-space:nowrap}
+    .fact.cls-crypto{border-color:rgba(252,213,53,.32);color:var(--accent)}
+    .fact.cls-stock{border-color:rgba(59,130,246,.42);color:#93c5fd}
+    .fact.cls-etf{border-color:rgba(14,203,129,.35);color:var(--success)}
+    .fact.st-ok{color:var(--text-tertiary)}
+    .fact.st-marked{border-color:rgba(245,158,11,.45);color:#fbbf24}
+    .fact.hist{border-style:dotted;color:var(--text-tertiary)}
+    .ap-reason{grid-column:2/-1;margin:0;color:#fbbf24;font-size:12px}
+    .ap-reason b{color:var(--text-secondary);font-weight:600}
+    .ap-empty{margin:0;padding:18px 12px;border:1px dashed var(--border);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:13px;text-align:center}
+    .ap-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;color:var(--text-tertiary);font-size:12px}
+    .ap-pager div{display:flex;gap:6px}
+    .ap-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-elevated);color:var(--text-secondary);font-size:13px;font-weight:600}
+    .ap-btn:disabled{opacity:.4}
+    .ap-btn.primary{border-color:var(--accent);background:var(--accent);color:#181a20}
+    .ap-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .ap-confirm{margin-top:10px;padding:12px;border:1px solid rgba(252,213,53,.4);border-radius:var(--radius-md);background:rgba(252,213,53,.06);color:var(--text-secondary);font-size:13px}
+    .ap-confirm p{margin:0 0 8px}
+    .ap-selected{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+    .ap-selected h4{margin:0 0 8px;color:var(--text-secondary);font-size:13px}
+    .ap-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .ap-chip{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 0 0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-secondary);font-size:12px}
+    .ap-chip.marked{border-style:dashed;border-color:rgba(245,158,11,.45)}
+    .ap-chip.more{padding:0 10px;border-style:dashed;color:var(--text-tertiary)}
+    .ap-chip .out{color:#fbbf24}
+    .ap-chip button{display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--text-tertiary);font-size:16px}
+    .ap-none{display:inline-flex;align-items:center;min-height:44px;color:var(--text-tertiary);font-size:12px}
+    .ap-note{margin:10px 0 0;padding:10px 12px;border:1px solid rgba(59,130,246,.3);border-radius:var(--radius-md);background:rgba(59,130,246,.08);color:#93c5fd;font-size:12px}
+    .ap-alert{margin:10px 0 0;padding:10px 12px;border:1px solid rgba(246,70,93,.45);border-radius:var(--radius-md);background:rgba(246,70,93,.08);color:var(--danger-text);font-size:13px}
+    .ap-alert strong{display:block;color:var(--text-primary)}
+    .ap-alert span{display:block}
+    .ap-alert-actions{display:flex;margin-top:8px}
+    .ap-warn{margin:10px 0 0;padding:10px 12px;border:1px solid rgba(245,158,11,.45);border-radius:var(--radius-md);background:rgba(245,158,11,.06);color:#fbbf24;font-size:13px}
+    .ap-warn strong{display:block;color:var(--text-secondary)}
+    .ap-warn.small{font-size:12px}
+    .pf-out{margin:12px 20px 0;padding:10px 12px;border:1px solid rgba(245,158,11,.35);border-radius:var(--radius-md);background:rgba(245,158,11,.06);color:#fbbf24;font-size:12px}
+    .pf-out ul{margin:6px 0 0;padding-left:18px;color:var(--text-secondary)}
+    .demo{display:block;margin:0 32px 32px calc(var(--sidebar) + 32px);padding:8px 12px;border:1px dashed var(--border);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-tertiary);font-size:12px}
+    .demo summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+    .demo fieldset{display:flex;flex-wrap:wrap;gap:4px 18px;margin:4px 0 0;padding:0;border:0}
+    .demo label,.demo a{display:flex;align-items:center;gap:8px;min-height:44px}
+    .demo a{color:var(--accent)}
+    .demo input{min-height:18px}
+    .demo .ap-btn{font-size:12px}
+    @media(max-width:1023px){.demo{margin:0 16px 24px}}
+    @media(max-width:720px){.ap-row{grid-template-columns:auto minmax(0,1fr)}.ap-facts{grid-column:2/-1;justify-content:flex-start;max-width:none}.ap-reason{grid-column:2/-1}.ap-pager{flex-direction:column;align-items:stretch}.demo fieldset{flex-direction:column}}
+    .ap{margin-bottom:0}
+    .opt-grid{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:24px;align-items:start}
+    .range-row{margin-top:10px;padding:12px;border-radius:12px;background:var(--bg-secondary)}.range-row b{display:block;margin-bottom:8px;color:var(--accent);font-size:13px}
+    .range-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.range-grid span{display:block;color:var(--text-muted);font-size:12px}
+    .empty-results{display:flex;min-height:400px;flex-direction:column;align-items:center;justify-content:center;text-align:center}.empty-results h3{margin:12px 0 8px;color:var(--text-tertiary);font-size:20px}.empty-results p{max-width:440px;margin:0;color:var(--text-muted)}
+    .empty-icon{display:grid;place-items:center;width:80px;height:80px;border-radius:50%;background:var(--bg-secondary);color:var(--text-muted);font-size:40px}
+    .ap.narrow .ap-row{grid-template-columns:auto minmax(0,1fr)}.ap.narrow .ap-facts{grid-column:2/-1;justify-content:flex-start;max-width:none}
+    @media(max-width:1023px){.opt-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <svg class="sr-only" aria-hidden="true">
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 17.5 6.5M12 4v2M20 12h-2M12 20v-2M4 12h2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h14a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3h12"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.4 2.4 0 1 1 3.9 1.9c-1 .7-1.6 1.1-1.6 2.6M12 17h.01"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </svg>
+
+  <!-- COPIED:start shell AppNav autenticado (sidebar 224px, Combo active) -->
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="brand"><img src="/brand/cripto-farol-logo-v6-transparent.svg" alt="Cripto Farol"></div>
+    <div class="workspace-card"><div class="meta-label">Painel</div><div class="workspace-name">Combo</div><div class="env">Ambiente DEV</div></div>
+    <nav>
+      <div class="nav-section"><div class="nav-title">Principal</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-bookmark"/></svg>Favoritos</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-activity"/></svg>Monitor</a></div>
+      <div class="nav-section"><div class="nav-title">Estratégias</div><a class="nav-item" href="index.html"><svg class="icon"><use href="#i-radar"/></svg>Descoberta</a><a class="nav-item active" href="#" aria-current="page"><svg class="icon"><use href="#i-layers"/></svg>Combo</a></div>
+      <div class="nav-section"><div class="nav-title">Carteira</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-wallet"/></svg>Carteira</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-help"/></svg>Ajuda</a></div>
+      <div class="nav-section"><div class="nav-title">Admin</div><a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg>Preferências do sistema</a><a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg>Usuários</a></div>
+    </nav>
+    <button class="collapse" type="button"><svg class="icon"><use href="#i-menu"/></svg>Recolher menu</button>
+  </aside>
+  <header class="topbar"><div class="topbar-inner"><div><div class="meta-label">Workspace</div><div class="topbar-title">Combo</div></div><div style="display:flex;align-items:center;gap:12px"><span class="env compact-env">Ambiente DEV</span><button class="account" type="button" aria-label="Abrir conta"><span class="avatar">AS</span><span><small>Conta</small>Alan Silva</span></button></div></div></header>
+  <header class="mobilebar"><button class="menu-button" type="button" aria-label="Abrir menu"><svg class="icon"><use href="#i-menu"/></svg></button><div class="mobile-title"><strong>Combo</strong><span>Otimizar template</span></div><span class="env compact-env">DEV</span><span class="avatar" aria-hidden="true">AS</span></header>
+  <!-- COPIED:end -->
+
+  <main class="main">
+    <div class="page" style="width:min(100%,1280px)">
+      <div class="opt-grid">
+        <div>
+          <!-- COPIED:start Configuration ComboOptimizePage (Strategy Template) -->
+          <section class="card">
+            <h2>Configuration</h2>
+            <label class="field"><span>Strategy Template</span>
+              <select class="config-control" aria-label="Strategy Template">
+                <option value="">Select Strategy...</option>
+                <option selected>multi_ma_crossover</option>
+                <option>bollinger_squeeze</option>
+                <option>donchian_breakout_volume</option>
+              </select>
+            </label>
+            <!-- COPIED:end -->
+            <!-- DELTA:start campo de texto livre "Symbol" vira o seletor de ativos (vários ativos + Todos do filtro) -->
+            <div style="margin-top:16px">
+              <span class="field-label">Ativos</span>
+              <section class="ap narrow" id="ap" aria-label="Seletor de ativos para otimizar" data-testid="asset-picker">
+                <div class="ap-head">
+                  <div>
+                    <p class="ap-count" data-ap="count" data-testid="asset-count" aria-live="polite">1 selecionado · 1 cripto</p>
+                    <p class="ap-fresh" data-ap="fresh" data-testid="catalog-fresh">Catálogo Binance · atualizado 20 out. 2026, 06:00</p>
+                  </div>
+                </div>
+                <div data-ap="banner"></div>
+                <input class="ap-search" type="search" data-ap="q" placeholder="Buscar por símbolo ou nome (ex.: BTC, NVDA, nvidia)" aria-label="Buscar ativos por símbolo ou nome" data-testid="asset-search" autocomplete="off">
+                <div class="ap-classes" role="group" aria-label="Filtrar por classe" data-ap="classes">
+                  <button type="button" class="ap-class" data-cls="all" aria-pressed="true">Todas <span class="n">8.685</span></button>
+                  <button type="button" class="ap-class" data-cls="crypto" aria-pressed="false">Cripto <span class="n">725</span></button>
+                  <button type="button" class="ap-class" data-cls="stock" aria-pressed="false">Ações <span class="n">4.832</span></button>
+                  <button type="button" class="ap-class" data-cls="etf" aria-pressed="false">ETFs <span class="n">3.128</span></button>
+                </div>
+                <div class="ap-list" role="group" aria-label="Resultado da busca de ativos" data-ap="list" data-testid="asset-results"></div>
+                <div class="ap-pager" data-ap="pager">
+                  <span data-ap="range" aria-live="polite">1–6 de 8.685</span>
+                  <div><button type="button" class="ap-btn" data-ap="prev">Anterior</button><button type="button" class="ap-btn" data-ap="next">Próxima</button></div>
+                </div>
+                <div class="ap-actions">
+                  <button type="button" class="ap-btn" data-ap="all" data-testid="asset-select-all">Todos do filtro (8.370)</button>
+                  <button type="button" class="ap-btn" data-ap="clear" data-testid="asset-clear">Limpar seleção</button>
+                </div>
+                <div class="ap-confirm" data-ap="confirm" role="alertdialog" aria-labelledby="ap-confirm-text" hidden>
+                  <p id="ap-confirm-text" data-ap="confirm-text"></p>
+                  <div class="ap-actions" style="margin-top:0">
+                    <button type="button" class="ap-btn primary" data-ap="confirm-ok">Incluir</button>
+                    <button type="button" class="ap-btn" data-ap="confirm-cancel">Cancelar</button>
+                  </div>
+                </div>
+                <div class="ap-selected">
+                  <h4>Selecionados</h4>
+                  <div class="ap-chips" data-ap="chips" data-testid="asset-chips"></div>
+                  <p class="ap-note" data-ap="class-note" data-testid="asset-class-note" hidden>Ações e ETFs ficam na seleção. Nesta etapa a otimização roda só com pares cripto em USDT; ao rodar, eles ficam fora com aviso.</p>
+                  <p class="ap-warn small" data-ap="marked-note" data-testid="asset-marked-note" role="status" hidden></p>
+                </div>
+              </section>
+            </div>
+            <!-- DELTA:end -->
+            <!-- COPIED:start Timeframe + Parameter Ranges + Run Optimization -->
+            <label class="field" style="display:block;margin-top:16px"><span>Timeframe</span>
+              <select class="config-control" aria-label="Timeframe">
+                <option>1m</option><option>5m</option><option>15m</option><option>30m</option><option selected>1h</option><option>4h</option><option>1d</option>
+              </select>
+            </label>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+              <span class="field-label">Parameter Ranges</span>
+              <div class="range-row"><b>ema_short_length</b><div class="range-grid"><label><span>Min</span><input class="config-control" type="number" value="4"></label><label><span>Max</span><input class="config-control" type="number" value="12"></label><label><span>Step</span><input class="config-control" type="number" value="1"></label></div></div>
+              <div class="range-row"><b>ema_long_length</b><div class="range-grid"><label><span>Min</span><input class="config-control" type="number" value="10"></label><label><span>Max</span><input class="config-control" type="number" value="30"></label><label><span>Step</span><input class="config-control" type="number" value="1"></label></div></div>
+            </div>
+            <button type="button" class="cta" id="btn-opt" data-testid="run-optimization">Run Optimization</button>
+            <!-- COPIED:end -->
+            <!-- DELTA:start cópia antes do clique + aviso de classe e de marcado ao rodar + progresso do lote -->
+            <p class="meta" id="opt-run-copy" data-testid="opt-run-copy" style="margin:10px 0 0">1 ativo: otimiza e mostra o resultado ao lado.</p>
+            <div id="run-warning" data-testid="run-warning" aria-live="assertive"></div>
+            <!-- DELTA:end -->
+          </section>
+        </div>
+        <!-- COPIED:start Results panel vazio ComboOptimizePage -->
+        <section class="card empty-results" aria-label="Resultados da otimização">
+          <div class="empty-icon" aria-hidden="true">⌕</div>
+          <h3>Ready to Optimize</h3>
+          <p>Select a strategy template and configure parameter ranges to find the best performing combination.</p>
+        </section>
+        <!-- COPIED:end -->
+      </div>
+    </div>
+  </main>
+  <!-- DELTA:start painel de demonstração no fim da página, sem position:fixed (só no protótipo; não vai para o produto) -->
+  <details class="demo" data-testid="demo-toggle">
+    <summary>Demonstração · catálogo</summary>
+    <fieldset>
+      <legend class="sr-only">Simular estado do catálogo Binance</legend>
+      <label><input type="radio" name="demo-catalog" value="ok" checked> Catálogo atualizado</label>
+      <label><input type="radio" name="demo-catalog" value="equity-stale"> Falha ao atualizar ações e ETFs (lista anterior)</label>
+      <label><input type="radio" name="demo-catalog" value="crypto-down"> Falha de cripto sem lista salva</label>
+      <a href="?symbol=XYZ/USDT">Abrir com ?symbol=XYZ/USDT (fora do catálogo)</a>
+      <a href="?symbol=NVDA">Abrir com ?symbol=NVDA</a>
+      <a href="?symbol=WAVES/USDT">Abrir com ?symbol=WAVES/USDT (favorito antigo, ativo pausado)</a>
+    </fieldset>
+  </details>
+  <!-- DELTA:end -->
+  <script>
+    /* DELTA #1117 — seletor de ativos compartilhado (mock estático).
+       Mesma lógica em index.html, combo.html e optimize.html; muda só o "host" (Preflight, lote, otimização).
+       Decisão de Alan (20/10/2026): ativo marcado pela Binance não pode ser escolhido para análise nova;
+       aparece só para explicar resultados, rascunhos e favoritos antigos. */
+    window.AssetPicker = (function () {
+      // Totais reais da leitura pública Binance de 20/10/2026 (ações e ETFs) e da lista spot USDT (cripto).
+      const TOTAL = { all: 8685, crypto: 725, stock: 4832, etf: 3128 };
+      const ELIGIBLE = { all: 8370, crypto: 511, stock: 4747, etf: 3112 };
+      const CLS_LABEL = { crypto: 'Cripto', stock: 'Ação', etf: 'ETF' };
+      const EQUITY_REASON = 'análise ainda não disponível para ações e ETFs';
+      const MARKED_REASON = 'marcado pela Binance, não entra em análise nova';
+      const CATALOG = [
+        ['crypto', 'BTC/USDT', 'Bitcoin', 'ok', 'Histórico local desde 17 ago. 2017'],
+        ['crypto', 'ETH/USDT', 'Ethereum', 'ok', 'Histórico local desde 17 ago. 2017'],
+        ['crypto', 'SOL/USDT', 'Solana', 'ok', 'Histórico local desde 11 ago. 2020'],
+        ['crypto', 'BNB/USDT', 'BNB', 'ok', 'Histórico local desde 06 nov. 2017'],
+        ['crypto', 'XRP/USDT', 'XRP', 'ok', 'Histórico local desde 04 mai. 2018'],
+        ['crypto', 'DOGE/USDT', 'Dogecoin', 'ok', 'Histórico local desde 05 jul. 2019'],
+        ['crypto', 'ADA/USDT', 'Cardano', 'ok', 'Histórico sob demanda'],
+        ['crypto', 'LINK/USDT', 'Chainlink', 'ok', 'Histórico sob demanda'],
+        ['crypto', 'ZRX/USDT', '0x Protocol', 'ok', 'Histórico sob demanda'],
+        ['crypto', 'WAVES/USDT', 'Waves', 'Suspenso', 'Histórico local até 31 mai. 2024', 'Negociação pausada pela Binance (status BREAK).'],
+        ['crypto', 'XMR/USDT', 'Monero', 'Suspenso', 'Histórico local até 20 fev. 2024', 'Negociação pausada pela Binance (status BREAK).'],
+        ['crypto', 'AGLD/USDT', 'Adventure Gold', 'Removido', 'Histórico local até 12 set. 2026', 'Saiu da lista spot da Binance em 12 set. 2026.'],
+        ['stock', 'NVDA', 'NVIDIA Corporation Common Stock', 'ok', 'Histórico não coletado'],
+        ['stock', 'AAPL', 'Apple Inc. Common Stock', 'ok', 'Histórico não coletado'],
+        ['stock', 'MSFT', 'Microsoft Corporation Common Stock', 'ok', 'Histórico não coletado'],
+        ['stock', 'AMZN', 'Amazon.com, Inc. Common Stock', 'ok', 'Histórico não coletado'],
+        ['stock', 'TSLA', 'Tesla, Inc. Common Stock', 'ok', 'Histórico não coletado'],
+        ['stock', 'COIN', 'Coinbase Global, Inc. Class A Common Stock', 'ok', 'Histórico não coletado'],
+        ['stock', 'AMD', 'Advanced Micro Devices, Inc. Common Stock', 'ok', 'Histórico não coletado'],
+        ['stock', 'MU', 'Micron Technology, Inc. Common Stock', 'ok', 'Histórico não coletado'],
+        ['stock', 'AVB', 'AvalonBay Communities, Inc.', 'Fora de mercado', 'Histórico não coletado', 'A Binance marcou a ação como fora de mercado.'],
+        ['stock', 'FEED', 'ENvue Medical, Inc. Common Stock', 'Sem negociação', 'Histórico não coletado', 'A Binance não oferece compra nem venda.'],
+        ['stock', 'TMHC', 'Taylor Morrison Home Corporation Common Stock', 'Sem regras de negociação', 'Histórico não coletado', 'Está no catálogo da Binance, mas sem regras de negociação.'],
+        ['etf', 'SPY', 'State Street SPDR S&P 500 ETF Trust', 'ok', 'Histórico não coletado'],
+        ['etf', 'QQQ', 'Invesco QQQ Trust, Series 1', 'ok', 'Histórico não coletado'],
+        ['etf', 'VOO', 'Vanguard S&P 500 ETF', 'ok', 'Histórico não coletado'],
+        ['etf', 'IVV', 'iShares Core S&P 500 ETF', 'ok', 'Histórico não coletado'],
+        ['etf', 'GLD', 'SPDR Gold Trust, SPDR Gold Shares', 'ok', 'Histórico não coletado'],
+        ['etf', 'SMH', 'VanEck Semiconductor ETF', 'ok', 'Histórico não coletado'],
+        ['etf', 'NVDX', 'T-Rex 2X Long NVIDIA Daily Target ETF', 'ok', 'Histórico não coletado'],
+        ['etf', 'NVDQ', 'T-Rex 2X Inverse NVIDIA Daily Target ETF', 'ok', 'Histórico não coletado'],
+        ['etf', 'IBIC', 'iShares iBonds Oct 2026 Term TIPS ETF', 'Fora de mercado', 'Histórico não coletado', 'A Binance marcou o ETF como fora de mercado.']
+      ].map(function (r) {
+        return { id: (r[0] === 'crypto' ? 'binance:spot:' : 'binance:equity:EQ_') + r[1], cls: r[0], sym: r[1], name: r[2], status: r[3], hist: r[4], reason: r[5] || '' };
+      });
+      const BY_ID = Object.fromEntries(CATALOG.map(function (a) { return [a.id, a]; }));
+      const PAGE = 6;
+      function fmt(n) { return n.toLocaleString('pt-BR'); }
+      function norm(v) { return String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+      function esc(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+      function isMarked(a) { return a.status !== 'ok'; }
+      function outLabel(a) { return a.sym + ' (' + CLS_LABEL[a.cls] + (isMarked(a) ? ', ' + a.status : '') + ')'; }
+      function outReason(a) { return isMarked(a) ? a.reason.replace(/\.$/, '') + '; não entra em análise nova' : EQUITY_REASON; }
+
+      function mount(root, opts) {
+        const state = { q: '', cls: 'all', page: 1, sel: new Set(opts.initial || []), bulk: { crypto: 0, stock: 0, etf: 0 }, demo: 'ok', notice: '' };
+        const $ = function (sel) { return root.querySelector(sel); };
+        const els = {
+          q: $('[data-ap="q"]'), classes: $('[data-ap="classes"]'), list: $('[data-ap="list"]'), pager: $('[data-ap="pager"]'), range: $('[data-ap="range"]'),
+          prev: $('[data-ap="prev"]'), next: $('[data-ap="next"]'), all: $('[data-ap="all"]'), clear: $('[data-ap="clear"]'),
+          confirm: $('[data-ap="confirm"]'), confirmText: $('[data-ap="confirm-text"]'), ok: $('[data-ap="confirm-ok"]'), cancel: $('[data-ap="confirm-cancel"]'),
+          chips: $('[data-ap="chips"]'), count: $('[data-ap="count"]'), fresh: $('[data-ap="fresh"]'), banner: $('[data-ap="banner"]'),
+          note: $('[data-ap="class-note"]'), markedNote: $('[data-ap="marked-note"]')
+        };
+        function cryptoDown() { return state.demo === 'crypto-down'; }
+        function filtered() {
+          const q = norm(state.q.trim());
+          let rows = CATALOG.filter(function (a) {
+            if (cryptoDown() && a.cls === 'crypto') return false;
+            if (state.cls !== 'all' && a.cls !== state.cls) return false;
+            if (!q) return true;
+            return norm(a.sym).includes(q) || norm(a.sym.split('/')[0]) === q || norm(a.name).includes(q);
+          });
+          if (q) {
+            rows = rows.slice().sort(function (a, b) {
+              const ra = norm(a.sym) === q || norm(a.sym.split('/')[0]) === q ? 0 : norm(a.sym).startsWith(q) ? 1 : 2;
+              const rb = norm(b.sym) === q || norm(b.sym.split('/')[0]) === q ? 0 : norm(b.sym).startsWith(q) ? 1 : 2;
+              return ra - rb;
+            });
+          }
+          return rows;
+        }
+        function totalFor() {
+          if (state.q.trim()) return filtered().length;
+          if (cryptoDown()) return state.cls === 'crypto' ? 0 : state.cls === 'all' ? TOTAL.stock + TOTAL.etf : TOTAL[state.cls];
+          return TOTAL[state.cls];
+        }
+        function eligibleFor() {
+          if (state.q.trim()) return filtered().filter(function (a) { return !isMarked(a); }).length;
+          if (cryptoDown()) return state.cls === 'crypto' ? 0 : state.cls === 'all' ? ELIGIBLE.stock + ELIGIBLE.etf : ELIGIBLE[state.cls];
+          return ELIGIBLE[state.cls];
+        }
+        /* crypto/stock/etf contam só negociáveis; marked conta os marcados que vieram de seleção ou favorito antigo. */
+        function selCounts() {
+          const c = { crypto: state.bulk.crypto, stock: state.bulk.stock, etf: state.bulk.etf, marked: 0 };
+          state.sel.forEach(function (id) { const a = BY_ID[id]; if (!a) return; if (isMarked(a)) c.marked += 1; else c[a.cls] += 1; });
+          c.equities = c.stock + c.etf;
+          c.out = c.equities + c.marked;
+          c.total = c.crypto + c.equities + c.marked;
+          return c;
+        }
+        function selected() {
+          return [...state.sel].map(function (id) { return BY_ID[id]; }).filter(Boolean)
+            .sort(function (a, b) { return (isMarked(b) ? 1 : 0) - (isMarked(a) ? 1 : 0); });
+        }
+        function outSelected() { return selected().filter(function (a) { return isMarked(a) || a.cls !== 'crypto'; }); }
+        function runnableSelected() { return selected().filter(function (a) { return !isMarked(a) && a.cls === 'crypto'; }); }
+        /* Texto curto e honesto do que fica fora, para a cópia antes do clique e para o aviso ao rodar. */
+        function outNames(max) {
+          const c = selCounts();
+          const list = outSelected();
+          const shown = list.slice(0, max || 3).map(outLabel);
+          const rest = c.out - shown.length;
+          return shown.join(', ') + (rest > 0 ? ' e mais ' + fmt(rest) : '');
+        }
+        function outWhy() {
+          const c = selCounts();
+          if (c.equities && c.marked) return 'ações e ETFs ainda não têm análise, e ativos marcados pela Binance não entram em análise nova';
+          if (c.marked) return 'ativo marcado pela Binance (suspenso, fora de mercado, sem negociação, sem regras ou removido) não entra em análise nova';
+          return 'a análise ainda não está disponível para ações e ETFs';
+        }
+
+        function factHtml(a) {
+          const st = isMarked(a) ? '<span class="fact st-marked">' + a.status + '</span>' : '<span class="fact st-ok">Negociável</span>';
+          return '<span class="ap-facts"><span class="fact cls-' + a.cls + '">' + CLS_LABEL[a.cls] + '</span>' + st + '<span class="fact hist">' + a.hist + '</span></span>';
+        }
+        function renderList() {
+          const rows = filtered();
+          const q = state.q.trim();
+          const total = totalFor();
+          const pages = Math.max(1, Math.ceil((q ? rows.length : total) / PAGE));
+          if (state.page > pages) state.page = pages;
+          const start = (state.page - 1) * PAGE;
+          let pageRows = rows.slice(start, start + PAGE);
+          if (!q && pageRows.length === 0 && rows.length) pageRows = rows.slice(0, PAGE); // mock: catálogo real tem milhares; amostra repete
+          els.list.replaceChildren();
+          let showPager = true;
+          if (cryptoDown() && state.cls === 'crypto') {
+            // O alerta (com "Tentar de novo") fica só no topo do seletor; aqui, uma linha neutra, sem repetir o alerta.
+            els.list.innerHTML = '<p class="ap-empty" data-testid="asset-crypto-down">Lista de cripto indisponível por falha da Binance. Use “Tentar de novo” no aviso acima; a seleção atual foi mantida.</p>';
+            showPager = false;
+          } else if (rows.length === 0) {
+            const where = state.cls === 'all' ? 'todas as classes' : ({ crypto: 'Cripto', stock: 'Ações', etf: 'ETFs' })[state.cls];
+            const msg = cryptoDown()
+              ? 'Nenhuma ação ou ETF para “' + esc(q) + '”. Cripto está indisponível agora por falha da Binance, então pares cripto não aparecem na pesquisa até a lista voltar. A seleção atual foi mantida.'
+              : 'Nenhum ativo para “' + esc(q) + '” em ' + where + '. Confira o símbolo ou troque a classe. A seleção atual foi mantida.';
+            els.list.innerHTML = '<p class="ap-empty" data-testid="asset-empty">' + msg + '</p>';
+            showPager = false;
+          } else {
+            pageRows.forEach(function (a) {
+              const marked = isMarked(a);
+              const row = document.createElement(marked ? 'div' : 'label');
+              row.className = 'ap-row' + (marked ? ' marked' : '');
+              row.dataset.asset = a.sym;
+              const inSel = state.sel.has(a.id);
+              const input = marked
+                ? '<input type="checkbox" disabled aria-label="' + a.sym + ' — ' + CLS_LABEL[a.cls] + ', ' + a.status + ': não pode ser escolhido">'
+                : '<input type="checkbox"' + (inSel ? ' checked' : '') + ' aria-label="' + a.sym + ' — ' + CLS_LABEL[a.cls] + '">';
+              row.innerHTML = input + '<span class="ap-id"><strong>' + a.sym + '</strong><span>' + a.name + '</span></span>' + factHtml(a) +
+                (marked ? '<p class="ap-reason" data-testid="asset-marked-reason">' + a.reason + ' Não pode ser escolhido para análise nova; aparece para explicar resultados e favoritos antigos.' + (inSel ? ' <b>Está na seleção salva e fica de fora ao rodar.</b>' : '') + '</p>' : '');
+              if (!marked) {
+                row.querySelector('input').addEventListener('change', function (ev) {
+                  if (ev.target.checked) state.sel.add(a.id); else state.sel.delete(a.id);
+                  sync();
+                });
+              }
+              els.list.appendChild(row);
+            });
+          }
+          const shownTotal = q ? rows.length : total;
+          els.pager.hidden = !showPager;
+          els.range.textContent = fmt(shownTotal ? start + 1 : 0) + '–' + fmt(Math.min(start + PAGE, shownTotal)) + ' de ' + fmt(shownTotal);
+          els.prev.disabled = state.page <= 1;
+          els.next.disabled = state.page >= pages;
+        }
+        function renderClasses() {
+          els.classes.querySelectorAll('[data-cls]').forEach(function (b) {
+            b.setAttribute('aria-pressed', b.dataset.cls === state.cls ? 'true' : 'false');
+            const n = b.querySelector('.n');
+            const k = b.dataset.cls;
+            if (cryptoDown() && k === 'crypto') { n.textContent = 'indisponível'; b.classList.add('unavailable'); }
+            else { b.classList.remove('unavailable'); n.textContent = fmt(cryptoDown() && k === 'all' ? TOTAL.stock + TOTAL.etf : TOTAL[k]); }
+          });
+        }
+        function renderChips() {
+          els.chips.replaceChildren();
+          const sel = selected(); // marcados primeiro: nunca ficam escondidos no "+N"
+          sel.slice(0, 8).forEach(function (a) {
+            const chip = document.createElement('span');
+            const marked = isMarked(a);
+            chip.className = 'ap-chip' + (marked ? ' marked' : '');
+            chip.dataset.asset = a.sym;
+            chip.innerHTML = '<span><b>' + a.sym + '</b> · ' + CLS_LABEL[a.cls] + (marked ? ' · ' + a.status + ' · <span class="out">fica de fora</span>' : '') + '</span>' +
+              '<button type="button" aria-label="Remover ' + a.sym + ' da seleção">×</button>';
+            chip.querySelector('button').addEventListener('click', function () { state.sel.delete(a.id); sync(); els.q.focus(); });
+            els.chips.appendChild(chip);
+          });
+          const extra = Math.max(0, sel.length - 8) + state.bulk.crypto + state.bulk.stock + state.bulk.etf;
+          if (extra) {
+            const more = document.createElement('span');
+            more.className = 'ap-chip more';
+            more.textContent = '+' + fmt(extra) + ' ativos';
+            els.chips.appendChild(more);
+          }
+          if (!sel.length && !extra) {
+            const none = document.createElement('span');
+            none.className = 'ap-none';
+            none.textContent = 'Nenhum ativo selecionado.';
+            els.chips.appendChild(none);
+          }
+        }
+        function renderCount() {
+          const c = selCounts();
+          const parts = [];
+          if (c.crypto) parts.push(fmt(c.crypto) + ' cripto');
+          if (c.stock) parts.push(fmt(c.stock) + (c.stock === 1 ? ' ação' : ' ações'));
+          if (c.etf) parts.push(fmt(c.etf) + (c.etf === 1 ? ' ETF' : ' ETFs'));
+          if (c.marked) parts.push(fmt(c.marked) + (c.marked === 1 ? ' marcado fica de fora' : ' marcados ficam de fora'));
+          els.count.textContent = fmt(c.total) + (c.total === 1 ? ' selecionado' : ' selecionados') + (parts.length ? ' · ' + parts.join(' · ') : '');
+          if (els.note) els.note.hidden = !c.equities;
+          if (els.markedNote) {
+            els.markedNote.hidden = !c.marked;
+            if (c.marked) {
+              const names = selected().filter(isMarked).slice(0, 3).map(outLabel).join(', ');
+              els.markedNote.innerHTML = '<strong>' + (c.marked === 1 ? 'Ativo marcado na seleção salva' : 'Ativos marcados na seleção salva') + '</strong>' + names +
+                ': a Binance pausou ou retirou ' + (c.marked === 1 ? 'esse ativo' : 'esses ativos') + '. ' + (c.marked === 1 ? 'Ele aparece' : 'Eles aparecem') + ' para explicar resultados e favoritos antigos, mas ' + (c.marked === 1 ? 'fica' : 'ficam') + ' de fora de qualquer análise nova. Remova com ×.';
+            }
+          }
+        }
+        function renderBanner() {
+          els.banner.replaceChildren();
+          if (state.demo === 'equity-stale') {
+            els.banner.innerHTML = '<div class="ap-warn" role="status" data-testid="catalog-stale"><strong>Ações e ETFs desatualizados</strong>A Binance não respondeu na atualização de 20 out. 2026, 06:00. Mostrando a lista válida de 19 out. 2026, 18:00; pesquisa e escolha continuam.</div>';
+            els.fresh.textContent = 'Cripto atualizado 20 out. 2026, 06:00 · Ações e ETFs de 19 out. 2026, 18:00';
+          } else if (cryptoDown()) {
+            els.banner.innerHTML = '<div class="ap-alert" role="alert" data-testid="catalog-down"><strong>Cripto indisponível</strong><span>A Binance não respondeu e ainda não há lista salva de cripto. Ações e ETFs continuam disponíveis; a seleção atual foi mantida.</span><span class="ap-alert-actions"><button type="button" class="ap-btn" data-retry>Tentar de novo</button></span></div>';
+            els.fresh.textContent = 'Cripto sem lista · Ações e ETFs atualizados 20 out. 2026, 06:00';
+          } else {
+            els.fresh.textContent = 'Catálogo Binance · atualizado 20 out. 2026, 06:00';
+          }
+          if (state.notice) {
+            const n = document.createElement('div');
+            n.className = 'ap-warn';
+            n.setAttribute('role', 'status');
+            n.dataset.testid = 'asset-not-found';
+            n.innerHTML = state.notice;
+            els.banner.appendChild(n);
+          }
+        }
+        function renderAll() {
+          const n = eligibleFor();
+          els.all.textContent = 'Todos do filtro (' + fmt(n) + ')';
+          els.all.disabled = n === 0;
+        }
+        function openConfirm() {
+          const n = eligibleFor();
+          const marked = totalFor() - n;
+          const noun = { all: ['ativo negociável', 'ativos negociáveis'], crypto: ['par cripto negociável', 'pares cripto negociáveis'], stock: ['ação negociável', 'ações negociáveis'], etf: ['ETF negociável', 'ETFs negociáveis'] }[state.cls];
+          const q = esc(state.q.trim());
+          const scope = q ? ' que correspondem a “' + q + '”' + (state.cls === 'all' ? ' (todas as classes)' : '') : (state.cls === 'all' ? ' de todas as classes' : '');
+          els.confirmText.innerHTML = 'Incluir <b>' + fmt(n) + '</b> ' + noun[n === 1 ? 0 : 1] + scope + ' na seleção?' + (marked > 0 ? ' <b>' + fmt(marked) + '</b> ' + (marked === 1 ? 'ativo marcado fica' : 'ativos marcados ficam') + ' de fora: suspensos, fora de mercado, sem negociação, sem regras ou removidos não podem ser escolhidos para análise nova.' : '') + ' O que já está selecionado continua.';
+          els.confirm.hidden = false;
+          els.ok.focus();
+        }
+        function closeConfirm(refocus) {
+          if (els.confirm.hidden) return;
+          els.confirm.hidden = true;
+          if (refocus) els.all.focus();
+        }
+        function applyAll() {
+          filtered().filter(function (a) { return !isMarked(a); }).forEach(function (a) { state.sel.add(a.id); });
+          if (!state.q.trim()) {
+            ['crypto', 'stock', 'etf'].forEach(function (k) {
+              if (state.cls !== 'all' && state.cls !== k) return;
+              if (cryptoDown() && k === 'crypto') return;
+              const sample = CATALOG.filter(function (a) { return a.cls === k && !isMarked(a); }).length;
+              state.bulk[k] = ELIGIBLE[k] - sample;
+            });
+          }
+          els.confirm.hidden = true;
+          sync();
+          els.all.focus();
+        }
+        function sync() {
+          renderBanner(); renderClasses(); renderList(); renderChips(); renderCount(); renderAll();
+          if (opts.onChange) opts.onChange(api);
+        }
+        els.q.addEventListener('input', function () { state.q = els.q.value; state.page = 1; closeConfirm(false); sync(); });
+        els.classes.querySelectorAll('[data-cls]').forEach(function (b) {
+          b.addEventListener('click', function () { state.cls = b.dataset.cls; state.page = 1; closeConfirm(false); sync(); });
+        });
+        els.prev.addEventListener('click', function () { state.page = Math.max(1, state.page - 1); renderList(); });
+        els.next.addEventListener('click', function () { state.page += 1; renderList(); });
+        els.all.addEventListener('click', openConfirm);
+        els.ok.addEventListener('click', applyAll);
+        els.cancel.addEventListener('click', function () { closeConfirm(true); });
+        // Esc = Cancelar: fecha a confirmação sem mudar nada e devolve o foco a "Todos do filtro".
+        root.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Escape' && !els.confirm.hidden) { ev.preventDefault(); ev.stopPropagation(); closeConfirm(true); }
+        });
+        els.clear.addEventListener('click', function () { state.sel = new Set(opts.clearTo || []); state.bulk = { crypto: 0, stock: 0, etf: 0 }; closeConfirm(false); sync(); });
+        root.addEventListener('click', function (ev) { if (ev.target.closest('[data-retry]')) { setDemo('ok'); } });
+        function setDemo(v) { state.demo = v; document.querySelectorAll('input[name="demo-catalog"]').forEach(function (r) { r.checked = r.value === v; }); sync(); }
+        const api = {
+          counts: selCounts, selected: selected, outSelected: outSelected, runnableSelected: runnableSelected,
+          outNames: outNames, outWhy: outWhy, outLabel: outLabel, outReason: outReason, isMarked: isMarked, setDemo: setDemo,
+          addNegotiable: function (syms) { syms.forEach(function (s) { const a = CATALOG.find(function (x) { return x.sym === s; }); if (a && !isMarked(a)) state.sel.add(a.id); }); sync(); },
+          findBySymbol: function (s) { return CATALOG.find(function (x) { return x.sym.toUpperCase() === String(s || '').toUpperCase(); }) || null; },
+          /* Reidrata uma seleção salva (rascunho, favorito ou ?symbol=). Só aqui um marcado entra, e entra marcado "fica de fora". */
+          restore: function (ids) { state.sel = new Set(ids.filter(function (id) { return BY_ID[id]; })); state.bulk = { crypto: 0, stock: 0, etf: 0 }; sync(); },
+          setNotice: function (html) { state.notice = html; sync(); }
+        };
+        sync();
+        return api;
+      }
+      return { mount: mount, CLS_LABEL: CLS_LABEL, fmt: fmt, esc: esc };
+    })();
+    (function () {
+      /* DELTA #1117: /combo/optimize sem texto livre, com vários ativos (decisão de Alan, 20/10/2026).
+         Roda só pares cripto negociáveis. 1 ativo: POST /combos/optimize vivo, resultado no painel ao lado.
+         N ativos: o mesmo lote do Combo (uma otimização por ativo, melhor resultado de cada um salvo em favoritos).
+         ?symbol= só marca se existir no catálogo; marcado pela Binance entra como "fica de fora". */
+      const params = new URLSearchParams(location.search);
+      const urlSymbol = params.get('symbol');
+      const warn = document.getElementById('run-warning');
+      const runCopy = document.getElementById('opt-run-copy');
+      const fmtN = window.AssetPicker.fmt;
+      let picker = null;
+      function syncCopy() {
+        if (!picker) return;
+        const c = picker.counts();
+        const outTxt = c.out ? ' Fora: ' + picker.outNames(3) + ' — ' + picker.outWhy() + '.' : '';
+        if (c.total === 0) runCopy.textContent = 'Nenhum ativo selecionado: escolha ao menos 1 par cripto em USDT.';
+        else if (c.crypto === 0) runCopy.textContent = 'Nada será executado: ' + picker.outNames(3) + ' — ' + picker.outWhy() + '.';
+        else if (c.crypto === 1) runCopy.textContent = (c.out ? 'Roda 1 par cripto (' + picker.runnableSelected()[0].sym + '): ' : '1 ativo: ') + 'otimiza e mostra o resultado ao lado.' + outTxt;
+        else runCopy.textContent = fmtN(c.crypto) + (c.out ? ' pares cripto' : ' ativos') + ': lote, uma otimização por ativo com o mesmo template, timeframe e faixas. O melhor resultado de cada um é salvo em favoritos.' + outTxt;
+        runCopy.style.color = c.total > 0 && c.crypto === 0 ? '#fbbf24' : '';
+      }
+      picker = window.AssetPicker.mount(document.getElementById('ap'), {
+        initial: [], onChange: function () { if (warn) warn.replaceChildren(); syncCopy(); }
+      });
+      if (urlSymbol) {
+        const found = picker.findBySymbol(urlSymbol);
+        if (found) picker.restore([found.id]);
+        else picker.setNotice('<strong>' + window.AssetPicker.esc(urlSymbol) + ' não está no catálogo da Binance</strong>O endereço trouxe esse símbolo, mas ele não foi marcado. Escolha os ativos na lista.');
+      } else {
+        picker.restore(['binance:spot:BTC/USDT']); // padrão vivo da página
+      }
+      document.getElementById('btn-opt').addEventListener('click', function () {
+        const c = picker.counts();
+        if (c.total === 0) {
+          warn.innerHTML = '<div class="ap-warn" role="alert"><strong>Escolha ao menos 1 ativo</strong>Pesquise e marque os ativos a otimizar.</div>';
+          return;
+        }
+        const names = picker.outNames(3);
+        const why = picker.outWhy();
+        if (!c.crypto) {
+          const title = !c.marked ? 'Análise ainda não disponível para ações e ETFs' : (!c.equities ? 'Ativo marcado pela Binance não entra em análise nova' : 'Nenhum ativo da seleção pode rodar agora');
+          warn.innerHTML = '<div class="ap-alert" role="alert"><strong>' + title + '</strong>' + names + ': ' + why + '. A otimização roda só com pares cripto negociáveis em USDT nesta etapa. Nada foi executado. A seleção foi mantida.</div>';
+          return;
+        }
+        const outHtml = c.out ? '<div class="ap-warn" role="status"><strong>' + (c.crypto === 1 ? 'Otimizando 1 par cripto' : 'Lote iniciado com ' + fmtN(c.crypto) + ' pares cripto') + '</strong>Fora' + (c.crypto === 1 ? '' : ' do lote') + ': ' + names + ' — ' + why + '.</div>' : '';
+        if (c.crypto === 1) {
+          warn.innerHTML = outHtml + '<div class="ap-note">Optimizing… ' + picker.runnableSelected()[0].sym + '</div>';
+          return;
+        }
+        const first = picker.runnableSelected()[0];
+        warn.innerHTML = outHtml + '<div class="ap-note" data-testid="opt-batch-progress"><strong style="display:block;color:var(--text-secondary)">0 de ' + fmtN(c.crypto) + ' ativos</strong>' +
+          (first ? 'Ativo atual: ' + first.sym + ' · ' : '') + 'Tempo decorrido: 0s<br>Ao terminar: sucesso, falha e ignorados (já em favoritos), com link para Strategy Favorites.' +
+          '<span class="ap-actions"><button type="button" class="ap-btn">Pausar</button><button type="button" class="ap-btn">Encerrar</button></span></div>';
+      });
+      document.querySelectorAll('input[name="demo-catalog"]').forEach(function (r) {
+        r.addEventListener('change', function () { if (r.checked) picker.setDemo(r.value); });
+      });
+      syncCopy();
+    })();
+  </script>
+</body>
+</html>

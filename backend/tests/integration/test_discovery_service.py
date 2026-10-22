@@ -92,7 +92,13 @@ def _discovery_tables(monkeypatch):
         # Favoritos criados por promoção de teste não podem contaminar outros
         # testes de integração (ex.: refresh loop que conta favoritos).
         connection.exec_driver_sql("DELETE FROM favorite_strategies")
+        # Catálogo de ativos (#1117): estes testes assumem catálogo vazio.
+        connection.exec_driver_sql("DELETE FROM asset_catalog")
+        connection.exec_driver_sql("DELETE FROM asset_catalog_refresh")
     yield engine
+    with engine.begin() as connection:
+        connection.exec_driver_sql("DELETE FROM asset_catalog")
+        connection.exec_driver_sql("DELETE FROM asset_catalog_refresh")
     engine.dispose()
 
 
@@ -3096,3 +3102,172 @@ class TestRestoreAndWakeup:
         check.close()
         assert 2 in gens
         assert pending_or_delivered >= 1
+
+
+class TestPreflightAssetCatalog:
+    """Card #1117: ações, ETFs e ativos marcados ficam fora do Preflight com motivo."""
+
+    @staticmethod
+    def _seed_catalog():
+        from app.services import asset_catalog_adapters as adapters
+        from app.services import asset_catalog_service as catalog
+
+        crypto = adapters.parse_spot_exchange_info(
+            {
+                "symbols": [
+                    {
+                        "symbol": f"{base}USDT",
+                        "status": status,
+                        "baseAsset": base,
+                        "quoteAsset": "USDT",
+                        "isSpotTradingAllowed": True,
+                    }
+                    for base, status in (("BTC", "TRADING"), ("ETH", "TRADING"), ("WAVES", "BREAK"))
+                ]
+            }
+        )
+        ok = lambda data: {"code": "000000", "data": data}  # noqa: E731
+        equity = adapters.parse_equity_payloads(
+            ok(
+                [
+                    {"ac": "EQ_NVDA", "s": "NVDA", "n": "NVIDIA", "t": "STOCK"},
+                    {"ac": "EQ_SPY", "s": "SPY", "n": "SPDR", "t": "ETF"},
+                    {"ac": "EQ_AVB", "s": "AVB", "n": "AvalonBay", "t": "STOCK"},
+                ]
+            ),
+            ok(
+                {
+                    "symbols": [
+                        {"assetCode": "EQ_NVDA", "symbol": "NVDA", "tradability": "BUY_SELL"},
+                        {"assetCode": "EQ_SPY", "symbol": "SPY", "tradability": "BUY_SELL"},
+                        {"assetCode": "EQ_AVB", "symbol": "AVB", "tradability": "OFFMARKET"},
+                    ]
+                }
+            ),
+        )
+        assert catalog.refresh_group("crypto", fetcher=lambda: crypto)["status"] == "ok"
+        assert catalog.refresh_group("equity", fetcher=lambda: equity)["status"] == "ok"
+
+    def _service(self):
+        from app.services.combo_service import ComboService
+
+        service = DiscoveryService()
+        service.combo_service = ComboService()
+        return service
+
+    def _preflight(self, service, symbols):
+        return service.preflight(
+            templates=["multi_ma_crossover"],
+            symbols=symbols,
+            timeframes=["1d", "4h"],
+            directions=["long"],
+            start_date="2024-01-01",
+            end_date="2024-12-31",
+            period_type=None,
+        )
+
+    def test_equity_etf_and_marked_assets_are_excluded_with_reasons(self):
+        self._seed_catalog()
+        result = self._preflight(
+            self._service(),
+            ["BTC/USDT", "NVDA", "SPY", "WAVES/USDT", "AVB"],
+        )
+
+        assert result["errors"] == {}
+        assert result["raw_total"] == 10 and result["valid_total"] == 2
+        assert result["excluded_count"] == 8
+        assert {c["symbol"] for c in result["combinations"]} == {"BTC/USDT"}
+        by_symbol = {a["symbol"]: a for a in result["excluded_assets"]}
+        assert set(by_symbol) == {"NVDA", "SPY", "WAVES/USDT", "AVB"}
+        assert by_symbol["NVDA"]["reason"] == "análise ainda não disponível para ações e ETFs"
+        assert by_symbol["NVDA"]["kind"] == "class" and by_symbol["NVDA"]["combinations"] == 2
+        assert by_symbol["SPY"]["asset_class"] == "etf"
+        assert by_symbol["WAVES/USDT"]["kind"] == "marked"
+        assert "Suspenso na Binance" in by_symbol["WAVES/USDT"]["reason"]
+        assert "não entra em análise nova" in by_symbol["AVB"]["reason"]
+        waves_key = next(k for k, v in result["exclusions"].items() if v["symbol"] == "WAVES/USDT")
+        assert "BREAK" in result["exclusions"][waves_key]["reasons"][0]
+
+    def test_only_equities_blocks_the_preflight_with_the_reason(self):
+        self._seed_catalog()
+        result = self._preflight(self._service(), ["NVDA", "SPY"])
+
+        assert result["valid_total"] == 0
+        assert "análise ainda não disponível para ações e ETFs" in result["errors"]["symbols"]
+        assert result["combinations"] == []
+
+    def test_only_marked_blocks_with_generic_reason(self):
+        self._seed_catalog()
+        result = self._preflight(self._service(), ["WAVES/USDT"])
+
+        assert result["valid_total"] == 0
+        assert "marcados pela Binance" in result["errors"]["symbols"]
+
+    def test_old_snapshot_symbols_not_in_catalog_get_the_catalog_reason(self):
+        self._seed_catalog()
+        result = self._preflight(self._service(), ["BTC/USDT", "XYZ/USDT"])
+
+        reasons = {a["symbol"]: a["reason"] for a in result["excluded_assets"]}
+        assert reasons == {"XYZ/USDT": "ativo fora do catálogo da Binance"}
+        assert result["valid_total"] == 2
+
+    def test_thousands_of_equities_keep_exact_totals_with_limited_detail(self):
+        from app.services import asset_catalog_adapters as adapters
+        from app.services import asset_catalog_service as catalog
+        from app.services.discovery_service import CATALOG_EXCLUSION_DETAIL_LIMIT
+
+        self._seed_catalog()
+        ok = lambda data: {"code": "000000", "data": data}  # noqa: E731
+        tickers = [f"ETF{i:04d}" for i in range(400)]
+        equity = adapters.parse_equity_payloads(
+            ok([{"ac": f"EQ_{t}", "s": t, "n": f"Fund {t}", "t": "ETF"} for t in tickers]),
+            ok(
+                {
+                    "symbols": [
+                        {"assetCode": f"EQ_{t}", "symbol": t, "tradability": "BUY_SELL"}
+                        for t in tickers
+                    ]
+                }
+            ),
+        )
+        assert catalog.refresh_group("equity", fetcher=lambda: equity)["status"] == "ok"
+
+        result = self._preflight(self._service(), ["BTC/USDT", *tickers])
+
+        assert result["valid_total"] == 2
+        assert result["raw_total"] == 2 * 401
+        assert result["excluded_count"] == 2 * 400
+        assert len(result["exclusions"]) == CATALOG_EXCLUSION_DETAIL_LIMIT
+        assert len(result["excluded_assets"]) == 400
+        assert {a["combinations"] for a in result["excluded_assets"]} == {2}
+        assert [c["symbol"] for c in result["combinations"]] == ["BTC/USDT", "BTC/USDT"]
+
+    def test_create_sweep_materializes_only_crypto_combinations(self, engine_factory):
+        self._seed_catalog()
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        service = self._service()
+        symbols = ["BTC/USDT", "NVDA", "WAVES/USDT"]
+        preflight = self._preflight(service, symbols)
+        payload = {
+            "templates": ["multi_ma_crossover"],
+            "symbols": symbols,
+            "timeframes": ["1d", "4h"],
+            "directions": ["long"],
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "period_type": None,
+            "snapshot_hash": preflight["snapshot_hash"],
+        }
+        body, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=preflight["snapshot_token"],
+            payload=payload,
+            db=db,
+        )
+        assert status == 201, body
+        rows = db.query(DiscoveryCombination).filter_by(sweep_id=body["sweep_id"]).all()
+        assert {r.symbol for r in rows} == {"BTC/USDT"}
+        assert len(rows) == 2
+        db.close()

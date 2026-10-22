@@ -126,8 +126,11 @@ async def test_backtest_us_ticker_rejected_for_crypto_only_mvp(monkeypatch):
         },
     )
 
-    assert response.status_code == 400, response.text
-    assert "MVP supports only crypto pairs" in response.json()["detail"]
+    assert response.status_code == 422, response.text
+    detail = response.json()["detail"]
+    assert detail["code"] == "asset_class_not_supported"
+    assert [asset["symbol"] for asset in detail["assets"]] == ["NVDA"]
+    assert "Análise ainda não disponível para ações e ETFs" in detail["message"]
     assert provider_calls == []
 
 
@@ -233,7 +236,7 @@ async def test_backtest_explicit_stock_data_source_rejected(monkeypatch):
     assert provider_calls == []
 
 
-async def test_optimize_us_ticker_returns_400_not_500(monkeypatch):
+async def test_optimize_us_ticker_returns_structured_422_not_500(monkeypatch):
     provider_calls = _patch_backtest_dependencies(monkeypatch)
     app = _build_app()
 
@@ -249,8 +252,10 @@ async def test_optimize_us_ticker_returns_400_not_500(monkeypatch):
         },
     )
 
-    assert response.status_code == 400, response.text
-    assert "MVP supports only crypto pairs" in response.json()["detail"]
+    assert response.status_code == 422, response.text
+    detail = response.json()["detail"]
+    assert detail["code"] == "asset_class_not_supported"
+    assert [asset["symbol"] for asset in detail["assets"]] == ["NVDA"]
     assert provider_calls == []
 
 
