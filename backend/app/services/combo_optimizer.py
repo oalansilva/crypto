@@ -39,6 +39,7 @@ from app.services.market_data_providers import (
     validate_data_source_timeframe,
 )
 from src.data.incremental_loader import IncrementalLoader
+from app.services.market_history.sample import ACTIVE_SAMPLE_ID, ExecutionSample
 from app.metrics.backtest_execution_costs import (
     TRADING_FEE,
     long_trade_profit_frac,
@@ -78,6 +79,18 @@ def _combo_optimizer_legacy() -> bool:
 def _local_ohlcv_covers(loader, symbol: str, timeframe: str, end_date: str) -> bool:
     """True when parquet for this pair/tf exists and its last bar covers period end."""
     try:
+        if hasattr(loader, "_unified_history_enabled") and loader._unified_history_enabled(symbol):
+            # Card #1118: a "cópia local" é a autoridade única (PostgreSQL), não um Parquet próprio.
+            extent = loader.unified_coverage(symbol, timeframe)
+            if extent is None:
+                return False
+            cache_end = pd.Timestamp(extent[1])
+            if getattr(cache_end, "tz", None) is None:
+                cache_end = cache_end.tz_localize("UTC")
+            end_dt = pd.Timestamp(end_date)
+            if getattr(end_dt, "tz", None) is None:
+                end_dt = end_dt.tz_localize("UTC")
+            return cache_end.date() >= end_dt.date()
         path = loader._get_parquet_path(symbol, timeframe)
         if not path or not os.path.exists(path):
             return False
@@ -96,15 +109,17 @@ def _local_ohlcv_covers(loader, symbol: str, timeframe: str, end_date: str) -> b
 
 
 def _worker_get_15m_cache(
-    symbol: str, since_str: str, until_str: str, loader=None
+    symbol: str, since_str: str, until_str: str, loader=None, sample_id: Optional[str] = None
 ) -> Optional[pd.DataFrame]:
     """Load (or reuse) the 15m DF in the current worker process."""
     accelerated = acceleration_enabled()
-    frozen = os.getenv("DISCOVERY_FROZEN_INPUT_DIR")
+    frozen = os.getenv("DISCOVERY_FROZEN_INPUT_DIR") or os.getenv("DISCOVERY_FROZEN_SNAPSHOT_ID")
+    # Card #1118: amostra congelada desta execução (id por argumento nos workers).
+    sample_id = sample_id or ACTIVE_SAMPLE_ID.get()
     key = (
-        (BUDGET.generation, symbol, since_str, until_str, frozen)
+        (BUDGET.generation, symbol, since_str, until_str, frozen, sample_id)
         if accelerated
-        else (symbol, since_str, until_str, frozen)
+        else (symbol, since_str, until_str, frozen, sample_id)
     )
     cached = _WORKER_15M_CACHE.get(key)
     if cached is not None:
@@ -112,7 +127,7 @@ def _worker_get_15m_cache(
 
     from app.services.discovery_inputs import read
 
-    df_15m = read("intraday")
+    df_15m = read("intraday", sample_id) if sample_id else read("intraday")
     if df_15m is None:
         loader = loader or IncrementalLoader()
         df_15m = loader.fetch_intraday_data(
@@ -789,7 +804,7 @@ def adopt_index(frame: pd.DataFrame) -> pd.DataFrame:
     return adopted
 
 
-def _worker_run_batch(batch_args, intraday_loader=None, observer=None):
+def _worker_run_batch(batch_args, intraday_loader=None, observer=None, sample_id=None):
     """
     Optimized worker for Grid Search BATCH execution.
     Uses worker-level 15m cache (per process) to eliminate redundant I/O.
@@ -820,7 +835,9 @@ def _worker_run_batch(batch_args, intraday_loader=None, observer=None):
 
     if deep_backtest:
         try:
-            df_15m_cache = _worker_get_15m_cache(symbol, since_str, until_str, intraday_loader)
+            df_15m_cache = _worker_get_15m_cache(
+                symbol, since_str, until_str, intraday_loader, sample_id
+            )
             if acceleration_enabled() and df_15m_cache is not None:
                 # Every trial of the batch shares this frame: give its index a
                 # registered identity once instead of hashing it per trial.
@@ -1546,9 +1563,12 @@ class ComboOptimizer:
         """Batch worker; binds the optional test hooks only when they are set."""
         loader = getattr(self, "_worker_loader", None)
         observer = getattr(self, "_worker_observer", None)
-        if loader is None and observer is None:
+        sample_id = getattr(self, "_sample_id", None)
+        if loader is None and observer is None and sample_id is None:
             return _worker_run_batch
-        return partial(_worker_run_batch, intraday_loader=loader, observer=observer)
+        return partial(
+            _worker_run_batch, intraday_loader=loader, observer=observer, sample_id=sample_id
+        )
 
     def _execute_opt_stages(
         self,
@@ -1925,7 +1945,101 @@ class ComboOptimizer:
         direction: str = "long",
         split_train_ratio: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """Run parameter optimization.
+        """Run parameter optimization (corpo em ``_run_optimization_body``).
+
+        Card #1118: com ``MARKET_HISTORY_UNIFIED=1`` a execução congela a amostra no
+        início (candles e 15m em segmentos com SHA-256) e todas as tentativas leem só
+        dela. O resultado traz a proveniência e o ``snapshot_id``.
+        """
+
+        self._sample = None
+        self._sample_id = None
+        token = ACTIVE_SAMPLE_ID.set(None)
+        try:
+            result = self._run_optimization_body(
+                template_name=template_name,
+                symbol=symbol,
+                timeframe=timeframe,
+                data_source=data_source,
+                start_date=start_date,
+                end_date=end_date,
+                custom_ranges=custom_ranges,
+                deep_backtest=deep_backtest,
+                job_id=job_id,
+                direction=direction,
+                split_train_ratio=split_train_ratio,
+            )
+            sample = self._sample
+            if sample is not None and isinstance(result, dict):
+                result["snapshot_id"] = sample.snapshot_id
+                result["data_provenance"] = sample.provenance("candles")
+                sample.finish()
+            return result
+        except BaseException:
+            sample = self._sample
+            if sample is not None and sample.snapshot_id:
+                # Execução que falha não sustenta resultado: a amostra expira para o GC levar.
+                try:
+                    from app.services.market_history import snapshots as history_snapshots
+
+                    history_snapshots.expire(sample.engine, sample.snapshot_id)
+                except Exception:  # pragma: no cover
+                    logging.exception("Could not expire the sample of a failed optimization")
+            raise
+        finally:
+            ACTIVE_SAMPLE_ID.reset(token)
+            self._sample_id = None
+
+    def _begin_sample(self, selected_data_source, symbol, timeframe, start_date, end_date, df):
+        """Congela os candles no início da execução (só cripto pelo caminho unificado)."""
+        from app.services.market_history import unified_enabled
+
+        if (
+            not unified_enabled()
+            or selected_data_source != "ccxt"
+            or "/" not in str(symbol)
+            or os.getenv("DISCOVERY_FROZEN_INPUT_DIR")
+            or os.getenv("DISCOVERY_FROZEN_SNAPSHOT_ID")
+            or df is None
+            or df.empty
+        ):
+            return df
+        sample = ExecutionSample("optimization", owner_ref=f"optimization:{symbol}:{timeframe}")
+        frozen = sample.freeze_crypto("candles", symbol, timeframe, start_date, end_date, df)
+        self._sample = sample
+        self._sample_id = sample.snapshot_id
+        ACTIVE_SAMPLE_ID.set(sample.snapshot_id)
+        return frozen
+
+    def _freeze_intraday(self, symbol, start_date, end_date):
+        sample = getattr(self, "_sample", None)
+        if sample is None or sample.has("intraday"):
+            return
+        intraday = self.loader.fetch_intraday_data(
+            symbol=symbol,
+            timeframe="15m",
+            since_str=start_date,
+            until_str=end_date,
+            read_only=True,
+        )
+        if intraday is not None and not intraday.empty:
+            sample.freeze_crypto("intraday", symbol, "15m", start_date, end_date, intraday)
+
+    def _run_optimization_body(
+        self,
+        template_name: str,
+        symbol: str,
+        timeframe: str = "1h",
+        data_source: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        custom_ranges: Optional[Dict[str, Any]] = None,
+        deep_backtest: bool = True,
+        job_id: Optional[str] = None,
+        direction: str = "long",
+        split_train_ratio: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Corpo de ``run_optimization``.
 
         Args:
             split_train_ratio: quando informado (ex.: 0.7), a otimização roda
@@ -1977,7 +2091,7 @@ class ComboOptimizer:
         provider = getattr(self, "_provider", None) or get_market_data_provider(
             selected_data_source
         )
-        if os.getenv("DISCOVERY_FROZEN_INPUT_DIR"):
+        if os.getenv("DISCOVERY_FROZEN_INPUT_DIR") or os.getenv("DISCOVERY_FROZEN_SNAPSHOT_ID"):
             from app.services.discovery_inputs import FrozenProvider
 
             provider = FrozenProvider()
@@ -1987,6 +2101,7 @@ class ComboOptimizer:
             since_str=start_date,
             until_str=end_date,
         )
+        df = self._begin_sample(selected_data_source, symbol, timeframe, start_date, end_date, df)
 
         # Walk-forward split (card #470): when split_train_ratio is set, the
         # optimization stages run only on the oldest fraction (train) and the
@@ -2022,6 +2137,7 @@ class ComboOptimizer:
             deep_backtest
             and selected_data_source == "ccxt"
             and not os.getenv("DISCOVERY_FROZEN_INPUT_DIR")
+            and not os.getenv("DISCOVERY_FROZEN_SNAPSHOT_ID")
         ):
             period_end = end_date
             daily_covers = _local_ohlcv_covers(self.loader, symbol, timeframe, period_end)
@@ -2102,6 +2218,10 @@ class ComboOptimizer:
             logging.info(
                 "Deep backtest ON: workers will use 15m intraday data for exit simulation (stop/target precision)."
             )
+            try:
+                self._freeze_intraday(symbol, start_date, end_date)
+            except Exception as exc:
+                logging.warning("Freeze of the 15m sample failed for %s: %s", symbol, exc)
         elif deep_backtest and selected_data_source != "ccxt":
             logging.info(
                 "Deep backtest disabled for data_source=%s (intraday cache is crypto/ccxt only).",

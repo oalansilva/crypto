@@ -47,3 +47,30 @@ for _database_variable in (
 from app.config import get_settings
 
 get_settings.cache_clear()
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _card_1118_provenance_columns():
+    """Bancos de teste persistentes podem ser anteriores ao card #1118: garante as colunas novas.
+
+    ``ALTER TABLE IF EXISTS ... ADD COLUMN IF NOT EXISTS`` é idempotente e não toca tabela ausente
+    (CI nasce com banco novo; o ``create_all`` já traz as colunas dos modelos).
+    """
+
+    try:
+        from sqlalchemy import create_engine
+
+        from app.services.market_history.schema import ADD_COLUMNS_SQL, execute_all
+
+        engine = create_engine(os.environ["DATABASE_URL"])
+        try:
+            with engine.begin() as connection:
+                execute_all(connection, ADD_COLUMNS_SQL)
+        finally:
+            engine.dispose()
+    except Exception:
+        pass
+    yield

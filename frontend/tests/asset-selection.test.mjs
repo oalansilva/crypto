@@ -43,7 +43,7 @@ const asset = (symbol, asset_class, state = 'tradable', extra = {}) => ({
   state_reason: state === 'suspended' ? 'Negociação pausada pela Binance (status BREAK).' : null,
   selectable: state === 'tradable',
   analysis_available: asset_class === 'crypto',
-  history: { status: asset_class === 'crypto' ? 'on_demand' : 'not_collected', from: null, to: null },
+  history: { status: 'on_demand', from: null, to: null, timeframes: [], gap_count: 0 },
   ...extra,
 })
 
@@ -222,12 +222,19 @@ test('pesquisa vazia durante a falha culpa a Binance, não o símbolo', () => {
 })
 
 test('linhas do seletor: classe, negociação e histórico separados, e motivo do marcado', () => {
-  assert.equal(historyText(asset('BTC/USDT', 'crypto', 'tradable', { history: { status: 'local', from: '2017-08-17T00:00:00Z', to: '2026-10-19T00:00:00Z' } })), 'Histórico local desde 17 ago. 2017')
-  assert.equal(historyText(asset('ETH/USDT', 'crypto')), 'Histórico sob demanda')
-  assert.equal(historyText(asset('NVDA', 'stock')), 'Histórico não coletado')
+  const frame = (timeframe, from, to) => ({ timeframe, from, to, gap_count: 0, gaps: [], updated_at: '2026-10-22T21:00:00Z', origin: 'native' })
+  const covered = (frames, extra = {}) => ({ status: 'covered', from: frames[0].from, to: frames[0].to, updated_at: '2026-10-22T21:00:00Z', gap_count: 0, timeframes: frames, ...extra })
+  assert.match(
+    historyText(asset('BTC/USDT', 'crypto', 'tradable', { history: covered(['1d', '4h', '1h', '15m'].map((tf) => frame(tf, '2017-08-17T00:00:00Z', '2026-10-22T18:00:00Z'))) })),
+    /^Histórico desde 17 ago\. 2017 · 4 timeframes · sem lacunas · atualizado 22 out\.(?: 2026)?, \d{2}:\d{2}$/,
+  )
+  assert.equal(historyText(asset('ETH/USDT', 'crypto')), 'Histórico sob demanda · coletado quando uma análise pedir')
+  assert.equal(historyText(asset('NVDA', 'stock')), 'Histórico sob demanda · a coleta começa quando as análises aceitarem ações')
+  assert.equal(historyText(asset('SPY', 'etf')), 'Histórico sob demanda · a coleta começa quando as análises aceitarem ETFs')
+  for (const symbol of ['ETH/USDT', 'NVDA', 'SPY']) assert.doesNotMatch(historyText(asset(symbol, symbol.includes('/') ? 'crypto' : 'stock')), /não coletado/)
   assert.equal(
-    historyText(asset('WAVES/USDT', 'crypto', 'suspended', { history: { status: 'local', from: '2018-01-01T00:00:00Z', to: '2024-05-31T00:00:00Z' } })),
-    'Histórico local até 31 mai. 2024',
+    historyText(asset('WAVES/USDT', 'crypto', 'suspended', { history: covered([frame('1d', '2018-01-01T00:00:00Z', '2024-05-31T00:00:00Z')], { status: 'frozen', from: '2018-01-01T00:00:00Z', to: '2024-05-31T00:00:00Z' }) })),
+    'Histórico 01 jan. 2018 – 31 mai. 2024 · sem atualização: ativo suspenso',
   )
   assert.equal(historyText(asset('X/USDT', 'crypto', 'removed', { history: { status: 'none', from: null, to: null } })), 'Sem histórico local')
   const reason = markedReasonText(KNOWN.get('WAVES/USDT'), true)

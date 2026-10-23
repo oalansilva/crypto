@@ -376,6 +376,11 @@ class FavoriteBacktestRefreshService:
             delisted_symbols = sorted({str(row.symbol) for row in delisted})
             deleted_runs = 0
             if delisted_ids:
+                from app.services.market_history import snapshots as history_snapshots
+
+                for row in delisted:
+                    if row.snapshot_id:
+                        history_snapshots.release(session, row.snapshot_id)
                 deleted_runs = (
                     session.query(AutoBacktestRun)
                     .filter(AutoBacktestRun.favorite_id.in_(delisted_ids))
@@ -494,6 +499,7 @@ class FavoriteBacktestRefreshService:
         now = _utcnow()
         run_id = f"favorite-refresh-{favorite_id}-{uuid.uuid4().hex[:12]}"
         run: AutoBacktestRun | None = None
+        attempt_snapshot_id: str | None = None
 
         try:
             favorite = (
@@ -523,6 +529,7 @@ class FavoriteBacktestRefreshService:
             session.commit()
 
             result = self._run_optimization(favorite)
+            attempt_snapshot_id = result.get("snapshot_id") if isinstance(result, dict) else None
             _ensure_fresh_candles(result, favorite, _utcnow())
             _ensure_trade_events_within_candles(result, favorite)
             refreshed_metrics = result.get("best_metrics") or result.get("metrics") or {}
@@ -553,6 +560,18 @@ class FavoriteBacktestRefreshService:
 
             completed_at = _utcnow()
             favorite.metrics = updated_metrics
+            if attempt_snapshot_id:
+                # Card #1118 (decisão 18): no mesmo commit que grava o número de /favorites, o
+                # favorito passa a apontar para a amostra deste refresh (fixada), o run guarda a
+                # mesma amostra e a anterior segue por 30 dias a partir da troca.
+                from app.services.market_history import snapshots as history_snapshots
+
+                previous_snapshot_id = favorite.snapshot_id
+                favorite.snapshot_id = attempt_snapshot_id
+                run.snapshot_id = attempt_snapshot_id
+                history_snapshots.pin(session, attempt_snapshot_id)
+                if previous_snapshot_id and previous_snapshot_id != attempt_snapshot_id:
+                    history_snapshots.release(session, previous_snapshot_id, completed_at)
             if uses_operational_period(current_metrics) and favorite.period_type == "all":
                 favorite.end_date = completed_at.date().isoformat()
             favorite.auto_refresh_status = REFRESH_STATUS_SUCCESS
@@ -572,6 +591,15 @@ class FavoriteBacktestRefreshService:
             session.rollback()
             failed_at = _utcnow()
             error = _error_text(exc)
+            if attempt_snapshot_id:
+                # Refresh que falha não troca nada: a amostra da tentativa não sustenta número algum.
+                try:
+                    from app.database import engine as history_engine
+                    from app.services.market_history import snapshots as history_snapshots
+
+                    history_snapshots.expire(history_engine, attempt_snapshot_id, failed_at)
+                except Exception:  # pragma: no cover - limpeza nunca esconde o erro original
+                    logger.exception("Could not release the failed refresh sample")
             favorite = (
                 session.query(FavoriteStrategy).filter(FavoriteStrategy.id == favorite_id).first()
             )

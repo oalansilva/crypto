@@ -151,11 +151,15 @@ test.describe('seletor de ativos na Descoberta', () => {
     await expect(first).toHaveAttribute('data-asset', 'NVDA')
     await expect(first.locator('.ap-fact.cls-stock')).toHaveText('Ação')
     await expect(first.locator('.ap-fact.st-ok')).toHaveText('Negociável')
-    await expect(first.locator('.ap-fact.hist')).toHaveText('Histórico não coletado')
+    await expect(first.locator('.ap-fact.hist')).toHaveText(
+      'Histórico sob demanda · a coleta começa quando as análises aceitarem ações',
+    )
     await expect(page.getByTestId('asset-select-all')).toHaveText('Todos do filtro (2)')
 
     await search(page, 'btc')
-    await expect(row(page, 'BTC/USDT').locator('.ap-fact.hist')).toHaveText('Histórico local desde 17 ago. 2017')
+    await expect(row(page, 'BTC/USDT').locator('.ap-fact.hist')).toHaveText(
+      /^Histórico desde 17 ago\. 2017 · 4 timeframes · sem lacunas · atualizado /,
+    )
   })
 
   test('ativo suspenso aparece sem caixa ativa, com motivo, e não entra na seleção', async ({ page }) => {

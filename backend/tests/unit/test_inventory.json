@@ -183,6 +183,69 @@
       "evidence": "refresh_group com fetchers falsos, consulta e guarda sobre o PostgreSQL de teste com isolamento por fixture unit_database_url"
     },
     {
+      "file": "backend/tests/unit/test_card_1118_api_and_catalog.py",
+      "protected_behavior": "rota GET /market/history (autenticação, ação e ETF coletados só pela consulta), /market/candles só cripto com cobertura, recusa por classe e 'Todos do filtro' sem coleta, catálogo com cobertura por timeframe",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "FakeEquityProvider no formato da rota da Binance, schema privado descartável por teste (unit_database_url) e TestClient autenticado; garante que nenhuma página do catálogo dispara coleta"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_calendar_and_provider.py",
+      "protected_behavior": "calendário XNYS (78 candles de 5m por pregão nas duas viradas de horário de verão, feriados, meio-pregão), 15m montado do 5m e adaptador BinanceEquityProvider (488006 em HTTP 200, formato mudou, 429/418/5xx, página vazia confirmada)",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "payloads sintéticos e transporte httpx falso, sem rede nem banco; exchange_calendars real"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_consumers.py",
+      "protected_behavior": "consumidores de cripto pelo HistoryService: escritor canônico, IncrementalLoader sem CCXT, combo/otimização/descoberta, paridade gráfico x backtest, amostra congelada por SHA-256 e proveniência",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "schema privado descartável (unit_database_url), CCXT falso e segmentos Parquet em tmp_path; backtest antes e depois da troca com os mesmos números"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_history_service.py",
+      "protected_behavior": "HistoryService: séries separadas por ajuste e fonte, coleta paginada que retoma, lock por série, limitador compartilhado (2 req/s, 2 séries, Retry-After, circuito de 5 min), pregão regular, lacunas, versão por split e cobertura honesta",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "schema privado descartável (unit_database_url) com provedor falso programável por página; falhas viram cobertura, não lista vazia"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_migration_and_cache.py",
+      "protected_behavior": "revisão Alembic 20261023_0001 (idempotente e reversível), script de migração (cópia, importação do Parquet, divergências, conferência e troca de nomes reversível) e cache Parquet derivado (refazer sem a Binance, versão e teto de 3 GiB)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "schema privado descartável (unit_database_url), banco legado semeado e Parquet antigo em tmp_path"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_optimizer_regression.py",
+      "protected_behavior": "otimização de cripto dá os mesmos números antes e depois de MARKET_HISTORY_UNIFIED, com a amostra congelada no início",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ComboOptimizer real com templates congelados do card 945, Parquet antigo contra o HistoryService, manifesto conferido"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_result_provenance.py",
+      "protected_behavior": "resultado da descoberta grava fonte, classe, sessão, ajuste, origem do timeframe, períodos, versão e snapshot_id da série",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "run_combination com sweep semeado no PostgreSQL de teste isolado (postgres_isolation)"
+    },
+    {
       "file": "backend/tests/unit/test_card_1074_combo_templates.py",
       "protected_behavior": "card 1074 combo template and VWAP indicator smoke backtests",
       "production_reachability": "reachable",

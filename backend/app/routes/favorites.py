@@ -1143,6 +1143,56 @@ def revalidate_all_favorites_endpoint(
     return summary
 
 
+def _owned_favorite(db: Session, favorite_id: int, user_id: str) -> FavoriteStrategy:
+    favorite = (
+        db.query(FavoriteStrategy)
+        .filter(FavoriteStrategy.id == favorite_id, FavoriteStrategy.user_id == user_id)
+        .first()
+    )
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return favorite
+
+
+@router.get("/{favorite_id}/sample")
+def get_favorite_sample(
+    favorite_id: int,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Estado da amostra do último refresh (card #1118): guardada, expirada ou inexistente."""
+    from app.database import engine as history_engine
+    from app.services.market_history.reproduction import sample_status
+
+    favorite = _owned_favorite(db, favorite_id, current_user_id)
+    return sample_status(history_engine, favorite.snapshot_id)
+
+
+@router.post("/{favorite_id}/reproduce")
+def reproduce_favorite_endpoint(
+    favorite_id: int,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Refaz o último refresh só com a amostra guardada e compara com o número de Favoritos.
+
+    Favorito antigo (sem amostra) ou amostra vencida responde "não reproduzível exatamente".
+    """
+    from app.services.market_history.reproduction import reproduce_favorite
+
+    favorite = _owned_favorite(db, favorite_id, current_user_id)
+    try:
+        return reproduce_favorite(favorite)
+    except Exception as exc:
+        code = getattr(exc, "code", None)
+        if code in {"frozen_input_invalid", "frozen_input_corrupt"}:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": code, "message": "A amostra guardada não pôde ser conferida."},
+            )
+        raise
+
+
 @router.post("/{favorite_id}/revalidate")
 def revalidate_favorite_endpoint(
     favorite_id: int,
@@ -1186,6 +1236,11 @@ def delete_favorite(
     from app.services.discovery_service import DiscoveryService
 
     DiscoveryService().reclassify_discovery_results_for_deleted_favorite(favorite_id, db)
+    if favorite.snapshot_id:
+        # Card #1118: deixou de ser a amostra de um favorito; 30 dias a partir de agora.
+        from app.services.market_history import snapshots as history_snapshots
+
+        history_snapshots.release(db, favorite.snapshot_id)
     db.delete(favorite)
     db.commit()
     return {"message": "Favorite deleted"}

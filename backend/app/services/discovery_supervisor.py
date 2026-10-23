@@ -135,10 +135,10 @@ def _supervisor_entry(events, acknowledgements, directory, inputs):
             ComboService.get_template_metadata = lambda self, name: (
                 frozen_metadata if name == inputs["template_name"] else original(self, name)
             )
-        from app.services.discovery_inputs import prepare, read
+        from app.services.discovery_inputs import activate, prepare, read
 
         manifest = prepare(inputs)
-        os.environ["DISCOVERY_FROZEN_INPUT_DIR"] = manifest["directory"]
+        activate(manifest)
         progress(
             {
                 "phase_complete": "input_snapshot",

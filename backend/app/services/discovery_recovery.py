@@ -388,11 +388,14 @@ def reconcile_expired(db, sweep_id=None, commit=True):
                 snapshot = row.input_snapshot or {}
                 manifest = snapshot.get("candle_manifest")
                 if manifest and not snapshot.get("inputs_cleaned"):
-                    from app.services.discovery_inputs import discard
+                    from app.services.discovery_inputs import discard, is_snapshot_manifest
 
-                    directory = __import__("pathlib").Path(manifest["directory"])
-                    if directory.exists():
-                        discard(manifest)
+                    if is_snapshot_manifest(manifest):
+                        discard(manifest)  # solta a referência; os bytes seguem pelo prazo
+                    else:
+                        directory = __import__("pathlib").Path(manifest["directory"])
+                        if directory.exists():
+                            discard(manifest)
                     row.input_snapshot = {**snapshot, "inputs_cleaned": True}
         if sweep.state == "running":
             DiscoveryService().ensure_sweep_wakeup(db, sweep_id, sweep=sweep)

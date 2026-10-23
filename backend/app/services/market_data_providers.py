@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 CCXT_SOURCE = "ccxt"
 STOOQ_SOURCE = "stooq"
+# Ações e ETFs pela rota do gráfico da Binance (card #1118). Fica fora dos aliases de
+# ``normalize_data_source``: até o #1119 nenhuma rota de análise aceita esta fonte.
+BINANCE_EQUITY_SOURCE = "binance_equity"
 
 _CCXT_ALIASES = {"", "ccxt", "binance", "crypto", "default"}
 _STOOQ_ALIASES = {"stooq", "stooq-eod", "stooq_eod"}
@@ -625,10 +628,57 @@ class YahooMarketDataProvider:
         return out
 
 
+class BinanceEquityMarketDataProvider:
+    """Ação/ETF da Binance atrás do ``HistoryService`` (autoridade única).
+
+    Lê o que já foi coletado e, na consulta, completa só o trecho que falta.
+    Stooq, Yahoo e Alpha Vantage continuam disponíveis; a retirada é do #1126.
+    """
+
+    source = BINANCE_EQUITY_SOURCE
+
+    def __init__(self, service=None):
+        self._service = service
+
+    def _history(self):
+        if self._service is None:
+            from app.services.market_history.facade import get_history_service
+
+            self._service = get_history_service()
+        return self._service
+
+    def fetch_ohlcv(
+        self,
+        symbol: str,
+        timeframe: str,
+        since_str: Optional[str] = None,
+        until_str: Optional[str] = None,
+        limit: Optional[int] = None,
+        adjustment: str = "adjusted",
+    ) -> pd.DataFrame:
+        from app.services.market_history.facade import spec_for_request, to_loader_frame
+
+        service = self._history()
+        spec = spec_for_request(symbol=symbol, timeframe=timeframe, adjustment=adjustment)
+        series = service.resolve(spec)
+        result = service.history(series, since_str, until_str, limit=limit)
+        if result.coverage.get("status") == "failed" and result.candles.empty:
+            error = result.coverage.get("error") or {}
+            raise ValueError(error.get("message") or "Falha ao coletar o histórico da Binance.")
+        return to_loader_frame(result.candles)
+
+
 _PROVIDERS: dict[str, MarketDataProvider] = {}
 
 
 def get_market_data_provider(data_source: Optional[str]) -> MarketDataProvider:
+    if str(data_source or "").strip().lower() == BINANCE_EQUITY_SOURCE:
+        provider = _PROVIDERS.get(BINANCE_EQUITY_SOURCE)
+        if provider is None:
+            provider = BinanceEquityMarketDataProvider()
+            _PROVIDERS[BINANCE_EQUITY_SOURCE] = provider
+        return provider
+
     source = normalize_data_source(data_source)
     provider = _PROVIDERS.get(source)
     if provider is not None:

@@ -13,19 +13,24 @@ import {
   catalogBanners,
   classLabelOf,
   confirmCopy,
+  coverageNote,
+  coverageRows,
   emptySearchMessage,
   entryStateLabel,
   fmtInt,
   freshnessLine,
-  historyText,
+  hasCoverageDetail,
+  historySummary,
   isMarked,
   markedNoteText,
   markedReasonText,
   mergeSymbols,
   normalizeSymbol,
+  onDemandHistory,
   selectionCountText,
   selectionCounts,
   sortedForChips,
+  zoneLabel,
   type CatalogAsset,
   type ClassFilter,
 } from '../lib/assetSelection'
@@ -87,6 +92,12 @@ export function AssetPicker({
   const [retryBusy, setRetryBusy] = useState(false)
   const [retryError, setRetryError] = useState<string | null>(null)
 
+  // Cobertura aberta por ativo (nunca marca nem desmarca o ativo) e botões, para devolver o foco no Esc.
+  const [openCoverage, setOpenCoverage] = useState<Record<string, boolean>>({})
+  const [announce, setAnnounce] = useState('')
+  const coverageButtons = useRef<Record<string, HTMLButtonElement | null>>({})
+  const lastAnnounced = useRef('')
+  const silentRefresh = useRef(false)
   const searchRef = useRef<HTMLInputElement | null>(null)
   const allRef = useRef<HTMLButtonElement | null>(null)
   const okRef = useRef<HTMLButtonElement | null>(null)
@@ -108,7 +119,10 @@ export function AssetPicker({
     const controller = new AbortController()
     const delay = firstLoad.current ? 0 : 250
     const timer = window.setTimeout(async () => {
-      setLoading(true)
+      // Atualização de fundo (coleta em andamento) não pisca a lista nem desliga o "Todos do filtro".
+      const silent = silentRefresh.current
+      silentRefresh.current = false
+      if (!silent) setLoading(true)
       try {
         const next = await fetchCatalogPage({ q: q.trim(), filter, page, pageSize: PAGE_SIZE }, controller.signal)
         if (controller.signal.aborted) return
@@ -121,7 +135,7 @@ export function AssetPicker({
         if (controller.signal.aborted) return
         setError(e instanceof Error ? e.message : 'Não foi possível carregar o catálogo de ativos.')
       } finally {
-        if (!controller.signal.aborted) setLoading(false)
+        if (!controller.signal.aborted && !silent) setLoading(false)
       }
     }, delay)
     return () => {
@@ -139,6 +153,33 @@ export function AssetPicker({
     const timer = window.setTimeout(() => setTick((n) => n + 1), 4000)
     return () => window.clearTimeout(timer)
   }, [refreshing, tick])
+
+  // Coleta de histórico em andamento numa linha visível: acompanha o progresso sem recarregar a lista.
+  const collectingVisible = data?.items.some((asset) => asset.history.status === 'collecting') ?? false
+  useEffect(() => {
+    if (!collectingVisible) return
+    const timer = window.setTimeout(() => {
+      silentRefresh.current = true
+      setTick((n) => n + 1)
+    }, 5000)
+    return () => window.clearTimeout(timer)
+  }, [collectingVisible, tick])
+
+  // role=status anuncia só quando o progresso muda, não a cada filtro ou página (P3 aceito do Design).
+  const collectingKey = (data?.items ?? [])
+    .filter((asset) => asset.history.status === 'collecting')
+    .map((asset) => `${asset.symbol}: ${historySummary(asset).text}`)
+    .join('. ')
+  useEffect(() => {
+    if (collectingKey === lastAnnounced.current) return
+    lastAnnounced.current = collectingKey
+    setAnnounce(collectingKey)
+  }, [collectingKey])
+
+  const closeCoverage = (assetId: string) => {
+    setOpenCoverage((current) => ({ ...current, [assetId]: false }))
+    window.setTimeout(() => coverageButtons.current[assetId]?.focus(), 0)
+  }
 
   const closeConfirm = (refocus: boolean) => {
     setConfirm(null)
@@ -207,11 +248,7 @@ export function AssetPicker({
           state_reason: null,
           selectable: true,
           analysis_available: item.asset_class === 'crypto',
-          history: {
-            status: item.asset_class === 'crypto' ? ('on_demand' as const) : ('not_collected' as const),
-            from: null,
-            to: null,
-          },
+          history: onDemandHistory(),
         })),
         { overwrite: false },
       )
@@ -227,7 +264,20 @@ export function AssetPicker({
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === 'Escape' && confirm) {
+    if (event.key !== 'Escape') return
+    // Esc com o foco no botão "Cobertura" ou dentro da tabela fecha e devolve o foco ao botão.
+    const target = event.target as HTMLElement
+    const owner =
+      target.closest?.<HTMLElement>('[data-cov-btn]')?.getAttribute('data-cov-btn') ??
+      target.closest?.<HTMLElement>('.ap-cov')?.getAttribute('data-asset-id') ??
+      null
+    if (owner && openCoverage[owner]) {
+      event.preventDefault()
+      event.stopPropagation()
+      closeCoverage(owner)
+      return
+    }
+    if (confirm) {
       event.preventDefault()
       event.stopPropagation()
       closeConfirm(true)
@@ -361,6 +411,10 @@ export function AssetPicker({
         })}
       </div>
 
+      <span className="sr-only" role="status" aria-live="polite" data-testid="coverage-live">
+        {announce}
+      </span>
+
       <div className="ap-list" role="group" aria-label="Resultado da busca de ativos" data-testid="asset-results">
         {!data && loading ? (
           <p className="ap-empty">Carregando catálogo…</p>
@@ -379,52 +433,139 @@ export function AssetPicker({
             const marked = isMarked(asset)
             const inSel = selected.has(normalizeSymbol(asset.symbol))
             const cls = CLASS_LABEL[asset.asset_class]
+            const summary = historySummary(asset)
+            const slug = `${headingId}-${asset.asset_id}`.replace(/[^A-Za-z0-9_-]/g, '-')
+            const pickId = `pick${slug}`
+            const panelId = `cov${slug}`
+            const detail = hasCoverageDetail(asset.history)
+            const isOpen = !!openCoverage[asset.asset_id] && detail
+            const histClass =
+              summary.tone === 'gap' ? ' cov-gap' : summary.tone === 'busy' ? ' cov-busy' : summary.tone === 'fail' ? ' cov-fail' : ''
             const facts = (
               <span className="ap-facts">
                 <span className={`ap-fact cls-${asset.asset_class}`}>{cls}</span>
                 <span className={`ap-fact ${marked ? 'st-marked' : 'st-ok'}`}>
                   {marked ? asset.state_label : 'Negociável'}
                 </span>
-                <span className="ap-fact hist">{historyText(asset)}</span>
+                <span className={`ap-fact hist${histClass}`} data-testid="asset-history">
+                  {summary.text}
+                </span>
+                {detail ? (
+                  <button
+                    type="button"
+                    className="ap-cov-btn"
+                    ref={(node) => {
+                      coverageButtons.current[asset.asset_id] = node
+                    }}
+                    data-cov-btn={asset.asset_id}
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    onClick={() => setOpenCoverage((current) => ({ ...current, [asset.asset_id]: !current[asset.asset_id] }))}
+                  >
+                    Cobertura<span className="sr-only"> de {asset.symbol}</span>
+                  </button>
+                ) : null}
               </span>
             )
-            const identity = (
-              <span className="ap-id">
+            const nameBlock = (
+              <>
                 <strong>{asset.symbol}</strong>
                 {/* A Binance não publica o nome do cripto no exchangeInfo: a linha diz o mercado. */}
                 <span>{asset.asset_class === 'crypto' ? `${asset.name} · Spot, cotação USDT` : asset.name}</span>
-              </span>
+              </>
             )
+            const panel = isOpen ? (
+              <div
+                className="ap-cov"
+                id={panelId}
+                role="region"
+                aria-label={`Cobertura do histórico de ${asset.symbol}`}
+                tabIndex={-1}
+                data-asset-id={asset.asset_id}
+                data-testid={`asset-coverage-${asset.symbol}`}
+              >
+                <p className="ap-cov-note">{coverageNote(asset.history)}</p>
+                <ul>
+                  {coverageRows(asset.history).map((row) => (
+                    <li key={row.timeframe} className="ap-cov-tf" data-timeframe={row.timeframe}>
+                      <span className="tf">
+                        <b>{row.timeframe}</b>
+                        {row.derived ? (
+                          <>
+                            {' '}
+                            <span className="ap-cov-derived">derivado</span>
+                          </>
+                        ) : null}
+                      </span>
+                      <span className="cell">
+                        <span className="lbl">Período coberto</span>
+                        {row.period}
+                      </span>
+                      <span className={`cell${row.gapsTone === 'ok' ? '' : ` ${row.gapsTone}`}`}>
+                        <span className="lbl">Lacunas</span>
+                        {row.gaps}
+                      </span>
+                      <span className="cell">
+                        <span className="lbl">Atualizado ({zoneLabel()})</span>
+                        {row.updated}
+                      </span>
+                      <span className="cell">
+                        <span className="lbl">Origem</span>
+                        {row.origin}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null
             if (marked) {
               const reason = markedReasonText(asset, false)
               return (
-                <div key={asset.asset_id} className="ap-row marked" data-asset={asset.symbol}>
-                  <input
-                    type="checkbox"
-                    disabled
-                    aria-label={`${asset.symbol} — ${cls}, ${asset.state_label}: não pode ser escolhido`}
-                  />
-                  {identity}
-                  {facts}
-                  <p className="ap-reason" data-testid="asset-marked-reason">
-                    {reason}
-                    {inSel ? <b> Está na seleção salva e fica de fora ao rodar.</b> : null}
-                  </p>
+                <div key={asset.asset_id} className="ap-item">
+                  <div className="ap-row marked" data-asset={asset.symbol}>
+                    <input
+                      type="checkbox"
+                      disabled
+                      aria-label={`${asset.symbol} — ${cls}, ${asset.state_label}: não pode ser escolhido`}
+                    />
+                    <span className="ap-id">{nameBlock}</span>
+                    {facts}
+                    <p className="ap-reason" data-testid="asset-marked-reason">
+                      {reason}
+                      {inSel ? <b> Está na seleção salva e fica de fora ao rodar.</b> : null}
+                    </p>
+                  </div>
+                  {panel}
                 </div>
               )
             }
             return (
-              <label key={asset.asset_id} className="ap-row" data-asset={asset.symbol}>
-                <input
-                  type="checkbox"
-                  checked={inSel}
-                  disabled={disabled}
-                  onChange={() => toggle(asset)}
-                  aria-label={`${asset.symbol} — ${cls}`}
-                />
-                {identity}
-                {facts}
-              </label>
+              <div key={asset.asset_id} className="ap-item">
+                {/* Linha selecionável: <div> com <label for> no nome. O botão "Cobertura" fica fora do <label>
+                    (HTML válido) e a linha inteira continua clicável como no seletor do #1117. */}
+                <div
+                  className="ap-row"
+                  data-asset={asset.symbol}
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest('button, input, label, a')) return
+                    toggle(asset)
+                  }}
+                >
+                  <input
+                    id={pickId}
+                    type="checkbox"
+                    checked={inSel}
+                    disabled={disabled}
+                    onChange={() => toggle(asset)}
+                    aria-label={`${asset.symbol} — ${cls}`}
+                  />
+                  <label className="ap-id" htmlFor={pickId}>
+                    {nameBlock}
+                  </label>
+                  {facts}
+                </div>
+                {panel}
+              </div>
             )
           })
         )}

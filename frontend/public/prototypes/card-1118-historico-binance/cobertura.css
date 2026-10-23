@@ -1,0 +1,120 @@
+/* Card #1118 — DELTA do protótipo. Tokens do produto (index.css / AssetPicker.css); rampa 12/13/14px do DESIGN.md.
+   Contraste sobre #0b0e11/#181a20: #929aa5 6,9:1 · #fbbf24 11:1 · #93c5fd 10:1 · #ff8294 7,6:1 · #0ecb81 8,9:1. */
+
+/* Cola do clone: o AppNav vivo troca a barra lateral pelo topo abaixo de 1024px (AppNav.tsx). */
+@media (max-width: 1023.98px) {
+  html { --app-sidebar-width: 0px !important; }
+  .cf-desk { display: none !important; }
+}
+@media (min-width: 1024px) {
+  .cf-mob { display: none !important; }
+}
+.cf-desk, .cf-mob { display: contents; }
+/* Abas do clone: o React desmonta o painel inativo; aqui ele fica oculto. */
+[role='tabpanel'][hidden] { display: none !important; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* Linha do seletor: item = linha viva + painel de cobertura logo abaixo.
+   A linha selecionável é <div class="ap-row"> com <label for> no nome (o vivo usa <label> na linha toda). */
+.ap-item { display: flex; flex-direction: column; min-width: 0; }
+label.ap-id { cursor: pointer; }
+.ap-fact.hist { white-space: normal; text-align: left; }
+.ap-fact.hist.cov-gap { border-color: rgba(245, 158, 11, 0.45); color: #fbbf24; }
+.ap-fact.hist.cov-busy { border-color: rgba(59, 130, 246, 0.42); color: #93c5fd; }
+.ap-fact.hist.cov-fail { border-color: rgba(246, 70, 93, 0.45); color: #ff8294; }
+.asset-picker .ap-facts { max-width: 440px; }
+
+.asset-picker button.ap-cov-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 2px 10px;
+  border: 1px solid var(--ap-border, #2b3139);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-elevated, #1e2329);
+  color: var(--text-secondary, #eaecef);
+  font-size: 12px;
+  font-weight: 600;
+}
+.asset-picker button.ap-cov-btn::after { content: '▾'; margin-left: 6px; font-size: 10px; color: var(--text-tertiary, #929aa5); }
+.asset-picker button.ap-cov-btn[aria-expanded='true']::after { content: '▴'; }
+
+.ap-cov {
+  margin: -1px 0 0;
+  padding: 10px 12px 12px;
+  border: 1px dotted var(--ap-border, #2b3139);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-md, 6px) var(--radius-md, 6px);
+  background: var(--bg-secondary, #181a20);
+  color: var(--text-secondary, #eaecef);
+  font-size: 12px;
+}
+.ap-cov-note { margin: 0 0 8px; color: var(--text-tertiary, #929aa5); }
+.ap-cov ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ap-cov-tf {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+  gap: 4px 12px;
+  align-items: start;
+  padding: 6px 0;
+  border-top: 1px solid var(--ap-border, #2b3139);
+}
+.ap-cov-tf:first-child { border-top: 0; }
+.ap-cov-tf .tf b { font-family: var(--font-number, 'IBM Plex Sans', monospace); color: var(--text-primary, #fff); font-size: 13px; }
+.ap-cov-tf .cell { min-width: 0; overflow-wrap: anywhere; }
+.ap-cov-tf .cell.warn { color: #fbbf24; }
+.ap-cov-tf .cell.busy { color: #93c5fd; }
+.ap-cov-tf .lbl { display: block; color: var(--text-tertiary, #929aa5); font-size: 12px; }
+.ap-cov-derived {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 6px;
+  border: 1px solid rgba(59, 130, 246, 0.42);
+  border-radius: var(--radius-sm, 4px);
+  color: #93c5fd;
+  font-size: 12px;
+}
+/* A largura vem da coluna onde o seletor está (estreita na Otimização), não da janela. */
+.ap-cov { container-type: inline-size; }
+@container (max-width: 560px) {
+  .ap-cov-tf { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ap-cov-tf .tf { grid-column: 1 / -1; }
+}
+
+/* Decidir: estado da amostra na evidência e nos resultados, no mesmo tamanho (11px, como .candidate-meta). */
+.sample-state { font-size: 11px; }
+.cov-fail-text { color: #ff8294; }
+.cov-ok-text { color: #0ecb81; }
+
+/* Painel de demonstração: no fim da página, no fluxo (sem position:fixed), só no protótipo. */
+.demo-panel {
+  max-width: 1480px;
+  margin: 24px auto 32px;
+  padding: 14px 16px;
+  border: 1px dashed #3b82f6;
+  border-radius: 10px;
+  background: #11161d;
+  color: #eaecef;
+  font-size: 13px;
+}
+.demo-panel h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.demo-panel p { margin: 0 0 10px; color: #929aa5; font-size: 12px; }
+.demo-panel .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.demo-panel .row > span { min-width: 150px; color: #929aa5; font-size: 12px; }
+.demo-panel button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #2b3139;
+  border-radius: 6px;
+  background: #1e2329;
+  color: #eaecef;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.demo-panel button[aria-pressed='true'] { border-color: rgba(252, 213, 53, 0.6); color: #fcd535; }
+.demo-panel button:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+@media (max-width: 1023.98px) { .demo-panel { margin: 24px 16px 32px; } }

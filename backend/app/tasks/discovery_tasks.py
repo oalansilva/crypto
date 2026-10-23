@@ -347,6 +347,12 @@ def run_combination(
     coverage = min(1.0, (observed_valid_candles / expected_candles) if expected_candles else 0.0)
     trades_count = len(trades)
 
+    # Card #1118: proveniência da série e referência da amostra congelada (decisão 15).
+    candle_manifest = inputs.get("candle_manifest") or {}
+    provenance = candle_manifest.get("provenance") or {}
+    series_source = provenance.get("data_source")
+    series_version = provenance.get("version_label")
+
     metadata = inputs.get("template_metadata") or {}
     identity = build_strategy_identity(
         template_id=combination.template_id,
@@ -423,11 +429,21 @@ def run_combination(
             parameters=parameters,
             start_at=start_at,
             end_at=end_at,
-            candle_source=result.get("data_source"),
-            candle_version=(inputs.get("candle_manifest") or {})
+            candle_source=series_source or result.get("data_source"),
+            candle_version=series_version
+            or (inputs.get("candle_manifest") or {})
             .get("files", {})
             .get("candles", {})
             .get("sha256"),
+            data_source=series_source,
+            asset_class=provenance.get("asset_class"),
+            session=provenance.get("session"),
+            adjustment=provenance.get("adjustment"),
+            timeframe_origin=provenance.get("timeframe_origin"),
+            period_requested=provenance.get("period_requested"),
+            period_covered=provenance.get("period_covered"),
+            data_version=provenance.get("data_version"),
+            snapshot_id=provenance.get("snapshot_id"),
             expected_candles=expected_candles,
             observed_valid_candles=observed_valid_candles,
             coverage=coverage,
@@ -454,6 +470,14 @@ def run_combination(
     settled(db, combination, "succeeded")
     combination.updated_at = datetime.now(timezone.utc)
     db.commit()
+    if provenance.get("snapshot_id"):
+        # Prazo de 30 dias da amostra conta do fim da execução (decisão 14); os bytes ficam.
+        try:
+            from app.services.discovery_inputs import discard
+
+            discard(candle_manifest)
+        except Exception:  # pragma: no cover - a limpeza periódica repete
+            logger.warning("Could not set the retention of the discovery sample", exc_info=True)
     logger.info(
         "Discovery combination completed: sweep=%s combination=%s result=%s eligibility=%s",
         combination.sweep_id,

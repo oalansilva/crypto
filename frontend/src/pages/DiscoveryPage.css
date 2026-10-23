@@ -39,6 +39,10 @@
   display: block; margin-top: 3px; color: var(--text-muted); font-size: 11px;
   line-height: 1.35; overflow-wrap: anywhere; white-space: normal;
 }
+/* Estado da amostra (card #1118): mesmo tamanho do .candidate-meta (11px) na evidência e nos resultados. */
+.sample-state { font-size: 11px; }
+.sample-state.expired { color: var(--ap-danger-text); }
+.sample-state.favorite { color: var(--accent-success); }
 
 .discovery-tag {
   display: inline-flex; align-items: center; min-height: 26px; padding: 3px 7px;
