@@ -7,6 +7,87 @@ import type { Page, Route } from '@playwright/test'
  * ativos marcados (suspenso, fora de mercado, removido).
  */
 
+/** Cobertura do histórico por ativo (card #1118): mesmo contrato de `GET /api/assets/catalog`. */
+export interface MockGap {
+  start: string
+  end: string
+  count: number
+  inherited_from?: '5m' | null
+  block_end?: string
+}
+
+export interface MockTimeframe {
+  timeframe: string
+  from: string | null
+  to: string | null
+  gap_count: number | null
+  gaps: MockGap[]
+  updated_at: string | null
+  origin: 'native' | 'derived'
+  derived_from?: string | null
+  state?: 'idle' | 'collecting' | 'failed'
+  insufficient?: boolean
+  incomplete?: boolean
+  pages_done?: number
+  requested_since?: string | null
+  starts_at?: string | null
+}
+
+export interface MockHistory {
+  status: 'on_demand' | 'collecting' | 'covered' | 'partial' | 'failed' | 'frozen' | 'none'
+  from: string | null
+  to: string | null
+  updated_at?: string | null
+  gap_count?: number | null
+  timeframes?: MockTimeframe[]
+  note?: string | null
+  calendar_timezone?: string | null
+  collecting?: { timeframe: string; page: number; requested_at: string | null } | null
+  error?: { timeframe: string; code: string | null; message: string | null; at: string | null } | null
+  partial?: { timeframe: string; requested_since: string | null; starts_at: string | null; insufficient: boolean } | null
+}
+
+export const CRYPTO_NOTE = 'Binance Spot · 24/7 · ajuste não se aplica'
+export const EQUITY_NOTE = 'Binance Ações · pregão regular de Nova York · ajustado por split'
+
+export function onDemand(tradable = true): MockHistory {
+  return { status: tradable ? 'on_demand' : 'none', from: null, to: null, timeframes: [], gap_count: 0 }
+}
+
+export function tf(
+  timeframe: string,
+  from: string,
+  to: string,
+  extra: Partial<MockTimeframe> = {},
+): MockTimeframe {
+  return {
+    timeframe,
+    from,
+    to,
+    gap_count: 0,
+    gaps: [],
+    updated_at: '2026-10-22T21:00:00Z',
+    origin: 'native',
+    derived_from: null,
+    ...extra,
+  }
+}
+
+export function covered(timeframes: MockTimeframe[], extra: Partial<MockHistory> = {}): MockHistory {
+  const native = timeframes.filter((t) => t.origin === 'native')
+  return {
+    status: 'covered',
+    from: timeframes.map((t) => t.from).filter(Boolean).sort()[0] ?? null,
+    to: timeframes.map((t) => t.to).filter(Boolean).sort().at(-1) ?? null,
+    updated_at: '2026-10-22T21:00:00Z',
+    gap_count: native.reduce((sum, t) => sum + (t.gap_count ?? 0), 0),
+    timeframes,
+    note: CRYPTO_NOTE,
+    calendar_timezone: null,
+    ...extra,
+  }
+}
+
 export type MockState = 'tradable' | 'suspended' | 'off_market' | 'no_trading' | 'no_rules' | 'removed'
 export type MockClass = 'crypto' | 'stock' | 'etf'
 
@@ -22,8 +103,9 @@ export interface MockAsset {
   removed_at: string | null
   selectable: boolean
   analysis_available: boolean
-  history: { status: 'local' | 'on_demand' | 'not_collected' | 'none'; from: string | null; to: string | null }
+  history: MockHistory
 }
+
 
 const STATE_LABEL: Record<MockState, string> = {
   tradable: 'Negociável',
@@ -57,8 +139,8 @@ function make(
     history:
       history ??
       (asset_class === 'crypto'
-        ? { status: state === 'tradable' ? 'on_demand' : 'none', from: null, to: null }
-        : { status: 'not_collected', from: null, to: null }),
+        ? onDemand(state === 'tradable')
+        : onDemand(state === 'tradable')),
   }
 }
 
@@ -67,8 +149,14 @@ export function cryptoCatalog(symbols: string[]): MockAsset[] {
   return symbols.map((symbol) => make('crypto', symbol, symbol.split('/')[0]))
 }
 
-const BTC_HISTORY = { status: 'local' as const, from: '2017-08-17T00:00:00Z', to: '2026-10-19T00:00:00Z' }
-const WAVES_HISTORY = { status: 'local' as const, from: '2018-01-01T00:00:00Z', to: '2024-05-31T00:00:00Z' }
+const BTC_HISTORY = covered(
+  ['1d', '4h', '1h', '15m'].map((name) => tf(name, '2017-08-17T00:00:00Z', '2026-10-22T18:00:00Z')),
+)
+const WAVES_HISTORY: MockHistory = {
+  ...covered([tf('1d', '2018-01-01T00:00:00Z', '2024-05-31T00:00:00Z', { updated_at: '2024-05-31T21:00:00Z' })]),
+  status: 'frozen',
+  updated_at: '2024-05-31T21:00:00Z',
+}
 
 export function defaultCatalog(): MockAsset[] {
   return [

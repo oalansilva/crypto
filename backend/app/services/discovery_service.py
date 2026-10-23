@@ -1890,8 +1890,38 @@ class DiscoveryService:
             "observed_valid_candles": row.observed_valid_candles,
             "fees_slippage": row.fees_slippage,
             "oos_verdict": _row_oos_verdict(row),
+            # Card #1118: proveniência da série e amostra da varredura (estado entra em
+            # ``_attach_sample_state``; sem snapshot_id o resultado é "sem amostra guardada").
+            "provenance": {
+                "data_source": row.data_source,
+                "asset_class": row.asset_class,
+                "session": row.session,
+                "adjustment": row.adjustment,
+                "timeframe_origin": row.timeframe_origin,
+                "period_requested": row.period_requested,
+                "period_covered": row.period_covered,
+                "data_version": row.data_version,
+            },
+            "snapshot_id": row.snapshot_id,
+            "sample": {"state": "none", "retain_until": None},
         }
         return payload
+
+    @staticmethod
+    def _attach_sample_state(session: Session, payloads: list[dict[str, Any]]) -> None:
+        """Estado da amostra de cada resultado, lido de uma vez do manifesto."""
+
+        from app.services.market_history import snapshots as history_snapshots
+
+        try:
+            states = history_snapshots.states_for(session, [p.get("snapshot_id") for p in payloads])
+        except Exception:
+            logger.warning("Estado da amostra indisponível", exc_info=True)
+            return
+        for payload in payloads:
+            sid = payload.get("snapshot_id")
+            if sid and sid in states:
+                payload["sample"] = states[sid]
 
     def rank_eligible(
         self, sweep_id: str, metric: str = "calmar_ratio", db: Session | None = None
@@ -1941,13 +1971,15 @@ class DiscoveryService:
 
             template_names = [str(row.template_id) for row in rows if row.template_id]
             identity_map = ComboService.identity_map_for_template_names(session, template_names)
-            return [
+            payloads = [
                 self._result_row(row, idx + 1, identity_map=identity_map, db=session)
                 for idx, row in enumerate(ranked)
             ] + [
                 self._result_row(row, None, identity_map=identity_map, db=session)
                 for row in ineligible
             ]
+            self._attach_sample_state(session, payloads)
+            return payloads
         finally:
             if db is None:
                 session.close()
@@ -2194,9 +2226,16 @@ class DiscoveryService:
                 promoted_at=_utc_iso(_utcnow()),
                 operational_metrics=operational_metrics,
             ),
+            # Card #1118: o favorito começa com a amostra do resultado promovido (vale até o
+            # primeiro refresh, que a troca).
+            snapshot_id=getattr(result, "snapshot_id", None),
         )
         db.add(favorite)
         db.flush()
+        if favorite.snapshot_id:
+            from app.services.market_history import snapshots as history_snapshots
+
+            history_snapshots.pin(db, favorite.snapshot_id)
         result.dedup_state = "already_promoted"
         result.dedup_reference = str(favorite.id)
         result.updated_at = _utcnow()

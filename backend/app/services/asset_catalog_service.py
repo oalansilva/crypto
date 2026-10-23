@@ -541,19 +541,61 @@ STATE_LABELS = {
 }
 
 
-def serialize_item(row: AssetCatalog) -> dict[str, Any]:
+def _empty_history(tradable: bool) -> dict[str, Any]:
+    return {
+        "status": "on_demand" if tradable else "none",
+        "from": None,
+        "to": None,
+        "updated_at": None,
+        "gap_count": 0,
+        "timeframes": [],
+        "note": None,
+        "calendar_timezone": None,
+        "collecting": None,
+        "error": None,
+        "partial": None,
+    }
+
+
+def serialize_item(
+    row: AssetCatalog, history_coverage: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Item do catálogo. ``history_coverage`` vem de ``market_series_coverage`` (card #1118):
+    cobertura por timeframe, lacunas, coleta e falha. Sem ela, cripto cai no resumo
+    de 1d do #1117 e as demais classes ficam "sob demanda" (nunca "não coletado")."""
+
     tradable = row.state == STATE_TRADABLE
-    if row.asset_class == CLASS_CRYPTO:
-        if row.history_from is not None:
-            history = {
-                "status": "local",
+    if history_coverage is not None:
+        history = history_coverage
+    elif row.asset_class == CLASS_CRYPTO and row.history_from is not None:
+        history = _empty_history(tradable)
+        history.update(
+            {
+                "status": "covered" if tradable else "frozen",
                 "from": _iso(row.history_from),
                 "to": _iso(row.history_to),
+                "updated_at": _iso(row.history_checked_at),
+                "gap_count": None,  # lacunas desconhecidas até a série entrar na autoridade nova
+                "timeframes": [
+                    {
+                        "timeframe": "1d",
+                        "from": _iso(row.history_from),
+                        "to": _iso(row.history_to),
+                        "gap_count": None,
+                        "gaps": [],
+                        "updated_at": _iso(row.history_checked_at),
+                        "origin": "native",
+                        "derived_from": None,
+                        "state": "idle",
+                        "insufficient": False,
+                        "incomplete": False,
+                    }
+                ],
+                "note": "Binance Spot · 24/7 · ajuste não se aplica",
             }
-        else:
-            history = {"status": "on_demand" if tradable else "none", "from": None, "to": None}
+        )
     else:
-        history = {"status": "not_collected", "from": None, "to": None}
+        history = _empty_history(tradable)
     return {
         "asset_id": row.asset_id,
         "asset_class": row.asset_class,
@@ -568,6 +610,15 @@ def serialize_item(row: AssetCatalog) -> dict[str, Any]:
         "analysis_available": row.asset_class == CLASS_CRYPTO,
         "history": history,
     }
+
+
+def _serialize_rows(db: Session, rows: list[AssetCatalog]) -> list[dict[str, Any]]:
+    """Serializa a página com a cobertura do histórico lida de uma vez (sem varrer candles)."""
+
+    from app.services.market_history.catalog_coverage import coverage_for_assets
+
+    coverage = coverage_for_assets(db, rows)
+    return [serialize_item(row, coverage.get(row.asset_id)) for row in rows]
 
 
 def _available_classes(freshness: dict[str, dict[str, Any]]) -> list[str]:
@@ -666,7 +717,7 @@ def search_catalog(
         if freshness[asset_class_name]["status"] == FRESH_UNAVAILABLE:
             counts[asset_class_name] = {"total": None, "eligible": None}
     return {
-        "items": [serialize_item(row) for row in rows],
+        "items": _serialize_rows(db, rows),
         "q": q,
         "class": asset_class or "all",
         "page": page,
@@ -731,7 +782,7 @@ def lookup_assets(
     if syms:
         conditions.append(AssetCatalog.symbol.in_(syms))
     rows = db.execute(select(AssetCatalog).where(or_(*conditions))).scalars().all()
-    return [serialize_item(row) for row in rows]
+    return _serialize_rows(db, rows)
 
 
 def list_tradable_crypto_symbols(*, db: Session | None = None) -> list[str] | None:

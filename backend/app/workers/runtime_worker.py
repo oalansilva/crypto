@@ -44,6 +44,26 @@ async def discovery_outbox_loop(stop_event: asyncio.Event, poll_seconds: int = 1
             logger.warning("Discovery outbox dispatch failed (retry next poll): %s", exc)
 
 
+async def snapshot_gc_loop(stop_event: asyncio.Event, interval_seconds: int = 86400) -> None:
+    """Job diário (card #1118): apaga manifestos de amostra vencidos e segmentos sem referência.
+
+    Amostra fixada por favorito nunca vence; o prazo de 30 dias dos demais conta do fim da
+    execução ou do momento em que deixaram de ser a amostra de um favorito.
+    """
+    from app.services.market_history import snapshots
+
+    while not stop_event.is_set():
+        try:
+            summary = await asyncio.to_thread(snapshots.collect_garbage, engine)
+            logger.info("Snapshot garbage collection: %s", summary)
+        except Exception:
+            logger.exception("Snapshot garbage collection failed; retrying on the next cycle")
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval_seconds)
+        except asyncio.TimeoutError:
+            pass
+
+
 async def discovery_reconciler_loop(stop_event: asyncio.Event, poll_seconds: int = 30) -> None:
     """Runs outside Discovery's cgroup, at startup and every thirty seconds."""
     from app.database import SessionLocal
@@ -147,6 +167,7 @@ async def _run(stop_event: asyncio.Event) -> None:
     favorite_refresh_task: asyncio.Task | None = None
     discovery_dispatch_task: asyncio.Task | None = None
     discovery_repair_task: asyncio.Task | None = None
+    snapshot_gc_task: asyncio.Task | None = None
 
     if run_signal_monitor:
         signal_monitor.start()
@@ -165,9 +186,20 @@ async def _run(stop_event: asyncio.Event) -> None:
         discovery_dispatch_task = asyncio.create_task(discovery_outbox_loop(stop_event))
         logger.info("Discovery outbox dispatcher loop started.")
 
+    from app.services.market_history import unified_enabled
+
+    if (run_favorite_refresh or run_discovery_dispatcher) and unified_enabled():
+        snapshot_gc_task = asyncio.create_task(snapshot_gc_loop(stop_event))
+        logger.info("Snapshot garbage collection loop started.")
+
     try:
         await stop_event.wait()
     finally:
+        if snapshot_gc_task is not None:
+            snapshot_gc_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await snapshot_gc_task
+            logger.info("Snapshot garbage collection loop stopped.")
         if discovery_repair_task is not None:
             discovery_repair_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

@@ -167,6 +167,9 @@ class FavoriteStrategy(Base):
         String, nullable=True
     )  # '6m' | '2y' | 'all'; usado no skip (evita drift de datas)
 
+    # Card #1118: amostra de execução do último refresh bem-sucedido (reprodução exata).
+    snapshot_id = Column(String(40), nullable=True)
+
 
 class AutoBacktestRun(Base):
     """Model for Auto Backtest execution history"""
@@ -186,6 +189,8 @@ class AutoBacktestRun(Base):
 
     favorite_id = Column(Integer, nullable=True)
     error_message = Column(String, nullable=True)
+    # Card #1118: manifesto da amostra usada por este run (refresh diário do favorito).
+    snapshot_id = Column(String(40), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)

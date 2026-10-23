@@ -15,10 +15,58 @@ export type AssetState =
   | 'removed'
 export type ClassFilter = 'all' | AssetClass
 
-export interface AssetHistory {
-  status: 'local' | 'on_demand' | 'not_collected' | 'none'
+/** Lacuna de uma série: primeiro e último candle esperado que não veio (UTC). */
+export interface HistoryGap {
+  start: string
+  end: string
+  count: number
+  /** 15m montado do 5m: a falta é a mesma do 5m e não soma no resumo da linha. */
+  inherited_from?: '5m' | null
+  /** Fim do bloco de 15m (só nas lacunas herdadas). */
+  block_end?: string
+}
+
+export interface HistoryTimeframe {
+  timeframe: string
   from: string | null
   to: string | null
+  candles?: number
+  /** `null`: lacunas ainda desconhecidas (série fora da autoridade nova). */
+  gap_count: number | null
+  gaps: HistoryGap[]
+  updated_at: string | null
+  origin: 'native' | 'derived'
+  derived_from?: string | null
+  state?: 'idle' | 'collecting' | 'failed'
+  insufficient?: boolean
+  incomplete?: boolean
+  pages_done?: number
+  requested_since?: string | null
+  starts_at?: string | null
+  error?: string | null
+  error_at?: string | null
+}
+
+export type HistoryStatus = 'on_demand' | 'collecting' | 'covered' | 'partial' | 'failed' | 'frozen' | 'none'
+
+/** Cobertura do histórico de um ativo (card #1118): vem de `market_series_coverage`. */
+export interface AssetHistory {
+  status: HistoryStatus
+  from: string | null
+  to: string | null
+  updated_at?: string | null
+  gap_count?: number | null
+  timeframes?: HistoryTimeframe[]
+  note?: string | null
+  calendar_timezone?: string | null
+  collecting?: { timeframe: string; page: number; requested_at: string | null } | null
+  error?: { timeframe: string; code: string | null; message: string | null; at: string | null } | null
+  partial?: {
+    timeframe: string
+    requested_since: string | null
+    starts_at: string | null
+    insufficient: boolean
+  } | null
 }
 
 export interface CatalogAsset {
@@ -154,16 +202,262 @@ export function formatDateTime(iso: string | null | undefined, timeZone = 'Ameri
 
 // --- Fatos de cada linha ------------------------------------------------------------
 
-export function historyText(asset: CatalogAsset): string {
-  const { history } = asset
-  if (history.status === 'not_collected') return 'Histórico não coletado'
-  if (history.status === 'local') {
-    return isMarked(asset)
-      ? `Histórico local até ${formatDate(history.to, 'UTC')}`
-      : `Histórico local desde ${formatDate(history.from, 'UTC')}`
+/** Estado vazio de uma classe: o texto diz quando a coleta começa (sem botão nem outro gatilho). */
+export const ON_DEMAND_TEXT: Record<AssetClass, string> = {
+  crypto: 'Histórico sob demanda · coletado quando uma análise pedir',
+  stock: 'Histórico sob demanda · a coleta começa quando as análises aceitarem ações',
+  etf: 'Histórico sob demanda · a coleta começa quando as análises aceitarem ETFs',
+}
+
+export function onDemandHistory(): AssetHistory {
+  return { status: 'on_demand', from: null, to: null, timeframes: [], gap_count: 0 }
+}
+
+const TIMEFRAME_MINUTES: Record<string, number> = { '1m': 1, '5m': 5, '15m': 15, '1h': 60, '4h': 240, '1d': 1440 }
+const timeframeOrder = (tf: string) => TIMEFRAME_MINUTES[tf] ?? 9999
+
+/** `22 out., 18:07` no fuso do navegador (ano só quando não é o corrente). */
+export function formatShortDateTime(
+  iso: string | null | undefined,
+  timeZone = browserTimeZone(),
+  now: Date = new Date(),
+): string {
+  if (!iso) return ''
+  const p = dateParts(iso, timeZone)
+  if (!p) return ''
+  const sameYear = String(now.getFullYear()) === p.year
+  return `${p.day} ${MONTHS[p.month - 1]}${sameYear ? '' : ` ${p.year}`}, ${p.hour}:${p.minute}`
+}
+
+export function browserTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
   }
-  if (history.status === 'on_demand') return 'Histórico sob demanda'
-  return 'Sem histórico local'
+}
+
+/** Nome do fuso no rótulo da coluna de atualização ("Brasília" para o horário de São Paulo). */
+export function zoneLabel(timeZone = browserTimeZone()): string {
+  if (timeZone === 'America/Sao_Paulo') return 'Brasília'
+  if (timeZone === 'UTC' || timeZone === 'Etc/UTC') return 'UTC'
+  return timeZone.split('/').pop()?.replace(/_/g, ' ') ?? timeZone
+}
+
+const listAnd = (names: string[]) =>
+  names.length > 1 ? `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}` : (names[0] ?? '')
+
+function withData(history: AssetHistory): HistoryTimeframe[] {
+  return (history.timeframes ?? []).filter((t) => t.from)
+}
+
+/** Fuso em que o dia de início de cada série vale: Nova York para ação/ETF, UTC para cripto. */
+function sessionZone(history: AssetHistory): string {
+  return history.calendar_timezone || 'UTC'
+}
+
+/**
+ * "desde" diz de qual timeframe é: início comum ("Histórico desde 17 ago. 2017 · 4 timeframes") ou um
+ * início por grupo ("1d desde 11 nov. 2014 · 5m e 15m desde 19 mai. 2026"). Nunca um "desde" único
+ * quando o intraday começa depois do diário.
+ */
+export function sinceText(history: AssetHistory): string {
+  const frames = withData(history)
+  const zone = sessionZone(history)
+  const groups: { start: string; names: string[] }[] = []
+  for (const frame of frames) {
+    const start = formatDate(frame.from, zone)
+    const group = groups.find((g) => g.start === start)
+    if (group) group.names.push(frame.timeframe)
+    else groups.push({ start, names: [frame.timeframe] })
+  }
+  groups.sort((x, y) => {
+    const fx = frames.find((f) => formatDate(f.from, zone) === x.start)?.from ?? ''
+    const fy = frames.find((f) => formatDate(f.from, zone) === y.start)?.from ?? ''
+    return fx.localeCompare(fy)
+  })
+  if (groups.length === 1) {
+    const n = frames.length
+    return `Histórico desde ${groups[0].start} · ${n} ${n === 1 ? 'timeframe' : 'timeframes'}`
+  }
+  return groups
+    .map((g) => `${listAnd([...g.names].sort((a, b) => timeframeOrder(a) - timeframeOrder(b)))} desde ${g.start}`)
+    .join(' · ')
+}
+
+export function gapsCountText(count: number): string {
+  return count === 0 ? 'sem lacunas' : count === 1 ? '1 lacuna' : `${count} lacunas`
+}
+
+export type HistoryTone = 'plain' | 'gap' | 'busy' | 'fail'
+
+export interface HistorySummary {
+  text: string
+  tone: HistoryTone
+}
+
+/** Fato de histórico da linha do seletor (tarefa 6.2). "Histórico não coletado" não existe mais. */
+export function historySummary(asset: CatalogAsset, now: Date = new Date()): HistorySummary {
+  const history = asset.history
+  const frames = withData(history)
+  const zone = sessionZone(history)
+  switch (history.status) {
+    case 'collecting': {
+      const info = history.collecting
+      const at = info?.requested_at ? formatShortDateTime(info.requested_at, undefined, now).split(', ')[1] : ''
+      return {
+        text: `Coletando histórico · ${info?.timeframe ?? '—'}, página ${info?.page ?? 1}${at ? ` · pedido às ${at}` : ''}`,
+        tone: 'busy',
+      }
+    }
+    case 'failed': {
+      const err = history.error
+      const when = err?.at ? formatShortDateTime(err.at, undefined, now) : ''
+      const collected = frames.length
+        ? ` · já coletado: ${frames
+            .filter((t) => t.origin === 'native')
+            .map((t) => `${t.timeframe} desde ${formatDate(t.from, zone)}`)
+            .join(', ')}`
+        : ' · nada coletado ainda'
+      return {
+        text: `Coleta falhou${when ? ` ${when}` : ''} · ${err?.message ?? 'falha na coleta'}${collected}`,
+        tone: 'fail',
+      }
+    }
+    case 'partial': {
+      const info = history.partial
+      const updated = history.updated_at ? ` · atualizado ${formatShortDateTime(history.updated_at, undefined, now)}` : ''
+      if (info?.insufficient) {
+        return {
+          text: `Parcial: pedido desde ${formatDate(info.requested_since, zone)}; a Binance tem desde ${formatDate(info.starts_at, zone)}${updated}`,
+          tone: 'gap',
+        }
+      }
+      return {
+        text: `Parcial: coletado desde ${formatDate(info?.starts_at ?? history.from, zone)}; a coleta continua no próximo pedido${updated}`,
+        tone: 'gap',
+      }
+    }
+    case 'frozen': {
+      const why = asset.state_label ? ` · sem atualização: ativo ${asset.state_label.toLowerCase()}` : ''
+      return {
+        text: `Histórico ${formatDate(history.from, zone)} – ${formatDate(history.to, zone)}${why}`,
+        tone: 'plain',
+      }
+    }
+    case 'covered': {
+      const gaps = history.gap_count
+      const parts = [sinceText(history)]
+      if (gaps !== null && gaps !== undefined) parts.push(gapsCountText(gaps))
+      if (history.updated_at) parts.push(`atualizado ${formatShortDateTime(history.updated_at, undefined, now)}`)
+      return { text: parts.join(' · '), tone: gaps ? 'gap' : 'plain' }
+    }
+    case 'none':
+      return { text: 'Sem histórico local', tone: 'plain' }
+    default:
+      return { text: ON_DEMAND_TEXT[asset.asset_class], tone: 'plain' }
+  }
+}
+
+export function historyText(asset: CatalogAsset, now: Date = new Date()): string {
+  return historySummary(asset, now).text
+}
+
+// --- Detalhe da cobertura por timeframe -----------------------------------------------
+
+export interface CoverageRow {
+  timeframe: string
+  derived: boolean
+  period: string
+  gaps: string
+  gapsTone: 'ok' | 'warn' | 'busy'
+  updated: string
+  origin: string
+}
+
+const NY_LABEL = 'horário de Nova York'
+
+function hm(iso: string, timeZone: string): string {
+  const p = dateParts(iso, timeZone)
+  return p ? `${p.hour}:${p.minute}` : ''
+}
+
+/** Uma lacuna com data, hora e fuso na própria célula (design, decisão 16). */
+export function gapLabel(gap: HistoryGap, timeframe: string, history: AssetHistory): string {
+  const equity = !!history.calendar_timezone
+  const zone = equity ? history.calendar_timezone! : browserTimeZone()
+  const zoneText = equity ? NY_LABEL : 'horário local'
+  const day = formatDate(gap.start, zone)
+  if (timeframe === '1d') {
+    const last = formatDate(gap.end, zone)
+    return last === day ? `${day} (1 pregão sem candle)` : `${day} a ${last} (${gap.count} pregões sem candle)`
+  }
+  const from = hm(gap.start, zone)
+  const to = hm(gap.inherited_from && gap.block_end ? gap.block_end : gap.end, zone)
+  const range = from === to ? from : `${from}–${to}`
+  return `${day}, ${range}, ${zoneText}`
+}
+
+function gapsCell(frame: HistoryTimeframe, history: AssetHistory): { text: string; tone: CoverageRow['gapsTone'] } {
+  if (frame.state === 'collecting') return { text: 'em coleta', tone: 'busy' }
+  const zone = sessionZone(history)
+  if (frame.state === 'failed' || frame.incomplete) {
+    return {
+      text: `incompleto: faltam os candles antes de ${formatDate(frame.from, zone)}; a coleta continua do ponto em que parou no próximo pedido`,
+      tone: 'warn',
+    }
+  }
+  if (frame.insufficient) {
+    return {
+      text: `insuficiente para o último pedido (desde ${formatDate(frame.requested_since, zone)}): a Binance não tem candles antes de ${formatDate(frame.starts_at ?? frame.from, zone)}`,
+      tone: 'warn',
+    }
+  }
+  if (frame.origin === 'derived') {
+    if (!frame.gaps.length) return { text: 'sem lacunas', tone: 'ok' }
+    const shown = frame.gaps.slice(0, 3).map((g) => gapLabel(g, frame.timeframe, history))
+    return {
+      text: `herdada do ${frame.derived_from ?? '5m'}: ${shown.join('; ')} (bloco incompleto; não soma no resumo)`,
+      tone: 'warn',
+    }
+  }
+  const count = frame.gap_count
+  if (count === null || count === undefined) return { text: 'lacunas ainda não calculadas', tone: 'ok' }
+  if (count === 0) return { text: 'sem lacunas', tone: 'ok' }
+  const shown = frame.gaps.slice(-3).map((g) => `${gapLabel(g, frame.timeframe, history)} (${g.count} ${g.count === 1 ? 'candle' : 'candles'} que a Binance não tem)`)
+  const more = count > shown.length ? `; e mais ${count - shown.length}` : ''
+  return { text: `${gapsCountText(count)}: ${shown.join('; ')}${more}`, tone: 'warn' }
+}
+
+export function coverageRows(history: AssetHistory, now: Date = new Date()): CoverageRow[] {
+  const zone = sessionZone(history)
+  return (history.timeframes ?? []).map((frame) => {
+    const cell = gapsCell(frame, history)
+    const derived = frame.origin === 'derived'
+    const period =
+      frame.state === 'collecting'
+        ? `até agora: ${formatDate(frame.from, zone)} – ${formatDate(frame.to, zone)}`
+        : `${formatDate(frame.from, zone)} – ${formatDate(frame.to, zone)}`
+    return {
+      timeframe: frame.timeframe,
+      derived,
+      period,
+      gaps: cell.text,
+      gapsTone: cell.tone,
+      updated: frame.updated_at ? formatShortDateTime(frame.updated_at, undefined, now) : '—',
+      origin: derived ? `montado do ${frame.derived_from ?? '5m'}` : 'nativo',
+    }
+  })
+}
+
+/** Linha de fonte, sessão e ajuste do detalhe da cobertura. */
+export function coverageNote(history: AssetHistory): string {
+  return `${history.note ?? ''}. Mercado fechado não conta como lacuna.`.replace(/^\. /, '')
+}
+
+/** O detalhe só existe quando há o que mostrar por timeframe. */
+export function hasCoverageDetail(history: AssetHistory): boolean {
+  return (history.timeframes ?? []).length > 0
 }
 
 /** Complemento exibido sob a linha de um ativo marcado. */

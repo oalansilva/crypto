@@ -303,11 +303,16 @@ def test_history_summary_comes_from_local_candles_for_crypto_only(monkeypatch):
             db.commit()
 
     btc = page["items"][0]
-    assert btc["history"]["status"] == "local"
+    # Card #1118: sem a série na autoridade nova, o resumo de 1d do #1117 ainda vale para a cripto
+    # (lacunas desconhecidas) e ação/ETF nunca mais aparecem como "não coletado".
+    assert btc["history"]["status"] == "covered"
     assert btc["history"]["from"].startswith("2017-08-17")
     assert btc["history"]["to"].startswith("2026-10-19")
+    assert btc["history"]["gap_count"] is None
+    assert [t["timeframe"] for t in btc["history"]["timeframes"]] == ["1d"]
     assert eth["history"]["status"] == "on_demand"
-    assert nvda["history"] == {"status": "not_collected", "from": None, "to": None}
+    assert nvda["history"]["status"] == "on_demand"
+    assert nvda["history"]["from"] is None and nvda["history"]["timeframes"] == []
 
 
 # --- Consulta ---------------------------------------------------------------------

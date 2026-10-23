@@ -34,6 +34,7 @@ import {
   type PreflightExcludedAsset,
 } from '../lib/assetSelection'
 import { useSelectionView } from '../lib/assetStore'
+import { evidenceSample, rowSample, seriesLine, type SampleInfo, type ResultProvenance } from '../lib/sampleState'
 import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
 import './DiscoveryPage.css'
 
@@ -125,6 +126,10 @@ type LeaderboardRow = {
   candle_version: string | null
   expected_candles: number | null
   observed_valid_candles: number | null
+  /** Card #1118: série (fonte, classe, sessão, ajuste, origem do timeframe, versão) e amostra congelada. */
+  provenance?: ResultProvenance | null
+  snapshot_id?: string | null
+  sample?: SampleInfo | null
   parameters?: Record<string, unknown>
   fees_slippage: { fees?: number; slippage?: number; fee_pct?: number; slippage_pct?: number } | null
   oos_verdict?: OosVerdict | null
@@ -1531,9 +1536,11 @@ export function DiscoveryPage() {
     return {
       start: fmtDate(row.start_at),
       end: fmtDate(row.end_at),
-      candles: `${row.observed_valid_candles ?? '—'}/${row.expected_candles ?? '—'} candles ${row.candle_source ?? '—'}${row.candle_version ? ` v${row.candle_version}` : ''}`,
+      candles: `${row.observed_valid_candles ?? '—'}/${row.expected_candles ?? '—'} candles ${seriesLine(row)}`,
       fees: fee != null ? `taxa ${fmtPct(fee)}` : '',
       slippage: slippage != null ? `slippage ${fmtPct(slippage)}` : '',
+      // Estado da amostra da varredura (card #1118): até quando fica guardada, ou "não reproduzível exatamente".
+      sample: evidenceSample(rows),
     }
   }, [rows])
 
@@ -2591,6 +2598,17 @@ export function DiscoveryPage() {
                     {evidence ? (
                       <>
                         {' · '}janela UTC [{evidence.start}, {evidence.end}) · {evidence.candles}
+                        {evidence.sample ? (
+                          <>
+                            {' · '}
+                            <span className="sample-state" data-testid="sample-evidence">
+                              <span className={evidence.sample.tone === 'expired' ? 'sample-state expired' : undefined}>
+                                {evidence.sample.text}
+                              </span>
+                              {evidence.sample.suffix}
+                            </span>
+                          </>
+                        ) : null}
                         {evidence.fees ? ` · ${evidence.fees}` : ''}
                         {evidence.slippage ? ` · ${evidence.slippage}` : ''}
                       </>
@@ -2754,6 +2772,34 @@ export function DiscoveryPage() {
                               {row.result_id} · cobertura {insufficient ? 'N/A' : fmtPct(row.coverage)}
                               {fmtParams(row.parameters) ? ` · ${fmtParams(row.parameters)}` : ''}
                               {row.direction === 'short' ? ' · benchmark B&H long-only' : ''}
+                              {(() => {
+                                // Card #1118: estado da amostra da própria varredura; favorito lembra que
+                                // Favoritos guarda a amostra do último refresh (o número que se refaz igual).
+                                const state = rowSample(row)
+                                return (
+                                  <>
+                                    {state.sample ? (
+                                      <>
+                                        {' · '}
+                                        <span
+                                          className={`sample-state${state.sampleTone === 'expired' ? ' expired' : ''}`}
+                                          data-testid={`sample-${row.result_id}`}
+                                        >
+                                          {state.sample}
+                                        </span>
+                                      </>
+                                    ) : null}
+                                    {state.favorite ? (
+                                      <>
+                                        {' · '}
+                                        <span className="sample-state favorite" data-testid={`sample-favorite-${row.result_id}`}>
+                                          {state.favorite}
+                                        </span>
+                                      </>
+                                    ) : null}
+                                  </>
+                                )
+                              })()}
                             </span>
                             <WalkForwardSeal status={verdict} />
                             <DiscoverySealReason row={row} />

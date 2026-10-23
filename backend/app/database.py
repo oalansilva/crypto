@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import get_settings
+from app.services.market_history import schema as history_schema
 
 _LOCAL_RUNTIME_ENVIRONMENTS = {
     "dev",
@@ -380,6 +381,8 @@ def ensure_runtime_schema_migrations() -> None:
                 ALTER TABLE favorite_strategies
                 ADD COLUMN IF NOT EXISTS auto_refresh_run_id VARCHAR NULL
                 """))
+        # Card #1118: referência da amostra do favorito/refresh e proveniência dos resultados.
+        history_schema.execute_all(conn, history_schema.ADD_COLUMNS_SQL)
         conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS market_indicator (
                     id BIGSERIAL PRIMARY KEY,
@@ -461,34 +464,66 @@ def ensure_runtime_schema_migrations() -> None:
 
     timescale_functions_available = True
     try:
+        with engine.begin() as probe:
+            live_is_new_shape = bool(history_schema.ohlcv_table_is_new_shape(probe))
+    except Exception:
+        live_is_new_shape = False
+    # Card #1118: tabelas do histórico (séries, cobertura, coleta, amostras) e a tabela de candles
+    # nova. Bloco próprio: o legado abaixo pode recusar o CREATE INDEX numa hypertable comprimida
+    # (comportamento de antes) e não pode desfazer isto nem a retirada da retenção. A troca da
+    # tabela de candles é do script de migração.
+    try:
         with engine.begin() as conn:
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS market_ohlcv (
-                    symbol TEXT NOT NULL,
-                    timeframe TEXT NOT NULL,
-                    candle_time TIMESTAMPTZ NOT NULL,
-                    open NUMERIC NOT NULL,
-                    high NUMERIC NOT NULL,
-                    low NUMERIC NOT NULL,
-                    close NUMERIC NOT NULL,
-                    volume NUMERIC NOT NULL,
-                    source TEXT NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    PRIMARY KEY (symbol, timeframe, candle_time, source)
+            history_schema.execute_all(conn, history_schema.side_table_statements())
+            if not live_is_new_shape:
+                history_schema.execute_all(
+                    conn, history_schema.ohlcv_table_sql(history_schema.STAGING_OHLCV_TABLE)
                 )
-                """))
-            conn.execute(text("""
-                CREATE UNIQUE INDEX IF NOT EXISTS uq_market_ohlcv_symbol_timeframe_candle_time
-                ON market_ohlcv (symbol, timeframe, candle_time)
-                """))
-            conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_time
-                ON market_ohlcv (symbol, timeframe, candle_time DESC)
-                """))
-            conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_source
-                ON market_ohlcv (symbol, timeframe, source)
-                """))
+    except Exception as exc:
+        logger.warning(
+            "Could not create the market history tables.",
+            extra={"event": "market_history_schema_error", "error": str(exc)},
+        )
+    # Nenhuma política apaga candles por idade (spec ohlcv-storage): sai a retenção de 2 anos.
+    try:
+        with engine.begin() as conn:
+            history_schema.remove_retention_policy(conn)
+    except Exception as exc:
+        logger.warning(
+            "Could not remove the market_ohlcv retention policy.",
+            extra={"event": "market_history_retention_error", "error": str(exc)},
+        )
+    try:
+        with engine.begin() as conn:
+            if not live_is_new_shape:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS market_ohlcv (
+                        symbol TEXT NOT NULL,
+                        timeframe TEXT NOT NULL,
+                        candle_time TIMESTAMPTZ NOT NULL,
+                        open NUMERIC NOT NULL,
+                        high NUMERIC NOT NULL,
+                        low NUMERIC NOT NULL,
+                        close NUMERIC NOT NULL,
+                        volume NUMERIC NOT NULL,
+                        source TEXT NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        PRIMARY KEY (symbol, timeframe, candle_time, source)
+                    )
+                    """))
+            if not live_is_new_shape:
+                conn.execute(text("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_market_ohlcv_symbol_timeframe_candle_time
+                    ON market_ohlcv (symbol, timeframe, candle_time)
+                    """))
+                conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_time
+                    ON market_ohlcv (symbol, timeframe, candle_time DESC)
+                    """))
+                conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_source
+                    ON market_ohlcv (symbol, timeframe, source)
+                    """))
             logger.info("market_ohlcv table and indexes ensured.")
     except Exception as exc:
         logger.warning(
@@ -536,15 +571,14 @@ def ensure_runtime_schema_migrations() -> None:
                 )
                 timescale_functions_available = False
 
+            # Card #1118: a tabela é o histórico guardado; nenhuma política apaga candles por idade.
             try:
                 conn.execute(
-                    text(
-                        "SELECT add_retention_policy('market_ohlcv', INTERVAL '2 years', if_not_exists => TRUE)"
-                    )
+                    text("SELECT remove_retention_policy('market_ohlcv', if_exists => TRUE)")
                 )
             except Exception as exc:
                 logger.warning(
-                    "Could not apply timescale retention policy for market_ohlcv.",
+                    "Could not remove timescale retention policy for market_ohlcv.",
                     extra={
                         "event": "ohlcv_timescale_retention_policy_error",
                         "table": "market_ohlcv",
@@ -558,7 +592,11 @@ def ensure_runtime_schema_migrations() -> None:
                     text(
                         "ALTER TABLE market_ohlcv SET (timescaledb.compress, "
                         "timescaledb.compress_orderby = 'candle_time DESC', "
-                        "timescaledb.compress_segmentby = 'symbol, timeframe, source')"
+                        + (
+                            "timescaledb.compress_segmentby = 'series_id')"
+                            if live_is_new_shape
+                            else "timescaledb.compress_segmentby = 'symbol, timeframe, source')"
+                        )
                     )
                 )
             except Exception as exc:
@@ -670,9 +708,11 @@ def _verify_market_ohlcv_timescale_policies(
 ) -> None:
     """Best-effort startup check for Timescale policy presence on market_ohlcv."""
 
+    # Card #1118: sem política de retenção (nada apaga candles por idade). A verificação
+    # exige que ela esteja ausente e que a compressão aos 30 dias esteja ativa.
     checks = {
         "hypertable": False,
-        "retention_policy": False,
+        "no_retention_policy": False,
         "compression_setting": False,
         "compression_policy": False,
     }
@@ -689,10 +729,10 @@ def _verify_market_ohlcv_timescale_policies(
 
         if timescale_functions_available:
             for check_name, proc_name in (
-                ("retention_policy", "policy_retention"),
+                ("no_retention_policy", "policy_retention"),
                 ("compression_policy", "policy_compression"),
             ):
-                checks[check_name] = bool(
+                present = bool(
                     conn.execute(
                         text("""
                             SELECT EXISTS(
@@ -705,19 +745,18 @@ def _verify_market_ohlcv_timescale_policies(
                         {"proc_name": proc_name},
                     ).scalar()
                 )
+                checks[check_name] = (
+                    (not present) if check_name == "no_retention_policy" else present
+                )
 
+            # Timescale 2.17 não preenche ``pg_class.reloptions``: a view de informação é a fonte.
             checks["compression_setting"] = bool(conn.execute(text("""
                         SELECT EXISTS(
                             SELECT 1
-                            FROM pg_class c
-                            JOIN pg_namespace n ON n.oid = c.relnamespace
-                            WHERE c.relname = 'market_ohlcv'
-                              AND n.nspname = 'public'
-                              AND EXISTS (
-                                    SELECT 1
-                                    FROM unnest(c.reloptions) AS opt(v)
-                                    WHERE lower(v::text) LIKE 'timescaledb.compress=%'
-                              )
+                            FROM timescaledb_information.hypertables
+                            WHERE hypertable_name = 'market_ohlcv'
+                              AND hypertable_schema = 'public'
+                              AND compression_enabled
                         )
                         """)).scalar())
 

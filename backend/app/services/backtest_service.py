@@ -29,6 +29,9 @@ logger.info("BacktestService initialized - logging to: %s", log_file)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../"))
 
 from src.data.incremental_loader import IncrementalLoader
+from app.services.market_history import unified_enabled
+from app.services.market_history.sample import ExecutionSample
+import contextvars
 from src.engine.backtester import Backtester
 
 # from src.strategy.sma_cross import SMACrossStrategy
@@ -136,7 +139,63 @@ class BacktestService:
             strategy_config.update(params)
         return DynamicStrategy(strategy_config)
 
+    # Card #1118: amostra congelada da execução em curso (por thread de execução).
+    _SAMPLE: "contextvars.ContextVar[ExecutionSample | None]" = contextvars.ContextVar(
+        "backtest_execution_sample", default=None
+    )
+
+    def _fetch(self, symbol, timeframe, since, until, **kwargs):
+        """Lê os candles pelo carregador e, com a autoridade única ligada, congela a série.
+
+        Depois do primeiro pedido de cada timeframe, a execução só lê da amostra:
+        atualização, correção ou cache refeito no meio não mudam o resultado.
+        """
+
+        sample = self._SAMPLE.get()
+        if sample is not None and sample.has(timeframe):
+            return sample.frame(timeframe)
+        df = self.loader.fetch_data(symbol, timeframe, since, until, **kwargs)
+        if sample is not None and df is not None and not df.empty:
+            df = sample.freeze_crypto(timeframe, symbol, timeframe, since, until, df)
+        return df
+
     def run_backtest(
+        self, config: dict, progress_callback=None, job_id: str = None, resume: bool = False
+    ) -> dict:
+        """Executa o backtest. Com ``MARKET_HISTORY_UNIFIED=1`` congela a amostra no início."""
+
+        symbol = str(config.get("symbol") or "")
+        if not unified_enabled() or "/" not in symbol or self._SAMPLE.get() is not None:
+            return self._run_backtest_body(config, progress_callback, job_id, resume)
+        sample = ExecutionSample("backtest", owner_ref=f"backtest:{symbol}")
+        token = self._SAMPLE.set(sample)
+        try:
+            # Otimização pede o próprio período (``since`` cru no caminho multi-estratégia):
+            # congela no primeiro pedido do caminho, não aqui, para o período ser o mesmo.
+            if config.get("mode") != "optimize":
+                timeframes = config.get("timeframes") or config.get("timeframe") or []
+                if isinstance(timeframes, str):
+                    timeframes = [timeframes]
+                since = config.get("since")
+                if config.get("full_period") or not since:
+                    since = "2017-01-01 00:00:00"
+                for timeframe in timeframes:
+                    try:
+                        self._fetch(symbol, timeframe, since, config.get("until"))
+                    except Exception:  # o corpo repete o pedido e trata a falha como antes
+                        pass
+            result = self._run_backtest_body(config, progress_callback, job_id, resume)
+            if sample.snapshot_id and isinstance(result, dict):
+                result["snapshot_id"] = sample.snapshot_id
+                result["data_provenance"] = {
+                    role: sample.provenance(role) for role in list(sample._entries)
+                }
+                sample.finish()
+            return result
+        finally:
+            self._SAMPLE.reset(token)
+
+    def _run_backtest_body(
         self, config: dict, progress_callback=None, job_id: str = None, resume: bool = False
     ) -> dict:
         """
@@ -189,9 +248,7 @@ class BacktestService:
                     progress_callback(msg, pct)
 
             try:
-                df = self.loader.fetch_data(
-                    symbol, timeframe, since, until, progress_callback=loader_callback
-                )
+                df = self._fetch(symbol, timeframe, since, until, progress_callback=loader_callback)
             except Exception as e:
                 print(f"Error fetching data for {timeframe}: {e}")
                 current_step_count += len(strategies)
@@ -439,7 +496,7 @@ class BacktestService:
             progress_callback(f"Downloading data for {symbol}...", 0)
 
         try:
-            df = self.loader.fetch_data(symbol, timeframe, since, until)
+            df = self._fetch(symbol, timeframe, since, until)
             if len(df) > 20000:
                 print(f"Truncating optimization dataset to 20k candles")
                 df = df.tail(20000)
@@ -606,7 +663,7 @@ class BacktestService:
                 progress_callback(f"Downloading data for {missing_tfs}...", 0)
             try:
                 for tf in missing_tfs:
-                    d = self.loader.fetch_data(symbol, tf, since, until)
+                    d = self._fetch(symbol, tf, since, until)
                     if len(d) > 20000:
                         d = d.tail(20000)
                     data_map[tf] = d
