@@ -116,7 +116,9 @@ export const CLASS_FILTER_LABEL: Record<ClassFilter, string> = {
 }
 
 export const PAGE_SIZE = 6
-export const EQUITY_REASON = 'análise ainda não disponível para ações e ETFs'
+/** Card #1119 (decisão 3): lote e Descoberta seguem recusando ação/ETF, com o porquê novo. */
+export const EQUITY_REASON =
+  'ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois'
 export const MISSING_REASON = 'ativo fora do catálogo da Binance'
 export const TOP10_SYMBOLS = [
   'BTC/USDT',
@@ -209,6 +211,12 @@ export const ON_DEMAND_TEXT: Record<AssetClass, string> = {
   etf: 'Histórico sob demanda · a coleta começa quando as análises aceitarem ETFs',
 }
 
+/** Combo e Otimização (card #1119): a coleta acontece ao rodar o backtest de 1 ativo. */
+export const ON_DEMAND_TEXT_BACKTEST: Partial<Record<AssetClass, string>> = {
+  stock: 'Histórico sob demanda · coletado ao rodar o backtest de 1 ativo',
+  etf: 'Histórico sob demanda · coletado ao rodar o backtest de 1 ativo',
+}
+
 export function onDemandHistory(): AssetHistory {
   return { status: 'on_demand', from: null, to: null, timeframes: [], gap_count: 0 }
 }
@@ -297,7 +305,11 @@ export interface HistorySummary {
 }
 
 /** Fato de histórico da linha do seletor (tarefa 6.2). "Histórico não coletado" não existe mais. */
-export function historySummary(asset: CatalogAsset, now: Date = new Date()): HistorySummary {
+export function historySummary(
+  asset: CatalogAsset,
+  now: Date = new Date(),
+  onDemandTexts?: Partial<Record<AssetClass, string>>,
+): HistorySummary {
   const history = asset.history
   const frames = withData(history)
   const zone = sessionZone(history)
@@ -355,7 +367,7 @@ export function historySummary(asset: CatalogAsset, now: Date = new Date()): His
     case 'none':
       return { text: 'Sem histórico local', tone: 'plain' }
     default:
-      return { text: ON_DEMAND_TEXT[asset.asset_class], tone: 'plain' }
+      return { text: onDemandTexts?.[asset.asset_class] ?? ON_DEMAND_TEXT[asset.asset_class], tone: 'plain' }
   }
 }
 
@@ -597,12 +609,12 @@ export function outNames(entries: SelectionEntry[], max = 3): string {
 export function outWhy(counts: SelectionCounts): string {
   const hasMarked = counts.marked > 0 || counts.missing > 0
   if (counts.equities && hasMarked) {
-    return 'ações e ETFs ainda não têm análise, e ativos marcados pela Binance não entram em análise nova'
+    return `${EQUITY_REASON}, e ativos marcados pela Binance não entram em análise nova`
   }
   if (hasMarked) {
     return 'ativo marcado pela Binance (suspenso, fora de mercado, sem negociação, sem regras ou removido) não entra em análise nova'
   }
-  return 'a análise ainda não está disponível para ações e ETFs'
+  return EQUITY_REASON
 }
 
 export function selectionCountText(counts: SelectionCounts): string {
@@ -773,24 +785,137 @@ export interface RunPlan {
   counts: SelectionCounts
   outNames: string
   why: string
+  /** Card #1119: a única coisa que roda é 1 ação ou ETF (backtest de 1 ativo, sem lote). */
+  equityRun: SelectionEntry | null
 }
 
+/**
+ * Plano por classe (card #1119, decisão 2): cripto roda como sempre; ação ou ETF roda só quando
+ * é o único ativo da seleção que pode rodar (sem cripto e sem outra ação/ETF). Com cripto na
+ * seleção a ação/ETF fica de fora; com mais de uma ação/ETF, nada roda.
+ */
 export function planRun(entries: SelectionEntry[]): RunPlan {
   const counts = selectionCounts(entries)
-  const runnable = runnableSymbols(entries)
+  const cryptoRuns = runnableSymbols(entries)
+  const equities = entries.filter((e) => e.kind === 'class')
+  let equityRun: SelectionEntry | null = null
+  let runnable = cryptoRuns
+  let outList = entries
+  if (cryptoRuns.length === 0 && equities.length === 1) {
+    equityRun = equities[0]
+    runnable = [equityRun.symbol]
+    outList = entries.filter((e) => e !== equityRun)
+  }
   let mode: RunMode
   if (counts.total === 0) mode = 'none'
   else if (runnable.length === 0) mode = 'blocked'
   else if (runnable.length === 1) mode = 'single'
   else mode = 'batch'
-  return { mode, runnable, counts, outNames: outNames(entries, 3), why: outWhy(counts) }
+  // Ação/ETF que roda sozinha não está "fora": o aviso só lista o que sobra.
+  const outCounts = equityRun
+    ? { ...counts, equities: 0, stock: 0, etf: 0, out: counts.marked + counts.missing }
+    : counts
+  return {
+    mode,
+    runnable,
+    counts: outCounts,
+    outNames: outNames(outList, 3),
+    why: outWhy(outCounts),
+    equityRun,
+  }
+}
+
+/** "1 ação (NVDA)" ou "1 ETF (SPY)". */
+export function equityRunLabel(entry: SelectionEntry): string {
+  return `1 ${entry.asset?.asset_class === 'etf' ? 'ETF' : 'ação'} (${entry.symbol})`
+}
+
+/** Tempos que ação e ETF não rodam (card #1119, decisão 5). A Otimização também recusa 30m. */
+export function equityBadTimeframes(page: RunPage): string[] {
+  return page === 'optimize' ? ['1m', '5m', '30m'] : ['1m', '5m']
+}
+
+export const EQUITY_TIMEFRAME_HINT = 'Escolha 15m, 1h, 4h ou 1d.'
+export const OPTIMIZE_FIXED_WINDOW_LABEL = '1 a 31 jan. 2024'
+export const OPTIMIZE_FIXED_WINDOW = { start: '2024-01-01', end: '2024-01-31' }
+
+/** Quando a cobertura do 5m (catálogo) mostra que ele não cobre a janela fixa da Otimização. */
+export function fiveMinuteGap(entry: SelectionEntry | null, windowStart: string): { startsAt: string } | null {
+  const frame = entry?.asset?.history.timeframes?.find((t) => t.timeframe === '5m' && t.origin === 'native' && t.from)
+  if (!frame?.from) return null
+  if (new Date(frame.from).getTime() <= new Date(`${windowStart}T23:59:59Z`).getTime()) return null
+  return { startsAt: formatDate(frame.from, 'America/New_York') }
+}
+
+export interface EquityRunBlock {
+  /** Texto do "antes de rodar" (âmbar). */
+  copy: string
+  /** Aviso `role=status` ao rodar/escolher o tempo. */
+  notice: RunNotice
+}
+
+/**
+ * Ação/ETF sozinha num tempo que não roda: o valor fica como está (sem troca silenciosa) e a tela
+ * avisa antes de rodar. `null` quando o tempo serve.
+ */
+export function equityTimeframeBlock(
+  plan: RunPlan,
+  timeframe: string,
+  page: RunPage,
+): EquityRunBlock | null {
+  const entry = plan.equityRun
+  if (!entry) return null
+  const tf = timeframe.toLowerCase()
+  const cls = entry.asset ? CLASS_LABEL[entry.asset.asset_class] : 'Ação'
+  if (equityBadTimeframes(page).includes(tf)) {
+    return {
+      copy: `Nada será executado: ${entry.symbol} (${cls}) não roda em ${tf}. ${EQUITY_TIMEFRAME_HINT}`,
+      notice: {
+        tone: 'warn',
+        title: EQUITY_TIMEFRAME_HINT.replace(/\.$/, ''),
+        body:
+          page === 'optimize'
+            ? 'Ação e ETF não rodam em 1m, 5m nem 30m. Nada foi executado; a seleção foi mantida.'
+            : 'Ação e ETF não rodam em 1m nem 5m. Nada foi executado; a seleção foi mantida.',
+      },
+    }
+  }
+  if (page === 'optimize' && ['15m', '1h', '4h'].includes(tf)) {
+    const gap = fiveMinuteGap(entry, OPTIMIZE_FIXED_WINDOW.start)
+    if (gap) {
+      const why = `o 5m de ${entry.symbol} começa em ${gap.startsAt} e não cobre ${OPTIMIZE_FIXED_WINDOW_LABEL}, o período fixo desta tela`
+      return {
+        copy: `Nada será executado: ${why}. Use 1d aqui ou o Combo, que tem período.`,
+        notice: {
+          tone: 'warn',
+          title: `${entry.symbol} não roda em ${tf} nesta tela`,
+          body: `O 5m de ${entry.symbol} começa em ${gap.startsAt} e não cobre ${OPTIMIZE_FIXED_WINDOW_LABEL}, o período fixo da Otimização. Nada foi executado. Use 1d aqui ou o Combo, que tem período.`,
+        },
+      }
+    }
+  }
+  return null
 }
 
 export type RunPage = 'combo' | 'optimize'
 
 /** Cópia que a tela mostra antes do clique. */
-export function runCopy(plan: RunPlan, page: RunPage): { text: string; blocked: boolean } {
+export function runCopy(
+  plan: RunPlan,
+  page: RunPage,
+  options: { timeframe?: string } = {},
+): { text: string; blocked: boolean } {
   const out = plan.counts.out ? ` Fora: ${plan.outNames} — ${plan.why}.` : ''
+  if (plan.equityRun && plan.mode === 'single') {
+    const label = equityRunLabel(plan.equityRun)
+    return {
+      text:
+        page === 'combo'
+          ? `${label}: otimiza e abre o resultado, sem salvar em favoritos: ações e ETFs ainda não podem ser favoritados.${out}`
+          : `${label}: otimiza em ${options.timeframe ?? '1d'}, de ${OPTIMIZE_FIXED_WINDOW_LABEL}, e mostra o resultado ao lado.${out}`,
+      blocked: false,
+    }
+  }
   if (plan.mode === 'none') {
     return { text: 'Nenhum ativo selecionado: escolha ao menos 1 par cripto em USDT.', blocked: false }
   }
@@ -840,14 +965,14 @@ export interface RunNotice {
 export function blockedNotice(plan: RunPlan, page: RunPage): RunNotice {
   const { counts } = plan
   const title = !counts.marked && !counts.missing
-    ? 'Análise ainda não disponível para ações e ETFs'
+    ? 'Ação e ETF rodam só com 1 ativo por enquanto'
     : !counts.equities
       ? 'Ativo marcado pela Binance não entra em análise nova'
       : 'Nenhum ativo da seleção pode rodar agora'
   const what =
     page === 'combo'
-      ? 'Backtest, combo e otimização rodam só com pares cripto negociáveis em USDT nesta etapa. Nada foi executado nem salvo.'
-      : 'A otimização roda só com pares cripto negociáveis em USDT nesta etapa. Nada foi executado.'
+      ? 'Nada foi executado nem salvo.'
+      : 'Nada foi executado.'
   return {
     tone: 'alert',
     title,
@@ -862,6 +987,45 @@ export function partialNotice(plan: RunPlan): RunNotice | null {
     tone: 'warn',
     title: single ? 'Otimizando 1 par cripto' : `Lote iniciado com ${fmtInt(plan.runnable.length)} pares cripto`,
     body: `Fora${single ? '' : ' do lote'}: ${plan.outNames} — ${plan.why}.`,
+  }
+}
+
+/**
+ * Linha `role=status` enquanto o backtest de 1 ação/ETF coleta o histórico (card #1119, decisão 4).
+ * Combo: tempo gráfico e o 5m do intrabar; Otimização: o tempo gráfico na janela fixa.
+ */
+export function collectingCopy(
+  symbol: string,
+  page: RunPage,
+  timeframe: string,
+  deepBacktest = true,
+): string {
+  const tf = timeframe.toLowerCase()
+  const tail = 'antes de otimizar… Na primeira execução de um ativo isso pode levar alguns segundos.'
+  if (page === 'optimize') {
+    return `Coletando histórico de ${symbol} (${tf} de ${OPTIMIZE_FIXED_WINDOW_LABEL}) ${tail}`
+  }
+  const series = tf === '1d' ? (deepBacktest ? '1d e o 5m do intrabar' : '1d') : `${tf}, montado do 5m`
+  return `Coletando histórico de ${symbol} para a janela pedida (${series}) ${tail}`
+}
+
+/** 422 `history_unavailable` (coleta sem nada guardado) vira alerta com o motivo, nunca resultado vazio. */
+export function historyUnavailableNotice(detail: unknown): RunNotice | null {
+  if (!detail || typeof detail !== 'object') return null
+  const d = detail as Record<string, unknown>
+  if (d.code !== 'history_unavailable') return null
+  const symbol = typeof d.symbol === 'string' ? d.symbol : 'o ativo'
+  const reason = typeof d.reason === 'string' ? d.reason : ''
+  const cap = reason ? `${reason[0].toUpperCase()}${reason.slice(1)}` : ''
+  const lead = !cap
+    ? `Nada de ${symbol} guardado para esta janela.`
+    : d.error_code
+      ? `${cap} e nada de ${symbol} guardado para esta janela.`
+      : `${cap}.`
+  return {
+    tone: 'alert',
+    title: `Histórico de ${symbol} indisponível agora`,
+    body: `${lead} Nada foi executado. Tente de novo em alguns minutos.`,
   }
 }
 

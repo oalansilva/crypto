@@ -72,6 +72,26 @@ def _fixed_optimization_ranges(parameters: dict[str, Any]) -> dict[str, dict[str
     return ranges
 
 
+PREVIOUS_NUMBER_KEYS = (
+    "total_return",
+    "total_return_pct",
+    "win_rate",
+    "max_drawdown",
+    "max_drawdown_pct",
+    "total_trades",
+    "sharpe_ratio",
+    "profit_factor",
+    "cagr",
+    "calmar_ratio",
+    "auto_refreshed_at",
+)
+
+
+def _previous_number(metrics: dict[str, Any]) -> dict[str, Any]:
+    """Resumo do número que o refresh vai substituir (sem a lista de trades)."""
+    return {key: metrics[key] for key in PREVIOUS_NUMBER_KEYS if key in metrics}
+
+
 def _favorite_direction(parameters: dict[str, Any]) -> str:
     direction = str(parameters.get("direction") or "long").lower()
     return direction if direction in {"long", "short"} else "long"
@@ -554,6 +574,10 @@ class FavoriteBacktestRefreshService:
                     else None
                 ),
                 "analysis_execution_mode": result.get("execution_mode"),
+                # Card #1119 (decisão 12): precisão efetiva, convenções e identidade no favorito.
+                "analysis_execution": result.get("execution"),
+                "analysis_conventions": result.get("conventions"),
+                "analysis_asset": result.get("asset"),
                 "auto_refreshed_at": _utcnow().isoformat(),
                 "auto_refresh_run_id": run_id,
             }
@@ -582,6 +606,14 @@ class FavoriteBacktestRefreshService:
                 "favorite_id": favorite.id,
                 "metrics": refreshed_metrics,
                 "trades_count": len(updated_metrics["trades"]),
+                # Card #1119 (tarefa 6.2): a regra do gap pode piorar o número do favorito de cripto;
+                # o número anterior fica no histórico de runs, sem aviso novo em /favorites.
+                "previous_metrics": _previous_number(current_metrics),
+                "gap_stops": (
+                    (result.get("execution") or {}).get("gap_stops")
+                    if isinstance(result.get("execution"), dict)
+                    else None
+                ),
             }
             run.updated_at = completed_at
             run.completed_at = completed_at

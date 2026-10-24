@@ -34,6 +34,7 @@ from app.services.discovery_resources import ResourceProfile, CalculationFailure
 from app.services.discovery_stream import ResultSpool, execute_stream, report
 from app.services.combo_service import ComboService
 from app.services.market_data_providers import (
+    BINANCE_EQUITY_SOURCE,
     get_market_data_provider,
     resolve_data_source_for_symbol,
     validate_data_source_timeframe,
@@ -41,10 +42,15 @@ from app.services.market_data_providers import (
 from src.data.incremental_loader import IncrementalLoader
 from app.services.market_history.sample import ACTIVE_SAMPLE_ID, ExecutionSample
 from app.metrics.backtest_execution_costs import (
+    STOP_EXIT_GAP_REASON,
+    STOP_EXIT_GAP_SIGNAL,
     TRADING_FEE,
+    fee_for_symbol,
+    gap_pct,
     long_trade_profit_frac,
     short_trade_profit_frac,
     slippage_for_timeframe,
+    stop_gap_enabled,
 )
 from app.services.deep_backtest import simulate_execution_with_15m
 from app.metrics.indicators import ensure_ta_lib_context_columns
@@ -184,15 +190,25 @@ def _init_worker_logging():
 # SHARED LOGIC HELPER
 # -----------------------------------------------------------------------------
 def extract_trades_from_signals(
-    df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
+    df_with_signals,
+    stop_loss: float,
+    direction: str = "long",
+    slippage: float = 0.0,
+    fee: float = TRADING_FEE,
 ):
     if _combo_optimizer_legacy():
-        return _legacy_extract_trades_from_signals(df_with_signals, stop_loss, direction, slippage)
-    return _fast_extract_trades_from_signals(df_with_signals, stop_loss, direction, slippage)
+        return _legacy_extract_trades_from_signals(
+            df_with_signals, stop_loss, direction, slippage, fee
+        )
+    return _fast_extract_trades_from_signals(df_with_signals, stop_loss, direction, slippage, fee)
 
 
 def _legacy_extract_trades_from_signals(
-    df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
+    df_with_signals,
+    stop_loss: float,
+    direction: str = "long",
+    slippage: float = 0.0,
+    fee: float = TRADING_FEE,
 ):
     """
     Extract trades from signals with consistent logic:
@@ -211,6 +227,7 @@ def _legacy_extract_trades_from_signals(
     position = None
     is_short = (direction or "long").lower() == "short"
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
+    gap_on = stop_gap_enabled()
 
     for idx, row in df_with_signals.iterrows():
         # PRIORIDADE 1: Check stop loss FIRST if we have an open position
@@ -220,24 +237,34 @@ def _legacy_extract_trades_from_signals(
                 exact_stop_price = entry_price * (1 + stop_loss_pct)  # short: stop above entry
                 current_high = float(row["high"])
                 hit_stop = current_high >= exact_stop_price
+                gapped = gap_on and float(row["open"]) >= exact_stop_price
             else:
                 exact_stop_price = entry_price * (1 - stop_loss_pct)  # long: stop below entry
                 current_low = float(row["low"])
                 hit_stop = current_low <= exact_stop_price
+                gapped = gap_on and float(row["open"]) <= exact_stop_price
 
             if hit_stop:
+                # Card #1119: candle que abre além do stop sai na abertura, não no preço do stop.
+                fill_price = float(row["open"]) if gapped else exact_stop_price
                 position["exit_time"] = idx.isoformat()
-                position["exit_price"] = exact_stop_price
+                position["exit_price"] = fill_price
                 if is_short:
                     position["profit"] = short_trade_profit_frac(
-                        entry_price, exact_stop_price, slippage=slippage
+                        entry_price, fill_price, slippage=slippage, fee=fee
                     )
                 else:
                     position["profit"] = long_trade_profit_frac(
-                        entry_price, exact_stop_price, slippage=slippage
+                        entry_price, fill_price, slippage=slippage, fee=fee
                     )
-                position["exit_reason"] = "stop_loss"
-                position["signal_type"] = "Stop"
+                if gapped:
+                    position["exit_reason"] = STOP_EXIT_GAP_REASON
+                    position["signal_type"] = STOP_EXIT_GAP_SIGNAL
+                    position["stop_price"] = exact_stop_price
+                    position["gap_pct"] = gap_pct(exact_stop_price, fill_price)
+                else:
+                    position["exit_reason"] = "stop_loss"
+                    position["signal_type"] = "Stop"
                 trades.append(position)
                 position = None
                 continue
@@ -257,11 +284,11 @@ def _legacy_extract_trades_from_signals(
             position["exit_price"] = exit_price
             if is_short:
                 position["profit"] = short_trade_profit_frac(
-                    entry_price, exit_price, slippage=slippage
+                    entry_price, exit_price, slippage=slippage, fee=fee
                 )
             else:
                 position["profit"] = long_trade_profit_frac(
-                    entry_price, exit_price, slippage=slippage
+                    entry_price, exit_price, slippage=slippage, fee=fee
                 )
             position["exit_reason"] = "signal"
             position["signal_type"] = "Close entry(s) order..."
@@ -272,11 +299,16 @@ def _legacy_extract_trades_from_signals(
 
 
 def _fast_extract_trades_from_signals(
-    df_with_signals, stop_loss: float, direction: str = "long", slippage: float = 0.0
+    df_with_signals,
+    stop_loss: float,
+    direction: str = "long",
+    slippage: float = 0.0,
+    fee: float = TRADING_FEE,
 ):
     trades = []
     is_short = (direction or "long").lower() == "short"
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
+    gap_on = stop_gap_enabled()
     n = len(df_with_signals)
     if n == 0:
         return trades
@@ -298,22 +330,31 @@ def _fast_extract_trades_from_signals(
             if is_short:
                 exact_stop_price = entry_price * (1 + stop_loss_pct)
                 hit_stop = float(highs[i]) >= exact_stop_price
+                gapped = gap_on and float(opens[i]) >= exact_stop_price
             else:
                 exact_stop_price = entry_price * (1 - stop_loss_pct)
                 hit_stop = float(lows[i]) <= exact_stop_price
+                gapped = gap_on and float(opens[i]) <= exact_stop_price
             if hit_stop:
+                fill_price = float(opens[i]) if gapped else exact_stop_price
                 pos["exit_time"] = iso[i]
-                pos["exit_price"] = exact_stop_price
+                pos["exit_price"] = fill_price
                 if is_short:
                     pos["profit"] = short_trade_profit_frac(
-                        entry_price, exact_stop_price, slippage=slippage
+                        entry_price, fill_price, slippage=slippage, fee=fee
                     )
                 else:
                     pos["profit"] = long_trade_profit_frac(
-                        entry_price, exact_stop_price, slippage=slippage
+                        entry_price, fill_price, slippage=slippage, fee=fee
                     )
-                pos["exit_reason"] = "stop_loss"
-                pos["signal_type"] = "Stop"
+                if gapped:
+                    pos["exit_reason"] = STOP_EXIT_GAP_REASON
+                    pos["signal_type"] = STOP_EXIT_GAP_SIGNAL
+                    pos["stop_price"] = exact_stop_price
+                    pos["gap_pct"] = gap_pct(exact_stop_price, fill_price)
+                else:
+                    pos["exit_reason"] = "stop_loss"
+                    pos["signal_type"] = "Stop"
                 trades.append(pos)
                 pos = None
                 i += 1
@@ -333,9 +374,13 @@ def _fast_extract_trades_from_signals(
             pos["exit_time"] = iso[i]
             pos["exit_price"] = exit_price
             if is_short:
-                pos["profit"] = short_trade_profit_frac(entry_price, exit_price, slippage=slippage)
+                pos["profit"] = short_trade_profit_frac(
+                    entry_price, exit_price, slippage=slippage, fee=fee
+                )
             else:
-                pos["profit"] = long_trade_profit_frac(entry_price, exit_price, slippage=slippage)
+                pos["profit"] = long_trade_profit_frac(
+                    entry_price, exit_price, slippage=slippage, fee=fee
+                )
             pos["exit_reason"] = "signal"
             pos["signal_type"] = "Close entry(s) order..."
             trades.append(pos)
@@ -343,6 +388,57 @@ def _fast_extract_trades_from_signals(
         i += 1
 
     return trades
+
+
+def _infer_timeframe(index) -> str:
+    """Tempo gráfico pelo espaçamento mais comum do índice (só quando o chamador não informa)."""
+    try:
+        idx = pd.DatetimeIndex(index)
+        if len(idx) < 2:
+            return "1d"
+        step = pd.Series(idx[1:] - idx[:-1]).mode().iloc[0]
+        minutes = step.total_seconds() / 60.0
+    except Exception:
+        return "1d"
+    for label, size in (("15m", 15), ("1h", 60), ("4h", 240)):
+        if abs(minutes - size) < 1:
+            return label
+    return "1d"
+
+
+def _days_without_intraday(df_exec, df_15m) -> list:
+    """Dias (pregões, em ação/ETF) do candle do tempo gráfico sem nenhum candle de 15m.
+
+    Devolve faixas ``{"from": "AAAA-MM-DD", "to": "AAAA-MM-DD"}`` de dias seguidos da
+    janela (card #1119, decisão 7): início no primeiro dia, fim no último, sem dia
+    inteiro sem 15m. Pregão e dia são os da data UTC do candle (a sessão regular de
+    Nova York cai sempre na mesma data UTC).
+    """
+
+    def _days(index):
+        idx = pd.DatetimeIndex(index)
+        if idx.tz is not None:
+            idx = idx.tz_convert("UTC")
+        return np.unique(idx.values.astype("datetime64[D]"))
+
+    exec_days = _days(df_exec.index).tolist()
+    have = set(_days(df_15m.index).tolist()) if len(df_15m) else set()
+    runs: list = []
+    current = None
+    for day in exec_days:
+        if day in have:
+            if current is not None:
+                runs.append(current)
+                current = None
+            continue
+        label = day.isoformat()
+        if current is None:
+            current = {"from": label, "to": label}
+        else:
+            current["to"] = label
+    if current is not None:
+        runs.append(current)
+    return runs
 
 
 def extract_trades_with_mode(
@@ -356,6 +452,9 @@ def extract_trades_with_mode(
     direction: str = "long",
     return_mode: bool = False,
     slippage: float = 0.0,
+    timeframe: Optional[str] = None,
+    return_execution: bool = False,
+    fee: float = TRADING_FEE,
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
@@ -368,24 +467,94 @@ def extract_trades_with_mode(
         since_str: Start date (required for deep backtest)
         until_str: End date (required for deep backtest)
         direction: "long" (default) or "short"
+        timeframe: tempo gráfico (para o título da precisão efetiva)
+        return_execution: devolve ``(trades, modo, execution)``; ``execution`` diz a precisão
+            pedida e a efetiva, o trecho sem intradiário e a contagem de stops com gap
+            (card #1119, decisão 7). A queda nunca é silenciosa; quando cai, o modo é o de sempre.
 
     Returns:
-        List of trades
+        List of trades (``return_mode`` -> ``(trades, modo)``).
     """
+    trades, mode, execution = _extract_trades_with_execution(
+        df_with_signals,
+        stop_loss,
+        deep_backtest=deep_backtest,
+        symbol=symbol,
+        since_str=since_str,
+        until_str=until_str,
+        df_15m_cache=df_15m_cache,
+        direction=direction,
+        slippage=slippage,
+        timeframe=timeframe,
+        fee=fee,
+    )
+    if return_execution:
+        if not execution.get("timeframe"):
+            execution["timeframe"] = _infer_timeframe(df_with_signals.index)
+        return trades, mode, execution
+    return (trades, mode) if return_mode else trades
+
+
+def _extract_trades_with_execution(
+    df_with_signals,
+    stop_loss,
+    *,
+    deep_backtest,
+    symbol,
+    since_str,
+    until_str,
+    df_15m_cache,
+    direction,
+    slippage,
+    timeframe,
+    fee=TRADING_FEE,
+):
     df_exec = df_with_signals.copy() if _combo_optimizer_legacy() else df_with_signals
+    tf = str(timeframe).lower() if timeframe else None
+    execution = {
+        "precision_requested": "intrabar" if deep_backtest else "daily",
+        "precision_effective": "candle",
+        "timeframe": tf,
+        "intraday_missing": [],
+        "intraday_reason": None,
+        "intraday_error": None,
+        "gap_stops": 0,
+    }
+
+    def finish(trades, mode):
+        execution["gap_stops"] = sum(
+            1
+            for t in trades
+            if isinstance(t, dict) and t.get("exit_reason") == STOP_EXIT_GAP_REASON
+        )
+        if mode == "deep_15m":
+            execution["precision_effective"] = "intrabar_15m"
+        return trades, mode, execution
+
+    def fall_back(reason, missing=None, error=None):
+        execution["intraday_reason"] = reason
+        execution["intraday_missing"] = [dict(m) for m in (missing or [])]
+        execution["intraday_error"] = error
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage, fee)
+        return finish(trades, "fast_1d")
 
     if not deep_backtest:
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
-        return (trades, "fast_1d") if return_mode else trades
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage, fee)
+        return finish(trades, "fast_1d")
 
     logger = logging.getLogger(__name__)
+
+    def whole_window():
+        if len(df_exec) == 0:
+            return []
+        idx = pd.DatetimeIndex(df_exec.index)
+        return [{"from": str(idx.min().date()), "to": str(idx.max().date())}]
 
     if not symbol or not since_str:
         logger.warning(
             "Deep Backtesting requires symbol and date range. Falling back to fast mode."
         )
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
-        return (trades, "fast_1d") if return_mode else trades
+        return fall_back("no_window", whole_window())
 
     try:
         if df_15m_cache is not None:
@@ -394,25 +563,23 @@ def extract_trades_with_mode(
             # Fetch 15m data
             df_15m = _worker_get_15m_cache(symbol, since_str, until_str)
 
-        if df_15m.empty:
+        if df_15m is None or df_15m.empty:
             if df_15m_cache is None:  # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
-            return (trades, "fast_1d") if return_mode else trades
+            return fall_back("missing", whole_window())
 
-        # Coverage guard: we need 15m for the current day of each trade to simulate stop/target correctly.
-        # So 15m must cover the full daily range (same end as daily); otherwise fallback to fast mode.
+        # Coverage guard: the 15m must cover the whole window of the timeframe candle
+        # (first day to last day, no whole day without 15m); otherwise the run falls
+        # back to the precision of the timeframe candle and says which stretch is missing.
         try:
-            daily_start = df_exec.index.min()
-            daily_end = df_exec.index.max()
-            intraday_start = df_15m.index.min()
-            intraday_end = df_15m.index.max()
             cov_key = (
                 symbol,
-                str(daily_start),
-                str(daily_end),
-                str(intraday_start),
-                str(intraday_end),
+                str(df_exec.index.min()),
+                str(df_exec.index.max()),
+                len(df_exec),
+                str(df_15m.index.min()),
+                str(df_15m.index.max()),
+                len(df_15m),
             )
             coverage_cache = _WORKER_COVERAGE_CACHE
             if acceleration_enabled():
@@ -425,37 +592,26 @@ def extract_trades_with_mode(
                 )
             cached_cov = None if _combo_optimizer_legacy() else coverage_cache.get(cov_key)
             if cached_cov is not None:
-                start_ok, end_ok = cached_cov
+                missing = cached_cov
             else:
-                start_ok = True
-                if intraday_start > daily_start:
-                    try:
-                        start_ok = intraday_start.date() == daily_start.date()
-                    except Exception:
-                        start_ok = False
-                end_ok = intraday_end >= daily_end
+                missing = _days_without_intraday(df_exec, df_15m)
                 if not _combo_optimizer_legacy():
-                    coverage_cache[cov_key] = (start_ok, end_ok)
+                    coverage_cache[cov_key] = missing
 
-            if (not start_ok) or (not end_ok):
+            if missing:
                 # Log only once per symbol per process to avoid flooding the log (e.g. 16k identical lines)
                 warn_key = (symbol,)
                 if warn_key not in _deep_coverage_warned:
                     _deep_coverage_warned.add(warn_key)
                     logger.warning(
-                        "15m coverage insufficient for deep backtest (%s): daily=[%s..%s] 15m=[%s..%s]. Falling back to fast mode.",
+                        "15m coverage insufficient for deep backtest (%s): missing %s. Falling back to the precision of the timeframe candle.",
                         symbol,
-                        str(daily_start),
-                        str(daily_end),
-                        str(intraday_start),
-                        str(intraday_end),
+                        missing[:3],
                     )
-                trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
-                return (trades, "fast_1d") if return_mode else trades
+                return fall_back("coverage", missing)
         except Exception:
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
-            return (trades, "fast_1d") if return_mode else trades
+            return fall_back("read_error", whole_window(), "cobertura do intradiário não validada")
 
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
@@ -466,13 +622,13 @@ def extract_trades_with_mode(
             stop_loss=stop_loss,
             direction=direction,
             slippage=slippage,
+            fee=fee,
         )
-        return (trades, "deep_15m") if return_mode else trades
+        return finish(trades, "deep_15m")
 
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction, slippage)
-        return (trades, "fast_1d") if return_mode else trades
+        return fall_back("read_error", whole_window(), str(e)[:200])
 
 
 def _window_identity(df: pd.DataFrame) -> tuple:
@@ -690,6 +846,7 @@ def _run_backtest_logic(
             df_15m_cache=df_15m_cache,
             direction=direction,
             slippage=slippage,
+            fee=fee_for_symbol(symbol),
         )
 
         # Construct full effective parameters (médias, stop) para log de "profit fora do range"
@@ -922,6 +1079,8 @@ class ComboOptimizer:
         self._worker_loader = worker_loader
         self._workers = workers
         self._worker_observer = worker_observer
+        # Nota "janela coberta menor que a pedida" da coleta de ação/ETF (card #1119, decisão 4).
+        self.collection_note = None
 
     def generate_stages(
         self,
@@ -1972,7 +2131,9 @@ class ComboOptimizer:
             sample = self._sample
             if sample is not None and isinstance(result, dict):
                 result["snapshot_id"] = sample.snapshot_id
-                result["data_provenance"] = sample.provenance("candles")
+                result["data_provenance"] = sample.provenance(
+                    "candles", with_retention="/" not in str(symbol)
+                )
                 sample.finish()
             return result
         except BaseException:
@@ -1991,13 +2152,17 @@ class ComboOptimizer:
             self._sample_id = None
 
     def _begin_sample(self, selected_data_source, symbol, timeframe, start_date, end_date, df):
-        """Congela os candles no início da execução (só cripto pelo caminho unificado)."""
+        """Congela os candles no início da execução.
+
+        Cripto pelo caminho unificado (``MARKET_HISTORY_UNIFIED``); ação e ETF sempre, porque
+        a série ``binance_equity`` só existe no histórico novo (card #1119, decisão 8).
+        """
         from app.services.market_history import unified_enabled
 
+        equity = selected_data_source == BINANCE_EQUITY_SOURCE
         if (
-            not unified_enabled()
-            or selected_data_source != "ccxt"
-            or "/" not in str(symbol)
+            not equity
+            and (not unified_enabled() or selected_data_source != "ccxt" or "/" not in str(symbol))
             or os.getenv("DISCOVERY_FROZEN_INPUT_DIR")
             or os.getenv("DISCOVERY_FROZEN_SNAPSHOT_ID")
             or df is None
@@ -2005,7 +2170,7 @@ class ComboOptimizer:
         ):
             return df
         sample = ExecutionSample("optimization", owner_ref=f"optimization:{symbol}:{timeframe}")
-        frozen = sample.freeze_crypto("candles", symbol, timeframe, start_date, end_date, df)
+        frozen = sample.freeze_symbol("candles", symbol, timeframe, start_date, end_date, df)
         self._sample = sample
         self._sample_id = sample.snapshot_id
         ACTIVE_SAMPLE_ID.set(sample.snapshot_id)
@@ -2024,6 +2189,28 @@ class ComboOptimizer:
         )
         if intraday is not None and not intraday.empty:
             sample.freeze_crypto("intraday", symbol, "15m", start_date, end_date, intraday)
+
+    def _freeze_equity_intraday(self, symbol, start_date, end_date):
+        """15m de ação/ETF (montado do 5m pelo ``HistoryService``) na amostra da execução.
+
+        Sem 15m, congela vazio: o worker lê vazio e a execução cai para o candle do tempo
+        gráfico dizendo que o intradiário faltou (decisão 7), em vez de falhar.
+        """
+        sample = getattr(self, "_sample", None)
+        if sample is None or sample.has("intraday"):
+            return
+        from app.services.equity_backtest import inclusive_end
+        from app.services.market_history.facade import (
+            get_history_service,
+            spec_for_request,
+            to_loader_frame,
+        )
+
+        service = get_history_service()
+        series = service.resolve(spec_for_request(symbol=symbol, timeframe="15m"))
+        result = service.read(series, start_date, inclusive_end(end_date))
+        frame = to_loader_frame(result.candles)
+        sample.freeze_symbol("intraday", symbol, "15m", start_date, end_date, frame)
 
     def _run_optimization_body(
         self,
@@ -2079,8 +2266,14 @@ class ComboOptimizer:
         # Ensure we have date ranges for Deep Backtesting
         # If not provided, use full period (2017-present for comprehensive testing)
         start_date_defaulted = False
+        requested_window = {"start": start_date or None, "end": end_date or None}
         if not start_date:
-            start_date = "2017-01-01"  # Full crypto history (works for most major assets)
+            # Ação/ETF: "todo o histórico" começa onde a Binance começa (card #1119).
+            start_date = (
+                "2000-01-01"
+                if selected_data_source == BINANCE_EQUITY_SOURCE
+                else "2017-01-01"  # Full crypto history (works for most major assets)
+            )
             start_date_defaulted = True
         if not end_date:
             from datetime import datetime
@@ -2222,6 +2415,13 @@ class ComboOptimizer:
                 self._freeze_intraday(symbol, start_date, end_date)
             except Exception as exc:
                 logging.warning("Freeze of the 15m sample failed for %s: %s", symbol, exc)
+        elif deep_backtest and selected_data_source == BINANCE_EQUITY_SOURCE:
+            # Card #1119 (decisão 8): o intrabar de ação/ETF não depende mais da CCXT; o 15m sai
+            # do 5m guardado e entra na amostra congelada, lida por todas as tentativas.
+            try:
+                self._freeze_equity_intraday(symbol, start_date, end_date)
+            except Exception as exc:
+                logging.warning("Freeze of the equity 15m sample failed for %s: %s", symbol, exc)
         elif deep_backtest and selected_data_source != "ccxt":
             logging.info(
                 "Deep backtest disabled for data_source=%s (intraday cache is crypto/ccxt only).",
@@ -2558,7 +2758,7 @@ class ComboOptimizer:
                 if getattr(self, "_worker_loader", None) is not None
                 else None
             )
-            trades, execution_mode = extract_trades_with_mode(
+            final_outcome = extract_trades_with_mode(
                 df_with_signals,
                 stop_loss,
                 deep_backtest=deep_backtest,
@@ -2573,7 +2773,16 @@ class ComboOptimizer:
                 direction=direction,
                 return_mode=True,
                 slippage=final_slippage,
+                fee=fee_for_symbol(symbol),
+                timeframe=timeframe,
+                return_execution=True,
             )
+            # (trades, modo, execution); uma extração substituta sem `execution` segue valendo.
+            if len(final_outcome) == 3:
+                trades, execution_mode, final_execution = final_outcome
+            else:
+                trades, execution_mode = final_outcome
+                final_execution = None
             report({"phase_complete": "final_execution"})
 
             # Recompute core metrics from final backtest trades (same set as returned to frontend)
@@ -2731,6 +2940,7 @@ class ComboOptimizer:
                     direction=direction,
                     return_mode=True,
                     slippage=holdout_slippage,
+                    fee=fee_for_symbol(symbol),
                 )
                 holdout_trades = []
                 for trade in holdout_trades_raw:
@@ -2847,6 +3057,24 @@ class ComboOptimizer:
             logging.info(f"  Max Drawdown: {best_metrics.get('max_drawdown', 0):.3f}")
         logging.info("=" * 80)
 
+        # Card #1119 (decisão 12): identidade, precisão efetiva e convenções até a resposta.
+        from app.services.equity_backtest import asset_identity, finalize_execution
+
+        try:
+            result_asset = asset_identity(symbol)
+            result_execution, result_conventions = finalize_execution(
+                final_execution,
+                asset=result_asset,
+                timeframe=timeframe,
+                direction=best_params.get("direction", direction),
+                requested=requested_window,
+                frame=df_final,
+                collection=getattr(self, "collection_note", None),
+            )
+        except Exception as exc:  # a identidade nunca derruba o resultado já calculado
+            logging.warning("Result identity could not be built for %s: %s", symbol, exc)
+            result_asset = result_execution = result_conventions = None
+
         return {
             "job_id": job_id or "combo_opt_" + str(hash(template_name + symbol)),
             "template_name": template_name,
@@ -2866,6 +3094,9 @@ class ComboOptimizer:
             "direction": best_params.get("direction", "long"),
             "data_source": selected_data_source,
             "execution_mode": execution_mode,
+            "asset": result_asset,
+            "execution": result_execution,
+            "conventions": result_conventions,
             "strategy_transparency": self._build_strategy_transparency_result(
                 template_name=template_name,
                 timeframe=timeframe,

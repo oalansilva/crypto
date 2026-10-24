@@ -54,7 +54,7 @@ def _patch_backtest_dependencies(monkeypatch):
         lambda self, template_name, parameters: _FakeStrategy(),
     )
 
-    def _fake_extract_trades(df_with_signals, stop_loss_pct, direction, slippage=0.0):
+    def _fake_extract_trades(df_with_signals, stop_loss_pct, direction, slippage=0.0, fee=0.00075):
         return [
             {
                 "entry_time": df_with_signals.index[0].isoformat(),
@@ -130,7 +130,10 @@ async def test_backtest_us_ticker_rejected_for_crypto_only_mvp(monkeypatch):
     detail = response.json()["detail"]
     assert detail["code"] == "asset_class_not_supported"
     assert [asset["symbol"] for asset in detail["assets"]] == ["NVDA"]
-    assert "Análise ainda não disponível para ações e ETFs" in detail["message"]
+    assert (
+        "Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois."
+        in detail["message"]
+    )
     assert provider_calls == []
 
 

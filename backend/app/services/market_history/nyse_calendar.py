@@ -20,8 +20,12 @@ UTC = timezone.utc
 
 FIVE_MIN = pd.Timedelta(minutes=5)
 FIFTEEN_MIN = pd.Timedelta(minutes=15)
-# Versão da regra do 15m derivado: entra na versão do 15m (design, decisão 9).
+# Versão da regra dos tempos derivados do 5m (15m, 1h, 4h): entra na versão deles (design, decisão 9;
+# card #1119, decisão 5: a mesma regra de blocos ancorados às 09:30 vale para os três).
 DERIVED_15M_RULE_VERSION = 1
+DERIVED_RULE_VERSION = DERIVED_15M_RULE_VERSION
+# Tempos de ação/ETF montados do 5m, em minutos.
+DERIVED_BLOCK_MINUTES = {"15m": 15, "1h": 60, "4h": 240}
 
 _lock = threading.Lock()
 _cache: dict[str, object] = {}
@@ -228,26 +232,40 @@ def missing_runs(
 
 
 @dataclass
-class Derived15m:
+class DerivedBlocks:
     candles: pd.DataFrame
-    # Blocos de 15m incompletos: (início do bloco, fim do bloco, 5m que faltam).
+    # Blocos incompletos: (início do bloco, fim do bloco, 5m que faltam).
     incomplete: list[tuple[pd.Timestamp, pd.Timestamp, int]]
 
 
-def derive_15m(df5: pd.DataFrame, *, up_to: pd.Timestamp | None = None) -> Derived15m:
-    """Monta o 15m do 5m: blocos de 3 ancorados às 09:30 de Nova York.
+Derived15m = DerivedBlocks
+
+
+def derive_15m(df5: pd.DataFrame, *, up_to: pd.Timestamp | None = None) -> DerivedBlocks:
+    return derive_blocks(df5, 15, up_to=up_to)
+
+
+def derive_blocks(
+    df5: pd.DataFrame, minutes: int, *, up_to: pd.Timestamp | None = None
+) -> DerivedBlocks:
+    """Monta 15m, 1h ou 4h do 5m: blocos de ``minutes`` ancorados às 09:30 de Nova York.
 
     ``df5`` tem índice UTC e colunas open/high/low/close/volume. Um bloco nunca
-    atravessa o fechamento (o meio-pregão termina às 13:00). Bloco com 5m
-    faltando não vira candle: sai em ``incomplete`` como lacuna herdada do 5m.
-    ``up_to`` limita os blocos aos que já terminaram (o bloco em andamento não é
-    lacuna).
+    atravessa o fechamento (o meio-pregão termina às 13:00): o último bloco do
+    dia é mais curto e não é incompleto. Bloco com 5m faltando não vira candle:
+    sai em ``incomplete`` como lacuna herdada do 5m. ``up_to`` limita os blocos
+    aos que já terminaram (o bloco em andamento não é lacuna).
     """
 
+    minutes = int(minutes)
+    if minutes < 5 or minutes % 5:
+        raise ValueError(f"Bloco de {minutes} min não é múltiplo de 5m.")
+    block_td = pd.Timedelta(minutes=minutes)
+    per_block = minutes // 5
     empty = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
     if df5 is None or df5.empty:
         empty.index = pd.DatetimeIndex([], tz="UTC", name="candle_time")
-        return Derived15m(empty, [])
+        return DerivedBlocks(empty, [])
     df5 = df5.sort_index()
     idx = pd.DatetimeIndex(df5.index)
     if idx.tz is None:
@@ -256,7 +274,7 @@ def derive_15m(df5: pd.DataFrame, *, up_to: pd.Timestamp | None = None) -> Deriv
     days = [d.date() for d in idx.tz_convert(NY)]
     day_series = pd.Series(days, index=idx)
     opens = table["open_utc"].reindex(day_series.values)
-    offset = (idx - pd.DatetimeIndex(opens.values).tz_localize("UTC")) / FIFTEEN_MIN
+    offset = (idx - pd.DatetimeIndex(opens.values).tz_localize("UTC")) / block_td
     block_no = pd.Series(offset).apply(lambda v: int(v // 1) if pd.notna(v) else -1).values
     work = df5.copy()
     work.index = idx
@@ -271,13 +289,15 @@ def derive_15m(df5: pd.DataFrame, *, up_to: pd.Timestamp | None = None) -> Deriv
         window = session_window(day)
         if window is None:
             continue
-        start = window.open_utc + FIFTEEN_MIN * int(block)
+        start = window.open_utc + block_td * int(block)
         if start >= window.close_utc:
             continue
         expected = [
-            start + FIVE_MIN * k for k in range(3) if start + FIVE_MIN * k < window.close_utc
+            start + FIVE_MIN * k
+            for k in range(per_block)
+            if start + FIVE_MIN * k < window.close_utc
         ]
-        end = min(start + FIFTEEN_MIN, window.close_utc)
+        end = min(start + block_td, window.close_utc)
         got = set(pd.DatetimeIndex(grp.index).as_unit("ns").asi8)
         missing = [t for t in expected if t.value not in got]
         seen_days[day] = max(seen_days.get(day, -1), int(block))
@@ -300,21 +320,21 @@ def derive_15m(df5: pd.DataFrame, *, up_to: pd.Timestamp | None = None) -> Deriv
     for day, last_block in seen_days.items():
         window = session_window(day)
         present_blocks = set(work.loc[work["_day"] == day, "_block"].astype(int).tolist())
-        total_blocks = int(((window.close_utc - window.open_utc) / FIFTEEN_MIN) // 1)
-        if (window.close_utc - window.open_utc) % FIFTEEN_MIN:
+        total_blocks = int(((window.close_utc - window.open_utc) / block_td) // 1)
+        if (window.close_utc - window.open_utc) % block_td:
             total_blocks += 1
         first_block = min(present_blocks)
         for block in range(first_block, min(last_block, total_blocks - 1) + 1):
             if block in present_blocks:
                 continue
-            start = window.open_utc + FIFTEEN_MIN * block
-            end = min(start + FIFTEEN_MIN, window.close_utc)
+            start = window.open_utc + block_td * block
+            end = min(start + block_td, window.close_utc)
             if up_to is None or end <= up_to:
-                incomplete.append((start, end, 3))
+                incomplete.append((start, end, per_block))
     incomplete.sort()
     if not rows:
         empty.index = pd.DatetimeIndex([], tz="UTC", name="candle_time")
-        return Derived15m(empty, incomplete)
+        return DerivedBlocks(empty, incomplete)
     frame = pd.DataFrame(rows, columns=["candle_time", "open", "high", "low", "close", "volume"])
     frame = frame.set_index(pd.DatetimeIndex(frame.pop("candle_time"), name="candle_time"))
-    return Derived15m(frame, incomplete)
+    return DerivedBlocks(frame, incomplete)

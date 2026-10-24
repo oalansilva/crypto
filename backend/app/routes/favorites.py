@@ -55,6 +55,43 @@ from app.services.discovery_favorite_metrics import (
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
+CODE_ASSET_CLASS_NOT_FAVORITABLE = "asset_class_not_favoritable"
+EQUITY_NOT_FAVORITABLE_MESSAGE = (
+    "Ações e ETFs ainda não podem ser favoritados: atualização diária e alertas "
+    "dessas classes ainda não existem."
+)
+
+
+def _refuse_equity_favorite(symbol: str) -> None:
+    """Card #1119 (decisão 15): ação e ETF não viram favorito até o #1122.
+
+    Cripto é o par com ``/`` (regra do #1117); a classe vem do catálogo quando o ticker está lá.
+    Nada é gravado.
+    """
+
+    sym = str(symbol or "").strip().upper()
+    if "/" in sym:
+        return
+    asset_class = None
+    asset_id = None
+    try:
+        from app.services.asset_catalog_service import check_assets
+
+        check = check_assets([sym])[0]
+        if check.found:
+            asset_class, asset_id = check.asset_class, check.asset_id
+    except Exception:  # catálogo fora do ar: o ticker sem "/" segue recusado
+        pass
+    raise HTTPException(
+        status_code=422,
+        detail={
+            "code": CODE_ASSET_CLASS_NOT_FAVORITABLE,
+            "message": EQUITY_NOT_FAVORITABLE_MESSAGE,
+            "assets": [{"symbol": sym, "asset_id": asset_id, "asset_class": asset_class}],
+        },
+    )
+
+
 _FAVORITE_CHART_CANDLE_LIMIT = 5000
 _FAVORITE_OHLCV_REPO = MarketOhlcvRepository()
 
@@ -931,6 +968,7 @@ def create_favorite(
     forneça override explícito. Payloads legados sem `oos_verdict` mantêm o
     comportamento atual (compatibilidade).
     """
+    _refuse_equity_favorite(favorite.symbol)
     try:
         include_secrets = can_view_strategy_secrets(db, current_user_id)
         verdict = favorite.oos_verdict

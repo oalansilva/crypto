@@ -32,6 +32,7 @@ from app.models_discovery import (
     strategy_identity_key,
 )
 from app.services.discovery_favorite_metrics import build_promoted_favorite_metrics
+from app.services.asset_catalog_service import EQUITY_BATCH_REASON
 
 logger = logging.getLogger(__name__)
 
@@ -474,7 +475,7 @@ class DiscoveryService:
             # com o motivo, sem criar varredura (decisão 6).
             only_class = all(item["kind"] == "class" for item in excluded_assets)
             axis_errors["symbols"] = (
-                "Nenhuma combinação válida: análise ainda não disponível para ações e ETFs. "
+                f"Nenhuma combinação válida: {EQUITY_BATCH_REASON}. "
                 "Inclua ao menos 1 par cripto negociável em USDT."
                 if only_class
                 else "Nenhuma combinação válida: os ativos escolhidos estão fora da análise "

@@ -31,9 +31,11 @@ TIMEFRAME_DELTA = {
     "1d": timedelta(days=1),
 }
 CRYPTO_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
-# Ação e ETF neste card: 5m e 1d nativos; 15m montado do 5m (1h e 4h entram no #1119).
+# Ação e ETF: 5m e 1d nativos; 15m, 1h e 4h montados do 5m (1h e 4h entram no #1119, decisão 5).
 EQUITY_NATIVE_TIMEFRAMES = ("5m", "1d")
-EQUITY_DERIVED = {"15m": "5m"}
+EQUITY_DERIVED = {"15m": "5m", "1h": "5m", "4h": "5m"}
+# Minutos de cada tempo derivado do 5m.
+DERIVED_MINUTES = {"15m": 15, "1h": 60, "4h": 240}
 
 SOURCE_LABELS = {SOURCE_SPOT: "Binance Spot", SOURCE_EQUITY: "Binance Ações"}
 NOTE_CRYPTO = "Binance Spot · 24/7 · ajuste não se aplica"

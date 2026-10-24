@@ -2,16 +2,8 @@
    protótipos aprovados frontend/public/prototypes/card-1117-catalogo-ativos/ e card-1118-historico-binance/
    com os tokens do produto. Frescor e histórico usam --text-tertiary (contraste AA nos fundos do seletor).
    Cores de estado (âmbar, azul, vermelho) são as do seletor vivo, nomeadas aqui uma vez só. */
-:root {
-  /* Cores de estado do seletor vivo (âmbar, azul, vermelho), declaradas uma vez e reusadas pela Descoberta
-     (estado da amostra no Decidir). Raio de 4px = --radius-sm. */
-  --ap-danger-text: #ff8294;
-  --ap-danger-border: rgba(246, 70, 93, 0.45);
-  --ap-warn-text: #fbbf24;
-  --ap-warn-border: rgba(245, 158, 11, 0.45);
-  --ap-info-text: #93c5fd;
-  --ap-info-border: rgba(59, 130, 246, 0.42);
-}
+/* Cores de estado (âmbar, azul, vermelho) vivem em index.css (:root), porque o resultado do backtest
+   (card #1119) as usa sem carregar o seletor. */
 .asset-picker {
   --ap-accent: var(--accent-primary, #fcd535);
   --ap-success: var(--accent-success, #0ecb81);

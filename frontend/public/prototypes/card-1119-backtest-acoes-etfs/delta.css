@@ -1,0 +1,111 @@
+/* Card #1119 — DELTA do protótipo (rework r1). Cores só por token do produto (`:root` do index.css vivo e do AssetPicker.css vivo):
+   --bg-primary #0b0e11, --bg-secondary #181a20, --border-default #2b3139, --text-secondary #eaecef, --text-tertiary #929aa5,
+   --accent-cyan #3b82f6, --ap-warn-text #fbbf24, --ap-warn-border, --ap-info-text #93c5fd, --ap-info-border.
+   Único literal que fica: #b7bdc6, o texto secundário da descrição viva de /combo/results (ComboResultsPage.tsx), sem token
+   (P3 aceito: o Apply decide entre documentá-lo ou usar --text-tertiary).
+   Contraste medido: sobre #181a20 #eaecef 14,7:1 · #b7bdc6 9,2:1 · #929aa5 6,1:1; aviso âmbar #fbbf24 8,9:1 e #b7bdc6 7,9:1;
+   nota azul #93c5fd 9,6:1; botão recusado #b7bdc6 sobre #2b3139 6,9:1; gap #fbbf24 sobre #1e2329 9,5:1;
+   caixa Market Data do Combo #929aa5 sobre #1e2329 5,6:1. */
+
+/* Cola do clone: o AppNav vivo troca a barra lateral pelo topo abaixo de 1024px (AppNav.tsx). */
+@media (max-width: 1023.98px) {
+  html { --app-sidebar-width: 0px !important; }
+  .cf-desk { display: none !important; }
+}
+@media (min-width: 1024px) {
+  .cf-mob { display: none !important; }
+}
+.cf-desk, .cf-mob { display: contents; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.cap-chart { display: block; width: 100%; height: auto; }
+
+/* Bloco "Dados e execução" do resultado. */
+.r19-data { min-width: 0; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-secondary); color: var(--text-secondary); }
+.r19-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border-default); }
+.r19-head h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.35; }
+.r19-head p { margin: 0; font-size: 13px; line-height: 1.5; color: #b7bdc6; overflow-wrap: anywhere; }
+.r19-body { display: grid; gap: 18px; padding: 16px 20px 20px; }
+
+.r19-precision { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--ap-info-border); background: rgba(59, 130, 246, 0.08); }
+.r19-precision[hidden] { display: none; }
+.r19-precision svg { width: 18px; height: 18px; margin-top: 1px; color: var(--ap-info-text); }
+.r19-precision[data-tone="warn"] { border-color: var(--ap-warn-border); background: color-mix(in srgb, var(--accent-warning) 8%, transparent); }
+.r19-precision[data-tone="warn"] svg { color: var(--ap-warn-text); }
+.r19-precision strong { display: block; font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--text-secondary); }
+.r19-precision[data-tone="warn"] strong { color: var(--ap-warn-text); }
+.r19-precision p { margin: 2px 0 0; font-size: 13px; line-height: 1.55; color: #b7bdc6; max-width: 78ch; }
+.r19-precision time, .r19-facts time { white-space: nowrap; }
+
+/* Resumo e botão de abrir: só no celular (decisão 7 de Alan). No desktop e no tablet tudo fica aberto. */
+.r19-alerts { display: none; margin: 0; font-size: 13px; line-height: 1.5; color: #b7bdc6; }
+.r19-alerts b { font-weight: 600; color: var(--text-secondary); }
+.r19-toggle { display: none; }
+
+.r19-more { display: grid; gap: 18px; min-width: 0; }
+.r19-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 20px; margin: 0; }
+.r19-facts > div { min-width: 0; }
+.r19-facts dt { font-size: 12px; line-height: 1.4; color: var(--text-tertiary); }
+.r19-facts dd { margin: 3px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); overflow-wrap: anywhere; }
+.r19-facts dd span { display: block; color: #b7bdc6; }
+.r19-facts .r19-num { font-family: var(--font-number, "IBM Plex Sans", monospace); font-variant-numeric: tabular-nums; }
+
+.r19-conv { border-top: 1px solid var(--border-default); padding-top: 14px; }
+.r19-conv h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.r19-conv ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 28px; margin: 0; padding: 0; list-style: none; }
+.r19-conv li { font-size: 13px; line-height: 1.55; color: #b7bdc6; max-width: 72ch; }
+.r19-conv li b { font-weight: 600; color: var(--text-secondary); }
+
+@media (max-width: 1100px) { .r19-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) {
+  .r19-conv ul { grid-template-columns: minmax(0, 1fr); }
+  .r19-alerts { display: block; }
+  .r19-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; width: 100%; min-height: 44px; padding: 10px 12px;
+    border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-primary); color: var(--text-secondary);
+    font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+  .r19-toggle-meta { font-size: 12px; font-weight: 400; color: var(--text-tertiary); }
+  .r19-toggle svg { width: 18px; height: 18px; margin-left: auto; transition: transform .15s ease; }
+  .r19-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .r19-toggle:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+  .r19-more[data-open="false"] { display: none; }
+}
+@media (max-width: 480px) {
+  .r19-head, .r19-body { padding-left: 14px; padding-right: 14px; }
+  .r19-facts { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+
+/* Favoritar recusado (ação/ETF). */
+.r19-fav { display: grid; justify-items: end; gap: 6px; max-width: 360px; }
+.r19-fav button[aria-disabled="true"] { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--border-default); padding: 8px 16px; font-size: 14px; font-weight: 600; color: #b7bdc6; cursor: not-allowed; }
+.r19-fav button[aria-disabled="true"] svg { width: 16px; height: 16px; }
+.r19-fav button:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+.r19-fav p { margin: 0; text-align: right; font-size: 12px; line-height: 1.5; color: #b7bdc6; }
+.r19-fav[data-flash="1"] p { color: var(--ap-warn-text); }
+@media (max-width: 520px) { .r19-fav { justify-items: stretch; max-width: none; } .r19-fav p { text-align: left; } }
+
+/* Chip de classe ao lado do ativo. */
+.r19-chip { color: var(--ap-info-text); border-color: var(--ap-info-border) !important; }
+
+/* Lista de operações: saída com gap e hora de Nova York (ação/ETF intradiário). */
+.r19-gap { display: block; font-weight: 600; color: var(--ap-warn-text); }
+.r19-gap-note { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; line-height: 1.4; color: #b7bdc6; white-space: nowrap; }
+.r19-gap-card { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: #b7bdc6; }
+.r19-gap-card b { color: var(--ap-warn-text); font-weight: 600; }
+.r19-time { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: #b7bdc6; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Combo e Otimização: dicas e caixa de fonte do delta. */
+.r19-hint { margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.r19-hint b { color: #b7bdc6; font-weight: 600; }
+.r19-md { color: var(--text-tertiary) !important; }
+.r19-collect { display: block; margin-top: 8px; font-size: 13px; line-height: 1.5; color: var(--ap-info-text); }
+
+/* Painel de demonstração: só no protótipo, no fim da página, no fluxo. */
+.demo-panel { margin: 32px auto 48px; max-width: 72rem; padding: 16px 20px; border: 1px dashed var(--border-default); border-radius: 12px; background: var(--bg-primary); color: #b7bdc6; font-size: 13px; line-height: 1.5; }
+@media (min-width: 1024px) { .demo-panel { margin-left: calc(var(--app-sidebar-width, 224px) + 32px); margin-right: 32px; } }
+@media (max-width: 1023.98px) { .demo-panel { margin-left: 16px; margin-right: 16px; } }
+.demo-panel h2 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.demo-panel p { margin: 0 0 10px; }
+.demo-panel .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.demo-panel .row > span { min-width: 150px; color: var(--text-tertiary); }
+.demo-panel button, .demo-panel a { min-height: 36px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-default); background: var(--bg-secondary); color: var(--text-secondary); font: inherit; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.demo-panel button[aria-pressed="true"] { border-color: rgba(252, 213, 53, 0.6); background: rgba(252, 213, 53, 0.12); color: var(--accent-primary); }
+.demo-panel button:focus-visible, .demo-panel a:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }

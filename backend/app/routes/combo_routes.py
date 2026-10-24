@@ -31,7 +31,9 @@ from app.schemas.combo_params import (
 from app.services.combo_service import ComboService
 from app.services.combo_optimizer import ComboOptimizer
 from app.services.market_data_providers import (
+    BINANCE_EQUITY_SOURCE,
     CCXT_SOURCE,
+    BinanceEquityMarketDataProvider,
     get_market_data_provider,
     validate_data_source_timeframe,
 )
@@ -43,6 +45,15 @@ from app.services.batch_backtest_service import (
 )
 from app.services.batch_backtest_queue import enqueue_batch_backtest
 from app.services.asset_analysis_guard import refusal_for_symbols
+from app.services.equity_backtest import (
+    EquityRunError,
+    asset_identity,
+    finalize_execution,
+    inclusive_end,
+    prepare_equity_history,
+    timeframe_refusal,
+)
+from app.metrics.backtest_execution_costs import fee_for_symbol, slippage_for_timeframe
 from app.services.strategy_transparency import build_strategy_transparency
 from app.middleware.authMiddleware import get_current_admin
 
@@ -50,16 +61,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
 
 
-def _refuse_assets(symbols: List[str], *, new_analysis: bool) -> None:
-    """Recusa estruturada (422) de ação, ETF e, em análise nova, ativo marcado (#1117)."""
-    detail = refusal_for_symbols(symbols, new_analysis=new_analysis)
+def _refuse_assets(symbols: List[str], *, new_analysis: bool, single_scope: bool = False) -> None:
+    """Recusa estruturada (422) de ação, ETF e, em análise nova, ativo marcado (#1117).
+
+    ``single_scope`` (#1119): backtest de 1 ativo; ação e ETF passam, o lote segue recusado.
+    """
+    detail = refusal_for_symbols(symbols, new_analysis=new_analysis, single_scope=single_scope)
     if detail is not None:
         raise HTTPException(status_code=422, detail=detail)
 
 
-def _ensure_crypto_symbol(symbol: str, *, new_analysis: bool = False) -> None:
-    """Backtest (inclui reabrir resultados salvos): só ação e ETF são recusados."""
-    _refuse_assets([symbol], new_analysis=new_analysis)
+def _ensure_crypto_symbol(
+    symbol: str, *, new_analysis: bool = False, single_scope: bool = False
+) -> None:
+    """Backtest (inclui reabrir resultados salvos): ação e ETF só no escopo de 1 ativo."""
+    _refuse_assets([symbol], new_analysis=new_analysis, single_scope=single_scope)
+
+
+def _is_equity_symbol(symbol: str) -> bool:
+    """Depois da guarda, ticker sem ``/`` é ação ou ETF do catálogo (cripto sempre tem ``/``)."""
+    return "/" not in str(symbol or "")
+
+
+def _raise_equity(exc: EquityRunError) -> None:
+    raise HTTPException(status_code=422, detail=exc.detail())
 
 
 def _ensure_crypto_symbols(symbols: List[str], *, new_analysis: bool = False) -> None:
@@ -391,6 +416,38 @@ async def delete_template(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _freeze_equity_run(request: ComboBacktestRequest, df, *, deep: bool):
+    """Congela candles e 15m do backtest de 1 ação/ETF: ``(candles, 15m, amostra)``.
+
+    Sinais e saída leem da amostra, a mesma que fica na proveniência do resultado.
+    """
+    from app.services.market_history.facade import (
+        get_history_service,
+        spec_for_request,
+        to_loader_frame,
+    )
+    from app.services.market_history.sample import ExecutionSample
+
+    sample = ExecutionSample("backtest", owner_ref=f"backtest:{request.symbol}:{request.timeframe}")
+    candles = sample.freeze_symbol(
+        "candles", request.symbol, request.timeframe, request.start_date, request.end_date, df
+    )
+    intraday = pd.DataFrame()
+    if deep:
+        service = get_history_service()
+        series = service.resolve(spec_for_request(symbol=request.symbol, timeframe="15m"))
+        result = service.read(series, request.start_date, inclusive_end(request.end_date))
+        intraday = sample.freeze_symbol(
+            "intraday",
+            request.symbol,
+            "15m",
+            request.start_date,
+            request.end_date,
+            to_loader_frame(result.candles),
+        )
+    return candles, intraday, sample
+
+
 async def execute_combo_backtest(request: ComboBacktestRequest):
     """
     Execute a combo strategy backtest.
@@ -405,7 +462,9 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         logger.info(
             f"Starting combo backtest for template: {request.template_name} on {request.symbol} {request.timeframe}"
         )
-        _ensure_crypto_symbol(request.symbol)
+        # /backtest é sempre de 1 ativo: ação e ETF passam (card #1119, decisão 2).
+        _ensure_crypto_symbol(request.symbol, single_scope=True)
+        is_equity = _is_equity_symbol(request.symbol)
 
         # data_source may be omitted by the UI (e.g. Favorites -> View Results).
         # Resolve in this order:
@@ -414,17 +473,37 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         # 3) infer from symbol (no "/" => US ticker => stooq; with "/" => crypto => ccxt)
         from app.services.market_data_providers import resolve_data_source_for_symbol
 
-        requested_source = request.data_source
-        if (requested_source is None or str(requested_source).strip() == "") and isinstance(
-            request.parameters, dict
-        ):
-            requested_source = request.parameters.get("data_source")
+        equity_prep = None
+        if is_equity:
+            refusal = timeframe_refusal(request.timeframe)
+            if refusal is not None:
+                _raise_equity(refusal)
+            data_source = BINANCE_EQUITY_SOURCE
+            import asyncio
 
-        if requested_source is None or str(requested_source).strip() == "":
-            requested_source = resolve_data_source_for_symbol(request.symbol, None)
+            try:
+                equity_prep = await asyncio.to_thread(
+                    prepare_equity_history,
+                    request.symbol,
+                    request.timeframe,
+                    request.start_date,
+                    request.end_date,
+                    intrabar=bool(request.deep_backtest),
+                )
+            except EquityRunError as exc:
+                _raise_equity(exc)
+        else:
+            requested_source = request.data_source
+            if (requested_source is None or str(requested_source).strip() == "") and isinstance(
+                request.parameters, dict
+            ):
+                requested_source = request.parameters.get("data_source")
 
-        data_source = validate_data_source_timeframe(requested_source, request.timeframe)
-        _ensure_crypto_data_source(data_source)
+            if requested_source is None or str(requested_source).strip() == "":
+                requested_source = resolve_data_source_for_symbol(request.symbol, None)
+
+            data_source = validate_data_source_timeframe(requested_source, request.timeframe)
+            _ensure_crypto_data_source(data_source)
 
         # Create strategy instance
         service = ComboService()
@@ -437,8 +516,13 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         template_metadata = service.get_template_metadata(request.template_name)
         logger.info(f"Strategy instance created for {request.template_name}")
 
-        # Load market data via provider selection (default: ccxt)
-        provider = get_market_data_provider(data_source)
+        # Load market data via provider selection (default: ccxt). Ação/ETF leem só o que a
+        # coleta sob demanda já guardou (sem uma segunda ida à Binance).
+        provider = (
+            BinanceEquityMarketDataProvider(ensure=False)
+            if is_equity
+            else get_market_data_provider(data_source)
+        )
         df = provider.fetch_ohlcv(
             symbol=request.symbol,
             timeframe=request.timeframe,
@@ -452,6 +536,14 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
                 status_code=400, detail="No data available for the specified period"
             )
 
+        sample = None
+        intraday_frame = None
+        if is_equity:
+            # Amostra desta execução (30 dias, regra do #1118): candles e 15m congelados.
+            df, intraday_frame, sample = _freeze_equity_run(
+                request, df, deep=bool(request.deep_backtest)
+            )
+
         # Generate signals
         df_with_signals = strategy.generate_signals(df)
         logger.info(f"Generated signals for {len(df_with_signals)} candles")
@@ -463,7 +555,7 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         direction = getattr(strategy, "direction", "long") or "long"
         if direction not in ("long", "short"):
             direction = "long"
-        trades, execution_mode = extract_trades_with_mode(
+        trades, execution_mode, execution = extract_trades_with_mode(
             df_with_signals,
             stop_loss_pct,
             deep_backtest=request.deep_backtest,
@@ -472,6 +564,12 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
             until_str=request.end_date,
             direction=direction,
             return_mode=True,
+            # Card #1119 (decisão 9): o custo de /backtest passa a ser o mesmo do otimizador.
+            slippage=slippage_for_timeframe(request.timeframe),
+            fee=fee_for_symbol(request.symbol),
+            timeframe=request.timeframe,
+            return_execution=True,
+            **({"df_15m_cache": intraday_frame} if is_equity else {}),
         )
 
         logger.info(f"Backtest complete: {len(trades)} trades extracted")
@@ -583,6 +681,19 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
                     }
                 )
 
+        result_asset = asset_identity(request.symbol)
+        result_execution, result_conventions = finalize_execution(
+            execution,
+            asset=result_asset,
+            timeframe=request.timeframe,
+            direction=direction,
+            requested={"start": request.start_date, "end": request.end_date},
+            frame=df,
+            collection=equity_prep.collection if equity_prep is not None else None,
+        )
+        if sample is not None:
+            sample.finish()
+
         response = ComboBacktestResponse(
             template_name=request.template_name,
             symbol=request.symbol,
@@ -598,6 +709,13 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
             },
             execution_mode=execution_mode,
             direction=direction,
+            asset=result_asset,
+            data_provenance=(
+                sample.provenance("candles", with_retention=True) if sample is not None else None
+            ),
+            snapshot_id=sample.snapshot_id if sample is not None else None,
+            execution=result_execution,
+            conventions=result_conventions,
             display_name=template_metadata.get("display_name") if template_metadata else None,
             strategy_description=(
                 template_metadata.get("description") if template_metadata else None
@@ -660,12 +778,40 @@ async def optimize_combo_strategy(
         logger.info(
             f"Starting optimization for template: {request.template_name} on {request.symbol} {request.timeframe}"
         )
-        _ensure_crypto_symbol(request.symbol, new_analysis=True)
-        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
-        _ensure_crypto_data_source(data_source)
+        # Card #1119 (decisão 2): ação/ETF só rodam como backtest de 1 ativo (run_scope == "single").
+        _ensure_crypto_symbol(
+            request.symbol, new_analysis=True, single_scope=request.run_scope == "single"
+        )
+        equity = _is_equity_symbol(request.symbol)
+        equity_prep = None
+        if equity:
+            refusal = timeframe_refusal(request.timeframe)
+            if refusal is not None:
+                _raise_equity(refusal)
+            data_source = BINANCE_EQUITY_SOURCE
+        else:
+            data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
+            _ensure_crypto_data_source(data_source)
 
         # Create optimizer
         optimizer = ComboOptimizer()
+        if equity:
+            import asyncio
+
+            try:
+                equity_prep = await asyncio.to_thread(
+                    prepare_equity_history,
+                    request.symbol,
+                    request.timeframe,
+                    request.start_date,
+                    request.end_date,
+                    intrabar=bool(request.deep_backtest),
+                )
+            except EquityRunError as exc:
+                _raise_equity(exc)
+            # Coleta feita: a otimização lê só o guardado, sem nova ida à Binance.
+            optimizer._provider = BinanceEquityMarketDataProvider(ensure=False)
+            optimizer.collection_note = equity_prep.collection
 
         # Honor an explicit request; otherwise execute the template's configured side.
         if "direction" in request.model_fields_set:

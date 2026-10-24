@@ -368,9 +368,13 @@ def test_factory_registers_the_equity_adapter_without_retiring_legacy_providers(
     # Yahoo e Alpha Vantage seguem no código (a retirada é do #1126).
     assert providers.YahooMarketDataProvider.source == "yahoo"
     assert providers.AlphaVantageMarketDataProvider.source == "alphavantage"
-    # A fonte nova não vira valor aceito pelas rotas de análise antes do #1119.
-    with pytest.raises(ValueError):
-        providers.normalize_data_source("binance_equity")
+    # Desde o #1119 a fonte é aceita pelo backtest de 1 ativo; lote e Descoberta seguem exigindo ccxt
+    # (``_ensure_crypto_data_source``) e o tempo precisa ser 15m, 1h, 4h ou 1d.
+    assert providers.normalize_data_source("binance_equity") == providers.BINANCE_EQUITY_SOURCE
+    assert providers.validate_data_source_timeframe("binance_equity", "4h") == "binance_equity"
+    for refused in ("1m", "5m", "30m"):
+        with pytest.raises(ValueError):
+            providers.validate_data_source_timeframe("binance_equity", refused)
 
 
 def test_equity_market_data_provider_reads_through_the_history_service(monkeypatch):

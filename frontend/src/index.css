@@ -23,6 +23,15 @@
   --accent-warning: #f59e0b;
   --accent-danger: #f6465d;
 
+  /* Cores de estado do seletor vivo (âmbar, azul, vermelho), declaradas uma vez e reusadas pela Descoberta
+     (estado da amostra no Decidir) e pelo bloco "Dados e execução" (card #1119). */
+  --ap-danger-text: #ff8294;
+  --ap-danger-border: rgba(246, 70, 93, 0.45);
+  --ap-warn-text: #fbbf24;
+  --ap-warn-border: rgba(245, 158, 11, 0.45);
+  --ap-info-text: #93c5fd;
+  --ap-info-border: rgba(59, 130, 246, 0.42);
+
   /* Additional accent colors */
   --accent-cyan: #3b82f6;
   --accent-pink: #f6465d;

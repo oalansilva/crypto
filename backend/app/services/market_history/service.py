@@ -34,6 +34,7 @@ from app.services.market_history.equity_provider import (
 from app.services.market_history.model import (
     ADJ_ADJUSTED,
     CLASS_CRYPTO,
+    DERIVED_MINUTES,
     EQUITY_DERIVED,
     EQUITY_NATIVE_TIMEFRAMES,
     ORIGIN_DERIVED,
@@ -262,7 +263,8 @@ class HistoryService:
         with self.engine.connect() as conn:
             series = store.refresh_series(conn, series)
             if series.is_derived:
-                pad = pd.Timedelta(minutes=15)
+                minutes = DERIVED_MINUTES.get(series.timeframe, 15)
+                pad = pd.Timedelta(minutes=minutes)
                 raw_start = start_ts - pad if start_ts is not None else None
                 five = store.read_frame(conn, series.series_id, raw_start, end_ts)
                 coverage_row = store.get_coverage(conn, series.series_id)
@@ -271,7 +273,7 @@ class HistoryService:
                     if coverage_row and coverage_row["last_candle"] is not None
                     else None
                 )
-                derived = cal.derive_15m(five, up_to=up_to)
+                derived = cal.derive_blocks(five, minutes, up_to=up_to)
                 candles = derived.candles
                 if start_ts is not None:
                     candles = candles[candles.index >= start_ts]
@@ -951,8 +953,9 @@ def build_coverage(
     gaps = list(cov.get("gaps") or [])
     gap_count = int(cov.get("gap_count") or 0)
     inherited: list[dict[str, Any]] = []
+    block_minutes = DERIVED_MINUTES.get(series.timeframe, 15) if series.is_derived else 15
     if series.is_derived:
-        inherited = inherit_gaps_15m(gaps)
+        inherited = inherit_gaps(gaps, block_minutes)
         # Blocos incompletos vistos na janela lida entram se ainda não estão na lista.
         known = {g["start"] for g in inherited}
         for a, b, n in incomplete:
@@ -961,7 +964,9 @@ def build_coverage(
                 inherited.append(
                     {
                         "start": key,
-                        "end": (b - pd.Timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "end": (b - pd.Timedelta(minutes=block_minutes)).strftime(
+                            "%Y-%m-%dT%H:%M:%SZ"
+                        ),
                         "count": 1,
                         "inherited_from": "5m",
                     }
@@ -1064,8 +1069,14 @@ def _gap_in_window(
 def inherit_gaps_15m(gaps_5m: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Lacuna do 5m vista como bloco de 15m: "herdada do 5m" (decisão 9)."""
 
+    return inherit_gaps(gaps_5m, 15)
+
+
+def inherit_gaps(gaps_5m: list[dict[str, Any]], minutes: int) -> list[dict[str, Any]]:
+    """Lacuna do 5m vista como bloco de ``minutes`` (15m, 1h ou 4h): "herdada do 5m"."""
+
     out: list[dict[str, Any]] = []
-    block = pd.Timedelta(minutes=15)
+    block = pd.Timedelta(minutes=minutes)
     for gap in gaps_5m:
         g_start, g_end = to_utc(gap["start"]), to_utc(gap["end"])
         day = g_start.tz_convert(cal.NY).date()

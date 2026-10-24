@@ -246,6 +246,42 @@
       "evidence": "run_combination com sweep semeado no PostgreSQL de teste isolado (postgres_isolation)"
     },
     {
+      "file": "backend/tests/unit/test_card_1119_equity_backtest_api.py",
+      "protected_behavior": "POST /api/combos/backtest e /optimize de 1 ação/ETF (identidade, precisão efetiva, convenções, taxa por classe, coleta só do que usa, recusa do lote, da Descoberta e do marcado, 1m/5m, favoritar ação/ETF 422)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "FakeEquityProvider no formato da Binance, schema privado descartável (unit_database_url) e TestClient; trade com a taxa de 0,10% de ação/ETF"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1119_equity_optimizer.py",
+      "protected_behavior": "ComboOptimizer de ação/ETF: intrabar de 15m montado do 5m, queda para o candle do tempo gráfico com o trecho sem intradiário, 1h no pregão e taxa de ação/ETF no lucro",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ComboOptimizer real com FakeEquityProvider e schema privado descartável (unit_database_url)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1119_equity_timeframes.py",
+      "protected_behavior": "1h e 4h de ação/ETF montados do 5m no pregão (pregão cheio, meio-pregão, viradas do horário de verão, fim de semana e feriado, 5m faltando, split da NVDA) e cobertura 'montado do 5m'",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "derive_blocks sobre o calendário XNYS real e HistoryService em schema privado descartável (unit_database_url)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1119_stop_gap.py",
+      "protected_behavior": "gap no stop (long e short, toque sem gap, retomada, 15m), taxa por classe e regressão cripto antes/depois em BTC/USDT 1d e 4h: sem gap idêntico, toda diferença é trade com gap",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "rotinas legada, rápida e compilada sobre amostra Parquet fixa e saída gravada com a rotina anterior; sem banco nem rede"
+    },
+    {
       "file": "backend/tests/unit/test_card_1074_combo_templates.py",
       "protected_behavior": "card 1074 combo template and VWAP indicator smoke backtests",
       "production_reachability": "reachable",

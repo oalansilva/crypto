@@ -3179,7 +3179,10 @@ class TestPreflightAssetCatalog:
         assert {c["symbol"] for c in result["combinations"]} == {"BTC/USDT"}
         by_symbol = {a["symbol"]: a for a in result["excluded_assets"]}
         assert set(by_symbol) == {"NVDA", "SPY", "WAVES/USDT", "AVB"}
-        assert by_symbol["NVDA"]["reason"] == "análise ainda não disponível para ações e ETFs"
+        assert (
+            by_symbol["NVDA"]["reason"]
+            == "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
+        )
         assert by_symbol["NVDA"]["kind"] == "class" and by_symbol["NVDA"]["combinations"] == 2
         assert by_symbol["SPY"]["asset_class"] == "etf"
         assert by_symbol["WAVES/USDT"]["kind"] == "marked"
@@ -3193,7 +3196,10 @@ class TestPreflightAssetCatalog:
         result = self._preflight(self._service(), ["NVDA", "SPY"])
 
         assert result["valid_total"] == 0
-        assert "análise ainda não disponível para ações e ETFs" in result["errors"]["symbols"]
+        assert (
+            "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
+            in result["errors"]["symbols"]
+        )
         assert result["combinations"] == []
 
     def test_only_marked_blocks_with_generic_reason(self):

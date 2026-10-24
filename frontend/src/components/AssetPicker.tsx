@@ -31,6 +31,7 @@ import {
   selectionCounts,
   sortedForChips,
   zoneLabel,
+  type AssetClass,
   type CatalogAsset,
   type ClassFilter,
 } from '../lib/assetSelection'
@@ -53,6 +54,8 @@ export interface AssetPickerProps {
   clearLabel?: string
   extraActions?: ReactNode
   classNote: string
+  /** Texto do estado sob demanda por classe (card #1119: Combo e Otimização coletam ao rodar 1 ativo). */
+  onDemandTexts?: Partial<Record<AssetClass, string>>
   variant?: 'default' | 'narrow'
   /** Aviso fixo acima da pesquisa (ex.: `?symbol=` fora do catálogo). */
   notice?: { title: string; body: string } | null
@@ -76,6 +79,7 @@ export function AssetPicker({
   clearLabel = 'Limpar seleção',
   extraActions,
   classNote,
+  onDemandTexts,
   variant = 'default',
   notice = null,
 }: AssetPickerProps) {
@@ -168,7 +172,7 @@ export function AssetPicker({
   // role=status anuncia só quando o progresso muda, não a cada filtro ou página (P3 aceito do Design).
   const collectingKey = (data?.items ?? [])
     .filter((asset) => asset.history.status === 'collecting')
-    .map((asset) => `${asset.symbol}: ${historySummary(asset).text}`)
+    .map((asset) => `${asset.symbol}: ${historySummary(asset, undefined, onDemandTexts).text}`)
     .join('. ')
   useEffect(() => {
     if (collectingKey === lastAnnounced.current) return
@@ -433,7 +437,7 @@ export function AssetPicker({
             const marked = isMarked(asset)
             const inSel = selected.has(normalizeSymbol(asset.symbol))
             const cls = CLASS_LABEL[asset.asset_class]
-            const summary = historySummary(asset)
+            const summary = historySummary(asset, undefined, onDemandTexts)
             const slug = `${headingId}-${asset.asset_id}`.replace(/[^A-Za-z0-9_-]/g, '-')
             const pickId = `pick${slug}`
             const panelId = `cov${slug}`
