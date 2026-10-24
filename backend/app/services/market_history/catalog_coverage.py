@@ -19,6 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.services.market_history import nyse_calendar as cal
 from app.services.market_history.model import (
     ADJ_ADJUSTED,
+    DERIVED_MINUTES,
     ADJ_NA,
     SOURCE_EQUITY,
     SOURCE_SPOT,
@@ -26,7 +27,7 @@ from app.services.market_history.model import (
     series_note,
     to_utc,
 )
-from app.services.market_history.service import RUNNING_FRESH_SECONDS, inherit_gaps_15m
+from app.services.market_history.service import RUNNING_FRESH_SECONDS, inherit_gaps
 
 logger = logging.getLogger(__name__)
 
@@ -128,15 +129,15 @@ def _timeframe_entry(row: Any, now: pd.Timestamp) -> dict[str, Any] | None:
     }
 
 
-def _derived_entry(five: dict[str, Any]) -> dict[str, Any]:
+def _derived_entry(five: dict[str, Any], timeframe: str = "15m") -> dict[str, Any]:
     entry = dict(five)
     entry.update(
         {
-            "timeframe": "15m",
+            "timeframe": timeframe,
             "origin": "derived",
             "derived_from": "5m",
             "gap_count": 0,  # herdada do 5m: não soma de novo no resumo (decisão 9)
-            "gaps": inherit_gaps_15m(five["gaps"]),
+            "gaps": inherit_gaps(five["gaps"], DERIVED_MINUTES[timeframe]),
             "rule_version": cal.DERIVED_15M_RULE_VERSION,
         }
     )
@@ -155,8 +156,11 @@ def summarize(
     ordered = sorted(entries, key=lambda e: TIMEFRAME_ORDER.get(e["timeframe"], 9))
     if equity:
         by_tf = {e["timeframe"]: e for e in ordered}
-        if "5m" in by_tf and "15m" not in by_tf:
-            ordered.append(_derived_entry(by_tf["5m"]))
+        if "5m" in by_tf:
+            # 15m, 1h e 4h aparecem como "montado do 5m", com o mesmo período coberto (card #1119).
+            for derived_tf in DERIVED_MINUTES:
+                if derived_tf not in by_tf:
+                    ordered.append(_derived_entry(by_tf["5m"], derived_tf))
             ordered.sort(key=lambda e: TIMEFRAME_ORDER.get(e["timeframe"], 9))
     with_data = [e for e in ordered if e["from"]]
     collecting = next((e for e in ordered if e["state"] == "collecting"), None)

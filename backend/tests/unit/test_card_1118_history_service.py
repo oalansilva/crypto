@@ -347,12 +347,15 @@ def test_invalid_page_writes_nothing(engine):
         assert store.stored_extent(conn, series.series_id)[2] == 0
 
 
-def test_timeframes_of_a_later_card_are_refused(engine):
+def test_timeframes_outside_the_equity_set_are_refused(engine):
     from app.services.market_history.model import SeriesNotSupported
 
     service = _service(engine)
-    with pytest.raises(SeriesNotSupported):
-        service.resolve(_nvda("1h"))
+    # 1h e 4h entraram no #1119 (montados do 5m); 30m e 1m seguem fora para ação/ETF.
+    for refused in ("1m", "30m"):
+        with pytest.raises(SeriesNotSupported):
+            service.resolve(_nvda(refused))
+    assert service.resolve(_nvda("1h")).is_derived
 
 
 # --- travas e limitador ------------------------------------------------------

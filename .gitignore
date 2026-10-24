@@ -91,6 +91,8 @@ backend/runtime/
 !backend/tests/fixtures/tradingview/*.csv
 !backend/tests/fixtures/card_945/*.parquet
 !backend/tests/fixtures/card_945/**/*.parquet
+!backend/tests/fixtures/card_1119/*.parquet
+!backend/tests/fixtures/card_1119/*.csv
 *.json.gz
 *.db
 *.sqlite

@@ -459,7 +459,10 @@ def test_guard_refuses_equity_and_etf_with_structured_portuguese_detail():
         "NVDA": "stock",
         "SPY": "etf",
     }
-    assert "Análise ainda não disponível para ações e ETFs" in detail["message"]
+    assert (
+        "Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois."
+        in detail["message"]
+    )
     assert "NVDA (Ação)" in detail["message"] and "SPY (ETF)" in detail["message"]
     # o backtest que reabre resultados salvos também recusa ação e ETF
     assert (
@@ -530,7 +533,10 @@ def test_discovery_symbol_reasons_cover_equity_marked_and_missing():
     )
 
     assert "BTC/USDT" not in reasons
-    assert reasons["NVDA"]["reason"] == "análise ainda não disponível para ações e ETFs"
+    assert (
+        reasons["NVDA"]["reason"]
+        == "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
+    )
     assert reasons["SPY"]["kind"] == "class"
     assert reasons["WAVES/USDT"]["kind"] == "marked"
     assert "Suspenso na Binance" in reasons["WAVES/USDT"]["reason"]

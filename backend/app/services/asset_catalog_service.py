@@ -63,9 +63,12 @@ RETRY_THROTTLE_SECONDS = 60
 HISTORY_TIMEFRAME = "1d"
 MARKET_OHLCV_TABLE = "market_ohlcv"
 
-EQUITY_UNSUPPORTED_MESSAGE = (
-    "Análise ainda não disponível para ações e ETFs. " "Escolha pares cripto negociáveis em USDT."
+# Card #1119 (decisão 3 de Alan no Design): lote e Descoberta seguem recusando ação/ETF, agora com o
+# porquê novo; o backtest de 1 ativo (Combo, Otimização e API) roda.
+EQUITY_BATCH_REASON = (
+    "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
 )
+EQUITY_UNSUPPORTED_MESSAGE = EQUITY_BATCH_REASON[0].upper() + EQUITY_BATCH_REASON[1:] + "."
 
 _ADVISORY_KEY = 11170001
 _REFRESH_LOCKS = {group: threading.Lock() for group in CATALOG_GROUPS}
@@ -879,7 +882,7 @@ def check_assets(symbols: Iterable[str], *, db: Session | None = None) -> list[A
 def catalog_symbol_reason(check: AssetCheck) -> str:
     """Motivo curto, em português, de um ativo que não entra em análise nova."""
     if check.found and check.asset_class in (CLASS_STOCK, CLASS_ETF):
-        return "análise ainda não disponível para ações e ETFs"
+        return EQUITY_BATCH_REASON
     if check.found:
         label = STATE_LABELS.get(check.state or "", check.state or "")
         reason = (check.state_reason or "").rstrip(".")

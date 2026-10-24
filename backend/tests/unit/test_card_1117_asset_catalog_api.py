@@ -221,7 +221,9 @@ def test_optimize_refuses_equity_with_class_code_in_portuguese(client):
     assert detail["code"] == "asset_class_not_supported"
     assert detail["asset_class"] == "stock"
     assert detail["assets"][0]["symbol"] == "NVDA"
-    assert detail["message"].startswith("Análise ainda não disponível para ações e ETFs")
+    assert detail["message"].startswith(
+        "Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois."
+    )
 
 
 def test_optimize_refuses_marked_and_unknown_assets(client):

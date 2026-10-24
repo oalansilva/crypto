@@ -54,8 +54,6 @@ NATIVE_TIMEFRAMES: dict[str, tuple[str, int]] = {
     "5m": ("5T", 300_000),
     "1d": ("1D", 86_400_000),
 }
-# 1h e 4h entram com a análise dessas classes (#1119), pela mesma regra do 15m.
-DEFERRED_TIMEFRAMES = {"1h": "1H", "4h": "4H"}
 
 ADJUSTMENT_MODES = {"adjusted": "ADJUSTED", "raw": "UNADJUSTED"}
 # Só o pregão regular no intradiário (verificado em 23/10/2026, tarefa 2.2); o 1D recusa o parâmetro.

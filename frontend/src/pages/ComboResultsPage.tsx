@@ -4,6 +4,17 @@ import { BarChart3, ArrowLeft, Star } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
+import { DataExecutionBlock } from '../components/results/DataExecutionBlock'
+import {
+    CLASS_CHIP_LABEL,
+    FAVORITE_REFUSED_REASON,
+    currencyOf,
+    isEquityClass,
+    type ConventionsInfo,
+    type ExecutionInfo,
+    type ProvenanceInfo,
+    type ResultAsset,
+} from '@/lib/equityExecution'
 import { StrategyTransparencyPanel } from '../components/trades/StrategyTransparencyPanel'
 import { StrategyRuleOverview } from '../components/trades/StrategyRuleOverview'
 import { API_BASE_URL } from '../lib/apiBase'
@@ -37,6 +48,11 @@ interface BacktestResult {
     end_date?: string | null
     period_type?: string | null
     execution_mode?: string
+    /** Card #1119 (decisão 12): identidade, amostra, precisão efetiva e convenções da execução. */
+    asset?: ResultAsset | null
+    data_provenance?: ProvenanceInfo | null
+    execution?: ExecutionInfo | null
+    conventions?: ConventionsInfo | null
     strategy_description?: string | null
     is_strategy_protected?: boolean
     parameters: Record<string, any>
@@ -58,6 +74,8 @@ interface BacktestResult {
         exit_price?: number
         profit?: number
         type?: string
+        exit_reason?: string
+        stop_price?: number
         pnl?: number
         initial_capital?: number
         final_capital?: number
@@ -94,6 +112,8 @@ export function ComboResultsPage() {
     const returnTo = location.state?.returnTo as string | undefined
     const isOptimization = location.state?.isOptimization === true
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [favoriteAnnouncement, setFavoriteAnnouncement] = useState('')
+    const [favoriteFlash, setFavoriteFlash] = useState(false)
 
     const handleSaveFavorite = async (data: any) => {
         console.log('📤 handleSaveFavorite chamado com:', data)
@@ -357,6 +377,12 @@ export function ComboResultsPage() {
 
     const direction = markerDirection
     const isShort = direction === 'short'
+    // Classe, moeda e relógio da lista (card #1119): ação/ETF em USD, hora de Nova York no intradiário.
+    const resultAsset: ResultAsset | null = result.asset ?? null
+    const isEquity = isEquityClass(resultAsset?.asset_class)
+    const resultCurrency = currencyOf(resultAsset, result.symbol)
+    const newYorkClock = isEquity && ['15m', '1h', '4h'].includes(String(result.timeframe).toLowerCase())
+    const classChip = resultAsset?.asset_class ? CLASS_CHIP_LABEL[resultAsset.asset_class] : null
     const snapshotMetrics = favoriteGridMetrics(
         result.promotion_metrics
             ? { origin_type: 'discovery_sweep', metrics_snapshot: result.promotion_metrics, ...(result.metrics || {}) }
@@ -421,15 +447,39 @@ export function ComboResultsPage() {
                             {returnTo === '/favorites' ? 'Voltar aos favoritos' : 'Voltar'}
                         </button>
                         {isOptimization ? (
-                            <button
-                                type="button"
-                                onClick={() => setIsModalOpen(true)}
-                                className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#0b0e11] transition-colors hover:bg-[#fcd535]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
-                                data-testid="save-favorite-button"
-                            >
-                                <Star className="h-4 w-4" />
-                                Salvar nos Favoritos
-                            </button>
+                            isEquity ? (
+                                <div className="r19-fav" data-testid="favorite-refused" data-flash={favoriteFlash ? '1' : undefined}>
+                                    <button
+                                        type="button"
+                                        aria-disabled="true"
+                                        aria-describedby="favorite-refused-why"
+                                        data-testid="save-favorite-button"
+                                        onClick={(event) => {
+                                            // Recusado: continua focável, não abre o modal e anuncia o motivo.
+                                            event.preventDefault()
+                                            setFavoriteAnnouncement('')
+                                            window.setTimeout(() => setFavoriteAnnouncement(`Não salvo. ${FAVORITE_REFUSED_REASON}`), 30)
+                                            setFavoriteFlash(true)
+                                            window.setTimeout(() => setFavoriteFlash(false), 1600)
+                                        }}
+                                    >
+                                        <Star aria-hidden="true" />
+                                        Salvar nos Favoritos
+                                    </button>
+                                    <p id="favorite-refused-why">{FAVORITE_REFUSED_REASON}</p>
+                                    <p className="sr-only" role="status" aria-live="polite" data-testid="favorite-refused-status">{favoriteAnnouncement}</p>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(true)}
+                                    className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#0b0e11] transition-colors hover:bg-[#fcd535]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
+                                    data-testid="save-favorite-button"
+                                >
+                                    <Star className="h-4 w-4" />
+                                    Salvar nos Favoritos
+                                </button>
+                            )
                         ) : null}
                     </div>
 
@@ -442,6 +492,9 @@ export function ComboResultsPage() {
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
                                     <span className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5">{result.symbol}</span>
+                                    {classChip ? (
+                                        <span className="r19-chip rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5" data-testid="result-asset-class">{classChip}</span>
+                                    ) : null}
                                     <span className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5 uppercase">{result.timeframe}</span>
                                     <span className="rounded-md border border-[#fcd535]/50 bg-[#fcd535]/10 px-2.5 py-1.5 text-[#fcd535]">{directionLabel}</span>
                                 </div>
@@ -485,6 +538,17 @@ export function ComboResultsPage() {
                             </dl>
                         </div>
                     </section>
+
+                    <DataExecutionBlock
+                        asset={resultAsset}
+                        provenance={result.data_provenance}
+                        execution={result.execution}
+                        conventions={result.conventions}
+                        timeframe={result.timeframe}
+                        periodAll={result.period_type === 'all'}
+                        trades={result.trades}
+                        requestedFallback={{ start: result.start_date, end: result.end_date }}
+                    />
 
                     {(result.oos_verdict || result.oos_metrics) ? (
                         <section
@@ -565,6 +629,8 @@ export function ComboResultsPage() {
                         onExport={handleExportTrades}
                         testId="result-trades"
                         showMetrics={false}
+                        currency={resultCurrency}
+                        newYorkClock={newYorkClock}
                     />
 
                     <p className="rounded-lg border border-[#2b3139] bg-[#181a20] px-4 py-3 text-xs leading-5 text-[#929aa5]">

@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.services.asset_catalog_adapters import CLASS_CRYPTO, CLASS_ETF, CLASS_STOCK
 from app.services.asset_catalog_service import (
+    EQUITY_BATCH_REASON,
     EQUITY_UNSUPPORTED_MESSAGE,
     STATE_LABELS,
     AssetCheck,
@@ -101,8 +102,15 @@ def _missing_refusal(checks: list[AssetCheck]) -> dict[str, Any]:
     }
 
 
-def refusal_for_symbols(symbols: Iterable[str], *, new_analysis: bool) -> dict[str, Any] | None:
+def refusal_for_symbols(
+    symbols: Iterable[str], *, new_analysis: bool, single_scope: bool = False
+) -> dict[str, Any] | None:
     """Detail 422 estruturado, ou None se nada impede a análise.
+
+    ``single_scope=True`` (card #1119, decisão 2): o pedido é o backtest de **1 ativo**
+    (``POST /backtest`` ou ``POST /optimize`` com ``run_scope == "single"``). Com exatamente
+    um símbolo, ação e ETF passam; ativo marcado pela Binance segue recusado (#1117) e ação/ETF
+    de lote (mais de um símbolo) continua com ``asset_class_not_supported``.
 
     ``new_analysis=False`` (backtest, usado também para reabrir resultados salvos)
     só recusa ação e ETF; pausados, removidos e fora do catálogo continuam
@@ -123,10 +131,16 @@ def refusal_for_symbols(symbols: Iterable[str], *, new_analysis: bool) -> dict[s
     unsupported: list[AssetCheck] = []
     marked: list[AssetCheck] = []
     missing: list[AssetCheck] = []
+    single_equity = single_scope and len(unique) == 1
     for check in checks:
         is_crypto = "/" in check.symbol
         if check.found:
             if check.asset_class in (CLASS_STOCK, CLASS_ETF):
+                if single_equity:
+                    # ação/ETF de 1 ativo não reabre resultado salvo: ativo marcado não roda
+                    if not check.selectable:
+                        marked.append(check)
+                    continue
                 unsupported.append(check)
             elif new_analysis and not check.selectable:
                 marked.append(check)
@@ -149,14 +163,14 @@ def refusal_for_symbols(symbols: Iterable[str], *, new_analysis: bool) -> dict[s
     return None
 
 
-DISCOVERY_EQUITY_REASON = "análise ainda não disponível para ações e ETFs"
+DISCOVERY_EQUITY_REASON = EQUITY_BATCH_REASON
 
 
 def discovery_symbol_reasons(symbols: Iterable[str]) -> dict[str, dict[str, Any]]:
     """Motivo por símbolo para o Preflight da Descoberta (decisões 6 e 14).
 
-    Devolve só os símbolos que ficam fora: ação e ETF (análise ainda não
-    disponível), ativo marcado pela Binance (estado e motivo) e ativo fora do
+    Devolve só os símbolos que ficam fora: ação e ETF (só com 1 ativo
+    por enquanto), ativo marcado pela Binance (estado e motivo) e ativo fora do
     catálogo. Sem lista válida da classe, nada é inventado: cripto segue pelo
     formato, como antes.
     """

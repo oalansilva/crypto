@@ -78,7 +78,7 @@ async function discoveryMocks(page: Page) {
         reason:
           a!.state !== 'tradable'
             ? `${a!.state_label} na Binance; não entra em análise nova`
-            : 'análise ainda não disponível para ações e ETFs',
+            : 'ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois',
         combinations: per,
       }))
     const validSymbols = body.symbols.filter((s) => {
@@ -95,7 +95,7 @@ async function discoveryMocks(page: Page) {
         excluded_count: (body.symbols.length - validSymbols.length) * per,
         valid_total: valid,
         limits: { max_total: 1000 },
-        errors: valid === 0 ? { symbols: 'Nenhuma combinação válida: análise ainda não disponível para ações e ETFs.' } : {},
+        errors: valid === 0 ? { symbols: 'Nenhuma combinação válida: ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.' } : {},
         expires_at: '2026-10-21T00:00:00Z',
         snapshot_token: 'tok',
         snapshot_hash: 'hash1117',
@@ -276,7 +276,7 @@ test.describe('seletor de ativos na Descoberta', () => {
     }
     await expect(page.getByTestId('preflight-class-out')).toBeVisible()
     await expect(page.getByTestId('preflight-class-out')).toContainText('Fora desta varredura: 2 ativos')
-    await expect(page.getByTestId('preflight-class-out')).toContainText('NVDA (Ação) — análise ainda não disponível para ações e ETFs.')
+    await expect(page.getByTestId('preflight-class-out')).toContainText('NVDA (Ação) — ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.')
     await expect(page.getByTestId('preflight-class-out')).toContainText('Eles continuam na seleção do rascunho; nada é perdido.')
     await expect(page.getByTestId('preflight-state')).toContainText('Pronto para iniciar · ações e ETFs fora')
     await expect(page.getByTestId('start-sweep')).toBeEnabled()
@@ -289,7 +289,7 @@ test.describe('seletor de ativos na Descoberta', () => {
     await pickTemplate(page)
     await search(page, 'nvda')
     await row(page, 'NVDA').locator('input').check()
-    await expect(page.getByTestId('preflight-impediments')).toContainText('Nenhuma combinação válida: a análise ainda não está disponível para ações e ETFs')
+    await expect(page.getByTestId('preflight-impediments')).toContainText('Nenhuma combinação válida: ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois')
     await expect(page.getByTestId('preflight-impediments')).toContainText('Inclua ao menos 1 par cripto negociável em USDT.')
     await expect(page.getByTestId('start-sweep')).toBeDisabled()
     await page.getByTestId('asset-clear').click()
@@ -512,20 +512,23 @@ test.describe('seletor de ativos no Combo', () => {
     await expect(chip(page, 'BTC/USDT')).toBeVisible()
   })
 
-  test('só ação: a cópia sob Otimizar avisa antes do clique e Otimizar não executa nem salva', async ({ page }) => {
+  test('só ações e ETFs (mais de 1): a cópia sob Otimizar avisa antes do clique e Otimizar não executa nem salva', async ({ page }) => {
+    // Card #1119 (decisão 2): 1 ação/ETF sozinha roda o backtest de 1 ativo; com mais de 1 o lote segue recusado.
     const { posts } = await comboMocks(page)
     await page.goto('/combo/configure?template=ema_rsi')
     await search(page, 'nvda')
     await row(page, 'NVDA').locator('input').check()
-    await row(page, 'NVDA').scrollIntoViewIfNeeded()
+    await search(page, 'spy')
+    await row(page, 'SPY').locator('input').check()
+    await row(page, 'SPY').scrollIntoViewIfNeeded()
     await chip(page, 'BTC/USDT').getByRole('button').click()
     await expect(page.getByTestId('combo-run-copy')).toContainText(
-      'Nada será executado nem salvo: NVDA (Ação) — a análise ainda não está disponível para ações e ETFs.',
+      'Nada será executado nem salvo: NVDA (Ação), SPY (ETF) — ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.',
     )
     await expect(page.getByTestId('combo-run-copy')).not.toContainText('favoritos')
     await page.getByTestId('combo-run').click()
     const warning = page.getByTestId('run-warning')
-    await expect(warning).toContainText('Análise ainda não disponível para ações e ETFs')
+    await expect(warning).toContainText('Ação e ETF rodam só com 1 ativo por enquanto')
     await expect(warning).toContainText('Nada foi executado nem salvo. A seleção foi mantida.')
     expect(posts).toEqual([])
     await expect(chip(page, 'NVDA')).toBeVisible()
@@ -617,13 +620,17 @@ test.describe('seletor de ativos na Otimização', () => {
     expect(posts[0].body.template_name).toBe('ema_rsi')
   })
 
-  test('só QQQ: nada roda e a tela explica', async ({ page }) => {
+  test('QQQ e SPY (mais de 1 ação/ETF): nada roda e a tela explica', async ({ page }) => {
+    // Card #1119 (decisão 2): 1 ETF sozinho roda; com mais de 1 o lote segue recusado, com o texto novo.
     const { posts } = await optimizeMocks(page)
     await page.goto('/combo/optimize?template=ema_rsi&symbol=QQQ')
     await expect(chip(page, 'QQQ')).toBeVisible()
-    await expect(page.getByTestId('opt-run-copy')).toContainText('Nada será executado: QQQ (ETF)')
+    await search(page, 'spy')
+    await row(page, 'SPY').locator('input').check()
+    await expect(page.getByTestId('opt-run-copy')).toContainText('Nada será executado: QQQ (ETF), SPY (ETF)')
     await page.getByTestId('run-optimization').click()
-    await expect(page.getByTestId('run-warning')).toContainText('Análise ainda não disponível para ações e ETFs')
+    await expect(page.getByTestId('run-warning')).toContainText('Ação e ETF rodam só com 1 ativo por enquanto')
+    await expect(page.getByTestId('run-warning')).toContainText('ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois')
     await expect(page.getByTestId('run-warning')).toContainText('Nada foi executado. A seleção foi mantida.')
     expect(posts).toEqual([])
   })

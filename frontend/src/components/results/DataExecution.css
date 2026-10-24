@@ -1,0 +1,86 @@
+/* Card #1119: bloco "Dados e execução", favoritar recusado, chip de classe, saída com gap e hora de Nova York.
+   Clone do bloco DELTA do protótipo aprovado (frontend/public/prototypes/card-1119-backtest-acoes-etfs/delta.css),
+   com os tokens do produto: --bg-*, --border-default, --text-*, --accent-*, --ap-* (index.css).
+   Único literal: --r19-soft, o texto secundário da descrição viva de /combo/results (sem token no DESIGN.md;
+   P3 aceito no design.md). Contraste medido no protótipo: sobre #181a20 → 9,2:1. */
+:root { --r19-soft: #b7bdc6; }
+
+/* Bloco "Dados e execução" do resultado. */
+.r19-data { min-width: 0; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-secondary); color: var(--text-secondary); }
+.r19-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border-default); }
+.r19-head h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.35; }
+.r19-head p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--r19-soft); overflow-wrap: anywhere; }
+.r19-body { display: grid; gap: 18px; padding: 16px 20px 20px; }
+
+.r19-precision { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--ap-info-border); background: color-mix(in srgb, var(--accent-cyan) 8%, transparent); }
+.r19-precision[hidden] { display: none; }
+.r19-precision svg { width: 18px; height: 18px; margin-top: 1px; color: var(--ap-info-text); }
+.r19-precision[data-tone="warn"] { border-color: var(--ap-warn-border); background: color-mix(in srgb, var(--accent-warning) 8%, transparent); }
+.r19-precision[data-tone="warn"] svg { color: var(--ap-warn-text); }
+.r19-precision strong { display: block; font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--text-secondary); }
+.r19-precision[data-tone="warn"] strong { color: var(--ap-warn-text); }
+.r19-precision p { margin: 2px 0 0; font-size: 13px; line-height: 1.55; color: var(--r19-soft); max-width: 78ch; }
+.r19-precision time, .r19-facts time { white-space: nowrap; }
+
+/* Resumo e botão de abrir: só no celular (decisão 7 de Alan). No desktop e no tablet tudo fica aberto. */
+.r19-alerts { display: none; margin: 0; font-size: 13px; line-height: 1.5; color: var(--r19-soft); }
+.r19-alerts b { font-weight: 600; color: var(--text-secondary); }
+.r19-toggle { display: none; }
+
+.r19-more { display: grid; gap: 18px; min-width: 0; }
+.r19-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 20px; margin: 0; }
+.r19-facts > div { min-width: 0; }
+.r19-facts dt { font-size: 12px; line-height: 1.4; color: var(--text-tertiary); }
+.r19-facts dd { margin: 3px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); overflow-wrap: anywhere; }
+.r19-facts dd span { display: block; color: var(--r19-soft); }
+.r19-facts .r19-num { font-family: var(--font-number, "IBM Plex Sans", monospace); font-variant-numeric: tabular-nums; }
+
+.r19-conv { border-top: 1px solid var(--border-default); padding-top: 14px; }
+.r19-conv h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.r19-conv ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 28px; margin: 0; padding: 0; list-style: none; }
+.r19-conv li { font-size: 13px; line-height: 1.55; color: var(--r19-soft); max-width: 72ch; }
+.r19-conv li b { font-weight: 600; color: var(--text-secondary); }
+
+@media (max-width: 1100px) { .r19-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) {
+  .r19-conv ul { grid-template-columns: minmax(0, 1fr); }
+  .r19-alerts { display: block; }
+  .r19-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; width: 100%; min-height: 44px; padding: 10px 12px;
+    border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-primary); color: var(--text-secondary);
+    font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+  .r19-toggle-meta { font-size: 12px; font-weight: 400; color: var(--text-tertiary); }
+  .r19-toggle svg { width: 18px; height: 18px; margin-left: auto; transition: transform .15s ease; }
+  .r19-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .r19-toggle:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+  .r19-more[data-open="false"] { display: none; }
+}
+@media (max-width: 480px) {
+  .r19-head, .r19-body { padding-left: 14px; padding-right: 14px; }
+  .r19-facts { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+
+/* Favoritar recusado (ação/ETF). */
+.r19-fav { display: grid; justify-items: end; gap: 6px; max-width: 360px; }
+.r19-fav button[aria-disabled="true"] { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--border-default); padding: 8px 16px; font-size: 14px; font-weight: 600; color: var(--r19-soft); cursor: not-allowed; }
+.r19-fav button[aria-disabled="true"] svg { width: 16px; height: 16px; }
+.r19-fav button:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+.r19-fav p { margin: 0; text-align: right; font-size: 12px; line-height: 1.5; color: var(--r19-soft); }
+.r19-fav[data-flash="1"] p { color: var(--ap-warn-text); }
+@media (max-width: 520px) { .r19-fav { justify-items: stretch; max-width: none; } .r19-fav p { text-align: left; } }
+
+/* Chip de classe ao lado do ativo. */
+.r19-chip { color: var(--ap-info-text); border-color: var(--ap-info-border) !important; }
+
+/* Lista de operações: saída com gap e hora de Nova York (ação/ETF intradiário). */
+.r19-gap { display: block; font-weight: 600; color: var(--ap-warn-text); }
+.r19-gap-note { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; line-height: 1.4; color: var(--r19-soft); white-space: nowrap; }
+.r19-gap-card { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--r19-soft); }
+.r19-gap-card b { color: var(--ap-warn-text); font-weight: 600; }
+.r19-time { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--r19-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Combo e Otimização: dicas e caixa de fonte do delta. */
+.r19-hint { margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.r19-hint b { color: var(--r19-soft); font-weight: 600; }
+.r19-md { color: var(--text-tertiary) !important; }
+.r19-collect { display: block; margin-top: 8px; font-size: 13px; line-height: 1.5; color: var(--ap-info-text); }
+

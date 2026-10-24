@@ -3,7 +3,7 @@ Pydantic schemas for combo strategy API requests and responses.
 """
 
 from pydantic import BaseModel, Field, model_validator
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Literal, Optional
 
 from app.schemas.strategy_transparency import StrategyTransparency
 
@@ -94,6 +94,21 @@ class ComboBacktestResponse(BaseModel):
         None, description="Resolved public strategy description"
     )
     strategy_transparency: Optional[StrategyTransparency] = None
+    # Card #1119 (decisão 12): identidade, amostra, precisão efetiva e convenções da execução.
+    asset: Optional[Dict[str, Any]] = Field(
+        None, description="{symbol, asset_id, asset_class, name, currency}"
+    )
+    data_provenance: Optional[Dict[str, Any]] = Field(
+        None, description="Fonte, sessão, ajuste, janelas e versão da amostra usada"
+    )
+    snapshot_id: Optional[str] = None
+    execution: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Precisão pedida/efetiva, trecho sem intradiário, janela coberta e stops com gap",
+    )
+    conventions: Optional[Dict[str, Any]] = Field(
+        None, description="Custos, anualização, calendário, fração e short"
+    )
 
 
 class ComboOptimizationRequest(BaseModel):
@@ -121,6 +136,13 @@ class ComboOptimizationRequest(BaseModel):
         description="Initial capital in USD for metrics calculation (default: $100, TradingView-style)",
     )
     direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
+    run_scope: Optional[Literal["single"]] = Field(
+        None,
+        description=(
+            "'single' = backtest de exatamente 1 ativo (Combo ou Otimização com 1 ativo); só com "
+            "ele o servidor aceita ação e ETF (card #1119, decisão 2)."
+        ),
+    )
     split_train_ratio: Optional[float] = Field(
         None,
         ge=0.01,
@@ -170,6 +192,21 @@ class ComboOptimizationResponse(BaseModel):
         None, description="Resolved public strategy description"
     )
     strategy_transparency: Optional[StrategyTransparency] = None
+    # Card #1119 (decisão 12): identidade, amostra, precisão efetiva e convenções da execução.
+    asset: Optional[Dict[str, Any]] = Field(
+        None, description="{symbol, asset_id, asset_class, name, currency}"
+    )
+    data_provenance: Optional[Dict[str, Any]] = Field(
+        None, description="Fonte, sessão, ajuste, janelas e versão da amostra usada"
+    )
+    snapshot_id: Optional[str] = None
+    execution: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Precisão pedida/efetiva, trecho sem intradiário, janela coberta e stops com gap",
+    )
+    conventions: Optional[Dict[str, Any]] = Field(
+        None, description="Custos, anualização, calendário, fração e short"
+    )
 
 
 class UpdateTemplateRequest(BaseModel):

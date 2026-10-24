@@ -8,14 +8,19 @@ import { BatchProgressPanel } from '../components/BatchProgressPanel'
 import { useBatchJob } from '../hooks/useBatchJob'
 import { authFetch } from '@/lib/authFetch'
 import {
+    ON_DEMAND_TEXT_BACKTEST,
     TOP10_SYMBOLS,
     blockedNotice,
+    collectingCopy,
+    equityTimeframeBlock,
+    historyUnavailableNotice,
     partialNotice,
     planRun,
     refusalMessage,
     runCopy,
     type RunNotice,
 } from '../lib/assetSelection'
+import '../components/results/DataExecution.css'
 import { tradableCrypto, useSelectionView } from '../lib/assetStore'
 import {
     comboPeriodHint,
@@ -82,7 +87,12 @@ export function ComboConfigurePage() {
     // O que roda e o que fica fora (ação, ETF e ativo marcado pela Binance).
     const { entries: selectionEntries, loading: selectionLoading } = useSelectionView(selectedSymbols)
     const plan = useMemo(() => planRun(selectionEntries), [selectionEntries])
-    const copy = runCopy(plan, 'combo')
+    // Ação/ETF sozinha (card #1119): roda o backtest de 1 ativo. 1m e 5m ficam indisponíveis e, se o
+    // tempo já era 5m (seleção mista antes), a tela avisa antes de rodar sem trocar o valor.
+    const equityRun = plan.equityRun
+    const tfBlock = equityTimeframeBlock(plan, timeframe, 'combo')
+    const copy = tfBlock ? { text: tfBlock.copy, blocked: true } : runCopy(plan, 'combo', { timeframe })
+    const [collecting, setCollecting] = useState<string | null>(null)
 
     useEffect(() => {
         if (templateName) {
@@ -169,6 +179,7 @@ export function ComboConfigurePage() {
 
     // Aviso antes de rodar quando nada roda; devolve o aviso ou null (a seleção é mantida).
     const getRunBlock = (): RunNotice | null => {
+        if (tfBlock) return tfBlock.notice
         if (plan.mode === 'none') {
             return { tone: 'warn', title: 'Escolha ao menos 1 ativo', body: 'Pesquise e marque um par cripto em USDT.' }
         }
@@ -208,24 +219,29 @@ export function ComboConfigurePage() {
         const { start_date, end_date } = getPeriodDates()
         if (symbolsToRun.length === 1) {
             setRunning(true)
+            const isEquityRun = !!equityRun
+            if (isEquityRun) setCollecting(collectingCopy(symbolsToRun[0], 'combo', timeframe, deepBacktest))
             try {
-                const existsUrl = apiUrl('/favorites/exists')
-                existsUrl.searchParams.set('strategy_name', templateName)
-                existsUrl.searchParams.set('symbol', symbolsToRun[0])
-                existsUrl.searchParams.set('timeframe', timeframe)
-                existsUrl.searchParams.set('period_type', period)
-                existsUrl.searchParams.set('direction', direction)
-                if (period === 'custom') {
-                    if (start_date) existsUrl.searchParams.set('start_date', start_date)
-                    if (end_date) existsUrl.searchParams.set('end_date', end_date)
-                }
-                const existsRes = await authFetch(existsUrl.toString())
-                if (existsRes.ok) {
-                    const { exists } = await existsRes.json()
-                    if (exists) {
-                        alert('Estratégia já existe nos favoritos (mesmo template, ativo, timeframe, período e direção). Redirecionando.')
-                        navigate('/favorites')
-                        return
+                if (!isEquityRun) {
+                    // Ação/ETF não vira favorito (#1122): nem checa /favorites/exists.
+                    const existsUrl = apiUrl('/favorites/exists')
+                    existsUrl.searchParams.set('strategy_name', templateName)
+                    existsUrl.searchParams.set('symbol', symbolsToRun[0])
+                    existsUrl.searchParams.set('timeframe', timeframe)
+                    existsUrl.searchParams.set('period_type', period)
+                    existsUrl.searchParams.set('direction', direction)
+                    if (period === 'custom') {
+                        if (start_date) existsUrl.searchParams.set('start_date', start_date)
+                        if (end_date) existsUrl.searchParams.set('end_date', end_date)
+                    }
+                    const existsRes = await authFetch(existsUrl.toString())
+                    if (existsRes.ok) {
+                        const { exists } = await existsRes.json()
+                        if (exists) {
+                            alert('Estratégia já existe nos favoritos (mesmo template, ativo, timeframe, período e direção). Redirecionando.')
+                            navigate('/favorites')
+                            return
+                        }
                     }
                 }
                 const res = await authFetch(`${API_BASE_URL}/combos/optimize`, {
@@ -242,10 +258,23 @@ export function ComboConfigurePage() {
                         custom_ranges,
                         split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
                         period_type: period,
+                        run_scope: 'single',
                     })
                 })
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}))
+                    if (isEquityRun) {
+                        // Coleta falhou sem nada guardado, tempo recusado ou ativo marcado: alerta com o motivo.
+                        const unavailable = historyUnavailableNotice(err?.detail)
+                        setRunNotice(
+                            unavailable ?? {
+                                tone: 'alert',
+                                title: 'Não foi possível rodar o backtest',
+                                body: refusalMessage(err?.detail, 'Falha na otimização'),
+                            },
+                        )
+                        return
+                    }
                     alert(refusalMessage(err?.detail, 'Falha na otimização'))
                     return
                 }
@@ -260,7 +289,7 @@ export function ComboConfigurePage() {
                 const oosVerdict = result.oos_verdict ?? null
                 // Walk-forward ativo: mostra a tela de resultados com o comparativo
                 // Treino vs Holdout e o veredito (GO/NO-GO) para o usuário decidir.
-                if (walkForwardEnabled || oosVerdict) {
+                if (isEquityRun || walkForwardEnabled || oosVerdict) {
                     navigate('/combo/results', {
                         state: {
                             result: {
@@ -271,6 +300,10 @@ export function ComboConfigurePage() {
                                 end_date: end_date ?? null,
                                 period_type: period,
                                 execution_mode: result.execution_mode ?? 'fast_1d',
+                                asset: result.asset ?? null,
+                                data_provenance: result.data_provenance ?? null,
+                                execution: result.execution ?? null,
+                                conventions: result.conventions ?? null,
                                 parameters,
                                 metrics,
                                 promotion_metrics: result.promotion_metrics ?? metrics,
@@ -319,6 +352,7 @@ export function ComboConfigurePage() {
                 alert(e instanceof Error ? e.message : 'Falha na otimização')
             } finally {
                 setRunning(false)
+                setCollecting(null)
             }
             return
         }
@@ -449,8 +483,13 @@ export function ComboConfigurePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">Market Data</label>
-                                <div className="glass px-4 py-3 rounded-[16px] border border-zinc-200 text-sm text-zinc-600">
-                                    CCXT (crypto exchange data)
+                                <div
+                                    className="glass px-4 py-3 rounded-[16px] border border-zinc-200 text-sm text-zinc-600 r19-md"
+                                    data-testid="combo-market-data"
+                                >
+                                    {equityRun
+                                        ? 'Binance Ações · pregão regular de Nova York · ajustado por split'
+                                        : 'CCXT (crypto exchange data)'}
                                 </div>
                             </div>
                             <div className="md:col-span-2">
@@ -467,7 +506,8 @@ export function ComboConfigurePage() {
                                     ariaLabel="Seletor de ativos"
                                     clearTo={[defaultSymbol]}
                                     clearLabel="Limpar (1 ativo)"
-                                    classNote="Ações e ETFs ficam na seleção. Nesta etapa a otimização roda só com pares cripto em USDT; ao otimizar, eles ficam fora com aviso."
+                                    onDemandTexts={ON_DEMAND_TEXT_BACKTEST}
+                                    classNote="Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização) e abrem o resultado. Com mais de 1 ativo, ficam fora com aviso; o lote vem depois."
                                     extraActions={(
                                         <button
                                             type="button"
@@ -490,13 +530,18 @@ export function ComboConfigurePage() {
                                     onChange={(e) => setTimeframe(e.target.value)}
                                     className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
                                 >
-                                    <option value="1m" className="bg-zinc-900 text-zinc-900">1 minute</option>
-                                    <option value="5m" className="bg-zinc-900 text-zinc-900">5 minutes</option>
+                                    <option value="1m" className="bg-zinc-900 text-zinc-900" disabled={!!equityRun}>1 minute{equityRun ? ' (só cripto)' : ''}</option>
+                                    <option value="5m" className="bg-zinc-900 text-zinc-900" disabled={!!equityRun}>5 minutes{equityRun ? ' (só cripto)' : ''}</option>
                                     <option value="15m" className="bg-zinc-900 text-zinc-900">15 minutes</option>
                                     <option value="1h" className="bg-zinc-900 text-zinc-900">1 hour</option>
                                     <option value="4h" className="bg-zinc-900 text-zinc-900">4 hours</option>
                                     <option value="1d" className="bg-zinc-900 text-zinc-900">1 day</option>
                                 </select>
+                                {equityRun ? (
+                                    <p className="r19-hint" data-testid="combo-timeframe-hint">
+                                        <b>Ação e ETF:</b> 15m, 1h, 4h ou 1d, montados no pregão regular de Nova York, sem candle que atravesse o fechamento.
+                                    </p>
+                                ) : null}
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">
@@ -577,6 +622,11 @@ export function ComboConfigurePage() {
                                     <p className="text-xs text-zinc-400 mt-1">
                                         Simulates execution using 15-minute candles for realistic stop/target validation
                                     </p>
+                                    {equityRun ? (
+                                        <p className="r19-hint" data-testid="combo-deep-hint">
+                                            <b>Ação e ETF:</b> usa o 15m montado do 5m. Se o intradiário não cobrir a janela, o backtest roda em precisão diária e o resultado mostra o trecho que faltou.
+                                        </p>
+                                    ) : null}
                                 </div>
                             </label>
                         </div>
@@ -734,6 +784,12 @@ export function ComboConfigurePage() {
                                 Ver logs
                             </button>
                         </div>
+
+                        {collecting ? (
+                            <p className="r19-collect" role="status" data-testid="run-collecting">
+                                {collecting}
+                            </p>
+                        ) : null}
 
                         {runNotice ? (
                             <div

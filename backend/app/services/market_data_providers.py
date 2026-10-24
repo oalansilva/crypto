@@ -19,12 +19,14 @@ logger = logging.getLogger(__name__)
 
 CCXT_SOURCE = "ccxt"
 STOOQ_SOURCE = "stooq"
-# Ações e ETFs pela rota do gráfico da Binance (card #1118). Fica fora dos aliases de
-# ``normalize_data_source``: até o #1119 nenhuma rota de análise aceita esta fonte.
+# Ações e ETFs pela rota do gráfico da Binance (card #1118). Desde o #1119 o backtest de 1 ativo
+# aceita a fonte; lote, Descoberta e as demais rotas seguem pedindo ``ccxt`` (``_ensure_crypto_data_source``).
 BINANCE_EQUITY_SOURCE = "binance_equity"
 
 _CCXT_ALIASES = {"", "ccxt", "binance", "crypto", "default"}
 _STOOQ_ALIASES = {"stooq", "stooq-eod", "stooq_eod"}
+_EQUITY_ALIASES = {"binance_equity", "binance-equity"}
+EQUITY_BACKTEST_TIMEFRAMES = ("15m", "1h", "4h", "1d")
 
 
 class MarketDataProvider(Protocol):
@@ -47,6 +49,8 @@ def normalize_data_source(data_source: Optional[str]) -> str:
         return CCXT_SOURCE
     if raw in _STOOQ_ALIASES:
         return STOOQ_SOURCE
+    if raw in _EQUITY_ALIASES:
+        return BINANCE_EQUITY_SOURCE
     raise ValueError(
         f"Unsupported data_source '{data_source}'. "
         "Supported values: 'ccxt' (default) or 'stooq'."
@@ -58,6 +62,8 @@ def validate_data_source_timeframe(data_source: Optional[str], timeframe: str) -
     tf = str(timeframe or "").strip().lower()
     if source == STOOQ_SOURCE and tf != "1d":
         raise ValueError("data_source=stooq supports only timeframe='1d' (EOD).")
+    if source == BINANCE_EQUITY_SOURCE and tf not in EQUITY_BACKTEST_TIMEFRAMES:
+        raise ValueError("Ação e ETF rodam em 15m, 1h, 4h ou 1d.")
     return source
 
 
@@ -637,8 +643,11 @@ class BinanceEquityMarketDataProvider:
 
     source = BINANCE_EQUITY_SOURCE
 
-    def __init__(self, service=None):
+    def __init__(self, service=None, *, ensure: bool = True):
         self._service = service
+        # ``ensure=False``: a análise de 1 ativo já coletou o que usa (``prepare_equity_history``);
+        # a leitura é só do que está guardado, sem uma segunda chamada à Binance.
+        self._ensure = ensure
 
     def _history(self):
         if self._service is None:
@@ -656,12 +665,15 @@ class BinanceEquityMarketDataProvider:
         limit: Optional[int] = None,
         adjustment: str = "adjusted",
     ) -> pd.DataFrame:
+        from app.services.equity_backtest import inclusive_end
         from app.services.market_history.facade import spec_for_request, to_loader_frame
 
         service = self._history()
         spec = spec_for_request(symbol=symbol, timeframe=timeframe, adjustment=adjustment)
         series = service.resolve(spec)
-        result = service.history(series, since_str, until_str, limit=limit)
+        # ``ensure=False`` só quando a análise já coletou (``prepare_equity_history``).
+        extra = {} if self._ensure else {"ensure": False}
+        result = service.history(series, since_str, inclusive_end(until_str), limit=limit, **extra)
         if result.coverage.get("status") == "failed" and result.candles.empty:
             error = result.coverage.get("error") or {}
             raise ValueError(error.get("message") or "Falha ao coletar o histórico da Binance.")

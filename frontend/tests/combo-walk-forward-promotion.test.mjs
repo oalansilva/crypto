@@ -13,7 +13,8 @@ const modalPath = path.resolve(__dirname, '../src/components/SaveFavoriteModal.t
 test('walk-forward optimization opens results before favorite promotion', async () => {
   const source = await readFile(configurePath, 'utf8')
 
-  assert.match(source, /if \(walkForwardEnabled \|\| oosVerdict\)/)
+  // Card #1119: 1 ação/ETF sempre abre o resultado (não vira favorito até o #1122).
+  assert.match(source, /if \(isEquityRun \|\| walkForwardEnabled \|\| oosVerdict\)/)
   assert.match(source, /navigate\('\/combo\/results', \{[\s\S]*isOptimization: true/)
   assert.match(source, /oos_verdict: oosVerdict/)
   assert.match(source, /oos_metrics: result\.oos_metrics \?\? null/)

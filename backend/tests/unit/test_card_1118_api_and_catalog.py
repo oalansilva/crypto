@@ -193,10 +193,10 @@ def test_rate_limit_and_business_errors_surface_as_failures_without_the_raw_code
 
 def test_deferred_timeframes_and_unknown_assets_are_clear_errors(history):
     client, *_ = history
-    one_hour = client.get("/api/market/history", params={"symbol": "NVDA", "timeframe": "1h"})
+    # 1h e 4h entraram no #1119 (montados do 5m); 30m e 1m seguem fora para ação/ETF.
+    thirty = client.get("/api/market/history", params={"symbol": "NVDA", "timeframe": "30m"})
     assert (
-        one_hour.status_code == 422
-        and one_hour.json()["detail"]["code"] == "timeframe_not_supported"
+        thirty.status_code == 422 and thirty.json()["detail"]["code"] == "timeframe_not_supported"
     )
     unknown = client.get("/api/market/history", params={"symbol": "ZZZZ", "timeframe": "1d"})
     assert unknown.status_code == 404 and unknown.json()["detail"]["code"] == "asset_not_in_catalog"
@@ -316,7 +316,8 @@ def test_refused_analysis_and_select_all_never_collect(history, monkeypatch):
 def test_only_the_history_route_and_the_equity_provider_may_collect_equity():
     """Regressão estática do mecanismo: quem pode chamar ``ensure`` ou o provedor de ação/ETF hoje.
 
-    Nenhuma rota de análise aparece aqui; o #1119 acrescenta a sua depois da recusa por classe.
+    O #1119 acrescenta o backtest de 1 ativo (``equity_backtest.prepare_equity_history``, chamado por
+    ``/backtest`` e ``/optimize`` só depois da recusa por classe e por escopo).
     """
 
     root = Path(__file__).resolve().parents[2] / "app"
@@ -329,8 +330,10 @@ def test_only_the_history_route_and_the_equity_provider_may_collect_equity():
         ):
             callers.add(path.relative_to(root).as_posix())
     assert callers == {
+        "routes/combo_routes.py",  # backtest de 1 ativo: leitura sem nova coleta (ensure=False)
         "routes/market_history_routes.py",  # a consulta (history ... ensure=collect)
-        "services/market_data_providers.py",  # provedor de ação/ETF; nenhuma análise o usa até o #1119
+        "services/equity_backtest.py",  # coleta sob demanda do backtest de 1 ação/ETF (#1119)
+        "services/market_data_providers.py",  # provedor de ação/ETF
         "services/market_history/facade.py",  # loader_frame (só cripto)
         "services/market_history/service.py",  # a própria coleta
         "services/market_history/rate_limit.py",  # limitador compartilhado (importa os erros do provedor)
@@ -475,13 +478,14 @@ def test_catalog_items_carry_per_timeframe_coverage_states(public_db):
     assert nvda["status"] == "covered"
     assert [(t["timeframe"], t["origin"]) for t in nvda["timeframes"]] == [
         ("1d", "native"),
+        ("4h", "derived"),
+        ("1h", "derived"),
         ("15m", "derived"),
         ("5m", "native"),
     ]
     assert nvda["timeframes"][0]["from"].startswith("2014-11-11")
-    assert nvda["timeframes"][2]["from"].startswith("2026-05-19") and nvda["timeframes"][1][
-        "from"
-    ].startswith("2026-05-19")
+    # 15m, 1h e 4h aparecem "montado do 5m" com o mesmo período coberto do 5m (#1119)
+    assert {t["from"][:10] for t in nvda["timeframes"][1:]} == {"2026-05-19"}
     assert nvda["calendar_timezone"] == "America/New_York" and nvda["note"].endswith(
         "ajustado por split"
     )

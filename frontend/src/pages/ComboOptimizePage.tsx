@@ -7,11 +7,19 @@ import {
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '../lib/authFetch'
 import { AssetPicker } from '../components/AssetPicker'
+import { DataExecutionBlock } from '../components/results/DataExecutionBlock'
 import { BatchProgressPanel } from '../components/BatchProgressPanel'
 import { useBatchJob } from '../hooks/useBatchJob'
 import { lookupCatalogAssets } from '../lib/assetCatalogApi'
 import {
+    ON_DEMAND_TEXT_BACKTEST,
+    OPTIMIZE_FIXED_WINDOW,
+    OPTIMIZE_FIXED_WINDOW_LABEL,
     blockedNotice,
+    collectingCopy,
+    equityBadTimeframes,
+    equityTimeframeBlock,
+    historyUnavailableNotice,
     normalizeSymbol,
     partialNotice,
     planRun,
@@ -57,7 +65,12 @@ export function ComboOptimizePage() {
     // O que roda e o que fica fora (ação, ETF e ativo marcado pela Binance).
     const { entries: selectionEntries, loading: selectionLoading } = useSelectionView(selectedSymbols)
     const plan = useMemo(() => planRun(selectionEntries), [selectionEntries])
-    const copy = runCopy(plan, 'optimize')
+    // Ação/ETF sozinha (card #1119): roda com `run_scope: "single"` na janela fixa da tela; 1m/5m/30m
+    // ficam indisponíveis e 15m/1h/4h avisam antes de rodar quando o 5m não cobre a janela fixa.
+    const equityRun = plan.equityRun
+    const tfBlock = equityTimeframeBlock(plan, timeframe, 'optimize')
+    const copy = tfBlock ? { text: tfBlock.copy, blocked: true } : runCopy(plan, 'optimize', { timeframe })
+    const [collecting, setCollecting] = useState<string | null>(null)
 
     // `?symbol=`: marca só se existir no catálogo; ativo marcado entra como "fica de fora".
     useEffect(() => {
@@ -139,6 +152,11 @@ export function ComboOptimizePage() {
 
     const handleRunOptimization = async () => {
         setRunNotice(null)
+        if (tfBlock) {
+            // Nada é iniciado; o tempo escolhido fica como está.
+            setRunNotice(tfBlock.notice)
+            return
+        }
         if (plan.mode === 'none') {
             setRunNotice({ tone: 'warn', title: 'Escolha ao menos 1 ativo', body: 'Pesquise e marque os ativos a otimizar.' })
             return
@@ -164,6 +182,8 @@ export function ComboOptimizePage() {
         if (symbolsToRun.length === 1) {
             setIsOptimizing(true)
             setResults(null)
+            const isEquityRun = !!equityRun
+            if (isEquityRun) setCollecting(collectingCopy(symbolsToRun[0], 'optimize', timeframe))
             try {
                 const res = await authFetch(`${API_BASE_URL}/combos/optimize`, {
                     method: 'POST',
@@ -172,15 +192,23 @@ export function ComboOptimizePage() {
                         template_name: selectedTemplate,
                         symbol: symbolsToRun[0],
                         timeframe,
-                        start_date: "2024-01-01", // TODO: Date picker
-                        end_date: "2024-01-31",
-                        custom_ranges
+                        start_date: OPTIMIZE_FIXED_WINDOW.start, // TODO: Date picker (#1120)
+                        end_date: OPTIMIZE_FIXED_WINDOW.end,
+                        custom_ranges,
+                        run_scope: 'single',
                     })
                 })
 
                 const data = await res.json()
                 if (!res.ok) {
-                    setRunNotice({ tone: 'alert', title: 'Otimização recusada', body: refusalMessage(data?.detail, 'Falha na otimização') })
+                    const unavailable = isEquityRun ? historyUnavailableNotice(data?.detail) : null
+                    setRunNotice(
+                        unavailable ?? {
+                            tone: 'alert',
+                            title: 'Otimização recusada',
+                            body: refusalMessage(data?.detail, 'Falha na otimização'),
+                        },
+                    )
                     return
                 }
                 setResults(data)
@@ -190,6 +218,7 @@ export function ComboOptimizePage() {
                 alert("Optimization failed")
             } finally {
                 setIsOptimizing(false)
+                setCollecting(null)
             }
             return
         }
@@ -211,8 +240,8 @@ export function ComboOptimizePage() {
                     template_name: selectedTemplate,
                     symbols: symbolsToRun,
                     timeframe,
-                    start_date: "2024-01-01", // mesmas datas do caminho de 1 ativo
-                    end_date: "2024-01-31",
+                    start_date: OPTIMIZE_FIXED_WINDOW.start, // mesmas datas do caminho de 1 ativo
+                    end_date: OPTIMIZE_FIXED_WINDOW.end,
                     custom_ranges
                 })
             })
@@ -270,7 +299,8 @@ export function ComboOptimizePage() {
                                         ariaLabel="Seletor de ativos para otimizar"
                                         variant="narrow"
                                         notice={symbolNotice}
-                                        classNote="Ações e ETFs ficam na seleção. Nesta etapa a otimização roda só com pares cripto em USDT; ao rodar, eles ficam fora com aviso."
+                                        onDemandTexts={ON_DEMAND_TEXT_BACKTEST}
+                                        classNote="Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização) e mostram o resultado ao lado. Com mais de 1 ativo, ficam fora com aviso; o lote vem depois."
                                     />
                                 </div>
 
@@ -282,8 +312,23 @@ export function ComboOptimizePage() {
                                         onChange={(e) => setTimeframe(e.target.value)}
                                         className="w-full bg-white0 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
                                     >
-                                        {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
+                                        {TIMEFRAMES.map(tf => {
+                                            const cryptoOnly = !!equityRun && equityBadTimeframes('optimize').includes(tf)
+                                            return (
+                                                <option key={tf} value={tf} disabled={cryptoOnly}>
+                                                    {cryptoOnly ? `${tf} (só cripto)` : tf}
+                                                </option>
+                                            )
+                                        })}
                                     </select>
+                                    <p className="r19-hint" data-testid="opt-period">
+                                        <b>Período:</b> {OPTIMIZE_FIXED_WINDOW_LABEL}, fixo nesta tela.
+                                    </p>
+                                    {equityRun ? (
+                                        <p className="r19-hint" data-testid="opt-timeframe-hint">
+                                            <b>Ação e ETF:</b> 15m, 1h, 4h ou 1d no pregão regular de Nova York. 15m, 1h e 4h são montados do 5m da Binance, que pode não cobrir jan. 2024; para outro período, use o Combo.
+                                        </p>
+                                    ) : null}
                                 </div>
 
                                 {/* Parameters Ranges */}
@@ -366,6 +411,11 @@ export function ComboOptimizePage() {
                                 >
                                     {copy.text}
                                 </p>
+                                {collecting ? (
+                                    <p className="r19-collect" role="status" data-testid="run-collecting">
+                                        {collecting}
+                                    </p>
+                                ) : null}
                                 {runNotice ? (
                                     <div
                                         className={runNotice.tone === 'alert' ? 'ap-alert' : 'ap-warn'}
@@ -456,6 +506,18 @@ export function ComboOptimizePage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                <DataExecutionBlock
+                                    asset={results.asset}
+                                    provenance={results.data_provenance}
+                                    execution={results.execution}
+                                    conventions={results.conventions}
+                                    timeframe={results.timeframe ?? timeframe}
+                                    trades={results.trades}
+                                    page="optimize"
+                                    requestedFallback={OPTIMIZE_FIXED_WINDOW}
+                                    requestedNote="Período fixo desta tela"
+                                />
 
                                 {/* Stages Log (Simplificado) */}
                                 <div className="glass-strong rounded-2xl p-6 border border-zinc-200">

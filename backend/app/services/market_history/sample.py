@@ -11,7 +11,7 @@ import pandas as pd
 from sqlalchemy.engine import Engine
 
 from app.services.market_history import snapshots
-from app.services.market_history.model import SeriesRef, crypto_spec
+from app.services.market_history.model import SeriesRef, crypto_spec, iso
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +121,28 @@ class ExecutionSample:
         series = service.read(series, limit=1).series  # versão atual
         return self.freeze(role, series, requested_start, requested_end, frame)
 
+    def freeze_symbol(
+        self,
+        role: str,
+        symbol: str,
+        timeframe: str,
+        requested_start: Any,
+        requested_end: Any,
+        frame: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """Cripto (par com ``/``) ou ação/ETF (ticker do catálogo): card #1119, decisão 8."""
+
+        if "/" in str(symbol):
+            return self.freeze_crypto(
+                role, symbol, timeframe, requested_start, requested_end, frame
+            )
+        from app.services.market_history.facade import get_history_service, spec_for_request
+
+        service = get_history_service()
+        series = service.resolve(spec_for_request(symbol=symbol, timeframe=timeframe))
+        series = service.read(series, limit=1).series  # versão atual
+        return self.freeze(role, series, requested_start, requested_end, frame)
+
     # -- ler ----------------------------------------------------------------------
 
     def has(self, role: str) -> bool:
@@ -148,13 +170,23 @@ class ExecutionSample:
         if self._snapshot_id:
             snapshots.finish(self.engine, self._snapshot_id)
 
-    def provenance(self, role: str) -> dict[str, Any]:
-        """Campos de proveniência do resultado (decisão 15)."""
+    def provenance(self, role: str, *, with_retention: bool = False) -> dict[str, Any]:
+        """Campos de proveniência do resultado (decisão 15).
+
+        ``with_retention`` (card #1119, decisão 16): acrescenta ``kept_until``, o fim do prazo de 30 dias
+        da amostra de ação/ETF, que nunca vira favorito. Cripto não usa: o prazo da amostra dos favoritos
+        é outro.
+        """
 
         entry = self._entries.get(role)
         if entry is None:
             return {}
-        return provenance_from_entry(entry, self._snapshot_id)
+        out = provenance_from_entry(entry, self._snapshot_id)
+        if with_retention:
+            out["kept_until"] = iso(
+                pd.Timestamp.now(tz="UTC") + pd.Timedelta(days=snapshots.RETENTION_DAYS)
+            )
+        return out
 
 
 def provenance_from_entry(entry: dict[str, Any], snapshot_id: str | None) -> dict[str, Any]:

@@ -62,6 +62,8 @@ for (const [reference, period, start_date] of [
       // #1117: o seletor de ativos decide o que roda; aqui nada fica de fora.
       getRunBlock: () => null, getPartialNotice: () => null,
       refusalMessage: (_detail, fallback) => fallback,
+      // Card #1119: o backtest de 1 ativo de ação/ETF; aqui a seleção é cripto.
+      equityRun: null, setCollecting: () => {}, collectingCopy: () => '', historyUnavailableNotice: () => null,
     }
     for (const name of [
       'setStartError', 'setPreflight', 'setSnapshotStale', 'setPreflightLoading', 'setPreflightError',
