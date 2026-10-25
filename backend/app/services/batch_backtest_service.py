@@ -508,6 +508,9 @@ class BatchRunner:
                 job_id=self.job_id,
                 direction=self.direction,
                 split_train_ratio=self.payload.get("split_train_ratio"),
+                # Decisão de Alan (25/10/2026): combinação com erro é pulada e contada; o ativo
+                # só falha se nenhuma funcionar.
+                tolerate_combination_errors=True,
             )
 
     # -- desfecho ----------------------------------------------------------------------
@@ -617,14 +620,25 @@ class BatchRunner:
             and execution.get("precision_requested") == "intrabar"
             and execution.get("precision_effective") != "intrabar_15m"
         )
+        note = self._combination_note(symbol, result)
         return self._finish(
             item,
             "success_daily" if daily else "success",
-            None,
+            note,
             favorite_id=favorite_id,
             execution=execution,
             snapshot_id=snapshot_id,
         )
+
+    @staticmethod
+    def _combination_note(symbol: str, result: dict[str, Any]) -> str | None:
+        """ "N combinações com erro: <motivo>" quando houve; vai ao log e ao detalhe do item."""
+        errors = result.get("combination_errors")
+        if not isinstance(errors, dict) or not errors.get("failed"):
+            return None
+        note = str(errors.get("message") or f"{errors['failed']} combinações com erro")
+        logger.warning("Batch: %s: %s", symbol, note)
+        return note
 
     @staticmethod
     def _expire(snapshot_id: str | None) -> None:

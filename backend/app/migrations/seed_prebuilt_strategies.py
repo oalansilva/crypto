@@ -10,23 +10,9 @@ import json
 from pathlib import Path
 
 
-def seed_prebuilt_strategies(db_path: str = None):
-    """Seed database with pre-built combo strategies. Uses same DB as backend (backend/backtest.db) when db_path is None."""
-
-    if db_path is None:
-        try:
-            from app.database import DB_PATH
-
-            db_path = str(DB_PATH)
-        except Exception:
-            project_root = Path(__file__).parent.parent.parent
-            db_path = str(project_root / "backtest.db")
-
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    # Define all 6 pre-built strategies
-    strategies = [
+def prebuilt_strategies():
+    """The pre-built combo templates (name, template_data, optimization_schema)."""
+    return [
         {
             "name": "multi_ma_crossover",
             "description": "Triple Moving Average Crossover Strategy - Classic trend following with three averages",
@@ -94,14 +80,18 @@ def seed_prebuilt_strategies(db_path: str = None):
         {
             "name": "bollinger_rsi_adx",
             "description": "Bollinger Bands + RSI + ADX for mean reversion with trend filter",
+            # Card #1120: the rules read the stable aliases `rsi`/`adx` and the `adx_threshold`
+            # column, so every optimized rsi_length / adx_length / adx_threshold is evaluated
+            # (the old RSI_14 / ADX_14 / 20 literals only worked at the defaults).
+            "is_prebuilt_update": True,
             "template_data": {
                 "indicators": [
                     {"type": "bbands", "alias": "bb", "params": {"length": 20, "std": 2}},
-                    {"type": "rsi", "params": {"length": 14}},
-                    {"type": "adx", "params": {"length": 14}},
+                    {"type": "rsi", "alias": "rsi", "params": {"length": 14}},
+                    {"type": "adx", "alias": "adx", "params": {"length": 14, "threshold": 20}},
                 ],
-                "entry_logic": "(close < bb_lower) & (RSI_14 < 30) & (ADX_14 > 20)",
-                "exit_logic": "(close > bb_middle) | (RSI_14 > 70)",
+                "entry_logic": "(close < bb_lower) & (rsi < 30) & (adx > adx_threshold)",
+                "exit_logic": "(close > bb_middle) | (rsi > 70)",
                 "stop_loss": 0.02,
             },
             "optimization_schema": {
@@ -193,6 +183,24 @@ def seed_prebuilt_strategies(db_path: str = None):
             },
         },
     ]
+
+
+def seed_prebuilt_strategies(db_path: str = None):
+    """Seed database with pre-built combo strategies. Uses same DB as backend (backend/backtest.db) when db_path is None."""
+
+    if db_path is None:
+        try:
+            from app.database import DB_PATH
+
+            db_path = str(DB_PATH)
+        except Exception:
+            project_root = Path(__file__).parent.parent.parent
+            db_path = str(project_root / "backtest.db")
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    strategies = prebuilt_strategies()
 
     # Insert or update each strategy
     inserted_count = 0

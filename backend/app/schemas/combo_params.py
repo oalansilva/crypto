@@ -207,6 +207,11 @@ class ComboOptimizationResponse(BaseModel):
     conventions: Optional[Dict[str, Any]] = Field(
         None, description="Custos, anualização, calendário, fração e short"
     )
+    combination_errors: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Combinações descartadas por erro: {failed, executed, reasons[{reason, count}], message}; "
+        "ausente quando todas funcionaram",
+    )
 
 
 class UpdateTemplateRequest(BaseModel):

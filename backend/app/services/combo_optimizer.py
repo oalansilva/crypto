@@ -31,7 +31,13 @@ _deep_coverage_warned: set = set()
 
 from app.services.discovery_budget_cache import Cache, BUDGET, bounded_execution
 from app.services.discovery_resources import ResourceProfile, CalculationFailure, track_pool
-from app.services.discovery_stream import ResultSpool, execute_stream, report
+from app.services.discovery_stream import (
+    FailureLog,
+    NoValidCombination,
+    ResultSpool,
+    execute_stream,
+    report,
+)
 from app.services.combo_service import ComboService
 from app.services.market_data_providers import (
     BINANCE_EQUITY_SOURCE,
@@ -898,8 +904,16 @@ def _run_backtest_logic(
             "total_return": 0,
             "avg_profit": 0,
             "sharpe_ratio": 0,
-            "error": str(e),
+            "error": _failure_text(e),
         }, params
+
+
+def _failure_text(exc):
+    """Real reason of a failed combination: a code-only ``CalculationFailure`` hides its cause."""
+    cause = exc.__cause__
+    if isinstance(exc, CalculationFailure) and cause is not None:
+        return str(cause)
+    return str(exc)
 
 
 def _legacy_run_backtest_logic(*args, **kwargs):
@@ -1746,6 +1760,7 @@ class ComboOptimizer:
         df,
         return_top_n: int = 1,
         executor: Optional[concurrent.futures.ProcessPoolExecutor] = None,
+        initial_metrics: Optional[Dict[str, Any]] = None,
     ):
         """
         Execute all stages for a specific branch/candidate.
@@ -1754,7 +1769,7 @@ class ComboOptimizer:
              If return_top_n = 1 (Sequential): (best_params, best_metrics)
         """
         best_params = initial_params.copy()
-        best_metrics = None
+        best_metrics = initial_metrics
 
         import time  # Import at function level to avoid UnboundLocalError
 
@@ -1853,7 +1868,13 @@ class ComboOptimizer:
             try:
                 with ResultSpool(profile) as spool:
                     counters = execute_stream(
-                        exec_to_use, self._batch_worker(), arguments, planned, spool, profile
+                        exec_to_use,
+                        self._batch_worker(),
+                        arguments,
+                        planned,
+                        spool,
+                        profile,
+                        failures=getattr(self, "_combination_failures", None),
                     )
                     total_combinations_tested += counters["executed"]
                     scored_results = spool.ranked(
@@ -1863,7 +1884,15 @@ class ComboOptimizer:
                         return_top_n * 2 if is_grid_mode and return_top_n > 1 else 1,
                     )
                 if not scored_results:
-                    raise CalculationFailure("empty_stage")
+                    tolerated = getattr(self, "_combination_failures", None)
+                    if tolerated is None or not tolerated.failed:
+                        raise CalculationFailure("empty_stage")
+                    if not tolerated.succeeded:
+                        # Nothing worked in the whole optimization: fail with the real reason.
+                        raise NoValidCombination(tolerated, counters)
+                    # An earlier stage/round worked: this one only had broken combinations,
+                    # so the best result so far stands.
+                    continue
                 if is_grid_mode and return_top_n > 1:
                     collected_candidates.extend(scored_results)
                 top = scored_results[0]
@@ -1982,7 +2011,15 @@ class ComboOptimizer:
                         trial += 1
 
             with ResultSpool(profile) as spool:
-                execute_stream(executor, self._batch_worker(), arguments, planned, spool, profile)
+                execute_stream(
+                    executor,
+                    self._batch_worker(),
+                    arguments,
+                    planned,
+                    spool,
+                    profile,
+                    failures=getattr(self, "_combination_failures", None),
+                )
                 for domain, state, stage in domains:
                     ranked = spool.ranked(domain, state["params"], stage, 1)
                     if not ranked:
@@ -2103,8 +2140,15 @@ class ComboOptimizer:
         job_id: Optional[str] = None,
         direction: str = "long",
         split_train_ratio: Optional[float] = None,
+        tolerate_combination_errors: bool = False,
     ) -> Dict[str, Any]:
         """Run parameter optimization (corpo em ``_run_optimization_body``).
+
+        Card #1120 (decisão de Alan, 25/10/2026): com ``tolerate_combination_errors`` uma
+        combinação com erro é descartada, o ativo segue com as que funcionaram e o resultado
+        traz ``combination_errors`` (quantas falharam e por quê); o ativo só falha
+        (``NoValidCombination``) se nenhuma combinação da otimização inteira funcionar. O
+        padrão é estrito (Descoberta, #1093: aborta no primeiro erro).
 
         Card #1118: com ``MARKET_HISTORY_UNIFIED=1`` a execução congela a amostra no
         início (candles e 15m em segmentos com SHA-256) e todas as tentativas leem só
@@ -2113,6 +2157,7 @@ class ComboOptimizer:
 
         self._sample = None
         self._sample_id = None
+        self._combination_failures = FailureLog() if tolerate_combination_errors else None
         token = ACTIVE_SAMPLE_ID.set(None)
         try:
             result = self._run_optimization_body(
@@ -2128,6 +2173,8 @@ class ComboOptimizer:
                 direction=direction,
                 split_train_ratio=split_train_ratio,
             )
+            if self._combination_failures is not None and isinstance(result, dict):
+                result["combination_errors"] = self._combination_failures.summary()
             sample = self._sample
             if sample is not None and isinstance(result, dict):
                 result["snapshot_id"] = sample.snapshot_id
@@ -2543,6 +2590,7 @@ class ComboOptimizer:
                                 df,
                                 return_top_n=return_n,
                                 executor=executor,
+                                initial_metrics=candidate.get("metrics") or None,
                             )
 
                             if round_num == 1:
@@ -2660,6 +2708,7 @@ class ComboOptimizer:
                         template_metadata,
                         df,
                         executor=executor,
+                        initial_metrics=best_metrics,
                     )
 
                     # End of Round Analysis

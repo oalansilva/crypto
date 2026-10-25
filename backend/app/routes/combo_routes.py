@@ -851,7 +851,16 @@ async def optimize_combo_strategy(
             deep_backtest=request.deep_backtest,
             direction=direction,
             split_train_ratio=request.split_train_ratio,
+            # Card #1120: combinação com erro é pulada e contada na resposta.
+            tolerate_combination_errors=True,
         )
+        if result.get("combination_errors"):
+            logger.warning(
+                "Optimization of %s on %s: %s",
+                request.template_name,
+                request.symbol,
+                result["combination_errors"].get("message"),
+            )
 
         logger.info(f"Optimization complete. Best score: {result.get('best_score', 'N/A')}")
 

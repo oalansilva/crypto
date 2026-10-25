@@ -317,6 +317,7 @@ export function ComboConfigurePage() {
                                 data_provenance: result.data_provenance ?? null,
                                 execution: result.execution ?? null,
                                 conventions: result.conventions ?? null,
+                                combination_errors: result.combination_errors ?? null,
                                 parameters,
                                 metrics,
                                 promotion_metrics: result.promotion_metrics ?? metrics,

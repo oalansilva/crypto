@@ -519,3 +519,18 @@ export function nyStamp(iso: string | undefined | null): NyStamp | null {
     time: `${hour}:${get('minute')} ${get('timeZoneName')}`,
   }
 }
+
+/** Combinações descartadas por erro na otimização (card #1120): contagem e motivo agrupado. */
+export interface CombinationErrorsInfo {
+    failed: number
+    executed?: number
+    reasons?: Array<{ reason: string; count: number }>
+    message?: string
+}
+
+export function combinationErrorsText(info?: CombinationErrorsInfo | null): string | null {
+    if (!info || !info.failed) return null
+    if (info.message) return info.message
+    const reasons = (info.reasons ?? []).map((r) => `${r.reason} (x${r.count})`).join('; ')
+    return `${info.failed} combinações com erro${reasons ? `: ${reasons}` : ''}`
+}
