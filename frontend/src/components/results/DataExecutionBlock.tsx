@@ -1,7 +1,9 @@
 import { useId, useState } from 'react'
 import {
     buildExecutionTexts,
+    combinationErrorsText,
     toggleMeta,
+    type CombinationErrorsInfo,
     type ConventionsInfo,
     type ExecutionInfo,
     type GapTradeLike,
@@ -31,6 +33,7 @@ const ICON_CHEVRON = (
 )
 
 export interface DataExecutionBlockProps {
+    combinationErrors?: CombinationErrorsInfo | null
     asset?: ResultAsset | null
     provenance?: ProvenanceInfo | null
     execution?: ExecutionInfo | null
@@ -68,6 +71,7 @@ export function DataExecutionBlock(props: DataExecutionBlockProps) {
         requestedFallback: props.requestedFallback,
         requestedNote: props.requestedNote,
     })
+    const combinationText = combinationErrorsText(props.combinationErrors)
     const titleId = `${uid}-title`
     const moreId = `${uid}-more`
     const precision = texts.precision
@@ -85,6 +89,15 @@ export function DataExecutionBlock(props: DataExecutionBlockProps) {
                         <div>
                             <strong data-testid="result-precision-title">{precision.title}</strong>
                             <p data-testid="result-precision-text">{precision.text}</p>
+                        </div>
+                    </div>
+                ) : null}
+                {combinationText ? (
+                    <div className="r19-precision r19-coverage" data-tone="warn" role="note" data-testid="result-combination-errors">
+                        {ICON_WARN}
+                        <div>
+                            <strong>Combinações puladas</strong>
+                            <p>{combinationText}. O resultado vem das combinações que funcionaram.</p>
                         </div>
                     </div>
                 ) : null}

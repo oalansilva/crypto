@@ -10,6 +10,7 @@ import {
     FAVORITE_REFUSED_REASON,
     currencyOf,
     isEquityClass,
+    type CombinationErrorsInfo,
     type ConventionsInfo,
     type ExecutionInfo,
     type ProvenanceInfo,
@@ -53,6 +54,7 @@ interface BacktestResult {
     data_provenance?: ProvenanceInfo | null
     execution?: ExecutionInfo | null
     conventions?: ConventionsInfo | null
+    combination_errors?: CombinationErrorsInfo | null
     strategy_description?: string | null
     is_strategy_protected?: boolean
     parameters: Record<string, any>
@@ -544,6 +546,7 @@ export function ComboResultsPage() {
                         provenance={result.data_provenance}
                         execution={result.execution}
                         conventions={result.conventions}
+                        combinationErrors={result.combination_errors}
                         timeframe={result.timeframe}
                         periodAll={result.period_type === 'all'}
                         trades={result.trades}

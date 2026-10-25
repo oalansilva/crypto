@@ -1000,6 +1000,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL de teste (unit_database_url) e TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_combination_errors.py",
+      "protected_behavior": "combinação com erro é descartada e contada (execute_stream tolerante × estrito, Descoberta segue abortando), ativo só falha sem nenhuma combinação válida, lote grava o favorito com as válidas e mostra a contagem, template bollinger_rsi_adx avalia toda a faixa e a migração de dados corrige só esse registro",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ComboOptimizer real com dados sintéticos, executor real do lote e migração Alembic em schema privado (unit_database_url)"
     }
   ]
 }

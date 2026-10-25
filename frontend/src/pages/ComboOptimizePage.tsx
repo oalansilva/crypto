@@ -544,6 +544,7 @@ export function ComboOptimizePage() {
                                     provenance={results.data_provenance}
                                     execution={results.execution}
                                     conventions={results.conventions}
+                                    combinationErrors={results.combination_errors}
                                     timeframe={results.timeframe ?? timeframe}
                                     trades={results.trades}
                                     page="optimize"

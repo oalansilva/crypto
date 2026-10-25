@@ -398,7 +398,12 @@ export function itemDetail(item: BatchItem, job: BatchJob): DetailView {
       }
     case 'success':
     case 'success_daily':
-      return { kind: 'saved', summary: savedSummary(item), href: favoritesHref(job) }
+      // Combinações puladas por erro (#1120): "N combinações com erro: <motivo>" ao lado do resumo.
+      return {
+        kind: 'saved',
+        summary: [savedSummary(item), item.reason].filter(Boolean).join(' · '),
+        href: favoritesHref(job),
+      }
     case 'not_run':
       return { kind: 'text', text: 'Não rodou: o lote foi encerrado antes deste ativo.' }
     default:

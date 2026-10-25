@@ -190,6 +190,27 @@ test('detalhe de cada ativo: coleta com progresso, gravado com janela e precisã
   assert.equal(itemDetail(item('AAPL', 'stock', 'insufficient', { reason: 'Dados insuficientes.' }), j).text, 'Dados insuficientes.')
 })
 
+test('tela de 1 ativo: aviso de combinações puladas só quando houve, com o texto do servidor ou montado', async () => {
+  const { combinationErrorsText } = await import('../src/lib/equityExecution.ts')
+  assert.equal(combinationErrorsText(null), null)
+  assert.equal(combinationErrorsText({ failed: 0 }), null)
+  assert.equal(combinationErrorsText({ failed: 3, message: '3 combinações com erro: x (x3)' }), '3 combinações com erro: x (x3)')
+  assert.equal(
+    combinationErrorsText({ failed: 2, reasons: [{ reason: 'a', count: 1 }, { reason: 'b', count: 1 }] }),
+    '2 combinações com erro: a (x1); b (x1)',
+  )
+})
+
+test('ativo gravado com combinações puladas mostra "N combinações com erro: <motivo>" ao lado da janela', () => {
+  const j = job('running', [])
+  const note = '12 combinações com erro: a regra usa coluna que a combinação não tem (RSI_14) (x12)'
+  const saved = itemDetail(item('BTC/USDT', 'crypto', 'success', { execution: intrabar, reason: note }), j)
+  assert.equal(saved.kind, 'saved')
+  assert.equal(saved.summary, `17 ago. 2017 – 24 out. 2026 · intrabar 15m · ${note}`)
+  const clean = itemDetail(item('BTC/USDT', 'crypto', 'success', { execution: intrabar }), j)
+  assert.equal(clean.summary, '17 ago. 2017 – 24 out. 2026 · intrabar 15m')
+})
+
 // --- Confirmar lote ------------------------------------------------------------------------------------------
 
 const prev = (symbol, cls, plan, extra = {}) => ({
