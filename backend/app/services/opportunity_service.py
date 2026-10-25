@@ -45,6 +45,20 @@ _TIER_UNSET = object()
 UNSUPPORTED_SYMBOLS = get_excluded_symbols()
 
 
+def _is_equity_favorite(row: Any) -> bool:
+    """Favorito de ação/ETF gravado pelo lote (card #1120): o Monitor segue só cripto até o #1122."""
+
+    if "/" in str(getattr(row, "symbol", "") or ""):
+        return False
+    parameters = getattr(row, "parameters", None)
+    if isinstance(parameters, str):
+        try:
+            parameters = json.loads(parameters)
+        except (TypeError, ValueError):
+            parameters = None
+    return isinstance(parameters, dict) and parameters.get("data_source") == "binance_equity"
+
+
 def _is_unsupported_symbol(symbol: str) -> bool:
     """True se o símbolo estiver em config/excluded_symbols.json."""
     return is_excluded_symbol(symbol)
@@ -746,6 +760,7 @@ class OpportunityService:
                         )
                         .all()
                     )
+                    admin_rows = [r for r in admin_rows if not _is_equity_favorite(r)]
                     favorites = [
                         self._favorite_row_to_dict(
                             row,
@@ -857,7 +872,11 @@ class OpportunityService:
         tier_filter: Optional[str] = None,
     ) -> list[FavoriteStrategy]:
         query = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == user_id)
-        return self._apply_tier_filter(query, tier_filter).all()
+        return [
+            r
+            for r in self._apply_tier_filter(query, tier_filter).all()
+            if not _is_equity_favorite(r)
+        ]
 
     def _favorite_rows_for_admin_catalog(
         self,
@@ -880,7 +899,11 @@ class OpportunityService:
         )
         if alerts_only:
             query = query.filter(FavoriteStrategy.notify_telegram.is_(True))
-        return self._apply_tier_filter(query, tier_filter).all()
+        return [
+            r
+            for r in self._apply_tier_filter(query, tier_filter).all()
+            if not _is_equity_favorite(r)
+        ]
 
     def _favorite_rows_for_first_admin(
         self,

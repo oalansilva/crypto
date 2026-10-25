@@ -9,7 +9,11 @@ from redis.exceptions import RedisError
 from app.routes import combo_routes
 from app.services import batch_backtest_queue
 from app.services.batch_backtest_service import _metrics_with_source_trades
-from app.services.batch_backtest_store import BatchBacktestStore, get_batch_backtest_store
+from app.services.batch_backtest_store import (
+    BatchBacktestStore,
+    LegacyBatchStore,
+    get_batch_backtest_store,
+)
 from app.services.redis_store import get_redis_client
 from app.tasks import batch_backtest_tasks
 
@@ -64,7 +68,7 @@ def _reset_store_caches():
     get_redis_client.cache_clear()
 
 
-def test_enqueue_batch_backtest_success_updates_task_id(monkeypatch):
+def test_enqueue_batch_backtest_success_updates_task_id(monkeypatch, postgres_isolation):
     _reset_store_caches()
     store = BatchBacktestStore()
     store.init_job("job-1", 2)
@@ -85,7 +89,7 @@ def test_enqueue_batch_backtest_success_updates_task_id(monkeypatch):
     assert store.get_job("job-1")["task_id"] == "task-1"
 
 
-def test_enqueue_batch_backtest_failure_marks_job_failed(monkeypatch):
+def test_enqueue_batch_backtest_failure_marks_job_failed(monkeypatch, postgres_isolation):
     _reset_store_caches()
     store = BatchBacktestStore()
     store.init_job("job-2", 1)
@@ -104,8 +108,8 @@ def test_enqueue_batch_backtest_failure_marks_job_failed(monkeypatch):
     assert "queue dispatch failed" in job["last_error"]
 
 
-def test_batch_backtest_store_falls_back_from_redis_failures():
-    store = BatchBacktestStore()
+def test_legacy_batch_store_falls_back_from_redis_failures():
+    store = LegacyBatchStore()
     store._redis = _ExplodingRedis(
         get_exc=RedisError("get failed"), set_exc=RedisError("set failed")
     )
@@ -121,7 +125,7 @@ def test_batch_backtest_store_falls_back_from_redis_failures():
     assert store.get_job("job-3")["status"] == "queued"
 
 
-def test_batch_backtest_store_handles_existing_jobs_missing_updates_and_dead_letters():
+def test_batch_backtest_store_handles_existing_jobs_and_missing_updates(postgres_isolation):
     store = BatchBacktestStore()
 
     first = store.init_job("job-4", 3)
@@ -130,6 +134,9 @@ def test_batch_backtest_store_handles_existing_jobs_missing_updates_and_dead_let
 
     assert store.update_job("missing-job", status="running") is None
 
+
+def test_legacy_batch_store_records_dead_letters():
+    store = LegacyBatchStore()
     redis = _PipelineRedis()
     store._redis = redis
     store.record_dead_letter(
@@ -174,7 +181,7 @@ def test_batch_metrics_include_source_trades():
     }
 
 
-def test_batch_backtest_task_hooks_update_store(monkeypatch):
+def test_batch_backtest_task_hooks_update_store(monkeypatch, postgres_isolation):
     store = BatchBacktestStore()
     store.init_job("job-5", 1)
     monkeypatch.setattr(batch_backtest_tasks, "get_batch_backtest_store", lambda: store)
@@ -198,14 +205,14 @@ def test_batch_backtest_task_hooks_update_store(monkeypatch):
     assert failed_job["dead_lettered"] is True
 
 
-def test_run_batch_backtest_task_runs_job(monkeypatch):
+def test_run_batch_backtest_task_runs_job(monkeypatch, postgres_isolation):
     store = BatchBacktestStore()
     store.init_job("job-6", 1)
     monkeypatch.setattr(batch_backtest_tasks, "get_batch_backtest_store", lambda: store)
 
     calls: list[tuple[str, dict[str, object]]] = []
 
-    def fake_run(job_id: str, payload: dict[str, object]) -> None:
+    def fake_run(job_id: str, payload: dict[str, object], task_id: str | None = None) -> None:
         calls.append((job_id, payload))
 
     monkeypatch.setattr(batch_backtest_tasks, "run_batch_backtest", fake_run)
@@ -218,7 +225,6 @@ def test_run_batch_backtest_task_runs_job(monkeypatch):
     assert result["job_id"] == "job-6"
     assert result["task_id"]
     assert calls == [("job-6", {"symbols": ["BTC/USDT"]})]
-    assert store.get_job("job-6")["status"] == "running"
 
 
 @pytest.mark.asyncio

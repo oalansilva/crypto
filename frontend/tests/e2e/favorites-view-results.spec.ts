@@ -635,7 +635,8 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await page.goto('/favorites');
 
   await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toHaveCount(0);
+  // Card #1120: lista única, a ação aparece com a classe e a moeda na própria linha
+  await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
   await expect(page.getByTestId('favorites-strategy-title').filter({ hasText: 'RSI: Retomada com Força' }).first()).toBeVisible();
   await expect(page.getByTestId('favorites-strategy-title').filter({ hasText: 'EMA RSI Volume' }).first()).toBeVisible();
@@ -652,13 +653,19 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   expect(pageErrors).toEqual([]);
 });
 
-test('favorites hides stocks and removes Asset Type dropdown in crypto-only MVP', async ({ page }) => {
+test('favorites is a single list with stocks and ETFs, a Classe filter and no Asset Type dropdown', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
   const nvdaRow = page.locator('tbody tr', { hasText: 'NVDA' });
   const btcRow = page.locator('tbody tr', { hasText: FAVORITE_ROW_TEXT.btcEmaRsi });
   await expect(page.getByLabel('Asset Type')).toHaveCount(0);
+  // Card #1120: a ação entra na lista única, com chip da classe e a moeda dela
+  await expect(nvdaRow).toHaveCount(1);
+  await expect(nvdaRow.locator('.sym-cell .lote-cls')).toHaveText('Ação');
+  await expect(nvdaRow.locator('.sym-cell .lote-cur')).toHaveText('USD');
+  await expect(btcRow).toHaveCount(1);
+  await page.getByTestId('fav-class-filter').selectOption('crypto');
   await expect(nvdaRow).toHaveCount(0);
   await expect(btcRow).toHaveCount(1);
 });

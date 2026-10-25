@@ -136,8 +136,11 @@ class IncrementalLoader:
         Parquet própria: o histórico é completado pelo HistoryService e o Parquet vira
         cache derivado e versionado.
         """
-        flag = os.getenv("MARKET_HISTORY_UNIFIED", "0").strip().lower()
-        return flag not in ("", "0", "false", "no", "off") and "/" in str(symbol or "")
+        # ``unified_enabled`` lê o mesmo ``MARKET_HISTORY_UNIFIED`` e aceita o ligar por execução
+        # (``force_unified``), que o lote do card #1120 usa por ativo.
+        from app.services.market_history import unified_enabled
+
+        return unified_enabled() and "/" in str(symbol or "")
 
     def _fetch_unified(
         self,

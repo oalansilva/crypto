@@ -246,6 +246,7 @@ def prepare_equity_history(
     *,
     intrabar: bool,
     service: Any = None,
+    on_progress: Any = None,
 ) -> EquityPreparation:
     """Coleta sob demanda só o que o backtest de 1 ativo usa (decisão 4).
 
@@ -254,6 +255,9 @@ def prepare_equity_history(
 
     Falha sem nada gravado na janela levanta ``EquityRunError`` (422 ``history_unavailable``);
     falha com parte gravada segue e devolve a nota "janela coberta menor que a pedida".
+
+    ``on_progress(papel, tempo, página, total)`` (card #1120, decisão 7) recebe cada página
+    coletada; ``papel`` é ``candles`` (série do tempo gráfico) ou ``intraday`` (5m do intrabar).
     """
 
     from app.services.market_history.facade import get_history_service
@@ -282,7 +286,7 @@ def prepare_equity_history(
         if series.series_id in seen:
             continue
         seen.add(series.series_id)
-        outcome = svc.ensure(series, start, end_ts)
+        outcome = svc.ensure(series, start, end_ts, on_progress=_progress_for(on_progress, role))
         outcomes.append((role, outcome))
         prep.ensured.append(series.physical_timeframe)
 
@@ -312,6 +316,18 @@ def prepare_equity_history(
     if problem is not None:
         prep.collection = _partial_note(asset["symbol"], chart, result, problem, end_ts)
     return prep
+
+
+def _progress_for(on_progress: Any, role: str):
+    """Adapta ``on_progress(papel, tempo, página, total)`` ao retorno do ``HistoryService``."""
+
+    if on_progress is None:
+        return None
+
+    def inner(series: Any, page: int, total: int | None) -> None:
+        on_progress(role, series.physical_timeframe, page, total)
+
+    return inner
 
 
 def _partial_note(symbol, chart, result, problem, end_ts) -> dict[str, Any] | None:

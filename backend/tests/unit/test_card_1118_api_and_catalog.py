@@ -45,7 +45,8 @@ def public_db(unit_database_url):
     Base.metadata.create_all(bind=engine)
     tables = (
         "asset_catalog, asset_catalog_refresh, favorite_strategies, discovery_results, backtest_runs, market_series, market_series_coverage, "
-        "market_series_fetch, market_series_stage, execution_data_snapshots, market_rate_limit"
+        "market_series_fetch, market_series_stage, execution_data_snapshots, market_rate_limit, "
+        "batch_backtest_jobs, batch_backtest_items"
     )
     with engine.begin() as conn:
         execute_all(conn, side_table_statements())
@@ -299,13 +300,21 @@ def test_refused_analysis_and_select_all_never_collect(history, monkeypatch):
     )
     assert refused.status_code == 422
     assert refused.json()["detail"]["code"] == "asset_class_not_supported"
+    # Card #1120: o lote aceita ETFs, mas a coleta acontece no worker, nunca ao receber o pedido.
+    from app.routes import combo_routes as routes
+
+    monkeypatch.setattr(routes, "enqueue_batch_backtest", lambda *a, **k: "task-1")
     batch = client.post(
         "/api/combos/backtest/batch",
         json={"template_name": "ema_rsi", "symbols": ["SPY", "QQQ", "IBIT"], "timeframe": "1d"},
     )
-    assert (
-        batch.status_code == 422 and batch.json()["detail"]["code"] == "asset_class_not_supported"
+    assert batch.status_code == 200, batch.text
+    preview = client.post(
+        "/api/combos/backtest/batch/preview",
+        json={"template_name": "ema_rsi", "symbols": ["SPY", "QQQ", "IBIT"], "timeframe": "1d"},
     )
+    assert preview.status_code == 200, preview.text  # o plano não coleta
+    assert {i["plan"] for i in preview.json()["items"]} == {"run"}
     from app.services.asset_analysis_guard import discovery_symbol_reasons
 
     reasons = discovery_symbol_reasons(["SPY", "QQQ", "IBIT"])
@@ -331,6 +340,7 @@ def test_only_the_history_route_and_the_equity_provider_may_collect_equity():
             callers.add(path.relative_to(root).as_posix())
     assert callers == {
         "routes/combo_routes.py",  # backtest de 1 ativo: leitura sem nova coleta (ensure=False)
+        "services/batch_backtest_service.py",  # lote (#1120): coleta ativo por ativo no worker
         "routes/market_history_routes.py",  # a consulta (history ... ensure=collect)
         "services/equity_backtest.py",  # coleta sob demanda do backtest de 1 ação/ETF (#1119)
         "services/market_data_providers.py",  # provedor de ação/ETF

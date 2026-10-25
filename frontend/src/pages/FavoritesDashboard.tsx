@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Trash2, Search, List, Activity, BarChart3, Bell, Star, RefreshCw, X } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
@@ -23,6 +23,24 @@ import {
     isDiscoveryOrigin,
 } from '@/lib/discoveryFavoriteMetrics';
 import { formatCompoundReturn } from '@/lib/compoundReturn';
+import {
+    OFF_EQUITY_TITLE,
+    PENDING_EQUITY_TEXT,
+    atrWithCurrency,
+    chipLabel,
+    classCounts,
+    classFilterOptions,
+    favoriteClass,
+    favoriteLoteId,
+    favoriteRowData,
+    isEquityClass,
+    loteBannerText,
+    tierNoteText,
+    FILTER_EMPTY_LOTE,
+    type ClassFilterValue,
+    type RowData,
+} from '@/lib/favoriteClass';
+import '../styles/lote.css';
 
 import * as XLSX from 'xlsx';
 
@@ -56,6 +74,8 @@ interface FavoriteStrategy {
     auto_refresh_started_at?: string | null;
     auto_refresh_completed_at?: string | null;
     auto_refresh_run_id?: string | null;
+    /** Identidade do ativo (card #1120): classe, moeda e nome; cripto, ação e ETF na mesma lista. */
+    asset?: { symbol: string; asset_id?: string | null; asset_class?: 'crypto' | 'stock' | 'etf' | null; name?: string | null; currency?: string | null } | null;
 }
 
 interface MonitorSignalHistoryItem {
@@ -91,8 +111,6 @@ interface RevalidationReport {
         oos_verdict?: Record<string, any> | null;
     };
 }
-
-const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
 
 const CURRENT_CHART_CANDLE_LIMIT = 300;
 const FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS = 2500;
@@ -288,6 +306,7 @@ const mergeFavoriteAndMonitorTrades = (
 
 const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const isAdmin = user?.isAdmin === true;
@@ -299,6 +318,10 @@ const FavoritesDashboard: React.FC = () => {
     const revalidationCloseRef = useRef<HTMLButtonElement | null>(null);
     const revalidationTriggerRef = useRef<HTMLElement | null>(null);
     const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
+    const [classFilter, setClassFilter] = useState<ClassFilterValue>('all');
+    // Faixa do lote (card #1120): `/favorites?lote=<id8>` mostra só o que o lote gravou, de todas as classes.
+    const loteFilter = (searchParams.get('lote') || '').trim().toLowerCase() || null;
+    const classSelectRef = useRef<HTMLSelectElement | null>(null);
 
     const [loadingAnalysisId, setLoadingAnalysisId] = useState<number | null>(null);
 
@@ -439,9 +462,69 @@ const FavoritesDashboard: React.FC = () => {
         return null;
     };
 
+    /** Precisão, convenções e período efetivo à vista; "Limitações e origem" atrás de um `<details>` fechado. */
+    const renderRowData = (row: RowData) => (
+        <div className="lote-rowdata">
+            <span className="lote-prec" data-tone={row.precision.tone} data-testid="fav-precision">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {row.precision.tone === 'warn' ? (
+                        <>
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+                            <path d="M12 9v4" />
+                            <path d="M12 17h.01" />
+                        </>
+                    ) : (
+                        <>
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 16v-4" />
+                            <path d="M12 8h.01" />
+                        </>
+                    )}
+                </svg>
+                <span>{row.precision.text}</span>
+            </span>
+            <span className="lote-conv" data-testid="fav-conventions">{row.conventions}</span>
+            <span className="lote-conv" data-testid="fav-effective">{row.effective}</span>
+            {row.details ? (
+                <details className="lote-more-info" data-testid="fav-more-info">
+                    <summary>{row.details.summary}</summary>
+                    {row.details.conventionsFull ? <span className="lote-conv" data-testid="fav-conventions-full">{row.details.conventionsFull}</span> : null}
+                    {row.details.limitations ? <span className="lote-lim">{row.details.limitations}</span> : null}
+                    {row.details.lote ? <span className="lote-lote-tag">{row.details.lote}</span> : null}
+                </details>
+            ) : null}
+        </div>
+    );
+
     const renderStarTierControl = (fav: FavoriteStrategy, compact = false) => {
         const selectedStars = getStarCount(fav.tier);
         const isSaving = updateTierMutation.isPending;
+        // Ação e ETF (card #1120, decisão 12): estrelas à vista, sem marca, focáveis e desabilitadas até o #1122.
+        if (isEquityClass(favoriteClass(fav))) {
+            return (
+                <div className="flex items-center justify-center gap-1" aria-label="Prioridade por estrelas">
+                    {[1, 2, 3].map((stars) => (
+                        <button
+                            key={stars}
+                            type="button"
+                            aria-disabled="true"
+                            aria-describedby={`lote-why-${fav.id}${compact ? 'm' : ''}`}
+                            data-lote-off=""
+                            aria-pressed="false"
+                            title={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className={[
+                                'inline-flex items-center justify-center rounded-md border transition-colors',
+                                compact ? 'h-9 w-9' : 'h-8 w-8',
+                                'border-zinc-200 bg-zinc-50 text-zinc-400',
+                            ].join(' ')}
+                        >
+                            <Star className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill="none" aria-hidden="true" />
+                        </button>
+                    ))}
+                </div>
+            );
+        }
 
         return (
             <div className="flex items-center justify-center gap-1" aria-label="Prioridade por estrelas">
@@ -478,6 +561,27 @@ const FavoritesDashboard: React.FC = () => {
     const renderTelegramControl = (fav: FavoriteStrategy, compact = false) => {
         const active = fav.notify_telegram !== false;
         const isSaving = updateTelegramMutation.isPending;
+        if (isEquityClass(favoriteClass(fav))) {
+            return (
+                <button
+                    type="button"
+                    aria-disabled="true"
+                    aria-describedby={`lote-why-${fav.id}${compact ? 'm' : ''}`}
+                    data-lote-off=""
+                    aria-pressed="false"
+                    title="Telegram: ainda não para ações e ETFs"
+                    onClick={(event) => event.stopPropagation()}
+                    className={[
+                        'telegram-toggle inline-flex items-center justify-center gap-1 rounded-md border transition-colors',
+                        compact ? 'h-9 min-w-[3.5rem] px-2 text-xs' : 'h-8 min-w-[4.5rem] px-2 text-xs',
+                        'border-zinc-200 bg-zinc-50 text-zinc-400',
+                    ].join(' ')}
+                >
+                    <Bell className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill="none" aria-hidden="true" />
+                    {compact ? 'TG' : 'Off'}
+                </button>
+            );
+        }
 
         return (
             <button
@@ -1005,22 +1109,24 @@ const FavoritesDashboard: React.FC = () => {
         }
     };
 
-    // Get unique symbols for filter
+    // Get unique symbols for filter (lista única: cripto, ação e ETF)
     const uniqueSymbols = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.symbol))).sort();
+        return Array.from(new Set(favorites.map(f => f.symbol))).sort();
     }, [favorites]);
 
     // Get unique strategy labels for filter
     const uniqueIndicators = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(getFavoriteStrategyLabel))).sort();
+        return Array.from(new Set(favorites.map(getFavoriteStrategyLabel))).sort();
     }, [favorites]);
 
     const uniqueTimeframes = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.timeframe))).sort();
+        return Array.from(new Set(favorites.map(f => f.timeframe))).sort();
     }, [favorites]);
+
+    const classTotals = React.useMemo(() => classCounts(favorites || []), [favorites]);
 
     const filteredFavorites = (favorites?.filter(fav => {
         const matchesSearch = favoriteMatchesSearch(fav, searchTerm);
@@ -1028,15 +1134,20 @@ const FavoritesDashboard: React.FC = () => {
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
         const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
         const matchesTimeframe = selectedTimeframe === 'ALL' || fav.timeframe === selectedTimeframe;
+        const favClass = favoriteClass(fav);
+        // O filtro por estrelas vale só para cripto: ação e ETF não têm nível até o #1122.
         const matchesTier = tierFilter === 'all' ||
-            (tierFilter === 'none' && fav.tier === null) ||
-            (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
-        const matchesCryptoOnly = isCryptoPair(fav.symbol);
+            (favClass === 'crypto' && (
+                (tierFilter === 'none' && fav.tier === null) ||
+                (tierFilter !== 'none' && fav.tier === parseInt(tierFilter))
+            ));
+        const matchesClass = classFilter === 'all' || favClass === classFilter;
+        const matchesLote = !loteFilter || favoriteLoteId(fav) === loteFilter;
 
         const favDirection = getFavoriteDirection(fav);
         const matchesDirection = directionFilter === 'all' || favDirection === directionFilter;
 
-        return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTimeframe && matchesTier && matchesDirection;
+        return matchesClass && matchesLote && matchesSearch && matchesSymbol && matchesIndicator && matchesTimeframe && matchesTier && matchesDirection;
     }) || []).sort((a, b) => {
         const sortValueA = getFavoriteSortValue(a, sortBy);
         const sortValueB = getFavoriteSortValue(b, sortBy);
@@ -1208,13 +1319,18 @@ const FavoritesDashboard: React.FC = () => {
         };
     };
 
+    // Estrelas, resumo por nível e filtro por estrelas contam só cripto até o #1122 (ação/ETF não têm nível).
     const cryptoFavorites = React.useMemo(
-        () => (favorites || []).filter((fav) => isCryptoPair(fav.symbol)),
+        () => (favorites || []).filter((fav) => favoriteClass(fav) === 'crypto'),
         [favorites]
     );
+    const equityFavoritesCount = (favorites || []).length - cryptoFavorites.length;
+    const rowDataOf = (fav: FavoriteStrategy): RowData => favoriteRowData(fav);
 
     const favoritesUsingDefaultFilters = searchTerm.trim() === ''
         && tierFilter === 'all'
+        && classFilter === 'all'
+        && !loteFilter
         && selectedSymbol === 'ALL'
         && selectedIndicator === 'ALL'
         && selectedTimeframe === 'ALL'
@@ -1235,7 +1351,7 @@ const FavoritesDashboard: React.FC = () => {
     const favoritesCatalogEmpty = !favoritesListLoading
         && !favoritesListFailed
         && favorites !== undefined
-        && cryptoFavorites.length === 0
+        && favorites.length === 0
         && favoritesUsingDefaultFilters;
     const favoritesFilterEmpty = !favoritesListLoading
         && !favoritesListFailed
@@ -1263,7 +1379,7 @@ const FavoritesDashboard: React.FC = () => {
 
     const renderFavoritesFilterEmpty = () => (
         <div className="fav-empty" role="status" data-testid="favorites-filter-empty">
-            Não há resultado com estes filtros.
+            {classFilter !== 'all' || loteFilter ? FILTER_EMPTY_LOTE : 'Não há resultado com estes filtros.'}
         </div>
     );
 
@@ -1300,6 +1416,13 @@ const FavoritesDashboard: React.FC = () => {
 
     const tableColumnCount = isAdmin ? 19 : 17;
 
+    const clearLoteFilter = () => {
+        const next = new URLSearchParams(searchParams);
+        next.delete('lote');
+        setSearchParams(next, { replace: true });
+        classSelectRef.current?.focus();
+    };
+
     return (
         <div className="app-page favorites-page favorites-workbench">
             <div className="max-w-[1920px] mx-auto page-stack">
@@ -1321,7 +1444,7 @@ const FavoritesDashboard: React.FC = () => {
                             <span className="fav-live-dot" />
                             <span>System Operational</span>
                             <span className="fav-meta-separator" />
-                            <span>{filteredFavorites.length} filtradas</span>
+                            <span data-testid="fav-count">{filteredFavorites.length} filtradas</span>
                             {isAdmin ? <span>{selectedIds.length} comparadas</span> : null}
                         </div>
                     </div>
@@ -1350,9 +1473,13 @@ const FavoritesDashboard: React.FC = () => {
                         ))}
                     </div>
 
+                    {tierNoteText(equityFavoritesCount) ? (
+                        <p className="lote-tier-note" data-testid="fav-tier-note">{tierNoteText(equityFavoritesCount)}</p>
+                    ) : null}
+
                     <div className="tier-filter" aria-label="Filtro por tier">
                         {[
-                            { value: 'all', label: `Todas ${cryptoFavorites.length}` },
+                            { value: 'all', label: `Todas ${(favorites || []).length}` },
                             { value: '1', label: `Top picks ${tierCounts.top}` },
                             { value: '2', label: `Alto ${tierCounts.high}` },
                             { value: '3', label: `Acompanhar ${tierCounts.watch}` },
@@ -1373,6 +1500,19 @@ const FavoritesDashboard: React.FC = () => {
 
                 <section className="fav-controls" aria-label="Filtros de favoritos">
                     <div className="fav-filters">
+                        <label>
+                            <span>Classe</span>
+                            <select
+                                ref={classSelectRef}
+                                value={classFilter}
+                                data-testid="fav-class-filter"
+                                onChange={(e) => setClassFilter(e.target.value as ClassFilterValue)}
+                            >
+                                {classFilterOptions(classTotals).map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </label>
                         <label>
                             <span>Symbol</span>
                             <select value={selectedSymbol} onChange={(e) => setSelectedSymbol(e.target.value)}>
@@ -1443,9 +1583,16 @@ const FavoritesDashboard: React.FC = () => {
                     </div>
                 </section>
 
+                {loteFilter ? (
+                    <div className="lote-lote" role="status" data-testid="fav-lote-filter">
+                        <span>{loteBannerText(loteFilter, favorites || [])}</span>
+                        <button type="button" onClick={clearLoteFilter}>Mostrar todos os favoritos</button>
+                    </div>
+                ) : null}
+
                 <main
                     className="fav-main"
-                    data-testid={cryptoFavorites.length > 0 ? 'favorites-renewal-ok' : undefined}
+                    data-testid={(favorites || []).length > 0 ? 'favorites-renewal-ok' : undefined}
                 >
                     <div className="fav-mobile-list">
                         {favoritesListLoading ? (
@@ -1467,6 +1614,8 @@ const FavoritesDashboard: React.FC = () => {
                                 const refreshStatus = formatRefreshStatus(fav);
                                 const revalidationStatus = formatRevalidationStatus(fav);
                                 const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
+                                const row = rowDataOf(fav);
+                                const equity = isEquityClass(row.cls);
                                 return (
                                     <article
                                         key={fav.id}
@@ -1474,21 +1623,33 @@ const FavoritesDashboard: React.FC = () => {
                                         data-testid={`favorite-${fav.id}-mobile`}
                                         data-origin={origin}
                                         data-favorite-id={fav.id}
+                                        data-class={row.cls}
+                                        data-lote={row.lote ?? ''}
                                     >
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
+                                                <span className="lote-cardline">
+                                                    <span className="lote-cls" data-class={row.cls}>{chipLabel(row.cls)}</span> · <span className="lote-cur">{row.currency}</span>
+                                                </span>
                                                 <span className="fav-strategy-name">{getFavoriteCatalogTitle(fav)}</span>
                                                 {strategyDetail ? <span className="fav-strategy-meta">{strategyDetail}</span> : null}
                                                 {strategyDescription ? <span className="fav-strategy-description">{strategyDescription}</span> : null}
-                                                <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
-                                                    {refreshStatus.label}
-                                                </span>
-                                                {revalidationStatus ? (
+                                                {equity ? (
+                                                    <span className="fav-refresh-status lote-pending-class" id={`lote-why-${fav.id}m`} data-testid="fav-equity-pending">
+                                                        {PENDING_EQUITY_TEXT}
+                                                    </span>
+                                                ) : (
+                                                    <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
+                                                        {refreshStatus.label}
+                                                    </span>
+                                                )}
+                                                {revalidationStatus && !equity ? (
                                                     <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
                                                         {revalidationStatus.label}
                                                     </span>
                                                 ) : null}
+                                                {renderRowData(row)}
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                 {direction === 'short' ? 'Short' : 'Long'}
@@ -1511,9 +1672,15 @@ const FavoritesDashboard: React.FC = () => {
                                             </button>
                                             {isAdmin ? (
                                                 <>
-                                                    <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente">
-                                                        <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />Revalidar
-                                                    </button>
+                                                    {equity ? (
+                                                        <button type="button" aria-disabled="true" aria-describedby={`lote-why-${fav.id}m`} data-lote-off="" title={OFF_EQUITY_TITLE} onClick={(event) => event.stopPropagation()}>
+                                                            <RefreshCw className="h-4 w-4" aria-hidden="true" />Revalidar
+                                                        </button>
+                                                    ) : (
+                                                        <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente">
+                                                            <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />Revalidar
+                                                        </button>
+                                                    )}
                                                     <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
                                                 </>
                                             ) : null}
@@ -1580,6 +1747,8 @@ const FavoritesDashboard: React.FC = () => {
                                         const refreshStatus = formatRefreshStatus(fav);
                                         const revalidationStatus = formatRevalidationStatus(fav);
                                         const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
+                                        const row = rowDataOf(fav);
+                                        const equity = isEquityClass(row.cls);
 
                                         return (
                                             <tr
@@ -1588,6 +1757,8 @@ const FavoritesDashboard: React.FC = () => {
                                                 data-testid={`favorite-${fav.id}`}
                                                 data-origin={origin}
                                                 data-favorite-id={fav.id}
+                                                data-class={row.cls}
+                                                data-lote={row.lote ?? ''}
                                             >
                                                 {isAdmin ? (
                                                     <td className="select-col">
@@ -1601,28 +1772,40 @@ const FavoritesDashboard: React.FC = () => {
                                                 ) : null}
                                                 <td className="stars-cell">{renderStarTierControl(fav)}</td>
                                                 {isAdmin ? <td className="telegram-col">{renderTelegramControl(fav)}</td> : null}
-                                                <td className="symbol-col" aria-label={fav.symbol}>
+                                                <td className="symbol-col">
                                                     <div className="sym-cell">
                                                         <span className="sym-tile">{symbol.base.slice(0, 3)}</span>
                                                         <span>
                                                             <strong>{fav.symbol}</strong>
-                                                            {symbol.quote ? <small>{symbol.quote}</small> : null}
+                                                            <small className="lote-symline">
+                                                                {/* o par classe · moeda nunca se parte em duas linhas (P3 de Apply) */}
+                                                                <span className="lote-pair">
+                                                                    <span className="lote-cls" data-class={row.cls}>{chipLabel(row.cls)}</span> · <span className="lote-cur">{row.currency}</span>
+                                                                </span>
+                                                            </small>
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="strategy-cell" aria-label={`${getFavoriteCatalogTitle(fav)} ${strategyDetail || ''} ${strategyDescription || ''}`}>
+                                                <td className="strategy-cell">
                                                     <div className="strategy-stack" data-testid="favorites-strategy-identity">
                                                         <strong data-testid="favorites-strategy-title">{getFavoriteCatalogTitle(fav)}</strong>
                                                         {strategyDescription ? <span className="strategy-description" data-testid="favorites-strategy-description">{strategyDescription}</span> : null}
                                                         {strategyDetail ? <span className="fav-strategy-meta">{strategyDetail}</span> : null}
-                                                        <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
-                                                            {refreshStatus.label}
-                                                        </span>
-                                                        {revalidationStatus ? (
+                                                        {equity ? (
+                                                            <span className="fav-refresh-status lote-pending-class" id={`lote-why-${fav.id}`} data-testid="fav-equity-pending">
+                                                                {PENDING_EQUITY_TEXT}
+                                                            </span>
+                                                        ) : (
+                                                            <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
+                                                                {refreshStatus.label}
+                                                            </span>
+                                                        )}
+                                                        {revalidationStatus && !equity ? (
                                                             <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
                                                                 {revalidationStatus.label}
                                                             </span>
                                                         ) : null}
+                                                        {renderRowData(row)}
                                                     </div>
                                                 </td>
                                                 <td className="direction-col">
@@ -1631,7 +1814,10 @@ const FavoritesDashboard: React.FC = () => {
                                                     </span>
                                                 </td>
                                                 <td><span className="tf-pill">{fav.timeframe}</span></td>
-                                                <td className="muted-cell period-col">{formatPeriod(fav)}</td>
+                                                <td className="muted-cell period-col">
+                                                    {formatPeriod(fav)}
+                                                    {row.effectiveRange ? <span className="lote-eff">efetivo {row.effectiveRange}</span> : null}
+                                                </td>
                                                 <td className="metric-cell risk-col">{formatPct(stopLoss)}</td>
                                                 <td className="metric-cell accent" data-metric="sharpe">{formatNum(m.sharpe_ratio)}</td>
                                                 <td className="metric-cell" data-metric="trades">{getTradesCount(fav)}</td>
@@ -1641,7 +1827,7 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td className="metric-cell advanced-col">{formatNum(m.profit_factor)}</td>
                                                 <td className="metric-cell advanced-col">{formatNum(m.sqn ?? m.sortino_ratio ?? m.sortino)}</td>
                                                 <td className="metric-cell negative advanced-col">{formatPct(m.max_loss)}</td>
-                                                <td className="metric-cell advanced-col">{formatNum(m.avg_atr)}</td>
+                                                <td className="metric-cell advanced-col">{atrWithCurrency(m.avg_atr, row.currency)}</td>
                                                 <td>
                                                     <div className="fav-row-actions">
                                                         <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa" data-testid={`open-chart-${fav.id}`}>
@@ -1649,9 +1835,15 @@ const FavoritesDashboard: React.FC = () => {
                                                         </button>
                                                         {isAdmin ? (
                                                             <>
-                                                                <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente" aria-label="Revalidar na janela recente">
-                                                                    <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />
-                                                                </button>
+                                                                {equity ? (
+                                                                    <button type="button" aria-disabled="true" aria-describedby={`lote-why-${fav.id}`} data-lote-off="" title={OFF_EQUITY_TITLE} aria-label="Revalidar na janela recente" onClick={(event) => event.stopPropagation()}>
+                                                                        <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                                                                    </button>
+                                                                ) : (
+                                                                    <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente" aria-label="Revalidar na janela recente">
+                                                                        <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />
+                                                                    </button>
+                                                                )}
                                                                 <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
                                                             </>
                                                         ) : null}

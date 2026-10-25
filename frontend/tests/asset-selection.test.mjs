@@ -2,10 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import {
+  CLASS_NOTE,
   blockedNotice,
   catalogBanners,
   confirmCopy,
+  cryptoOnlyTimeframes,
   emptySearchMessage,
+  equityTimeframeBlock,
   formatDate,
   formatDateTime,
   freshnessLine,
@@ -13,6 +16,7 @@ import {
   historySummary,
   ON_DEMAND_TEXT_BACKTEST,
   markedNoteText,
+  marketDataText,
   markedReasonText,
   mergeSymbols,
   outEntries,
@@ -21,7 +25,6 @@ import {
   outOfSweepTitle,
   outReason,
   outWhy,
-  partialNotice,
   planRun,
   preflightExcludedLabel,
   preflightRestLine,
@@ -31,6 +34,7 @@ import {
   selectionCountText,
   selectionCounts,
   sortedForChips,
+  timeframeDisabled,
   urlSymbolNotice,
 } from '../src/lib/assetSelection.ts'
 
@@ -112,82 +116,168 @@ test('símbolo desconhecido: "fora do catálogo" só com lista válida; sem list
   assert.equal(resolveSelection(['XYZ/USDT'], KNOWN, FRESH_OK, new Set())[0].kind, 'runs') // ainda não consultado
 })
 
-test('plano de rodar: nada, bloqueado, 1 par (caminho de 1 ativo) ou lote', () => {
+test('plano de rodar: nada, bloqueado, 1 ativo (caminho de 1 ativo) ou lote (mais de 1 ativo é sempre lote)', () => {
   assert.equal(planRun(entries([])).mode, 'none')
-  // Card #1119: 1 ação/ETF sozinha roda (backtest de 1 ativo); mais de uma, ou com cripto, não.
+  // Card #1119: 1 ação/ETF sozinha roda (backtest de 1 ativo, sem lote).
   const oneEquity = planRun(entries(['NVDA']))
   assert.equal(oneEquity.mode, 'single')
   assert.deepEqual(oneEquity.runnable, ['NVDA'])
   assert.equal(oneEquity.equityRun.symbol, 'NVDA')
-  assert.equal(planRun(entries(['NVDA', 'SPY'])).mode, 'blocked')
-  assert.equal(planRun(entries(['NVDA', 'SPY'])).equityRun, null)
+  // Card #1120: duas ações/ETFs são um lote; cripto com ação/ETF também.
+  const twoEquities = planRun(entries(['NVDA', 'SPY']))
+  assert.equal(twoEquities.mode, 'batch')
+  assert.deepEqual(twoEquities.runnable, ['NVDA', 'SPY'])
+  assert.equal(twoEquities.equityRun, null)
+  const mixed = planRun(entries(['BTC/USDT', 'NVDA', 'SPY']))
+  assert.equal(mixed.mode, 'batch')
+  assert.deepEqual(mixed.runnable, ['BTC/USDT', 'NVDA', 'SPY'])
+  assert.deepEqual(mixed.selected, ['BTC/USDT', 'NVDA', 'SPY'])
   assert.equal(planRun(entries(['WAVES/USDT'])).mode, 'blocked')
-  const equityAndMarked = planRun(entries(['SPY', 'WAVES/USDT']))
-  assert.equal(equityAndMarked.mode, 'single')
-  assert.deepEqual(equityAndMarked.runnable, ['SPY'])
-  assert.equal(equityAndMarked.counts.out, 1) // só o marcado fica de fora
-  const single = planRun(entries(['BTC/USDT', 'NVDA', 'WAVES/USDT']))
-  assert.equal(single.mode, 'single')
-  assert.deepEqual(single.runnable, ['BTC/USDT'])
-  const batch = planRun(entries(['BTC/USDT', 'ETH/USDT', 'QQQ']))
-  assert.equal(batch.mode, 'batch')
-  assert.deepEqual(batch.runnable, ['BTC/USDT', 'ETH/USDT'])
+  // 1 par com um marcado: continua sendo lote (para o marcado aparecer como "Fora" com o motivo)
+  const withMarked = planRun(entries(['BTC/USDT', 'WAVES/USDT']))
+  assert.equal(withMarked.mode, 'batch')
+  assert.deepEqual(withMarked.runnable, ['BTC/USDT'])
+  assert.equal(withMarked.out.length, 1)
+  assert.equal(planRun(entries(['BTC/USDT', 'ETH/USDT', 'QQQ'])).mode, 'batch')
+})
+
+test('plano por tempo: 1m e 5m tiram ação/ETF do lote e deixam a cripto', () => {
+  for (const tf of ['1m', '5m']) {
+    const plan = planRun(entries(['BTC/USDT', 'NVDA', 'SPY']), { timeframe: tf, page: 'combo' })
+    assert.equal(plan.mode, 'batch')
+    assert.deepEqual(plan.runnable, ['BTC/USDT'])
+    assert.deepEqual(plan.out.map((a) => a.outKind), ['timeframe', 'timeframe'])
+    assert.equal(plan.out[0].reason, `ação e ETF não rodam em ${tf}; para incluí-los, use 15m, 1h, 4h ou 1d`)
+  }
+  // Otimização: também 30m, com o conselho "1d aqui ou o Combo"
+  const opt = planRun(entries(['BTC/USDT', 'NVDA']), { timeframe: '30m', page: 'optimize' })
+  assert.equal(opt.out[0].reason, 'ação e ETF não rodam em 30m; para incluí-los, use 1d aqui ou o Combo, que tem período')
+  // 15m, 1h, 4h e 1d servem a ação/ETF no Combo
+  for (const tf of ['15m', '1h', '4h', '1d']) {
+    assert.deepEqual(planRun(entries(['BTC/USDT', 'NVDA']), { timeframe: tf, page: 'combo' }).runnable, ['BTC/USDT', 'NVDA'])
+  }
+})
+
+test('Otimização: 15m, 1h e 4h deixam ação/ETF fora quando o 5m dele não cobre o período fixo', () => {
+  const five = { timeframe: '5m', from: '2026-05-19T08:00:00Z', to: '2026-10-23T20:00:00Z', gap_count: 0, gaps: [], updated_at: null, origin: 'native' }
+  const known = new Map(KNOWN)
+  known.set('NVDA', asset('NVDA', 'stock', 'tradable', { history: { status: 'covered', from: five.from, to: five.to, timeframes: [five], gap_count: 0 } }))
+  const sel = (symbols) => resolveSelection(symbols, known, FRESH_OK)
+  for (const tf of ['15m', '1h', '4h']) {
+    const plan = planRun(sel(['BTC/USDT', 'NVDA', 'SPY']), { timeframe: tf, page: 'optimize' })
+    assert.deepEqual(plan.runnable, ['BTC/USDT'])
+    const nvda = plan.out.find((a) => a.entry.symbol === 'NVDA')
+    assert.equal(nvda.outKind, 'coverage')
+    assert.equal(
+      nvda.reason,
+      'o 5m de NVDA começa em 19 mai. 2026 e não cobre 1 a 31 jan. 2024, o período fixo desta tela; use 1d aqui ou o Combo, que tem período',
+    )
+    // SPY sob demanda: o começo do 5m da classe vem do ativo que já tem série guardada
+    assert.equal(plan.out.find((a) => a.entry.symbol === 'SPY').outKind, 'coverage')
+    // o mesmo tempo no Combo (com período) não tira ninguém
+    assert.deepEqual(planRun(sel(['BTC/USDT', 'NVDA', 'SPY']), { timeframe: tf, page: 'combo' }).runnable, ['BTC/USDT', 'NVDA', 'SPY'])
+  }
+  assert.deepEqual(planRun(sel(['BTC/USDT', 'NVDA', 'SPY']), { timeframe: '1d', page: 'optimize' }).runnable, ['BTC/USDT', 'NVDA', 'SPY'])
+})
+
+test('tempos "(só cripto)": escolhíveis na seleção mista, indisponíveis só com ação/ETF', () => {
+  const mixed = planRun(entries(['BTC/USDT', 'NVDA']), { timeframe: '1d', page: 'combo' })
+  assert.deepEqual(cryptoOnlyTimeframes(mixed), ['1m', '5m'])
+  assert.equal(timeframeDisabled(mixed, '5m'), false)
+  const onlyEquity = planRun(entries(['NVDA']), { timeframe: '1d', page: 'combo' })
+  assert.equal(timeframeDisabled(onlyEquity, '5m'), true)
+  assert.equal(timeframeDisabled(onlyEquity, '1d'), false)
+  const opt = planRun(entries(['BTC/USDT', 'NVDA']), { timeframe: '1d', page: 'optimize' })
+  assert.deepEqual(cryptoOnlyTimeframes(opt), ['1m', '5m', '30m'])
+  assert.deepEqual(cryptoOnlyTimeframes(planRun(entries(['BTC/USDT', 'ETH/USDT']))), [])
+})
+
+test('Market Data por ativo e nota da classe', () => {
+  assert.equal(marketDataText(planRun(entries(['BTC/USDT', 'NVDA', 'SPY']))), 'Por ativo: CCXT (cripto) · Binance Ações (ação e ETF)')
+  assert.equal(marketDataText(planRun(entries(['BTC/USDT', 'ETH/USDT']))), 'CCXT (crypto exchange data)')
+  assert.equal(marketDataText(planRun(entries(['NVDA']))), 'Binance Ações · pregão regular de Nova York · ajustado por split')
+  assert.match(CLASS_NOTE.combo, /^Cripto, ação e ETF rodam juntos no lote: cada ativo usa a sua fonte, sessão, ajuste e moeda/)
+  assert.match(CLASS_NOTE.combo, /1 ação ou ETF sozinha abre o resultado, sem salvar\.$/)
+  assert.match(CLASS_NOTE.optimize, /no período fixo desta tela/)
+  assert.match(CLASS_NOTE.optimize, /nem em 15m, 1h e 4h quando o 5m deles não cobre o período fixo/)
+  assert.doesNotMatch(`${CLASS_NOTE.combo} ${CLASS_NOTE.optimize}`, /o lote vem depois/)
 })
 
 test('Combo: cópia antes do clique diz o que roda e o que fica fora', () => {
-  assert.equal(runCopy(planRun(entries(['BTC/USDT'])), 'combo').text, '1 ativo selecionado: otimiza, salva em favoritos e abre a página de favoritos.')
-  const one = runCopy(planRun(entries(['NVDA'])), 'combo')
+  const combo = (symbols, timeframe = '1d') => runCopy(planRun(entries(symbols), { timeframe, page: 'combo' }), 'combo')
+  assert.equal(combo(['BTC/USDT']).text, '1 ativo selecionado: otimiza, salva em favoritos e abre a página de favoritos.')
+  const one = combo(['NVDA'])
   assert.equal(one.blocked, false)
   assert.equal(one.text, '1 ação (NVDA): otimiza e abre o resultado, sem salvar em favoritos: ações e ETFs ainda não podem ser favoritados.')
-  assert.equal(runCopy(planRun(entries(['SPY'])), 'combo').text.slice(0, 15), '1 ETF (SPY): ot')
-  const only = runCopy(planRun(entries(['NVDA', 'SPY'])), 'combo')
+  assert.equal(combo(['SPY']).text.slice(0, 15), '1 ETF (SPY): ot')
+  const lote = combo(['BTC/USDT', 'NVDA', 'SPY'])
+  assert.equal(lote.blocked, false)
+  assert.equal(
+    lote.text,
+    'Lote de 3 ativos (1 cripto, 1 ação, 1 ETF): otimiza cada um com esta configuração e grava o melhor de cada em favoritos (nota "gerado em lote"). Antes de começar, você confirma o lote.',
+  )
+  assert.equal(
+    combo(['BTC/USDT', 'ETH/USDT', 'NVDA']).text.slice(0, 40),
+    'Lote de 3 ativos (2 cripto, 1 ação): oti',
+  )
+  const fiveMin = combo(['BTC/USDT', 'NVDA', 'SPY'], '5m')
+  assert.equal(
+    fiveMin.text,
+    'Lote de 3 ativos: roda 1 (BTC/USDT). Fora antes de começar: NVDA (Ação), SPY (ETF) — ação e ETF não rodam em 5m; para incluí-los, use 15m, 1h, 4h ou 1d.',
+  )
+  assert.equal(fiveMin.parts.lead, 'Lote de 3 ativos: roda 1')
+  assert.match(fiveMin.parts.out, /^Fora antes de começar: NVDA \(Ação\), SPY \(ETF\) — /)
+  const only = combo(['NVDA', 'SPY'], '5m')
   assert.equal(only.blocked, true)
-  assert.equal(only.text, 'Nada será executado nem salvo: NVDA (Ação), SPY (ETF) — ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.')
-  assert.doesNotMatch(only.text, /favoritos/)
-  const mixedSingle = runCopy(planRun(entries(['BTC/USDT', 'NVDA'])), 'combo').text
-  assert.equal(mixedSingle, 'Roda 1 par cripto (BTC/USDT): otimiza, salva em favoritos e abre a página de favoritos. Fora: NVDA (Ação) — ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.')
-  const mixed = runCopy(planRun(entries(['BTC/USDT', 'ETH/USDT', 'NVDA', 'SPY'])), 'combo').text
-  assert.equal(mixed, '2 pares cripto: batch. Cada resultado é salvo em favoritos. Fora: NVDA (Ação), SPY (ETF) — ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.')
-  const old = runCopy(planRun(entries(['BTC/USDT', 'WAVES/USDT'])), 'combo').text
-  assert.match(old, /^Roda 1 par cripto \(BTC\/USDT\): otimiza, salva em favoritos e abre a página de favoritos\. Fora: WAVES\/USDT \(Cripto, Suspenso\)/)
-  assert.match(old, /não entra em análise nova\.$/)
+  assert.equal(only.text, 'Nada será executado: NVDA (Ação), SPY (ETF) — ação e ETF não rodam em 5m; para incluí-los, use 15m, 1h, 4h ou 1d.')
+  const withMarked = combo(['BTC/USDT', 'WAVES/USDT']).text
+  assert.match(withMarked, /^Lote de 2 ativos: roda 1 \(BTC\/USDT\)\. Fora antes de começar: WAVES\/USDT \(Cripto, Suspenso\) — /)
+  assert.match(withMarked, /não entra em análise nova\.$/)
+  assert.doesNotMatch(only.text + lote.text + withMarked, /o lote vem depois/)
 })
 
 test('Otimização: cópia de 1 ativo, de lote e de nada roda', () => {
-  assert.equal(runCopy(planRun(entries(['BTC/USDT'])), 'optimize').text, '1 ativo: otimiza e mostra o resultado ao lado.')
-  assert.match(
-    runCopy(planRun(entries(['BTC/USDT', 'ETH/USDT'])), 'optimize').text,
-    /^2 ativos: lote, uma otimização por ativo com o mesmo template, timeframe e faixas\. O melhor resultado de cada um é salvo em favoritos\.$/,
-  )
-  const lote = runCopy(planRun(entries(['BTC/USDT', 'ETH/USDT', 'QQQ'])), 'optimize').text
-  assert.match(lote, /^2 pares cripto: lote/)
-  assert.match(lote, /Fora: QQQ \(ETF\)/)
-  const none = runCopy(planRun(entries(['QQQ', 'SPY'])), 'optimize')
-  assert.equal(none.blocked, true)
-  assert.equal(none.text, 'Nada será executado: QQQ (ETF), SPY (ETF) — ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.')
+  const opt = (symbols, timeframe = '1d') => runCopy(planRun(entries(symbols), { timeframe, page: 'optimize' }), 'optimize')
+  assert.equal(opt(['BTC/USDT']).text, '1 ativo: otimiza e mostra o resultado ao lado.')
   assert.equal(
-    runCopy(planRun(entries(['NVDA'])), 'optimize', { timeframe: '1d' }).text,
+    opt(['BTC/USDT', 'ETH/USDT', 'QQQ']).text,
+    'Lote de 3 ativos (2 cripto, 1 ETF): otimiza cada um com esta configuração, no período fixo desta tela, e grava o melhor de cada em favoritos (nota "gerado em lote"). Antes de começar, você confirma o lote.',
+  )
+  assert.equal(
+    opt(['BTC/USDT', 'NVDA', 'SPY'], '5m').text,
+    'Lote de 3 ativos: roda 1 (BTC/USDT). Fora antes de começar: NVDA (Ação), SPY (ETF) — ação e ETF não rodam em 5m; para incluí-los, use 1d aqui ou o Combo, que tem período.',
+  )
+  const none = opt(['QQQ', 'SPY'], '30m')
+  assert.equal(none.blocked, true)
+  assert.equal(none.text, 'Nada será executado: QQQ (ETF), SPY (ETF) — ação e ETF não rodam em 30m; para incluí-los, use 1d aqui ou o Combo, que tem período.')
+  assert.equal(
+    opt(['NVDA'], '1d').text,
     '1 ação (NVDA): otimiza em 1d, de 1 a 31 jan. 2024, e mostra o resultado ao lado.',
   )
   assert.equal(runCopy(planRun(entries([])), 'optimize').text, 'Nenhum ativo selecionado: escolha ao menos 1 par cripto em USDT.')
 })
 
-test('aviso ao rodar: só ação ou ETF, só marcado e lote misto', () => {
-  const eq = blockedNotice(planRun(entries(['NVDA', 'SPY'])), 'combo')
-  assert.equal(eq.title, 'Ação e ETF rodam só com 1 ativo por enquanto')
-  assert.equal(eq.body, 'NVDA (Ação), SPY (ETF): ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois. Nada foi executado nem salvo. A seleção foi mantida.')
-  const marked = blockedNotice(planRun(entries(['WAVES/USDT'])), 'optimize')
+test('1 ação/ETF num tempo que não serve: o valor fica e a tela avisa antes de rodar', () => {
+  const plan = planRun(entries(['NVDA']), { timeframe: '5m', page: 'combo' })
+  assert.equal(plan.mode, 'blocked')
+  const block = equityTimeframeBlock(plan, '5m', 'combo')
+  assert.equal(block.copy, 'Nada será executado: NVDA (Ação) não roda em 5m. Escolha 15m, 1h, 4h ou 1d.')
+  assert.equal(block.notice.title, 'Escolha 15m, 1h, 4h ou 1d')
+  assert.equal(runCopy(plan, 'combo').text, block.copy)
+  assert.equal(equityTimeframeBlock(planRun(entries(['NVDA']), { timeframe: '1d' }), '1d', 'combo'), null)
+  assert.equal(equityTimeframeBlock(planRun(entries(['BTC/USDT', 'NVDA']), { timeframe: '5m' }), '5m', 'combo'), null)
+})
+
+test('aviso ao rodar quando nada roda: só ação ou ETF, só marcado e os dois', () => {
+  const eq = blockedNotice(planRun(entries(['NVDA', 'SPY']), { timeframe: '5m', page: 'combo' }), 'combo')
+  assert.equal(eq.title, 'Ação e ETF não rodam em 5m')
+  assert.equal(eq.body, 'NVDA (Ação), SPY (ETF): ação e ETF não rodam em 5m; para incluí-los, use 15m, 1h, 4h ou 1d. Nada foi executado. A seleção foi mantida.')
+  const marked = blockedNotice(planRun(entries(['WAVES/USDT']), { page: 'optimize' }), 'optimize')
   assert.equal(marked.title, 'Ativo marcado pela Binance não entra em análise nova')
   assert.match(marked.body, /Nada foi executado\. A seleção foi mantida\.$/)
-  const both = blockedNotice(planRun(entries(['WAVES/USDT', 'SPY', 'QQQ'])), 'optimize')
+  const both = blockedNotice(planRun(entries(['WAVES/USDT', 'SPY', 'QQQ']), { timeframe: '5m', page: 'optimize' }), 'optimize')
   assert.equal(both.title, 'Nenhum ativo da seleção pode rodar agora')
-  assert.ok(both.body.includes('ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois, e ativos marcados pela Binance não entram em análise nova'))
-
-  const lot = partialNotice(planRun(entries(['BTC/USDT', 'ETH/USDT', 'NVDA', 'SPY'])))
-  assert.equal(lot.title, 'Lote iniciado com 2 pares cripto')
-  assert.match(lot.body, /^Fora do lote: NVDA \(Ação\), SPY \(ETF\) — /)
-  assert.equal(partialNotice(planRun(entries(['BTC/USDT', 'WAVES/USDT']))).title, 'Otimizando 1 par cripto')
-  assert.equal(partialNotice(planRun(entries(['BTC/USDT', 'ETH/USDT']))), null)
+  assert.ok(both.body.includes('ação e ETF não rodam em 5m; para incluí-los, use 1d aqui ou o Combo, que tem período; ativo marcado pela Binance'))
 })
 
 test('"Todos do filtro": confirmação mostra incluídos e marcados de fora, e os novos quando já há seleção', () => {
@@ -253,8 +343,9 @@ test('linhas do seletor: classe, negociação e histórico separados, e motivo d
   assert.equal(historyText(asset('ETH/USDT', 'crypto')), 'Histórico sob demanda · coletado quando uma análise pedir')
   assert.equal(historyText(asset('NVDA', 'stock')), 'Histórico sob demanda · a coleta começa quando as análises aceitarem ações')
   // Combo e Otimização (card #1119): a coleta acontece ao rodar o backtest de 1 ativo; a Descoberta mantém o texto acima.
-  assert.equal(historySummary(asset('NVDA', 'stock'), new Date(), ON_DEMAND_TEXT_BACKTEST).text, 'Histórico sob demanda · coletado ao rodar o backtest de 1 ativo')
-  assert.equal(historySummary(asset('ETH/USDT', 'crypto'), new Date(), ON_DEMAND_TEXT_BACKTEST).text, 'Histórico sob demanda · coletado quando uma análise pedir')
+  assert.equal(historySummary(asset('NVDA', 'stock'), new Date(), ON_DEMAND_TEXT_BACKTEST).text, 'Histórico sob demanda · coletado ao rodar o backtest ou o lote')
+  // Card #1120 (decisão 6): vale para toda linha sob demanda, inclusive a cripto
+  assert.equal(historySummary(asset('ETH/USDT', 'crypto'), new Date(), ON_DEMAND_TEXT_BACKTEST).text, 'Histórico sob demanda · coletado ao rodar o backtest ou o lote')
   assert.equal(historyText(asset('SPY', 'etf')), 'Histórico sob demanda · a coleta começa quando as análises aceitarem ETFs')
   for (const symbol of ['ETH/USDT', 'NVDA', 'SPY']) assert.doesNotMatch(historyText(asset(symbol, symbol.includes('/') ? 'crypto' : 'stock')), /não coletado/)
   assert.equal(
@@ -303,9 +394,9 @@ test('recusa estruturada da API vira a mensagem em português; texto antigo segu
 })
 
 test('o texto de por que fica fora muda com a mistura', () => {
-  assert.equal(outWhy(selectionCounts(entries(['NVDA']))), 'ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois')
+  assert.equal(outWhy(selectionCounts(entries(['NVDA']))), 'ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois')
   assert.match(outWhy(selectionCounts(entries(['WAVES/USDT']))), /^ativo marcado pela Binance \(suspenso, fora de mercado/)
-  assert.ok(outWhy(selectionCounts(entries(['WAVES/USDT', 'NVDA']))).startsWith('ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois, e ativos marcados'))
+  assert.ok(outWhy(selectionCounts(entries(['WAVES/USDT', 'NVDA']))).startsWith('ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois, e ativos marcados'))
   assert.equal(outEntries(entries(['BTC/USDT', 'NVDA'])).length, 1)
 })
 
@@ -336,7 +427,8 @@ test('Otimização: sem texto livre, com o seletor, authFetch e o lote do Combo'
   const source = await readFile(new URL('../src/pages/ComboOptimizePage.tsx', import.meta.url), 'utf8')
   assert.match(source, /<AssetPicker/)
   assert.doesNotMatch(source, /type="text"/)
-  assert.match(source, /authFetch\(`\$\{API_BASE_URL\}\/combos\/backtest\/batch`/)
+  assert.match(source, /batch\.requestPreview\(/)
+  assert.match(source, /<BatchPanel/)
   assert.match(source, /authFetch\(`\$\{API_BASE_URL\}\/combos\/optimize`/)
   assert.doesNotMatch(source, /[^h]fetch\(`\$\{API_BASE_URL\}/)
   assert.match(source, /urlSymbolNotice/)

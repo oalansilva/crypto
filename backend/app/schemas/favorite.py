@@ -41,6 +41,8 @@ class FavoriteStrategyResponse(FavoriteStrategyBase):
     strategy_display_name: Optional[str] = None
     strategy_description: Optional[str] = None
     strategy_transparency: Optional[StrategyTransparency] = None
+    # Card #1120: identidade do ativo (símbolo, classe, moeda); ação e ETF entram na lista única.
+    asset: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True

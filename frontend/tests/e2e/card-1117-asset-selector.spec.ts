@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mockAssetCatalog, type CatalogMock } from './helpers/assetCatalogMock'
+import { LOTE_ID, installLoteApi, previewItem, previewOf, simItem } from './helpers/lote1120'
 
 /**
  * Card #1117 (4.2): o seletor de ativos nas três telas reais, com a API simulada.
@@ -78,7 +79,7 @@ async function discoveryMocks(page: Page) {
         reason:
           a!.state !== 'tradable'
             ? `${a!.state_label} na Binance; não entra em análise nova`
-            : 'ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois',
+            : 'ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois',
         combinations: per,
       }))
     const validSymbols = body.symbols.filter((s) => {
@@ -95,7 +96,7 @@ async function discoveryMocks(page: Page) {
         excluded_count: (body.symbols.length - validSymbols.length) * per,
         valid_total: valid,
         limits: { max_total: 1000 },
-        errors: valid === 0 ? { symbols: 'Nenhuma combinação válida: ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.' } : {},
+        errors: valid === 0 ? { symbols: 'Nenhuma combinação válida: ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois.' } : {},
         expires_at: '2026-10-21T00:00:00Z',
         snapshot_token: 'tok',
         snapshot_hash: 'hash1117',
@@ -276,7 +277,7 @@ test.describe('seletor de ativos na Descoberta', () => {
     }
     await expect(page.getByTestId('preflight-class-out')).toBeVisible()
     await expect(page.getByTestId('preflight-class-out')).toContainText('Fora desta varredura: 2 ativos')
-    await expect(page.getByTestId('preflight-class-out')).toContainText('NVDA (Ação) — ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.')
+    await expect(page.getByTestId('preflight-class-out')).toContainText('NVDA (Ação) — ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois.')
     await expect(page.getByTestId('preflight-class-out')).toContainText('Eles continuam na seleção do rascunho; nada é perdido.')
     await expect(page.getByTestId('preflight-state')).toContainText('Pronto para iniciar · ações e ETFs fora')
     await expect(page.getByTestId('start-sweep')).toBeEnabled()
@@ -289,7 +290,7 @@ test.describe('seletor de ativos na Descoberta', () => {
     await pickTemplate(page)
     await search(page, 'nvda')
     await row(page, 'NVDA').locator('input').check()
-    await expect(page.getByTestId('preflight-impediments')).toContainText('Nenhuma combinação válida: ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois')
+    await expect(page.getByTestId('preflight-impediments')).toContainText('Nenhuma combinação válida: ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois')
     await expect(page.getByTestId('preflight-impediments')).toContainText('Inclua ao menos 1 par cripto negociável em USDT.')
     await expect(page.getByTestId('start-sweep')).toBeDisabled()
     await page.getByTestId('asset-clear').click()
@@ -512,42 +513,56 @@ test.describe('seletor de ativos no Combo', () => {
     await expect(chip(page, 'BTC/USDT')).toBeVisible()
   })
 
-  test('só ações e ETFs (mais de 1): a cópia sob Otimizar avisa antes do clique e Otimizar não executa nem salva', async ({ page }) => {
-    // Card #1119 (decisão 2): 1 ação/ETF sozinha roda o backtest de 1 ativo; com mais de 1 o lote segue recusado.
+  test('só ações e ETFs (mais de 1) em tempo que não serve: a cópia sob Otimizar avisa antes do clique e Otimizar não executa nem salva', async ({ page }) => {
+    // Card #1120 (decisão 6): com mais de 1 ativo é lote; só ação/ETF em 5m não roda nada, com o motivo.
     const { posts } = await comboMocks(page)
     await page.goto('/combo/configure?template=ema_rsi')
     await search(page, 'nvda')
     await row(page, 'NVDA').locator('input').check()
     await search(page, 'spy')
     await row(page, 'SPY').locator('input').check()
+    await page.locator('select').filter({ has: page.locator('option[value="1m"]') }).first().selectOption('5m')
     await row(page, 'SPY').scrollIntoViewIfNeeded()
     await chip(page, 'BTC/USDT').getByRole('button').click()
     await expect(page.getByTestId('combo-run-copy')).toContainText(
-      'Nada será executado nem salvo: NVDA (Ação), SPY (ETF) — ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois.',
+      'Nada será executado: NVDA (Ação), SPY (ETF) — ação e ETF não rodam em 5m; para incluí-los, use 15m, 1h, 4h ou 1d.',
     )
     await expect(page.getByTestId('combo-run-copy')).not.toContainText('favoritos')
     await page.getByTestId('combo-run').click()
     const warning = page.getByTestId('run-warning')
-    await expect(warning).toContainText('Ação e ETF rodam só com 1 ativo por enquanto')
-    await expect(warning).toContainText('Nada foi executado nem salvo. A seleção foi mantida.')
+    await expect(warning).toContainText('Ação e ETF não rodam em 5m')
+    await expect(warning).toContainText('Nada foi executado. A seleção foi mantida.')
     expect(posts).toEqual([])
     await expect(chip(page, 'NVDA')).toBeVisible()
   })
 
-  test('lote misto roda só os pares cripto e o aviso lista o que ficou fora', async ({ page }) => {
-    const { posts } = await comboMocks(page)
+  test('lote misto: ação e ETF entram no lote junto com a cripto e o Confirmar lista tudo', async ({ page }) => {
+    await comboMocks(page)
+    const sim = await installLoteApi(page, {
+      previewResponse: previewOf([
+        previewItem('BTC/USDT', 'run'),
+        previewItem('ETH/USDT', 'run'),
+        previewItem('NVDA', 'run'),
+        previewItem('SPY', 'run'),
+      ]),
+      startItems: () => [
+        simItem(0, 'BTC/USDT', 'optimizing'),
+        simItem(1, 'ETH/USDT', 'queued'),
+        simItem(2, 'NVDA', 'queued'),
+        simItem(3, 'SPY', 'queued'),
+      ],
+    })
     await page.goto('/combo/configure?template=ema_rsi')
     for (const symbol of ['ETH/USDT', 'NVDA', 'SPY']) {
       await search(page, symbol)
       await row(page, symbol).locator('input').check()
     }
-    await expect(page.getByTestId('combo-run-copy')).toContainText('2 pares cripto: batch. Cada resultado é salvo em favoritos. Fora: NVDA (Ação), SPY (ETF)')
+    await expect(page.getByTestId('combo-run-copy')).toContainText('Lote de 4 ativos (2 cripto, 1 ação, 1 ETF): otimiza cada um com esta configuração')
     await page.getByTestId('combo-run').click()
-    await expect(page.getByTestId('run-warning')).toContainText('Lote iniciado com 2 pares cripto')
-    await expect(page.getByTestId('run-warning')).toContainText('Fora do lote: NVDA (Ação), SPY (ETF)')
-    await expect(page.getByTestId('batch-progress')).toContainText('0 de 2 ativos')
-    expect(posts).toHaveLength(1)
-    expect(posts[0].body.symbols).toEqual(['BTC/USDT', 'ETH/USDT'])
+    await expect(page.getByTestId('batch-confirm-panel')).toContainText('4 — 2 cripto (USDT), 1 ação (USD), 1 ETF (USD): BTC/USDT, ETH/USDT, NVDA e mais 1')
+    await page.getByTestId('batch-confirm').click()
+    await expect(page.getByTestId('batch-panel')).toContainText('Lote 7f3c2a91')
+    expect(sim.calls.find((c) => c.path === 'batch')!.body.symbols).toEqual(['BTC/USDT', 'ETH/USDT', 'NVDA', 'SPY'])
   })
 
   test('ativo marcado não entra pela pesquisa nem pelo Top 10 e Otimizar roda só o BTC', async ({ page }) => {
@@ -588,7 +603,7 @@ test.describe('seletor de ativos na Otimização', () => {
     await search(page, 'eth')
     await row(page, 'ETH/USDT').locator('input').check()
     await expect(page.getByTestId('asset-count')).toContainText('2 selecionados · 2 cripto')
-    await expect(page.getByTestId('opt-run-copy')).toContainText('2 ativos: lote, uma otimização por ativo')
+    await expect(page.getByTestId('opt-run-copy')).toContainText('Lote de 2 ativos (2 cripto): otimiza cada um com esta configuração, no período fixo desta tela')
   })
 
   test('1 par roda como hoje: POST /combos/optimize e resultado no painel', async ({ page }) => {
@@ -602,35 +617,43 @@ test.describe('seletor de ativos na Otimização', () => {
     expect(posts[0].body.symbol).toBe('BTC/USDT')
   })
 
-  test('BTC+ETH+QQQ roda o lote com 2 pares, QQQ fora e progresso 0 de 2 ativos', async ({ page }) => {
-    const { posts } = await optimizeMocks(page)
-    await page.goto('/combo/optimize?template=ema_rsi')
+  test('BTC+ETH+QQQ é um lote de 3 ativos: Confirmar na coluna larga, depois o painel com Pausar e Encerrar', async ({ page }) => {
+    await optimizeMocks(page)
+    const sim = await installLoteApi(page, {
+      previewResponse: previewOf([previewItem('BTC/USDT', 'run'), previewItem('ETH/USDT', 'run'), previewItem('QQQ', 'run')], { page: 'optimize' }),
+      startItems: () => [simItem(0, 'BTC/USDT', 'optimizing'), simItem(1, 'ETH/USDT', 'queued'), simItem(2, 'QQQ', 'queued')],
+    })
+    await page.goto('/combo/optimize?template=ema_rsi&timeframe=1d')
     for (const symbol of ['ETH/USDT', 'QQQ']) {
       await search(page, symbol)
       await row(page, symbol).locator('input').check()
     }
+    await expect(page.getByTestId('opt-run-copy')).toContainText('Lote de 3 ativos (2 cripto, 1 ETF)')
     await page.getByTestId('run-optimization').click()
-    await expect(page.getByTestId('run-warning')).toContainText('Lote iniciado com 2 pares cripto')
-    await expect(page.getByTestId('run-warning')).toContainText('Fora do lote: QQQ (ETF)')
-    await expect(page.getByTestId('batch-progress')).toContainText('0 de 2 ativos')
+    await expect(page.getByTestId('batch-confirm-panel')).toContainText('Confirmar lote de 3 ativos')
+    await page.getByTestId('batch-confirm').click()
+    await expect(page.getByTestId('batch-status')).toHaveText('Rodando')
+    await expect(page.getByTestId('batch-panel').locator('.lote-bmeta')).toContainText('0 de 3 ativos')
     await expect(page.getByRole('button', { name: 'Pausar' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Encerrar' })).toBeVisible()
-    expect(posts.map((p) => p.url)).toEqual(['batch'])
-    expect(posts[0].body.symbols).toEqual(['BTC/USDT', 'ETH/USDT'])
-    expect(posts[0].body.template_name).toBe('ema_rsi')
+    const body = sim.calls.find((c) => c.path === 'batch')!.body
+    expect(body.symbols).toEqual(['BTC/USDT', 'ETH/USDT', 'QQQ'])
+    expect(body.template_name).toBe('ema_rsi')
+    expect(body.page).toBe('optimize')
+    expect(LOTE_ID).toBeTruthy()
   })
 
-  test('QQQ e SPY (mais de 1 ação/ETF): nada roda e a tela explica', async ({ page }) => {
-    // Card #1119 (decisão 2): 1 ETF sozinho roda; com mais de 1 o lote segue recusado, com o texto novo.
+  test('QQQ e SPY (mais de 1 ação/ETF) em tempo que não serve: nada roda e a tela explica', async ({ page }) => {
+    // Card #1120: 30m não serve a ação/ETF; o conselho na Otimização é "1d aqui ou o Combo".
     const { posts } = await optimizeMocks(page)
-    await page.goto('/combo/optimize?template=ema_rsi&symbol=QQQ')
+    await page.goto('/combo/optimize?template=ema_rsi&symbol=QQQ&timeframe=30m')
     await expect(chip(page, 'QQQ')).toBeVisible()
     await search(page, 'spy')
     await row(page, 'SPY').locator('input').check()
     await expect(page.getByTestId('opt-run-copy')).toContainText('Nada será executado: QQQ (ETF), SPY (ETF)')
     await page.getByTestId('run-optimization').click()
-    await expect(page.getByTestId('run-warning')).toContainText('Ação e ETF rodam só com 1 ativo por enquanto')
-    await expect(page.getByTestId('run-warning')).toContainText('ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois')
+    await expect(page.getByTestId('run-warning')).toContainText('Ação e ETF não rodam em 30m')
+    await expect(page.getByTestId('run-warning')).toContainText('ação e ETF não rodam em 30m; para incluí-los, use 1d aqui ou o Combo, que tem período')
     await expect(page.getByTestId('run-warning')).toContainText('Nada foi executado. A seleção foi mantida.')
     expect(posts).toEqual([])
   })
@@ -666,6 +689,6 @@ test.describe('seletor de ativos na Otimização', () => {
     await page.getByTestId('asset-select-all').click()
     await page.getByTestId('asset-confirm-ok').click()
     await expect(page.getByTestId('asset-count')).toContainText('12 selecionados · 12 cripto')
-    await expect(page.getByTestId('opt-run-copy')).toContainText('12 ativos: lote')
+    await expect(page.getByTestId('opt-run-copy')).toContainText('Lote de 12 ativos (12 cripto)')
   })
 })

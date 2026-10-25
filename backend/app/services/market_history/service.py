@@ -79,6 +79,24 @@ class EnsureResult:
     error: str | None = None
 
 
+# Card #1120 (decisão 7): ``on_progress(series, página, total_ou_None)`` a cada página coletada.
+ProgressCallback = Callable[["SeriesRef", int, "int | None"], None]
+EQUITY_BARS_PER_CALENDAR_DAY = {"1d": 252 / 365, "5m": 78 * 252 / 365}
+
+
+def report_progress(
+    on_progress: "ProgressCallback | None", series: "SeriesRef", page: int, total: "int | None"
+) -> None:
+    """Chama o retorno de progresso sem deixar um erro dele derrubar a coleta."""
+
+    if on_progress is None:
+        return
+    try:
+        on_progress(series, int(page), None if total is None else max(int(total), int(page)))
+    except Exception:  # pragma: no cover - o progresso nunca derruba a coleta
+        logger.exception("Retorno de progresso da coleta falhou")
+
+
 @dataclass
 class HistoryResult:
     series: SeriesRef
@@ -180,6 +198,18 @@ class CcxtOhlcvClient:
         self, symbol: str, timeframe: str, since_ms: int, limit: int = 1000
     ) -> list[list[float]]:
         return self._ex().fetch_ohlcv(symbol, timeframe, since=since_ms, limit=limit)
+
+
+def _equity_pages_total(
+    timeframe: str, page: int, cursor_ms: int | None, start_ms: int | None
+) -> int | None:
+    """Estimativa das páginas do preenchimento para trás (None: sem início pedido)."""
+
+    per_day = EQUITY_BARS_PER_CALENDAR_DAY.get(timeframe)
+    if per_day is None or start_ms is None or cursor_ms is None or cursor_ms <= start_ms:
+        return None
+    days = (cursor_ms - start_ms) / 86_400_000
+    return page + max(1, -(-int(days * per_day) // 1000))
 
 
 class HistoryService:
@@ -343,12 +373,21 @@ class HistoryService:
         allow_large_backfill: bool = False,
         full_history_if_empty: bool = True,
         force_update: bool = False,
+        on_progress: "ProgressCallback | None" = None,
     ) -> EnsureResult:
         start_ts, end_ts = to_utc(start), to_utc(end)
         if series.is_equity:
-            return self._ensure_equity(series, start_ts, end_ts, budget_seconds, force_update)
+            return self._ensure_equity(
+                series, start_ts, end_ts, budget_seconds, force_update, on_progress
+            )
         return self._ensure_crypto(
-            series, start_ts, end_ts, allow_large_backfill, full_history_if_empty, force_update
+            series,
+            start_ts,
+            end_ts,
+            allow_large_backfill,
+            full_history_if_empty,
+            force_update,
+            on_progress,
         )
 
     # ---- ação e ETF ------------------------------------------------------------
@@ -384,6 +423,7 @@ class HistoryService:
         end: pd.Timestamp | None,
         budget_seconds: float | None,
         force_update: bool,
+        on_progress: "ProgressCallback | None" = None,
     ) -> EnsureResult:
         phys = series if not series.is_derived else series
         window_start = self._equity_window_start(series, start)
@@ -409,8 +449,8 @@ class HistoryService:
                 )
                 store.record_request(conn, series, window_start, end)
             try:
-                self._equity_update_tail(series, result, deadline, force_update, fetch)
-                self._equity_backfill(series, window_start, result, deadline)
+                self._equity_update_tail(series, result, deadline, force_update, fetch, on_progress)
+                self._equity_backfill(series, window_start, result, deadline, on_progress)
                 state = "paused" if result.status == "paused" else "idle"
                 with self.engine.begin() as conn:
                     store.recompute_coverage(conn, store.refresh_series(conn, series))
@@ -468,6 +508,7 @@ class HistoryService:
         deadline: float | None,
         force_update: bool,
         fetch: dict[str, Any],
+        on_progress: "ProgressCallback | None" = None,
     ) -> None:
         """Página mais recente primeiro; anda para trás até sobrepor o que existe."""
 
@@ -487,6 +528,7 @@ class HistoryService:
         now_ms = int(now.timestamp() * 1000)
         page = provider.fetch_page(series.symbol, tf, end_time=None, adjustment=series.adjustment)
         result.pages += page.requests
+        report_progress(on_progress, series, result.pages, None)
         if not page.bars:
             # Sem nenhum candle: a Binance não tem este ativo/timeframe.
             with self.engine.begin() as conn:
@@ -532,6 +574,7 @@ class HistoryService:
                 series.symbol, tf, end_time=page.min_t - 1, adjustment=series.adjustment
             )
             result.pages += page.requests
+            report_progress(on_progress, series, result.pages, None)
             if not page.bars:
                 break
             candles = equity_candles(page.bars, tf, now_ms)
@@ -544,6 +587,7 @@ class HistoryService:
         window_start: pd.Timestamp | None,
         result: EnsureResult,
         deadline: float | None,
+        on_progress: "ProgressCallback | None" = None,
     ) -> None:
         if result.status == "paused":
             return
@@ -581,6 +625,12 @@ class HistoryService:
                 series.symbol, tf, end_time=cursor, adjustment=series.adjustment
             )
             result.pages += page.requests
+            report_progress(
+                on_progress,
+                series,
+                result.pages,
+                _equity_pages_total(tf, result.pages, cursor, start_ms),
+            )
             if not page.bars:
                 if page.confirmed_empty:
                     with self.engine.begin() as conn:
@@ -713,12 +763,21 @@ class HistoryService:
     # ---- cripto ----------------------------------------------------------------
 
     def _download_crypto(
-        self, symbol: str, timeframe: str, since_ms: int, until_ms: int
+        self,
+        symbol: str,
+        timeframe: str,
+        since_ms: int,
+        until_ms: int,
+        on_progress: "ProgressCallback | None" = None,
+        series: "SeriesRef | None" = None,
+        pages_before: int = 0,
     ) -> pd.DataFrame:
         client = self.ccxt_client
         rows: list[list[float]] = []
         current = since_ms
         guard = 0
+        step_ms = int(pd.Timedelta(timeframe_delta(timeframe)).total_seconds() * 1000)
+        pages_total = max(1, -(-(until_ms - since_ms) // (step_ms * 1000))) if step_ms > 0 else None
         while current < until_ms:
             guard += 1
             if guard > 5000:
@@ -737,6 +796,8 @@ class HistoryService:
             if not batch:
                 break
             rows.extend(batch)
+            if series is not None:
+                report_progress(on_progress, series, pages_before + guard, pages_total)
             last_ts = int(batch[-1][0])
             if last_ts + 1 <= current:
                 break
@@ -760,6 +821,7 @@ class HistoryService:
         allow_large_backfill: bool,
         full_history_if_empty: bool,
         force_update: bool,
+        on_progress: "ProgressCallback | None" = None,
     ) -> EnsureResult:
         tf = series.physical_timeframe
         step = pd.Timedelta(timeframe_delta(tf))
@@ -800,7 +862,13 @@ class HistoryService:
                     else:
                         since = now - pd.Timedelta(days=CRYPTO_INTRADAY_LIMIT_DAYS)
                     fresh = self._download_crypto(
-                        series.symbol, tf, int(since.timestamp() * 1000), until_ms
+                        series.symbol,
+                        tf,
+                        int(since.timestamp() * 1000),
+                        until_ms,
+                        on_progress,
+                        series,
+                        result.pages,
                     )
                     result.pages += 1
                     self._write_crypto(series, fresh, None, result)
@@ -824,7 +892,13 @@ class HistoryService:
                         if first_stored is not None:
                             since = max(since, pd.Timestamp(first_stored).tz_convert("UTC"))
                         fresh = self._download_crypto(
-                            series.symbol, tf, int(since.timestamp() * 1000), until_ms
+                            series.symbol,
+                            tf,
+                            int(since.timestamp() * 1000),
+                            until_ms,
+                            on_progress,
+                            series,
+                            result.pages,
                         )
                         result.pages += 1
                         self._write_crypto(series, fresh, last_ts, result)
@@ -846,6 +920,9 @@ class HistoryService:
                             tf,
                             int(start.timestamp() * 1000),
                             int(pd.Timestamp(first_stored).timestamp() * 1000),
+                            on_progress,
+                            series,
+                            result.pages,
                         )
                         result.pages += 1
                         older = (

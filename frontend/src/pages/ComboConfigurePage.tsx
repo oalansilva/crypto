@@ -1,23 +1,33 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle } from 'lucide-react'
 import { API_BASE_URL, apiUrl } from '../lib/apiBase'
 import { BackendLogViewer } from '../components/BackendLogViewer'
 import { AssetPicker } from '../components/AssetPicker'
-import { BatchProgressPanel } from '../components/BatchProgressPanel'
+import {
+    BatchConfirm,
+    BatchConfirmError,
+    BatchConfirmLoading,
+    BatchPanel,
+    BatchPausedBlock,
+    type BatchPanelHandle,
+} from '../components/batch/BatchLote'
 import { useBatchJob } from '../hooks/useBatchJob'
 import { authFetch } from '@/lib/authFetch'
 import {
+    CLASS_NOTE,
     ON_DEMAND_TEXT_BACKTEST,
     TOP10_SYMBOLS,
     blockedNotice,
     collectingCopy,
+    cryptoOnlyTimeframes,
     equityTimeframeBlock,
     historyUnavailableNotice,
-    partialNotice,
+    marketDataText,
     planRun,
     refusalMessage,
     runCopy,
+    timeframeDisabled,
     type RunNotice,
 } from '../lib/assetSelection'
 import '../components/results/DataExecution.css'
@@ -33,6 +43,7 @@ import {
 
 interface TemplateMetadata {
     name: string
+    display_name?: string
     description: string
     indicators: Array<{
         type: string
@@ -72,27 +83,25 @@ export function ComboConfigurePage() {
     const [selectedSymbols, setSelectedSymbols] = useState<string[]>([defaultSymbol])
     const [runNotice, setRunNotice] = useState<RunNotice | null>(null)
 
-    // Batch backtest (progresso, Pausar e Encerrar compartilhados com a Otimização)
-    const {
-        batchRunning, setBatchRunning,
-        setBatchJobId,
-        batchPauseCancelRequested, setBatchPauseCancelRequested,
-        batchProgress, setBatchProgress,
-        batchTotal, setBatchTotal,
-        clientElapsedSec, setClientElapsedSec,
-        batchStartTimeRef,
-        handlePauseBatch, handleCancelBatch,
-    } = useBatchJob()
+    // Lote multiclasse (card #1120): plano, progresso por ativo, Pausar, Retomar e Encerrar (compartilhados com a Otimização)
+    const batch = useBatchJob()
+    const runButton = useRef<HTMLButtonElement>(null)
+    const panelRef = useRef<BatchPanelHandle>(null)
 
-    // O que roda e o que fica fora (ação, ETF e ativo marcado pela Binance).
+    // O que roda e o que fica fora, por classe e tempo (ação, ETF e ativo marcado pela Binance).
     const { entries: selectionEntries, loading: selectionLoading } = useSelectionView(selectedSymbols)
-    const plan = useMemo(() => planRun(selectionEntries), [selectionEntries])
+    const plan = useMemo(
+        () => planRun(selectionEntries, { timeframe, page: 'combo' }),
+        [selectionEntries, timeframe],
+    )
     // Ação/ETF sozinha (card #1119): roda o backtest de 1 ativo. 1m e 5m ficam indisponíveis e, se o
     // tempo já era 5m (seleção mista antes), a tela avisa antes de rodar sem trocar o valor.
     const equityRun = plan.equityRun
     const tfBlock = equityTimeframeBlock(plan, timeframe, 'combo')
-    const copy = tfBlock ? { text: tfBlock.copy, blocked: true } : runCopy(plan, 'combo', { timeframe })
+    const copy = runCopy(plan, 'combo')
     const [collecting, setCollecting] = useState<string | null>(null)
+    const cryptoOnlyTfs = cryptoOnlyTimeframes(plan)
+    const batchRunning = batch.active && batch.job?.status !== 'paused'
 
     useEffect(() => {
         if (templateName) {
@@ -174,9 +183,6 @@ export function ComboConfigurePage() {
         }
     }
 
-    // Só os pares cripto negociáveis rodam; ação, ETF e ativo marcado ficam de fora (#1117).
-    const getBatchSymbols = (): string[] => plan.runnable
-
     // Aviso antes de rodar quando nada roda; devolve o aviso ou null (a seleção é mantida).
     const getRunBlock = (): RunNotice | null => {
         if (tfBlock) return tfBlock.notice
@@ -186,7 +192,14 @@ export function ComboConfigurePage() {
         if (plan.mode === 'blocked') return blockedNotice(plan, 'combo')
         return null
     }
-    const getPartialNotice = (): RunNotice | null => partialNotice(plan)
+
+    const periodText = (): string => {
+        if (period === 'custom') return `${customStartDate || '—'} a ${customEndDate || '—'}`
+        return (PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? 'todo o histórico').toLowerCase()
+    }
+    const configText = (): string =>
+        `${metadata?.display_name || metadata?.name || templateName} · ${timeframe} · ${periodText()} · ` +
+        `${direction === 'short' ? 'Short' : 'Long'} · ${deepBacktest ? 'Deep Backtest (15m)' : 'candle do tempo gráfico'}`
 
     function getPeriodDates(): { start_date: string | null; end_date: string | null } {
         return resolvePeriodDates(period, customStartDate, customEndDate)
@@ -205,19 +218,19 @@ export function ComboConfigurePage() {
             setRunNotice(blocked)
             return
         }
-        const symbolsToRun = getBatchSymbols()
+        const symbolsToRun = plan.runnable
         if (symbolsToRun.length === 0) {
             alert('Nenhum símbolo disponível.')
             return
         }
-        setRunNotice(getPartialNotice())
 
         const custom_ranges: Record<string, { min: number; max: number; step: number }> = {}
         params.forEach(p => {
             custom_ranges[p.name] = { min: p.min, max: p.max, step: p.step ?? 1 }
         })
         const { start_date, end_date } = getPeriodDates()
-        if (symbolsToRun.length === 1) {
+        if (plan.mode === 'single') {
+            batch.dismissFinished()
             setRunning(true)
             const isEquityRun = !!equityRun
             if (isEquityRun) setCollecting(collectingCopy(symbolsToRun[0], 'combo', timeframe, deepBacktest))
@@ -357,41 +370,30 @@ export function ComboConfigurePage() {
             return
         }
 
-        setBatchRunning(true)
-        setBatchJobId(null)
-        setBatchProgress(null)
-        setBatchTotal(symbolsToRun.length)
-        setBatchPauseCancelRequested(false)
-        setClientElapsedSec(0)
-        batchStartTimeRef.current = Date.now()
-        try {
-            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_name: templateName,
-                    symbols: symbolsToRun,
-                    timeframe,
-                    start_date,
-                    end_date,
-                    period_type: period,
-                    deep_backtest: deepBacktest,
-                    direction,
-                    custom_ranges,
-                    split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
-                })
-            })
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}))
-                throw new Error(refusalMessage(err.detail, 'Falha ao iniciar batch'))
-            }
-            const data = await res.json()
-            setBatchJobId(data.job_id)
-        } catch (e) {
-            console.error('Batch start error:', e)
-            alert(e instanceof Error ? e.message : 'Falha ao iniciar batch')
-            setBatchRunning(false)
-        }
+        // Mais de 1 ativo é sempre lote (decisão 2): o servidor monta o plano e o Confirmar abre no fluxo.
+        await batch.requestPreview({
+            template_name: templateName,
+            symbols: plan.selected,
+            timeframe,
+            start_date,
+            end_date,
+            period_type: period,
+            deep_backtest: deepBacktest,
+            direction,
+            custom_ranges,
+            split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
+            page: 'combo',
+        })
+    }
+
+    const confirmBatch = async (body: Record<string, unknown>) => {
+        const started = await batch.confirmAndRun(body)
+        if (started) requestAnimationFrame(() => panelRef.current?.focusTitle())
+    }
+
+    const backFromConfirm = () => {
+        batch.closeConfirm()
+        runButton.current?.focus()
     }
 
     // Top 10: soma só os negociáveis da lista atual do catálogo (marcados e fora do catálogo ficam de fora).
@@ -487,9 +489,7 @@ export function ComboConfigurePage() {
                                     className="glass px-4 py-3 rounded-[16px] border border-zinc-200 text-sm text-zinc-600 r19-md"
                                     data-testid="combo-market-data"
                                 >
-                                    {equityRun
-                                        ? 'Binance Ações · pregão regular de Nova York · ajustado por split'
-                                        : 'CCXT (crypto exchange data)'}
+                                    {marketDataText(plan)}
                                 </div>
                             </div>
                             <div className="md:col-span-2">
@@ -507,7 +507,7 @@ export function ComboConfigurePage() {
                                     clearTo={[defaultSymbol]}
                                     clearLabel="Limpar (1 ativo)"
                                     onDemandTexts={ON_DEMAND_TEXT_BACKTEST}
-                                    classNote="Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização) e abrem o resultado. Com mais de 1 ativo, ficam fora com aviso; o lote vem depois."
+                                    classNote={CLASS_NOTE.combo}
                                     extraActions={(
                                         <button
                                             type="button"
@@ -530,12 +530,16 @@ export function ComboConfigurePage() {
                                     onChange={(e) => setTimeframe(e.target.value)}
                                     className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
                                 >
-                                    <option value="1m" className="bg-zinc-900 text-zinc-900" disabled={!!equityRun}>1 minute{equityRun ? ' (só cripto)' : ''}</option>
-                                    <option value="5m" className="bg-zinc-900 text-zinc-900" disabled={!!equityRun}>5 minutes{equityRun ? ' (só cripto)' : ''}</option>
-                                    <option value="15m" className="bg-zinc-900 text-zinc-900">15 minutes</option>
-                                    <option value="1h" className="bg-zinc-900 text-zinc-900">1 hour</option>
-                                    <option value="4h" className="bg-zinc-900 text-zinc-900">4 hours</option>
-                                    <option value="1d" className="bg-zinc-900 text-zinc-900">1 day</option>
+                                    {([['1m', '1 minute'], ['5m', '5 minutes'], ['15m', '15 minutes'], ['1h', '1 hour'], ['4h', '4 hours'], ['1d', '1 day']] as const).map(([value, label]) => (
+                                        <option
+                                            key={value}
+                                            value={value}
+                                            className="bg-zinc-900 text-zinc-900"
+                                            disabled={timeframeDisabled(plan, value)}
+                                        >
+                                            {label}{cryptoOnlyTfs.includes(value) ? ' (só cripto)' : ''}
+                                        </option>
+                                    ))}
                                 </select>
                                 {equityRun ? (
                                     <p className="r19-hint" data-testid="combo-timeframe-hint">
@@ -749,16 +753,26 @@ export function ComboConfigurePage() {
                             </span>
                         </h2>
                         <p
-                            className={`text-sm mb-4 ${copy.blocked ? 'text-amber-300' : 'text-zinc-400'}`}
+                            className="lote-runcopy"
                             data-testid="combo-run-copy"
                         >
-                            {copy.text}
+                            {copy.parts ? (
+                                <>
+                                    <b>{copy.parts.lead}</b> {copy.parts.runs}{' '}
+                                    <span className="lote-out">{copy.parts.out}</span>
+                                </>
+                            ) : copy.blocked ? (
+                                <span className="lote-out">{copy.text}</span>
+                            ) : (
+                                copy.text
+                            )}
                         </p>
 
                         <div className="flex flex-wrap items-center gap-4">
                             <button
+                                ref={runButton}
                                 onClick={handleRun}
-                                disabled={batchRunning || running || selectionLoading}
+                                disabled={batchRunning || running || selectionLoading || batch.starting}
                                 data-testid="combo-run"
                                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-zinc-900 font-bold py-4 px-10 rounded-[16px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
                             >
@@ -802,16 +816,47 @@ export function ComboConfigurePage() {
                             </div>
                         ) : null}
 
-                        <BatchProgressPanel
-                            batchRunning={batchRunning}
-                            batchProgress={batchProgress}
-                            batchTotal={batchTotal}
-                            clientElapsedSec={clientElapsedSec}
-                            pauseCancelRequested={batchPauseCancelRequested}
-                            onPause={handlePauseBatch}
-                            onCancel={handleCancelBatch}
-                            showDiscoveryLink
-                        />
+                        {batch.confirm.phase === 'loading' ? <BatchConfirmLoading /> : null}
+                        {batch.confirm.phase === 'ready' ? (
+                            <BatchConfirm
+                                preview={batch.confirm.preview}
+                                config={{ text: configText() }}
+                                busy={batch.starting}
+                                onConfirm={() => void confirmBatch((batch.confirm as { body: Record<string, unknown> }).body)}
+                                onBack={backFromConfirm}
+                            />
+                        ) : null}
+                        {batch.confirm.phase === 'error' ? (
+                            <BatchConfirmError message={batch.confirm.message} onBack={backFromConfirm} />
+                        ) : null}
+                        {batch.confirm.phase === 'paused' ? (
+                            <BatchPausedBlock
+                                job={batch.job}
+                                jobId={batch.confirm.jobId}
+                                onResume={() => {
+                                    batch.closeConfirm()
+                                    void batch.resumeById((batch.confirm as { jobId: string }).jobId)
+                                }}
+                                onCancel={() => {
+                                    batch.closeConfirm()
+                                    void batch.cancelById((batch.confirm as { jobId: string }).jobId)
+                                    requestAnimationFrame(() => panelRef.current?.focusTitle())
+                                }}
+                                onBack={backFromConfirm}
+                            />
+                        ) : null}
+                        {batch.job ? (
+                            <BatchPanel
+                                ref={panelRef}
+                                job={batch.job}
+                                pending={batch.pending}
+                                actionError={batch.actionError}
+                                onPause={() => void batch.pause()}
+                                onResume={() => void batch.resume()}
+                                onCancel={() => void batch.cancel()}
+                                showDiscoveryLink
+                            />
+                        ) : null}
                     </div>
                 </div>
             </main>

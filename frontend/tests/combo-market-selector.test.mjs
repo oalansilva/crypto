@@ -14,5 +14,9 @@ test('Combo Configure is crypto-only in MVP', async () => {
   assert.doesNotMatch(source, /US Stocks \(NASDAQ-100\)/)
   assert.doesNotMatch(source, /\/markets\/us\/nasdaq100/)
   assert.doesNotMatch(source, /data_source:\s*'stooq'/)
-  assert.match(source, /CCXT \(crypto exchange data\)/)
+  // Campo Market Data por ativo (card #1120): a fonte de cripto segue CCXT; ação e ETF usam a Binance Ações.
+  assert.match(source, /marketDataText\(plan\)/)
+  const selection = await readFile(path.resolve(__dirname, '../src/lib/assetSelection.ts'), 'utf8')
+  assert.match(selection, /'CCXT \(crypto exchange data\)'/)
+  assert.match(selection, /Por ativo: CCXT \(cripto\) · Binance Ações \(ação e ETF\)/)
 })

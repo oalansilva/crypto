@@ -25,7 +25,7 @@ from market_history_support import FakeEquityProvider, history_schema
 from test_card_1118_api_and_catalog import _seed_catalog, public_db  # noqa: F401
 
 NOW = pd.Timestamp("2026-10-23 01:30", tz="UTC")
-NEW_REASON = "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
+NEW_REASON = "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois"
 NEW_MESSAGE = NEW_REASON[0].upper() + NEW_REASON[1:] + "."
 
 
@@ -275,14 +275,16 @@ def test_collection_that_stops_with_part_stored_runs_on_the_covered_stretch(env)
     assert note["left_out"][0]["from"] == "2023-12-04"
 
 
-def test_catalog_selection_and_refused_analyses_never_collect(env):
+def test_catalog_selection_and_refused_analyses_never_collect(env, monkeypatch):
     client, provider, *_ = env
+    monkeypatch.setattr(combo_routes, "enqueue_batch_backtest", lambda *a, **k: "task-1")
     assert client.get("/api/favorites/exists", params={}).status_code in (200, 422)
+    # Card #1120: o lote aceita ação e ETF, mas só o worker coleta; receber o pedido não coleta.
     batch = client.post(
         "/api/combos/backtest/batch",
         json={"template_name": "ema_rsi", "symbols": ["NVDA", "SPY"], "timeframe": "1d"},
     )
-    assert batch.status_code == 422
+    assert batch.status_code == 200, batch.text
     assert provider.requests == []
 
 
@@ -292,18 +294,23 @@ def test_catalog_selection_and_refused_analyses_never_collect(env):
 @pytest.mark.parametrize(
     "symbols", [["NVDA", "SPY"], ["BTC/USDT", "NVDA"], ["NVDA", "NVDA", "AAPL"]]
 )
-def test_batch_keeps_refusing_equity_with_the_new_text(env, symbols):
+def test_batch_accepts_equity_and_the_text_now_belongs_to_discovery(env, symbols, monkeypatch):
+    """Card #1120: o lote aceita ação e ETF; só a Descoberta segue recusando, com o porquê novo."""
+
     client, provider, *_ = env
+    monkeypatch.setattr(combo_routes, "enqueue_batch_backtest", lambda *a, **k: "task-1")
     response = client.post(
         "/api/combos/backtest/batch",
         json={"template_name": "ema_rsi", "symbols": symbols, "timeframe": "1d"},
     )
-    assert response.status_code == 422, response.text
-    detail = response.json()["detail"]
-    assert detail["code"] == "asset_class_not_supported"
-    assert detail["message"].startswith(NEW_MESSAGE)
-    assert "Análise ainda não disponível" not in detail["message"]
+    assert response.status_code == 200, response.text
     assert provider.requests == []
+    from app.services.asset_analysis_guard import refusal_for_symbols
+
+    discovery = refusal_for_symbols(symbols, new_analysis=True)
+    assert discovery["code"] == "asset_class_not_supported"
+    assert discovery["message"].startswith(NEW_MESSAGE)
+    assert "Análise ainda não disponível" not in discovery["message"]
 
 
 def test_discovery_reason_uses_the_new_text(env):
