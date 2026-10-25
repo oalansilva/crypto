@@ -21,6 +21,7 @@ from app.schemas.combo_params import (
     ComboOptimizationResponse,
     ComboBatchBacktestRequest,
     ComboBatchBacktestResponse,
+    ComboBatchPreviewResponse,
     ComboBatchProgressResponse,
     TemplateListResponse,
     ComboTemplateMetadata,
@@ -38,11 +39,16 @@ from app.services.market_data_providers import (
     validate_data_source_timeframe,
 )
 from app.services.batch_backtest_service import (
+    create_batch_job,
+    get_active_batch,
     get_batch_progress,
-    init_batch_job,
+    get_paused_batch,
     request_pause_batch,
     request_cancel_batch,
+    request_resume_batch,
 )
+from app.services.batch_backtest_plan import build_plan, dedupe, nothing_runs_detail
+from app.services.batch_backtest_store import get_batch_backtest_store
 from app.services.batch_backtest_queue import enqueue_batch_backtest
 from app.services.asset_analysis_guard import refusal_for_symbols
 from app.services.equity_backtest import (
@@ -61,12 +67,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
 
 
-def _refuse_assets(symbols: List[str], *, new_analysis: bool, single_scope: bool = False) -> None:
+def _refuse_assets(
+    symbols: List[str],
+    *,
+    new_analysis: bool,
+    single_scope: bool = False,
+    batch_scope: bool = False,
+) -> None:
     """Recusa estruturada (422) de ação, ETF e, em análise nova, ativo marcado (#1117).
 
-    ``single_scope`` (#1119): backtest de 1 ativo; ação e ETF passam, o lote segue recusado.
+    ``single_scope`` (#1119): backtest de 1 ativo; ação e ETF passam.
+    ``batch_scope`` (#1120): lote multiclasse; ação e ETF passam com qualquer número de ativos.
     """
-    detail = refusal_for_symbols(symbols, new_analysis=new_analysis, single_scope=single_scope)
+    detail = refusal_for_symbols(
+        symbols, new_analysis=new_analysis, single_scope=single_scope, batch_scope=batch_scope
+    )
     if detail is not None:
         raise HTTPException(status_code=422, detail=detail)
 
@@ -85,10 +100,6 @@ def _is_equity_symbol(symbol: str) -> bool:
 
 def _raise_equity(exc: EquityRunError) -> None:
     raise HTTPException(status_code=422, detail=exc.detail())
-
-
-def _ensure_crypto_symbols(symbols: List[str], *, new_analysis: bool = False) -> None:
-    _refuse_assets(symbols, new_analysis=new_analysis)
 
 
 def _ensure_crypto_data_source(data_source: str) -> None:
@@ -888,38 +899,97 @@ async def optimize_combo_strategy(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _batch_paused_conflict(user_id: str) -> None:
+    """Lote pausado bloqueia um lote novo (decisão 16): 409 com o id do pausado."""
+
+    paused = get_paused_batch(user_id)
+    if paused is None:
+        return
+    job_id = paused["job_id"]
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "batch_paused",
+            "job_id": job_id,
+            "message": f"Retome ou encerre o lote {job_id[:8]} antes de começar outro.",
+        },
+    )
+
+
+def _validate_batch_request(request: ComboBatchBacktestRequest) -> dict[str, Any]:
+    """Corpo do lote, com a fonte de cripto validada (ação/ETF usam a própria fonte por ativo)."""
+
+    payload = request.model_dump()
+    payload["symbols"] = dedupe(request.symbols)
+    if any("/" in symbol for symbol in payload["symbols"]):
+        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
+        _ensure_crypto_data_source(data_source)
+    return payload
+
+
+@router.post("/backtest/batch/preview", response_model=ComboBatchPreviewResponse)
+async def preview_batch_backtest(
+    request: ComboBatchBacktestRequest,
+    current_user_id: str = Depends(get_current_admin),
+):
+    """Plano do lote antes de começar (card #1120, decisão 4): por ativo roda/fora e por quê,
+    o que precisa de coleta de histórico e os totais por classe e moeda. Não coleta nada."""
+    import asyncio
+
+    _batch_paused_conflict(current_user_id)
+    payload = _validate_batch_request(request)
+    return await asyncio.to_thread(build_plan, payload, page=request.page)
+
+
 @router.post("/backtest/batch", response_model=ComboBatchBacktestResponse)
 async def start_batch_backtest(
     request: ComboBatchBacktestRequest,
     current_user_id: str = Depends(get_current_admin),
 ):
     """
-    Start a batch backtest job for multiple symbols.
+    Start a batch backtest job for multiple symbols (cripto, ação e ETF).
     Uses current config (template, ranges, timeframe, deep_backtest).
     For each symbol, runs optimization and saves best result as new favorite
-    with notes \"gerado em lote\" and tier=3. Never overwrites existing favorites.
+    with notes \"gerado em lote\". Never overwrites existing favorites.
     Poll GET /api/combos/backtest/batch/{job_id} for progress.
     """
+    import asyncio
+
     try:
-        _ensure_crypto_symbols(request.symbols, new_analysis=True)
-        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
-        _ensure_crypto_data_source(data_source)
+        _batch_paused_conflict(current_user_id)
+        payload = _validate_batch_request(request)
+        plan = await asyncio.to_thread(build_plan, payload, page=request.page)
+        if plan["totals"]["run"] == 0:
+            # 422 só quando nada roda, com o motivo de cada ativo (decisão 3).
+            refusal = refusal_for_symbols(payload["symbols"], new_analysis=True, batch_scope=True)
+            raise HTTPException(
+                status_code=422,
+                detail=refusal if refusal is not None else nothing_runs_detail(plan),
+            )
         job_id = str(uuid.uuid4())
-        payload = request.model_dump()
         payload["user_id"] = current_user_id
-        init_batch_job(job_id, len(request.symbols))
+        create_batch_job(job_id, user_id=current_user_id, payload=payload, plan=plan)
         try:
             enqueue_batch_backtest(job_id, payload)
         except Exception as e:
             logger.exception("Batch backtest enqueue failed: %s", e)
             raise HTTPException(status_code=503, detail="Batch queue is unavailable") from e
-        logger.info("Batch backtest started job_id=%s symbols=%s", job_id, request.symbols)
+        logger.info("Batch backtest started job_id=%s symbols=%s", job_id, payload["symbols"])
         return ComboBatchBacktestResponse(job_id=job_id)
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Batch backtest start failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/backtest/batch/active", response_model=Optional[ComboBatchProgressResponse])
+async def get_active_batch_backtest(
+    current_user_id: str = Depends(get_current_admin),
+):
+    """O lote não final mais recente do usuário (rodando, na fila, pausado), ou ``null``."""
+    job = get_active_batch(current_user_id)
+    return ComboBatchProgressResponse(**job) if job else None
 
 
 @router.get("/backtest/batch/{job_id}", response_model=ComboBatchProgressResponse)
@@ -939,10 +1009,31 @@ async def pause_batch_backtest(
     job_id: str,
     _admin_user_id: str = Depends(get_current_admin),
 ):
-    """Request batch job to pause after the current symbol."""
+    """Request batch job to pause when the current step ends."""
     if not request_pause_batch(job_id):
         raise HTTPException(status_code=404, detail="Batch job not found or not running")
-    return {"status": "pause_requested", "message": "Batch will pause after current symbol"}
+    return {"status": "pause_requested", "message": "Batch will pause when the current step ends"}
+
+
+@router.post("/backtest/batch/{job_id}/resume")
+async def resume_batch_backtest(
+    job_id: str,
+    _admin_user_id: str = Depends(get_current_admin),
+):
+    """Continue the same paused batch from the next step (finished items and stored history stay)."""
+    store = get_batch_backtest_store()
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Batch job not found")
+    if not request_resume_batch(job_id):
+        raise HTTPException(status_code=409, detail="Batch job is not paused")
+    try:
+        enqueue_batch_backtest(job_id, dict(job.get("payload") or {}))
+    except Exception as e:
+        logger.exception("Batch backtest resume enqueue failed: %s", e)
+        store.update_job(job_id, status="paused")
+        raise HTTPException(status_code=503, detail="Batch queue is unavailable") from e
+    return {"status": "resumed", "message": "Batch resumed from the next step"}
 
 
 @router.post("/backtest/batch/{job_id}/cancel")
@@ -950,7 +1041,7 @@ async def cancel_batch_backtest(
     job_id: str,
     _admin_user_id: str = Depends(get_current_admin),
 ):
-    """Request batch job to cancel after the current symbol."""
+    """Request batch job to stop when the current step ends; finished items and favorites stay."""
     if not request_cancel_batch(job_id):
         raise HTTPException(status_code=404, detail="Batch job not found or not running")
-    return {"status": "cancel_requested", "message": "Batch will stop after current symbol"}
+    return {"status": "cancel_requested", "message": "Batch will stop when the current step ends"}

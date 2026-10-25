@@ -265,6 +265,11 @@ class ComboBatchBacktestRequest(BaseModel):
         description="Walk-forward split: train fraction (ex.: 0.7). When set, holdout gate GO/NO-GO applies and NO-GO candidates are not saved (card #470).",
     )
 
+    page: Optional[Literal["combo", "optimize"]] = Field(
+        None,
+        description="Tela que pede o lote (card #1120): 'optimize' usa a janela fixa e as regras de cobertura do 5m.",
+    )
+
     @model_validator(mode="after")
     def validate_data_source(self):
         source = str(self.data_source or "").strip().lower()
@@ -281,6 +286,28 @@ class ComboBatchBacktestResponse(BaseModel):
     """Response from starting a batch backtest job."""
 
     job_id: str = Field(..., description="Job ID to poll for progress")
+
+
+class ComboBatchItemResponse(BaseModel):
+    """Estado de um ativo no lote (card #1120, decisão 8)."""
+
+    position: int = 0
+    symbol: str
+    asset_class: Optional[str] = None
+    currency: Optional[str] = None
+    state: str = Field(
+        "queued",
+        description="queued | collecting | optimizing | success | success_daily | insufficient | rejected | failed | skipped | out | not_run",
+    )
+    reason: Optional[str] = None
+    progress: Optional[str] = None
+    favorite_id: Optional[int] = None
+    execution: Optional[Dict[str, Any]] = None
+    snapshot_id: Optional[str] = None
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    collect_kind: Optional[str] = Field(None, description="none | missing | tail (plano)")
+    needs_collection: List[Dict[str, str]] = Field(default_factory=list)
 
 
 class ComboBatchProgressResponse(BaseModel):
@@ -302,9 +329,41 @@ class ComboBatchProgressResponse(BaseModel):
     elapsed_sec: float = 0.0
     estimated_remaining_sec: Optional[float] = None
     current_symbol: Optional[str] = Field(None, description="Symbol currently being optimized")
+    current_stage: Optional[str] = Field(None, description="Etapa em curso do ativo atual")
     retry_count: int = 0
     last_error: Optional[str] = None
     dead_lettered: bool = False
+    # Card #1120: pedidos de pausa/encerramento, ativos e totais. Lote antigo: sem ``items``.
+    pause_requested: bool = False
+    cancel_requested: bool = False
+    created_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+    items: Optional[List[ComboBatchItemResponse]] = None
+    totals: Optional[Dict[str, int]] = None
+
+
+class ComboBatchPreviewItem(BaseModel):
+    symbol: str
+    asset_id: Optional[str] = None
+    asset_class: Optional[str] = None
+    currency: Optional[str] = None
+    plan: str = Field(..., description="run | out")
+    reason: Optional[str] = None
+    out_kind: Optional[str] = None
+    needs_collection: List[Dict[str, str]] = Field(default_factory=list)
+    collect_kind: str = Field("none", description="none | missing | tail")
+    covered_until: Optional[str] = None
+    data_source: Optional[str] = None
+    collect_note: Optional[str] = None
+
+
+class ComboBatchPreviewResponse(BaseModel):
+    """Plano do lote antes de começar (card #1120, decisão 4): nada é coletado."""
+
+    items: List[ComboBatchPreviewItem]
+    totals: Dict[str, Any]
+    config: Dict[str, Any] = Field(default_factory=dict)
 
 
 class TemplateListResponse(BaseModel):

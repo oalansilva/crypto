@@ -138,6 +138,72 @@ def _normalize_favorite_json_fields(row: FavoriteStrategy) -> FavoriteStrategy:
 _TIER_UNSET = object()
 
 
+def _favorite_asset(
+    row: FavoriteStrategy, asset_by_symbol: dict[str, dict[str, Any]] | None
+) -> dict[str, Any] | None:
+    """Identidade do ativo do favorito (card #1120, decisão 14): ``metrics.analysis_asset`` (ou o legado ``metrics.asset``) quando existe;
+    senão, o par com ``/`` é cripto e o ticker vem do catálogo (favorito antigo sem ``metrics.asset``).
+    """
+
+    metrics = row.metrics if isinstance(row.metrics, dict) else {}
+    stored = metrics.get("analysis_asset") or metrics.get("asset")
+    if isinstance(stored, dict) and stored.get("asset_class"):
+        return stored
+    symbol = str(row.symbol or "").strip().upper()
+    if "/" in symbol:
+        from app.services.equity_backtest import crypto_identity
+
+        return crypto_identity(symbol)
+    return (asset_by_symbol or {}).get(symbol)
+
+
+def _assets_for_rows(db: Session, rows: list[FavoriteStrategy]) -> dict[str, dict[str, Any]]:
+    """Ticker -> identidade pelo catálogo, só para linhas de ação/ETF sem ``metrics.asset``."""
+
+    tickers = {
+        str(r.symbol or "").strip().upper()
+        for r in rows
+        if "/" not in str(r.symbol or "")
+        and not (
+            isinstance(r.metrics, dict)
+            and any(
+                isinstance(r.metrics.get(key), dict) and r.metrics[key].get("asset_class")
+                for key in ("analysis_asset", "asset")
+            )
+        )
+    }
+    if not tickers:
+        return {}
+    try:
+        from app.models_asset_catalog import AssetCatalog
+        from app.services.equity_backtest import CURRENCY_BY_CLASS
+
+        catalog = (
+            db.query(AssetCatalog)
+            .filter(
+                AssetCatalog.symbol.in_(sorted(tickers)),
+                AssetCatalog.asset_class.in_(["stock", "etf"]),
+            )
+            .order_by(AssetCatalog.removed_at.isnot(None), AssetCatalog.asset_id)
+            .all()
+        )
+    except Exception:  # catálogo fora do ar: o favorito segue sem a classe
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for entry in catalog:
+        out.setdefault(
+            entry.symbol,
+            {
+                "symbol": entry.symbol,
+                "asset_id": entry.asset_id,
+                "asset_class": entry.asset_class,
+                "name": entry.name or entry.symbol,
+                "currency": CURRENCY_BY_CLASS.get(entry.asset_class, "USD"),
+            },
+        )
+    return out
+
+
 def _favorite_response(
     row: FavoriteStrategy,
     *,
@@ -148,6 +214,7 @@ def _favorite_response(
     description_by_strategy: dict[str, str] | None = None,
     display_name_by_strategy: dict[str, str] | None = None,
     template_by_strategy: dict[str, dict[str, Any]] | None = None,
+    asset_by_symbol: dict[str, dict[str, Any]] | None = None,
 ) -> FavoriteStrategyResponse:
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
@@ -166,6 +233,7 @@ def _favorite_response(
         strategy_key,
         payload.get("strategy_display_name"),
     )
+    payload["asset"] = _favorite_asset(row, asset_by_symbol)
     template_data = (template_by_strategy or {}).get(str(row.strategy_name))
     payload["strategy_transparency"] = build_strategy_transparency(
         row.strategy_name,
@@ -686,6 +754,7 @@ def list_favorites(
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
         descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
+        assets = _assets_for_rows(db, rows)
         return [
             _favorite_response(
                 row,
@@ -695,6 +764,7 @@ def list_favorites(
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
+                asset_by_symbol=assets,
             )
             for row in rows
         ]
@@ -703,6 +773,7 @@ def list_favorites(
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
         descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
+        assets = _assets_for_rows(db, rows)
         return [
             _favorite_response(
                 row,
@@ -712,6 +783,7 @@ def list_favorites(
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
+                asset_by_symbol=assets,
             )
             for row in rows
         ]
@@ -730,6 +802,7 @@ def list_favorites(
     if has_user_rows:
         descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
+        assets = _assets_for_rows(db, user_rows)
         return [
             _favorite_response(
                 row,
@@ -739,6 +812,7 @@ def list_favorites(
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
+                asset_by_symbol=assets,
             )
             for row in user_rows
         ]
@@ -747,6 +821,7 @@ def list_favorites(
     if not admin_user_ids:
         descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
+        assets = _assets_for_rows(db, user_rows)
         return [
             _favorite_response(
                 row,
@@ -756,6 +831,7 @@ def list_favorites(
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
+                asset_by_symbol=assets,
             )
             for row in user_rows
         ]
@@ -773,6 +849,7 @@ def list_favorites(
     )
     descriptions, display_names = _strategy_identities_for_rows(db, rows)
     templates = _strategy_templates_for_rows(db, rows)
+    assets = _assets_for_rows(db, rows)
     return [
         _favorite_response(
             row,
@@ -783,6 +860,7 @@ def list_favorites(
             description_by_strategy=descriptions,
             display_name_by_strategy=display_names,
             template_by_strategy=templates,
+            asset_by_symbol=assets,
         )
         for row in rows
     ]

@@ -460,7 +460,7 @@ def test_guard_refuses_equity_and_etf_with_structured_portuguese_detail():
         "SPY": "etf",
     }
     assert (
-        "Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois."
+        "Ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois."
         in detail["message"]
     )
     assert "NVDA (Ação)" in detail["message"] and "SPY (ETF)" in detail["message"]
@@ -535,7 +535,7 @@ def test_discovery_symbol_reasons_cover_equity_marked_and_missing():
     assert "BTC/USDT" not in reasons
     assert (
         reasons["NVDA"]["reason"]
-        == "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
+        == "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois"
     )
     assert reasons["SPY"]["kind"] == "class"
     assert reasons["WAVES/USDT"]["kind"] == "marked"

@@ -3181,7 +3181,7 @@ class TestPreflightAssetCatalog:
         assert set(by_symbol) == {"NVDA", "SPY", "WAVES/USDT", "AVB"}
         assert (
             by_symbol["NVDA"]["reason"]
-            == "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
+            == "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois"
         )
         assert by_symbol["NVDA"]["kind"] == "class" and by_symbol["NVDA"]["combinations"] == 2
         assert by_symbol["SPY"]["asset_class"] == "etf"
@@ -3197,7 +3197,7 @@ class TestPreflightAssetCatalog:
 
         assert result["valid_total"] == 0
         assert (
-            "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
+            "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois"
             in result["errors"]["symbols"]
         )
         assert result["combinations"] == []

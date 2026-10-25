@@ -58,9 +58,15 @@ for (const [reference, period, start_date] of [
       apiUrl: (url) => new URL(url, 'https://example.test'),
       templateName: 'template', timeframe: '1d', direction: 'long', params: [],
       batchScope: 'selected', deepBacktest: false, walkForwardEnabled: true, walkForwardTrainRatio: 0.7,
-      batchStartTimeRef: { current: null }, getBatchSymbols: () => ['BTC/USDT'],
+      batchStartTimeRef: { current: null },
+      // Card #1120: mais de 1 ativo é sempre lote; o hook compartilhado pede o plano ao servidor.
+      plan: { mode: 'single', runnable: ['BTC/USDT'], selected: ['BTC/USDT'] },
+      batch: {
+        dismissFinished: () => {},
+        requestPreview: async (payload) => { requests.push({ url: '/api/combos/backtest/batch/preview', payload }) },
+      },
       // #1117: o seletor de ativos decide o que roda; aqui nada fica de fora.
-      getRunBlock: () => null, getPartialNotice: () => null,
+      getRunBlock: () => null,
       refusalMessage: (_detail, fallback) => fallback,
       // Card #1119: o backtest de 1 ativo de ação/ETF; aqui a seleção é cripto.
       equityRun: null, setCollecting: () => {}, collectingCopy: () => '', historyUnavailableNotice: () => null,
@@ -79,12 +85,12 @@ for (const [reference, period, start_date] of [
     await bindCallback(discoverySource, 'startSweep', bindings)()
     bindings.getPeriodDates = bindCallback(comboSource, 'getPeriodDates', bindings)
     await bindCallback(comboSource, 'handleRun', bindings)()
-    bindings.getBatchSymbols = () => ['BTC/USDT', 'ETH/USDT']
+    bindings.plan = { mode: 'batch', runnable: ['BTC/USDT', 'ETH/USDT'], selected: ['BTC/USDT', 'ETH/USDT'] }
     await bindCallback(comboSource, 'handleRun', bindings)()
 
     assert.deepEqual(requests.map(({ url }) => url), [
       '/api/combos/discovery/sweeps/preflight', '/api/combos/discovery/sweeps',
-      '/api/combos/optimize', '/api/combos/backtest/batch',
+      '/api/combos/optimize', '/api/combos/backtest/batch/preview',
     ])
     for (const { payload } of requests) {
       assert.deepEqual({ start_date: payload.start_date, end_date: payload.end_date }, expected)

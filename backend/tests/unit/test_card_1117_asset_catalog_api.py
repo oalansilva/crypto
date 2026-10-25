@@ -26,7 +26,7 @@ def _catalog_db(unit_database_url):
     """
     engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
-    tables = "asset_catalog, asset_catalog_refresh, favorite_strategies, discovery_results, backtest_runs"
+    tables = "asset_catalog, asset_catalog_refresh, favorite_strategies, discovery_results, backtest_runs, batch_backtest_jobs, batch_backtest_items"
     with engine.begin() as connection:
         connection.execute(text(f"TRUNCATE TABLE {tables} RESTART IDENTITY"))
     yield
@@ -205,10 +205,10 @@ def _optimize(client: TestClient, symbol: str):
     )
 
 
-def _batch(client: TestClient, symbols: list[str]):
+def _batch(client: TestClient, symbols: list[str], timeframe: str = "1d"):
     return client.post(
         "/api/combos/backtest/batch",
-        json={"template_name": "ema_rsi", "symbols": symbols, "timeframe": "1d"},
+        json={"template_name": "ema_rsi", "symbols": symbols, "timeframe": timeframe},
     )
 
 
@@ -222,7 +222,7 @@ def test_optimize_refuses_equity_with_class_code_in_portuguese(client):
     assert detail["asset_class"] == "stock"
     assert detail["assets"][0]["symbol"] == "NVDA"
     assert detail["message"].startswith(
-        "Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois."
+        "Ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois."
     )
 
 
@@ -240,21 +240,39 @@ def test_optimize_refuses_marked_and_unknown_assets(client):
     assert unknown["assets"] == [{"symbol": "XYZ/USDT"}]
 
 
-def test_batch_refuses_the_whole_call_when_it_contains_equity_etf_or_marked(client, monkeypatch):
+def test_batch_accepts_equity_and_etf_and_keeps_marked_assets_out(client, monkeypatch):
+    """Card #1120 (decisão 3): o lote aceita ação e ETF; ativo marcado fica "Fora" com o motivo."""
+
+    from app.services.batch_backtest_service import get_batch_progress
+
     _seed()
     enqueued = []
     monkeypatch.setattr(combo_routes, "enqueue_batch_backtest", lambda *a, **k: enqueued.append(a))
 
     mixed = _batch(client, ["BTC/USDT", "ETH/USDT", "SPY"])
-    assert mixed.status_code == 422
-    assert mixed.json()["detail"]["code"] == "asset_class_not_supported"
-    assert mixed.json()["detail"]["assets"][0]["symbol"] == "SPY"
+    assert mixed.status_code == 200, mixed.text
+    items = {i["symbol"]: i for i in get_batch_progress(mixed.json()["job_id"])["items"]}
+    assert items["SPY"]["state"] == "queued" and items["SPY"]["asset_class"] == "etf"
 
     marked = _batch(client, ["BTC/USDT", "WAVES/USDT"])
-    assert marked.status_code == 422
-    assert marked.json()["detail"]["code"] == "asset_not_selectable"
+    assert marked.status_code == 200, marked.text
+    waves = {i["symbol"]: i for i in get_batch_progress(marked.json()["job_id"])["items"]}[
+        "WAVES/USDT"
+    ]
+    assert waves["state"] == "out" and "não entra em análise nova" in waves["reason"]
+    assert len(enqueued) == 2
 
-    assert enqueued == []  # nada foi enfileirado
+    # 422 só quando nada roda, com o motivo de cada ativo
+    only_marked = _batch(client, ["WAVES/USDT"])
+    assert only_marked.status_code == 422
+    assert only_marked.json()["detail"]["code"] == "asset_not_selectable"
+    no_timeframe = _batch(client, ["SPY", "QQQ"], timeframe="5m")
+    assert no_timeframe.status_code == 422
+    detail = no_timeframe.json()["detail"]
+    assert detail["code"] == "batch_nothing_to_run"
+    assert {a["symbol"] for a in detail["assets"]} == {"SPY", "QQQ"}
+    assert all("não rodam em 5m" in a["reason"] for a in detail["assets"])
+    assert len(enqueued) == 2  # os dois 422 não enfileiraram nada
 
 
 def test_batch_with_only_tradable_crypto_still_starts(client, monkeypatch):
@@ -278,5 +296,10 @@ def test_backtest_guard_keeps_paused_and_removed_results_reopenable():
     assert exc.value.status_code == 422
     assert exc.value.detail["code"] == "asset_class_not_supported"
     with pytest.raises(Exception) as exc:
-        combo_routes._ensure_crypto_symbols(["WAVES/USDT"], new_analysis=True)
+        combo_routes._refuse_assets(["WAVES/USDT"], new_analysis=True)
+    assert exc.value.detail["code"] == "asset_not_selectable"
+    # lote (card #1120): ação e ETF passam; ativo marcado segue recusado
+    combo_routes._refuse_assets(["NVDA", "SPY"], new_analysis=True, batch_scope=True)
+    with pytest.raises(Exception) as exc:
+        combo_routes._refuse_assets(["NVDA", "WAVES/USDT"], new_analysis=True, batch_scope=True)
     assert exc.value.detail["code"] == "asset_not_selectable"

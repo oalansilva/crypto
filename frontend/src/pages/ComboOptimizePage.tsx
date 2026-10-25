@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
     Settings, Play, Activity,
@@ -8,23 +8,31 @@ import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '../lib/authFetch'
 import { AssetPicker } from '../components/AssetPicker'
 import { DataExecutionBlock } from '../components/results/DataExecutionBlock'
-import { BatchProgressPanel } from '../components/BatchProgressPanel'
+import {
+    BatchConfirm,
+    BatchConfirmError,
+    BatchConfirmLoading,
+    BatchPanel,
+    BatchPausedBlock,
+    type BatchPanelHandle,
+} from '../components/batch/BatchLote'
 import { useBatchJob } from '../hooks/useBatchJob'
 import { lookupCatalogAssets } from '../lib/assetCatalogApi'
 import {
+    CLASS_NOTE,
     ON_DEMAND_TEXT_BACKTEST,
     OPTIMIZE_FIXED_WINDOW,
     OPTIMIZE_FIXED_WINDOW_LABEL,
     blockedNotice,
     collectingCopy,
-    equityBadTimeframes,
+    cryptoOnlyTimeframes,
     equityTimeframeBlock,
     historyUnavailableNotice,
     normalizeSymbol,
-    partialNotice,
     planRun,
     refusalMessage,
     runCopy,
+    timeframeDisabled,
     urlSymbolNotice,
     type RunNotice,
 } from '../lib/assetSelection'
@@ -51,26 +59,32 @@ export function ComboOptimizePage() {
     const [params, setParams] = useState<any[]>([])
     const [results, setResults] = useState<any>(null)
 
-    const {
-        batchRunning, setBatchRunning,
-        setBatchJobId,
-        batchPauseCancelRequested, setBatchPauseCancelRequested,
-        batchProgress, setBatchProgress,
-        batchTotal, setBatchTotal,
-        clientElapsedSec, setClientElapsedSec,
-        batchStartTimeRef,
-        handlePauseBatch, handleCancelBatch,
-    } = useBatchJob()
+    // Lote multiclasse (card #1120): plano, progresso por ativo, Pausar, Retomar e Encerrar
+    const batch = useBatchJob()
+    const runButton = useRef<HTMLButtonElement>(null)
+    const panelRef = useRef<BatchPanelHandle>(null)
 
-    // O que roda e o que fica fora (ação, ETF e ativo marcado pela Binance).
+    // O que roda e o que fica fora, por classe e tempo (ação, ETF e ativo marcado pela Binance).
     const { entries: selectionEntries, loading: selectionLoading } = useSelectionView(selectedSymbols)
-    const plan = useMemo(() => planRun(selectionEntries), [selectionEntries])
+    const plan = useMemo(
+        () => planRun(selectionEntries, { timeframe, page: 'optimize' }),
+        [selectionEntries, timeframe],
+    )
     // Ação/ETF sozinha (card #1119): roda com `run_scope: "single"` na janela fixa da tela; 1m/5m/30m
     // ficam indisponíveis e 15m/1h/4h avisam antes de rodar quando o 5m não cobre a janela fixa.
     const equityRun = plan.equityRun
     const tfBlock = equityTimeframeBlock(plan, timeframe, 'optimize')
-    const copy = tfBlock ? { text: tfBlock.copy, blocked: true } : runCopy(plan, 'optimize', { timeframe })
+    const copy = runCopy(plan, 'optimize')
     const [collecting, setCollecting] = useState<string | null>(null)
+    const cryptoOnlyTfs = cryptoOnlyTimeframes(plan)
+    const batchRunning = batch.active && batch.job?.status !== 'paused'
+    const templateLabel = (): string => {
+        const found = templates.find((t) => t.name === selectedTemplate)
+        const display = found?.display_name
+        return display && display !== selectedTemplate ? `${display} (${selectedTemplate})` : selectedTemplate
+    }
+    const configText = (): string =>
+        `${templateLabel()} · ${timeframe} · ${OPTIMIZE_FIXED_WINDOW_LABEL} (fixo nesta tela) · Long · intrabar 15m`
 
     // `?symbol=`: marca só se existir no catálogo; ativo marcado entra como "fica de fora".
     useEffect(() => {
@@ -167,7 +181,6 @@ export function ComboOptimizePage() {
             return
         }
         const symbolsToRun = plan.runnable
-        setRunNotice(partialNotice(plan))
 
         // Build custom ranges
         const custom_ranges: Record<string, any> = {}
@@ -179,7 +192,8 @@ export function ComboOptimizePage() {
             }
         })
 
-        if (symbolsToRun.length === 1) {
+        if (plan.mode === 'single') {
+            batch.dismissFinished()
             setIsOptimizing(true)
             setResults(null)
             const isEquityRun = !!equityRun
@@ -192,7 +206,7 @@ export function ComboOptimizePage() {
                         template_name: selectedTemplate,
                         symbol: symbolsToRun[0],
                         timeframe,
-                        start_date: OPTIMIZE_FIXED_WINDOW.start, // TODO: Date picker (#1120)
+                        start_date: OPTIMIZE_FIXED_WINDOW.start, // período fixo desta tela (#1119); sem seletor nesta história
                         end_date: OPTIMIZE_FIXED_WINDOW.end,
                         custom_ranges,
                         run_scope: 'single',
@@ -223,43 +237,27 @@ export function ComboOptimizePage() {
             return
         }
 
-        // N pares: o lote do Combo, uma otimização por ativo com a mesma configuração.
+        // Mais de 1 ativo é sempre lote (decisão 2): o servidor monta o plano e o Confirmar abre na coluna larga.
         setResults(null)
-        setBatchRunning(true)
-        setBatchJobId(null)
-        setBatchProgress(null)
-        setBatchTotal(symbolsToRun.length)
-        setBatchPauseCancelRequested(false)
-        setClientElapsedSec(0)
-        batchStartTimeRef.current = Date.now()
-        try {
-            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_name: selectedTemplate,
-                    symbols: symbolsToRun,
-                    timeframe,
-                    start_date: OPTIMIZE_FIXED_WINDOW.start, // mesmas datas do caminho de 1 ativo
-                    end_date: OPTIMIZE_FIXED_WINDOW.end,
-                    custom_ranges
-                })
-            })
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}))
-                throw new Error(refusalMessage(err.detail, 'Falha ao iniciar o lote'))
-            }
-            const data = await res.json()
-            setBatchJobId(data.job_id)
-        } catch (err) {
-            console.error(err)
-            setRunNotice({
-                tone: 'alert',
-                title: 'Não foi possível iniciar o lote',
-                body: err instanceof Error ? err.message : 'Falha ao iniciar o lote',
-            })
-            setBatchRunning(false)
-        }
+        await batch.requestPreview({
+            template_name: selectedTemplate,
+            symbols: plan.selected,
+            timeframe,
+            start_date: OPTIMIZE_FIXED_WINDOW.start, // mesmas datas do caminho de 1 ativo
+            end_date: OPTIMIZE_FIXED_WINDOW.end,
+            custom_ranges,
+            page: 'optimize',
+        })
+    }
+
+    const confirmBatch = async (body: Record<string, unknown>) => {
+        const started = await batch.confirmAndRun(body)
+        if (started) requestAnimationFrame(() => panelRef.current?.focusTitle())
+    }
+
+    const backFromConfirm = () => {
+        batch.closeConfirm()
+        runButton.current?.focus()
     }
 
     return (
@@ -300,7 +298,7 @@ export function ComboOptimizePage() {
                                         variant="narrow"
                                         notice={symbolNotice}
                                         onDemandTexts={ON_DEMAND_TEXT_BACKTEST}
-                                        classNote="Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização) e mostram o resultado ao lado. Com mais de 1 ativo, ficam fora com aviso; o lote vem depois."
+                                        classNote={CLASS_NOTE.optimize}
                                     />
                                 </div>
 
@@ -312,14 +310,11 @@ export function ComboOptimizePage() {
                                         onChange={(e) => setTimeframe(e.target.value)}
                                         className="w-full bg-white0 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
                                     >
-                                        {TIMEFRAMES.map(tf => {
-                                            const cryptoOnly = !!equityRun && equityBadTimeframes('optimize').includes(tf)
-                                            return (
-                                                <option key={tf} value={tf} disabled={cryptoOnly}>
-                                                    {cryptoOnly ? `${tf} (só cripto)` : tf}
-                                                </option>
-                                            )
-                                        })}
+                                        {TIMEFRAMES.map(tf => (
+                                            <option key={tf} value={tf} disabled={timeframeDisabled(plan, tf)}>
+                                                {cryptoOnlyTfs.includes(tf) ? `${tf} (só cripto)` : tf}
+                                            </option>
+                                        ))}
                                     </select>
                                     <p className="r19-hint" data-testid="opt-period">
                                         <b>Período:</b> {OPTIMIZE_FIXED_WINDOW_LABEL}, fixo nesta tela.
@@ -389,8 +384,9 @@ export function ComboOptimizePage() {
                                 )}
 
                                 <button
+                                    ref={runButton}
                                     onClick={handleRunOptimization}
-                                    disabled={isOptimizing || batchRunning || !selectedTemplate || selectionLoading}
+                                    disabled={isOptimizing || batchRunning || !selectedTemplate || selectionLoading || batch.starting}
                                     data-testid="run-optimization"
                                     className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-zinc-900 font-bold py-4 rounded-xl shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
                                 >
@@ -405,11 +401,17 @@ export function ComboOptimizePage() {
                                     )}
                                 </button>
 
-                                <p
-                                    className={`text-xs ${copy.blocked ? 'text-amber-300' : 'text-zinc-400'}`}
-                                    data-testid="opt-run-copy"
-                                >
-                                    {copy.text}
+                                <p className="lote-runcopy" data-testid="opt-run-copy">
+                                    {copy.parts ? (
+                                        <>
+                                            <b>{copy.parts.lead}</b> {copy.parts.runs}{' '}
+                                            <span className="lote-out">{copy.parts.out}</span>
+                                        </>
+                                    ) : copy.blocked ? (
+                                        <span className="lote-out">{copy.text}</span>
+                                    ) : (
+                                        copy.text
+                                    )}
                                 </p>
                                 {collecting ? (
                                     <p className="r19-collect" role="status" data-testid="run-collecting">
@@ -426,23 +428,53 @@ export function ComboOptimizePage() {
                                         {runNotice.body}
                                     </div>
                                 ) : null}
-                                <BatchProgressPanel
-                                    batchRunning={batchRunning}
-                                    batchProgress={batchProgress}
-                                    batchTotal={batchTotal}
-                                    clientElapsedSec={clientElapsedSec}
-                                    pauseCancelRequested={batchPauseCancelRequested}
-                                    onPause={handlePauseBatch}
-                                    onCancel={handleCancelBatch}
-                                />
-
                             </div>
                         </div>
                     </div>
 
                     {/* RESULTS PANEL */}
                     <div className="lg:col-span-2 space-y-6">
-                        {!results ? (
+                        {batch.confirm.phase === 'loading' ? <BatchConfirmLoading /> : null}
+                        {batch.confirm.phase === 'ready' ? (
+                            <BatchConfirm
+                                preview={batch.confirm.preview}
+                                config={{ text: configText() }}
+                                busy={batch.starting}
+                                onConfirm={() => void confirmBatch((batch.confirm as { body: Record<string, unknown> }).body)}
+                                onBack={backFromConfirm}
+                            />
+                        ) : null}
+                        {batch.confirm.phase === 'error' ? (
+                            <BatchConfirmError message={batch.confirm.message} onBack={backFromConfirm} />
+                        ) : null}
+                        {batch.confirm.phase === 'paused' ? (
+                            <BatchPausedBlock
+                                job={batch.job}
+                                jobId={batch.confirm.jobId}
+                                onResume={() => {
+                                    batch.closeConfirm()
+                                    void batch.resumeById((batch.confirm as { jobId: string }).jobId)
+                                }}
+                                onCancel={() => {
+                                    batch.closeConfirm()
+                                    void batch.cancelById((batch.confirm as { jobId: string }).jobId)
+                                    requestAnimationFrame(() => panelRef.current?.focusTitle())
+                                }}
+                                onBack={backFromConfirm}
+                            />
+                        ) : null}
+                        {batch.job ? (
+                            <BatchPanel
+                                ref={panelRef}
+                                job={batch.job}
+                                pending={batch.pending}
+                                actionError={batch.actionError}
+                                onPause={() => void batch.pause()}
+                                onResume={() => void batch.resume()}
+                                onCancel={() => void batch.cancel()}
+                            />
+                        ) : null}
+                        {!results && batch.confirm.phase === 'closed' && !batch.job ? (
                             <div className="h-full min-h-[400px] glass-strong rounded-2xl border border-zinc-200 flex flex-col items-center justify-center text-center p-8">
                                 <div className="bg-zinc-50 p-4 rounded-full mb-4">
                                     <Search className="w-12 h-12 text-zinc-600" />
@@ -452,7 +484,7 @@ export function ComboOptimizePage() {
                                     Select a strategy template and configure parameter ranges to find the best performing combination.
                                 </p>
                             </div>
-                        ) : (
+                        ) : !results ? null : (
                             <div className="space-y-6 animate-fade-in">
 
                                 {/* Best Result Card */}

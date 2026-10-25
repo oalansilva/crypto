@@ -530,7 +530,6 @@ async function pick(page: Page, symbol: string) {
   await expect(page.getByTestId('asset-results')).toBeVisible()
   await row(page, symbol).locator('input').check()
 }
-const ROW_REASON = 'ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois'
 
 test.describe('Combo com ação e ETF', () => {
   for (const viewport of [DESKTOP, PHONE]) {
@@ -583,7 +582,7 @@ test.describe('Combo com ação e ETF', () => {
       await expect(timeframe.locator('option[value="1m"]')).toHaveText('1 minute (só cripto)')
       await expect(page.getByTestId('combo-timeframe-hint')).toContainText('15m, 1h, 4h ou 1d, montados no pregão regular de Nova York')
       await expect(page.getByTestId('combo-deep-hint')).toBeVisible()
-      await expect(page.getByTestId('asset-class-note')).toContainText('rodam só com 1 ativo (Combo ou Otimização) e abrem o resultado')
+      await expect(page.getByTestId('asset-class-note')).toContainText('1 ação ou ETF sozinha abre o resultado, sem salvar.')
       await timeframe.selectOption('1h')
 
       await page.getByTestId('combo-run').click()
@@ -603,31 +602,36 @@ test.describe('Combo com ação e ETF', () => {
     })
   }
 
-  test('NVDA + BTC/USDT: roda só a cripto, diz o porquê novo e 1m/5m ficam disponíveis', async ({ page }) => {
+  test('NVDA + BTC/USDT é um lote de 2 ativos: 1m/5m seguem escolhíveis, com "(só cripto)", e o Market Data é por ativo', async ({ page }) => {
     const { posts } = await selectionMocks(page)
     await page.goto('/combo/configure?template=ema_rsi')
     await pick(page, 'NVDA')
-    await expect(page.getByTestId('combo-run-copy')).toContainText('Roda 1 par cripto (BTC/USDT)')
-    await expect(page.getByTestId('combo-run-copy')).toContainText(`Fora: NVDA (Ação) — ${ROW_REASON}`)
+    await expect(page.getByTestId('combo-run-copy')).toContainText('Lote de 2 ativos (1 cripto, 1 ação): otimiza cada um com esta configuração')
     const timeframe = page.locator('select').filter({ has: page.locator('option[value="1m"]') }).first()
     await expect(timeframe.locator('option[value="1m"]')).toBeEnabled()
     await expect(timeframe.locator('option[value="5m"]')).toBeEnabled()
-    await expect(page.getByTestId('combo-market-data')).toHaveText('CCXT (crypto exchange data)')
+    await expect(timeframe.locator('option[value="1m"]')).toHaveText('1 minute (só cripto)')
+    await expect(page.getByTestId('combo-market-data')).toHaveText('Por ativo: CCXT (cripto) · Binance Ações (ação e ETF)')
     expect(posts).toEqual([])
   })
 
-  test('só ações e ETFs (NVDA + SPY): nada roda, com o texto novo, antes e ao rodar', async ({ page }) => {
+  test('só ações e ETFs (NVDA + SPY) em 1d é um lote de 2; em 5m nada roda e a tela explica', async ({ page }) => {
     const { posts } = await selectionMocks(page)
     await page.goto('/combo/configure?template=ema_rsi')
     await pick(page, 'NVDA')
     await pick(page, 'SPY')
+    const timeframe = page.locator('select').filter({ has: page.locator('option[value="1m"]') }).first()
+    await timeframe.selectOption('5m') // com a cripto na seleção o 5m é escolhível
     await chip(page, 'BTC/USDT').getByRole('button').click()
-    await expect(page.getByTestId('combo-run-copy')).toContainText(`Nada será executado nem salvo: NVDA (Ação), SPY (ETF) — ${ROW_REASON}.`)
+    await expect(page.getByTestId('combo-run-copy')).toContainText(
+      'Nada será executado: NVDA (Ação), SPY (ETF) — ação e ETF não rodam em 5m; para incluí-los, use 15m, 1h, 4h ou 1d.',
+    )
     await page.getByTestId('combo-run').click()
     const warning = page.getByTestId('run-warning')
-    await expect(warning).toContainText('Ação e ETF rodam só com 1 ativo por enquanto')
-    await expect(warning).toContainText(ROW_REASON)
-    await expect(warning).toContainText('Nada foi executado nem salvo. A seleção foi mantida.')
+    await expect(warning).toContainText('Ação e ETF não rodam em 5m')
+    await expect(warning).toContainText('Nada foi executado. A seleção foi mantida.')
+    await timeframe.selectOption('1d')
+    await expect(page.getByTestId('combo-run-copy')).toContainText('Lote de 2 ativos (1 ação, 1 ETF)')
     expect(posts).toEqual([])
   })
 
@@ -761,18 +765,21 @@ test.describe('Otimização com ação e ETF', () => {
     await expect(page.getByTestId('opt-run-copy')).toContainText('1 ação (NVDA): otimiza em 1d')
   })
 
-  test('NVDA + BTC/USDT roda só a cripto e NVDA + SPY não roda: texto novo da recusa do lote', async ({ page }) => {
+  test('NVDA + BTC/USDT é um lote na Otimização; só ação e ETF em tempo que não serve: nada roda', async ({ page }) => {
     const { posts } = await selectionMocks(page)
-    await page.goto('/combo/optimize?template=ema_rsi')
+    await page.goto('/combo/optimize?template=ema_rsi&timeframe=1d')
     await pick(page, 'NVDA')
-    await expect(page.getByTestId('opt-run-copy')).toContainText(`Fora: NVDA (Ação) — ${ROW_REASON}`)
+    await expect(page.getByTestId('opt-run-copy')).toContainText('Lote de 2 ativos (1 cripto, 1 ação): otimiza cada um com esta configuração, no período fixo desta tela')
     const timeframe = page.locator('select').filter({ has: page.locator('option[value="1m"]') }).first()
     await expect(timeframe.locator('option[value="30m"]')).toBeEnabled()
+    await timeframe.selectOption('30m')
     await chip(page, 'BTC/USDT').getByRole('button').click()
     await pick(page, 'SPY')
-    await expect(page.getByTestId('opt-run-copy')).toContainText(`Nada será executado: NVDA (Ação), SPY (ETF) — ${ROW_REASON}.`)
+    await expect(page.getByTestId('opt-run-copy')).toContainText(
+      'Nada será executado: NVDA (Ação), SPY (ETF) — ação e ETF não rodam em 30m; para incluí-los, use 1d aqui ou o Combo, que tem período.',
+    )
     await page.getByTestId('run-optimization').click()
-    await expect(page.getByTestId('run-warning')).toContainText('Ação e ETF rodam só com 1 ativo por enquanto')
+    await expect(page.getByTestId('run-warning')).toContainText('Ação e ETF não rodam em 30m')
     expect(posts).toEqual([])
   })
 

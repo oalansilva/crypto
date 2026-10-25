@@ -65,9 +65,12 @@ MARKET_OHLCV_TABLE = "market_ohlcv"
 
 # Card #1119 (decisão 3 de Alan no Design): lote e Descoberta seguem recusando ação/ETF, agora com o
 # porquê novo; o backtest de 1 ativo (Combo, Otimização e API) roda.
+# Card #1120 (decisão 13): o lote aceita ação e ETF; só a Descoberta segue recusando, com o porquê novo.
 EQUITY_BATCH_REASON = (
-    "ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois"
+    "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); "
+    "a Descoberta vem depois"
 )
+DISCOVERY_EQUITY_REASON = EQUITY_BATCH_REASON
 EQUITY_UNSUPPORTED_MESSAGE = EQUITY_BATCH_REASON[0].upper() + EQUITY_BATCH_REASON[1:] + "."
 
 _ADVISORY_KEY = 11170001

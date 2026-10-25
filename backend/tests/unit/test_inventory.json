@@ -40,12 +40,12 @@
     },
     {
       "file": "backend/tests/unit/test_batch_backtest_async_support.py",
-      "protected_behavior": "batch queue/store/task lifecycle",
+      "protected_behavior": "batch queue/store/task lifecycle: lote no PostgreSQL (fila, hooks e tarefa) e o armazém antigo do Redis para lotes anteriores ao #1120",
       "production_reachability": "reachable",
-      "persistence_need": "pure",
+      "persistence_need": "postgres",
       "regression_risk": "medium",
       "decision": "keep",
-      "evidence": "in-memory store and fake Redis/Celery"
+      "evidence": "postgres_isolation nos testes do lote durável; LegacyBatchStore com Redis simulado e memória"
     },
     {
       "file": "backend/tests/unit/test_backtest_execution_costs.py",
@@ -955,6 +955,42 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL workflow session fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_batch_plan.py",
+      "protected_behavior": "aceite por classe e plano do lote (roda/fora, motivo por ativo, o que precisa de coleta, regra de fora da Otimização), preview sem coleta, 422 só quando nada roda, 409 batch_paused, resume e lote ativo",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "catálogo semeado no PostgreSQL de teste (unit_database_url), cobertura simulada e TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_batch_control.py",
+      "protected_behavior": "estado durável do lote e dos itens, claim exclusivo, pausa/retomada/encerramento ao fim da etapa, lote antigo do Redis",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com coleta e otimizador simulados"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_batch_run.py",
+      "protected_behavior": "lote misto cripto + ação + ETF pelo executor real: favoritos com precisão e janela, mesma amostra, 5m, problemas que não param o lote, progresso de coleta",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ComboOptimizer real, HistoryService com Binance Spot e Ações simuladas em schema privado (unit_database_url)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_favorites_asset.py",
+      "protected_behavior": "GET /api/favorites/ com asset de qualquer classe, contrato de unicidade com data_source e asset, favoritar ação/ETF pela tela segue recusado, Monitor só cripto",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) e TestClient"
     }
   ]
 }

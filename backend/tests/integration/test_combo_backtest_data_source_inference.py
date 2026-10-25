@@ -131,7 +131,7 @@ async def test_backtest_us_ticker_rejected_for_crypto_only_mvp(monkeypatch):
     assert detail["code"] == "asset_class_not_supported"
     assert [asset["symbol"] for asset in detail["assets"]] == ["NVDA"]
     assert (
-        "Ação e ETF por enquanto rodam só com 1 ativo (Combo ou Otimização); o lote vem depois."
+        "Ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois."
         in detail["message"]
     )
     assert provider_calls == []
