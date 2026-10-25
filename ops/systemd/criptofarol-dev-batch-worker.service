@@ -1,0 +1,36 @@
+[Unit]
+Description=Cripto Farol DEV Celery batch backtest worker
+After=network-online.target postgresql.service docker.service criptofarol-dev-backend.service
+Wants=network-online.target
+StartLimitIntervalSec=900
+StartLimitBurst=3
+
+[Service]
+Type=simple
+WorkingDirectory=__ROOT_DIR__/backend
+# The batch optimizer sizes its process pool and spool through the same resource
+# profile as Discovery (1 worker, spool outside tmpfs); the memory envelope below
+# is the profile's own, so batch and Discovery never share a cgroup or a spool.
+Environment=DISCOVERY_RESOURCE_PROFILE=dev
+Environment=DISCOVERY_INTERNAL_WORKERS=1
+Environment=DISCOVERY_SPOOL_DIR=/var/tmp/criptofarol-dev-batch
+MemoryAccounting=yes
+MemoryHigh=3G
+MemoryMax=4G
+MemorySwapMax=512M
+OOMPolicy=kill
+# SIGTERM goes to the Celery main process only (warm shutdown: a running batch is
+# given TimeoutStopSec to finish; the optimizer pool children are not signalled).
+# After that systemd kills the whole group. The interrupted batch is not lost: the
+# task is acks_late, the redelivery keeps the same task_id (which claim() accepts),
+# and items left collecting/optimizing go back to the queue.
+KillMode=mixed
+TimeoutStopSec=300s
+SendSIGKILL=yes
+Environment=PYTHONPATH=__ROOT_DIR__:__ROOT_DIR__/backend
+ExecStart=/bin/bash -lc 'set -euo pipefail; set -a; source "__ROOT_DIR__/backend/.env"; set +a; export CRYPTO_CELERY_WORKER_ENABLED=1; exec "__ROOT_DIR__/backend/.venv/bin/celery" -A app.celery_app:celery_app worker --loglevel=INFO --pool=solo --concurrency=1 --prefetch-multiplier=1 --hostname=batch-dev@%%h -Q batch_backtest'
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

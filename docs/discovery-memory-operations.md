@@ -29,6 +29,10 @@ O `./restart` do DEV (T14 e restart manual) para a Discovery antes de instalar o
 - **Drop-in de contenção do #1093 ainda presente** (`card-1093-hold.conf`): impede a partida; o instalador diz isso quando a Discovery não fica ativa. Remover o hold só conforme o passo 7 do cutover.
 - **Falha após o `stop`:** o restart aborta antes de reiniciar backend, frontend e worker de runtime e avisa que a Discovery pode ter ficado parada.
 
+### Worker dos lotes no mesmo restart (#1120)
+
+O mesmo `install-discovery-workers-systemd.sh` do restart instala e liga `criptofarol-dev-batch-worker.service` (fila `batch_backtest`), separado da Discovery: não divide o cgroup, o spool nem o `StartLimitBurst` dela. Se estiver ativo, o instalador o para antes (até `TimeoutStopSec=300s` para um lote em curso terminar) e o liga uma vez. A parada do lote não passa pelo guard de cgroup da Discovery. Valores e comportamento em `docs/runtime-architecture.md` ("Worker dos lotes").
+
 ### Busca em andamento e restarts seguidos
 
 A parada interrompe a tentativa em curso. A lease expira (TTL 300 s), o reconciler marca `lease_interrupted` e a busca é reagendada com backoff 60/300 s, retomando com uma tentativa a menos. Cada interrupção é uma falha operacional do #1093: **3 interrupções em 15 min abrem o circuito do ambiente** (Discovery bloqueada até `acknowledge_circuit.py`) e a 3ª na mesma combinação fecha a busca com `resource_recovery_exhausted`. Decisão do Alan (2026-10-16): aceito, sem mudança no circuito. Evite restarts seguidos com busca ativa.

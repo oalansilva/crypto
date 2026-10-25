@@ -54,6 +54,66 @@ else
   cat "$OUT"
   FAIL=$((FAIL + 1))
 fi
+# --- #1120: the batch_backtest queue has its own worker (DEV and PROD) ------
+assert_exit 0 "DEV dry-run lists the batch worker" bash "$INSTALLER" --dry-run --root /srv/apps/dev/criptofarol/source
+if grep -q '^units=.* criptofarol-dev-batch-worker.service$' "$OUT"; then
+  echo "PASS DEV full install includes criptofarol-dev-batch-worker.service"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL DEV full install should include criptofarol-dev-batch-worker.service"
+  cat "$OUT"
+  FAIL=$((FAIL + 1))
+fi
+assert_exit 0 "PROD dry-run lists the batch worker" bash "$INSTALLER" --dry-run --root /srv/apps/prod/criptofarol/source
+if grep -q '^units=.* criptofarol-prod-batch-worker.service$' "$OUT"; then
+  echo "PASS PROD full install includes criptofarol-prod-batch-worker.service"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL PROD full install should include criptofarol-prod-batch-worker.service"
+  cat "$OUT"
+  FAIL=$((FAIL + 1))
+fi
+assert_exit 0 "PROD batch-only dry-run" bash "$INSTALLER" --dry-run --batch-only --root /srv/apps/prod/criptofarol/source
+if grep -qx 'units=criptofarol-prod-batch-worker.service' "$OUT" && grep -q 'backend_dropin=none' "$OUT"; then
+  echo "PASS PROD batch-only lists only the batch unit"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL PROD batch-only should list only criptofarol-prod-batch-worker.service"
+  cat "$OUT"
+  FAIL=$((FAIL + 1))
+fi
+assert_exit 0 "DEV batch-only dry-run" bash "$INSTALLER" --dry-run --batch-only --root /srv/apps/dev/criptofarol/source
+if grep -qx 'units=criptofarol-dev-batch-worker.service' "$OUT"; then
+  echo "PASS DEV batch-only lists only the batch unit"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL DEV batch-only should list only criptofarol-dev-batch-worker.service"
+  cat "$OUT"
+  FAIL=$((FAIL + 1))
+fi
+assert_exit 2 "batch-only with discovery-only refused" bash "$INSTALLER" --dry-run --batch-only --discovery-only --root /srv/apps/prod/criptofarol/source
+for env in dev prod; do
+  unit="$REPO/ops/systemd/criptofarol-$env-batch-worker.service"
+  if grep -q " -Q batch_backtest'\$" "$unit" \
+    && ! grep -q -- '-Q discovery' "$unit" \
+    && grep -q -- '--pool=solo --concurrency=1 --prefetch-multiplier=1' "$unit" \
+    && grep -q -- "--hostname=batch-$env@%%h" "$unit" \
+    && grep -qx "Environment=DISCOVERY_RESOURCE_PROFILE=$env" "$unit"; then
+    echo "PASS $env batch template consumes only batch_backtest on a solo pool"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL $env batch template queue/pool/profile"
+    FAIL=$((FAIL + 1))
+  fi
+  if grep -q " -Q discovery'\$" "$REPO/ops/systemd/criptofarol-$env-discovery-worker.service"; then
+    echo "PASS $env discovery template keeps only the discovery queue"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL $env discovery template must consume only -Q discovery"
+    FAIL=$((FAIL + 1))
+  fi
+done
+
 if grep -q 'RUN_FAVORITE_BACKTEST_REFRESH=1' "$REPO/ops/systemd/criptofarol-prod-runtime-worker.service" \
   && grep -q 'RUN_DISCOVERY_OUTBOX_DISPATCHER=1' "$REPO/ops/systemd/criptofarol-prod-runtime-worker.service"; then
   echo "PASS PROD runtime worker keeps refresh + dispatcher"

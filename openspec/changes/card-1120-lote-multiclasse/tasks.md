@@ -52,3 +52,11 @@
 - [ ] 6.1 Demonstração no card: lote BTC/USDT + NVDA + SPY em 1d (favoritos consultáveis com período efetivo, precisão e limitações) e o mesmo em 5m (NVDA e SPY fora, BTC/USDT roda), em DEV <!-- covenant-flow:after-qa -->
 - [ ] 6.2 Regressão do lote de cripto em DEV (mesma amostra, antes/depois) registrada na evidência <!-- covenant-flow:after-qa -->
 - [ ] 6.3 `/opsx:verify`: tasks × implementação × protótipo; aceite só depois do #1122 em `develop` <!-- covenant-flow:after-qa -->
+
+## 7. Worker do lote (pós-homologação, decisão de Alan 25/10/2026)
+
+- [x] 7.1 Templates `ops/systemd/criptofarol-dev-batch-worker.service` e `criptofarol-prod-batch-worker.service`: só `-Q batch_backtest`, `--pool=solo --concurrency=1 --prefetch-multiplier=1`, hostname `batch-<env>@%h`, `.env`, perfil de recursos e spool próprios, tetos de memória iguais aos da Descoberta (DEV 3/4 GiB, PROD 4/5 GiB), `KillMode=mixed` e `TimeoutStopSec=300s` para um lote em curso terminar; `systemd-analyze verify` limpo
+- [x] 7.2 `install-discovery-workers-systemd.sh`: valida e instala as duas units (DEV e PROD) no instalador completo, para um worker ativo antes de gravar a unit, e ganha `--batch-only` (PROD sem tocar na Descoberta); valida fila, pool, hostname, perfil e `KillMode` do template do lote e que o template da Descoberta consome só `discovery`; `./restart` do DEV instala, liga e confere o worker do lote
+- [x] 7.3 Testes do instalador e do restart cobrindo as units novas: `scripts/test_install_discovery_workers.sh`, `backend/tests/unit/test_prod_discovery_installer.py` e `backend/tests/unit/test_dev_restart_contract.py`
+- [x] 7.4 Overlay (`environments.dev.services` e `environments.prod.services`) e docs (`docs/crypto-overlay.md`, `docs/runtime-architecture.md`, `docs/prod-migration-runbook.md`, `docs/discovery-memory-operations.md`): inventário de serviços, janela do publish, instalação do worker no T16 e evidência `services=`
+- [x] 7.5 Teste de contrato `backend/tests/unit/test_celery_queue_consumers.py`: falha se uma fila de `celery_app.task_routes` (ou uma task `app.*` sem rota) não tiver um template de worker em `ops/systemd` com `-Q` para DEV e PROD, instalado pelo instalador e listado no overlay

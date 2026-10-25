@@ -57,6 +57,7 @@ environments:
     - criptofarol-dev-frontend.service
     - criptofarol-dev-runtime-worker.service
     - criptofarol-dev-discovery-worker.service
+    - criptofarol-dev-batch-worker.service
     - criptofarol-dev-candle-writer.service
     - criptofarol-dev-telegram-alert-scan.service
   prod:
@@ -69,6 +70,7 @@ environments:
     - criptofarol-prod-leads.service
     - criptofarol-prod-runtime-worker.service
     - criptofarol-prod-discovery-worker.service
+    - criptofarol-prod-batch-worker.service
     - criptofarol-prod-candle-writer.service
     - criptofarol-prod-telegram-alert-scan.service
     oneshot_services:

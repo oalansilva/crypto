@@ -21,6 +21,8 @@ PROD_DISCOVERY = "criptofarol-prod-discovery-worker.service"
 PROD_RUNTIME = "criptofarol-prod-runtime-worker.service"
 PROD_BACKEND = "criptofarol-prod-backend.service"
 DEV_DISCOVERY = "criptofarol-dev-discovery-worker.service"
+PROD_BATCH = "criptofarol-prod-batch-worker.service"
+DEV_BATCH = "criptofarol-dev-batch-worker.service"
 SENTINEL = "OLD-UNIT-SENTINEL"
 PENDING_ONLY = (
     '{"active": false, "error": null, "sweeps": '
@@ -104,7 +106,14 @@ class Harness:
         for d in (self.fake / "active", self.etc, self.stubs, *self.roots.values()):
             d.mkdir(parents=True, exist_ok=True)
         (self.fake / "calls.log").touch()
-        for unit in (DEV_DISCOVERY, PROD_DISCOVERY, PROD_RUNTIME, PROD_BACKEND):
+        for unit in (
+            DEV_DISCOVERY,
+            PROD_DISCOVERY,
+            PROD_RUNTIME,
+            PROD_BACKEND,
+            DEV_BATCH,
+            PROD_BATCH,
+        ):
             (self.etc / unit).write_text(SENTINEL)
         self.procs = self.cgroup / "system.slice" / PROD_DISCOVERY / "cgroup.procs"
         self.procs.parent.mkdir(parents=True)
@@ -204,10 +213,19 @@ def test_prod_discovery_only_dry_run_lists_only_the_discovery_unit(h):
     assert h.probes == 0 and h.mutated() == []
 
 
-def test_prod_full_dry_run_still_lists_runtime_and_discovery(h):
+def test_prod_full_dry_run_lists_runtime_discovery_and_batch(h):
     result = h.run("prod", "--dry-run")
     assert result.returncode == 0, result.stderr
-    assert f"units={PROD_RUNTIME} {PROD_DISCOVERY}\n" in result.stdout
+    assert f"units={PROD_RUNTIME} {PROD_DISCOVERY} {PROD_BATCH}\n" in result.stdout
+
+
+def test_dev_full_dry_run_lists_runtime_discovery_and_batch(h):
+    result = h.run("dev", "--dry-run")
+    assert result.returncode == 0, result.stderr
+    assert (
+        "units=criptofarol-dev-runtime-worker.service "
+        f"{DEV_DISCOVERY} {DEV_BATCH}\n" in result.stdout
+    )
 
 
 def test_idle_prod_stops_only_discovery_installs_only_its_unit_and_starts_once(h):
@@ -484,3 +502,154 @@ def test_unit_templates_carry_the_approved_ceilings():
         ):
             assert expected in lines, (profile, expected)
         assert "--hostname=discovery-" + profile in text and "--pool=solo" in text
+
+
+# ---------------------------------------------------------------------------
+# #1120: the batch_backtest queue has its own worker (batch-only installs it
+# without touching Discovery, the runtime worker or the backend).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("target,unit", [("prod", PROD_BATCH), ("dev", DEV_BATCH)])
+def test_batch_only_dry_run_lists_only_the_batch_unit(h, target, unit):
+    result = h.run(target, "--dry-run", "--batch-only")
+    assert result.returncode == 0, result.stderr
+    assert f"units={unit}\n" in result.stdout
+    assert "backend_dropin=none" in result.stdout
+    assert h.probes == 0 and h.mutated() == []
+
+
+@pytest.mark.parametrize(
+    "target,batch,discovery",
+    [("prod", PROD_BATCH, PROD_DISCOVERY), ("dev", DEV_BATCH, DEV_DISCOVERY)],
+)
+def test_batch_only_install_never_touches_discovery_even_when_it_is_running(
+    h, target, batch, discovery
+):
+    h.set_active(discovery, PROD_RUNTIME, PROD_BACKEND)
+
+    result = h.run(target, "--batch-only")
+
+    assert result.returncode == 0, result.stderr
+    assert [c for c in h.calls if c.startswith(("stop", "enable", "restart", "start"))] == [
+        f"enable --now {batch}"
+    ]
+    assert h.probes == 0
+    assert "__ROOT_DIR__" not in h.unit_text(batch)
+    assert str(h.roots[target]) in h.unit_text(batch)
+    assert h.unit_text(discovery) == SENTINEL and h.unit_text(PROD_RUNTIME) == SENTINEL
+    assert "-Q batch_backtest" in h.unit_text(batch)
+    assert "MemoryMax" in result.stdout
+
+
+def test_batch_only_stops_a_running_batch_worker_before_rewriting_its_unit(h):
+    h.set_active(PROD_BATCH, PROD_DISCOVERY)
+
+    result = h.run("prod", "--batch-only")
+
+    assert result.returncode == 0, result.stderr
+    calls = h.calls
+    stop = calls.index(f"stop {PROD_BATCH}")
+    reload_ = calls.index("daemon-reload ")
+    enable = calls.index(f"enable --now {PROD_BATCH}")
+    assert stop < reload_ < enable
+    assert f"stop {PROD_DISCOVERY}" not in calls
+
+
+def test_batch_only_stop_failure_installs_nothing(h):
+    h.set_active(PROD_BATCH)
+    h.flag("stop_fails")
+
+    result = h.run("prod", "--batch-only")
+
+    assert result.returncode == 1 and "did not stop" in result.stderr
+    assert h.unit_text(PROD_BATCH) == SENTINEL
+    assert not any(c.startswith(("daemon-reload", "enable")) for c in h.calls)
+
+
+def test_batch_only_and_discovery_only_are_mutually_exclusive(h):
+    result = h.run("prod", "--batch-only", "--discovery-only")
+    assert result.returncode == 2 and "mutually exclusive" in result.stderr
+    assert h.mutated() == []
+
+
+def test_full_prod_install_with_discovery_stopped_also_installs_the_batch_worker(h):
+    h.set_active(PROD_BATCH)
+
+    result = h.run("prod")
+
+    assert result.returncode == 0, result.stderr
+    assert "__ROOT_DIR__" not in h.unit_text(PROD_BATCH)
+    calls = h.calls
+    assert calls.index(f"stop {PROD_BATCH}") < calls.index("daemon-reload ")
+    enable = [c for c in calls if c.startswith("enable")][0]
+    assert enable == f"enable --now {PROD_RUNTIME} {PROD_DISCOVERY} {PROD_BATCH}"
+
+
+def test_discovery_only_leaves_the_batch_worker_alone(h):
+    h.set_active(PROD_DISCOVERY, PROD_BATCH)
+
+    result = h.run("prod", "--discovery-only")
+
+    assert result.returncode == 0, result.stderr
+    assert h.unit_text(PROD_BATCH) == SENTINEL
+    assert not any(PROD_BATCH in c for c in h.calls if not c.startswith("is-active"))
+
+
+@pytest.mark.parametrize("target,unit", [("prod", PROD_BATCH), ("dev", DEV_BATCH)])
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        (" -Q batch_backtest'", " -Q batch_backtest,discovery'"),
+        (" -Q batch_backtest'", " -Q discovery'"),
+        ("--pool=solo", "--pool=prefork"),
+        ("--prefetch-multiplier=1", "--prefetch-multiplier=4"),
+        ("KillMode=mixed", "KillMode=control-group"),
+        ("--hostname=batch-", "--hostname=discovery-"),
+    ],
+)
+def test_installer_rejects_a_batch_template_that_drifts(h, target, unit, old, new):
+    template = h.roots[target] / "ops" / "systemd" / unit
+    text = template.read_text()
+    assert old in text
+    template.write_text(text.replace(old, new))
+
+    result = h.run(target, "--dry-run", "--batch-only")
+
+    assert result.returncode == 1 and "Batch template" in result.stderr
+    assert h.mutated() == []
+
+
+@pytest.mark.parametrize("target,unit", [("prod", PROD_DISCOVERY), ("dev", DEV_DISCOVERY)])
+def test_installer_rejects_a_discovery_template_that_also_consumes_batch(h, target, unit):
+    template = h.roots[target] / "ops" / "systemd" / unit
+    template.write_text(
+        template.read_text().replace(" -Q discovery'", " -Q discovery,batch_backtest'")
+    )
+
+    result = h.run(target, "--dry-run", "--discovery-only")
+
+    assert result.returncode == 1 and "only the discovery queue" in result.stderr
+
+
+def test_batch_templates_carry_the_documented_envelope():
+    for env, high, maximum in (("prod", "4G", "5G"), ("dev", "3G", "4G")):
+        text = (REPO_ROOT / "ops/systemd" / f"criptofarol-{env}-batch-worker.service").read_text()
+        lines = text.splitlines()
+        for expected in (
+            f"MemoryHigh={high}",
+            f"MemoryMax={maximum}",
+            "MemorySwapMax=512M",
+            "OOMPolicy=kill",
+            "KillMode=mixed",
+            "TimeoutStopSec=300s",
+            "Restart=on-failure",
+            "StartLimitBurst=3",
+            f"Environment=DISCOVERY_RESOURCE_PROFILE={env}",
+            "Environment=DISCOVERY_INTERNAL_WORKERS=1",
+            f"Environment=DISCOVERY_SPOOL_DIR=/var/tmp/criptofarol-{env}-batch",
+        ):
+            assert expected in lines, (env, expected)
+        # Own spool, own cgroup: never the Discovery spool directory.
+        assert f"criptofarol-{env}-discovery" not in text.replace(f"{env}-discovery-worker", "")
+        assert "--hostname=batch-" + env + "@%%h -Q batch_backtest'" in text

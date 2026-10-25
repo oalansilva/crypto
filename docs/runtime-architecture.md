@@ -16,7 +16,7 @@ Este documento define o runtime operacional do Cripto Farol na VPS atual. A regr
 | Backfill historico | Preencher historico longo sob demanda | Desligado | admin/API ou `BACKFILL_SCHEDULER_ENABLED=1` |
 | Binance realtime prices | Snapshot/precos/top pairs, nao candles | Desligado | `BINANCE_REALTIME_WORKER_ENABLED=1` ou `BINANCE_REALTIME_ENABLED=1`, mas nao ambos |
 | Runtime worker generico | Signal monitor, snapshot worker e refresh de favoritos | Desligado | `CRYPTO_RUNTIME_WORKER_ENABLED=1` + rotina `RUN_*` |
-| Celery batch | Batch backtests assincronos | Desligado | `CRYPTO_CELERY_WORKER_ENABLED=1` |
+| Celery batch | Lotes de backtest (Combo e Otimização), fila `batch_backtest` | Ligado no DEV e no PROD por unit dedicada (#1120); o `start.sh` legado segue desligado | `CRYPTO_CELERY_WORKER_ENABLED=1` no worker dedicado `criptofarol-<env>-batch-worker.service` |
 | Discovery dispatcher | Republicar intents duráveis da outbox | Ligado no DEV; PROD via unit dedicado | `RUN_DISCOVERY_OUTBOX_DISPATCHER=1` em worker dedicado |
 | Celery discovery | Consumir sweeps da fila `discovery` | Ligado no DEV; PROD via unit dedicado | `CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED=1` em worker dedicado |
 
@@ -49,7 +49,7 @@ Este documento define o runtime operacional do Cripto Farol na VPS atual. A regr
 | `BINANCE_REALTIME_WORKER_ENABLED` | `0` | Liga worker externo de precos/top pairs. |
 | `BINANCE_REALTIME_ENABLED` | `0` | Liga connector realtime dentro do backend. Nao usar junto com o worker externo. |
 | `CRYPTO_RUNTIME_WORKER_ENABLED` | `0` | Habilita familia runtime worker, mas ainda exige rotina `RUN_*`. |
-| `CRYPTO_CELERY_WORKER_ENABLED` | `0` | Liga Celery para fila `batch_backtest`. |
+| `CRYPTO_CELERY_WORKER_ENABLED` | `0` | Identifica o worker Celery da fila `batch_backtest` (a unit dedicada `criptofarol-<env>-batch-worker.service` o liga). |
 | `RUN_DISCOVERY_OUTBOX_DISPATCHER` | `0` | Liga a republicação periódica da outbox de discovery. |
 | `CRYPTO_DISCOVERY_CELERY_WORKER_ENABLED` | `0` | Identifica o worker Celery da fila `discovery`. |
 
@@ -95,11 +95,27 @@ O mesmo `./restart` instala e valida os workers dedicados da descoberta:
 systemctl status criptofarol-dev-runtime-worker.service --no-pager
 systemctl status criptofarol-dev-discovery-worker.service --no-pager
 journalctl -u criptofarol-dev-discovery-worker.service -n 100 --no-pager
+systemctl status criptofarol-dev-batch-worker.service --no-pager
+journalctl -u criptofarol-dev-batch-worker.service -n 100 --no-pager
 ```
+
+### Worker dos lotes (`batch_backtest`, #1120)
+
+Toda fila publicada em `celery_app.task_routes` precisa de um worker próprio que a consuma com `-Q`; a fila `batch_backtest` ficou parada em DEV e PROD até o #1120 ganhar o seu (o teste `backend/tests/unit/test_celery_queue_consumers.py` falha se faltar). O worker dos lotes é separado do da Descoberta e os dois rodam ao mesmo tempo:
+
+| Unit (template em `ops/systemd/`) | Fila | Pool | Teto de memória | Parada |
+| --- | --- | --- | --- | --- |
+| `criptofarol-dev-batch-worker.service` | `batch_backtest` | `solo`, `--concurrency=1 --prefetch-multiplier=1`, hostname `batch-dev@%h` | 3 GiB aviso, 4 GiB corte | `KillMode=mixed`, `TimeoutStopSec=300s` |
+| `criptofarol-prod-batch-worker.service` | `batch_backtest` | idem, `batch-prod@%h` | 4 GiB aviso, 5 GiB corte | idem |
+
+- Ambiente: `backend/.env`, `DISCOVERY_RESOURCE_PROFILE=<env>` e `DISCOVERY_INTERNAL_WORKERS=1` (o otimizador do lote dimensiona o pool de processos e o spool pelo mesmo perfil da Descoberta: 1 worker, pico medido de 1,70 GiB), spool próprio em `/var/tmp/criptofarol-<env>-batch` (nunca o da Descoberta) e `CRYPTO_CELERY_WORKER_ENABLED=1`. Mesmos `Restart=on-failure`, `RestartSec=60`, `StartLimitBurst=3/900 s`, `OOMPolicy=kill` e `MemorySwapMax=512M` da Descoberta.
+- Parada: o SIGTERM vai só ao processo principal do Celery (`KillMode=mixed`), que no pool `solo` termina o lote em curso antes de sair, sem sinalizar os processos filhos do otimizador (com `control-group` eles morreriam e o item falharia). Passados 300 s o systemd mata o grupo. O lote cortado não se perde: a tarefa é `acks_late`, a reentrega mantém o mesmo `task_id` (o `claim` do lote o aceita) e os itens em `collecting`/`optimizing` voltam à fila. Se a unit for morta por SIGKILL, a mensagem não confirmada só volta ao broker depois do `visibility_timeout` do Redis (padrão de 1 h); até lá o lote aparece como em execução sem worker.
+- DEV: o `./restart` instala e liga o worker dos lotes junto com os demais (o instalador o para antes, se estiver ativo, e o liga uma vez com `enable --now`). O restart pode esperar até 300 s por um lote em curso.
+- PROD: `./install-discovery-workers-systemd.sh --root /srv/apps/prod/criptofarol/source --batch-only` instala/atualiza só essa unit, sem tocar na Descoberta (ver `docs/prod-migration-runbook.md`). O overlay lista as duas units em `environments.*.services`, então o `release-guard post` exige `criptofarol-prod-batch-worker` em `services=` do `PROD_DEPLOY_EVIDENCE`.
 
 ### PROD discovery workers
 
-Templates: `ops/systemd/criptofarol-prod-runtime-worker.service` (favorite refresh **e** `RUN_DISCOVERY_OUTBOX_DISPATCHER=1`) e `ops/systemd/criptofarol-prod-discovery-worker.service` (Celery fila `discovery`).
+Templates: `ops/systemd/criptofarol-prod-runtime-worker.service` (favorite refresh **e** `RUN_DISCOVERY_OUTBOX_DISPATCHER=1`), `ops/systemd/criptofarol-prod-discovery-worker.service` (Celery fila `discovery`) e `ops/systemd/criptofarol-prod-batch-worker.service` (Celery fila `batch_backtest`, #1120).
 
 O installer `./install-discovery-workers-systemd.sh` aceita só os roots canônicos:
 
@@ -118,7 +134,7 @@ journalctl -u criptofarol-prod-discovery-worker.service -n 100 --no-pager
 
 Desde o #1110 a unit da Descoberta PROD tem teto de memória (4 GiB aviso, 5 GiB corte). O installer completo recusa reescrevê-la com a Descoberta ativa; para aplicar o teto numa unit já instalada use `./install-discovery-workers-systemd.sh --root /srv/apps/prod/criptofarol/source --discovery-only`, que espera por ausência de busca ativa (ver `docs/discovery-memory-operations.md`, seção "Discovery PROD"). Migração de banco em PROD: `docs/prod-migration-runbook.md`.
 
-Logs: `journalctl -u criptofarol-prod-runtime-worker.service` (dispatcher + refresh) e `journalctl -u criptofarol-prod-discovery-worker.service` (Celery). Smoke: um sweep em `https://criptofarol.com.br/discovery` sai de pending/queued e `/api/health` 200. Não reiniciar backend/frontend/leads por este installer.
+Logs: `journalctl -u criptofarol-prod-runtime-worker.service` (dispatcher + refresh), `journalctl -u criptofarol-prod-discovery-worker.service` (Celery, fila `discovery`) e `journalctl -u criptofarol-prod-batch-worker.service` (Celery, fila `batch_backtest`). Smoke: um sweep em `https://criptofarol.com.br/discovery` sai de pending/queued e `/api/health` 200. Não reiniciar backend/frontend/leads por este installer.
 
 ### PROD (somente no release)
 
