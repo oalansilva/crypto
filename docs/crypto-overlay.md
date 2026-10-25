@@ -513,6 +513,7 @@ Padrão de commit recomendado:
 
 ### Backend (FastAPI)
 - O `runtime-worker` executa a fila da Descoberta e, quando a flag correspondente está ligada, a atualização de favoritos.
+- **Workers Celery (filas):** a fila `discovery` é consumida por `criptofarol-<env>-discovery-worker.service` e a fila `batch_backtest` (lotes de backtest, #1120) por `criptofarol-<env>-batch-worker.service`, um worker próprio por fila, em DEV e PROD, rodando ao mesmo tempo. Toda fila nova em `celery_app.task_routes` precisa do seu template em `ops/systemd/` (`-Q <fila>`), da inclusão no `install-discovery-workers-systemd.sh` e do unit em `environments.*.services` deste overlay; `backend/tests/unit/test_celery_queue_consumers.py` falha se faltar. O `./restart` do DEV instala e reinicia o worker dos lotes; em PROD o T16 o instala com `./install-discovery-workers-systemd.sh --root /srv/apps/prod/criptofarol/source --batch-only` e a evidência `services=` do deploy lista `criptofarol-prod-batch-worker` (detalhes em `docs/runtime-architecture.md` e `docs/prod-migration-runbook.md`).
 - Porta padrão: **8003**
 - Logs (quando usamos nohup): `/tmp/uvicorn-8003.log`
 

@@ -309,6 +309,15 @@
       "evidence": "explicit postgres_isolation fixture; real initial seed and named refresh; other definitions and saved strategy preserved"
     },
     {
+      "file": "backend/tests/unit/test_celery_queue_consumers.py",
+      "protected_behavior": "card 1120 Celery queue consumers: every queue in celery_app.task_routes has exactly one DEV and one PROD worker template consuming it with -Q, installed by the installer and listed in the overlay services",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "reads celery_app.task_routes and ops/systemd templates, installer and overlay; fails when a routed queue (e.g. batch_backtest) has no worker unit"
+    },
+    {
       "file": "backend/tests/unit/test_chart_pattern_service.py",
       "protected_behavior": "chart pattern detection",
       "production_reachability": "reachable",

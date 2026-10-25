@@ -21,6 +21,8 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
   DEV_FRONTEND_UNIT="criptofarol-dev-frontend.service"
   DEV_RUNTIME_WORKER_UNIT="criptofarol-dev-runtime-worker.service"
   DEV_DISCOVERY_WORKER_UNIT="criptofarol-dev-discovery-worker.service"
+  # #1120: the batch_backtest queue has its own worker (Discovery keeps `-Q discovery`).
+  DEV_BATCH_WORKER_UNIT="criptofarol-dev-batch-worker.service"
   DEV_BACKEND_PORT="8004"
   DEV_FRONTEND_PORT="5175"
 
@@ -85,12 +87,17 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
   # on the second restart within 15 minutes. There is no automatic
   # `reset-failed`; a start-limit refusal fails this restart with a clear
   # message and the operator repeats it later.
-  echo "Ensuring DEV discovery workers..."
+  # The same installer also (re)installs the batch_backtest worker (#1120): if it is
+  # running, the installer stops it first (a running batch gets its unit's
+  # TimeoutStopSec to finish; an interrupted batch resumes by redelivery) and then
+  # starts it once with the freshly written unit and the code just deployed.
+  echo "Ensuring DEV discovery and batch workers..."
   if ! "$ROOT_DIR/install-discovery-workers-systemd.sh"; then
-    echo "DEV discovery workers were not installed/started (see above). The discovery worker was stopped by this restart and may still be stopped; backend, frontend and runtime worker were not restarted. Fix the cause and run ./restart again." >&2
+    echo "DEV discovery/batch workers were not installed/started (see above). The discovery worker was stopped by this restart and may still be stopped (the batch worker too, if it was running); backend, frontend and runtime worker were not restarted. Fix the cause and run ./restart again." >&2
     exit 1
   fi
   systemctl show "$DEV_DISCOVERY_WORKER_UNIT" -p MemoryHigh -p MemoryMax -p MemorySwapMax || true
+  systemctl show "$DEV_BATCH_WORKER_UNIT" -p MemoryHigh -p MemoryMax -p MemorySwapMax || true
 
   echo "Restarting canonical DEV services..."
   # Stop the runtime worker before the backend runs schema migration so a
@@ -114,7 +121,8 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
     systemctl --no-pager --lines=20 status \
       "$DEV_BACKEND_UNIT" \
       "$DEV_FRONTEND_UNIT" \
-      "$DEV_DISCOVERY_WORKER_UNIT" >&2 || true
+      "$DEV_DISCOVERY_WORKER_UNIT" \
+      "$DEV_BATCH_WORKER_UNIT" >&2 || true
     exit 1
   fi
   systemctl start "$DEV_RUNTIME_WORKER_UNIT"
@@ -123,10 +131,12 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
     if curl -fsS --max-time 2 "http://127.0.0.1:${DEV_BACKEND_PORT}/api/health" >/dev/null \
       && curl -fsS --max-time 2 "http://127.0.0.1:${DEV_FRONTEND_PORT}/" >/dev/null \
       && systemctl is-active --quiet "$DEV_RUNTIME_WORKER_UNIT" \
-      && systemctl is-active --quiet "$DEV_DISCOVERY_WORKER_UNIT"; then
+      && systemctl is-active --quiet "$DEV_DISCOVERY_WORKER_UNIT" \
+      && systemctl is-active --quiet "$DEV_BATCH_WORKER_UNIT"; then
       echo "crypto DEV backend:  http://127.0.0.1:${DEV_BACKEND_PORT}"
       echo "crypto DEV frontend: http://127.0.0.1:${DEV_FRONTEND_PORT}"
       echo "crypto DEV discovery workers: active"
+      echo "crypto DEV batch worker: active"
       systemctl is-active criptofarol-dev-candle-writer.timer >/dev/null 2>&1 \
         && echo "crypto DEV candle writer timer: active" \
         || echo "crypto DEV candle writer timer: inactive" >&2
@@ -140,7 +150,8 @@ if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
     "$DEV_BACKEND_UNIT" \
     "$DEV_FRONTEND_UNIT" \
     "$DEV_RUNTIME_WORKER_UNIT" \
-    "$DEV_DISCOVERY_WORKER_UNIT" >&2 || true
+    "$DEV_DISCOVERY_WORKER_UNIT" \
+    "$DEV_BATCH_WORKER_UNIT" >&2 || true
   exit 1
 fi
 # END CANONICAL DEV RESTART
