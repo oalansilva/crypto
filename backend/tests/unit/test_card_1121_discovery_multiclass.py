@@ -633,7 +633,11 @@ def test_promote_nvda_without_star_level_and_with_the_execution_identity(db, mon
             {},
         )
 
+    def no_network_lookup(symbol, timeframe):
+        raise AssertionError(f"primeiro candle de {symbol} {timeframe} buscado na rede")
+
     monkeypatch.setattr(favorite_operational_period, "enrich_walk_forward_favorite_create", enrich)
+    monkeypatch.setattr(favorite_operational_period, "_first_candle_iso", no_network_lookup)
     sweep, _ = _sweep(db, "sw-1121-promo", ["NVDA"], {"NVDA": "stock"})
     sweep.snapshot = {**sweep.snapshot, "period_type": "all", "start_date": None, "end_date": None}
     now = datetime.now(timezone.utc)
@@ -710,21 +714,30 @@ def test_crypto_promotion_stays_tier_3(db, monkeypatch):
     from app.services import favorite_operational_period
     from app.services.discovery_service import DiscoveryService
 
-    monkeypatch.setattr(
-        favorite_operational_period,
-        "enrich_walk_forward_favorite_create",
-        lambda **kw: (
-            kw.get("period_type"),
-            kw.get("start_date") or "2017-08-17",
-            kw.get("end_date") or "2026-10-23",
-            {},
-        ),
-    )
+    captured = {}
+
+    def enrich(**kwargs):
+        captured.update(kwargs)
+        return kwargs.get("period_type"), kwargs.get("start_date"), kwargs.get("end_date"), {}
+
+    def no_network_lookup(symbol, timeframe):
+        raise AssertionError(f"primeiro candle de {symbol} {timeframe} buscado na rede")
+
+    monkeypatch.setattr(favorite_operational_period, "enrich_walk_forward_favorite_create", enrich)
+    monkeypatch.setattr(favorite_operational_period, "_first_candle_iso", no_network_lookup)
+    # Varredura real com período explícito: o período do favorito sai do snapshot, sem rede.
+    sweep, _ = _sweep(db, "sw-1121-btc-promo", ["BTC/USDT"], {"BTC/USDT": "crypto"})
+    sweep.snapshot = {
+        **sweep.snapshot,
+        "period_type": "all",
+        "start_date": "2017-08-17",
+        "end_date": "2026-10-23",
+    }
     now = datetime.now(timezone.utc)
     db.add(
         DiscoveryResult(
             id="RS-BTC1121A1",
-            sweep_id="sw-x",
+            sweep_id=sweep.id,
             combination_id=990002,
             template_id="multi_ma_crossover",
             symbol="BTC/USDT",
@@ -755,6 +768,11 @@ def test_crypto_promotion_stays_tier_3(db, monkeypatch):
     assert favorite.tier == 3
     assert favorite.metrics["analysis_asset"]["asset_class"] == "crypto"
     assert favorite.parameters["data_source"] == "ccxt"
+    assert (captured["period_type"], captured["start_date"], captured["end_date"]) == (
+        "all",
+        "2017-08-17",
+        "2026-10-23",
+    )
 
 
 # --------------------------------------------------------------------------- regressão de cripto
