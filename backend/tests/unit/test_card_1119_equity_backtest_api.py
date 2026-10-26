@@ -27,9 +27,7 @@ from test_card_1118_api_and_catalog import _seed_catalog, public_db  # noqa: F40
 NOW = pd.Timestamp("2026-10-23 01:30", tz="UTC")
 # Card #1121: a Descoberta também roda ação e ETF; o motivo só sobra para a recusa dos caminhos legados
 # (backtest legado e Otimização sem escopo), que diz que ação e ETF não rodam ali e aponta os certos.
-NEW_REASON = (
-    "ação e ETF não rodam neste caminho; use o Combo, a Otimização (1 ativo ou lote) ou a Descoberta"
-)
+NEW_REASON = "ação e ETF não rodam neste caminho; use o Combo, a Otimização (1 ativo ou lote) ou a Descoberta"
 NEW_MESSAGE = NEW_REASON[0].upper() + NEW_REASON[1:] + "."
 
 

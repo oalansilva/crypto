@@ -70,9 +70,7 @@ MARKET_OHLCV_TABLE = "market_ohlcv"
 # caminhos legados que ainda recusam ação/ETF (``asset_class_not_supported`` no ``POST /api/combos/backtest``
 # e na Otimização sem escopo, ``run_scope`` diferente de ``single``). Diz que ação e ETF não rodam neste
 # caminho e aponta os caminhos que rodam; não é o texto que a Descoberta mostra.
-EQUITY_BATCH_REASON = (
-    "ação e ETF não rodam neste caminho; use o Combo, a Otimização (1 ativo ou lote) ou a Descoberta"
-)
+EQUITY_BATCH_REASON = "ação e ETF não rodam neste caminho; use o Combo, a Otimização (1 ativo ou lote) ou a Descoberta"
 EQUITY_UNSUPPORTED_MESSAGE = EQUITY_BATCH_REASON[0].upper() + EQUITY_BATCH_REASON[1:] + "."
 
 _ADVISORY_KEY = 11170001

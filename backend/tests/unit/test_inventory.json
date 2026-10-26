@@ -1009,6 +1009,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "ComboOptimizer real com dados sintéticos, executor real do lote e migração Alembic em schema privado (unit_database_url)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1121_discovery_multiclass.py",
+      "protected_behavior": "Descoberta com cripto, ação e ETF na mesma varredura: aquisição e congelamento por classe (binance_equity), amostra única por ativo e tempo reaproveitada por outras combinações e novas tentativas, sem candles como amostra insuficiente com motivo, falha de coleta nas 3 tentativas sem derrubar a varredura, cobertura pelo calendário de NY, identidade/precisão/convenções por resultado, estado por ativo, filtro de classe no ranking, promoção de ação/ETF sem nível de estrela e varredura só de cripto inalterada",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, coleta e otimizador simulados e histórico de ações em schema privado"
     }
   ]
 }
