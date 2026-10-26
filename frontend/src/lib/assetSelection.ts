@@ -116,9 +116,11 @@ export const CLASS_FILTER_LABEL: Record<ClassFilter, string> = {
 }
 
 export const PAGE_SIZE = 6
-/** Card #1120 (decisão 13): só a Descoberta segue recusando ação/ETF; o lote do Combo e da Otimização aceita. */
-export const EQUITY_REASON =
-  'ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois'
+/**
+ * Card #1121 (decisão 2): Combo, Otimização (1 ativo ou lote) e Descoberta rodam ação e ETF. O motivo de
+ * classe só sobra para uma seleção resolvida sem `equitiesRun` (nenhuma tela o mostra hoje).
+ */
+export const EQUITY_REASON = 'ação e ETF ficam fora desta análise'
 export const MISSING_REASON = 'ativo fora do catálogo da Binance'
 export const TOP10_SYMBOLS = [
   'BTC/USDT',
@@ -498,6 +500,11 @@ export interface SelectionEntry {
   kind: EntryKind
 }
 
+export interface ResolveOptions {
+  /** Card #1121 (decisão 2): na Descoberta, ação e ETF negociáveis rodam (`runs`) como a cripto. */
+  equitiesRun?: boolean
+}
+
 /**
  * Classifica uma seleção concreta (símbolos) com o que o catálogo já conhece.
  * Símbolo desconhecido de uma classe sem lista válida segue como `runs`: a falha
@@ -508,13 +515,15 @@ export function resolveSelection(
   known: ReadonlyMap<string, CatalogAsset>,
   freshness: FreshnessMap | null,
   lookedUp?: ReadonlySet<string>,
+  options: ResolveOptions = {},
 ): SelectionEntry[] {
+  const equityKind = options.equitiesRun ? ('runs' as const) : ('class' as const)
   return symbols.map((raw) => {
     const symbol = normalizeSymbol(raw)
     const asset = known.get(symbol) ?? null
     if (asset) {
       if (isMarked(asset)) return { symbol, asset, kind: 'marked' as const }
-      if (asset.asset_class !== 'crypto') return { symbol, asset, kind: 'class' as const }
+      if (asset.asset_class !== 'crypto') return { symbol, asset, kind: equityKind }
       return { symbol, asset, kind: 'runs' as const }
     }
     const cls: AssetClass = symbolIsCrypto(symbol) ? 'crypto' : 'stock'
@@ -522,7 +531,7 @@ export function resolveSelection(
     const notAsked = lookedUp ? !lookedUp.has(symbol) : false
     const unverified = notAsked || !freshness || freshness[cls].status === 'unavailable'
     if (unverified) {
-      return { symbol, asset: null, kind: symbolIsCrypto(symbol) ? ('runs' as const) : ('class' as const) }
+      return { symbol, asset: null, kind: symbolIsCrypto(symbol) ? ('runs' as const) : equityKind }
     }
     return { symbol, asset: null, kind: 'missing' as const }
   })
@@ -537,6 +546,8 @@ export interface SelectionCounts {
   missing: number
   out: number
   total: number
+  /** Quantos rodam (card #1121: na Descoberta, cripto, ação e ETF negociáveis). */
+  runs: number
 }
 
 export function selectionCounts(entries: SelectionEntry[]): SelectionCounts {
@@ -549,17 +560,26 @@ export function selectionCounts(entries: SelectionEntry[]): SelectionCounts {
     missing: 0,
     out: 0,
     total: 0,
+    runs: 0,
   }
+  let classOut = 0
   for (const entry of entries) {
-    if (entry.kind === 'marked') counts.marked += 1
-    else if (entry.kind === 'missing') counts.missing += 1
-    else if (entry.kind === 'runs') counts.crypto += 1
-    else if (entry.asset?.asset_class === 'etf') counts.etf += 1
-    else counts.stock += 1
+    if (entry.kind === 'marked') {
+      counts.marked += 1
+      continue
+    }
+    if (entry.kind === 'missing') {
+      counts.missing += 1
+      continue
+    }
+    const cls: AssetClass = entry.asset?.asset_class ?? (symbolIsCrypto(entry.symbol) ? 'crypto' : 'stock')
+    counts[cls] += 1
+    if (entry.kind === 'runs') counts.runs += 1
+    else classOut += 1
   }
   counts.equities = counts.stock + counts.etf
-  counts.out = counts.equities + counts.marked + counts.missing
-  counts.total = counts.crypto + counts.out
+  counts.out = classOut + counts.marked + counts.missing
+  counts.total = counts.crypto + counts.equities + counts.marked + counts.missing
   return counts
 }
 
@@ -614,7 +634,8 @@ export function outNames(entries: SelectionEntry[], max = 3): string {
 
 export function outWhy(counts: SelectionCounts): string {
   const hasMarked = counts.marked > 0 || counts.missing > 0
-  if (counts.equities && hasMarked) {
+  const classOut = counts.out - counts.marked - counts.missing
+  if (classOut && hasMarked) {
     return `${EQUITY_REASON}, e ativos marcados pela Binance não entram em análise nova`
   }
   if (hasMarked) {

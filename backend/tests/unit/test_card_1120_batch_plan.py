@@ -79,19 +79,15 @@ def test_batch_scope_lets_equity_through_and_keeps_marked_and_missing_refused(
     assert marked["code"] == "asset_not_selectable"
     missing = refusal_for_symbols(["ZZZZ/USDT", "NVDA"], new_analysis=True, batch_scope=True)
     assert missing["code"] == "asset_not_in_catalog"
-    # sem o escopo do lote, a recusa por classe segue como antes (Descoberta)
+    # sem o escopo do lote, a recusa por classe segue como antes (Otimização sem escopo)
     assert refusal_for_symbols(["NVDA"], new_analysis=True)["code"] == "asset_class_not_supported"
 
 
-def test_discovery_keeps_refusing_equity_with_the_new_reason(public_db):  # noqa: F811
+def test_discovery_now_runs_equity_without_a_class_reason(public_db):  # noqa: F811
+    """Card #1121 (decisão 2): ação e ETF entram na Descoberta; só marcado e fora do catálogo ficam fora."""
     _seed_catalog(public_db)
     reasons = discovery_symbol_reasons(["NVDA", "SPY", "BTC/USDT"])
-    expected = (
-        "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); "
-        "a Descoberta vem depois"
-    )
-    assert reasons["NVDA"]["reason"] == expected and reasons["SPY"]["reason"] == expected
-    assert "o lote vem depois" not in expected and "BTC/USDT" not in reasons
+    assert reasons == {}
 
 
 # ------------------------------------------------------------------ 2.3 plano por ativo

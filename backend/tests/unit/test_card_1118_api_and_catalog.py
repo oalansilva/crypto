@@ -317,8 +317,9 @@ def test_refused_analysis_and_select_all_never_collect(history, monkeypatch):
     assert {i["plan"] for i in preview.json()["items"]} == {"run"}
     from app.services.asset_analysis_guard import discovery_symbol_reasons
 
+    # Card #1121: a Descoberta aceita os ETFs; o Preflight não coleta (a coleta é do worker).
     reasons = discovery_symbol_reasons(["SPY", "QQQ", "IBIT"])
-    assert {r["kind"] for r in reasons.values()} == {"class"}
+    assert reasons == {}
     assert provider.requests == []
 
 
@@ -343,6 +344,7 @@ def test_only_the_history_route_and_the_equity_provider_may_collect_equity():
         "services/batch_backtest_service.py",  # lote (#1120): coleta ativo por ativo no worker
         "routes/market_history_routes.py",  # a consulta (history ... ensure=collect)
         "services/equity_backtest.py",  # coleta sob demanda do backtest de 1 ação/ETF (#1119)
+        "services/discovery_inputs.py",  # Descoberta (#1121): lê o guardado depois da coleta (ensure=False)
         "services/market_data_providers.py",  # provedor de ação/ETF
         "services/market_history/facade.py",  # loader_frame (só cripto)
         "services/market_history/service.py",  # a própria coleta

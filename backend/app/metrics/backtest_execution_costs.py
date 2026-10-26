@@ -62,13 +62,18 @@ def slippage_for_timeframe(timeframe: str | None) -> float:
     return TIMEFRAME_SLIPPAGE_PER_SIDE.get(tf, 0.0)
 
 
-def fees_slippage_record(timeframe: str | None) -> dict[str, Any]:
-    """JSON persisted on Discovery results and evidence fingerprints."""
+def fees_slippage_record(timeframe: str | None, asset_class: str | None = None) -> dict[str, Any]:
+    """JSON persisted on Discovery results and evidence fingerprints.
+
+    Card #1121 (decisão 11): a taxa é a da classe do resultado (cripto 0,075%; ação e ETF 0,10%),
+    a mesma que a simulação aplicou. Sem classe, a de cripto (registro de antes).
+    """
+    fee = fee_for_class(asset_class)[0]
     slip = slippage_for_timeframe(timeframe)
     return {
-        "fees": TRADING_FEE,
+        "fees": fee,
         "slippage": slip,
-        "fee_pct": TRADING_FEE,
+        "fee_pct": fee,
         "slippage_pct": slip,
     }
 

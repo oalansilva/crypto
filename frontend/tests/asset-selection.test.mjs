@@ -393,11 +393,26 @@ test('recusa estruturada da API vira a mensagem em português; texto antigo segu
   assert.equal(urlSymbolNotice('XYZ/USDT').title, 'XYZ/USDT não está no catálogo da Binance')
 })
 
-test('o texto de por que fica fora muda com a mistura', () => {
-  assert.equal(outWhy(selectionCounts(entries(['NVDA']))), 'ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois')
+test('o texto de por que fica fora muda com a mistura (sem "a Descoberta vem depois", card #1121)', () => {
+  assert.equal(outWhy(selectionCounts(entries(['NVDA']))), 'ação e ETF ficam fora desta análise')
   assert.match(outWhy(selectionCounts(entries(['WAVES/USDT']))), /^ativo marcado pela Binance \(suspenso, fora de mercado/)
-  assert.ok(outWhy(selectionCounts(entries(['WAVES/USDT', 'NVDA']))).startsWith('ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois, e ativos marcados'))
+  assert.ok(outWhy(selectionCounts(entries(['WAVES/USDT', 'NVDA']))).startsWith('ação e ETF ficam fora desta análise, e ativos marcados'))
   assert.equal(outEntries(entries(['BTC/USDT', 'NVDA'])).length, 1)
+  assert.doesNotMatch(outWhy(selectionCounts(entries(['NVDA']))), /a Descoberta vem depois/)
+})
+
+test('Descoberta (card #1121): ação e ETF negociáveis rodam; só marcado e fora do catálogo ficam fora', () => {
+  const sel = resolveSelection(['BTC/USDT', 'NVDA', 'SPY', 'WAVES/USDT', 'XYZ/USDT'], KNOWN, FRESH_OK, undefined, { equitiesRun: true })
+  assert.deepEqual(sel.map((e) => e.kind), ['runs', 'runs', 'runs', 'marked', 'missing'])
+  const counts = selectionCounts(sel)
+  assert.deepEqual(
+    { crypto: counts.crypto, stock: counts.stock, etf: counts.etf, runs: counts.runs, out: counts.out, total: counts.total },
+    { crypto: 1, stock: 1, etf: 1, runs: 3, out: 2, total: 5 },
+  )
+  assert.deepEqual(outEntries(sel).map((e) => e.symbol), ['WAVES/USDT', 'XYZ/USDT'])
+  // Combo segue como antes: ação/ETF como classe (o lote decide), mesma contagem.
+  const combo = selectionCounts(entries(['BTC/USDT', 'NVDA', 'SPY']))
+  assert.deepEqual({ runs: combo.runs, out: combo.out, crypto: combo.crypto }, { runs: 1, out: 2, crypto: 1 })
 })
 
 // --- Contrato das telas (texto-fonte): sem texto livre, sem "Edição avançada" de símbolos ------------

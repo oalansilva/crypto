@@ -65,12 +65,14 @@ MARKET_OHLCV_TABLE = "market_ohlcv"
 
 # Card #1119 (decisão 3 de Alan no Design): lote e Descoberta seguem recusando ação/ETF, agora com o
 # porquê novo; o backtest de 1 ativo (Combo, Otimização e API) roda.
-# Card #1120 (decisão 13): o lote aceita ação e ETF; só a Descoberta segue recusando, com o porquê novo.
+# Card #1120 (decisão 13): o lote aceita ação e ETF.
+# Card #1121 (decisão 2): a Descoberta também aceita ação e ETF. Este texto é só de recusa: sobra para os
+# caminhos legados que ainda recusam ação/ETF (``asset_class_not_supported`` no ``POST /api/combos/backtest``
+# e na Otimização sem escopo, ``run_scope`` diferente de ``single``). Diz que ação e ETF não rodam neste
+# caminho e aponta os caminhos que rodam; não é o texto que a Descoberta mostra.
 EQUITY_BATCH_REASON = (
-    "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); "
-    "a Descoberta vem depois"
+    "ação e ETF não rodam neste caminho; use o Combo, a Otimização (1 ativo ou lote) ou a Descoberta"
 )
-DISCOVERY_EQUITY_REASON = EQUITY_BATCH_REASON
 EQUITY_UNSUPPORTED_MESSAGE = EQUITY_BATCH_REASON[0].upper() + EQUITY_BATCH_REASON[1:] + "."
 
 _ADVISORY_KEY = 11170001

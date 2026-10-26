@@ -117,7 +117,7 @@ def get_discovery_sweep(
     db: Session = Depends(get_db),
 ):
     service = _service()
-    sweep = service.get_sweep(sweep_id, db, actor=actor)
+    sweep = service.get_sweep(sweep_id, db, actor=actor, with_assets=True)
     if not sweep:
         raise HTTPException(status_code=404, detail="sweep not found")
     return sweep
@@ -167,12 +167,15 @@ def discovery_leaderboard(
     direction: str | None = None,
     eligibility: str | None = None,
     exclude_eligibility: str | None = None,
+    asset_class: str | None = None,
     offset: int = 0,
     limit: int | None = None,
     actor: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     service = _service()
+    if asset_class is not None and asset_class not in ("crypto", "stock", "etf"):
+        raise HTTPException(status_code=400, detail="asset_class must be crypto, stock or etf")
     sweep = service.get_sweep(sweep_id, db, actor=actor)
     if not sweep:
         raise HTTPException(status_code=404, detail="sweep not found")
@@ -185,6 +188,7 @@ def discovery_leaderboard(
     if limit is None:
         limit = 50
     limit = max(1, min(limit, 200))
+    class_counts: dict[str, int] = {}
     results, total, unfiltered_total = service.leaderboard(
         sweep_id,
         metric=metric,
@@ -193,9 +197,11 @@ def discovery_leaderboard(
         direction=direction,
         eligibility=eligibility,
         exclude_eligibility=exclude_eligibility,
+        asset_class=asset_class,
         offset=offset,
         limit=limit,
         db=db,
+        counts=class_counts,
     )
     return {
         "sweep_id": sweep_id,
@@ -203,6 +209,7 @@ def discovery_leaderboard(
         "results": results,
         "total": total,
         "unfiltered_total": unfiltered_total,
+        "class_counts": class_counts,
         "offset": offset,
         "limit": limit,
     }

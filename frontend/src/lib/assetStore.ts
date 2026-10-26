@@ -5,6 +5,7 @@ import {
   resolveSelection,
   type CatalogAsset,
   type FreshnessMap,
+  type ResolveOptions,
   type SelectionEntry,
 } from './assetSelection'
 
@@ -128,9 +129,11 @@ export interface SelectionView {
   freshness: FreshnessMap | null
 }
 
-export function useSelectionView(symbols: string[]): SelectionView {
+/** `options.equitiesRun` (card #1121): a Descoberta trata ação e ETF negociáveis como `runs`. */
+export function useSelectionView(symbols: string[], options: ResolveOptions = {}): SelectionView {
   const current = useSyncExternalStore(subscribe, getVersion, getVersion)
   const key = symbols.join('|')
+  const equitiesRun = Boolean(options.equitiesRun)
 
   useEffect(() => {
     void ensureAssets(symbols)
@@ -140,9 +143,9 @@ export function useSelectionView(symbols: string[]): SelectionView {
   return useMemo(() => {
     const normalized = symbols.map(normalizeSymbol)
     const pending = normalized.some((s) => !looked.has(s))
-    const entries = resolveSelection(normalized, known, freshness, looked)
+    const entries = resolveSelection(normalized, known, freshness, looked, { equitiesRun })
     return { entries, loading: pending, freshness }
     // `current` muda a cada atualização do cache.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, current])
+  }, [key, current, equitiesRun])
 }

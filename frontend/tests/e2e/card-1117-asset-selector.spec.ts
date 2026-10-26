@@ -68,25 +68,30 @@ async function discoveryMocks(page: Page) {
     preflightBodies.push(body)
     const byId = new Map(catalog.assets.map((a) => [a.symbol, a]))
     const per = body.templates.length * body.timeframes.length * body.directions.length
+    // Card #1121: ação e ETF negociáveis rodam na Descoberta; só o ativo marcado fica fora.
     const excluded = body.symbols
       .map((s) => byId.get(s))
-      .filter((a) => a && (a.asset_class !== 'crypto' || a.state !== 'tradable'))
+      .filter((a) => a && a.state !== 'tradable')
       .map((a) => ({
         symbol: a!.symbol,
         asset_class: a!.asset_class,
         state: a!.state,
-        kind: a!.state !== 'tradable' ? 'marked' : 'class',
-        reason:
-          a!.state !== 'tradable'
-            ? `${a!.state_label} na Binance; não entra em análise nova`
-            : 'ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois',
+        kind: 'marked',
+        reason: `${a!.state_label} na Binance; não entra em análise nova`,
         combinations: per,
       }))
     const validSymbols = body.symbols.filter((s) => {
       const a = byId.get(s)
-      return !a || (a.asset_class === 'crypto' && a.state === 'tradable')
+      return !a || a.state === 'tradable'
     })
     const valid = validSymbols.length * per
+    const byClass: Record<string, { assets: number; combinations: number; currency: string }> = {}
+    for (const symbol of validSymbols) {
+      const cls = byId.get(symbol)?.asset_class ?? 'crypto'
+      const bucket = (byClass[cls] ??= { assets: 0, combinations: 0, currency: cls === 'crypto' ? 'USDT' : 'USD' })
+      bucket.assets += 1
+      bucket.combinations += per
+    }
     await route.fulfill(
       json({
         axes: { templates: body.templates, symbols: body.symbols, timeframes: body.timeframes, directions: body.directions },
@@ -96,7 +101,8 @@ async function discoveryMocks(page: Page) {
         excluded_count: (body.symbols.length - validSymbols.length) * per,
         valid_total: valid,
         limits: { max_total: 1000 },
-        errors: valid === 0 ? { symbols: 'Nenhuma combinação válida: ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois.' } : {},
+        errors: valid === 0 ? { symbols: 'Nenhuma combinação válida: os ativos escolhidos estão fora da análise (marcados pela Binance ou fora do catálogo).' } : {},
+        by_class: byClass,
         expires_at: '2026-10-21T00:00:00Z',
         snapshot_token: 'tok',
         snapshot_hash: 'hash1117',
@@ -153,7 +159,7 @@ test.describe('seletor de ativos na Descoberta', () => {
     await expect(first.locator('.ap-fact.cls-stock')).toHaveText('Ação')
     await expect(first.locator('.ap-fact.st-ok')).toHaveText('Negociável')
     await expect(first.locator('.ap-fact.hist')).toHaveText(
-      'Histórico sob demanda · a coleta começa quando as análises aceitarem ações',
+      'Histórico sob demanda · coletado ao rodar a varredura',
     )
     await expect(page.getByTestId('asset-select-all')).toHaveText('Todos do filtro (2)')
 
@@ -267,7 +273,7 @@ test.describe('seletor de ativos na Descoberta', () => {
     expect(box?.height).toBeGreaterThanOrEqual(44)
   })
 
-  test('Preflight: ação, ETF e marcado ficam em "Fora desta varredura" e a varredura segue com cripto', async ({ page }) => {
+  test('Preflight (card #1121): cripto, ação e ETF rodam juntos; nada fica fora por classe', async ({ page }) => {
     const { preflightBodies } = await discoveryMocks(page)
     await page.goto('/combo/discovery')
     await pickTemplate(page)
@@ -275,24 +281,22 @@ test.describe('seletor de ativos na Descoberta', () => {
       await search(page, symbol)
       await row(page, symbol).locator('input').check()
     }
-    await expect(page.getByTestId('preflight-class-out')).toBeVisible()
-    await expect(page.getByTestId('preflight-class-out')).toContainText('Fora desta varredura: 2 ativos')
-    await expect(page.getByTestId('preflight-class-out')).toContainText('NVDA (Ação) — ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois.')
-    await expect(page.getByTestId('preflight-class-out')).toContainText('Eles continuam na seleção do rascunho; nada é perdido.')
-    await expect(page.getByTestId('preflight-state')).toContainText('Pronto para iniciar · ações e ETFs fora')
+    await expect(page.getByTestId('preflight-run')).toContainText('Vão rodar 3 ativos: 1 cripto (USDT) · 1 ação · 1 ETF (USD).')
+    await expect(page.getByTestId('preflight-class-out')).toHaveCount(0)
+    await expect(page.getByTestId('preflight-state')).toHaveText('Pronto para iniciar')
     await expect(page.getByTestId('start-sweep')).toBeEnabled()
+    await expect(page.getByText(/a Descoberta vem depois/)).toHaveCount(0)
     await expect.poll(() => preflightBodies.at(-1)?.symbols).toEqual(['BTC/USDT', 'NVDA', 'SPY'])
   })
 
-  test('só ação e ETF bloqueia o Preflight com o motivo', async ({ page }) => {
+  test('só ação também roda; só marcado bloqueia o Preflight com o motivo', async ({ page }) => {
     await discoveryMocks(page)
     await page.goto('/combo/discovery')
     await pickTemplate(page)
     await search(page, 'nvda')
     await row(page, 'NVDA').locator('input').check()
-    await expect(page.getByTestId('preflight-impediments')).toContainText('Nenhuma combinação válida: ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois')
-    await expect(page.getByTestId('preflight-impediments')).toContainText('Inclua ao menos 1 par cripto negociável em USDT.')
-    await expect(page.getByTestId('start-sweep')).toBeDisabled()
+    await expect(page.getByTestId('preflight-state')).toHaveText('Pronto para iniciar')
+    await expect(page.getByTestId('start-sweep')).toBeEnabled()
     await page.getByTestId('asset-clear').click()
     await expect(page.getByTestId('preflight-impediments')).toContainText('Escolha ao menos 1 ativo.')
   })
