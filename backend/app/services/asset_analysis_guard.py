@@ -14,7 +14,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.services.asset_catalog_adapters import CLASS_CRYPTO, CLASS_ETF, CLASS_STOCK
 from app.services.asset_catalog_service import (
-    DISCOVERY_EQUITY_REASON,
     EQUITY_UNSUPPORTED_MESSAGE,
     STATE_LABELS,
     AssetCheck,
@@ -118,7 +117,8 @@ def refusal_for_symbols(
 
     ``batch_scope=True`` (card #1120, decisão 3): o pedido é o lote multiclasse. Ação e ETF passam
     com qualquer número de símbolos; ativo marcado e símbolo fora do catálogo seguem recusados
-    (``new_analysis=True``). A Descoberta não usa este escopo e segue recusando ação/ETF.
+    (``new_analysis=True``). A Descoberta não usa esta guarda: o Preflight dela lê
+    ``discovery_catalog`` (card #1121, decisão 2).
 
     ``new_analysis=False`` (backtest, usado também para reabrir resultados salvos)
     só recusa ação e ETF; pausados, removidos e fora do catálogo continuam
@@ -171,24 +171,32 @@ def refusal_for_symbols(
     return None
 
 
-def discovery_symbol_reasons(symbols: Iterable[str]) -> dict[str, dict[str, Any]]:
-    """Motivo por símbolo para o Preflight da Descoberta (decisões 6 e 14).
+def discovery_catalog(
+    symbols: Iterable[str],
+) -> tuple[dict[str, dict[str, Any]], dict[str, str | None]]:
+    """Motivo de quem fica fora e classe de cada símbolo, numa consulta só (card #1121, decisão 2).
 
-    Devolve só os símbolos que ficam fora: ação e ETF (a Descoberta ainda não os aceita),
-    ativo marcado pela Binance (estado e motivo) e ativo fora do catálogo. Sem lista válida
-    da classe, nada é inventado: cripto segue pelo formato, como antes.
+    ``reasons`` traz só os símbolos que ficam fora: ativo marcado pela Binance (estado e motivo) e
+    ativo fora do catálogo. Cripto, ação e ETF negociáveis rodam na mesma varredura e não aparecem aqui. ``classes`` dá a classe de cada símbolo pelo
+    catálogo (``crypto``, ``stock``, ``etf``); sem catálogo, a classe sai do formato (par com ``/``
+    é cripto) ou fica ``None``. Sem lista válida da classe, nada é inventado: cripto segue pelo
+    formato, como antes.
     """
     unique = _dedupe(symbols)
     if not unique:
-        return {}
+        return {}, {}
     try:
         checks = check_assets(unique)
     except SQLAlchemyError:
         logger.exception("Catálogo indisponível no Preflight; seguindo pelo formato do símbolo")
-        return {}
+        return {}, {s: (CLASS_CRYPTO if "/" in s else None) for s in unique}
     reasons: dict[str, dict[str, Any]] = {}
+    classes: dict[str, str | None] = {}
     for check in checks:
         is_crypto = "/" in check.symbol
+        classes[check.symbol] = (
+            check.asset_class if check.found else (CLASS_CRYPTO if is_crypto else None)
+        )
         if check.found and not check.selectable:
             label = STATE_LABELS.get(check.state or "", check.state or "")
             detail = (check.state_reason or "").strip().rstrip(".")
@@ -200,13 +208,6 @@ def discovery_symbol_reasons(symbols: Iterable[str]) -> dict[str, dict[str, Any]
                 + "; não entra em análise nova",
                 "kind": "marked",
             }
-        elif check.found and check.asset_class in (CLASS_STOCK, CLASS_ETF):
-            reasons[check.symbol] = {
-                "asset_class": check.asset_class,
-                "state": check.state,
-                "reason": DISCOVERY_EQUITY_REASON,
-                "kind": "class",
-            }
         elif not check.found and not check.catalog_unavailable:
             reasons[check.symbol] = {
                 "asset_class": CLASS_CRYPTO if is_crypto else None,
@@ -214,4 +215,13 @@ def discovery_symbol_reasons(symbols: Iterable[str]) -> dict[str, dict[str, Any]
                 "reason": "ativo fora do catálogo da Binance",
                 "kind": "missing",
             }
-    return reasons
+    return reasons, classes
+
+
+def discovery_symbol_reasons(symbols: Iterable[str]) -> dict[str, dict[str, Any]]:
+    """Motivo por símbolo para o Preflight da Descoberta (decisões 6 e 14 do #1117; #1121).
+
+    Devolve só os símbolos que ficam fora: ativo marcado pela Binance (estado e motivo) e ativo fora
+    do catálogo. Ação e ETF negociáveis rodam (card #1121).
+    """
+    return discovery_catalog(symbols)[0]

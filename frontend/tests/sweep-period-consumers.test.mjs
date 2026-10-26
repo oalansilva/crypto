@@ -77,7 +77,10 @@ for (const [reference, period, start_date] of [
       'setExpandedRows', 'setRows', 'setTotalMatched', 'setTotalAvailable', 'showToast', 'loadHistory',
       'loadPartials', 'setRunning', 'setBatchRunning', 'setBatchJobId', 'setBatchProgress', 'setBatchTotal',
       'setBatchPauseCancelRequested', 'setClientElapsedSec', 'setRunNotice',
+      // Card #1121: iniciar abre o "Por ativo" da varredura nova, 50 ativos por vez.
+      'setAcompView', 'setAssetLimit',
     ]) bindings[name] = () => {}
+    bindings.ASSET_PAGE = 50
 
     bindings.setPreflight = (value) => { bindings.preflight = value }
     await bindCallback(discoverySource, 'runPreflight', bindings)()

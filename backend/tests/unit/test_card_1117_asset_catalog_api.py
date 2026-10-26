@@ -222,7 +222,7 @@ def test_optimize_refuses_equity_with_class_code_in_portuguese(client):
     assert detail["asset_class"] == "stock"
     assert detail["assets"][0]["symbol"] == "NVDA"
     assert detail["message"].startswith(
-        "Ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois."
+        "Ação e ETF não rodam neste caminho; use o Combo, a Otimização (1 ativo ou lote) ou a Descoberta."
     )
 
 

@@ -314,7 +314,7 @@ async function seedCard469PreflightSelection(page: Page) {
   await page.getByTestId('timeframe-1h').click()
   await page.getByTestId('timeframe-4h').click()
   await expect(page.getByTestId('timeframe-1d')).toBeChecked()
-  await expect(page.getByText('taxa 0,075% · slippage do timeframe')).toBeVisible()
+  await expect(page.getByTestId('cost-note')).toContainText('taxa por lado: cripto 0,075% · ação e ETF 0,10% · slippage do timeframe')
   await expect(page.getByTestId('planned-total')).toHaveText('46', { timeout: 15_000 })
 }
 
@@ -357,7 +357,7 @@ async function openDiscovery(page: Page) {
   for (const tf of ['15m', '1h', '4h', '1d']) {
     await expect(page.getByTestId(`timeframe-${tf}`)).toBeVisible()
   }
-  await expect(page.getByText('taxa 0,075% · slippage do timeframe')).toBeVisible()
+  await expect(page.getByTestId('cost-note')).toContainText('taxa por lado: cripto 0,075% · ação e ETF 0,10% · slippage do timeframe')
   await page.getByRole('tab', { name: 'Decidir' }).click()
   await expect(page.getByTestId('timeframe-filter')).toBeVisible()
   await expect(page.getByTestId('timeframe-filter').locator('option[value="1h"]')).toHaveCount(1)

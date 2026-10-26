@@ -460,7 +460,7 @@ def test_guard_refuses_equity_and_etf_with_structured_portuguese_detail():
         "SPY": "etf",
     }
     assert (
-        "Ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois."
+        "Ação e ETF não rodam neste caminho; use o Combo, a Otimização (1 ativo ou lote) ou a Descoberta."
         in detail["message"]
     )
     assert "NVDA (Ação)" in detail["message"] and "SPY (ETF)" in detail["message"]
@@ -526,18 +526,17 @@ def test_guard_without_valid_crypto_list_does_not_block_crypto_pairs():
     )
 
 
-def test_discovery_symbol_reasons_cover_equity_marked_and_missing():
+def test_discovery_symbol_reasons_cover_marked_and_missing_and_let_equity_run():
+    """Card #1121 (decisão 2): ação e ETF negociáveis rodam na Descoberta; marcado e fora do catálogo não."""
     _load_both()
     reasons = guard.discovery_symbol_reasons(
         ["BTC/USDT", "NVDA", "SPY", "WAVES/USDT", "AVB", "XYZ/USDT"]
     )
 
     assert "BTC/USDT" not in reasons
-    assert (
-        reasons["NVDA"]["reason"]
-        == "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois"
-    )
-    assert reasons["SPY"]["kind"] == "class"
+    assert "NVDA" not in reasons and "SPY" not in reasons
+    _, classes = guard.discovery_catalog(["BTC/USDT", "NVDA", "SPY"])
+    assert classes == {"BTC/USDT": "crypto", "NVDA": "stock", "SPY": "etf"}
     assert reasons["WAVES/USDT"]["kind"] == "marked"
     assert "Suspenso na Binance" in reasons["WAVES/USDT"]["reason"]
     assert "não entra em análise nova" in reasons["AVB"]["reason"]

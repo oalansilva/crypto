@@ -91,7 +91,8 @@ async function discoveryMocks(page: Page) {
     preflight.push(body)
     const symbols: string[] = body.symbols ?? []
     const bySymbol = new Map(mock.assets.map((a) => [a.symbol, a]))
-    const crypto = symbols.filter((s) => bySymbol.get(s)?.asset_class === 'crypto' && bySymbol.get(s)?.state === 'tradable')
+    // Card #1121: ação e ETF negociáveis rodam na Descoberta; só o marcado fica fora.
+    const crypto = symbols.filter((s) => bySymbol.get(s)?.state === 'tradable')
     const per = (body.templates?.length ?? 1) * (body.timeframes?.length ?? 1) * (body.directions?.length ?? 1)
     await route.fulfill(
       json({
@@ -103,15 +104,15 @@ async function discoveryMocks(page: Page) {
           .map((s) => ({
             symbol: s,
             asset_class: bySymbol.get(s)?.asset_class,
-            state: 'tradable',
-            kind: 'class',
-            reason: 'ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois',
+            state: bySymbol.get(s)?.state,
+            kind: 'marked',
+            reason: 'ativo marcado pela Binance; não entra em análise nova',
             combinations: per,
           })),
         excluded_count: (symbols.length - crypto.length) * per,
         valid_total: crypto.length * per,
         limits: { max_total: 1000 },
-        errors: crypto.length ? {} : { symbols: 'Nenhuma combinação válida: ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois.' },
+        errors: crypto.length ? {} : { symbols: 'Nenhuma combinação válida: os ativos escolhidos estão fora da análise (marcados pela Binance ou fora do catálogo).' },
         expires_at: '2026-10-24T00:00:00Z',
         snapshot_token: 'tok',
         snapshot_hash: 'hash1118',
@@ -178,11 +179,11 @@ for (const viewport of VIEWPORTS) {
       )
 
       await search(page, 'aapl')
-      await expect(hist(page, 'AAPL')).toHaveText('Histórico sob demanda · a coleta começa quando as análises aceitarem ações')
+      await expect(hist(page, 'AAPL')).toHaveText('Histórico sob demanda · coletado ao rodar a varredura')
       await expect(covButton(page, 'AAPL')).toHaveCount(0)
 
       await search(page, 'sol')
-      await expect(hist(page, 'SOL/USDT')).toHaveText('Histórico sob demanda · coletado quando uma análise pedir')
+      await expect(hist(page, 'SOL/USDT')).toHaveText('Histórico sob demanda · coletado ao rodar a varredura')
 
       await search(page, 'waves')
       await expect(hist(page, 'WAVES/USDT')).toHaveText('Histórico 01 jan. 2018 – 31 mai. 2024 · sem atualização: ativo suspenso')

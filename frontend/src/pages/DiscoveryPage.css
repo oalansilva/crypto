@@ -144,3 +144,107 @@
   .discovery-table td.action-cell .promote-action,
   .discovery-table td.action-cell .discard-action { width: 100%; }
 }
+
+/* ---------- Card #1121: Descoberta com cripto, ação e ETF (protótipo card-1121-descoberta-acoes-etfs) ----------
+   Só tokens do produto (index.css): chips de classe nas cores do `.ap-fact.cls-*` do seletor e do lote do #1120. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.mc-cls { display: inline-flex; align-items: center; min-height: 18px; padding: 0 6px; border: 1px solid var(--border-default); border-radius: 4px; font-size: 12px; font-weight: 600; line-height: 16px; white-space: nowrap; }
+.mc-cls[data-class="crypto"] { border-color: color-mix(in srgb, var(--accent-primary) 32%, transparent); color: var(--accent-primary); }
+.mc-cls[data-class="stock"] { border-color: var(--ap-info-border); color: var(--ap-info-text); }
+.mc-cls[data-class="etf"] { border-color: color-mix(in srgb, var(--fav-up, #0ecb81) 35%, transparent); color: var(--fav-up, #0ecb81); }
+.mc-cur { font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; white-space: nowrap; }
+
+/* Bloco do candidato: 2 linhas lógicas; cada grupo não quebra por dentro (sem «·» órfão nem moeda solta). */
+.mc-rowdata { display: grid; gap: 2px; min-width: 0; max-width: 100%; white-space: normal; margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--text-tertiary); text-align: left; }
+.mc-rowdata[data-tf] { display: block; }
+.mc-l1, .mc-l2 { display: block; }
+.mc-g { white-space: nowrap; }
+.mc-l1 .mc-g, .mc-l2 .mc-conv { margin-right: 4px; }
+.mc-symline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--text-tertiary); }
+.mc-symline b, .mc-l1 b { color: var(--text-secondary); font-weight: 600; }
+.mc-prec { display: flex; align-items: flex-start; gap: 5px; min-width: 0; color: var(--ap-info-text); }
+.mc-prec > span, .mc-conv { min-width: 0; overflow-wrap: anywhere; }
+.mc-prec[data-tone="warn"] { color: var(--ap-warn-text); }
+.mc-prec[data-tone="muted"] { color: var(--text-tertiary); }
+.mc-prec svg, .mc-pf-line svg, .mc-note svg, .mc-state svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+.mc-l1 .mc-prec { display: inline; }
+.mc-l1 .mc-prec svg { display: inline-block; vertical-align: -2px; margin: 0 3px 0 0; }
+.mc-l1 .mc-prec > span { overflow-wrap: normal; }
+.mc-conv { color: var(--text-tertiary); }
+.mc-modal-id { margin-top: 8px; }
+/* O bloco usa a largura que a coluna Candidato já tem (até 232 px a 1440), não os 180 px fixos; o mínimo
+   de 180 px fica, então a tabela (min-width 1240 px) não cresce. No cartão (≤ 720 px) ocupa o resto da linha. */
+.candidate-cell-min:has(> .mc-rowdata[data-tf]) { width: auto; max-width: 232px; }
+@media (max-width: 720px) {
+  .candidate-cell-min:has(> .mc-rowdata[data-tf]) { max-width: none; }
+}
+
+/* Preflight */
+.mc-pf { display: grid; gap: 8px; margin-top: 12px; }
+.mc-pf-line { display: block; margin: 0; padding: 10px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-secondary); font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.mc-pf-line b { font-weight: 600; }
+.mc-pf-line.mc-info { border-color: var(--ap-info-border); }
+.mc-pf-line.mc-info b { color: var(--ap-info-text); }
+.mc-pf-line.mc-warn { border-color: var(--ap-warn-border); }
+.mc-pf-line.mc-warn svg, .mc-pf-line.mc-warn b { color: var(--ap-warn-text); }
+.mc-pf-line:has(> svg) { display: flex; gap: 6px; }
+.mc-pf-line.mc-surv { color: var(--text-tertiary); }
+.mc-pf-line.mc-surv b { color: var(--text-secondary); }
+.mc-limit { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--ap-danger-border); border-radius: 6px; background: color-mix(in srgb, var(--ap-danger-text) 6%, transparent); font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.mc-limit strong { color: var(--ap-danger-text); }
+
+/* Acompanhando: Por ativo */
+.mc-assets { border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-elevated); container-type: inline-size; }
+.mc-assets-head { padding: 16px 20px; border-bottom: 1px solid var(--border-default); }
+.mc-assets-head h2 { margin: 0; font-size: 20px; font-weight: 600; color: var(--text-primary); }
+.mc-assets-head p { max-width: 75ch; margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.mc-assets-head h2:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-radius: 4px; }
+.mc-asset-list { margin: 0; padding: 0; list-style: none; }
+.mc-asset-cols, .mc-asset-list > li { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(110px, 0.6fr) minmax(170px, 1fr) minmax(0, 2fr); gap: 4px 16px; padding: 12px 20px; }
+.mc-asset-cols { padding-top: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-default); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-tertiary); }
+.mc-asset-list > li { align-items: start; border-top: 1px solid var(--border-default); font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+.mc-asset-list > li:first-child { border-top: 0; }
+.mc-assets-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 20px; border-top: 1px solid var(--border-default); font-size: 12px; color: var(--text-tertiary); }
+.mc-more-btn { min-height: 44px; padding: 0 14px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-secondary); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
+.mc-more-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.mc-asset { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.mc-asset b { font-weight: 600; }
+.mc-count { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.mc-state { display: inline-flex; align-items: flex-start; gap: 6px; font-weight: 600; }
+.mc-state[data-state="queued"] { color: var(--text-tertiary); }
+.mc-state[data-state="collecting"], .mc-state[data-state="running"] { color: var(--ap-info-text); }
+.mc-state[data-state="done"] { color: var(--fav-up, #0ecb81); }
+.mc-state[data-state="done_daily"], .mc-state[data-state="insufficient"], .mc-state[data-state="paused"], .mc-state[data-state="mixed_failed"] { color: var(--ap-warn-text); }
+.mc-state[data-state="failed"] { color: var(--ap-danger-text); }
+.mc-detail { color: var(--text-tertiary); font-size: 12px; }
+@container (max-width: 620px) {
+  .mc-asset-cols { display: none; }
+  .mc-asset-list > li { grid-template-columns: 1fr auto; padding: 12px 14px; }
+  .mc-asset-list > li .mc-state, .mc-asset-list > li .mc-detail { grid-column: 1 / -1; }
+}
+
+/* Decidir */
+.mc-note { display: flex; gap: 6px; margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.mc-note b { color: var(--text-secondary); font-weight: 600; }
+.mc-note > span { max-width: 75ch; }
+.mc-noresult .mc-noresult-icon { display: inline-flex; color: var(--ap-danger-text); }
+.mc-noresult[data-kind="cancelled"] .mc-noresult-icon { color: var(--text-tertiary); }
+.mc-noresult[data-kind="insufficient"] .mc-noresult-icon { color: var(--ap-warn-text); }
+.mc-linkbtn { display: inline-flex; align-items: center; min-height: 24px; padding: 0 2px; border: 0; background: none; color: var(--accent-primary); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.mc-linkbtn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-radius: 4px; }
+.mc-lb-note { margin: 0; padding: 12px 20px; border-top: 1px solid var(--border-default); font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.mc-lb-note > span { display: block; max-width: 75ch; }
+select[data-testid="class-filter"]:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+@media (max-width: 767.98px) { select[data-testid="class-filter"] { min-height: 44px; } }
+.mc-empty td { padding: 20px !important; font-size: 13px; color: var(--text-tertiary); text-align: left !important; white-space: normal !important; }
+.mc-empty td::before { content: none !important; }
+.mc-empty .mc-linkbtn { min-height: 44px; }
+.mc-promoted { display: inline-grid; gap: 4px; justify-items: start; font-size: 12px; }
+.mc-promoted a { min-height: 44px; display: inline-flex; align-items: center; color: var(--accent-primary); font-weight: 600; text-decoration: underline; }
+.mc-promoted a:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-radius: 4px; }
+
+/* Modal: destino de ação e ETF */
+.mc-dest { padding: 10px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-secondary); font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.mc-dest small { display: block; color: var(--text-muted); }
+.mc-dest strong { display: block; color: var(--ap-info-text); font-size: 14px; }
+.mc-dest span { display: block; margin-top: 4px; font-size: 12px; }

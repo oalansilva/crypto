@@ -25,7 +25,9 @@ from market_history_support import FakeEquityProvider, history_schema
 from test_card_1118_api_and_catalog import _seed_catalog, public_db  # noqa: F401
 
 NOW = pd.Timestamp("2026-10-23 01:30", tz="UTC")
-NEW_REASON = "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois"
+# Card #1121: a Descoberta também roda ação e ETF; o motivo só sobra para a recusa dos caminhos legados
+# (backtest legado e Otimização sem escopo), que diz que ação e ETF não rodam ali e aponta os certos.
+NEW_REASON = "ação e ETF não rodam neste caminho; use o Combo, a Otimização (1 ativo ou lote) ou a Descoberta"
 NEW_MESSAGE = NEW_REASON[0].upper() + NEW_REASON[1:] + "."
 
 
@@ -295,7 +297,7 @@ def test_catalog_selection_and_refused_analyses_never_collect(env, monkeypatch):
     "symbols", [["NVDA", "SPY"], ["BTC/USDT", "NVDA"], ["NVDA", "NVDA", "AAPL"]]
 )
 def test_batch_accepts_equity_and_the_text_now_belongs_to_discovery(env, symbols, monkeypatch):
-    """Card #1120: o lote aceita ação e ETF; só a Descoberta segue recusando, com o porquê novo."""
+    """Card #1120: o lote aceita ação e ETF; a guarda sem escopo segue recusando, com o porquê novo."""
 
     client, provider, *_ = env
     monkeypatch.setattr(combo_routes, "enqueue_batch_backtest", lambda *a, **k: "task-1")
@@ -313,12 +315,13 @@ def test_batch_accepts_equity_and_the_text_now_belongs_to_discovery(env, symbols
     assert "Análise ainda não disponível" not in discovery["message"]
 
 
-def test_discovery_reason_uses_the_new_text(env):
+def test_discovery_accepts_equity_and_the_text_no_longer_mentions_it_later(env):
+    """Card #1121 (decisão 2): a Descoberta roda ação e ETF; o texto "a Descoberta vem depois" saiu."""
     from app.services.asset_analysis_guard import discovery_symbol_reasons
 
     reasons = discovery_symbol_reasons(["NVDA", "SPY", "BTC/USDT"])
-    assert reasons["NVDA"]["reason"] == NEW_REASON == EQUITY_BATCH_REASON
-    assert reasons["SPY"]["reason"] == NEW_REASON and "BTC/USDT" not in reasons
+    assert reasons == {}
+    assert NEW_REASON == EQUITY_BATCH_REASON and "vem depois" not in EQUITY_BATCH_REASON
 
 
 class _OptimizerSpy:

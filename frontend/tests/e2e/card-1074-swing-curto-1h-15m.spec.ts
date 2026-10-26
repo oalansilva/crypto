@@ -100,7 +100,7 @@ test.describe('card-1074 discovery swing 1h 15m', () => {
     await expect(page.getByTestId('timeframe-4h')).toBeVisible()
     await expect(page.getByTestId('timeframe-1d')).toBeVisible()
 
-    await expect(page.getByTestId('cost-note')).toContainText('taxa 0,075%')
+    await expect(page.getByTestId('cost-note')).toContainText('taxa por lado: cripto 0,075% · ação e ETF 0,10%')
     await expect(page.getByTestId('cost-note')).toContainText('slippage do timeframe')
   })
 })

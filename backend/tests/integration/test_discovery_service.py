@@ -3105,7 +3105,10 @@ class TestRestoreAndWakeup:
 
 
 class TestPreflightAssetCatalog:
-    """Card #1117: ações, ETFs e ativos marcados ficam fora do Preflight com motivo."""
+    """Card #1117: ativos marcados ficam fora do Preflight com motivo.
+
+    Card #1121 (decisão 2): ação e ETF negociáveis rodam na mesma varredura que a cripto.
+    """
 
     @staticmethod
     def _seed_catalog():
@@ -3166,7 +3169,7 @@ class TestPreflightAssetCatalog:
             period_type=None,
         )
 
-    def test_equity_etf_and_marked_assets_are_excluded_with_reasons(self):
+    def test_equity_and_etf_run_and_marked_assets_stay_out_with_reasons(self):
         self._seed_catalog()
         result = self._preflight(
             self._service(),
@@ -3174,33 +3177,34 @@ class TestPreflightAssetCatalog:
         )
 
         assert result["errors"] == {}
-        assert result["raw_total"] == 10 and result["valid_total"] == 2
-        assert result["excluded_count"] == 8
-        assert {c["symbol"] for c in result["combinations"]} == {"BTC/USDT"}
+        assert result["raw_total"] == 10 and result["valid_total"] == 6
+        assert result["excluded_count"] == 4
+        assert {c["symbol"] for c in result["combinations"]} == {"BTC/USDT", "NVDA", "SPY"}
         by_symbol = {a["symbol"]: a for a in result["excluded_assets"]}
-        assert set(by_symbol) == {"NVDA", "SPY", "WAVES/USDT", "AVB"}
-        assert (
-            by_symbol["NVDA"]["reason"]
-            == "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois"
-        )
-        assert by_symbol["NVDA"]["kind"] == "class" and by_symbol["NVDA"]["combinations"] == 2
-        assert by_symbol["SPY"]["asset_class"] == "etf"
+        assert set(by_symbol) == {"WAVES/USDT", "AVB"}
+        assert all("a Descoberta vem depois" not in a["reason"] for a in result["excluded_assets"])
+        assert result["by_class"] == {
+            "crypto": {"assets": 1, "combinations": 2, "currency": "USDT"},
+            "stock": {"assets": 1, "combinations": 2, "currency": "USD"},
+            "etf": {"assets": 1, "combinations": 2, "currency": "USD"},
+        }
+        assert result["asset_classes"] == {"BTC/USDT": "crypto", "NVDA": "stock", "SPY": "etf"}
+        assert result["survivorship"]["window"]["start"] == "2024-01-01"
+        assert result["collection"]["of"] == 3
         assert by_symbol["WAVES/USDT"]["kind"] == "marked"
         assert "Suspenso na Binance" in by_symbol["WAVES/USDT"]["reason"]
         assert "não entra em análise nova" in by_symbol["AVB"]["reason"]
         waves_key = next(k for k, v in result["exclusions"].items() if v["symbol"] == "WAVES/USDT")
         assert "BREAK" in result["exclusions"][waves_key]["reasons"][0]
 
-    def test_only_equities_blocks_the_preflight_with_the_reason(self):
+    def test_only_equities_run_without_the_old_class_block(self):
         self._seed_catalog()
         result = self._preflight(self._service(), ["NVDA", "SPY"])
 
-        assert result["valid_total"] == 0
-        assert (
-            "ação e ETF por enquanto rodam no Combo e na Otimização (1 ativo ou lote); a Descoberta vem depois"
-            in result["errors"]["symbols"]
-        )
-        assert result["combinations"] == []
+        assert result["valid_total"] == 4
+        assert result["errors"] == {}
+        assert result["excluded_assets"] == []
+        assert "Inclua ao menos 1 par cripto" not in str(result)
 
     def test_only_marked_blocks_with_generic_reason(self):
         self._seed_catalog()
@@ -3217,26 +3221,33 @@ class TestPreflightAssetCatalog:
         assert reasons == {"XYZ/USDT": "ativo fora do catálogo da Binance"}
         assert result["valid_total"] == 2
 
-    def test_thousands_of_equities_keep_exact_totals_with_limited_detail(self):
+    @staticmethod
+    def _seed_etfs(count, tradability):
         from app.services import asset_catalog_adapters as adapters
         from app.services import asset_catalog_service as catalog
-        from app.services.discovery_service import CATALOG_EXCLUSION_DETAIL_LIMIT
 
-        self._seed_catalog()
         ok = lambda data: {"code": "000000", "data": data}  # noqa: E731
-        tickers = [f"ETF{i:04d}" for i in range(400)]
+        tickers = [f"ETF{i:04d}" for i in range(count)]
         equity = adapters.parse_equity_payloads(
             ok([{"ac": f"EQ_{t}", "s": t, "n": f"Fund {t}", "t": "ETF"} for t in tickers]),
             ok(
                 {
                     "symbols": [
-                        {"assetCode": f"EQ_{t}", "symbol": t, "tradability": "BUY_SELL"}
+                        {"assetCode": f"EQ_{t}", "symbol": t, "tradability": tradability}
                         for t in tickers
                     ]
                 }
             ),
         )
         assert catalog.refresh_group("equity", fetcher=lambda: equity)["status"] == "ok"
+        return tickers
+
+    def test_thousands_of_marked_keep_exact_totals_with_limited_detail(self):
+        from app.services.discovery_service import CATALOG_EXCLUSION_DETAIL_LIMIT
+
+        self._seed_catalog()
+        # Card #1121: ação/ETF negociável roda; o que fica fora em massa é o ativo marcado.
+        tickers = self._seed_etfs(400, "OFFMARKET")
 
         result = self._preflight(self._service(), ["BTC/USDT", *tickers])
 
@@ -3248,7 +3259,47 @@ class TestPreflightAssetCatalog:
         assert {a["combinations"] for a in result["excluded_assets"]} == {2}
         assert [c["symbol"] for c in result["combinations"]] == ["BTC/USDT", "BTC/USDT"]
 
-    def test_create_sweep_materializes_only_crypto_combinations(self, engine_factory):
+    def test_ceiling_counts_equities_and_refuses_with_classes(self, engine_factory):
+        """Card #1121 (decisão 8): o teto de 1.000 conta ação e ETF; a recusa diz o total e as classes."""
+
+        self._seed_catalog()
+        tickers = self._seed_etfs(600, "BUY_SELL")
+        service = self._service()
+        symbols = ["BTC/USDT", *tickers]
+        result = self._preflight(service, symbols)
+
+        assert result["valid_total"] == 2 * 601
+        assert result["by_class"]["etf"]["assets"] == 600
+        assert result["by_class"]["crypto"]["assets"] == 1
+        message = result["errors"]["total"]
+        assert message.startswith("1.202 combinações válidas passam do limite de 1.000: 601 ativos")
+        assert "(1 cripto · 600 ETFs)" in message
+        assert "Estreite a seleção" in message
+        assert result["collection"] is None and result["precision_forecast"] is None
+
+        engine = engine_factory()
+        db = _session_factory(engine)()
+        body, status = service.create_sweep(
+            actor="admin-1",
+            idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
+            snapshot_token=result["snapshot_token"],
+            payload={
+                "templates": ["multi_ma_crossover"],
+                "symbols": symbols,
+                "timeframes": ["1d", "4h"],
+                "directions": ["long"],
+                "start_date": "2024-01-01",
+                "end_date": "2024-12-31",
+                "period_type": None,
+                "snapshot_hash": result["snapshot_hash"],
+            },
+            db=db,
+        )
+        assert status == 400, body
+        assert db.query(DiscoverySweep).filter(DiscoverySweep.actor == "admin-1").count() == 0
+        db.close()
+
+    def test_create_sweep_materializes_crypto_and_equity_without_marked(self, engine_factory):
         self._seed_catalog()
         engine = engine_factory()
         db = _session_factory(engine)()
@@ -3274,6 +3325,8 @@ class TestPreflightAssetCatalog:
         )
         assert status == 201, body
         rows = db.query(DiscoveryCombination).filter_by(sweep_id=body["sweep_id"]).all()
-        assert {r.symbol for r in rows} == {"BTC/USDT"}
-        assert len(rows) == 2
+        assert {r.symbol for r in rows} == {"BTC/USDT", "NVDA"}
+        assert len(rows) == 4
+        sweep = db.query(DiscoverySweep).filter_by(id=body["sweep_id"]).one()
+        assert sweep.snapshot["asset_classes"] == {"BTC/USDT": "crypto", "NVDA": "stock"}
         db.close()

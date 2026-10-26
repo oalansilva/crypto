@@ -192,11 +192,36 @@ def expected_1d(start: pd.Timestamp, end: pd.Timestamp) -> pd.DatetimeIndex:
     return idx[(idx >= start) & (idx <= end)]
 
 
+def expected_blocks(minutes: int, start: pd.Timestamp, end: pd.Timestamp) -> pd.DatetimeIndex:
+    """Blocos de 15m, 1h ou 4h esperados com início em ``[start, end]``, ancorados às 09:30 de NY.
+
+    Mesma regra de ``derive_blocks``: o bloco nunca atravessa o fechamento (o último bloco do dia,
+    mais curto, conta como um bloco). Card #1121 (decisão 5): cobertura da Descoberta.
+    """
+
+    block_td = pd.Timedelta(minutes=int(minutes))
+    pieces: list[pd.Timestamp] = []
+    for day in sessions_between(start, end):
+        window = session_window(day)
+        if window is None:
+            continue
+        t = window.open_utc
+        while t < window.close_utc:
+            pieces.append(t)
+            t = t + block_td
+    idx = pd.DatetimeIndex(pieces)
+    if len(idx) == 0:
+        return idx
+    return idx[(idx >= start) & (idx <= end)]
+
+
 def expected_candles(timeframe: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DatetimeIndex:
     if timeframe == "5m":
         return expected_5m(start, end)
     if timeframe == "1d":
         return expected_1d(start, end)
+    if timeframe in DERIVED_BLOCK_MINUTES:
+        return expected_blocks(DERIVED_BLOCK_MINUTES[timeframe], start, end)
     raise ValueError(f"Calendário de ação/ETF não define candles esperados para {timeframe}.")
 
 

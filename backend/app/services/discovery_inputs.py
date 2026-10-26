@@ -47,7 +47,151 @@ def _unified():
     return unified_enabled()
 
 
-def _prepare_snapshot(inputs):
+class InsufficientHistory(Exception):
+    """A Binance não tem candles do ativo nessa janela: amostra insuficiente, não falha (card #1121)."""
+
+    def __init__(self, reason):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def history_failure_code(error_code):
+    """``history_unavailable:<código da Binance>``: falha de coleta que entra nas 3 tentativas."""
+
+    return f"history_unavailable:{error_code}" if error_code else "history_unavailable"
+
+
+def _asset_class(inputs):
+    """Classe pelo catálogo (``asset_identity``), não pela ``/``; sem catálogo, pelo formato."""
+
+    from app.services.discovery_multiclass import class_of
+
+    symbol = str(inputs.get("symbol", ""))
+    known = inputs.get("asset_class")
+    if known:
+        return class_of(symbol, known)
+    if "/" in symbol:
+        return "crypto"
+    try:
+        from app.services.equity_backtest import asset_identity
+
+        found = asset_identity(symbol).get("asset_class")
+    except Exception:  # catálogo fora: sem classe, o caminho de antes
+        return None
+    # Ticker que o catálogo não conhece segue o caminho de antes (sem inventar classe).
+    return found if found in ("stock", "etf") else None
+
+
+def _manifest(sample, data_source, **extra):
+    files = {
+        role: {
+            "sha256": sample.entry(role)["sha256"],
+            "rows": sample.entry(role)["rows"],
+            "segments": sample.entry(role)["segments"],
+        }
+        for role in _SNAPSHOT_ROLES
+    }
+    return {
+        "snapshot_id": sample.snapshot_id,
+        "files": files,
+        "provenance": sample.provenance("candles"),
+        "data_source": data_source,
+        **extra,
+    }
+
+
+def _prepare_equity(inputs, on_progress=None):
+    """Ação/ETF pelo caminho do #1118 (card #1121, decisão 3).
+
+    Coleta a série do tempo gráfico (1d nativo, ou o 5m de onde saem 15m/1h/4h) e o 5m do intrabar
+    com ``prepare_equity_history``, lê do ``HistoryService`` e congela nos papéis ``candles`` e
+    ``intraday`` (vazio sem 15m). A Binance sem candles na janela vira ``InsufficientHistory``;
+    falha de coleta vira ``OperationalFailure`` (``history_unavailable:<código>``) e entra nas
+    3 tentativas.
+    """
+    from app.services.discovery_multiclass import no_candles_reason
+    from app.services.equity_backtest import (
+        CODE_HISTORY_UNAVAILABLE,
+        EquityRunError,
+        inclusive_end,
+        prepare_equity_history,
+    )
+    from app.services.market_data_providers import (
+        BINANCE_EQUITY_SOURCE,
+        BinanceEquityMarketDataProvider,
+    )
+    from app.services.market_history.facade import (
+        get_history_service,
+        spec_for_request,
+        to_loader_frame,
+    )
+    from app.services.market_history.sample import ExecutionSample
+
+    symbol = inputs["symbol"]
+    timeframe = inputs["timeframe"]
+    start, end = inputs["start_date"], inputs["end_date"]
+    equity_class = (
+        inputs.get("asset_class") if inputs.get("asset_class") in ("stock", "etf") else "stock"
+    )
+
+    def progress(role, series_timeframe, page, total):
+        if on_progress is not None:
+            on_progress(
+                {
+                    "phase": "collecting",
+                    "role": role,
+                    "series": series_timeframe,
+                    "page": int(page),
+                    "pages": int(total) if total else None,
+                }
+            )
+
+    try:
+        prep = prepare_equity_history(
+            symbol, timeframe, start, end, intrabar=True, on_progress=progress
+        )
+    except EquityRunError as exc:
+        extra = exc.extra or {}
+        if exc.code == CODE_HISTORY_UNAVAILABLE and extra.get("error_code"):
+            raise OperationalFailure(history_failure_code(extra["error_code"])) from exc
+        if exc.code == CODE_HISTORY_UNAVAILABLE and "não tem candles" in str(
+            extra.get("reason") or ""
+        ):
+            raise InsufficientHistory(
+                no_candles_reason(symbol, timeframe, asset_class=equity_class)
+            ) from exc
+        if exc.code == CODE_HISTORY_UNAVAILABLE:
+            # Coleta em pausa ou outra coleta da série em andamento: tenta de novo depois.
+            raise OperationalFailure("history_unavailable:collection_busy") from exc
+        raise OperationalFailure(exc.code or "history_unavailable") from exc
+
+    # Coleta feita: a leitura é só do guardado, sem nova ida à Binance (como o lote do #1120).
+    frame = BinanceEquityMarketDataProvider(ensure=False).fetch_ohlcv(
+        symbol=symbol, timeframe=timeframe, since_str=start, until_str=end
+    )
+    if frame is None or frame.empty:
+        raise InsufficientHistory(no_candles_reason(symbol, timeframe, asset_class=equity_class))
+    service = get_history_service()
+    intraday_series = service.resolve(spec_for_request(symbol=symbol, timeframe="15m"))
+    intraday = to_loader_frame(service.read(intraday_series, start, inclusive_end(end)).candles)
+    sample = ExecutionSample("discovery", owner_ref=f"discovery:{symbol}:{timeframe}")
+    try:
+        sample.freeze_symbol("candles", symbol, timeframe, start, end, frame)
+        sample.freeze_symbol("intraday", symbol, "15m", start, end, intraday)
+    except Exception as exc:
+        code = getattr(exc, "code", None)
+        if code:
+            raise OperationalFailure(code) from exc
+        raise
+    return _manifest(
+        sample,
+        BINANCE_EQUITY_SOURCE,
+        asset=prep.asset,
+        collection=prep.collection,
+    )
+
+
+def _prepare_crypto(inputs):
     """Congela candles e 15m em segmentos com SHA-256, compartilhados entre execuções."""
     from src.data.incremental_loader import IncrementalLoader
     from app.services.market_data_providers import CcxtMarketDataProvider
@@ -87,28 +231,31 @@ def _prepare_snapshot(inputs):
         if code:
             raise OperationalFailure(code) from exc
         raise
-    files = {
-        role: {
-            "sha256": sample.entry(role)["sha256"],
-            "rows": sample.entry(role)["rows"],
-            "segments": sample.entry(role)["segments"],
-        }
-        for role in _SNAPSHOT_ROLES
-    }
-    return {
-        "snapshot_id": sample.snapshot_id,
-        "files": files,
-        "provenance": sample.provenance("candles"),
-    }
+    return _manifest(sample, "ccxt")
 
 
-def prepare(inputs):
+def manifest_source(manifest):
+    """Fonte que o otimizador recebe (card #1121, decisão 3): ``binance_equity`` ou ``ccxt``."""
+
+    if not manifest:
+        return "ccxt"
+    if manifest.get("data_source"):
+        return manifest["data_source"]
+    label = (manifest.get("provenance") or {}).get("data_source")
+    return "binance_equity" if label == "Binance Ações" else "ccxt"
+
+
+def prepare(inputs, on_progress=None):
+    """Amostra da combinação: reaproveita o manifesto dado, ou coleta e congela pela classe."""
+
     manifest = inputs.get("candle_manifest")
     if manifest:
         validate(manifest)
         return manifest
+    if _asset_class(inputs) in ("stock", "etf"):
+        return _prepare_equity(inputs, on_progress)
     if _unified() and "/" in str(inputs.get("symbol", "")):
-        return _prepare_snapshot(inputs)
+        return _prepare_crypto(inputs)
     from src.data.incremental_loader import IncrementalLoader
     from app.services.market_data_providers import CcxtMarketDataProvider
 
