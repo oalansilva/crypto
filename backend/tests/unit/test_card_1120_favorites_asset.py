@@ -138,23 +138,31 @@ def test_uniqueness_contract_accepts_data_source_and_asset_without_changing_the_
         db.rollback()
 
 
-def test_manual_favoriting_of_equity_from_the_result_screen_stays_refused(env):
-    client, _ = env
-    response = client.post(
-        "/api/favorites/",
-        json={
-            "name": "x",
-            "symbol": "NVDA",
-            "timeframe": "1d",
-            "strategy_name": "multi_ma_crossover",
-            "parameters": {"direction": "long"},
-        },
+def test_manual_favoriting_of_equity_from_the_result_screen_is_accepted_since_1122(env):
+    """Card #1122: ação e ETF são favoritáveis; o favorito nasce sem "Alertar" e com a configuração."""
+    client, Session = env
+    body = {
+        "name": "x",
+        "symbol": "NVDA",
+        "timeframe": "1d",
+        "strategy_name": "multi_ma_crossover",
+        "parameters": {"direction": "long", "data_source": "binance_equity"},
+        "notify_telegram": True,
+    }
+    response = client.post("/api/favorites/", json=body)
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["notify_telegram"] is False
+    assert payload["configuration"]["data_source"] == "binance_equity"
+    assert payload["configuration"]["label_long"] == (
+        "Binance Ações · pregão regular de NY · ajustado por split"
     )
-    assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "asset_class_not_favoritable"
+    again = client.post("/api/favorites/", json=body)
+    assert again.status_code == 409
+    assert again.json()["detail"] == "Estratégia já existe nos favoritos com esta configuração"
 
 
-def test_the_monitor_keeps_ignoring_equity_favorites_until_1122(env):
+def test_the_monitor_lists_equity_favorites_since_1122(env):
     _, Session = env
     with Session() as db:
         db.add_all(
@@ -169,4 +177,4 @@ def test_the_monitor_keeps_ignoring_equity_favorites_until_1122(env):
     service = OpportunityService()
     with Session() as db:
         rows = service._favorite_rows_for_user(db, "user-1")
-    assert [r.symbol for r in rows] == ["BTC/USDT"]
+    assert sorted(r.symbol for r in rows) == ["BTC/USDT", "NVDA"]

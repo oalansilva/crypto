@@ -26,7 +26,7 @@ def _catalog_db(unit_database_url):
     """
     engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
-    tables = "asset_catalog, asset_catalog_refresh, favorite_strategies, discovery_results, backtest_runs, batch_backtest_jobs, batch_backtest_items"
+    tables = "asset_catalog, asset_catalog_refresh, favorite_strategies, monitor_favorite_alert_states, discovery_results, backtest_runs, batch_backtest_jobs, batch_backtest_items"
     with engine.begin() as connection:
         connection.execute(text(f"TRUNCATE TABLE {tables} RESTART IDENTITY"))
     yield

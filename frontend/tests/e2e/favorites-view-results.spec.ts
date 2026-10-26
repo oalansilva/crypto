@@ -678,7 +678,8 @@ test('favorites grid fits common desktop without horizontal scrolling', async ({
   await expect(page.locator('.fav-table-shell')).toBeVisible();
   await expect(page.locator('.fav-table-shell thead th.strategy-col')).toHaveText('Estratégia');
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
-  await expect(page.locator('.fav-table-shell').locator('.telegram-col').first()).toBeHidden();
+  // Card #1122: a coluna "Alertar" aparece a partir de 1280 px (o dono marca o próprio favorito).
+  await expect(page.locator('.fav-table-shell').locator('.telegram-col').first()).toBeVisible();
   await expect(page.locator('.fav-table-shell').locator('.direction-col').first()).toBeHidden();
   await expect(page.locator('.fav-table-shell').locator('.advanced-col').first()).toBeHidden();
   await expectNoHorizontalOverflow(page);

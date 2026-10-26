@@ -16,6 +16,7 @@ from app.services.combo_service import ComboService
 from app.services.asset_classification import classify_asset_type
 from app.services.market_indicator_service import get_market_indicator_service
 from app.services.market_data_providers import (
+    BINANCE_EQUITY_SOURCE,
     CCXT_SOURCE,
     STOOQ_SOURCE,
     YahooMarketDataProvider,
@@ -34,6 +35,8 @@ from app.services.strategy_descriptions import (
 from app.schemas.strategy_transparency import StrategyTransparency
 from app.services.strategy_transparency import build_strategy_transparency
 from app.services.trade_explanations import explain_current_position, explain_signal_history
+from app.services.favorite_configuration import configuration_of_row, required_candles
+from app.services import market_state as market_state_service
 
 logger = logging.getLogger(__name__)
 _OHLCV_CACHE_TTL_SECONDS = 300.0
@@ -45,18 +48,92 @@ _TIER_UNSET = object()
 UNSUPPORTED_SYMBOLS = get_excluded_symbols()
 
 
-def _is_equity_favorite(row: Any) -> bool:
-    """Favorito de ação/ETF gravado pelo lote (card #1120): o Monitor segue só cripto até o #1122."""
+def _row_asset_class(row: Any) -> str | None:
+    """Classe gravada no favorito (``metrics.analysis_asset``/``metrics.asset``), quando existe."""
 
-    if "/" in str(getattr(row, "symbol", "") or ""):
-        return False
-    parameters = getattr(row, "parameters", None)
-    if isinstance(parameters, str):
+    metrics = getattr(row, "metrics", None) if not isinstance(row, dict) else row.get("_metrics")
+    if isinstance(metrics, str):
         try:
-            parameters = json.loads(parameters)
+            metrics = json.loads(metrics)
         except (TypeError, ValueError):
-            parameters = None
-    return isinstance(parameters, dict) and parameters.get("data_source") == "binance_equity"
+            metrics = None
+    if not isinstance(metrics, dict):
+        return None
+    for key in ("analysis_asset", "asset"):
+        asset = metrics.get(key)
+        if isinstance(asset, dict) and asset.get("asset_class"):
+            return str(asset["asset_class"]).strip().lower()
+    return None
+
+
+class _FavoriteView:
+    """Acesso por atributo a um favorito em dicionário (para ``configuration_of_row``)."""
+
+    def __init__(self, fav: dict[str, Any]):
+        self.symbol = fav.get("symbol")
+        self.parameters = fav.get("parameters")
+        self.metrics = fav.get("_metrics")
+        configuration = fav.get("configuration") or {}
+        self.data_source = configuration.get("data_source")
+        self.session = configuration.get("session")
+        self.adjustment = configuration.get("adjustment")
+
+
+def _append_execution_placeholder(frame: pd.DataFrame, timeframe: str) -> pd.DataFrame:
+    """Marcador do próximo candle de ação/ETF: recebe a execução da regra confirmada no último
+    candle fechado (o papel do candle em formação na cripto)."""
+
+    if frame is None or frame.empty:
+        return frame
+    from app.services.market_history import nyse_calendar
+
+    last_index = pd.Timestamp(frame.index[-1])
+    last_utc = (
+        last_index.tz_localize("UTC") if last_index.tzinfo is None else last_index.tz_convert("UTC")
+    )
+    nxt = None
+    try:
+        nxt = nyse_calendar.next_candle_start(timeframe, last_utc)
+    except Exception:
+        nxt = None
+    if nxt is None:
+        nxt = last_utc + pd.Timedelta(days=1)
+    if last_index.tzinfo is None:
+        nxt = nxt.tz_convert("UTC").tz_localize(None)
+    last_close = float(frame["close"].iloc[-1])
+    placeholder = {column: float("nan") for column in frame.columns}
+    for column in ("open", "high", "low", "close"):
+        if column in frame.columns:
+            placeholder[column] = last_close
+    if "volume" in frame.columns:
+        placeholder["volume"] = 0.0
+    if "timestamp" in frame.columns:
+        placeholder["timestamp"] = int(pd.Timestamp(nxt).value // 1_000_000)
+    extra = pd.DataFrame([placeholder], index=pd.DatetimeIndex([nxt], name=frame.index.name))
+    return pd.concat([frame, extra.astype(frame.dtypes.to_dict(), errors="ignore")])
+
+
+def _equity_history_window(timeframe: str, candles: int, now: datetime) -> tuple[str, int]:
+    """Janela do Monitor de ação/ETF contada em pregões (decisão 7): início e quantidade de candles."""
+
+    from app.services.market_history import nyse_calendar
+
+    per_session = {"15m": 26, "1h": 7, "4h": 2}.get(str(timeframe).lower(), 1)
+    sessions_needed = -(-int(candles) // per_session) + 2
+    try:
+        sessions = nyse_calendar.sessions_between(
+            pd.Timestamp(now) - pd.Timedelta(days=int(sessions_needed * 1.6) + 15),
+            pd.Timestamp(now),
+        )
+        if len(sessions) >= sessions_needed:
+            start = sessions[-sessions_needed]
+            return start.isoformat(), int(candles)
+    except Exception:
+        pass
+    return (
+        (now - timedelta(days=int(sessions_needed * 1.5) + 10)).strftime("%Y-%m-%d"),
+        int(candles),
+    )
 
 
 def _is_unsupported_symbol(symbol: str) -> bool:
@@ -760,7 +837,6 @@ class OpportunityService:
                         )
                         .all()
                     )
-                    admin_rows = [r for r in admin_rows if not _is_equity_favorite(r)]
                     favorites = [
                         self._favorite_row_to_dict(
                             row,
@@ -815,8 +891,14 @@ class OpportunityService:
             "parameters": row.parameters,
             "notes": row.notes,
             "tier": tier,
-            "notify_telegram": bool(getattr(row, "notify_telegram", True)),
+            # Card #1122: na vitrine, a marca do admin não é do usuário que vê.
+            "notify_telegram": (
+                False if is_curated_fallback else bool(getattr(row, "notify_telegram", False))
+            ),
+            "user_id": getattr(row, "user_id", None),
             "is_curated_fallback": is_curated_fallback,
+            "configuration": configuration_of_row(row).payload(),
+            "asset_class": _row_asset_class(row),
             "_metrics": row.metrics,
         }
         if isinstance(r["parameters"], str):
@@ -872,11 +954,7 @@ class OpportunityService:
         tier_filter: Optional[str] = None,
     ) -> list[FavoriteStrategy]:
         query = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == user_id)
-        return [
-            r
-            for r in self._apply_tier_filter(query, tier_filter).all()
-            if not _is_equity_favorite(r)
-        ]
+        return list(self._apply_tier_filter(query, tier_filter).all())
 
     def _favorite_rows_for_admin_catalog(
         self,
@@ -899,11 +977,7 @@ class OpportunityService:
         )
         if alerts_only:
             query = query.filter(FavoriteStrategy.notify_telegram.is_(True))
-        return [
-            r
-            for r in self._apply_tier_filter(query, tier_filter).all()
-            if not _is_equity_favorite(r)
-        ]
+        return list(self._apply_tier_filter(query, tier_filter).all())
 
     def _favorite_rows_for_first_admin(
         self,
@@ -941,11 +1015,164 @@ class OpportunityService:
             return list(dict.fromkeys(ordered))
         return sorted(email for email in ADMIN_EMAILS if email)
 
+    def _asset_classes_for(self, favorites: List[Dict[str, Any]]) -> dict[str, str]:
+        """Ticker -> classe pelo catálogo, só para favoritos de ação/ETF sem classe gravada."""
+
+        tickers = sorted(
+            {
+                str(f.get("symbol") or "").strip().upper()
+                for f in favorites
+                if "/" not in str(f.get("symbol") or "") and not f.get("asset_class")
+            }
+            - {""}
+        )
+        if not tickers:
+            return {}
+        try:
+            from app.models_asset_catalog import AssetCatalog
+
+            with self._session_factory() as db:
+                rows = (
+                    db.query(AssetCatalog)
+                    .filter(
+                        AssetCatalog.symbol.in_(tickers),
+                        AssetCatalog.asset_class.in_(["stock", "etf"]),
+                    )
+                    .order_by(AssetCatalog.removed_at.isnot(None), AssetCatalog.asset_id)
+                    .all()
+                )
+        except Exception:  # catálogo fora do ar: o ticker segue como ação
+            return {}
+        out: dict[str, str] = {}
+        for row in rows:
+            out.setdefault(str(row.symbol), str(row.asset_class))
+        return out
+
+    @staticmethod
+    def _asset_class_of(fav: Dict[str, Any], by_symbol: dict[str, str]) -> str:
+        symbol = str(fav.get("symbol") or "").strip().upper()
+        if "/" in symbol:
+            return "crypto"
+        stored = str(fav.get("asset_class") or "").strip().lower()
+        if stored in {"stock", "etf"}:
+            return stored
+        return by_symbol.get(symbol, "stock")
+
+    @staticmethod
+    def _currency_of(symbol: str, asset_class: str) -> str:
+        if asset_class == "crypto":
+            return str(symbol or "").partition("/")[2].upper() or "USDT"
+        return "USD"
+
+    def _stale_alert_row(
+        self,
+        fav: Dict[str, Any],
+        *,
+        symbol: str,
+        timeframe: str,
+        asset_class: str,
+        equity: bool,
+        now: Any,
+        series: Any,
+        episode: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        """Linha mínima de favorito sem candle lido (só para a varredura): estado ``stale``."""
+
+        market = market_state_service.build_market_state(
+            equity=equity, now=now, series=series, episode=episode
+        )
+        if market.get("state") != "stale":
+            return None
+        return {
+            "id": fav.get("id"),
+            "user_id": fav.get("user_id"),
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "asset_class": asset_class,
+            "currency": self._currency_of(symbol, asset_class),
+            "configuration": fav.get("configuration")
+            or configuration_of_row(_FavoriteView(fav)).payload(),
+            "notify_telegram": bool(fav.get("notify_telegram")),
+            "is_curated_fallback": bool(fav.get("is_curated_fallback")),
+            "status": None,
+            "is_holding": False,
+            "distance_to_next_status": None,
+            "market_state": market,
+        }
+
+    def _insufficient_opportunity(
+        self,
+        fav: Dict[str, Any],
+        *,
+        meta: dict[str, Any],
+        symbol: str,
+        timeframe: str,
+        template_name: str,
+        df: pd.DataFrame,
+        params: dict[str, Any],
+        identity_fields: dict[str, Any],
+        market_state: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Linha "Sem leitura" (dado insuficiente): fica em Saída / cobertura e não gera sinal."""
+
+        direction = _normalize_strategy_direction(params.get("direction", "long"))
+        labels = _monitor_action_labels(direction)
+        message = "Sem sinal até completar o histórico."
+        last_price = float(df.iloc[-1]["close"]) if not df.empty else 0.0
+        timestamp = str(df.index[-1]) if not df.empty else ""
+        return {
+            "id": fav["id"],
+            "symbol": symbol,
+            "asset_type": classify_asset_type(symbol),
+            "timeframe": timeframe,
+            "direction": direction,
+            "template_name": template_name,
+            "strategy_display_name": meta.get("display_name")
+            or resolve_strategy_display_name(template_name),
+            "strategy_description": meta.get("description")
+            or resolve_strategy_description(template_name),
+            "strategy_transparency": None,
+            "name": fav["name"],
+            "notes": fav.get("notes"),
+            "is_curated_fallback": bool(fav.get("is_curated_fallback")),
+            "tier": fav.get("tier"),
+            "parameters": fav.get("parameters") or {},
+            "is_holding": False,
+            "distance_to_next_status": None,
+            "next_status_label": "entry",
+            "action_label": labels["exit"],
+            "entry_action_label": labels["entry"],
+            "exit_action_label": labels["exit"],
+            "next_action_label": labels["entry"],
+            "indicator_values": None,
+            "indicator_values_candle_time": None,
+            "signal_history": [],
+            "trade_explanation": None,
+            "entry_price": None,
+            "stop_price": None,
+            "distance_to_stop_pct": None,
+            "status": "EXIT",
+            "badge": "neutral",
+            "message": message,
+            "raw_analysis_status": "INSUFFICIENT",
+            "stop_breached_now": False,
+            "details": {"status": "EXIT", "message": message, "direction": direction},
+            "last_price": last_price,
+            "timestamp": timestamp,
+            **identity_fields,
+            "candle_time": None,
+            "market_state": market_state,
+        }
+
     def _has_monitor_candidate(self, rows: list[FavoriteStrategy]) -> bool:
+        """Card #1122: favorito próprio de qualquer classe tira o usuário da vitrine do catálogo."""
         for row in rows:
             symbol = str(getattr(row, "symbol", "") or "").strip()
-            if "/" in symbol and not _is_unsupported_symbol(symbol):
-                return True
+            if not symbol:
+                continue
+            if "/" in symbol and _is_unsupported_symbol(symbol):
+                continue
+            return True
         return False
 
     def _apply_tier_filter(self, query, tier_filter: Optional[str]):
@@ -1023,15 +1250,36 @@ class OpportunityService:
     def get_opportunities(
         self, user_id: str, tier_filter: Optional[str] = None
     ) -> List[Dict[str, Any]]:
+        # Card #1122: cripto, ação e ETF (Binance Ações e fonte antiga) no Monitor.
         favorites = [
             favorite
             for favorite in self.get_favorites(user_id=user_id, tier_filter=tier_filter)
-            if "/" in str(favorite.get("symbol") or "").strip()
+            if str(favorite.get("symbol") or "").strip()
         ]
         return self._calculate_opportunities(
             favorites,
             tier_filter=tier_filter,
             source_label="favorite",
+        )
+
+    def get_alert_favorites(self, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Favoritos marcados "Alertar" de todos os donos (card #1122, decisão 2): a união que a
+        varredura avalia uma vez. O filtro de estrelas do sistema vale sobre o nível do favorito."""
+
+        with self._session_factory() as db:
+            query = db.query(FavoriteStrategy).filter(FavoriteStrategy.notify_telegram.is_(True))
+            rows = list(self._apply_tier_filter(query, tier_filter).all())
+            favorites = [self._favorite_row_to_dict(row) for row in rows]
+        return [f for f in favorites if str(f.get("symbol") or "").strip()]
+
+    def get_alert_opportunities(
+        self, tier_filter: Optional[str] = None, *, now: Any = None
+    ) -> List[Dict[str, Any]]:
+        return self._calculate_opportunities(
+            self.get_alert_favorites(tier_filter),
+            tier_filter=tier_filter,
+            source_label="alert",
+            now=now,
         )
 
     def get_catalog_opportunities(
@@ -1047,7 +1295,7 @@ class OpportunityService:
                 tier_filter=tier_filter,
                 alerts_only=alerts_only,
             )
-            if "/" in str(favorite.get("symbol") or "").strip()
+            if str(favorite.get("symbol") or "").strip()
         ]
         return self._calculate_opportunities(
             favorites,
@@ -1061,6 +1309,7 @@ class OpportunityService:
         *,
         tier_filter: Optional[str] = None,
         source_label: str = "favorite",
+        now: Any = None,
     ) -> List[Dict[str, Any]]:
         """
         Analyze favorites and return their current status (is_holding, distance_to_next_status).
@@ -1074,6 +1323,14 @@ class OpportunityService:
         - Each favorite strategy uses its own template's rules from the database
         """
         opportunities = []
+        now_ts = market_state_service._utc(now) or pd.Timestamp.now(tz="UTC")
+        now_naive = now_ts.tz_convert("UTC").tz_localize(None).to_pydatetime()
+        # Card #1122: séries lidas nesta passada (atraso real) e episódios por (fonte, ativo).
+        series_checks: dict[str, market_state_service.SeriesCheck] = {}
+        episodes: dict[tuple[str, str], Any] = {}
+        self.last_series_checks = series_checks
+        self.last_episodes = episodes
+        asset_class_by_symbol = self._asset_classes_for(favorites)
 
         logger.info(
             "Processing %d %s strategies (tier_filter=%s)",
@@ -1113,12 +1370,16 @@ class OpportunityService:
 
                 normalized_tf = _normalize_market_timeframe(symbol, tf, data_source)
                 cache_key = f"{data_source}:{symbol}_{normalized_tf}"
+                needed = required_candles(params)
                 if cache_key in unique_market_jobs:
+                    job = unique_market_jobs[cache_key]
+                    job["required"] = max(int(job.get("required") or 0), needed)
                     continue
                 unique_market_jobs[cache_key] = {
                     "data_source": data_source,
                     "symbol": symbol,
                     "timeframe": normalized_tf,
+                    "required": needed,
                 }
             except Exception as exc:
                 skipped_strategies.append(
@@ -1141,6 +1402,14 @@ class OpportunityService:
             history_days = _history_days_for_timeframe(job["timeframe"])
             history_limit = _history_limit_for_timeframe(job["timeframe"])
             start_date = (datetime.now() - timedelta(days=history_days)).strftime("%Y-%m-%d")
+            if job["data_source"] == BINANCE_EQUITY_SOURCE:
+                # Card #1122 (decisão 7): a janela de ação/ETF é contada em pregões.
+                start_date, history_limit = _equity_history_window(
+                    job["timeframe"],
+                    max(history_limit, int(job.get("required") or 0) + 20),
+                    now_naive,
+                )
+            job["limit"] = history_limit
 
             provider = get_market_data_provider(job["data_source"])
             try:
@@ -1197,6 +1466,30 @@ class OpportunityService:
                                 f"Market fetch timed out after {fetch_timeout_seconds:.2f}s",
                             )
 
+        # Card #1122 (decisão 8): atraso real por série e episódio por (fonte, ativo).
+        for cache_key, job in unique_market_jobs.items():
+            frame = data_cache.get(cache_key)
+            last_candle = None
+            if isinstance(frame, pd.DataFrame) and not frame.empty:
+                last_candle = frame.index.max()
+            series_checks[cache_key] = market_state_service.check_series(
+                data_source=job["data_source"],
+                symbol=job["symbol"],
+                timeframe=job["timeframe"],
+                last_candle=last_candle,
+                now=now_ts,
+                error=fetch_errors.get(cache_key),
+            )
+        if series_checks:
+            try:
+                with self._session_factory() as health_db:
+                    updates = market_state_service.update_data_health(
+                        health_db, series_checks.values(), now=now_naive
+                    )
+                episodes.update({key: value.as_dict() for key, value in updates.items()})
+            except Exception as exc:  # o Monitor nunca cai por causa do episódio
+                logger.warning("monitor_data_health indisponível: %s", exc)
+
         for fav in favorites:
             try:
                 symbol = fav["symbol"]
@@ -1226,6 +1519,21 @@ class OpportunityService:
                 cache_key = f"{data_source}:{symbol}_{normalized_tf}"
                 if cache_key not in data_cache:
                     fetch_exc = fetch_errors.get(cache_key)
+                    if source_label == "alert":
+                        # Card #1122 (decisão 8): na varredura, falha de leitura sem nenhum candle
+                        # conta como atraso real (o aviso único sai; o sinal fica em espera).
+                        stale_row = self._stale_alert_row(
+                            fav,
+                            symbol=symbol,
+                            timeframe=normalized_tf,
+                            asset_class=self._asset_class_of(fav, asset_class_by_symbol),
+                            equity=data_source in (BINANCE_EQUITY_SOURCE, STOOQ_SOURCE),
+                            now=now_ts,
+                            series=series_checks.get(cache_key),
+                            episode=episodes.get((data_source, symbol)),
+                        )
+                        if stale_row is not None:
+                            opportunities.append(stale_row)
                     if fetch_exc:
                         skipped_strategies.append(
                             {
@@ -1247,6 +1555,11 @@ class OpportunityService:
                     continue
 
                 df = data_cache[cache_key].copy()
+                equity = data_source in (BINANCE_EQUITY_SOURCE, STOOQ_SOURCE)
+                fetched_count = len(df)
+                if equity:
+                    # Card #1122 (decisão 7): só candles fechados pelo calendário de NY.
+                    df = market_state_service.cut_to_closed(df, normalized_tf, now_ts)
 
                 if df.empty:
                     skipped_strategies.append(
@@ -1265,7 +1578,32 @@ class OpportunityService:
                     df = _apply_crypto_continuity_fix(df, normalized_tf)
 
                 normalized_symbol = symbol.strip().upper()
-                indicator_cache_key = f"{normalized_symbol}:{normalized_tf}:indicators"
+                # Card #1122: a fonte entra na chave (NVDA Binance e NVDA Stooq não dividem).
+                indicator_cache_key = (
+                    f"{data_source}:{normalized_symbol}:{normalized_tf}:indicators"
+                )
+                series_check = series_checks.get(cache_key)
+                episode = episodes.get((data_source, symbol))
+                asset_class = self._asset_class_of(fav, asset_class_by_symbol)
+                identity_fields = {
+                    "asset_class": asset_class,
+                    "currency": self._currency_of(symbol, asset_class),
+                    "configuration": fav.get("configuration")
+                    or configuration_of_row(_FavoriteView(fav)).payload(),
+                    "notify_telegram": bool(fav.get("notify_telegram")),
+                    "user_id": fav.get("user_id"),
+                }
+                closed_count = len(df) if equity else max(len(df) - 1, 0)
+                needed = required_candles(params)
+                job_limit = int((unique_market_jobs.get(cache_key) or {}).get("limit") or 0)
+                # Dado insuficiente vale para ação/ETF (histórico curto de ticker novo); a cripto
+                # segue o caminho de hoje (a janela do Monitor é que limita a série dela).
+                insufficient = bool(
+                    equity
+                    and needed
+                    and closed_count < needed
+                    and (not job_limit or fetched_count < job_limit)
+                )
 
                 # 2. Get Template Metadata from Database (entry_logic and exit_logic)
                 # This dynamically loads the buy/sell rules from combo_templates table
@@ -1287,6 +1625,30 @@ class OpportunityService:
 
                 # Metadata is already flattened (contains indicators, entry_logic, exit_logic from DB)
                 template_data = meta
+
+                if insufficient:
+                    # Card #1122 (decisão 8): dado insuficiente é estado próprio, sem sinal.
+                    opportunities.append(
+                        self._insufficient_opportunity(
+                            fav,
+                            meta=meta,
+                            symbol=symbol,
+                            timeframe=normalized_tf,
+                            template_name=template_name,
+                            df=df,
+                            params=params,
+                            identity_fields=identity_fields,
+                            market_state=market_state_service.build_market_state(
+                                equity=equity,
+                                now=now_ts,
+                                series=series_check,
+                                episode=episode,
+                                available=closed_count,
+                                required=needed,
+                            ),
+                        )
+                    )
+                    continue
 
                 # 3. Merge Saved Params into Template Data
                 # We need to inject params into indicators to make sure we use the favorited settings
@@ -1376,6 +1738,10 @@ class OpportunityService:
 
                 mapped_df = df
                 indicator_rows = indicator_cache.get(indicator_cache_key)
+                if indicator_rows is None and data_source != CCXT_SOURCE:
+                    # Indicadores persistidos são da série de cripto; ação/ETF calcula na hora.
+                    indicator_rows = []
+                    indicator_cache[indicator_cache_key] = indicator_rows
                 if indicator_rows is None:
                     try:
                         indicator_rows = get_market_indicator_service().get_time_series(
@@ -1452,10 +1818,16 @@ class OpportunityService:
                 # 5. Analyze Entry Proximity using buy rule from database
                 # Use LAST CLOSED candle (same as TradingView/Binance: close 76.968,21 for 31/01)
                 df_current = df_with_inds.iloc[-1:].copy()  # Current candle for HOLD/signal checks
-                df_closed = df_with_inds.iloc[:-1].copy()  # Closed candles for signal detection
-                df_for_distance = _get_df_last_closed(
-                    df_with_inds, tf
-                )  # Last closed by close time <= now
+                if equity:
+                    # Card #1122 (decisão 7): a série de ação/ETF já só tem candles fechados; o
+                    # último entra na leitura (não há candle em formação para descartar).
+                    df_closed = df_with_inds.copy()
+                    df_for_distance = df_with_inds.iloc[-1:].copy()
+                else:
+                    df_closed = df_with_inds.iloc[:-1].copy()  # Closed candles for signal detection
+                    df_for_distance = _get_df_last_closed(
+                        df_with_inds, tf
+                    )  # Last closed by close time <= now
 
                 # Debug: Log current candle values for SOL
                 if symbol == "SOL/USDT" and not df_current.empty:
@@ -1585,7 +1957,13 @@ class OpportunityService:
                 # ComboStrategy delays confirmed rules to the next candle open, so the
                 # execution frame may include the current candle while df_for_distance
                 # still uses the last closed candle.
-                df_signals = strategy.generate_signals(df_with_inds.copy())
+                signal_input = df_with_inds.copy()
+                if equity:
+                    # A regra confirmada no último candle fechado executa na abertura seguinte,
+                    # como o candle em formação da cripto: um marcador do próximo candle recebe
+                    # a execução (preço = último fechamento).
+                    signal_input = _append_execution_placeholder(signal_input, normalized_tf)
+                df_signals = strategy.generate_signals(signal_input)
 
                 last_buy_idx, last_buy_pos = _last_signal_index_and_position(df_signals, 1)
                 last_sell_idx, last_sell_pos = _last_signal_index_and_position(df_signals, -1)
@@ -2129,6 +2507,17 @@ class OpportunityService:
                         "details": public_details,
                         "last_price": float(df.iloc[-1]["close"]),
                         "timestamp": str(df.index[-1]),
+                        # Card #1122: classe, moeda, configuração, estado do mercado e "Alertar".
+                        **identity_fields,
+                        "candle_time": indicator_values_candle_time,
+                        "market_state": market_state_service.build_market_state(
+                            equity=equity,
+                            now=now_ts,
+                            series=series_check,
+                            episode=episode,
+                            available=closed_count,
+                            required=needed,
+                        ),
                     }
                 )
 

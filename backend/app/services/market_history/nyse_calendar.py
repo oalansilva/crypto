@@ -363,3 +363,167 @@ def derive_blocks(
     frame = pd.DataFrame(rows, columns=["candle_time", "open", "high", "low", "close", "volume"])
     frame = frame.set_index(pd.DatetimeIndex(frame.pop("candle_time"), name="candle_time"))
     return DerivedBlocks(frame, incomplete)
+
+
+# ---------------------------------------------------------------- candle fechado e estado (#1122)
+
+# Duração dos tempos gráficos da cripto (24/7).
+CRYPTO_TIMEFRAMES = {
+    "1m": pd.Timedelta(minutes=1),
+    "5m": pd.Timedelta(minutes=5),
+    "15m": pd.Timedelta(minutes=15),
+    "30m": pd.Timedelta(minutes=30),
+    "1h": pd.Timedelta(hours=1),
+    "2h": pd.Timedelta(hours=2),
+    "4h": pd.Timedelta(hours=4),
+    "6h": pd.Timedelta(hours=6),
+    "12h": pd.Timedelta(hours=12),
+    "1d": pd.Timedelta(days=1),
+    "1w": pd.Timedelta(days=7),
+}
+
+
+def _utc(now: datetime | pd.Timestamp | None) -> pd.Timestamp:
+    ts = pd.Timestamp(now if now is not None else datetime.now(UTC))
+    return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+
+
+def _recent_sessions(now: pd.Timestamp, days_back: int = 14) -> list[date]:
+    return sessions_between(now - pd.Timedelta(days=days_back), now)
+
+
+def last_closed_start(timeframe: str, now: datetime | pd.Timestamp | None = None) -> pd.Timestamp:
+    """Início do último candle de ação/ETF cujo fechamento é ≤ ``now`` (card #1122, decisão 7).
+
+    O 1d fecha no fechamento do pregão (inclusive meio pregão) e tem ``t`` na meia-noite de NY. Os
+    blocos de 15m, 1h e 4h são ancorados às 09:30 de NY e fecham no fim do bloco ou no fechamento do
+    pregão, o que vier antes.
+    """
+
+    tf = str(timeframe or "1d").strip().lower()
+    at = _utc(now)
+    for day in reversed(_recent_sessions(at)):
+        window = session_window(day)
+        if window is None or window.open_utc > at:
+            continue
+        if tf == "1d":
+            if window.close_utc <= at:
+                return ny_midnight_utc(day)
+            continue
+        minutes = DERIVED_BLOCK_MINUTES.get(tf)
+        if minutes is None:
+            raise ValueError(f"Calendário de ação/ETF não define o tempo {timeframe}.")
+        block = pd.Timedelta(minutes=minutes)
+        starts = []
+        t = window.open_utc
+        while t < window.close_utc:
+            starts.append(t)
+            t = t + block
+        for start in reversed(starts):
+            if min(start + block, window.close_utc) <= at:
+                return start
+    raise CalendarUnavailable("Nenhum pregão fechado nas duas últimas semanas.")
+
+
+def crypto_last_closed_start(
+    timeframe: str, now: datetime | pd.Timestamp | None = None
+) -> pd.Timestamp:
+    """Equivalente 24/7 de ``last_closed_start``: ``floor(now, tf) - tf``."""
+
+    tf = str(timeframe or "1d").strip().lower()
+    step = CRYPTO_TIMEFRAMES.get(tf, pd.Timedelta(days=1))
+    at = _utc(now)
+    if step >= pd.Timedelta(days=7):
+        floored = (at - pd.Timedelta(days=at.weekday())).normalize()
+    else:
+        floored = at.floor(step)
+    return floored - step
+
+
+def session_close_for_candle(candle_start: pd.Timestamp, timeframe: str) -> pd.Timestamp | None:
+    """Fechamento do candle de ação/ETF que começa em ``candle_start`` (texto da mensagem)."""
+
+    start = _utc(candle_start)
+    day = start.tz_convert(NY).date()
+    window = session_window(day)
+    if window is None:
+        return None
+    tf = str(timeframe or "1d").strip().lower()
+    if tf == "1d":
+        return window.close_utc
+    minutes = DERIVED_BLOCK_MINUTES.get(tf)
+    if minutes is None:
+        return None
+    return min(start + pd.Timedelta(minutes=minutes), window.close_utc)
+
+
+def next_candle_start(timeframe: str, last_start: pd.Timestamp) -> pd.Timestamp | None:
+    """Início do candle de ação/ETF seguinte a ``last_start`` pelo calendário (pregão seguinte ou
+    bloco seguinte, atravessando fim de semana e feriado)."""
+
+    start = _utc(last_start)
+    tf = str(timeframe or "1d").strip().lower()
+    horizon = sessions_between(start, start + pd.Timedelta(days=14))
+    if tf == "1d":
+        day = (start + pd.Timedelta(hours=12)).tz_convert(NY).date()
+        for session in horizon:
+            if session > day:
+                return ny_midnight_utc(session)
+        return None
+    minutes = DERIVED_BLOCK_MINUTES.get(tf)
+    if minutes is None:
+        return None
+    block = pd.Timedelta(minutes=minutes)
+    for session in horizon:
+        window = session_window(session)
+        if window is None:
+            continue
+        t = window.open_utc
+        while t < window.close_utc:
+            if t > start:
+                return t
+            t = t + block
+    return None
+
+
+def next_session_open(now: datetime | pd.Timestamp | None = None) -> pd.Timestamp | None:
+    at = _utc(now)
+    for day in sessions_between(at, at + pd.Timedelta(days=14)):
+        window = session_window(day)
+        if window is not None and window.open_utc > at:
+            return window.open_utc
+    return None
+
+
+@dataclass(frozen=True)
+class MarketStatus:
+    state: str  # open | closed
+    reason: str  # session | pre_open | after_hours | weekend | holiday
+    closes_at: pd.Timestamp | None
+    next_open: pd.Timestamp | None
+    early_close: bool = False
+
+
+def market_status(now: datetime | pd.Timestamp | None = None) -> MarketStatus:
+    """Pregão regular de NY no instante: aberto (com o fechamento) ou fechado (motivo e próxima
+    abertura). Fim de semana, feriado e fora do pregão nunca são atraso."""
+
+    at = _utc(now)
+    today = at.tz_convert(NY).date()
+    window = session_window(today)
+    if window is not None and window.open_utc <= at < window.close_utc:
+        return MarketStatus(
+            state="open",
+            reason="session",
+            closes_at=window.close_utc,
+            next_open=None,
+            early_close=window.is_early_close,
+        )
+    upcoming = next_session_open(at)
+    if window is not None:
+        reason = "pre_open" if at < window.open_utc else "after_hours"
+    elif today.weekday() >= 5:
+        reason = "weekend"
+    else:
+        reason = "holiday"
+    return MarketStatus(state="closed", reason=reason, closes_at=None, next_open=upcoming)

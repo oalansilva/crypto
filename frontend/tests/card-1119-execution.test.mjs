@@ -3,8 +3,8 @@ process.env.TZ = 'America/Sao_Paulo'
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import * as equityExecution from '../src/lib/equityExecution.ts'
 import {
-  FAVORITE_REFUSED_REASON,
   annualizationText,
   buildExecutionTexts,
   candleName,
@@ -240,9 +240,6 @@ test('hora de Nova York no intradiário: EDT no verão, EST no inverno, fuso do 
   assert.equal(nyStamp('lixo'), null)
 })
 
-test('motivo do favorito recusado é o mesmo texto da API (422 asset_class_not_favoritable)', () => {
-  assert.equal(
-    FAVORITE_REFUSED_REASON,
-    'Ações e ETFs ainda não podem ser favoritados: atualização diária e alertas dessas classes ainda não existem.',
-  )
+test('card #1122: ação e ETF são favoritáveis; o motivo da recusa saiu', () => {
+  assert.equal('FAVORITE_REFUSED_REASON' in equityExecution, false)
 })

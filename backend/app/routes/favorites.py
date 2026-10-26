@@ -47,6 +47,10 @@ from app.services.walk_forward_revalidation import (
     revalidate_favorite,
 )
 from app.services.oos_promotion_proof import promotion_payload, verify_oos_promotion_proof
+from app.services.favorite_configuration import (
+    configuration_from_request,
+    configuration_of_row,
+)
 from app.services.favorite_uniqueness import lock_and_find_duplicate
 from app.services.discovery_favorite_metrics import (
     flatten_discovery_grid_metrics,
@@ -55,41 +59,7 @@ from app.services.discovery_favorite_metrics import (
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
-CODE_ASSET_CLASS_NOT_FAVORITABLE = "asset_class_not_favoritable"
-EQUITY_NOT_FAVORITABLE_MESSAGE = (
-    "Ações e ETFs ainda não podem ser favoritados: atualização diária e alertas "
-    "dessas classes ainda não existem."
-)
-
-
-def _refuse_equity_favorite(symbol: str) -> None:
-    """Card #1119 (decisão 15): ação e ETF não viram favorito até o #1122.
-
-    Cripto é o par com ``/`` (regra do #1117); a classe vem do catálogo quando o ticker está lá.
-    Nada é gravado.
-    """
-
-    sym = str(symbol or "").strip().upper()
-    if "/" in sym:
-        return
-    asset_class = None
-    asset_id = None
-    try:
-        from app.services.asset_catalog_service import check_assets
-
-        check = check_assets([sym])[0]
-        if check.found:
-            asset_class, asset_id = check.asset_class, check.asset_id
-    except Exception:  # catálogo fora do ar: o ticker sem "/" segue recusado
-        pass
-    raise HTTPException(
-        status_code=422,
-        detail={
-            "code": CODE_ASSET_CLASS_NOT_FAVORITABLE,
-            "message": EQUITY_NOT_FAVORITABLE_MESSAGE,
-            "assets": [{"symbol": sym, "asset_id": asset_id, "asset_class": asset_class}],
-        },
-    )
+DUPLICATE_CONFIGURATION_MESSAGE = "Estratégia já existe nos favoritos com esta configuração"
 
 
 _FAVORITE_CHART_CANDLE_LIMIT = 5000
@@ -215,6 +185,7 @@ def _favorite_response(
     display_name_by_strategy: dict[str, str] | None = None,
     template_by_strategy: dict[str, dict[str, Any]] | None = None,
     asset_by_symbol: dict[str, dict[str, Any]] | None = None,
+    is_curated_fallback: bool = False,
 ) -> FavoriteStrategyResponse:
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
@@ -234,6 +205,9 @@ def _favorite_response(
         payload.get("strategy_display_name"),
     )
     payload["asset"] = _favorite_asset(row, asset_by_symbol)
+    # Card #1122 (decisão 11): fonte, sessão, ajuste e os rótulos da configuração.
+    payload["configuration"] = configuration_of_row(row).payload()
+    payload["is_curated_fallback"] = bool(is_curated_fallback)
     template_data = (template_by_strategy or {}).get(str(row.strategy_name))
     payload["strategy_transparency"] = build_strategy_transparency(
         row.strategy_name,
@@ -706,10 +680,27 @@ def favorite_exists(
     direction: Optional[str] = Query(
         None, description="'long' | 'short'; if omitted, any direction matches"
     ),
+    data_source: Optional[str] = Query(
+        None, description="ccxt | binance_equity | stooq; default by asset class"
+    ),
+    session: Optional[str] = Query(None, description="24x7 | regular_ny | eod"),
+    adjustment: Optional[str] = Query(None, description="none | split | legacy"),
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Check if a favorite already exists for (strategy, symbol, timeframe, period_type, direction). Used to skip single optimize."""
+    """Check if a favorite already exists for (strategy, symbol, timeframe, period_type, direction,
+    data source, session, adjustment). Used to skip single optimize.
+
+    Card #1122 (decisão 11): sem fonte/sessão/ajuste, vale a configuração padrão do símbolo pela
+    classe (cripto ``ccxt``; ação/ETF ``binance_equity``).
+    """
+    # Chamada direta (sem FastAPI) recebe os ``Query`` padrão: só texto vale como campo.
+    wanted = configuration_from_request(
+        symbol,
+        data_source=data_source if isinstance(data_source, str) else None,
+        session=session if isinstance(session, str) else None,
+        adjustment=adjustment if isinstance(adjustment, str) else None,
+    )
     q = db.query(FavoriteStrategy).filter(
         FavoriteStrategy.user_id == current_user_id,
         FavoriteStrategy.strategy_name == strategy_name,
@@ -737,6 +728,7 @@ def favorite_exists(
         rows = [
             r for r in rows if ((r.parameters or {}).get("direction") or "long").lower() == want
         ]
+    rows = [r for r in rows if configuration_of_row(r).as_tuple() == wanted.as_tuple()]
     return ExistsResponse(exists=len(rows) > 0)
 
 
@@ -798,7 +790,8 @@ def list_favorites(
         )
         .all()
     )
-    has_user_rows = any(row.symbol and "/" in str(row.symbol) for row in user_rows)
+    # Card #1122: a vitrine do catálogo vale só para quem não tem favorito próprio de nenhuma classe.
+    has_user_rows = bool(user_rows)
     if has_user_rows:
         descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
@@ -861,6 +854,7 @@ def list_favorites(
             display_name_by_strategy=display_names,
             template_by_strategy=templates,
             asset_by_symbol=assets,
+            is_curated_fallback=True,
         )
         for row in rows
     ]
@@ -1046,7 +1040,6 @@ def create_favorite(
     forneça override explícito. Payloads legados sem `oos_verdict` mantêm o
     comportamento atual (compatibilidade).
     """
-    _refuse_equity_favorite(favorite.symbol)
     try:
         include_secrets = can_view_strategy_secrets(db, current_user_id)
         verdict = favorite.oos_verdict
@@ -1103,8 +1096,32 @@ def create_favorite(
                 end_date=favorite.end_date,
                 symbol=favorite.symbol,
                 timeframe=favorite.timeframe,
+                data_source=(favorite.parameters or {}).get("data_source")
+                or (None if "/" in str(favorite.symbol) else "binance_equity"),
             )
 
+        # Card #1122 (decisão 11): a configuração vem do resultado (fonte nos parâmetros e
+        # ``analysis_conventions``) ou dos campos explícitos; entra na gravação e na duplicata.
+        conventions = (
+            metrics.get("analysis_conventions") or metrics.get("conventions")
+            if isinstance(metrics, dict)
+            else None
+        )
+        params_source = (
+            (favorite.parameters or {}).get("data_source")
+            if isinstance(favorite.parameters, dict)
+            else None
+        )
+        configuration = configuration_from_request(
+            favorite.symbol,
+            data_source=favorite.data_source or params_source,
+            session=favorite.session,
+            adjustment=favorite.adjustment,
+            conventions=conventions,
+        )
+        if not configuration.is_crypto and isinstance(favorite.parameters, dict):
+            # A fonte do favorito também fica nos parâmetros (Monitor, atualização, Revalidar).
+            favorite.parameters = {**favorite.parameters, "data_source": configuration.data_source}
         if lock_and_find_duplicate(
             db,
             user_id=current_user_id,
@@ -1115,8 +1132,9 @@ def create_favorite(
             start_date=dedup_start_date,
             end_date=dedup_end_date,
             parameters=favorite.parameters,
+            configuration=configuration,
         ):
-            raise HTTPException(status_code=409, detail="Estratégia já existe nos favoritos")
+            raise HTTPException(status_code=409, detail=DUPLICATE_CONFIGURATION_MESSAGE)
 
         if has_oos_payload:
             from app.services.favorite_operational_period import enrich_walk_forward_favorite_create
@@ -1140,6 +1158,12 @@ def create_favorite(
             payload["end_date"] = op_end
 
         payload["metrics"] = metrics
+        payload["parameters"] = favorite.parameters
+        payload["data_source"] = configuration.data_source
+        payload["session"] = configuration.session
+        payload["adjustment"] = configuration.adjustment
+        # Card #1122 (decisão 2 de Alan): todo favorito novo nasce sem "Alertar".
+        payload["notify_telegram"] = False
 
         db_favorite = FavoriteStrategy(user_id=current_user_id, **payload)
         db.add(db_favorite)
@@ -1154,6 +1178,7 @@ def create_favorite(
             description_by_strategy=descriptions,
             display_name_by_strategy=display_names,
             template_by_strategy=_strategy_templates_for_rows(db, [db_favorite]),
+            asset_by_symbol=_assets_for_rows(db, [db_favorite]),
         )
     except HTTPException:
         raise
@@ -1190,16 +1215,18 @@ def update_favorite(
     if not owns_favorite:
         if str(favorite.user_id) not in admin_catalog_ids or include_secrets:
             raise HTTPException(status_code=404, detail="Favorite not found")
+        # Card #1122 (decisão 3): "Alertar" é só do dono, inclusive na vitrine do catálogo.
+        # Vem depois da visibilidade para o 403 não revelar favorito que daria 404.
+        if "notify_telegram" in updates:
+            raise HTTPException(
+                status_code=403,
+                detail="Only the owner can update Telegram alert eligibility",
+            )
         if set(updates.keys()) - {"tier"}:
             raise HTTPException(
                 status_code=403,
                 detail="Common users can update only their own star tier for admin favorites",
             )
-    if "notify_telegram" in updates and not include_secrets:
-        raise HTTPException(
-            status_code=403,
-            detail="Only admins can update Telegram notification eligibility",
-        )
 
     if "tier" in updates:
         tier_val = updates["tier"]

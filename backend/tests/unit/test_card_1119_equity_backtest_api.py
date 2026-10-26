@@ -431,25 +431,19 @@ def _favorite(symbol):
     }
 
 
-def test_favoriting_an_equity_is_refused_with_422_and_nothing_is_stored(env):
+def test_favoriting_an_equity_is_accepted_since_1122_without_alert(env):
+    """Card #1122: a recusa do #1119 sai; ação/ETF viram favorito sem "Alertar"."""
     client, _provider, engine, *_ = env
     for symbol in ("SPY", "NVDA", "AAPL"):
         response = client.post("/api/favorites/", json=_favorite(symbol))
-        assert response.status_code == 422, response.text
-        detail = response.json()["detail"]
-        assert detail["code"] == "asset_class_not_favoritable"
-        assert detail["message"] == (
-            "Ações e ETFs ainda não podem ser favoritados: atualização diária e alertas "
-            "dessas classes ainda não existem."
-        )
+        assert response.status_code == 200, response.text
+        assert response.json()["notify_telegram"] is False
+        assert "asset_class_not_favoritable" not in response.text
     with engine.connect() as conn:
-        assert conn.execute(text("SELECT count(*) FROM favorite_strategies")).scalar() == 0
-    assert detail["assets"][0]["symbol"] == "AAPL"
+        assert conn.execute(text("SELECT count(*) FROM favorite_strategies")).scalar() == 3
 
 
 def test_favoriting_an_etf_reports_its_class_from_the_catalog(env):
     client, *_ = env
-    detail = client.post("/api/favorites/", json=_favorite("SPY")).json()["detail"]
-    assert detail["assets"] == [
-        {"symbol": "SPY", "asset_id": "binance:equity:EQ_SPY", "asset_class": "etf"}
-    ]
+    body = client.post("/api/favorites/", json=_favorite("SPY")).json()
+    assert body["asset"]["asset_class"] == "etf"

@@ -16,6 +16,16 @@ import {
 } from './assetSelection'
 import { candleName, type ExecutionInfo, type ConventionsInfo, type ResultAsset } from './equityExecution'
 
+/** Card #1122: fonte, sessão e ajuste do favorito (com os rótulos que a API devolve). */
+export interface FavoriteConfiguration {
+  data_source?: string | null
+  session?: string | null
+  adjustment?: string | null
+  label_short?: string | null
+  label_compact?: string | null
+  label_long?: string | null
+}
+
 export interface FavoriteClassInput {
   symbol: string
   timeframe: string
@@ -23,6 +33,7 @@ export interface FavoriteClassInput {
   notes?: string | null
   asset?: ResultAsset | null
   metrics?: Record<string, any> | null
+  configuration?: FavoriteConfiguration | null
 }
 
 const NY = 'America/New_York'
@@ -89,8 +100,10 @@ export function chipLabel(cls: AssetClass): string {
 
 // --- Texto da linha e do cartão ---------------------------------------------------------------------------------
 
-export const PENDING_EQUITY_TEXT = 'Atualização diária, Monitor, Telegram e Revalidar: ainda não para ações e ETFs'
-export const OFF_EQUITY_TITLE = 'Revalidar: ainda não para ações e ETFs'
+/** Card #1122: o favorito é da fonte antiga (Stooq, só diário). */
+export function isLegacyConfiguration(configuration: FavoriteConfiguration | null | undefined): boolean {
+  return String(configuration?.data_source || '').toLowerCase() === 'stooq'
+}
 
 export type PrecisionTone = 'info' | 'warn' | 'muted'
 
@@ -143,14 +156,25 @@ function sessionsPerYear(conventions: ConventionsInfo | null): number {
   return conventions?.calendar?.sessions_per_year ?? 252
 }
 
-export function conventionsShort(cls: AssetClass, conventions: ConventionsInfo | null): string {
+export function conventionsShort(
+  cls: AssetClass,
+  conventions: ConventionsInfo | null,
+  configuration?: FavoriteConfiguration | null,
+): string {
   if (!isEquityClass(cls)) return 'Binance Spot · 24/7 · 365 dias/ano'
+  // Card #1122: a configuração do favorito manda (a fonte antiga não é "Binance Ações").
+  if (isLegacyConfiguration(configuration)) return 'Stooq · fonte antiga · diário'
   const adjusted = conventions?.adjusted_prices === false ? 'sem ajuste' : 'split'
   return `Binance Ações · NY · ${adjusted} · ${sessionsPerYear(conventions)}/ano`
 }
 
-export function conventionsFull(cls: AssetClass, conventions: ConventionsInfo | null): string | null {
+export function conventionsFull(
+  cls: AssetClass,
+  conventions: ConventionsInfo | null,
+  configuration?: FavoriteConfiguration | null,
+): string | null {
   if (!isEquityClass(cls)) return null
+  if (isLegacyConfiguration(configuration)) return 'Configuração: Stooq · fonte antiga · diário (migração para a Binance no #1126)'
   const adjusted = conventions?.adjusted_prices === false ? 'sem ajuste' : 'ajustado por split'
   return `Convenções: Binance Ações · pregão regular de Nova York · ${adjusted} · ${sessionsPerYear(conventions)} pregões/ano`
 }
@@ -179,7 +203,7 @@ export function favoriteRowData(fav: FavoriteClassInput): RowData {
   const range =
     covered?.start && covered?.end ? `${dayText(covered.start, cls)} – ${dayText(covered.end, cls)}` : null
   const lote = loteTag(fav)
-  const full = conventionsFull(cls, conventions)
+  const full = conventionsFull(cls, conventions, fav.configuration)
   const limitations = limitationsText(cls, conventions)
   let details: RowData['details'] = null
   if (full || limitations) details = { summary: 'Limitações e origem', conventionsFull: full, limitations, lote }
@@ -188,7 +212,7 @@ export function favoriteRowData(fav: FavoriteClassInput): RowData {
     cls,
     currency: favoriteCurrency(fav),
     precision: precisionText(execution, cls, fav.timeframe),
-    conventions: conventionsShort(cls, conventions),
+    conventions: conventionsShort(cls, conventions, fav.configuration),
     effective: range ? `Período efetivo ${range}` : 'Período efetivo: na próxima atualização',
     effectiveRange: range,
     details,
@@ -214,13 +238,77 @@ export function loteBannerText(loteId: string, favs: FavoriteClassInput[]): stri
   return `Mostrando só o lote ${loteId}${when}: os favoritos gravados por ele, de todas as classes.`
 }
 
-export function tierNoteText(equityCount: number): string | null {
-  if (!equityCount) return null
-  const who =
-    equityCount === 1
-      ? 'O favorito de ação ou ETF fica'
-      : `Os ${fmtInt(equityCount)} favoritos de ação e ETF ficam`
-  return `Monitor, Telegram e Revalidar: ainda não para ações e ETFs. ${who} fora destes níveis.`
+// --- Status da atualização diária (card #1122) -----------------------------------------------------------------
+
+export interface FavoriteRefreshInput {
+  symbol: string
+  timeframe: string
+  asset?: ResultAsset | null
+  metrics?: Record<string, any> | null
+  auto_refresh_status?: string | null
+  auto_refresh_error?: string | null
+  auto_refresh_started_at?: string | null
+  auto_refresh_completed_at?: string | null
+}
+
+export interface RefreshStatus {
+  label: string
+  className: string
+  title?: string
+}
+
+function ddmm(value: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  return match ? `${match[3]}/${match[2]}` : null
+}
+
+function formatRefreshMoment(value: string): string {
+  return new Date(value).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+/**
+ * Status da atualização diária. Ação/ETF: "Backtest atualizado: 24/10, 08:12 · último pregão 23/10";
+ * série curta: "Aguardando dados: 40 de 200 candles" (cinza, nunca "Falha").
+ */
+export function formatFavoriteRefreshStatus(fav: FavoriteRefreshInput): RefreshStatus {
+  const status = String(fav.auto_refresh_status || '').toUpperCase()
+  const completedAt = fav.auto_refresh_completed_at || fav.auto_refresh_started_at
+  const formattedDate = completedAt ? formatRefreshMoment(completedAt) : null
+  if (status === 'RUNNING') return { label: 'Atualizando backtest', className: 'running' }
+  if (status === 'INSUFFICIENT') {
+    const counts = String(fav.auto_refresh_error || '').trim()
+    return {
+      label: counts ? `Aguardando dados: ${counts}` : 'Aguardando dados',
+      className: 'waiting',
+    }
+  }
+  if (status === 'FAILED') {
+    return {
+      label: formattedDate ? `Falha na atualização: ${formattedDate}` : 'Falha na atualização',
+      className: 'failed',
+      title: fav.auto_refresh_error || undefined,
+    }
+  }
+  if (status === 'SUCCESS') {
+    const base = formattedDate ? `Backtest atualizado: ${formattedDate}` : 'Backtest atualizado'
+    const lastSession = isEquityClass(favoriteClass(fav)) ? fav.metrics?.analysis_last_session : null
+    const session = typeof lastSession === 'string' ? ddmm(lastSession) : null
+    return { label: session ? `${base} · último pregão ${session}` : base, className: 'success' }
+  }
+  return { label: 'Backtest aguardando atualização', className: 'pending' }
+}
+
+/** "Alertar" ligado num ação/ETF fora da carteira: não sai alerta (decisão 6 do card #1122). */
+export const OUTSIDE_PORTFOLIO_WARNING = 'Fora da carteira: sem alerta.'
+
+export function alertarLabel(active: boolean): string {
+  return active ? 'Alertar no Telegram: ligado' : 'Alertar no Telegram: desligado'
 }
 
 export const FILTER_EMPTY_LOTE = 'Nenhuma estratégia com estes filtros. Troque a classe ou limpe os filtros.'

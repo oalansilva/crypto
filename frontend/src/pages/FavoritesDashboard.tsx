@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Trash2, Search, List, Activity, BarChart3, Bell, Star, RefreshCw, X } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
@@ -24,8 +24,8 @@ import {
 } from '@/lib/discoveryFavoriteMetrics';
 import { formatCompoundReturn } from '@/lib/compoundReturn';
 import {
-    OFF_EQUITY_TITLE,
-    PENDING_EQUITY_TEXT,
+    OUTSIDE_PORTFOLIO_WARNING,
+    alertarLabel,
     atrWithCurrency,
     chipLabel,
     classCounts,
@@ -33,14 +33,16 @@ import {
     favoriteClass,
     favoriteLoteId,
     favoriteRowData,
+    formatFavoriteRefreshStatus,
     isEquityClass,
     loteBannerText,
-    tierNoteText,
     FILTER_EMPTY_LOTE,
+    type FavoriteConfiguration,
     type ClassFilterValue,
     type RowData,
 } from '@/lib/favoriteClass';
 import '../styles/lote.css';
+import '../styles/favoriteAlerts.css';
 
 import * as XLSX from 'xlsx';
 
@@ -76,6 +78,10 @@ interface FavoriteStrategy {
     auto_refresh_run_id?: string | null;
     /** Identidade do ativo (card #1120): classe, moeda e nome; cripto, ação e ETF na mesma lista. */
     asset?: { symbol: string; asset_id?: string | null; asset_class?: 'crypto' | 'stock' | 'etf' | null; name?: string | null; currency?: string | null } | null;
+    /** Card #1122: fonte, sessão e ajuste (e rótulos). */
+    configuration?: FavoriteConfiguration | null;
+    /** Card #1122: linha do catálogo do Cripto Farol (vitrine), sem "Alertar". */
+    is_curated_fallback?: boolean;
 }
 
 interface MonitorSignalHistoryItem {
@@ -348,6 +354,25 @@ const FavoritesDashboard: React.FC = () => {
         retry: false,
     });
 
+    // Card #1122: carteira manual do Monitor, para o aviso "Fora da carteira: sem alerta".
+    const { data: monitorPreferences } = useQuery({
+        queryKey: ['monitor-preferences', user?.id ?? 'anonymous'],
+        queryFn: async () => {
+            const response = await authFetch(`${API_BASE_URL}/monitor/preferences`);
+            if (!response.ok) return {} as Record<string, { in_portfolio?: boolean }>;
+            const payload = await response.json();
+            return (payload && typeof payload === 'object' ? payload : {}) as Record<string, { in_portfolio?: boolean }>;
+        },
+        retry: false,
+    });
+    const isOutsidePortfolio = (fav: FavoriteStrategy): boolean => (
+        fav.notify_telegram === true
+        && !fav.is_curated_fallback
+        && isEquityClass(favoriteClass(fav))
+        && monitorPreferences !== undefined
+        && monitorPreferences?.[fav.symbol]?.in_portfolio !== true
+    );
+
     // Delete mutation
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
@@ -499,33 +524,7 @@ const FavoritesDashboard: React.FC = () => {
     const renderStarTierControl = (fav: FavoriteStrategy, compact = false) => {
         const selectedStars = getStarCount(fav.tier);
         const isSaving = updateTierMutation.isPending;
-        // Ação e ETF (card #1120, decisão 12): estrelas à vista, sem marca, focáveis e desabilitadas até o #1122.
-        if (isEquityClass(favoriteClass(fav))) {
-            return (
-                <div className="flex items-center justify-center gap-1" aria-label="Prioridade por estrelas">
-                    {[1, 2, 3].map((stars) => (
-                        <button
-                            key={stars}
-                            type="button"
-                            aria-disabled="true"
-                            aria-describedby={`lote-why-${fav.id}${compact ? 'm' : ''}`}
-                            data-lote-off=""
-                            aria-pressed="false"
-                            title={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className={[
-                                'inline-flex items-center justify-center rounded-md border transition-colors',
-                                compact ? 'h-9 w-9' : 'h-8 w-8',
-                                'border-zinc-200 bg-zinc-50 text-zinc-400',
-                            ].join(' ')}
-                        >
-                            <Star className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill="none" aria-hidden="true" />
-                        </button>
-                    ))}
-                </div>
-            );
-        }
-
+        // Card #1122: estrelas de ação e ETF funcionam como na cripto.
         return (
             <div className="flex items-center justify-center gap-1" aria-label="Prioridade por estrelas">
                 {[1, 2, 3].map((stars) => {
@@ -558,55 +557,74 @@ const FavoritesDashboard: React.FC = () => {
         );
     };
 
-    const renderTelegramControl = (fav: FavoriteStrategy, compact = false) => {
-        const active = fav.notify_telegram !== false;
+    /**
+     * "Alertar" do dono (card #1122, decisão 3): coluna a partir de 1280 px, sino na célula Ações de
+     * 1024 a 1279 px e "Alertar: on/off" com 44 px no celular. A vitrine do catálogo não tem controle.
+     */
+    const renderTelegramControl = (fav: FavoriteStrategy, variant: 'column' | 'mobile' | 'actions' = 'column') => {
+        if (fav.is_curated_fallback) {
+            return variant === 'actions' ? null : (
+                <span className="alert-catalog-none" data-testid={`alertar-catalog-${fav.id}`}>Catálogo · não alerta</span>
+            );
+        }
+        const active = fav.notify_telegram === true;
         const isSaving = updateTelegramMutation.isPending;
-        if (isEquityClass(favoriteClass(fav))) {
+        const label = alertarLabel(active);
+        if (variant === 'actions') {
             return (
                 <button
                     type="button"
-                    aria-disabled="true"
-                    aria-describedby={`lote-why-${fav.id}${compact ? 'm' : ''}`}
-                    data-lote-off=""
-                    aria-pressed="false"
-                    title="Telegram: ainda não para ações e ETFs"
-                    onClick={(event) => event.stopPropagation()}
-                    className={[
-                        'telegram-toggle inline-flex items-center justify-center gap-1 rounded-md border transition-colors',
-                        compact ? 'h-9 min-w-[3.5rem] px-2 text-xs' : 'h-8 min-w-[4.5rem] px-2 text-xs',
-                        'border-zinc-200 bg-zinc-50 text-zinc-400',
-                    ].join(' ')}
+                    className="alertar-in-actions"
+                    aria-pressed={active}
+                    aria-label={label}
+                    title={label}
+                    disabled={isSaving}
+                    data-testid={`alertar-actions-${fav.id}`}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        handleToggleTelegram(fav);
+                    }}
                 >
-                    <Bell className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill="none" aria-hidden="true" />
-                    {compact ? 'TG' : 'Off'}
+                    <Bell className="h-4 w-4" fill={active ? 'currentColor' : 'none'} aria-hidden="true" />
                 </button>
             );
         }
-
+        const compact = variant === 'mobile';
         return (
             <button
                 type="button"
                 disabled={isSaving}
                 aria-pressed={active}
-                title={active ? 'Notificar Telegram ativo' : 'Notificar Telegram desligado'}
+                aria-label={label}
+                title={label}
+                data-testid={`alertar-${compact ? 'mobile' : 'column'}-${fav.id}`}
                 onClick={(event) => {
                     event.stopPropagation();
                     handleToggleTelegram(fav);
                 }}
                 className={[
                     'telegram-toggle inline-flex items-center justify-center gap-1 rounded-md border transition-colors',
-                    compact ? 'h-9 min-w-[3.5rem] px-2 text-xs' : 'h-8 min-w-[4.5rem] px-2 text-xs',
+                    compact ? 'alertar-mobile h-11 min-w-[7.5rem] px-2 text-xs font-semibold' : 'h-8 min-w-[4.5rem] px-2 text-xs',
                     active
                         ? 'border-emerald-400 bg-emerald-400/15 text-emerald-600'
                         : 'border-zinc-200 bg-zinc-50 text-zinc-400 hover:text-emerald-600',
                     isSaving ? 'opacity-60 cursor-wait' : '',
                 ].join(' ')}
             >
-                <Bell className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill={active ? 'currentColor' : 'none'} />
-                {compact ? 'TG' : active ? 'On' : 'Off'}
+                <Bell className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill={active ? 'currentColor' : 'none'} aria-hidden="true" />
+                {compact ? (active ? 'Alertar: on' : 'Alertar: off') : active ? 'On' : 'Off'}
             </button>
         );
     };
+
+    const renderOutsidePortfolioWarning = (fav: FavoriteStrategy) => (
+        isOutsidePortfolio(fav) ? (
+            <span className="alert-portfolio-warning" data-testid={`alertar-outside-portfolio-${fav.id}`}>
+                {OUTSIDE_PORTFOLIO_WARNING}{' '}
+                <Link to="/monitor">Marque o ativo como "No portfólio" no Monitor</Link>.
+            </span>
+        ) : null
+    );
 
     const getFavoriteStrategyLabel = (fav: FavoriteStrategy): string => {
         const manifestDisplayName = fav.strategy_transparency?.display_name;
@@ -1135,12 +1153,10 @@ const FavoritesDashboard: React.FC = () => {
         const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
         const matchesTimeframe = selectedTimeframe === 'ALL' || fav.timeframe === selectedTimeframe;
         const favClass = favoriteClass(fav);
-        // O filtro por estrelas vale só para cripto: ação e ETF não têm nível até o #1122.
+        // Card #1122: o filtro por estrelas vale para todas as classes.
         const matchesTier = tierFilter === 'all' ||
-            (favClass === 'crypto' && (
-                (tierFilter === 'none' && fav.tier === null) ||
-                (tierFilter !== 'none' && fav.tier === parseInt(tierFilter))
-            ));
+            (tierFilter === 'none' && fav.tier === null) ||
+            (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
         const matchesClass = classFilter === 'all' || favClass === classFilter;
         const matchesLote = !loteFilter || favoriteLoteId(fav) === loteFilter;
 
@@ -1263,35 +1279,8 @@ const FavoritesDashboard: React.FC = () => {
         return 'Todo';
     };
 
-    const formatRefreshStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } => {
-        const status = (fav.auto_refresh_status || '').toUpperCase();
-        const completedAt = fav.auto_refresh_completed_at || fav.auto_refresh_started_at;
-        const formattedDate = completedAt
-            ? new Date(completedAt).toLocaleString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-            })
-            : null;
-        if (status === 'RUNNING') {
-            return { label: 'Atualizando backtest', className: 'running' };
-        }
-        if (status === 'FAILED') {
-            return {
-                label: formattedDate ? `Falha na atualização: ${formattedDate}` : 'Falha na atualização',
-                className: 'failed',
-                title: fav.auto_refresh_error || undefined,
-            };
-        }
-        if (status === 'SUCCESS') {
-            return {
-                label: formattedDate ? `Backtest atualizado: ${formattedDate}` : 'Backtest atualizado',
-                className: 'success',
-            };
-        }
-        return { label: 'Backtest aguardando atualização', className: 'pending' };
-    };
+    // Card #1122: ação/ETF mostra o último pregão; série curta, "Aguardando dados: N de M candles".
+    const formatRefreshStatus = (fav: FavoriteStrategy) => formatFavoriteRefreshStatus(fav);
 
     const formatRevalidationStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } | null => {
         const metrics = fav.metrics || {};
@@ -1319,12 +1308,9 @@ const FavoritesDashboard: React.FC = () => {
         };
     };
 
-    // Estrelas, resumo por nível e filtro por estrelas contam só cripto até o #1122 (ação/ETF não têm nível).
-    const cryptoFavorites = React.useMemo(
-        () => (favorites || []).filter((fav) => favoriteClass(fav) === 'crypto'),
-        [favorites]
-    );
-    const equityFavoritesCount = (favorites || []).length - cryptoFavorites.length;
+    // Card #1122: estrelas, resumo por nível e filtro por estrelas contam todas as classes.
+    const ratedFavorites = React.useMemo(() => favorites || [], [favorites]);
+    const showsCatalogFallback = ratedFavorites.some((fav) => fav.is_curated_fallback);
     const rowDataOf = (fav: FavoriteStrategy): RowData => favoriteRowData(fav);
 
     const favoritesUsingDefaultFilters = searchTerm.trim() === ''
@@ -1388,7 +1374,7 @@ const FavoritesDashboard: React.FC = () => {
     );
 
     const tierCounts = React.useMemo(() => {
-        return cryptoFavorites.reduce(
+        return ratedFavorites.reduce(
             (acc, fav) => {
                 if (fav.tier === 1) acc.top += 1;
                 else if (fav.tier === 2) acc.high += 1;
@@ -1398,7 +1384,7 @@ const FavoritesDashboard: React.FC = () => {
             },
             { top: 0, high: 0, watch: 0, none: 0 }
         );
-    }, [cryptoFavorites]);
+    }, [ratedFavorites]);
 
     const getTierDisplay = (tier: number | null) => {
         if (tier === 1) return { label: 'Top picks', stars: 3, className: 'tier-top' };
@@ -1414,7 +1400,7 @@ const FavoritesDashboard: React.FC = () => {
 
     const formatSignedPct = (metrics?: Record<string, any>) => formatCompoundReturn(metrics, { empty: '-' });
 
-    const tableColumnCount = isAdmin ? 19 : 17;
+    const tableColumnCount = isAdmin ? 19 : 18;
 
     const clearLoteFilter = () => {
         const next = new URLSearchParams(searchParams);
@@ -1473,8 +1459,11 @@ const FavoritesDashboard: React.FC = () => {
                         ))}
                     </div>
 
-                    {tierNoteText(equityFavoritesCount) ? (
-                        <p className="lote-tier-note" data-testid="fav-tier-note">{tierNoteText(equityFavoritesCount)}</p>
+                    {showsCatalogFallback ? (
+                        <div className="alert-catalog-banner" role="status" data-testid="favorites-catalog-banner">
+                            <strong>Estas estratégias são o catálogo do Cripto Farol e não mandam alerta.</strong>{' '}
+                            Os alertas do Telegram vêm só dos seus favoritos marcados "Alertar". Salve os seus no Combo, na Descoberta ou no lote e marque "Alertar" aqui.
+                        </div>
                     ) : null}
 
                     <div className="tier-filter" aria-label="Filtro por tier">
@@ -1615,7 +1604,6 @@ const FavoritesDashboard: React.FC = () => {
                                 const revalidationStatus = formatRevalidationStatus(fav);
                                 const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
                                 const row = rowDataOf(fav);
-                                const equity = isEquityClass(row.cls);
                                 return (
                                     <article
                                         key={fav.id}
@@ -1635,16 +1623,11 @@ const FavoritesDashboard: React.FC = () => {
                                                 <span className="fav-strategy-name">{getFavoriteCatalogTitle(fav)}</span>
                                                 {strategyDetail ? <span className="fav-strategy-meta">{strategyDetail}</span> : null}
                                                 {strategyDescription ? <span className="fav-strategy-description">{strategyDescription}</span> : null}
-                                                {equity ? (
-                                                    <span className="fav-refresh-status lote-pending-class" id={`lote-why-${fav.id}m`} data-testid="fav-equity-pending">
-                                                        {PENDING_EQUITY_TEXT}
-                                                    </span>
-                                                ) : (
-                                                    <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
-                                                        {refreshStatus.label}
-                                                    </span>
-                                                )}
-                                                {revalidationStatus && !equity ? (
+                                                <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title} data-testid="fav-refresh-status">
+                                                    {refreshStatus.label}
+                                                </span>
+                                                {renderOutsidePortfolioWarning(fav)}
+                                                {revalidationStatus ? (
                                                     <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
                                                         {revalidationStatus.label}
                                                     </span>
@@ -1657,7 +1640,7 @@ const FavoritesDashboard: React.FC = () => {
                                         </div>
                                         <div className="fav-mobile-stars">
                                             {renderStarTierControl(fav, true)}
-                                            {isAdmin ? renderTelegramControl(fav, true) : null}
+                                            {renderTelegramControl(fav, 'mobile')}
                                         </div>
                                         <div className="fav-mobile-metrics">
                                             <span><b>TF</b>{fav.timeframe}</span>
@@ -1672,15 +1655,9 @@ const FavoritesDashboard: React.FC = () => {
                                             </button>
                                             {isAdmin ? (
                                                 <>
-                                                    {equity ? (
-                                                        <button type="button" aria-disabled="true" aria-describedby={`lote-why-${fav.id}m`} data-lote-off="" title={OFF_EQUITY_TITLE} onClick={(event) => event.stopPropagation()}>
-                                                            <RefreshCw className="h-4 w-4" aria-hidden="true" />Revalidar
-                                                        </button>
-                                                    ) : (
-                                                        <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente">
-                                                            <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />Revalidar
-                                                        </button>
-                                                    )}
+                                                    <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente">
+                                                        <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />Revalidar
+                                                    </button>
                                                     <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
                                                 </>
                                             ) : null}
@@ -1697,7 +1674,7 @@ const FavoritesDashboard: React.FC = () => {
                                 <tr>
                                     {isAdmin ? <th className="select-col">Sel</th> : null}
                                     <th className="stars-cell">Tier</th>
-                                    {isAdmin ? <th className="telegram-col">Telegram</th> : null}
+                                    <th className="telegram-col">Alertar</th>
                                     <th className="symbol-col">Symbol</th>
                                     <th className="strategy-col">Estratégia</th>
                                     <th className="direction-col">Direção</th>
@@ -1748,7 +1725,6 @@ const FavoritesDashboard: React.FC = () => {
                                         const revalidationStatus = formatRevalidationStatus(fav);
                                         const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
                                         const row = rowDataOf(fav);
-                                        const equity = isEquityClass(row.cls);
 
                                         return (
                                             <tr
@@ -1771,7 +1747,7 @@ const FavoritesDashboard: React.FC = () => {
                                                     </td>
                                                 ) : null}
                                                 <td className="stars-cell">{renderStarTierControl(fav)}</td>
-                                                {isAdmin ? <td className="telegram-col">{renderTelegramControl(fav)}</td> : null}
+                                                <td className="telegram-col">{renderTelegramControl(fav, 'column')}</td>
                                                 <td className="symbol-col">
                                                     <div className="sym-cell">
                                                         <span className="sym-tile">{symbol.base.slice(0, 3)}</span>
@@ -1791,16 +1767,11 @@ const FavoritesDashboard: React.FC = () => {
                                                         <strong data-testid="favorites-strategy-title">{getFavoriteCatalogTitle(fav)}</strong>
                                                         {strategyDescription ? <span className="strategy-description" data-testid="favorites-strategy-description">{strategyDescription}</span> : null}
                                                         {strategyDetail ? <span className="fav-strategy-meta">{strategyDetail}</span> : null}
-                                                        {equity ? (
-                                                            <span className="fav-refresh-status lote-pending-class" id={`lote-why-${fav.id}`} data-testid="fav-equity-pending">
-                                                                {PENDING_EQUITY_TEXT}
-                                                            </span>
-                                                        ) : (
-                                                            <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
-                                                                {refreshStatus.label}
-                                                            </span>
-                                                        )}
-                                                        {revalidationStatus && !equity ? (
+                                                        <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title} data-testid="fav-refresh-status">
+                                                            {refreshStatus.label}
+                                                        </span>
+                                                        {renderOutsidePortfolioWarning(fav)}
+                                                        {revalidationStatus ? (
                                                             <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
                                                                 {revalidationStatus.label}
                                                             </span>
@@ -1830,20 +1801,15 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td className="metric-cell advanced-col">{atrWithCurrency(m.avg_atr, row.currency)}</td>
                                                 <td>
                                                     <div className="fav-row-actions">
+                                                        {renderTelegramControl(fav, 'actions')}
                                                         <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa" data-testid={`open-chart-${fav.id}`}>
                                                             {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
                                                         </button>
                                                         {isAdmin ? (
                                                             <>
-                                                                {equity ? (
-                                                                    <button type="button" aria-disabled="true" aria-describedby={`lote-why-${fav.id}`} data-lote-off="" title={OFF_EQUITY_TITLE} aria-label="Revalidar na janela recente" onClick={(event) => event.stopPropagation()}>
-                                                                        <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                                                                    </button>
-                                                                ) : (
-                                                                    <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente" aria-label="Revalidar na janela recente">
-                                                                        <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />
-                                                                    </button>
-                                                                )}
+                                                                <button type="button" onClick={(event) => handleRevalidate(fav, event.currentTarget)} disabled={revalidateMutation.isPending} title="Revalidar na janela recente" aria-label="Revalidar na janela recente">
+                                                                    <RefreshCw className={`h-4 w-4 ${revalidateMutation.isPending ? 'animate-spin' : ''}`} />
+                                                                </button>
                                                                 <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
                                                             </>
                                                         ) : null}

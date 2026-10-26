@@ -12,6 +12,31 @@ export interface OpportunitySignalHistoryItem {
     explanation?: TradeExplanation | null;
 }
 
+/** Card #1122: fonte, sessão e ajuste do favorito, com os rótulos curto, compacto e longo. */
+export interface OpportunityConfiguration {
+    data_source?: string | null;
+    session?: string | null;
+    adjustment?: string | null;
+    label_short?: string | null;
+    label_compact?: string | null;
+    label_long?: string | null;
+}
+
+/** Card #1122: estado do mercado da linha (pregão de NY para ação/ETF; cripto 24/7). */
+export interface MarketState {
+    state: 'open' | 'closed' | 'stale' | 'insufficient' | string;
+    reason?: string | null;
+    session_state?: string | null;
+    closes_at?: string | null;
+    next_open?: string | null;
+    early_close?: boolean | null;
+    last_candle?: string | null;
+    expected_candle?: string | null;
+    stale_since?: string | null;
+    available?: number | null;
+    required?: number | null;
+}
+
 export interface Opportunity {
     id: number;
     symbol: string;
@@ -55,6 +80,15 @@ export interface Opportunity {
     entry_price?: number | null;
     stop_price?: number | null;
     distance_to_stop_pct?: number | null;
+
+    /** Card #1122: classe, moeda, configuração, estado do mercado e "Alertar" do favorito. */
+    asset_class?: 'crypto' | 'stock' | 'etf' | string | null;
+    currency?: string | null;
+    configuration?: OpportunityConfiguration | null;
+    market_state?: MarketState | null;
+    notify_telegram?: boolean;
+    candle_time?: string | null;
+    is_curated_fallback?: boolean;
 }
 
 export const PROTECTED_STRATEGY_LABEL = 'Estratégia protegida';

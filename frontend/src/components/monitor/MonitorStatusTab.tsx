@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     getOpportunityAssetType,
     getOpportunityBaseAsset,
@@ -18,6 +18,7 @@ import { ChartModal } from '@/components/monitor/ChartModal';
 import { SpotMarketTradePanel } from '@/components/monitor/SpotMarketTradePanel';
 import { Button } from '@/components/ui/Button';
 import {
+    Bell,
     ChevronRight,
     CircleDollarSign,
     LineChart,
@@ -31,8 +32,20 @@ import { authFetch, isFetchAbortedError, isNetworkFetchError } from '@/lib/authF
 import { hasRecoverableAuthSession } from '@/lib/authJson';
 import { useAuth } from '@/stores/authStore';
 import type { MarketCandle } from './MiniCandlesChart';
-import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
+import { CHART_TIMEFRAMES, fetchOpportunityCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { boardStateLabel, resolveOpportunitySignal } from './signalResolution';
+import {
+    LEGACY_UNAVAILABLE_REASON,
+    assetIdentityLong,
+    assetIdentityShort,
+    isEquityOpportunity,
+    isInsufficientData,
+    isLegacySource,
+    marketStateView,
+    opportunityRowKey,
+    showsAlertTag,
+} from './marketState';
+import { MarketStateBadge } from './MarketStateBadge';
 
 type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
 type TierFilter = 'rated' | 'all' | '1_2' | '1' | '2' | '3' | 'none';
@@ -54,6 +67,19 @@ type DerivedPortfolioStatus = {
     inPortfolio: boolean;
     message: string | null;
     tone: 'neutral' | 'success' | 'warning';
+};
+
+/** Card #1122: faixa da transição (alertas vêm dos favoritos marcados "Alertar"). */
+type AlertOrigin = {
+    show_banner: boolean;
+    received_catalog_alerts: boolean;
+    catalog_until: string | null;
+};
+
+const formatBannerDate = (value: string | null): string | null => {
+    if (!value) return null;
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    return match ? `${match[3]}/${match[2]}` : null;
 };
 
 type ResolvedSectionRow = {
@@ -206,6 +232,7 @@ export const MonitorStatusTab: React.FC = () => {
     const [walletSyncMessage, setWalletSyncMessage] = useState<string | null>(null);
     const [telegramAlertsEnabled, setTelegramAlertsEnabled] = useState(false);
     const [telegramAlertsSaving, setTelegramAlertsSaving] = useState(false);
+    const [alertOrigin, setAlertOrigin] = useState<AlertOrigin | null>(null);
     const telegramHasLoadedRef = useRef(false);
     const opportunitiesFetchGenerationRef = useRef(0);
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
@@ -402,6 +429,24 @@ export const MonitorStatusTab: React.FC = () => {
             telegramHasLoadedRef.current = false
             console.error(error);
         }
+
+        await fetchAlertOrigin(signal);
+    };
+
+    const fetchAlertOrigin = async (signal?: AbortSignal) => {
+        try {
+            const response = await authFetch(`${API_BASE_URL}/opportunities/alert-origin`, signal ? { signal } : {});
+            if (signal?.aborted || !response.ok) return;
+            const payload = await response.json() as Partial<AlertOrigin>;
+            setAlertOrigin({
+                show_banner: payload.show_banner === true,
+                received_catalog_alerts: payload.received_catalog_alerts === true,
+                catalog_until: typeof payload.catalog_until === 'string' ? payload.catalog_until : null,
+            });
+        } catch (error) {
+            if (isFetchAbortedError(error)) return;
+            setAlertOrigin(null);
+        }
     };
 
     const toggleTelegramAlerts = async () => {
@@ -418,6 +463,7 @@ export const MonitorStatusTab: React.FC = () => {
                 throw new Error(String(payload.detail || `Falha (${response.status})`));
             }
             setTelegramAlertsEnabled(Boolean(payload.telegramAlertsEnabled));
+            void fetchAlertOrigin();
         } catch (error) {
             toast({
                 title: 'Erro',
@@ -443,7 +489,8 @@ export const MonitorStatusTab: React.FC = () => {
             }
             const payload = await response.json();
             const rows = Array.isArray(payload) ? payload : [];
-            const hasCrypto = rows.some((row) => String((row as { symbol?: string })?.symbol || '').includes('/'));
+            // Card #1122: favorito de qualquer classe (cripto, ação ou ETF) conta.
+            const hasCrypto = rows.some((row) => String((row as { symbol?: string })?.symbol || '').trim() !== '');
             setHasCryptoFavorites(hasCrypto);
             return { hasCrypto, failed: false };
         } catch (error) {
@@ -640,23 +687,23 @@ export const MonitorStatusTab: React.FC = () => {
         void persistPreference(symbol, { card_mode: nextMode });
     };
 
-    const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
-        if (getOpportunityAssetType(opportunity) === 'stock') {
-            return '1d';
-        }
-        return toChartTimeframe(opportunity.timeframe);
-    };
+    // Card #1122: ação/ETF no tempo do favorito (não força mais 1d).
+    const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => toChartTimeframe(opportunity.timeframe);
 
     const getOpeningChartKey = (opportunity: Opportunity): string => String(opportunity.id);
 
     const handleOpenChart = async (opportunity: Opportunity, viewMode: 'chart' | 'trades' = 'chart') => {
+        if (isEquityOpportunity(opportunity) && isLegacySource(opportunity)) {
+            // Fonte antiga: gráfico e trades indisponíveis até a migração para a Binance (#1126).
+            return;
+        }
         const initialTimeframe = resolveChartTimeframe(opportunity);
         const currentKey = getOpeningChartKey(opportunity);
 
         setOpeningChartOpportunityId(currentKey);
 
         try {
-            const rows = await fetchMarketCandles(opportunity.symbol, initialTimeframe);
+            const rows = await fetchOpportunityCandles(opportunity, initialTimeframe);
             if (rows.length === 0) {
                 toast({
                     title: 'Gráfico indisponível',
@@ -859,7 +906,7 @@ export const MonitorStatusTab: React.FC = () => {
         const next = new Set<string>();
         for (const opp of sortedOpportunities) {
             if (!String(opp.symbol || '').trim()) continue;
-            if (getOpportunityAssetType(opp) !== 'crypto') continue;
+            // Card #1122: o filtro de tempo vale para todas as classes.
             if (!isRatedOpportunity(opp)) continue;
             const timeframe = String(opp.timeframe || '').trim();
             if (timeframe) next.add(timeframe);
@@ -879,7 +926,8 @@ export const MonitorStatusTab: React.FC = () => {
 
         const afterAssetType = sortedOpportunities.filter((opp) => {
             if (!String(opp.symbol || '').trim()) return false;
-            return getOpportunityAssetType(opp) === 'crypto' && isRatedOpportunity(opp);
+            // Card #1122: cripto, ação e ETF com estrela entram no Monitor.
+            return isRatedOpportunity(opp);
         });
 
         const effectiveListFilter = showTechnicalColumns ? listFilter : 'all';
@@ -997,9 +1045,10 @@ export const MonitorStatusTab: React.FC = () => {
             return;
         }
 
-        const rowsToFetch = new Map<string, { symbol: string; timeframe: ChartTimeframe }>();
+        const rowsToFetch = new Map<string, { symbol: string; timeframe: ChartTimeframe; opportunity: Opportunity }>();
         for (const section of SECTION_ORDER) {
             for (const { opportunity } of resolvedSections[section]) {
+                if (isEquityOpportunity(opportunity) && isLegacySource(opportunity)) continue;
                 const timeframe = resolveChartTimeframe(opportunity);
                 const key = getSparklineKey(opportunity.symbol, timeframe);
 
@@ -1008,7 +1057,7 @@ export const MonitorStatusTab: React.FC = () => {
                     && !sparklineByKey[key]
                     && !sparklineErrorByKey[key]
                 ) {
-                    rowsToFetch.set(key, { symbol: opportunity.symbol, timeframe });
+                    rowsToFetch.set(key, { symbol: opportunity.symbol, timeframe, opportunity });
                 }
             }
         }
@@ -1039,8 +1088,8 @@ export const MonitorStatusTab: React.FC = () => {
                     controllers.set(key, controller);
 
                     try {
-                        const rows = await fetchMarketCandles(
-                            request.symbol,
+                        const rows = await fetchOpportunityCandles(
+                            request.opportunity,
                             request.timeframe,
                             controller.signal,
                             SPARKLINE_LIMIT,
@@ -1170,6 +1219,22 @@ export const MonitorStatusTab: React.FC = () => {
                             ) : null}
                         </div>
                     </header>
+
+                    {alertOrigin?.show_banner ? (
+                        <div className="alert-origin-banner" role="status" data-testid="monitor-alert-origin-banner">
+                            <Bell className="alert-origin-banner-icon" aria-hidden="true" />
+                            <div>
+                                <strong>Os alertas do Telegram agora vêm dos seus favoritos marcados "Alertar".</strong>
+                                {' '}Você ainda não marcou nenhum.
+                                {alertOrigin.received_catalog_alerts && formatBannerDate(alertOrigin.catalog_until) ? (
+                                    <span data-testid="monitor-alert-origin-dated">
+                                        {' '}Até {formatBannerDate(alertOrigin.catalog_until)} você recebia os alertas do catálogo do Cripto Farol; agora cada pessoa escolhe os próprios.
+                                    </span>
+                                ) : null}
+                            </div>
+                            <Link className="alert-origin-banner-link" to="/favorites">Marcar em Favoritos</Link>
+                        </div>
+                    ) : null}
 
                     <div className="kpis" aria-busy={kpiPending}>
                         <div className="kpi">
@@ -1375,9 +1440,18 @@ export const MonitorStatusTab: React.FC = () => {
                                                             const expanded = expandedRows[`${sectionKey}-${opportunity.id}`] ?? false;
                                                             const rowKey = `${sectionKey}-${opportunity.id}`;
                                                             const riskStop = opportunity.distance_to_stop_pct ?? 0;
-                                                            const pairPrefix = getOpportunityBaseAsset(opportunity)
-                                                                .slice(0, 3)
-                                                                .toUpperCase();
+                                                            const equity = isEquityOpportunity(opportunity);
+                                                            const legacy = equity && isLegacySource(opportunity);
+                                                            const rowTestKey = opportunityRowKey(opportunity);
+                                                            const identityShort = assetIdentityShort(opportunity);
+                                                            const identityLong = assetIdentityLong(opportunity);
+                                                            const marketView = marketStateView(opportunity);
+                                                            const insufficient = isInsufficientData(opportunity);
+                                                            const pairPrefix = equity
+                                                                ? String(opportunity.symbol || '').slice(0, 4).toUpperCase()
+                                                                : getOpportunityBaseAsset(opportunity)
+                                                                    .slice(0, 3)
+                                                                    .toUpperCase();
                                                             const sparklineKey = getSparklineKey(opportunity.symbol, chartTimeframe);
                                                             const sparklinePoints = sparklineByKey[sparklineKey] ?? [];
                                                             const showSparkline = sparklinePoints.length >= 2;
@@ -1390,7 +1464,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                     className={`head-row ${expanded ? 'expanded' : ''}`}
                                                                     data-idx={rowKey}
                                                                     aria-expanded={expanded}
-                                                                    data-testid={`monitor-row-${symbolTestKey(opportunity.symbol)}`}
+                                                                    data-testid={`monitor-row-${rowTestKey}`}
                                                                     onClick={(event) => handleRowClick(event, rowKey)}
                                                                 >
                                                                     <td>
@@ -1409,26 +1483,38 @@ export const MonitorStatusTab: React.FC = () => {
                                                                     </td>
                                                                     <td>
                                                                             <div className="pair-cell">
-                                                                                <div className={`pair-icon ${pairPrefix.toLowerCase()}`}>{pairPrefix}</div>
+                                                                                <div className={`pair-icon ${equity ? 'equity' : pairPrefix.toLowerCase()}`}>{pairPrefix}</div>
                                                                                 <div className="pair-meta">
                                                                                     <div className="pair-name">
                                                                                         {opportunity.symbol}
-                                                                                        <span className="pair-tf" data-testid={`monitor-pair-tf-${symbolTestKey(opportunity.symbol)}`}>{chartTimeframe}</span>
+                                                                                        <span className="pair-tf" data-testid={`monitor-pair-tf-${rowTestKey}`}>{chartTimeframe}</span>
                                                                                     </div>
                                                                                     <div className="pair-strat">{getStrategyDisplayName(opportunity)}</div>
                                                                                     {opportunity.strategy_description ? (
                                                                                         <div className="pair-strat-desc">{opportunity.strategy_description}</div>
+                                                                                    ) : null}
+                                                                                    {identityShort ? (
+                                                                                        <div
+                                                                                            className="asset-identity"
+                                                                                            title={identityLong ?? undefined}
+                                                                                            data-testid={`monitor-row-identity-${rowTestKey}`}
+                                                                                        >
+                                                                                            {identityShort}
+                                                                                        </div>
                                                                                     ) : null}
                                                                                 </div>
                                                                             </div>
                                                                     </td>
                                                                     <td>
                                                                         <span
-                                                                            className={`status-pill ${resolved.section}`}
-                                                                            data-testid={`monitor-row-signal-${symbolTestKey(opportunity.symbol)}`}
+                                                                            className={`status-pill ${resolved.section}${insufficient ? ' no-reading' : ''}`}
+                                                                            data-testid={`monitor-row-signal-${rowTestKey}`}
                                                                         >
-                                                                            {boardStateLabel(resolved.section)}
+                                                                            {insufficient ? 'Sem leitura' : boardStateLabel(resolved.section)}
                                                                         </span>
+                                                                        {marketView ? (
+                                                                            <MarketStateBadge view={marketView} compact testId={`monitor-row-market-${rowTestKey}`} />
+                                                                        ) : null}
                                                                     </td>
                                                                     <td className="num lg">{formatPrice(opportunity.last_price)}</td>
                                                                     {showTechnicalColumns ? <td>{formatPercent(opportunity.distance_to_next_status)}</td> : null}
@@ -1476,15 +1562,50 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         <div className="tags">
                                                                             <span className="tag portfolio">{inPortfolio ? '● Carteira' : '○ Carteira'}</span>
                                                                             {getTierStars(opportunity.tier) ? (
-                                                                                <span className="tag strategy" data-testid={`tier-stars-${symbolTestKey(opportunity.symbol)}`}>
+                                                                                <span className="tag strategy" data-testid={`tier-stars-${rowTestKey}`}>
                                                                                     {getTierStars(opportunity.tier)}
                                                                                 </span>
                                                                             ) : null}
                                                                             {showTechnicalColumns ? <span className="tag strategy">▲ Strategy</span> : null}
+                                                                            {showsAlertTag(opportunity) ? (
+                                                                                <span className="tag tag-alert" title="Alertar no Telegram: ligado" data-testid={`monitor-row-alert-${rowTestKey}`}>
+                                                                                    <Bell className="tag-alert-icon" aria-hidden="true" />
+                                                                                    Alerta
+                                                                                </span>
+                                                                            ) : null}
                                                                         </div>
                                                                     </td>
                                                                     <td className="actions-cell">
                                                                         <div className="row-actions" aria-label={`Ações ${opportunity.symbol}`}>
+                                                                        {legacy ? (
+                                                                            <>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="row-action legacy-unavailable"
+                                                                                    aria-disabled="true"
+                                                                                    title={LEGACY_UNAVAILABLE_REASON}
+                                                                                    aria-label={`Abrir Gráfico ${opportunity.symbol} (indisponível)`}
+                                                                                    aria-describedby={`legacy-why-${rowTestKey}-${sectionKey}-row`}
+                                                                                    onClick={(event) => event.stopPropagation()}
+                                                                                >
+                                                                                    <LineChart className="h-4 w-4" />
+                                                                                    <span>Abrir Gráfico</span>
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="row-action row-action-primary legacy-unavailable"
+                                                                                    aria-disabled="true"
+                                                                                    title={LEGACY_UNAVAILABLE_REASON}
+                                                                                    aria-label={`Ver Trades ${opportunity.symbol} (indisponível)`}
+                                                                                    aria-describedby={`legacy-why-${rowTestKey}-${sectionKey}-row`}
+                                                                                    onClick={(event) => event.stopPropagation()}
+                                                                                >
+                                                                                    <ListChecks className="h-4 w-4" />
+                                                                                    <span>Ver Trades</span>
+                                                                                </button>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
                                                                         <button
                                                                             type="button"
                                                                             className="row-action"
@@ -1513,6 +1634,8 @@ export const MonitorStatusTab: React.FC = () => {
                                                                             <ListChecks className="h-4 w-4" />
                                                                             <span>Ver Trades</span>
                                                                         </button>
+                                                                            </>
+                                                                        )}
                                                                         {canOperateSpotUsdt(opportunity, spotEligibilityBySymbol) ? (
                                                                             <button
                                                                                 type="button"
@@ -1541,6 +1664,11 @@ export const MonitorStatusTab: React.FC = () => {
                                                                             </button>
                                                                         ) : null}
                                                                         </div>
+                                                                        {legacy ? (
+                                                                            <p className="legacy-unavailable-why" id={`legacy-why-${rowTestKey}-${sectionKey}-row`}>
+                                                                                {LEGACY_UNAVAILABLE_REASON}
+                                                                            </p>
+                                                                        ) : null}
                                                                     </td>
                                                                 </tr>
                                                                 {expanded ? (
@@ -1566,6 +1694,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 canOpenTrade={canOperateSpotUsdt(opportunity, spotEligibilityBySymbol)}
                                                                                 tradeUnavailableReason={getSpotTradeUnavailableReason(opportunity, spotEligibilityBySymbol)}
                                                                                 isAdmin={showTechnicalColumns}
+                                                                                placement="detail"
                                                                                 onToggleInPortfolio={handleToggleInPortfolio}
                                                                                 onToggleCardMode={handleToggleCardMode}
                                                                                 onOpenChart={handleOpenChart}

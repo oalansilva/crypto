@@ -30,8 +30,8 @@ import {
   favoriteLoteId,
   favoriteRowData,
   loteBannerText,
-  tierNoteText,
 } from '../src/lib/favoriteClass.ts'
+import * as favoriteClassModule from '../src/lib/favoriteClass.ts'
 
 const JOB_ID = '7f3c2a91-0000-4000-8000-000000000001'
 
@@ -427,10 +427,6 @@ test('ATR na moeda, faixa do lote e nota das estrelas', () => {
     loteBannerText('7f3c2a91', favs),
     'Mostrando só o lote 7f3c2a91 (24 out. 2026, 18:40): os favoritos gravados por ele, de todas as classes.',
   )
-  assert.equal(
-    tierNoteText(2),
-    'Monitor, Telegram e Revalidar: ainda não para ações e ETFs. Os 2 favoritos de ação e ETF ficam fora destes níveis.',
-  )
-  assert.equal(tierNoteText(1), 'Monitor, Telegram e Revalidar: ainda não para ações e ETFs. O favorito de ação ou ETF fica fora destes níveis.')
-  assert.equal(tierNoteText(0), null)
+  // Card #1122: a nota "ainda não para ações e ETFs" saiu (ação e ETF entram nos níveis).
+  assert.equal('tierNoteText' in favoriteClassModule, false)
 })

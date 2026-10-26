@@ -20,7 +20,10 @@ router = APIRouter(
 class MonitorTelegramAlertRunRequest(BaseModel):
     user_id: str | None = Field(
         default=None,
-        description="Deprecated. Alert scans use the general curated Monitor catalog.",
+        description=(
+            "Deprecated and ignored: the scan covers every eligible user, each with the "
+            "favorites they marked to alert (card #1122)."
+        ),
     )
     dry_run: bool = Field(
         default=False,
@@ -42,6 +45,15 @@ class MonitorTelegramAlertRunResponse(BaseModel):
     failed: int
     binance_sync_failed_users: int = 0
     operational_dms: int = 0
+    # Card #1122: eventos por favorito, avisos de atraso e de transição, reservas sem resultado.
+    favorites_evaluated: int = 0
+    signal_events: int = 0
+    delay_notices: int = 0
+    transition_notices: int = 0
+    baselines: int = 0
+    held_by_delay: int = 0
+    unknown: int = 0
+    operational_rate_limited: int = 0
     token_configured: bool | None = None
     can_send: bool | None = None
     results: list[dict]

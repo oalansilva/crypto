@@ -1,0 +1,161 @@
+/* Card #1122 — "Alertar" do dono em Favoritos, vitrine do catálogo e modal de salvar ação/ETF.
+   Portado do `delta.css` do protótipo aprovado (frontend/public/prototypes/card-1122-favoritos-alertas-acoes-etfs/).
+   Cores do tema vivo de Favoritos (index.css), como no protótipo. */
+
+/* ---------- Favoritos: coluna "Alertar" a partir de 1280 px (o vivo a escondia abaixo de 1540 px) ---------- */
+@media (min-width: 1280px) and (max-width: 1540px) {
+  .favorites-workbench table.fav-strategies th.telegram-col,
+  .favorites-workbench table.fav-strategies td.telegram-col {
+    display: table-cell;
+  }
+}
+
+/* De 1024 a 1279 px a coluna some e o mesmo controle vai para a célula Ações (quebra em 2×2). */
+.favorites-workbench .fav-row-actions .alertar-in-actions {
+  display: none;
+}
+
+@media (max-width: 1279.98px) {
+  .favorites-workbench table.fav-strategies .telegram-col {
+    display: none;
+  }
+
+  .favorites-workbench .fav-row-actions .alertar-in-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #929aa5;
+  }
+
+  .favorites-workbench .fav-row-actions .alertar-in-actions[aria-pressed='true'] {
+    color: #0ecb81;
+  }
+
+  .favorites-workbench table.fav-strategies .fav-row-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+.favorites-workbench .alertar-in-actions:focus-visible,
+.favorites-workbench .telegram-toggle:focus-visible,
+.alert-portfolio-warning a:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Celular: rótulo legível e alvo de 44 px. */
+.favorites-workbench .fav-mobile-stars .telegram-toggle.alertar-mobile {
+  height: 44px;
+  min-height: 44px;
+  min-width: 7.5rem;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.favorites-workbench .alert-catalog-none {
+  color: #707a8a;
+  font-size: 11px;
+}
+
+.favorites-workbench .alert-portfolio-warning {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #f0b90b;
+  max-width: 75ch;
+  white-space: normal;
+}
+
+.favorites-workbench .alert-portfolio-warning a {
+  color: #f0b90b;
+  text-decoration: underline;
+}
+
+.favorites-workbench .fav-refresh-status.waiting {
+  color: #929aa5;
+}
+
+.favorites-workbench .strategy-stack .fav-refresh-status[data-testid='fav-refresh-status'] {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.favorites-workbench .alert-catalog-banner {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(252, 213, 53, 0.35);
+  border-radius: 10px;
+  background: rgba(252, 213, 53, 0.07);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 100%;
+}
+
+/* ---------- Resultado: modal de salvar ação/ETF ---------- */
+.save-favorite-identity {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #474d57;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #eaecef;
+}
+
+.save-favorite-identity span {
+  color: #b7bdc6;
+  font-size: 12px;
+}
+
+.save-favorite-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b7bdc6;
+  margin: 0;
+  max-width: 75ch;
+}
+
+.save-favorite-duplicate {
+  font-size: 13px;
+  color: #f6465d;
+  margin: 0;
+}
+
+.save-favorite-success {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 13px;
+  color: #0ecb81;
+  margin: 0;
+}
+
+.save-favorite-success p {
+  margin: 0;
+}
+
+.save-favorite-success-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #fcd535;
+  color: #fcd535;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.save-favorite-success-link:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ---------- Descoberta: nota do destino ---------- */
+.discovery-destination-note {
+  max-width: 75ch;
+}

@@ -1,4 +1,5 @@
 import type { Opportunity } from './types';
+import { isOpportunityDataStale, marketStateView } from './marketState';
 import type { MarkerSignalType } from '@/lib/tradeMarkers';
 
 export type MonitorSignalKind = 'hold' | 'exit';
@@ -45,13 +46,6 @@ export interface ResolveOpportunitySignalContext {
     readonly requireCurrentCandleMatch?: boolean;
     readonly hasVisibleActiveEntry?: boolean | null;
 }
-
-const TIMEFRAME_TO_MS: Record<string, number> = {
-    '15m': 15 * 60 * 1000,
-    '1h': 60 * 60 * 1000,
-    '4h': 4 * 60 * 60 * 1000,
-    '1d': 24 * 60 * 60 * 1000,
-};
 
 const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
     hold: {
@@ -145,10 +139,6 @@ const toPublicSignalMessage = (message: string, direction: 'long' | 'short'): st
         .replace(/sell/g, 'venda');
 };
 
-const toMsByTimeframe = (timeframe: string | null | undefined): number => {
-    return TIMEFRAME_TO_MS[normalizeTimeframe(timeframe) || '1d'] ?? TIMEFRAME_TO_MS['1d'];
-};
-
 const isExplicitExitStatus = (rawStatus: string): boolean => (
     rawStatus === 'EXIT'
     || rawStatus === 'EXIT_SIGNAL'
@@ -158,15 +148,6 @@ const isExplicitExitStatus = (rawStatus: string): boolean => (
     || rawStatus === 'MISSED_ENTRY'
     || rawStatus === 'MISSED'
 );
-
-const isStale = (referenceTime: string | null | undefined, timeframe: string | undefined): boolean => {
-    if (!referenceTime) return false;
-    const candleTime = Date.parse(referenceTime);
-    if (Number.isNaN(candleTime)) return false;
-
-    const maxAge = toMsByTimeframe(timeframe) * 3;
-    return Date.now() - candleTime > maxAge;
-};
 
 const hasSameCandleReference = (
     referenceTime: string | null | undefined,
@@ -203,9 +184,12 @@ export const resolveOpportunitySignal = (
         && context.latestSignalType === 'exit'
         && hasSameCandleReference(decisionReferenceTime, context.latestCandleTime)
     );
-    const uncertainty = exitSignalMatchesChart
+    // Card #1122: com `market_state` do servidor, o atraso real decide (ação/ETF sem a regra
+    // "3 períodos"); sem ele, vale a regra de hoje.
+    const serverStale = opportunity.market_state?.state === 'stale';
+    const uncertainty = exitSignalMatchesChart && !serverStale
         ? false
-        : isStale(opportunity.indicator_values_candle_time, opportunity.timeframe);
+        : isOpportunityDataStale(opportunity);
     const candleMismatch = Boolean(context.requireCurrentCandleMatch) && !hasSameCandleReference(
         decisionReferenceTime,
         context.latestCandleTime,
@@ -218,7 +202,9 @@ export const resolveOpportunitySignal = (
     let isUncertain = uncertainty || timeframeMismatch || candleMismatch || activeEntryMissingFromChart;
     const reasons: string[] = [];
     if (uncertainty) {
-        reasons.push('Sem candle válido/atual para esta resolução.');
+        // "Dados atrasados" substitui "Sem candle válido/atual" (nunca os dois juntos).
+        const staleView = serverStale ? marketStateView(opportunity) : null;
+        reasons.push(staleView ? staleView.full : 'Sem candle válido/atual para esta resolução.');
     }
     if (timeframeMismatch) {
         reasons.push('Venda bloqueada: timeframe da estratégia não corresponde ao timeframe exibido.');

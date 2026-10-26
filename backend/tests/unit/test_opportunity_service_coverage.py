@@ -288,9 +288,10 @@ def test_get_favorites_falls_back_when_user_rows_are_not_monitor_candidates(
     service = OpportunityService()
     favorites = service.get_favorites(common_id, tier_filter="1")
 
+    # Card #1122: favorito próprio de qualquer classe (aqui, só AAPL) tira o usuário da vitrine.
     assert len(favorites) == 1
-    assert favorites[0]["name"] == "Admin curated"
-    assert favorites[0]["is_curated_fallback"] is True
+    assert favorites[0]["name"] == "Common stock"
+    assert favorites[0]["is_curated_fallback"] is False
 
 
 def test_get_favorites_loads_configured_admin_catalog(monkeypatch, opportunity_postgres):
@@ -512,7 +513,8 @@ def test_get_opportunities_resolves_public_exit_from_cached_favorite_trade(
     assert out[0]["details"]["favorite_latest_trade_signal"] == "exit"
 
 
-def test_get_opportunities_ignores_stock_favorites_for_crypto_only_mvp(monkeypatch):
+def test_get_opportunities_evaluates_stock_favorites_since_1122(monkeypatch):
+    """Card #1122: ação/ETF entram no Monitor; falha de leitura pula a linha sem derrubar a lista."""
     service = OpportunityService(db_path=":memory:")
     favorite = _sample_favorite("AAPL", "4h", data_source=STOOQ_SOURCE)
     service.get_favorites = lambda *_args, **_kwargs: [favorite]
@@ -525,11 +527,12 @@ def test_get_opportunities_ignores_stock_favorites_for_crypto_only_mvp(monkeypat
     monkeypatch.setattr(
         opportunity_service, "get_market_data_provider", lambda *_args: stooq_provider
     )
+    monkeypatch.setattr(opportunity_service, "YahooMarketDataProvider", lambda: _FailingProvider())
 
     out = service.get_opportunities("user")
 
     assert out == []
-    assert stooq_provider.calls == 0
+    assert stooq_provider.calls == 1
 
 
 def test_get_opportunities_fetch_error_for_ccxt_is_skipped(monkeypatch):

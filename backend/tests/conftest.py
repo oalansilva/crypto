@@ -69,6 +69,14 @@ def _card_1118_provenance_columns():
         try:
             with engine.begin() as connection:
                 execute_all(connection, ADD_COLUMNS_SQL)
+            # Card #1122: colunas novas de favoritos e alertas em bancos de teste persistentes.
+            from sqlalchemy import text
+
+            from app.database import FAVORITE_ALERT_SCHEMA_SQL
+
+            with engine.begin() as connection:
+                for statement in FAVORITE_ALERT_SCHEMA_SQL:
+                    connection.execute(text(statement))
         finally:
             engine.dispose()
     except Exception:

@@ -1,10 +1,23 @@
 import React from 'react';
-import { CircleDollarSign, Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Bell, CircleDollarSign, Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
 import { StrategyTransparencyPanel } from '../trades/StrategyTransparencyPanel';
 import { boardStateLabel, hasExitedOpportunity, resolveOpportunitySignal, type ResolvedMonitorSignal } from './signalResolution';
+import {
+    LEGACY_UNAVAILABLE_REASON,
+    assetIdentityLong,
+    assetIdentityShort,
+    isEquityOpportunity,
+    isInsufficientData,
+    isLegacySource,
+    isOpportunityDataStale,
+    marketStateView,
+    opportunityRowKey,
+    showsAlertTag,
+} from './marketState';
+import { MarketStateBadge } from './MarketStateBadge';
 import {
     getStrategyDisplayName,
     isProtectedStrategy,
@@ -25,13 +38,13 @@ interface OpportunityCardProps {
     canOpenTrade: boolean;
     tradeUnavailableReason?: string | null;
     isAdmin?: boolean;
+    /** Onde o cartão aparece (cartão do celular ou detalhe da linha): ids únicos no DOM. */
+    placement?: 'card' | 'detail';
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
     onOpenChart: (opportunity: Opportunity, mode?: 'chart' | 'trades') => void;
     onOpenTrade: (opportunity: Opportunity) => void;
 }
-
-const symbolKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
 
 const toDisplayValue = (value: unknown, precision = 2): string => {
     if (value === null || value === undefined) {
@@ -64,6 +77,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     canOpenTrade,
     tradeUnavailableReason,
     isAdmin = false,
+    placement = 'card',
     onToggleInPortfolio,
     onToggleCardMode,
     onOpenChart,
@@ -91,21 +105,18 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const showFunctionalDetails = isAdmin || !strategyProtected || Boolean(opportunity.strategy_transparency);
     const showManagementControls = isAdmin || !strategyProtected;
     const UNAVAILABLE = 'indisponível — dado não confiável';
-    const TIMEFRAME_TO_MS: Record<string, number> = {
-        '15m': 15 * 60 * 1000,
-        '1h': 60 * 60 * 1000,
-        '4h': 4 * 60 * 60 * 1000,
-        '1d': 24 * 60 * 60 * 1000,
-    };
-    const isRiskStale = React.useMemo(() => {
-        const ref = opportunity.indicator_values_candle_time;
-        if (!ref) return false;
-        const ms = Date.parse(ref);
-        if (Number.isNaN(ms)) return false;
-        const tf = String(opportunity.timeframe || '1d').trim().toLowerCase();
-        const maxAge = (TIMEFRAME_TO_MS[tf] ?? TIMEFRAME_TO_MS['1d']) * 3;
-        return Date.now() - ms > maxAge;
-    }, [opportunity.indicator_values_candle_time, opportunity.timeframe]);
+    // Card #1122: ação/ETF usa o estado do servidor (calendário), não a regra "3 períodos".
+    const isRiskStale = React.useMemo(
+        () => isOpportunityDataStale(opportunity),
+        [opportunity],
+    );
+    const equity = isEquityOpportunity(opportunity);
+    const legacy = equity && isLegacySource(opportunity);
+    const insufficient = isInsufficientData(opportunity);
+    const identityShort = assetIdentityShort(opportunity);
+    const identityLong = assetIdentityLong(opportunity);
+    const marketView = marketStateView(opportunity);
+    const alertTag = showsAlertTag(opportunity);
     const hasRiskValue = (value: unknown): boolean => value !== null && value !== undefined && !isRiskStale;
     const formatUsd = (value: number): string => new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -148,7 +159,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         ? opportunity.notes.match(/\(([^)]+)\)/)?.[1] ?? '-'
         : '-';
     const batchInfo = opportunity.timestamp ? new Date(opportunity.timestamp).toLocaleString('en-US') : '-';
-    const symbolTestKey = symbolKey(symbol);
+    const symbolTestKey = opportunityRowKey(opportunity);
     const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
     const entryStopHeading = showEntryStopRows ? (isShort ? 'Venda/Short / Stop' : 'Compra / Stop') : 'Risco residual';
     const hasSignalHistory = (opportunity.signal_history?.length ?? 0) > 0;
@@ -241,6 +252,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 if (target.closest('button, a, input, textarea, select')) {
                     return;
                 }
+                if (legacy) {
+                    return;
+                }
                 onOpenChart(opportunity, 'chart');
             }}
         >
@@ -248,10 +262,10 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 <div className="detail-pair-summary">
                     <span className="detail-symbol">{symbol}</span>
                     <span
-                        className={`status-pill ${resolvedSignal.section}`}
+                        className={`status-pill ${resolvedSignal.section}${insufficient ? ' no-reading' : ''}`}
                         data-testid={`monitor-card-signal-${symbolTestKey}`}
                     >
-                        {boardStateLabel(resolvedSignal.section)}
+                        {insufficient ? 'Sem leitura' : boardStateLabel(resolvedSignal.section)}
                     </span>
                     <span title="Timeframe da estratégia" className="detail-timeframe">{timeframe || '-'}</span>
                 </div>
@@ -281,6 +295,22 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     </div>
                 ) : null}
             </div>
+            {identityShort || alertTag || marketView ? (
+                <div className="card-asset-meta" data-testid={`monitor-card-meta-${symbolTestKey}`}>
+                    {identityShort ? (
+                        <div className="asset-identity" title={identityLong ?? undefined}>{identityShort}</div>
+                    ) : null}
+                    {alertTag ? (
+                        <span className="tag tag-alert" title="Alertar no Telegram: ligado">
+                            <Bell className="tag-alert-icon" aria-hidden="true" />
+                            Alerta
+                        </span>
+                    ) : null}
+                    {marketView ? (
+                        <MarketStateBadge view={marketView} testId={`monitor-card-market-${symbolTestKey}`} />
+                    ) : null}
+                </div>
+            ) : null}
             <div className="detail">
                 <div>
                     <h5 className="h5-exit">
@@ -322,12 +352,22 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <span>
                             candle <b>{opportunity.indicator_values_candle_time || '-'}</b>
                         </span>
+                        {identityLong ? (
+                            <span className="asset-configuration" data-testid={`monitor-detail-configuration-${symbolTestKey}`}>
+                                configuração <b>{identityLong}</b>
+                            </span>
+                        ) : null}
                         {resolvedSignal.freshnessReason ? (
                             <span>
                                 alerta <b>{resolvedSignal.freshnessReason}</b>
                             </span>
                         ) : null}
                     </div>
+                    {equity && showManagementControls ? (
+                        <p className="monitor-status-card-note portfolio-help" data-testid={`portfolio-help-${symbolTestKey}`}>
+                            Ação/ETF na carteira recebe entrada e saída no Telegram.
+                        </p>
+                    ) : null}
                     {isPortfolioDerived && portfolioStatusMessage ? (
                         <p className={`monitor-status-card-note ${portfolioStatusClass}`} data-testid={`portfolio-sync-status-${symbolTestKey}`}>
                             {portfolioStatusMessage}
@@ -454,14 +494,43 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         ) : null}
                         </>
                     ) : null}
-                    <button type="button" className="btn" onClick={() => onOpenChart(opportunity, 'chart')}>
-                        <LineChart className="h-3.5 w-3.5" />
-                        Abrir Gráfico
-                    </button>
-                    <button type="button" className="btn primary" onClick={() => onOpenChart(opportunity, 'trades')}>
-                        <ListChecks className="h-3.5 w-3.5" />
-                        Ver Trades
-                    </button>
+                    {legacy ? (
+                        <>
+                            <button
+                                type="button"
+                                className="btn legacy-unavailable"
+                                aria-disabled="true"
+                                title={LEGACY_UNAVAILABLE_REASON}
+                                aria-label={`Abrir Gráfico ${symbol} (indisponível)`}
+                                aria-describedby={`legacy-why-${symbolTestKey}-${placement}`}
+                            >
+                                <LineChart className="h-3.5 w-3.5" />
+                                Abrir Gráfico
+                            </button>
+                            <button
+                                type="button"
+                                className="btn primary legacy-unavailable"
+                                aria-disabled="true"
+                                title={LEGACY_UNAVAILABLE_REASON}
+                                aria-label={`Ver Trades ${symbol} (indisponível)`}
+                                aria-describedby={`legacy-why-${symbolTestKey}-${placement}`}
+                            >
+                                <ListChecks className="h-3.5 w-3.5" />
+                                Ver Trades
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button type="button" className="btn" onClick={() => onOpenChart(opportunity, 'chart')}>
+                                <LineChart className="h-3.5 w-3.5" />
+                                Abrir Gráfico
+                            </button>
+                            <button type="button" className="btn primary" onClick={() => onOpenChart(opportunity, 'trades')}>
+                                <ListChecks className="h-3.5 w-3.5" />
+                                Ver Trades
+                            </button>
+                        </>
+                    )}
                     {canOpenTrade ? (
                         <button
                             type="button"
@@ -485,6 +554,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         </button>
                     ) : null}
                 </div>
+                {legacy ? (
+                    <p className="legacy-unavailable-why" id={`legacy-why-${symbolTestKey}-${placement}`}>
+                        {LEGACY_UNAVAILABLE_REASON}
+                    </p>
+                ) : null}
             </div>
 
         </div>

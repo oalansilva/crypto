@@ -33,7 +33,8 @@ test('favorite promotion action is limited to optimization results', async () =>
   assert.match(source, /start_date: result\.start_date \?\? null/)
   assert.match(source, /period_type: result\.period_type \?\? null/)
   assert.match(source, /oos_proof: result\.oos_proof \?\? null/)
-  assert.match(source, /navigate\('\/favorites'\)/)
+  // Card #1122: o sucesso fica no modal, com o link "Ver em Favoritos" (o modal não navega sozinho).
+  assert.match(source, /identity=\{favoriteIdentity\}/)
 })
 
 test('NO-GO override is visible only to admins', async () => {
@@ -42,7 +43,7 @@ test('NO-GO override is visible only to admins', async () => {
   assert.match(source, /const isAdmin = Boolean\(user\?\.isAdmin\)/)
   assert.match(source, /if \(isBlocked && !isAdmin\)/)
   assert.match(source, /\{isBlocked && isAdmin && \(/)
-  assert.match(source, /disabled=\{isSaving \|\| !name\.trim\(\) \|\| \(isBlocked && \(!isAdmin \|\| !overrideOos\)\)\}/)
+  assert.match(source, /disabled=\{saved \|\| isSaving \|\| !name\.trim\(\) \|\| \(isBlocked && \(!isAdmin \|\| !overrideOos\)\)\}/)
   assert.match(source, /start_date: backtestResult\.start_date \?\? null/)
   assert.match(source, /period_type: backtestResult\.period_type \?\? null/)
   assert.match(source, /oos_proof: backtestResult\.oos_proof \?\? null/)

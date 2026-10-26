@@ -134,7 +134,8 @@ test('bloco do candidato: classe, moeda, precisão em anos com o trecho exato, c
 })
 
 test('modal de promoção por classe: título, destino e amostra', () => {
-  assert.equal(promotionTitle('stock'), 'Promover a favorito')
+  // Card #1122: ação e ETF também vão para tier 3.
+  assert.equal(promotionTitle('stock'), 'Promover a favorito tier 3')
   assert.equal(promotionTitle('crypto'), 'Promover a favorito tier 3')
   assert.equal(modalSampleText(NVDA_ROW), 'Amostra 8b41d7e2 · guardada enquanto o favorito existir · Direção Long')
 })

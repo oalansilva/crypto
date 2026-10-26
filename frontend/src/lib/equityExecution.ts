@@ -483,11 +483,6 @@ export function toggleMeta(texts: ExecutionTexts): string {
   return `${texts.facts.length} fatos · ${n} ${n === 1 ? 'convenção' : 'convenções'}`
 }
 
-// --- Favoritar recusado -----------------------------------------------------------------------------------
-
-export const FAVORITE_REFUSED_REASON =
-  'Ações e ETFs ainda não podem ser favoritados: atualização diária e alertas dessas classes ainda não existem.'
-
 // --- Hora de Nova York na lista de operações ----------------------------------------------------------------
 
 export interface NyStamp {

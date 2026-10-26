@@ -164,7 +164,7 @@ export function TelegramAlertsForm({
           Alertas Telegram
         </h2>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Receba DMs individuais quando um sinal mudar de forma relevante para a sua carteira Spot.
+          Receba DMs individuais quando mudar a leitura de um favorito seu marcado "Alertar" (cripto, ação ou ETF) com o ativo na sua carteira. Mercado fechado e feriado aparecem só no Monitor.
         </p>
       </div>
 
