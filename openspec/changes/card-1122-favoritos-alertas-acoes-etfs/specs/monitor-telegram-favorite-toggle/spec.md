@@ -22,9 +22,13 @@ The system SHALL allow the owner of a favorite, admin or not, to mark it "Alerta
 - **THEN** the system SHALL persist the favorite as not alerting
 - **AND** subsequent Favorites API responses SHALL include `notify_telegram=false`
 
-#### Scenario: User cannot change another user's mark
-- **WHEN** a user attempts to update `notify_telegram` of a favorite owned by someone else
+#### Scenario: User cannot change the mark of a catalog favorite he sees
+- **WHEN** a user attempts to update `notify_telegram` of an admin catalog favorite that is visible to him
 - **THEN** the system SHALL reject the update with 403 and change nothing
+
+#### Scenario: User cannot change the mark of a favorite he does not see
+- **WHEN** a user attempts to update `notify_telegram` of a favorite owned by someone else that is not visible to him
+- **THEN** the system SHALL answer 404, without revealing that the favorite exists, and change nothing
 
 ### Requirement: Telegram scan uses explicit favorite eligibility
 Monitor Telegram alert scans SHALL evaluate, for each eligible user, only that user's own favorites where `notify_telegram=true`.

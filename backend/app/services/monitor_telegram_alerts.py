@@ -42,6 +42,7 @@ from app.services.system_preferences_service import (
     get_system_preference_bool,
     get_system_preference_int,
     get_system_preference_value,
+    set_system_preference_value,
 )
 from app.services.user_telegram_service import list_eligible_alert_users
 
@@ -54,6 +55,10 @@ MONITOR_TELEGRAM_RATE_LIMIT_WINDOW_MINUTES_KEY = "monitor_telegram_rate_limit_wi
 MONITOR_TELEGRAM_TIER_FILTER_KEY = "monitor_telegram_tier_filter"
 # Card #1122: instante da troca de origem (catálogo → favoritos), gravado pela migração.
 MONITOR_TELEGRAM_FAVORITE_ORIGIN_AT_KEY = "monitor_telegram_favorite_origin_at"
+# Primeira varredura depois da troca: a única que decide o aviso "Mudança nos alertas".
+MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY = "monitor_telegram_transition_scan_at"
+# O aviso é do dia da troca: uma varredura bem depois dela (timer parado) não avisa.
+TRANSITION_NOTICE_WINDOW = timedelta(days=2)
 
 SENDABLE_STATUSES = {"HOLD", "EXIT"}
 RESERVED_RESULTS = ("sending", "sent", "dry_run", "unknown")
@@ -901,6 +906,25 @@ def _origin_at(db: Session) -> datetime | None:
         return None
 
 
+def _transition_scan_at(db: Session) -> str | None:
+    return get_system_preference_value(db, MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY)
+
+
+def _transition_scan_due(db: Session, origin_at: datetime | None, now: datetime) -> bool:
+    """O aviso de transição sai só na primeira varredura depois da troca, no dia dela.
+
+    Sem o instante da troca não há dia da troca: nenhum aviso. Depois da primeira varredura
+    (marcada em ``MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY``), quem marca e desmarca um
+    favorito semanas depois não recebe o aviso.
+    """
+
+    if origin_at is None or now < origin_at:
+        return False
+    if now - origin_at > TRANSITION_NOTICE_WINDOW:
+        return False
+    return _transition_scan_at(db) is None
+
+
 def _catalog_alert_rows(db: Session, user_id: str, origin_at: datetime | None):
     """Alertas do catálogo enviados antes da troca (sem favorito nem chave de evento)."""
 
@@ -987,6 +1011,36 @@ def _new_summary(settings: MonitorTelegramAlertSettings, dry_run: bool) -> dict[
     return summary
 
 
+def _own_series_stale(opp: dict[str, Any]) -> bool:
+    market = opp.get("market_state") if isinstance(opp.get("market_state"), dict) else {}
+    own = market.get("stale_timeframe")
+    if own is None and not market.get("stale_detail"):
+        return True  # linha sem detalhe de outro tempo gráfico: o atraso é da própria série
+    return str(own or "").lower() == str(opp.get("timeframe") or "").lower()
+
+
+def _delay_series(opp: dict[str, Any]) -> tuple[str, Any, Any]:
+    """Tempo gráfico, último e esperado do aviso de atraso, sempre da mesma série.
+
+    Se o ativo está em espera por outro tempo gráfico, o aviso mostra os horários e o rótulo
+    desse tempo gráfico, nunca os de um com o rótulo do outro (card #1122, residual P2).
+    """
+
+    market = opp.get("market_state") if isinstance(opp.get("market_state"), dict) else {}
+    if not _own_series_stale(opp):
+        detail = market.get("stale_detail") or {}
+        return (
+            str(detail.get("timeframe") or market.get("stale_timeframe") or "1d"),
+            detail.get("last_candle"),
+            detail.get("expected_candle"),
+        )
+    return (
+        str(opp.get("timeframe") or "1d"),
+        market.get("last_candle"),
+        market.get("expected_candle"),
+    )
+
+
 def _alert_opportunities(service: Any, tier_filter: str, now: Any) -> list[dict[str, Any]]:
     getter = getattr(service, "get_alert_opportunities", None)
     if getter is None:
@@ -1066,6 +1120,9 @@ def run_monitor_telegram_alert_scan(
                     (owner, data_source, symbol),
                     {"opportunity": opp, "episode_id": str(episode_id), "count": 0},
                 )
+                # O aviso usa, de preferência, um favorito cuja própria série está atrasada.
+                if _own_series_stale(opp) and not _own_series_stale(group["opportunity"]):
+                    group["opportunity"] = opp
                 group["count"] += 1
             continue
         observed = _observe_favorite(db, opp, now=now)
@@ -1216,14 +1273,15 @@ def run_monitor_telegram_alert_scan(
             )
             continue
         market = opp.get("market_state") or {}
+        delay_timeframe, delay_last, delay_expected = _delay_series(opp)
         message = build_delay_message(
             symbol=symbol,
             asset_class=asset_class,
             currency=opp.get("currency"),
             configuration=opp.get("configuration"),
-            timeframe=str(opp.get("timeframe") or "1d"),
-            last_candle=market.get("last_candle"),
-            expected_candle=market.get("expected_candle"),
+            timeframe=delay_timeframe,
+            last_candle=delay_last,
+            expected_candle=delay_expected,
             waiting_favorites=int(group["count"]),
         )
         delivered = _deliver(
@@ -1233,7 +1291,7 @@ def run_monitor_telegram_alert_scan(
             message=message,
             source="delay",
             symbol=symbol,
-            timeframe=str(opp.get("timeframe") or "na"),
+            timeframe=delay_timeframe,
             previous_status=None,
             new_status="DELAYED",
             severity="Atencao",
@@ -1241,8 +1299,8 @@ def run_monitor_telegram_alert_scan(
                 "kind": "delay",
                 "data_source": data_source,
                 "episode_id": group["episode_id"],
-                "last_candle": market.get("last_candle"),
-                "expected_candle": market.get("expected_candle"),
+                "last_candle": delay_last,
+                "expected_candle": delay_expected,
                 "stale_since": market.get("stale_since"),
             },
             favorite_id=None,
@@ -1256,9 +1314,11 @@ def run_monitor_telegram_alert_scan(
         if delivered in NOTICE_COUNTED_RESULTS:
             summary["delay_notices"] += 1
 
-    # Transição: aviso único para quem recebia pelo catálogo e não marcou nenhum favorito.
+    # Transição: aviso único, só na primeira varredura depois da troca (o dia da troca), para
+    # quem recebia pelo catálogo e não tinha favorito marcado nesse momento (residual P3).
     origin_at = _origin_at(db)
-    for uid, user in users_by_id.items():
+    transition_users = users_by_id if _transition_scan_due(db, origin_at, now) else {}
+    for uid, user in transition_users.items():
         if _has_marked_favorite(db, uid):
             continue
         transition_key = transition_event_key(uid)
@@ -1291,6 +1351,13 @@ def run_monitor_telegram_alert_scan(
         )
         if delivered in NOTICE_COUNTED_RESULTS:
             summary["transition_notices"] += 1
+    if origin_at is not None and now >= origin_at and _transition_scan_at(db) is None:
+        set_system_preference_value(
+            db,
+            key=MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY,
+            value=now.isoformat(),
+            updated_by_user_id="monitor_telegram_scan",
+        )
 
     if not opportunities and summary["transition_notices"] == 0:
         summary["skipped"] += 1

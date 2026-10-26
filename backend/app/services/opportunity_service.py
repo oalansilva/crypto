@@ -43,6 +43,9 @@ _OHLCV_CACHE_TTL_SECONDS = 300.0
 _OHLCV_CACHE_LOCK = threading.Lock()
 _OHLCV_CACHE: dict[str, dict[str, Any]] = {}
 _TIER_UNSET = object()
+# Coleta de mercado: leituras em paralelo e orçamento da varredura do Telegram (card #1122, P1).
+MARKET_FETCH_WORKERS = 8
+ALERT_MARKET_FETCH_TIMEOUT_SECONDS = 300.0
 
 # Lista carregada de backend/config/excluded_symbols.json (compatibilidade com código que usa o nome)
 UNSUPPORTED_SYMBOLS = get_excluded_symbols()
@@ -1438,16 +1441,31 @@ class OpportunityService:
             _write_ohlcv_cache(cache_key, df)
             return cache_key, df
 
+        # Card #1122 (residual P1): série que só estourou o orçamento local do pool fica sem
+        # leitura nesta passada; nunca vira atraso real nem abre episódio.
+        local_timeouts: set[str] = set()
         if unique_market_jobs:
-            with ThreadPoolExecutor(max_workers=min(8, len(unique_market_jobs))) as executor:
+            if source_label == "alert":
+                # A varredura do Telegram tem orçamento próprio, suficiente para a coleta com
+                # cache frio; o GET do Monitor segue com o orçamento curto.
+                fetch_timeout_seconds = _coerce_positive_float(
+                    os.getenv(
+                        "OPPORTUNITIES_ALERT_FETCH_TIMEOUT_SECONDS",
+                        str(ALERT_MARKET_FETCH_TIMEOUT_SECONDS),
+                    ),
+                    ALERT_MARKET_FETCH_TIMEOUT_SECONDS,
+                )
+            else:
+                fetch_timeout_seconds = _coerce_positive_float(
+                    os.getenv("OPPORTUNITIES_MARKET_FETCH_TIMEOUT_SECONDS", "8.0"), 8.0
+                )
+            workers = max(1, min(MARKET_FETCH_WORKERS, len(unique_market_jobs)))
+            with ThreadPoolExecutor(max_workers=workers) as executor:
                 future_map = {
                     executor.submit(_fetch_market_job, job): cache_key
                     for cache_key, job in unique_market_jobs.items()
                 }
 
-                fetch_timeout_seconds = _coerce_positive_float(
-                    os.getenv("OPPORTUNITIES_MARKET_FETCH_TIMEOUT_SECONDS", "8.0"), 8.0
-                )
                 try:
                     for future in as_completed(future_map, timeout=fetch_timeout_seconds):
                         cache_key = future_map[future]
@@ -1457,17 +1475,40 @@ class OpportunityService:
                         except Exception as exc:
                             fetch_errors[cache_key] = str(exc)
                 except TimeoutError:
-                    # Keep the response stable: mark pending fetches as skipped and continue.
+                    # Keep the response stable: the queued fetches are cancelled and the
+                    # running ones are collected when the pool closes (below). Uma leitura que
+                    # terminou mas não foi entregue pelo ``as_completed`` antes do estouro também
+                    # fica sem leitura aqui (nunca "no_candles"): toda chave sem dado nem erro.
                     for future, cache_key in future_map.items():
+                        if cache_key in data_cache or cache_key in fetch_errors:
+                            continue
                         if not future.done():
                             future.cancel()
-                            fetch_errors.setdefault(
-                                cache_key,
-                                f"Market fetch timed out after {fetch_timeout_seconds:.2f}s",
-                            )
+                        local_timeouts.add(cache_key)
+            # Na varredura, a saída do ``with`` já esperou as leituras em curso: o que terminou
+            # depois do orçamento ainda vale nesta passada (o GET do Monitor só descarta).
+            for future, cache_key in future_map.items():
+                if source_label != "alert":
+                    break
+                if cache_key not in local_timeouts or future.cancelled():
+                    continue
+                local_timeouts.discard(cache_key)
+                try:
+                    result_key, df = future.result()
+                    data_cache[result_key] = df
+                except Exception as exc:
+                    fetch_errors[cache_key] = str(exc)
+            for cache_key in local_timeouts:
+                logger.warning(
+                    "Market fetch %s sem leitura nesta passada (orçamento local de %.2fs)",
+                    cache_key,
+                    fetch_timeout_seconds,
+                )
 
         # Card #1122 (decisão 8): atraso real por série e episódio por (fonte, ativo).
         for cache_key, job in unique_market_jobs.items():
+            if cache_key in local_timeouts:
+                continue
             frame = data_cache.get(cache_key)
             last_candle = None
             if isinstance(frame, pd.DataFrame) and not frame.empty:
@@ -1519,6 +1560,17 @@ class OpportunityService:
                 cache_key = f"{data_source}:{symbol}_{normalized_tf}"
                 if cache_key not in data_cache:
                     fetch_exc = fetch_errors.get(cache_key)
+                    if cache_key in local_timeouts:
+                        # Sem leitura nesta passada (orçamento local): sem atraso nem sinal.
+                        skipped_strategies.append(
+                            {
+                                "id": fav["id"],
+                                "symbol": symbol,
+                                "timeframe": normalized_tf,
+                                "reason": f"Market fetch not finished in this pass ({data_source})",
+                            }
+                        )
+                        continue
                     if source_label == "alert":
                         # Card #1122 (decisão 8): na varredura, falha de leitura sem nenhum candle
                         # conta como atraso real (o aviso único sai; o sinal fica em espera).
