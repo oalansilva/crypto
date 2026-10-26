@@ -117,7 +117,14 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const identityLong = assetIdentityLong(opportunity);
     const marketView = marketStateView(opportunity);
     const alertTag = showsAlertTag(opportunity);
-    const hasRiskValue = (value: unknown): boolean => value !== null && value !== undefined && !isRiskStale;
+    // Ação/ETF atrasada: só o sinal fica em espera; entrada, stop e distâncias do último candle
+    // fechado seguem visíveis, como no protótipo aprovado (card #1122). A cripto segue como hoje.
+    const hideRiskWhenStale = isRiskStale && !equity;
+    const hasRiskValue = (value: unknown): boolean => value !== null && value !== undefined && !hideRiskWhenStale;
+    // No cartão do celular, a ação/ETF atrasada já mostra o estado completo no topo: sem repetir
+    // o mesmo texto na linha "alerta"; a configuração longa fica no título da identidade.
+    const serverStaleEquity = equity && opportunity.market_state?.state === 'stale';
+    const showConfigurationLine = Boolean(identityLong) && placement !== 'card';
     const formatUsd = (value: number): string => new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
@@ -352,12 +359,12 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <span>
                             candle <b>{opportunity.indicator_values_candle_time || '-'}</b>
                         </span>
-                        {identityLong ? (
+                        {showConfigurationLine ? (
                             <span className="asset-configuration" data-testid={`monitor-detail-configuration-${symbolTestKey}`}>
                                 configuração <b>{identityLong}</b>
                             </span>
                         ) : null}
-                        {resolvedSignal.freshnessReason ? (
+                        {resolvedSignal.freshnessReason && !(serverStaleEquity && placement === 'card' && marketView) ? (
                             <span>
                                 alerta <b>{resolvedSignal.freshnessReason}</b>
                             </span>

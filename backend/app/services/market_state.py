@@ -202,17 +202,26 @@ def build_market_state(
         "required": required,
     }
     asset_stale = bool(episode and episode.get("state") == "stale")
-    if asset_stale or (series is not None and series.stale):
-        detail = series
+    own_stale = bool(series is not None and series.stale)
+    if asset_stale or own_stale:
         out["state"] = "stale"
-        out["reason"] = "fetch_failed" if (detail and detail.error) else "delay"
+        out["reason"] = "fetch_failed" if (own_stale and series.error) else "delay"
+        out["stale_timeframe"] = series.timeframe if own_stale else None
         if episode:
             out["stale_since"] = episode.get("stale_since")
             out["episode_id"] = episode.get("episode_id")
-            stale_detail = episode.get("stale_detail") or {}
-            if not (detail and detail.stale) and stale_detail:
-                out["last_candle"] = stale_detail.get("last_candle")
-                out["expected_candle"] = stale_detail.get("expected_candle")
+        if not own_stale:
+            # Ativo em espera por outro tempo gráfico lido nesta passada: o último/esperado da
+            # linha continuam os da própria série; o detalhe do outro fica à parte, com o rótulo
+            # do tempo gráfico dele (card #1122, residual P2).
+            stale_detail = (episode or {}).get("stale_detail") or {}
+            if stale_detail:
+                out["stale_timeframe"] = stale_detail.get("timeframe")
+                out["stale_detail"] = {
+                    "timeframe": stale_detail.get("timeframe"),
+                    "last_candle": stale_detail.get("last_candle"),
+                    "expected_candle": stale_detail.get("expected_candle"),
+                }
         return out
     if available is not None and required and available < required:
         out["state"] = "insufficient"
@@ -252,8 +261,11 @@ def update_data_health(
 ) -> dict[tuple[str, str], EpisodeUpdate]:
     """Abre, mantém ou fecha o episódio de cada (fonte, ativo) a partir das séries lidas agora.
 
-    O ativo fica ``stale`` se qualquer série monitorada dele está; o episódio fecha quando todas
-    normalizam. Recuperação nunca gera mensagem (só fecha o episódio).
+    Nesta passada, o ativo fica ``stale`` só se uma série lida nela está atrasada (o detalhe
+    guardado de outro tempo gráfico não decide a passada). O episódio abre quando uma série lida
+    agora está atrasada e fecha quando nenhum detalhe guardado (dentro de ``DETAIL_TTL``) segue
+    atrasado; assim uma leitura que não inclui o tempo gráfico atrasado não fecha nem reabre o
+    episódio (sem novo aviso). Recuperação nunca gera mensagem (só fecha o episódio).
     """
 
     from app.models import MonitorDataHealth
@@ -280,31 +292,35 @@ def update_data_health(
                     detail.pop(tf, None)
             except ValueError:
                 detail.pop(tf, None)
-        stale_tfs = [tf for tf, d in detail.items() if isinstance(d, dict) and d.get("stale")]
-        stale = bool(stale_tfs)
-        stale_detail = detail[stale_tfs[0]] if stale else {}
+        # A passada decide só pelos tempos gráficos lidos nela.
+        pass_stale = [item for item in items if item.stale]
+        stored_stale = any(isinstance(d, dict) and d.get("stale") for d in detail.values())
+        stale_detail = (
+            {**pass_stale[0].detail(now), "timeframe": pass_stale[0].timeframe}
+            if pass_stale
+            else {}
+        )
         if row is None:
             row = MonitorDataHealth(data_source=source, symbol=symbol, state="ok")
             db.add(row)
         opened = closed = False
-        if stale and row.state != "stale":
+        if pass_stale and row.state != "stale":
             row.state = "stale"
             row.stale_since = now
             row.episode_id = uuid.uuid4().hex
             opened = True
-        elif not stale and row.state == "stale":
+        elif not stored_stale and row.state == "stale":
             row.state = "ok"
             closed = True
         row.detail_json = detail
         row.updated_at = now
+        pass_state = "stale" if pass_stale else "ok"
         out[(source, symbol)] = EpisodeUpdate(
             data_source=source,
             symbol=symbol,
-            state=row.state,
-            episode_id=row.episode_id if row.state == "stale" else None,
-            stale_since=(
-                row.stale_since.isoformat() if row.state == "stale" and row.stale_since else None
-            ),
+            state=pass_state,
+            episode_id=row.episode_id if pass_stale else None,
+            stale_since=(row.stale_since.isoformat() if pass_stale and row.stale_since else None),
             opened=opened,
             closed=closed,
             stale_detail=stale_detail,

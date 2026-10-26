@@ -8,7 +8,7 @@
   - sai `_refuse_equity_favorite`;
   - `POST` grava a configuração e devolve o 409 "Estratégia já existe nos favoritos com esta configuração";
   - `GET /exists` aceita `data_source`/`session`/`adjustment`;
-  - `PATCH` aceita `notify_telegram` do dono e recusa com 403 quem não é dono;
+  - `PATCH` aceita `notify_telegram` do dono, recusa com 403 o favorito do catálogo visível e responde 404 ao favorito que a pessoa não vê;
   - a lista usa a vitrine só para quem não tem favorito próprio de nenhuma classe;
   - a resposta traz `configuration`.
 - [x] 1.6 Lote (`batch_backtest_service.py`) e Descoberta (`discovery_service.py`) gravam `tier = 3` em qualquer classe, `notify_telegram = false` e a configuração, e passam a configuração à checagem de duplicata.
@@ -108,3 +108,12 @@
 - [x] 6.3 E2E Playwright com a API simulada, a 1440 e a 390 px: `/monitor` (estados aberto, fechado, feriado, atraso de ação e de cripto, dado insuficiente, "Alerta", fonte antiga indisponível e faixa com e sem data), `/favorites` ("Alertar" do dono a 1440, 1280 e 1024 px e no celular, aviso fora da carteira, estrelas e status de ação/ETF, vitrine), `/combo/results` (salvar, foco preso, Esc e duplicata), `/combo/configure`, `/combo/discovery` (modal) e `/profile`.
 - [x] 6.4 Comparar cada rota entregue com o HTML do protótipo e registrar no handoff os elementos seguidos e qualquer desvio justificado.
 - [ ] 6.5 Ensaio no DEV com dry-run do scan (`force_dry_run`): um usuário com NVDA e BTC/USDT marcados e um sem marca; conferir no resumo os eventos, o aviso de atraso e a ausência de mensagem de mercado fechado. <!-- covenant-flow:after-qa -->
+
+## 7. Residuais da revisão (pós-T18)
+
+- [x] 7.1 P1 — timeout local não é atraso real (`opportunity_service.py`): série que só estourou o orçamento do pool fica sem leitura na passada (sem `check_series`, sem episódio, sem sinal nem DM "Dados atrasados"); falha de leitura da fonte segue como atraso. A varredura do Telegram tem orçamento próprio (`OPPORTUNITIES_ALERT_FETCH_TIMEOUT_SECONDS`, padrão 300 s) e aproveita as leituras que terminaram depois dele; o GET do Monitor segue com 8 s. Teste: três séries, um leitor e orçamento curto, duas passadas, nenhuma DM de atraso e nenhum episódio aberto.
+- [x] 7.2 P2 — saúde do dado por tempo gráfico (`market_state.py`, `monitor_telegram_alerts.py`): o atraso do ativo numa passada é decidido só pelas séries lidas nela; o episódio guardado só fecha quando nenhum detalhe segue atrasado (sem reabrir nem repetir o aviso). O detalhe de outro tempo gráfico não vira último/esperado da linha (vai em `stale_timeframe`/`stale_detail`), e a DM usa os horários e o rótulo da série atrasada. Testes: 15m atrasado + 1d em dia na passada seguinte (1d fora de espera) e DM com "(15m)", nunca "(1d)".
+- [x] 7.3 P2 — contrato 403/404 (`specs/monitor-telegram-favorite-toggle/spec.md`): 403 para favorito do catálogo visível ao usuário e 404 para favorito que ele não vê, sem mudar nada; teste renomeado para `test_owner_marks_alertar_others_get_404_hidden_and_403_on_visible_catalog`. A decisão 3 do `design.md` (403) fica como está.
+- [x] 7.4 P3 — aviso "Mudança nos alertas" só na primeira varredura depois de `monitor_telegram_favorite_origin_at` (marca `monitor_telegram_transition_scan_at`, janela de 2 dias), para quem recebia pelo catálogo e não tinha favorito marcado nesse momento. Testes: marcar logo após a troca e desmarcar depois não gera aviso; primeira varredura semanas depois da troca não avisa.
+- [x] 7.5 P3 — cartão de NVDA atrasada a 390 px (`OpportunityCard.tsx`) como no protótipo: campos de risco de ação/ETF com valor (sem "indisponível — dado não confiável"), sem repetir o estado na linha "alerta" e sem a configuração longa no cartão do celular; altura ~975 px contra ~960 px do protótipo. A cripto segue como hoje (teste próprio).
+- [x] 7.6 P3 — comparação geométrica de Favoritos: no compare do #1120, texto, estilo e altura voltam à tolerância de 3 px (só a largura da mesa a 1440 aceita até 75 px, pela coluna "Alertar"); no E2E do #1122, `/favorites` contra `favorites.html` a 1440, 1280 e 1024 px (colunas e mesa ±4 px, linhas ±6 px, controle "Alertar" ±3 px).

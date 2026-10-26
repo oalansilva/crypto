@@ -734,7 +734,7 @@ def test_same_configuration_is_409_and_other_source_coexists(api, db):
     assert labels == ["Binance Ações · NY · split", "Stooq · fonte antiga · diário"]
 
 
-def test_owner_marks_alertar_and_other_user_gets_403(api, db, monkeypatch):
+def test_owner_marks_alertar_others_get_404_hidden_and_403_on_visible_catalog(api, db, monkeypatch):
     client, state, owner, other = api
     fav = _favorite(db, owner, "SPY", notify=False)
     response = client.patch(f"/api/favorites/{fav.id}", json={"notify_telegram": True})
@@ -794,3 +794,283 @@ def test_signal_monitor_never_queries_a_ticker(monkeypatch):
     monkeypatch.setattr(signal_monitor.httpx, "AsyncClient", Client)
     assert asyncio.run(signal_monitor._fetch_price("NVDA")) is None
     assert called == []
+
+
+# ---------------------------------------------------------------- residuais da revisão (pós-T18)
+
+
+def _sessions_frame(last_day: str, count: int) -> pd.DataFrame:
+    sessions = cal.sessions_between(
+        pd.Timestamp(last_day) - pd.Timedelta(days=int(count * 1.6) + 20), pd.Timestamp(last_day)
+    )[-count:]
+    index = pd.DatetimeIndex([cal.ny_midnight_utc(day) for day in sessions], name="timestamp_utc")
+    opens = [100.0 + i for i in range(count)]
+    return pd.DataFrame(
+        {
+            "open": opens,
+            "high": [o + 3 for o in opens],
+            "low": [o - 3 for o in opens],
+            "close": [o + 1 for o in opens],
+            "volume": [1000.0] * count,
+        },
+        index=index,
+    )
+
+
+def test_local_fetch_timeout_is_not_a_delay_and_opens_no_episode(
+    db, unit_database_url, monkeypatch
+):
+    """P1: série que só estourou o orçamento local fica sem leitura; nada de "Dados atrasados"."""
+
+    import time
+
+    from app.services import opportunity_service
+    from app.services.opportunity_service import OpportunityService
+
+    a = _user(db, "a")
+    for symbol in ("NVDA", "SPY", "QQQ"):
+        _favorite(db, a, symbol)
+        _portfolio(db, a, symbol)
+
+    class SlowProvider:
+        def __init__(self):
+            self.calls = []
+            self.frame = None
+
+        def fetch_ohlcv(self, symbol, timeframe, since_str=None, limit=None, **_):
+            self.calls.append(symbol)
+            time.sleep(0.4)
+            return self.frame.copy()
+
+    provider = SlowProvider()
+    monkeypatch.setattr(opportunity_service, "_OHLCV_CACHE", {})
+    monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_a: provider)
+    # Um só leitor e orçamento curto: a primeira série termina depois do orçamento e as outras
+    # duas nem começam (o caso de dezenas de séries com o cache frio).
+    monkeypatch.setattr(opportunity_service, "MARKET_FETCH_WORKERS", 1, raising=False)
+    monkeypatch.setenv("OPPORTUNITIES_ALERT_FETCH_TIMEOUT_SECONDS", "0.1")
+    monkeypatch.setenv("OPPORTUNITIES_MARKET_FETCH_TIMEOUT_SECONDS", "0.1")
+    service = OpportunityService(db_path=unit_database_url)
+    monkeypatch.setattr(
+        service.combo_service,
+        "get_template_metadata",
+        lambda name: {
+            "indicators": [],
+            "entry_logic": "close > open",
+            "exit_logic": "close < open",
+            "stop_loss": 0.5,
+            "display_name": "Teste",
+        },
+    )
+    sender = Sender()
+    for day in (27, 28):
+        # Dado em dia: o último pregão fechado antes da varredura das 08:05 BRT.
+        provider.frame = _sessions_frame(f"2026-10-{day - 1}", 60)
+        monkeypatch.setattr(opportunity_service, "_OHLCV_CACHE", {})
+        summary = run_monitor_telegram_alert_scan(
+            db,
+            user_id="cron",
+            settings=_settings(),
+            opportunity_service=service,
+            sender=sender,
+            now=datetime(2026, 10, day, 11, 5),
+        )
+        assert summary["held_by_delay"] == 0 and summary["delay_notices"] == 0
+        # A série que terminou depois do orçamento ainda vale nesta passada; as outras não.
+        assert summary["favorites_evaluated"] == 1
+        db.expire_all()
+        assert db.query(MonitorDataHealth).filter_by(state="stale").count() == 0
+    assert not [text for _, text in sender.messages if "Dados atrasados" in text]
+    assert len(provider.calls) == 2  # uma leitura por passada; as outras ficaram sem leitura
+    read = db.query(MonitorDataHealth).all()
+    assert 1 <= len(read) <= 2 and all(row.state == "ok" for row in read)
+
+
+def test_finished_fetch_not_delivered_before_budget_is_not_a_delay(
+    db, unit_database_url, monkeypatch
+):
+    """P1: leitura que terminou mas não saiu do ``as_completed`` no estouro não vira atraso."""
+
+    from concurrent.futures import wait
+
+    from app.services import opportunity_service
+    from app.services.opportunity_service import OpportunityService
+
+    a = _user(db, "a")
+    for symbol in ("NVDA", "SPY", "QQQ"):
+        _favorite(db, a, symbol)
+        _portfolio(db, a, symbol)
+
+    class Provider:
+        frame = None
+
+        def fetch_ohlcv(self, symbol, timeframe, since_str=None, limit=None, **_):
+            return self.frame.copy()
+
+    def as_completed_that_times_out(futures, timeout=None):
+        # Todas as leituras já terminaram, mas o orçamento estoura antes de entregar qualquer uma.
+        wait(list(futures))
+        raise TimeoutError()
+        yield  # pragma: no cover - torna a função um gerador
+
+    provider = Provider()
+    monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_a: provider)
+    monkeypatch.setattr(opportunity_service, "as_completed", as_completed_that_times_out)
+    service = OpportunityService(db_path=unit_database_url)
+    monkeypatch.setattr(
+        service.combo_service,
+        "get_template_metadata",
+        lambda name: {
+            "indicators": [],
+            "entry_logic": "close > open",
+            "exit_logic": "close < open",
+            "stop_loss": 0.5,
+            "display_name": "Teste",
+        },
+    )
+    sender = Sender()
+    provider.frame = _sessions_frame("2026-10-26", 60)
+    monkeypatch.setattr(opportunity_service, "_OHLCV_CACHE", {})
+    summary = run_monitor_telegram_alert_scan(
+        db,
+        user_id="cron",
+        settings=_settings(),
+        opportunity_service=service,
+        sender=sender,
+        now=datetime(2026, 10, 27, 11, 5),
+    )
+    assert summary["held_by_delay"] == 0 and summary["delay_notices"] == 0
+    # Na varredura, a leitura terminada é colhida e vale nesta passada.
+    assert summary["favorites_evaluated"] == 3
+    db.expire_all()
+    assert db.query(MonitorDataHealth).filter_by(state="stale").count() == 0
+    assert not [text for _, text in sender.messages if "Dados atrasados" in text]
+
+
+def test_other_timeframe_detail_does_not_decide_the_next_pass(db):
+    """P2: 15m atrasado lido uma vez + 1d em dia na passada seguinte: o 1d não fica em espera."""
+
+    now = datetime(2026, 10, 27, 15, 0)
+    stale_15m = market_state.SeriesCheck(
+        "binance_equity",
+        "NVDA",
+        "15m",
+        True,
+        pd.Timestamp("2026-10-27T14:00:00+00:00"),
+        pd.Timestamp("2026-10-27T14:30:00+00:00"),
+    )
+    ok_1d = market_state.SeriesCheck(
+        "binance_equity", "NVDA", "1d", False, pd.Timestamp(MON), pd.Timestamp(MON)
+    )
+    first = market_state.update_data_health(db, [stale_15m], now=now)[("binance_equity", "NVDA")]
+    assert first.opened and first.state == "stale"
+    # Mesma passada com os dois: o ativo fica em espera, mas a linha 1d guarda os horários dela.
+    both = market_state.update_data_health(db, [stale_15m, ok_1d], now=now)
+    episode = both[("binance_equity", "NVDA")].as_dict()
+    assert episode["episode_id"] == first.episode_id
+    held = market_state.build_market_state(
+        equity=True, now=pd.Timestamp(now, tz="UTC"), series=ok_1d, episode=episode
+    )
+    assert held["state"] == "stale"
+    assert held["last_candle"].startswith("2026-10-26") and held["stale_timeframe"] == "15m"
+    assert held["stale_detail"]["expected_candle"].startswith("2026-10-27T14:30")
+    # Passada seguinte só com o 1d em dia: o favorito 1d não fica em espera.
+    later = now + timedelta(days=1)
+    nxt = market_state.update_data_health(db, [ok_1d], now=later)[("binance_equity", "NVDA")]
+    assert nxt.state == "ok" and nxt.episode_id is None and not nxt.opened
+    row = market_state.build_market_state(
+        equity=True, now=pd.Timestamp(later, tz="UTC"), series=ok_1d, episode=nxt.as_dict()
+    )
+    assert row["state"] != "stale"
+    # O episódio do 15m não reabre (nem avisa de novo) enquanto o 15m não é relido em dia.
+    again = market_state.update_data_health(db, [stale_15m], now=later + timedelta(hours=1))
+    assert again[("binance_equity", "NVDA")].episode_id == first.episode_id
+    assert not again[("binance_equity", "NVDA")].opened
+
+
+def test_delay_notice_never_labels_other_timeframe_times_as_1d(db):
+    """P2: ativo em espera por um 15m atrasado; a DM sai com o rótulo e os horários do 15m."""
+
+    a = _user(db, "a")
+    nvda = _favorite(db, a, "NVDA")
+    _portfolio(db, a, "NVDA")
+    now = datetime(2026, 10, 27, 15, 0)
+    stale_15m = market_state.SeriesCheck(
+        "binance_equity",
+        "NVDA",
+        "15m",
+        True,
+        pd.Timestamp("2026-10-27T14:00:00+00:00"),
+        pd.Timestamp("2026-10-27T14:30:00+00:00"),
+    )
+    ok_1d = market_state.SeriesCheck(
+        "binance_equity", "NVDA", "1d", False, pd.Timestamp(MON), pd.Timestamp(MON)
+    )
+    episode = market_state.update_data_health(db, [stale_15m, ok_1d], now=now)[
+        ("binance_equity", "NVDA")
+    ].as_dict()
+    row = _opp(nvda, "HOLD", MON)
+    row["market_state"] = market_state.build_market_state(
+        equity=True, now=pd.Timestamp(now, tz="UTC"), series=ok_1d, episode=episode
+    )
+    sender = Sender()
+    summary = _scan(db, [row], sender, now=now)
+    assert summary["delay_notices"] == 1 and summary["held_by_delay"] == 1
+    text = sender.messages[0][1]
+    assert "Último candle recebido: ter., 27 out. 2026, 11:00 BRT (15m)" in text
+    assert "Esperado: ter., 27 out. 2026, 11:30 BRT" in text
+    assert "(1d)" not in text
+
+
+def _catalog_receiver_alert(db, user: User) -> None:
+    db.add(
+        MonitorTelegramAlert(
+            user_id=str(user.id),
+            symbol="BTC/USDT",
+            timeframe="1d",
+            new_status="HOLD",
+            severity="Atencao",
+            result_status="sent",
+            payload_hash="x",
+            source="monitor",
+            created_at=datetime(2026, 10, 20, 11, 5),
+        )
+    )
+
+
+def test_transition_notice_only_on_the_first_scan_after_the_switch(db):
+    """P3: quem marcou logo após a troca e desmarcou semanas depois não recebe o aviso."""
+
+    marker = alerts.MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY
+    receiver = _user(db, "receiver")
+    late = _user(db, "late")
+    db.add(SystemPreference(key="monitor_telegram_favorite_origin_at", value="2026-10-26T12:00:00"))
+    _catalog_receiver_alert(db, receiver)
+    _catalog_receiver_alert(db, late)
+    db.commit()
+    # "late" marcou um favorito logo depois da troca: na primeira varredura, nada para ele.
+    fav = _favorite(db, late, "BTC/USDT")
+    sender = Sender()
+    first = _scan(db, [], sender, now=datetime(2026, 10, 27, 11, 5))
+    assert first["transition_notices"] == 1
+    assert [c for c, _ in sender.messages] == ["chat-receiver"]
+    assert db.get(SystemPreference, marker).value.startswith("2026-10-27T11:05")
+    # Depois ele desmarca: nenhuma varredura seguinte manda o aviso.
+    fav.notify_telegram = False
+    db.commit()
+    for now in (datetime(2026, 10, 28, 11, 5), datetime(2026, 11, 16, 11, 5)):
+        later = _scan(db, [], sender, now=now)
+        assert later["transition_notices"] == 0
+    assert len(sender.messages) == 1
+
+
+def test_transition_notice_is_not_sent_long_after_the_switch(db):
+    """P3: primeira varredura semanas depois da troca (timer parado) não manda o aviso."""
+
+    receiver = _user(db, "receiver")
+    db.add(SystemPreference(key="monitor_telegram_favorite_origin_at", value="2026-10-26T12:00:00"))
+    _catalog_receiver_alert(db, receiver)
+    db.commit()
+    sender = Sender()
+    summary = _scan(db, [], sender, now=datetime(2026, 11, 16, 11, 5))
+    assert summary["transition_notices"] == 0 and sender.messages == []

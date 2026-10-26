@@ -62,6 +62,8 @@ interface Pair {
   product: string
   /** Largura/altura aceitam diferença de até `tol` px; o texto e o estilo, nenhuma. */
   tol?: number
+  /** Só a largura com outra tolerância (quando a coluna mudou de propósito e a altura ainda vale). */
+  tolW?: number
   skipText?: boolean
   skipStyle?: boolean
 }
@@ -81,7 +83,7 @@ async function compare(protoPage: Page, productPage: Page, pairs: Pair[], sink: 
       }
     }
     const tol = pair.tol ?? 2
-    expect(Math.abs(b!.w - a!.w), `${pair.name}: largura ${a!.w} x ${b!.w}`).toBeLessThanOrEqual(tol)
+    expect(Math.abs(b!.w - a!.w), `${pair.name}: largura ${a!.w} x ${b!.w}`).toBeLessThanOrEqual(pair.tolW ?? tol)
     expect(Math.abs(b!.h - a!.h), `${pair.name}: altura ${a!.h} x ${b!.h}`).toBeLessThanOrEqual(tol)
   }
 }
@@ -352,9 +354,12 @@ for (const viewport of VIEWPORTS) {
       for (const id of [104, 101, 102, 105, 103]) {
         const rowSel = mobile ? `[data-testid="favorite-${id}-mobile"]` : `[data-testid="favorite-${id}"]`
         for (const testid of ['fav-precision', 'fav-conventions', 'fav-effective']) {
-          // Card #1122: a coluna "Alertar" (a partir de 1280 px) estreita a Estratégia; texto e estilo
-          // seguem iguais, a geometria da mesa não é mais a do protótipo do #1120.
-          blocks.push({ name: `${id} ${testid}`, proto: `${rowSel} [data-testid="${testid}"]`, product: `${rowSel} [data-testid="${testid}"]`, tol: mobile ? 3 : 200 })
+          // Card #1122: a coluna "Alertar" (a partir de 1280 px) estreita a Estratégia em ~71 px: só a
+          // largura da mesa deixa de ser a do protótipo do #1120 (a geometria de Favoritos é medida contra
+          // o protótipo do #1122 no spec dele); texto, estilo e altura seguem com a tolerância do #1120,
+          // exceto a precisão de SPY, que passa a quebrar em duas linhas na coluna mais estreita.
+          const wraps = !mobile && id === 105 && testid === 'fav-precision'
+          blocks.push({ name: `${id} ${testid}`, proto: `${rowSel} [data-testid="${testid}"]`, product: `${rowSel} [data-testid="${testid}"]`, tol: wraps ? 20 : 3, tolW: mobile ? 3 : 75 })
         }
         // P3 de Apply: na tabela o par classe · moeda não se parte em duas linhas (o protótipo quebrava "Ação ·" e "USD")
         blocks.push({

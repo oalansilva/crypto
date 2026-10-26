@@ -193,13 +193,13 @@ const PREFERENCES = {
 
 const json = (body: unknown, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
-async function login(page: Page) {
+async function login(page: Page, user: typeof USER = USER) {
   await page.addInitScript((user) => {
     localStorage.setItem('auth_access_token', 'tok')
     localStorage.setItem('auth_refresh_token', 'ref')
     localStorage.setItem('auth_user', JSON.stringify(user))
     localStorage.setItem('cripto-farol-onboarding-dismissed', '1')
-  }, USER)
+  }, user)
 }
 
 const pageErrors = new WeakMap<Page, string[]>()
@@ -388,7 +388,32 @@ test.describe('Monitor com ação e ETF', () => {
     await expect(legacy.getByRole('button', { name: 'Ver Trades NVDA (indisponível)' })).toHaveAttribute('aria-disabled', 'true')
     await expect(legacy.locator('.legacy-unavailable-why')).toHaveText('Fonte antiga: gráfico e trades depois da migração para a Binance.')
     await expect(card).toContainText('Ação/ETF na carteira recebe entrada e saída no Telegram.')
+    // NVDA atrasada como no protótipo (cenário atrasado a 390): só o sinal fica em espera; os campos de
+    // risco seguem com o valor, sem "indisponível — dado não confiável", sem repetir o estado na linha
+    // "alerta" e sem a configuração longa (ela fica no título da identidade).
+    const risk = card.getByTestId('monitor-risk-block-nvda')
+    await expect(risk).not.toContainText('indisponível — dado não confiável')
+    await expect(risk).toContainText('$173.28')
+    await expect(risk).toContainText('$182.40')
+    await expect(card.locator('.scenario-risk')).toBeVisible()
+    await expect(card.getByTestId('monitor-detail-configuration-nvda')).toHaveCount(0)
+    await expect(card.getByTestId('monitor-detail-strategy-identity-nvda')).not.toContainText('alerta Dados atrasados')
     expect(await fits(page)).toBe(true)
+    const proto = await (await page.context().browser()!.newContext({ viewport: PHONE })).newPage()
+    await proto.goto('/prototypes/card-1122-favoritos-alertas-acoes-etfs/index.html')
+    await proto.locator('[data-set-scenario="stale"]').first().click()
+    const protoHeight = (await proto.locator('.mobile-card[data-m22-card="nvda-b"]').boundingBox())!.height
+    const height = (await card.boundingBox())!.height
+    expect(Math.abs(height - protoHeight), `altura do cartão de NVDA: protótipo ${protoHeight} x ${height}`).toBeLessThanOrEqual(30)
+  })
+
+  test('390 px: cripto atrasada segue como hoje (risco indisponível e o estado na linha "alerta")', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await mockMonitor(page, opportunities({ btc: { market_state: BTC_STALE, entry_price: 64000, stop_price: 60800, distance_to_stop_pct: 9.2 } }))
+    await page.goto('/monitor')
+    const card = page.locator('.mobile-card').filter({ has: page.getByTestId('monitor-card-btc-usdt') })
+    await expect(card.getByTestId('monitor-risk-block-btc-usdt')).toContainText('indisponível — dado não confiável')
+    await expect(card.getByTestId('monitor-detail-strategy-identity-btc-usdt')).toContainText('alerta Dados atrasados')
   })
 })
 
@@ -466,14 +491,14 @@ function favorites(spyNotify = true, catalog = false) {
   ]
 }
 
-async function mockFavorites(page: Page, rows = favorites()) {
-  await login(page)
+async function mockFavorites(page: Page, rows = favorites(), user: typeof USER = USER) {
+  await login(page, user)
   const patches: Array<{ id: string; body: Record<string, unknown> }> = []
   let current = rows
   await page.route('**/api/**', async (route: Route) => {
     const url = route.request().url()
     const method = route.request().method()
-    if (url.includes('/api/auth/me')) return route.fulfill(json(USER))
+    if (url.includes('/api/auth/me')) return route.fulfill(json(user))
     if (method === 'PATCH' && /\/api\/favorites\/\d+/.test(url)) {
       const id = url.split('/').pop()!
       const body = JSON.parse(route.request().postData() || '{}')
@@ -699,3 +724,182 @@ test('Perfil: a frase da origem dos alertas', async ({ page }) => {
     page.getByText('Receba DMs individuais quando mudar a leitura de um favorito seu marcado "Alertar" (cripto, ação ou ETF) com o ativo na sua carteira. Mercado fechado e feriado aparecem só no Monitor.'),
   ).toBeVisible()
 })
+
+// ---------------------------------------------------------------- Favoritos contra o protótipo do #1122
+
+/**
+ * Residual da revisão (pós-T18): a geometria de Favoritos medida contra `favorites.html` do protótipo
+ * aprovado do #1122 (a comparação do #1120 não mede mais a largura da mesa, que ganhou a coluna "Alertar").
+ * Mesmos cinco favoritos do protótipo; colunas, mesa, linhas e o controle "Alertar" com tolerância estreita.
+ */
+const PROTO_1122 = '/prototypes/card-1122-favoritos-alertas-acoes-etfs'
+
+function prototypeFavorites() {
+  const daily = (first: string) => ({
+    precision_requested: 'intrabar',
+    precision_effective: 'candle',
+    intraday_reason: 'coverage',
+    intraday_missing: [{ from: first.slice(0, 10), to: '2026-01-01' }],
+    timeframe: '1d',
+    window: { covered: { start: first, end: '2026-10-23T04:00:00Z' } },
+  })
+  const intrabar = (timeframe: string) => ({
+    precision_requested: 'intrabar',
+    precision_effective: 'intrabar_15m',
+    timeframe,
+    window: { covered: { start: '2017-08-17T00:00:00Z', end: '2026-10-24T00:00:00Z' } },
+  })
+  const conventions = (feeConfirmed: boolean) => ({
+    fee_confirmed: feeConfirmed,
+    fraction: { simulated: true },
+    adjusted_prices: true,
+    calendar: { sessions_per_year: 252 },
+  })
+  const batch = { batch_id: '7f3c2a91-0000-4000-8000-000000000001' }
+  const row = (id: number, symbol: string, cls: string, currency: string, extra: Record<string, unknown>) => ({
+    ...favBase,
+    id,
+    symbol,
+    timeframe: '1d',
+    strategy_description: 'Cruzamento de médias a favor da tendência, com stop de 5%.',
+    asset: { symbol, asset_class: cls, currency },
+    ...extra,
+  })
+  return [
+    row(104, 'NVDA', 'stock', 'USD', {
+      name: 'multi_ma_crossover - NVDA 1d (batch)',
+      tier: 2,
+      notify_telegram: true,
+      configuration: BINANCE,
+      notes: 'gerado em lote (7f3c2a91)',
+      metrics: { total_return: 12.845, total_trades: 29, sharpe_ratio: 1.67, win_rate: 0.52, max_drawdown: 0.31, avg_atr: 4.87, analysis_last_session: '2026-10-23', ...batch, execution: daily('2014-11-11T05:00:00Z'), conventions: conventions(false) },
+    }),
+    row(106, 'NVDA', 'stock', 'USD', {
+      name: 'NVDA antigo',
+      tier: 1,
+      notify_telegram: false,
+      configuration: STOOQ,
+      parameters: { direction: 'long', stop_loss: 0.05, data_source: 'stooq' },
+      metrics: { total_return: 9.402, total_trades: 31, sharpe_ratio: 1.38, win_rate: 0.5, max_drawdown: 0.34, avg_atr: 4.51, analysis_last_session: '2026-10-23', execution: { precision_requested: 'candle', precision_effective: 'candle', timeframe: '1d', window: { covered: { start: '2010-01-04T05:00:00Z', end: '2026-10-23T04:00:00Z' } } } },
+    }),
+    row(101, 'BTC/USDT', 'crypto', 'USDT', {
+      name: 'BTC Trend',
+      tier: 3,
+      notify_telegram: true,
+      configuration: CRYPTO,
+      metrics: { total_return: 4.126, total_trades: 38, sharpe_ratio: 1.42, win_rate: 0.5, max_drawdown: 0.25, avg_atr: 1834.2, execution: intrabar('1d') },
+    }),
+    row(102, 'ETH/USDT', 'crypto', 'USDT', {
+      name: 'ETH Ritmo',
+      tier: 2,
+      timeframe: '4h',
+      notify_telegram: false,
+      configuration: CRYPTO,
+      strategy_name: 'macd_crossover',
+      strategy_display_name: 'MACD: Mudança de Ritmo',
+      strategy_description: 'Entrada quando o MACD cruza a linha de sinal com histograma positivo.',
+      metrics: { total_return: 2.683, total_trades: 41, sharpe_ratio: 1.11, win_rate: 0.48, max_drawdown: 0.3, avg_atr: 120.5, execution: intrabar('4h') },
+    }),
+    row(105, 'SPY', 'etf', 'USD', {
+      name: 'multi_ma_crossover - SPY 1d (batch)',
+      tier: 1,
+      notify_telegram: true,
+      configuration: BINANCE,
+      notes: 'gerado em lote (7f3c2a91)',
+      metrics: { total_return: 0.612, total_trades: 22, sharpe_ratio: 0.74, win_rate: 0.55, max_drawdown: 0.2, avg_atr: 3.12, analysis_last_session: '2026-10-23', ...batch, execution: daily('2015-01-02T05:00:00Z'), conventions: conventions(true) },
+    }),
+  ]
+}
+
+type Box = { x: number; y: number; width: number; height: number }
+
+const boxOf = async (page: Page, selector: string): Promise<Box> => {
+  const box = await page.locator(selector).first().boundingBox()
+  expect(box, `caixa de ${selector}`).not.toBeNull()
+  return box!
+}
+
+const headerColumns = (page: Page) =>
+  page.locator('table.fav-strategies thead th').evaluateAll((els) =>
+    els.map((el) => ({
+      key: `${el.className.split(' ')[0]}:${(el.textContent || '').trim()}`,
+      shown: getComputedStyle(el).display !== 'none',
+      w: Math.round(el.getBoundingClientRect().width),
+    })),
+  )
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 800 },
+  { width: 1024, height: 768 },
+]) {
+  test(`Favoritos a ${viewport.width} px: mesa, colunas, linhas e "Alertar" como no protótipo do #1122`, async ({ browser }, testInfo) => {
+    const protoPage = await (await browser.newContext({ viewport })).newPage()
+    const productPage = await (await browser.newContext({ viewport })).newPage()
+    await productPage.clock.setFixedTime(new Date('2026-10-24T21:40:00Z'))
+    // o protótipo mostra a visão do admin (coluna "Sel" da comparação), dono dos cinco favoritos, com
+    // os ativos na carteira (sem o aviso "Fora da carteira", que o protótipo só mostra no cenário dele)
+    await mockFavorites(productPage, prototypeFavorites(), { ...USER, isAdmin: true })
+    await productPage.route(/\/api\/monitor\/preferences\/?$/, (route) =>
+      route.fulfill(json({ NVDA: { in_portfolio: true }, SPY: { in_portfolio: true }, 'BTC/USDT': { in_portfolio: true } })),
+    )
+    await protoPage.goto(`${PROTO_1122}/favorites.html`)
+    await productPage.goto('/favorites')
+    await expect(productPage.getByTestId('favorite-104')).toBeVisible()
+    const log: Array<Record<string, unknown>> = []
+
+    // colunas: as mesmas visíveis e com a mesma largura
+    const protoCols = await headerColumns(protoPage)
+    const productCols = await headerColumns(productPage)
+    log.push({ name: 'colunas', proto: protoCols, product: productCols })
+    expect(productCols.map((c) => `${c.key}:${c.shown}`)).toEqual(protoCols.map((c) => `${c.key}:${c.shown}`))
+    for (let i = 0; i < protoCols.length; i += 1) {
+      expect.soft(Math.abs(productCols[i].w - protoCols[i].w), `coluna ${protoCols[i].key}: ${protoCols[i].w} x ${productCols[i].w}`).toBeLessThanOrEqual(4)
+    }
+
+    // mesa: mesma posição e largura
+    const protoTable = await boxOf(protoPage, 'table.fav-strategies')
+    const productTable = await boxOf(productPage, 'table.fav-strategies')
+    log.push({ name: 'mesa', proto: protoTable, product: productTable })
+    expect.soft(Math.abs(productTable.width - protoTable.width), `mesa: largura ${protoTable.width} x ${productTable.width}`).toBeLessThanOrEqual(4)
+    expect.soft(Math.abs(productTable.x - protoTable.x), `mesa: x ${protoTable.x} x ${productTable.x}`).toBeLessThanOrEqual(4)
+
+    // linhas na mesma ordem e com a mesma altura; o controle "Alertar" com o mesmo tamanho
+    const order = (page: Page) =>
+      page.locator('table.fav-strategies tbody tr[data-favorite-id]').evaluateAll((els) => els.map((el) => el.getAttribute('data-favorite-id')))
+    expect(await order(productPage)).toEqual(await order(protoPage))
+    // Altura da linha com tolerância estreita, sem os dois textos que o produto escreve diferente do
+    // protótipo de propósito: o status da atualização quebra em vez de cortar na coluna estreita de
+    // 1024 px, e a precisão da fonte antiga (106) é "Precisão diária · Deep Backtest desligado" (o
+    // protótipo escreveu "fonte antiga, sem intradiário").
+    const rowHeight = (page: Page, sel: string, skip: string[]) =>
+      page.locator(sel).evaluate((row, skipped) => {
+        const full = row.getBoundingClientRect().height
+        const rest = skipped.reduce((h, q) => h - (row.querySelector(q)?.getBoundingClientRect().height ?? 0), full)
+        return { full, rest }
+      }, skip)
+    for (const id of [104, 106, 101, 102, 105]) {
+      const sel = `table.fav-strategies tbody tr[data-favorite-id="${id}"]`
+      const skip = [
+        ...(viewport.width < 1280 ? ['.fav-refresh-status'] : []),
+        ...(id === 106 ? ['[data-testid="fav-precision"]'] : []),
+      ]
+      const a = await rowHeight(protoPage, sel, skip)
+      const b = await rowHeight(productPage, sel, skip)
+      log.push({ name: `linha ${id}`, proto: a, product: b, skip })
+      expect.soft(Math.abs(b.rest - a.rest), `altura da linha ${id} (sem ${skip.join(', ') || 'nada'}): ${a.rest} x ${b.rest}`).toBeLessThanOrEqual(6)
+      if (viewport.width >= 1280) {
+        const ta = await boxOf(protoPage, `${sel} td.telegram-col button`)
+        const tb = await boxOf(productPage, `${sel} td.telegram-col button`)
+        log.push({ name: `Alertar ${id}`, proto: ta, product: tb })
+        expect.soft(Math.abs(tb.width - ta.width), `Alertar ${id}: largura ${ta.width} x ${tb.width}`).toBeLessThanOrEqual(3)
+        expect.soft(Math.abs(tb.height - ta.height), `Alertar ${id}: altura ${ta.height} x ${tb.height}`).toBeLessThanOrEqual(3)
+        expect.soft(Math.abs(tb.x - ta.x), `Alertar ${id}: x ${ta.x} x ${tb.x}`).toBeLessThanOrEqual(4)
+      }
+    }
+    for (const p of [protoPage, productPage]) {
+      expect(await fits(p)).toBe(true)
+    }
+    await testInfo.attach(`comparacao-favoritos-1122-${viewport.width}.json`, { body: JSON.stringify(log, null, 2), contentType: 'application/json' })
+  })
+}
