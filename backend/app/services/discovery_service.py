@@ -2270,6 +2270,7 @@ class DiscoveryService:
             end_date=sweep_snapshot.get("end_date"),
             symbol=result.symbol,
             timeframe=result.timeframe,
+            data_source=identity["data_source"],
         )
         favorite_parameters = identity["parameters"]
 
@@ -2286,6 +2287,7 @@ class DiscoveryService:
                 parameters=favorite_parameters,
                 data_source=identity["data_source"],
                 asset=identity["asset"],
+                configuration=identity["configuration"],
             )
         if duplicate is not None:
             result.dedup_state = "duplicate_favorite"
@@ -2341,9 +2343,12 @@ class DiscoveryService:
             timeframe=result.timeframe,
             strategy_name=result.template_id,
             parameters=favorite_parameters,
-            # Cripto segue tier 3; ação e ETF entram sem nível de estrela até o #1122. O payload
-            # continua exigindo ``tier: 3`` (contrato fixo); o nível guardado sai da classe.
-            tier=None if identity["equity"] else 3,
+            # Card #1122 (decisão 12): tier 3 em qualquer classe e sem "Alertar" (decisão 2 de Alan).
+            tier=3,
+            notify_telegram=False,
+            data_source=identity["configuration"].data_source,
+            session=identity["configuration"].session,
+            adjustment=identity["configuration"].adjustment,
             notes=f"descoberta via sweep {result.sweep_id} (result {result.id})",
             start_date=op_start,
             end_date=op_end,
@@ -2439,9 +2444,14 @@ class DiscoveryService:
         conventions = (
             metrics.get("conventions") if isinstance(metrics.get("conventions"), dict) else None
         )
+        from app.services.favorite_configuration import derive_configuration
+
         return {
             "equity": equity,
             "data_source": data_source,
+            "configuration": derive_configuration(
+                result.symbol, data_source=data_source, conventions=conventions
+            ),
             "asset": asset,
             "parameters": parameters,
             "execution": execution,

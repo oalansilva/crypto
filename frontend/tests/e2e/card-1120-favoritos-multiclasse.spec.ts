@@ -196,7 +196,9 @@ test.describe('Favoritos: lista única', () => {
     await expect(nvda.getByTestId('fav-precision')).toHaveAttribute('data-tone', 'warn')
     await expect(nvda.getByTestId('fav-conventions')).toHaveText('Binance Ações · NY · split · 252/ano')
     await expect(nvda.getByTestId('fav-effective')).toHaveText('Período efetivo 11 nov. 2014 – 23 out. 2026')
-    await expect(nvda.getByTestId('fav-equity-pending')).toHaveText('Atualização diária, Monitor, Telegram e Revalidar: ainda não para ações e ETFs')
+    // Card #1122: o status da atualização diária substitui o "ainda não para ações e ETFs".
+    await expect(nvda.getByTestId('fav-refresh-status')).toHaveText('Backtest aguardando atualização')
+    await expect(nvda).not.toContainText('ainda não para ações e ETFs')
     await expect(nvda.locator('td.advanced-col').nth(3)).toHaveText('4.87 USD') // ATR na moeda
     // "Limitações e origem" atrás de um <details> fechado
     const more = nvda.getByTestId('fav-more-info')
@@ -225,7 +227,7 @@ test.describe('Favoritos: lista única', () => {
     await expect(btc.getByTestId('fav-conventions')).toHaveText('Binance Spot · 24/7 · 365 dias/ano')
     await expect(btc.getByTestId('fav-more-info').locator('summary')).toHaveText('Origem')
     await expect(btc.locator('td.advanced-col').nth(3)).toHaveText('1834.20 USDT')
-    await expect(btc.getByTestId('fav-equity-pending')).toHaveCount(0)
+    await expect(btc.getByTestId('fav-refresh-status')).toContainText('Backtest atualizado')
 
     // ETH/USDT antigo: diz quando os dados aparecem
     const eth = row(page, 102)
@@ -239,49 +241,31 @@ test.describe('Favoritos: lista única', () => {
     expect(await fits(page)).toBe(true)
   })
 
-  test('ação e ETF: estrelas, Telegram e Revalidar desabilitados com o motivo; o resumo e o filtro por estrelas só contam cripto', async ({ page }) => {
+  test('card #1122: estrelas, "Alertar" e Revalidar de ação e ETF funcionam; o resumo e o filtro por estrelas contam todas as classes', async ({ page }) => {
     await page.setViewportSize(DESKTOP)
     const { patches } = await mockFavorites(page)
     await page.goto('/favorites')
     const nvda = row(page, 104)
-    const why = await nvda.getByTestId('fav-equity-pending').getAttribute('id')
-    expect(why).toBeTruthy()
     const stars = nvda.locator('.stars-cell button')
     await expect(stars).toHaveCount(3)
-    for (let i = 0; i < 3; i += 1) {
-      await expect(stars.nth(i)).toHaveAttribute('aria-disabled', 'true')
-      await expect(stars.nth(i)).toHaveAttribute('aria-describedby', why!)
-      await expect(stars.nth(i)).toHaveAttribute('aria-pressed', 'false')
-    }
-    await stars.nth(1).focus()
-    await expect(stars.nth(1)).toBeFocused() // continua focável
-    await stars.nth(2).click({ force: true })
-    await expect(nvda.locator('.telegram-col button')).toHaveAttribute('aria-disabled', 'true')
-    await nvda.locator('.telegram-col button').dispatchEvent('click') // a coluna não aparece a 1440 px: o evento direto prova o mesmo
-    const revalidate = nvda.getByRole('button', { name: 'Revalidar na janela recente' })
-    await expect(revalidate).toHaveAttribute('aria-disabled', 'true')
-    await expect(revalidate).toHaveAttribute('aria-describedby', why!)
-    await revalidate.click({ force: true })
-    expect(patches).toEqual([]) // o clique não faz nada
-    // BTC/USDT segue com os controles vivos
-    const btcStars = row(page, 101).locator('.stars-cell button')
-    await expect(btcStars.nth(0)).not.toHaveAttribute('aria-disabled', /.*/)
-    await btcStars.nth(2).click()
+    for (let i = 0; i < 3; i += 1) await expect(stars.nth(i)).not.toHaveAttribute('aria-disabled', /.*/)
+    await stars.nth(1).click()
     await expect.poll(() => patches.length).toBe(1)
+    expect(patches[0]).toEqual({ id: '104', body: { tier: 2 } })
+    const revalidate = nvda.getByRole('button', { name: 'Revalidar na janela recente' })
+    await expect(revalidate).not.toHaveAttribute('aria-disabled', /.*/)
+    await expect(page.getByTestId('fav-tier-note')).toHaveCount(0)
 
-    // resumo por estrelas e filtro só com cripto, mais a nota
+    // resumo e filtro com todas as classes (BTC tier 3, ETH tier 2; NVDA, SPY e SOL sem estrela)
     await expect(page.locator('.tier-card-watch .tier-card-count')).toHaveText('1')
     await expect(page.locator('.tier-card-high .tier-card-count')).toHaveText('1')
-    await expect(page.getByTestId('fav-tier-note')).toHaveText(
-      'Monitor, Telegram e Revalidar: ainda não para ações e ETFs. Os 2 favoritos de ação e ETF ficam fora destes níveis.',
-    )
     const tierFilter = page.getByLabel('Filtro por tier')
     await expect(tierFilter.getByRole('button', { name: 'Todas 5' })).toBeVisible()
-    await expect(tierFilter.getByRole('button', { name: 'Sem estrela 1' })).toBeVisible() // só a cripto SOL/USDT
-    await tierFilter.getByRole('button', { name: 'Sem estrela 1' }).click()
-    await expect(page.getByTestId('fav-count')).toHaveText('1 filtradas')
+    await expect(tierFilter.getByRole('button', { name: 'Sem estrela 3' })).toBeVisible()
+    await tierFilter.getByRole('button', { name: 'Sem estrela 3' }).click()
+    await expect(page.getByTestId('fav-count')).toHaveText('3 filtradas')
+    await expect(row(page, 104)).toBeVisible()
     await expect(row(page, 103)).toBeVisible()
-    await expect(row(page, 104)).toHaveCount(0)
   })
 
   test('filtro Classe, Ordenar, filtros com anel de foco e contagem e rodapé que seguem os filtros', async ({ page }) => {
@@ -353,9 +337,9 @@ test.describe('Favoritos: lista única', () => {
     await expect(nvda.getByTestId('fav-conventions')).toHaveText('Binance Ações · NY · split · 252/ano')
     await expect(nvda.getByTestId('fav-effective')).toHaveText('Período efetivo 11 nov. 2014 – 23 out. 2026')
     await expect(nvda.getByTestId('fav-more-info').locator('summary')).toHaveText('Limitações e origem')
-    const stars = nvda.locator('.fav-mobile-stars button[data-lote-off]')
-    expect(await stars.count()).toBeGreaterThanOrEqual(3)
-    await expect(nvda.getByRole('button', { name: /Revalidar/ })).toHaveAttribute('aria-disabled', 'true')
+    // Card #1122: estrelas e Revalidar de ação/ETF ligados no cartão.
+    await expect(nvda.locator('.fav-mobile-stars button[data-lote-off]')).toHaveCount(0)
+    await expect(nvda.getByRole('button', { name: /Revalidar/ })).not.toHaveAttribute('aria-disabled', /.*/)
     expect(await fits(page)).toBe(true)
     // o cartão da cripto antiga diz quando os dados aparecem
     await expect(card(page, 102).getByTestId('fav-precision')).toHaveText('Precisão e período efetivo: aparecem na próxima atualização diária')

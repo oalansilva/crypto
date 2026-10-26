@@ -31,13 +31,20 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _first_candle_iso(symbol: str, timeframe: str) -> str | None:
+def _first_candle_iso(symbol: str, timeframe: str, data_source: str | None = None) -> str | None:
+    """Primeiro candle da série do favorito (card #1122: pela fonte do favorito, não pelo símbolo)."""
     try:
         data_source = validate_data_source_timeframe(
-            resolve_data_source_for_symbol(symbol, None),
+            resolve_data_source_for_symbol(symbol, data_source),
             timeframe,
         )
-        provider = get_market_data_provider(data_source)
+        if data_source == "binance_equity":
+            from app.services.market_data_providers import BinanceEquityMarketDataProvider
+
+            # Só o que já está guardado: o resultado que se salva já coletou a série.
+            provider = BinanceEquityMarketDataProvider(ensure=False)
+        else:
+            provider = get_market_data_provider(data_source)
         end = _utcnow().date().isoformat()
         frame = provider.fetch_ohlcv(
             symbol=symbol,
@@ -62,6 +69,7 @@ def resolve_chosen_period(
     symbol: str,
     timeframe: str,
     now: datetime | None = None,
+    data_source: str | None = None,
 ) -> tuple[str | None, str | None, str | None]:
     """Map UI/sweep period to persisted favorite window (complete chosen period)."""
     now_dt = now or _utcnow()
@@ -73,7 +81,14 @@ def resolve_chosen_period(
     normalized_type = period_type or ("all" if not start_date and not end_date else period_type)
 
     if normalized_type in (None, "all"):
-        start = start_date or _first_candle_iso(symbol, timeframe)
+        source = str(data_source or "").strip().lower()
+        if start_date:
+            start = start_date
+        elif source and source not in {"ccxt", "binance", "crypto", "default"}:
+            # Card #1122: ação/ETF busca o primeiro candle na fonte do favorito.
+            start = _first_candle_iso(symbol, timeframe, source)
+        else:
+            start = _first_candle_iso(symbol, timeframe)
         end = end_date or today
         return "all", start, end
 
@@ -157,6 +172,7 @@ def enrich_walk_forward_favorite_create(
         end_date=end_date,
         symbol=symbol,
         timeframe=timeframe,
+        data_source=(parameters or {}).get("data_source"),
     )
     portrait = portrait_metrics if isinstance(portrait_metrics, dict) else metrics
     backtest = run_operational_backtest(

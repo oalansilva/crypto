@@ -1110,7 +1110,7 @@ export function runCopy(plan: RunPlan, page: RunPage = plan.page, options: { tim
       return {
         text:
           page === 'combo'
-            ? `${label}: otimiza e abre o resultado, sem salvar em favoritos: ações e ETFs ainda não podem ser favoritados.`
+            ? `${label}: otimiza e abre o resultado; para acompanhar, salve nos Favoritos por lá.`
             : `${label}: otimiza em ${timeframe}, de ${OPTIMIZE_FIXED_WINDOW_LABEL}, e mostra o resultado ao lado.`,
         blocked: false,
       }

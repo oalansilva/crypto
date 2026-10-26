@@ -14,7 +14,12 @@ class FavoriteStrategyBase(BaseModel):
     metrics: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     tier: Optional[int] = None  # 1=Core obrigatório, 2=Bons complementares, 3=Outros
-    notify_telegram: bool = True
+    # Card #1122 (decisão 2 de Alan): todo favorito novo nasce sem "Alertar".
+    notify_telegram: bool = False
+    # Card #1122 (decisão 11): configuração de dados (fonte, sessão, ajuste).
+    data_source: Optional[str] = None
+    session: Optional[str] = None
+    adjustment: Optional[str] = None
     start_date: Optional[str] = None  # Período do backtest (6m/2y/todo)
     end_date: Optional[str] = None
     period_type: Optional[str] = None  # '6m' | '2y' | 'all'; chave para skip
@@ -43,6 +48,10 @@ class FavoriteStrategyResponse(FavoriteStrategyBase):
     strategy_transparency: Optional[StrategyTransparency] = None
     # Card #1120: identidade do ativo (símbolo, classe, moeda); ação e ETF entram na lista única.
     asset: Optional[Dict[str, Any]] = None
+    # Card #1122: fonte, sessão, ajuste e rótulos curto/compacto/longo.
+    configuration: Optional[Dict[str, Any]] = None
+    # Card #1122: linha do catálogo do Cripto Farol (vitrine), sem controle "Alertar".
+    is_curated_fallback: bool = False
 
     class Config:
         from_attributes = True

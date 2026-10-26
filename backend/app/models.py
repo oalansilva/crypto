@@ -4,6 +4,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
+    ForeignKey,
     Index,
     Integer,
     Numeric,
@@ -158,7 +159,13 @@ class FavoriteStrategy(Base):
 
     # Tier system - para categorizar estratégias (1=Core obrigatório, 2=Bons complementares, 3=Outros)
     tier = Column(Integer, nullable=True)
-    notify_telegram = Column(Boolean, nullable=False, default=True)
+    # Card #1122 (decisão 2 de Alan): todo favorito novo nasce sem "Alertar"; a marca é ato do dono.
+    notify_telegram = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+
+    # Card #1122 (decisão 11): configuração de dados do favorito, parte da chave de duplicata.
+    data_source = Column(String, nullable=True)  # ccxt | binance_equity | stooq
+    session = Column(String, nullable=True)  # 24x7 | regular_ny | eod
+    adjustment = Column(String, nullable=True)  # none | split | legacy
 
     # Período do backtest (6m / 2y / todo). Chave de unicidade junto com strategy_name, symbol, timeframe.
     start_date = Column(String, nullable=True)
@@ -349,8 +356,20 @@ class MonitorTelegramAlert(Base):
     payload_hash = Column(String, nullable=False, index=True)
     source = Column(String, nullable=False, default="monitor")
     payload_json = Column(JSONType, nullable=True)
+    # Card #1122 (decisão 5): evento com identidade; reserva ``sending`` antes do envio.
+    favorite_id = Column(Integer, nullable=True, index=True)
+    event_key = Column(String(64), nullable=True)
 
     __table_args__ = (
+        Index(
+            "ix_monitor_telegram_alerts_event_key_reserved",
+            "user_id",
+            "event_key",
+            unique=True,
+            postgresql_where=text(
+                "event_key IS NOT NULL AND result_status IN ('sending','sent','dry_run','unknown')"
+            ),
+        ),
         Index(
             "ix_monitor_telegram_alerts_dedupe",
             "symbol",
@@ -378,6 +397,36 @@ class MonitorObservedStatus(Base):
         Index("ix_monitor_observed_statuses_pair", "symbol", "timeframe"),
         Index("ix_monitor_observed_statuses_observed_at", "observed_at"),
     )
+
+
+class MonitorFavoriteAlertState(Base):
+    """Estado observado por favorito (card #1122, decisão 4): a base da transição do alerta."""
+
+    __tablename__ = "monitor_favorite_alert_states"
+
+    favorite_id = Column(
+        Integer,
+        ForeignKey("favorite_strategies.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    status = Column(String, nullable=False)
+    candle_time = Column(String, nullable=True)
+    observed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    payload_json = Column(JSONType, nullable=True)
+
+
+class MonitorDataHealth(Base):
+    """Episódio de atraso real de dado por (fonte, ativo) (card #1122, decisão 8)."""
+
+    __tablename__ = "monitor_data_health"
+
+    data_source = Column(String, primary_key=True)
+    symbol = Column(String, primary_key=True)
+    state = Column(String, nullable=False, default="ok")  # ok | stale
+    stale_since = Column(DateTime, nullable=True)
+    episode_id = Column(String(64), nullable=True)
+    detail_json = Column(JSONType, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class UserExchangeCredential(Base):

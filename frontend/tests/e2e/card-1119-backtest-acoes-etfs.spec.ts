@@ -299,36 +299,21 @@ test.describe('resultado de ação e ETF', () => {
     expect(await fitsHorizontally(page)).toBe(true)
   })
 
-  test('favoritar ação é recusado por clique e por teclado: focável, motivo escrito, anunciado, sem modal', async ({ page }) => {
+  test('card #1122: favoritar ação abre o modal com a identidade (a recusa do #1119 saiu)', async ({ page }) => {
     await openResult(page, nvdaResult())
     const save = page.getByTestId('save-favorite-button')
-    const reason =
-      'Ações e ETFs ainda não podem ser favoritados: atualização diária e alertas dessas classes ainda não existem.'
     await expect(save).toBeVisible()
-    await expect(save).toHaveAttribute('aria-disabled', 'true')
-    await expect(save).toHaveAttribute('aria-describedby', 'favorite-refused-why')
-    await expect(page.locator('#favorite-refused-why')).toHaveText(reason)
+    await expect(save).not.toHaveAttribute('aria-disabled', /.*/)
+    await expect(page.locator('#favorite-refused-why')).toHaveCount(0)
     const box = await save.boundingBox()
     expect(box!.height).toBeGreaterThanOrEqual(44)
-
-    // aria-disabled não desabilita o clique: o Playwright o trata como inativo, por isso o force
-    await save.click({ force: true })
-    await expect(page.getByTestId('favorite-refused-status')).toHaveText(`Não salvo. ${reason}`)
-    await expect(page.getByTestId('favorite-refused-status')).toHaveAttribute('role', 'status')
-    await expect(page.getByRole('heading', { name: 'Salvar nos Favoritos' })).toHaveCount(0)
-
-    // teclado: Tab chega ao botão, Enter e Espaço anunciam de novo sem abrir modal
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
-    await save.focus()
+    await save.click()
+    const dialog = page.getByRole('dialog', { name: 'Salvar nos Favoritos' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByTestId('favorite-identity')).toContainText('NVDA · Ação · USD')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
     await expect(save).toBeFocused()
-    await page.reload()
-    await expect(save).toBeVisible()
-    await save.focus()
-    await page.keyboard.press('Enter')
-    await expect(page.getByTestId('favorite-refused-status')).toContainText('Não salvo.')
-    await page.keyboard.press('Space')
-    await expect(page.getByTestId('favorite-refused-status')).toContainText('Não salvo.')
-    await expect(page.getByRole('heading', { name: 'Salvar nos Favoritos' })).toHaveCount(0)
   })
 
   test('coleta que parou no meio: nota âmbar "Janela coberta menor que a pedida"', async ({ page }) => {
@@ -416,7 +401,8 @@ test.describe('resultado de ação e ETF', () => {
     await expect(table).toContainText('Aug 27, 2026')
     await expect(table).toContainText('stop 672.04 · abriu 676.10')
     await expect(table).not.toContainText('USDT')
-    await expect(page.getByTestId('save-favorite-button')).toHaveAttribute('aria-disabled', 'true')
+    // Card #1122: ação/ETF salvam nos Favoritos (o botão não é mais recusado).
+    await expect(page.getByTestId('save-favorite-button')).not.toHaveAttribute('aria-disabled', 'true')
     expect(await fitsHorizontally(page)).toBe(true)
   })
 
@@ -547,7 +533,7 @@ test.describe('Combo com ação e ETF', () => {
       await pick(page, 'NVDA')
       await chip(page, 'BTC/USDT').getByRole('button').click()
       await expect(page.getByTestId('combo-run-copy')).toHaveText(
-        '1 ação (NVDA): otimiza e abre o resultado, sem salvar em favoritos: ações e ETFs ainda não podem ser favoritados.',
+        '1 ação (NVDA): otimiza e abre o resultado; para acompanhar, salve nos Favoritos por lá.',
       )
       await expect(page.getByTestId('combo-market-data')).toHaveText('Binance Ações · pregão regular de Nova York · ajustado por split')
       // contraste AA da caixa Market Data (texto novo): --text-tertiary sobre o fundo da caixa
@@ -597,7 +583,8 @@ test.describe('Combo com ação e ETF', () => {
       expect(posts[0].body.symbol).toBe('NVDA')
       expect(existsCalls()).toBe(0)
       await expect(page.getByTestId('result-asset-class')).toHaveText('Ação')
-      await expect(page.getByTestId('save-favorite-button')).toHaveAttribute('aria-disabled', 'true')
+      // Card #1122: o resultado de 1 ação oferece "Salvar nos Favoritos" (sem salvar sozinho).
+      await expect(page.getByTestId('save-favorite-button')).not.toHaveAttribute('aria-disabled', 'true')
       expect(await fitsHorizontally(page)).toBe(true)
     })
   }

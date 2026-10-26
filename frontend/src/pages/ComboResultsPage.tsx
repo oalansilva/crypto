@@ -2,12 +2,11 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useMemo, useEffect } from 'react'
 import { BarChart3, ArrowLeft, Star } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
-import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
+import { SaveFavoriteError, SaveFavoriteModal, type SaveFavoriteIdentity } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
 import { DataExecutionBlock } from '../components/results/DataExecutionBlock'
 import {
     CLASS_CHIP_LABEL,
-    FAVORITE_REFUSED_REASON,
     currencyOf,
     isEquityClass,
     type CombinationErrorsInfo,
@@ -114,8 +113,6 @@ export function ComboResultsPage() {
     const returnTo = location.state?.returnTo as string | undefined
     const isOptimization = location.state?.isOptimization === true
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [favoriteAnnouncement, setFavoriteAnnouncement] = useState('')
-    const [favoriteFlash, setFavoriteFlash] = useState(false)
 
     const handleSaveFavorite = async (data: any) => {
         console.log('📤 handleSaveFavorite chamado com:', data)
@@ -130,14 +127,15 @@ export function ComboResultsPage() {
             console.log('📡 Response status:', response.status)
 
             if (!response.ok) {
-                const error = await response.json()
+                const error = await response.json().catch(() => ({}))
                 console.error('❌ Erro da API:', error)
-                throw new Error(error.detail || 'Erro ao salvar favorito')
+                const detail = typeof error?.detail === 'string' ? error.detail : 'Erro ao salvar favorito'
+                // Card #1122: 409 = mesma configuração já salva (o modal mostra a duplicata).
+                throw new SaveFavoriteError(detail, response.status)
             }
 
             const savedFavorite = await response.json()
             console.log('✅ Favorito salvo com sucesso:', savedFavorite)
-            navigate('/favorites')
         } catch (err) {
             console.error('❌ Erro ao salvar favorito:', err)
             throw err
@@ -385,6 +383,12 @@ export function ComboResultsPage() {
     const resultCurrency = currencyOf(resultAsset, result.symbol)
     const newYorkClock = isEquity && ['15m', '1h', '4h'].includes(String(result.timeframe).toLowerCase())
     const classChip = resultAsset?.asset_class ? CLASS_CHIP_LABEL[resultAsset.asset_class] : null
+    // Card #1122: identidade do favorito no modal (ativo, classe, moeda e configuração).
+    const favoriteIdentity: SaveFavoriteIdentity = {
+        title: `${result.symbol} · ${classChip ?? (isEquity ? 'Ação' : 'Cripto')} · ${resultCurrency}`,
+        detail: `${isEquity ? 'Binance Ações · pregão regular de NY · ajustado por split' : 'Binance Spot · 24/7'} · ${result.timeframe} · ${isShort ? 'Short' : 'Long'}`,
+        configurationShort: isEquity ? 'Binance Ações' : 'Binance Spot',
+    }
     const snapshotMetrics = favoriteGridMetrics(
         result.promotion_metrics
             ? { origin_type: 'discovery_sweep', metrics_snapshot: result.promotion_metrics, ...(result.metrics || {}) }
@@ -449,39 +453,16 @@ export function ComboResultsPage() {
                             {returnTo === '/favorites' ? 'Voltar aos favoritos' : 'Voltar'}
                         </button>
                         {isOptimization ? (
-                            isEquity ? (
-                                <div className="r19-fav" data-testid="favorite-refused" data-flash={favoriteFlash ? '1' : undefined}>
-                                    <button
-                                        type="button"
-                                        aria-disabled="true"
-                                        aria-describedby="favorite-refused-why"
-                                        data-testid="save-favorite-button"
-                                        onClick={(event) => {
-                                            // Recusado: continua focável, não abre o modal e anuncia o motivo.
-                                            event.preventDefault()
-                                            setFavoriteAnnouncement('')
-                                            window.setTimeout(() => setFavoriteAnnouncement(`Não salvo. ${FAVORITE_REFUSED_REASON}`), 30)
-                                            setFavoriteFlash(true)
-                                            window.setTimeout(() => setFavoriteFlash(false), 1600)
-                                        }}
-                                    >
-                                        <Star aria-hidden="true" />
-                                        Salvar nos Favoritos
-                                    </button>
-                                    <p id="favorite-refused-why">{FAVORITE_REFUSED_REASON}</p>
-                                    <p className="sr-only" role="status" aria-live="polite" data-testid="favorite-refused-status">{favoriteAnnouncement}</p>
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(true)}
-                                    className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#0b0e11] transition-colors hover:bg-[#fcd535]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
-                                    data-testid="save-favorite-button"
-                                >
-                                    <Star className="h-4 w-4" />
-                                    Salvar nos Favoritos
-                                </button>
-                            )
+                            // Card #1122: ação e ETF salvam nos Favoritos como a cripto.
+                            <button
+                                type="button"
+                                onClick={() => setIsModalOpen(true)}
+                                className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#0b0e11] transition-colors hover:bg-[#fcd535]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
+                                data-testid="save-favorite-button"
+                            >
+                                <Star className="h-4 w-4" aria-hidden="true" />
+                                Salvar nos Favoritos
+                            </button>
                         ) : null}
                     </div>
 
@@ -654,8 +635,18 @@ export function ComboResultsPage() {
                         start_date: result.start_date ?? null,
                         end_date: result.end_date ?? null,
                         period_type: result.period_type ?? null,
-                        parameters: { ...(result.parameters || (result as any).best_parameters || {}), direction: isShort ? 'short' : 'long' },
-                        metrics: metrics,
+                        parameters: {
+                            ...(result.parameters || (result as any).best_parameters || {}),
+                            direction: isShort ? 'short' : 'long',
+                            ...(isEquity ? { data_source: 'binance_equity' } : {}),
+                        },
+                        metrics: {
+                            ...metrics,
+                            // Card #1122: identidade, precisão e convenções do resultado vão para o favorito.
+                            ...(result.asset ? { analysis_asset: result.asset } : {}),
+                            ...(result.execution ? { analysis_execution: result.execution } : {}),
+                            ...(result.conventions ? { analysis_conventions: result.conventions } : {}),
+                        },
                         promotion_metrics: result.promotion_metrics ?? null,
                         oos_verdict: result.oos_verdict ?? null,
                         oos_metrics: result.oos_metrics ?? null,
@@ -690,6 +681,7 @@ export function ComboResultsPage() {
                         })()
                     }}
                     onSave={handleSaveFavorite}
+                    identity={favoriteIdentity}
                 />
             ) : null}
         </div>

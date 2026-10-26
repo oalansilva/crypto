@@ -345,14 +345,24 @@ export function modalSampleText(row: MulticlassRow): string {
   return `Amostra ${row.snapshot_id.replace(/^snap[-_]?/i, '').slice(0, 8)} · guardada enquanto o favorito existir · Direção ${direction}`
 }
 
-export function promotionTitle(cls: AssetClass): string {
-  return isEquityClass(cls) ? 'Promover a favorito' : 'Promover a favorito tier 3'
+/** Card #1122: ação e ETF também viram favorito tier 3 (1 estrela), como a cripto. */
+export function promotionTitle(_cls: AssetClass): string {
+  return 'Promover a favorito tier 3'
 }
 
-export const EQUITY_DESTINATION = 'Favoritos · sem nível de estrela'
-export const EQUITY_DESTINATION_NOTE =
-  'Ação e ETF entram em Favoritos com a identidade desta execução. Monitor, Telegram e Revalidar: ainda não para ações e ETFs. ' +
-  'Reversível: retire o favorito; o histórico da varredura fica.'
+export const PROMOTION_DESTINATION = 'Tier 3 · observação'
+
+/** Nota do destino: ação/ETF ganha a configuração e como passar a receber no Telegram. */
+export function promotionDestinationNote(cls: AssetClass): string {
+  if (isEquityClass(cls)) {
+    return (
+      'Onde ver depois: Favoritos → Tier 3, com a configuração Binance Ações. ' +
+      'Para receber no Telegram, marque "Alertar" lá e marque o ativo como "No portfólio" no Monitor. ' +
+      'Reversível: retire o favorito; o histórico da varredura fica.'
+    )
+  }
+  return 'Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica.'
+}
 
 // --- Filtro Classe e cabeçalho do Decidir --------------------------------------------------------------------------
 

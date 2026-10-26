@@ -73,6 +73,24 @@ class OpportunityResponse(BaseModel):
     last_price: float
     timestamp: str
     details: dict
+    # Card #1122: classe, moeda, configuração, estado do mercado e "Alertar" do favorito.
+    asset_class: Optional[str] = None
+    currency: Optional[str] = None
+    configuration: Optional[Dict[str, Any]] = None
+    market_state: Optional[Dict[str, Any]] = None
+    notify_telegram: bool = False
+    candle_time: Optional[str] = None
+    is_curated_fallback: bool = False
+
+
+class AlertOriginResponse(BaseModel):
+    """Faixa da transição (card #1122, decisão 16)."""
+
+    telegram_alerts_enabled: bool
+    has_marked_favorite: bool
+    received_catalog_alerts: bool
+    catalog_until: Optional[str] = None
+    show_banner: bool
 
 
 from fastapi import Query
@@ -115,8 +133,9 @@ def _write_cached_opportunities(
 
 
 def _user_has_crypto_favorites(service: OpportunityService, user_id: str) -> bool:
+    """Card #1122: qualquer favorito (cripto, ação ou ETF) torna a lista vazia um erro de carga."""
     favorites = service.get_favorites(user_id=user_id, tier_filter=None)
-    return any("/" in str(favorite.get("symbol") or "").strip() for favorite in favorites)
+    return any(str(favorite.get("symbol") or "").strip() for favorite in favorites)
 
 
 _MONITOR_LOAD_ERROR_DETAIL = (
@@ -226,3 +245,19 @@ async def get_opportunities(
     except Exception as e:
         logger.error(f"Error getting opportunities: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/alert-origin", response_model=AlertOriginResponse)
+def get_alert_origin(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Origem dos alertas para a faixa do Monitor (card #1122, decisão 16).
+
+    A faixa aparece para quem tem os alertas ligados e nenhum favorito próprio marcado "Alertar";
+    a frase com data ("Até <data> você recebia…") só para quem recebia alerta do catálogo.
+    """
+
+    from app.services.monitor_telegram_alerts import alert_origin_for_user
+
+    return alert_origin_for_user(db, current_user_id)

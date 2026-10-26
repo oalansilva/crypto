@@ -340,7 +340,7 @@ for (const viewport of VIEWPORTS) {
       const pairs: Pair[] = [
         { name: 'filtro Classe: rótulo', proto: '.fav-filters label:nth-child(1) > span', product: '.fav-filters label:nth-child(1) > span' },
         { name: 'filtro Classe: select', proto: '[data-testid="fav-class-filter"]', product: '[data-testid="fav-class-filter"]', skipText: true },
-        { name: 'nota das estrelas', proto: '[data-testid="fav-tier-note"]', product: '[data-testid="fav-tier-note"]' },
+        // Card #1122: a nota das estrelas ("ainda não para ações e ETFs") saiu do produto.
       ]
       await compare(protoPage, productPage, pairs, log)
       const optionTexts = async (page: Page) => page.locator('[data-testid="fav-class-filter"] option').allTextContents()
@@ -352,7 +352,9 @@ for (const viewport of VIEWPORTS) {
       for (const id of [104, 101, 102, 105, 103]) {
         const rowSel = mobile ? `[data-testid="favorite-${id}-mobile"]` : `[data-testid="favorite-${id}"]`
         for (const testid of ['fav-precision', 'fav-conventions', 'fav-effective']) {
-          blocks.push({ name: `${id} ${testid}`, proto: `${rowSel} [data-testid="${testid}"]`, product: `${rowSel} [data-testid="${testid}"]`, tol: 3 })
+          // Card #1122: a coluna "Alertar" (a partir de 1280 px) estreita a Estratégia; texto e estilo
+          // seguem iguais, a geometria da mesa não é mais a do protótipo do #1120.
+          blocks.push({ name: `${id} ${testid}`, proto: `${rowSel} [data-testid="${testid}"]`, product: `${rowSel} [data-testid="${testid}"]`, tol: mobile ? 3 : 200 })
         }
         // P3 de Apply: na tabela o par classe · moeda não se parte em duas linhas (o protótipo quebrava "Ação ·" e "USD")
         blocks.push({
@@ -365,7 +367,7 @@ for (const viewport of VIEWPORTS) {
       for (const id of [104, 105]) {
         const rowSel = mobile ? `[data-testid="favorite-${id}-mobile"]` : `[data-testid="favorite-${id}"]`
         blocks.push({ name: `${id} "Limitações e origem"`, proto: `${rowSel} [data-testid="fav-more-info"] summary`, product: `${rowSel} [data-testid="fav-more-info"] summary`, tol: 3 })
-        blocks.push({ name: `${id} pendência da classe`, proto: `${rowSel} [data-testid="fav-equity-pending"]`, product: `${rowSel} [data-testid="fav-equity-pending"]`, tol: 6 })
+        // Card #1122: a pendência "ainda não para ações e ETFs" saiu (o status da atualização ocupa o lugar).
       }
       await compare(protoPage, productPage, blocks, log)
 
@@ -393,15 +395,12 @@ for (const viewport of VIEWPORTS) {
         expect(Math.abs(b!.height - a!.height), `altura ${id}: ${a!.height} x ${b!.height}`).toBeLessThanOrEqual(mobile ? 70 : 40)
       }
 
-      // controles desabilitados de ação/ETF: mesmos atributos
+      // Card #1122: estrelas, "Alertar" e Revalidar de ação/ETF ligados (o protótipo do #1120 os desabilitava).
       for (const id of [104, 105]) {
         const sel = mobile ? `[data-testid="favorite-${id}-mobile"]` : `[data-testid="favorite-${id}"]`
-        const protoOff = await protoPage.locator(`${sel} [data-b20-off]`).count()
         const productOff = await productPage.locator(`${sel} [data-lote-off]`).count()
-        log.push({ name: `controles desabilitados ${id}`, proto: protoOff, product: productOff })
-        expect(productOff).toBe(protoOff)
-        const disabled = await productPage.locator(`${sel} [data-lote-off]`).evaluateAll((els) => els.map((el) => el.getAttribute('aria-disabled')))
-        expect(disabled.every((v) => v === 'true')).toBe(true)
+        log.push({ name: `controles desabilitados ${id}`, proto: 'superado pelo #1122', product: productOff })
+        expect(productOff).toBe(0)
       }
 
       // filtro Classe e faixa do lote nos dois

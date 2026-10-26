@@ -44,7 +44,7 @@ def public_db(unit_database_url):
     engine = create_engine(unit_database_url)
     Base.metadata.create_all(bind=engine)
     tables = (
-        "asset_catalog, asset_catalog_refresh, favorite_strategies, discovery_results, backtest_runs, market_series, market_series_coverage, "
+        "asset_catalog, asset_catalog_refresh, favorite_strategies, monitor_favorite_alert_states, discovery_results, backtest_runs, market_series, market_series_coverage, "
         "market_series_fetch, market_series_stage, execution_data_snapshots, market_rate_limit, "
         "batch_backtest_jobs, batch_backtest_items"
     )
@@ -344,6 +344,10 @@ def test_only_the_history_route_and_the_equity_provider_may_collect_equity():
         "services/batch_backtest_service.py",  # lote (#1120): coleta ativo por ativo no worker
         "routes/market_history_routes.py",  # a consulta (history ... ensure=collect)
         "services/equity_backtest.py",  # coleta sob demanda do backtest de 1 ação/ETF (#1119)
+        # Card #1122: atualização diária de ação/ETF (coleta pelo ``prepare_equity_history`` e lê o
+        # guardado com ``ensure=False``) e primeiro candle do período na fonte do favorito (só leitura).
+        "services/favorite_backtest_refresh_service.py",
+        "services/favorite_operational_period.py",
         "services/discovery_inputs.py",  # Descoberta (#1121): lê o guardado depois da coleta (ensure=False)
         "services/market_data_providers.py",  # provedor de ação/ETF
         "services/market_history/facade.py",  # loader_frame (só cripto)

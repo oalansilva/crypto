@@ -28,8 +28,7 @@ import {
   CALENDAR_COVERAGE_NOTE,
   DISCOVERY_CLASS_NOTE,
   DISCOVERY_COST_NOTE,
-  EQUITY_DESTINATION,
-  EQUITY_DESTINATION_NOTE,
+  PROMOTION_DESTINATION,
   LIMIT_ADVICE,
   LIMIT_TITLE,
   ON_DEMAND_TEXT_DISCOVERY,
@@ -44,6 +43,7 @@ import {
   noResultNote,
   orderAssets,
   precisionLine,
+  promotionDestinationNote,
   promotionTitle,
   rowClass,
   runLine,
@@ -1384,7 +1384,7 @@ export function DiscoveryPage() {
       showToast(
         'Candidato promovido.',
         equityPromoted
-          ? `${promoteTarget.symbol} entrou em Favoritos sem nível de estrela, com classe, moeda, precisão, convenções, janela e amostra desta execução.`
+          ? `${promoteTarget.symbol} entrou em Favoritos como tier 3, sem "Alertar", com classe, moeda, configuração, precisão, convenções, janela e amostra desta execução.`
           : `Favorito tier 3 criado${fid ? ` (${String(fid)})` : ''} com origem #${viewSweep?.sweep_id ?? '—'}.`,
       )
     } finally {
@@ -1543,7 +1543,7 @@ export function DiscoveryPage() {
           <span className="mc-promoted">
             <span className="promoted-state" tabIndex={-1} data-promoted-result={row.result_id}>
               <Check className="h-3.5 w-3.5" />
-              Favorito · sem estrela
+              Favorito tier 3
             </span>
             <a href="/favorites" data-testid={`see-favorite-${row.result_id}`}>
               Ver em Favoritos
@@ -3289,19 +3289,12 @@ export function DiscoveryPage() {
                   <b className="font-mono text-xs" data-testid="modal-result">{promoteTarget.result_id}</b>
                 </div>
               </div>
-              {rowClass(promoteTarget) !== 'crypto' ? (
-                <div className="mc-dest" data-testid="destination-equity">
-                  <small>Destino obrigatório</small>
-                  <strong>{EQUITY_DESTINATION}</strong>
-                  <span>{EQUITY_DESTINATION_NOTE}</span>
-                </div>
-              ) : (
-                <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
-                  <small className="block text-[var(--text-muted)]">Destino obrigatório</small>
-                  <strong className="text-[var(--accent-primary)]">Tier 3 · observação</strong>
-                  <span className="mt-1 block text-[11px] text-[var(--text-tertiary)]">Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica.</span>
-                </div>
-              )}
+              {/* Card #1122: ação e ETF também vão para Tier 3, sem "Alertar". */}
+              <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5" data-testid="destination-tier3">
+                <small className="block text-[var(--text-muted)]">Destino obrigatório</small>
+                <strong className="text-[var(--accent-primary)]">{PROMOTION_DESTINATION}</strong>
+                <span className="mt-1 block text-[11px] text-[var(--text-tertiary)] max-w-[75ch]">{promotionDestinationNote(rowClass(promoteTarget))}</span>
+              </div>
               {promoteConflict ? (
                 <div className="mt-3.5 rounded-lg border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-3 text-xs text-[var(--text-secondary)]" data-testid="promote-conflict">
                   <strong className="block">Conflito equivalente (409)</strong>
@@ -3344,7 +3337,7 @@ export function DiscoveryPage() {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--accent-primary)] bg-[var(--accent-primary)] px-4 py-2 text-sm font-bold text-[#181a20] hover:bg-[var(--accent-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Star className="h-4 w-4" />
-                {rowClass(promoteTarget) !== 'crypto' ? 'Promover a favorito' : 'Promover como tier 3'}
+                {rowClass(promoteTarget) !== 'crypto' ? 'Promover a favorito tier 3' : 'Promover como tier 3'}
               </button>
             </div>
           </div>

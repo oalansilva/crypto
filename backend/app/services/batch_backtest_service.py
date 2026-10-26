@@ -32,6 +32,7 @@ from app.services.equity_backtest import (
     EquityRunError,
     prepare_equity_history,
 )
+from app.services.favorite_configuration import derive_configuration
 from app.services.favorite_uniqueness import find_existing_favorite, lock_and_find_duplicate
 from app.services.market_data_providers import (
     BINANCE_EQUITY_SOURCE,
@@ -703,7 +704,10 @@ class BatchRunner:
         parameters = dict(best_params)
         parameters["direction"] = self.direction
         parameters["data_source"] = data_source
-        equity = "/" not in symbol
+        # Card #1122 (decisão 11): a configuração de dados entra no favorito e na chave de duplicata.
+        configuration = derive_configuration(
+            symbol, data_source=data_source, conventions=conventions
+        )
         period_type = self.payload.get("period_type")
         start, end = self.payload.get("start_date"), self.payload.get("end_date")
 
@@ -721,6 +725,7 @@ class BatchRunner:
                 parameters=parameters,
                 data_source=data_source,
                 asset=asset,
+                configuration=configuration,
             ):
                 db.rollback()
                 logger.info("Batch: skip %s (created concurrently)", symbol)
@@ -734,8 +739,12 @@ class BatchRunner:
                 parameters=parameters,
                 metrics=metrics,
                 notes=f"gerado em lote ({self.job_id[:8]})",
-                # Ação/ETF sem nível de estrela até o #1122 (decisão 12).
-                tier=None if equity else 3,
+                # Card #1122 (decisão 12): 1 estrela em qualquer classe; nunca nasce com "Alertar".
+                tier=3,
+                notify_telegram=False,
+                data_source=configuration.data_source,
+                session=configuration.session,
+                adjustment=configuration.adjustment,
                 start_date=start,
                 end_date=end,
                 period_type=period_type,

@@ -1,0 +1,260 @@
+/* Card #1122 — só o delta sobre o CSS vivo (live.css). Prefixo m22-. */
+
+/* ---------- cola do clone: AppNav desktop x móvel (o React troca em 1024 px) ---------- */
+:root { --app-sidebar-width: 224px; }
+.cf-mob { display: none; }
+@media (max-width: 1023.98px) {
+  :root { --app-sidebar-width: 0px; }
+  .cf-desk { display: none; }
+  .cf-mob { display: contents; }
+}
+
+/* ---------- ícones ---------- */
+.m22-ic { width: 14px; height: 14px; flex: none; }
+
+/* ---------- Monitor: identidade da linha ---------- */
+.m22-id {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--t-2, #b7bdc6);
+  max-width: 34ch;
+}
+.m22-conf { display: block; }
+.pair-icon.m22-eq { background: #2b3139; color: #eaecef; font-size: 9px; letter-spacing: .02em; }
+
+/* ---------- Monitor: estado do mercado ---------- */
+.m22-mkt {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin-top: 6px;
+  max-width: 34ch;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #929aa5;
+}
+.m22-mkt .m22-ic { margin-top: 1px; }
+.m22-mkt .m22-ic { display: none; }
+.m22-mkt[data-tone="open"] .m22-ic:nth-of-type(1) { display: block; color: #0ecb81; }
+.m22-mkt[data-tone="closed"] .m22-ic:nth-of-type(2) { display: block; }
+.m22-mkt[data-tone="stale"] .m22-ic:nth-of-type(3) { display: block; }
+.m22-mkt[data-tone="insufficient"] .m22-ic:nth-of-type(4) { display: block; }
+.m22-mkt[hidden], .m22-card-meta[hidden] { display: none !important; }
+.m22-mkt[data-tone="insufficient"] {
+  color: #b7bdc6;
+  border: 1px dashed #474d57;
+  border-radius: 5px;
+  padding: 4px 6px;
+}
+/* linha da tabela: o estado fica sob a pílula de Status, compacto (decisão 5) */
+/* a tabela viva já ocupa a largura toda: o bloco quebra dentro da coluna Status, sem alargá-la */
+.monitor-theme table.signals td .m22-mkt { display: block; max-width: 100%; font-size: 11px; }
+.monitor-theme table.signals td .m22-mkt .m22-ic { width: 12px; height: 12px; margin: 0 4px 0 0; vertical-align: -2px; }
+.monitor-theme table.signals td .m22-mkt[data-tone] .m22-ic { display: none; }
+.monitor-theme table.signals td .m22-mkt[data-tone="open"] .m22-ic:nth-of-type(1),
+.monitor-theme table.signals td .m22-mkt[data-tone="closed"] .m22-ic:nth-of-type(2),
+.monitor-theme table.signals td .m22-mkt[data-tone="stale"] .m22-ic:nth-of-type(3),
+.monitor-theme table.signals td .m22-mkt[data-tone="insufficient"] .m22-ic:nth-of-type(4) { display: inline-block; }
+.monitor-theme table.signals td .m22-mkt[data-tone="stale"],
+.monitor-theme table.signals td .m22-mkt[data-tone="insufficient"] { padding: 3px 4px; }
+.monitor-theme table.signals td .m22-hold-note { max-width: 100%; font-size: 11px; }
+.monitor-theme .status-pill.m22-none { color: #b7bdc6; background: rgba(132, 142, 156, 0.12); border-color: rgba(132, 142, 156, 0.35); }
+.m22-mkt[data-tone="closed"] { color: #b7bdc6; }
+.m22-mkt[data-tone="stale"] {
+  color: #f0b90b;
+  background: rgba(240, 185, 11, 0.08);
+  border: 1px solid rgba(240, 185, 11, 0.35);
+  border-radius: 5px;
+  padding: 4px 6px;
+}
+.m22-hold-note {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #f0b90b;
+  max-width: 34ch;
+}
+.m22-hold-note[hidden] { display: none; }
+.m22-hold-note[data-tone="insufficient"] { color: #b7bdc6; }
+
+/* ---------- Monitor: tag Alerta ---------- */
+.monitor-theme .tag.m22-alert {
+  color: #0ecb81;
+  background: rgba(14, 203, 129, 0.1);
+  border-color: rgba(14, 203, 129, 0.35);
+}
+.monitor-theme .tag.m22-alert .m22-ic { width: 11px; height: 11px; }
+body[data-scenario="transition"] .m22-alert, body[data-scenario="newuser"] .m22-alert { display: none !important; }
+
+/* ---------- Monitor: cartão do celular ---------- */
+.m22-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 10px;
+  padding: 8px 14px 0;
+}
+.m22-card-meta .m22-id { margin-top: 0; max-width: none; }
+.m22-card-meta .m22-mkt, .m22-card-meta .m22-hold-note { flex-basis: 100%; margin-top: 0; max-width: none; }
+.m22-card-meta .tag.m22-alert {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; padding: 2px 7px; border-radius: 4px; border: 1px solid;
+}
+.m22-pf-help { color: #b7bdc6 !important; font-size: 12px !important; margin-top: 8px; }
+
+/* ---------- Monitor: faixa da transição ---------- */
+.m22-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(252, 213, 53, 0.35);
+  border-radius: 10px;
+  background: rgba(252, 213, 53, 0.07);
+  color: #eaecef;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.m22-banner[hidden] { display: none; }
+.m22-banner > .m22-ic { width: 18px; height: 18px; color: #fcd535; }
+.m22-banner > div { flex: 1; max-width: 75ch; }
+.m22-banner-link {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: #fcd535;
+  color: #0b0e11;
+  font-weight: 600;
+  text-decoration: none;
+}
+.m22-banner-link:focus-visible, .m22-demo button:focus-visible, .m22-alertar:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .m22-banner { flex-wrap: wrap; }
+  .m22-banner-link { width: 100%; justify-content: center; }
+}
+
+/* ---------- botões indisponíveis (fonte antiga) ---------- */
+[data-m22-off] { opacity: 0.5; cursor: not-allowed; }
+.m22-off-why { margin: 6px 0 0; font-size: 11px; line-height: 1.4; color: #b7bdc6; max-width: 32ch; }
+.detail-foot .m22-off-why, .mobile-card .m22-off-why { flex-basis: 100%; max-width: 75ch; text-align: right; }
+.mobile-card .m22-off-why { text-align: left; }
+
+/* ---------- Demonstração (no fluxo, fim da página) ---------- */
+.m22-demo {
+  margin: 28px 0 8px;
+  padding: 18px;
+  border: 1px dashed #474d57;
+  border-radius: 12px;
+  background: #14171c;
+  color: #eaecef;
+}
+.m22-demo h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
+.m22-demo-lead, .m22-demo-note, .m22-demo-now { font-size: 13px; line-height: 1.55; color: #b7bdc6; max-width: 75ch; margin: 0 0 12px; }
+.m22-demo-now { color: #eaecef; }
+.m22-demo-h3 { font-size: 13px; font-weight: 600; margin: 16px 0 6px; color: #eaecef; }
+.m22-demo-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.m22-demo-btns button {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #2b3139;
+  background: #1e2329;
+  color: #eaecef;
+  font-size: 12px;
+  cursor: pointer;
+}
+.m22-demo-btns button[aria-pressed="true"] { border-color: #fcd535; color: #fcd535; }
+.m22-tg { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.m22-tg-msg {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #1e2329;
+  border: 1px solid #2b3139;
+  font: 12px/1.55 ui-monospace, "JetBrains Mono", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #eaecef;
+}
+.m22-tg-msg b { color: #fcd535; font-weight: 600; }
+
+/* ---------- Favoritos: coluna Alertar (o vivo esconde Telegram abaixo de 1540 px) ---------- */
+@media (min-width: 1280px) and (max-width: 1540px) {
+  .favorites-workbench table.fav-strategies th.telegram-col,
+  .favorites-workbench table.fav-strategies td.telegram-col { display: table-cell; }
+}
+.m22-act-alertar, .favorites-workbench .fav-row-actions .m22-act-alertar { display: none; }
+@media (max-width: 1279.98px) {
+  .favorites-workbench .fav-row-actions .m22-act-alertar {
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #929aa5;
+  }
+  .favorites-workbench .fav-row-actions .m22-act-alertar[aria-pressed="true"] { color: #0ecb81; }
+}
+.m22-act-alertar:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+body[data-view="catalog"] .m22-act-alertar { display: none !important; }
+/* celular: rótulo legível e alvo de 44 px */
+.fav-mobile-stars .telegram-toggle.m22-tg-mob { min-height: 44px; min-width: 7.5rem; font-size: 12px; font-weight: 600; }
+.m22-pf-warn { display: block; margin-top: 4px; font-size: 12px; line-height: 1.45; color: #f0b90b; max-width: 75ch; }
+.m22-pf-warn[hidden] { display: none; }
+.m22-pf-warn a { color: #f0b90b; text-decoration: underline; }
+.m22-alertar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 32px;
+  min-width: 4.75rem;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid #474d57;
+  background: transparent;
+  color: #929aa5;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.m22-alertar[aria-pressed="true"] { border-color: rgba(14, 203, 129, 0.6); background: rgba(14, 203, 129, 0.12); color: #0ecb81; }
+.m22-alertar[aria-pressed="true"] .m22-ic { fill: currentColor; }
+.m22-alertar.m22-compact { min-height: 44px; min-width: 6.5rem; }
+.m22-cat-none { color: #707a8a; font-size: 11px; }
+.m22-fav-status { display: block; font-size: 12px; line-height: 1.45; margin-top: 4px; }
+.m22-fav-status[data-tone="ok"] { color: #0ecb81; }
+.m22-fav-status[data-tone="wait"] { color: #b7bdc6; }
+.m22-fav-banner { margin: 0 0 14px; }
+body[data-view="catalog"] .telegram-toggle { display: none !important; }
+.m22-cat-none[hidden] { display: none; }
+.m22-demo-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13px; line-height: 1.5; color: #b7bdc6; max-width: 75ch; }
+.m22-demo-list .fav-refresh-status { display: inline; }
+.favorites-workbench .fav-refresh-status[data-testid="fav-refresh-status"] { white-space: normal; overflow: visible; text-overflow: clip; }
+
+/* ---------- Resultado: modal de salvar ação/ETF ---------- */
+[data-m22-modal][hidden] { display: none !important; }
+.m22-modal-ident { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid #474d57; border-radius: 8px; font-size: 13px; color: #eaecef; }
+.m22-modal-ident span { color: #b7bdc6; font-size: 12px; }
+.m22-modal-note { font-size: 12px; line-height: 1.5; color: #b7bdc6; margin: 0; max-width: 75ch; }
+.m22-dest-note { max-width: 75ch; }
+.m22-modal-dup { font-size: 13px; color: #f6465d; margin: 0; }
+.m22-modal-ok { font-size: 13px; color: #0ecb81; margin: 0; }
+.m22-modal-ok { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.m22-modal-ok p { margin: 0; outline: none; }
+.m22-ok-link {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px;
+  border-radius: 8px; border: 1px solid #fcd535; color: #fcd535; font-weight: 600; text-decoration: none;
+}
+.m22-ok-link:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+.m22-modal-dup[hidden], .m22-modal-ok[hidden] { display: none; }
+
+/* ---------- Favoritos: 1024–1279 px, quatro ações na célula (quebra em 2×2) ---------- */
+@media (max-width: 1279.98px) {
+  .favorites-workbench table.fav-strategies .fav-row-actions { flex-wrap: wrap; justify-content: center; }
+}
+.favorites-workbench .strategy-stack .m22-pf-warn { white-space: normal; overflow: visible; text-overflow: clip; }

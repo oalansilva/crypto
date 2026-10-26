@@ -691,7 +691,10 @@ def test_promote_nvda_without_star_level_and_with_the_execution_identity(db, mon
     )
     assert status == 201, body
     favorite = db.get(FavoriteStrategy, int(body["favorite_id"]))
-    assert favorite.tier is None
+    # Card #1122: tier 3 em qualquer classe, sem "Alertar" e com a configuração do resultado.
+    assert favorite.tier == 3
+    assert favorite.notify_telegram is False
+    assert favorite.data_source == "binance_equity"
     assert (
         favorite.parameters["data_source"] == "binance_equity"
         and favorite.parameters["direction"] == "long"

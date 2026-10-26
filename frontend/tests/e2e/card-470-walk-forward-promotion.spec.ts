@@ -84,6 +84,9 @@ test('admin can explicitly override NO-GO and period metadata is preserved', asy
   await page.getByText(/override de admin/).click()
   await expect(page.getByRole('button', { name: 'Salvar', exact: true })).toBeEnabled()
   await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+  // Card #1122: o sucesso fica no modal; "Ver em Favoritos" recebe o foco e leva à lista.
+  await expect(page.getByTestId('favorite-saved-link')).toBeFocused()
+  await page.getByTestId('favorite-saved-link').click()
   await expect(page).toHaveURL(/\/favorites$/)
 })
 

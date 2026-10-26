@@ -19,7 +19,9 @@ from app.models import AutoBacktestRun, FavoriteStrategy
 from app.services.combo_optimizer import ComboOptimizer
 from app.services.discovery_favorite_metrics import uses_operational_period
 from app.services.market_data_providers import (
+    BINANCE_EQUITY_SOURCE,
     CCXT_SOURCE,
+    STOOQ_SOURCE,
     get_market_data_provider,
     resolve_data_source_for_symbol,
 )
@@ -29,6 +31,8 @@ logger = logging.getLogger(__name__)
 REFRESH_STATUS_RUNNING = "RUNNING"
 REFRESH_STATUS_SUCCESS = "SUCCESS"
 REFRESH_STATUS_FAILED = "FAILED"
+# Card #1122: série curta ("Aguardando dados: N de M candles"), nunca "Falha".
+REFRESH_STATUS_INSUFFICIENT = "INSUFFICIENT"
 DEFAULT_REFRESH_INTERVAL_SECONDS = 86400
 DEFAULT_REFRESH_LOOP_SECONDS = 3600
 DEFAULT_REFRESH_RUNNING_TIMEOUT_SECONDS = 1800
@@ -319,6 +323,88 @@ def _ensure_frame_covers_target(
         )
 
 
+class RefreshUpToDate(Exception):
+    """Nenhum candle fechou desde a última atualização: o ciclo pula a otimização (card #1122)."""
+
+
+class RefreshInsufficient(Exception):
+    """Menos candles fechados do que a análise precisa (card #1122): ``INSUFFICIENT``."""
+
+    def __init__(self, available: int, required: int):
+        super().__init__(f"{available} de {required} candles")
+        self.available = int(available)
+        self.required = int(required)
+
+
+def _is_equity_source(data_source: str | None) -> bool:
+    return str(data_source or "").strip().lower() in {BINANCE_EQUITY_SOURCE, STOOQ_SOURCE}
+
+
+def _calendar_timeframe(data_source: str, timeframe: str) -> str:
+    # A fonte antiga (Stooq) só tem diário.
+    return "1d" if data_source == STOOQ_SOURCE else str(timeframe or "1d").strip().lower()
+
+
+def last_closed_session_date(timeframe: str, now: datetime) -> str:
+    """Data do último pregão fechado de NY (o fim de "todo o histórico" de ação/ETF)."""
+
+    from app.services.market_history import nyse_calendar
+
+    start = nyse_calendar.last_closed_start("1d", pd.Timestamp(now, tz="UTC"))
+    return (start + pd.Timedelta(hours=12)).tz_convert(nyse_calendar.NY).date().isoformat()
+
+
+def _ensure_calendar_fresh(
+    frame_last: Any, *, data_source: str, symbol: str, timeframe: str, now: datetime
+) -> None:
+    """Ação/ETF: o último candle fechado esperado pelo calendário está presente (decisão 14).
+
+    Fim de semana, feriado e fora do pregão nunca são falha; o atraso real é, com o motivo.
+    """
+
+    from app.services import market_state
+
+    check = market_state.check_series(
+        data_source=data_source,
+        symbol=symbol,
+        timeframe=_calendar_timeframe(data_source, timeframe),
+        last_candle=frame_last,
+        now=pd.Timestamp(now, tz="UTC"),
+    )
+    if check.stale:
+        expected = check.expected_candle
+        last = check.last_candle
+        raise RuntimeError(
+            f"Dados atrasados para {symbol} {timeframe}: falta o candle esperado "
+            f"{expected.isoformat() if expected is not None else '?'} "
+            f"(último recebido {last.isoformat() if last is not None else 'nenhum'})"
+        )
+
+
+def _closed_count(frame: Any, *, data_source: str, timeframe: str, now: datetime) -> int:
+    if frame is None or getattr(frame, "empty", True):
+        return 0
+    if _is_equity_source(data_source):
+        from app.services import market_state
+
+        return len(
+            market_state.cut_to_closed(
+                frame, _calendar_timeframe(data_source, timeframe), pd.Timestamp(now, tz="UTC")
+            )
+        )
+    return max(len(frame) - 1, 0)
+
+
+def _frame_last_utc(frame: Any) -> pd.Timestamp | None:
+    if frame is None or getattr(frame, "empty", True):
+        return None
+    try:
+        last = pd.Timestamp(pd.DatetimeIndex(frame.index).max())
+    except Exception:
+        return None
+    return last.tz_localize("UTC") if last.tzinfo is None else last.tz_convert("UTC")
+
+
 def _fetch_ohlcv(provider: Any, **kwargs: Any) -> Any:
     try:
         return provider.fetch_ohlcv(**kwargs)
@@ -437,25 +523,99 @@ class FavoriteBacktestRefreshService:
         data_source: str,
         start_date: str | None,
         end_date: str,
-    ) -> None:
-        provider = self._market_data_provider_factory(data_source)
-        frame = _fetch_ohlcv(
-            provider,
-            symbol=favorite.symbol,
-            timeframe=favorite.timeframe,
-            since_str=start_date,
-            until_str=end_date,
-            full_history_if_empty=True,
-        )
-        _ensure_fresh_frame(
-            frame,
-            symbol=favorite.symbol,
-            timeframe=favorite.timeframe,
-            now=_utcnow(),
-        )
+    ) -> dict[str, Any] | None:
+        now = _utcnow()
+        parameters = _decode_jsonish(favorite.parameters)
+        parameters = parameters if isinstance(parameters, dict) else {}
+        collection = None
+        if data_source == BINANCE_EQUITY_SOURCE:
+            # Card #1122 (decisão 14): a série do tempo gráfico e o 5m do intrabar pelo caminho do
+            # #1118; sem 15m a otimização roda com precisão diária marcada (como no lote).
+            from app.services.equity_backtest import prepare_equity_history
+            from app.services.market_data_providers import BinanceEquityMarketDataProvider
+
+            prep = prepare_equity_history(
+                favorite.symbol, favorite.timeframe, start_date, end_date, intrabar=True
+            )
+            collection = prep.collection
+            provider = BinanceEquityMarketDataProvider(ensure=False)
+            frame = provider.fetch_ohlcv(
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+                since_str=start_date,
+                until_str=end_date,
+            )
+        else:
+            provider = self._market_data_provider_factory(data_source)
+            frame = _fetch_ohlcv(
+                provider,
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+                since_str=start_date,
+                until_str=end_date,
+                full_history_if_empty=True,
+            )
+        if _is_equity_source(data_source):
+            if frame is None or getattr(frame, "empty", True):
+                raise RuntimeError(
+                    f"No candles available for {favorite.symbol} {favorite.timeframe}"
+                )
+            _ensure_calendar_fresh(
+                _frame_last_utc(frame),
+                data_source=data_source,
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+                now=now,
+            )
+        else:
+            _ensure_fresh_frame(
+                frame,
+                symbol=favorite.symbol,
+                timeframe=favorite.timeframe,
+                now=now,
+            )
+
+        from app.services.favorite_configuration import required_candles
+
+        # Série curta de ação/ETF (ticker novo): "Aguardando dados", nunca "Falha". A cripto segue
+        # as regras de hoje.
+        if _is_equity_source(data_source):
+            needed = required_candles(parameters)
+            available = _closed_count(
+                frame, data_source=data_source, timeframe=favorite.timeframe, now=now
+            )
+            if needed and available < needed:
+                raise RefreshInsufficient(available, needed)
+
+        info: dict[str, Any] = {"collection": collection}
+        if _is_equity_source(data_source):
+            from app.services import market_state
+
+            closed = market_state.cut_to_closed(
+                frame,
+                _calendar_timeframe(data_source, favorite.timeframe),
+                pd.Timestamp(now, tz="UTC"),
+            )
+            last_closed = _frame_last_utc(closed)
+            info["last_closed_candle"] = (
+                last_closed.isoformat() if last_closed is not None else None
+            )
+            metrics = _decode_jsonish(favorite.metrics)
+            metrics = metrics if isinstance(metrics, dict) else {}
+            previous = metrics.get("analysis_last_closed_candle")
+            if (
+                previous
+                and info["last_closed_candle"]
+                and getattr(self, "_previous_refresh_status", favorite.auto_refresh_status)
+                == REFRESH_STATUS_SUCCESS
+                and pd.Timestamp(previous) >= pd.Timestamp(info["last_closed_candle"])
+            ):
+                # Sem candle fechado novo desde a última atualização: mantém o SUCCESS.
+                raise RefreshUpToDate()
+            return info
 
         if data_source != CCXT_SOURCE:
-            return
+            return info
 
         intraday_since = start_date
         latest_daily = _latest_frame_timestamp(frame)
@@ -486,6 +646,7 @@ class FavoriteBacktestRefreshService:
             timeframe="15m",
             target=latest_daily,
         )
+        return info
 
     def _run_optimization(self, favorite: FavoriteStrategy) -> dict[str, Any]:
         parameters = _decode_jsonish(favorite.parameters)
@@ -493,14 +654,29 @@ class FavoriteBacktestRefreshService:
         data_source = parameters.get("data_source") or resolve_data_source_for_symbol(
             favorite.symbol, None
         )
-        end_date = _utcnow().date().isoformat()
-        self._prepare_market_data(
+        data_source = str(data_source).strip().lower()
+        now = _utcnow()
+        end_date = now.date().isoformat()
+        if _is_equity_source(data_source):
+            # Card #1122 (decisão 14): o fim de ação/ETF é o último pregão fechado.
+            try:
+                end_date = last_closed_session_date(favorite.timeframe, now)
+            except Exception:
+                logger.warning("Calendário de NY indisponível; fim do período = hoje")
+        info = self._prepare_market_data(
             favorite,
             data_source=data_source,
             start_date=favorite.start_date,
             end_date=end_date,
         )
+        self._last_prepare_info = {**(info or {}), "end_date": end_date}
         optimizer = self._optimizer_factory()
+        if data_source == BINANCE_EQUITY_SOURCE and info is not None:
+            from app.services.market_data_providers import BinanceEquityMarketDataProvider
+
+            # Coleta feita: a otimização lê só o guardado (como o lote e o #1119).
+            optimizer._provider = BinanceEquityMarketDataProvider(ensure=False)
+            optimizer.collection_note = info.get("collection")
         return optimizer.run_optimization(
             template_name=favorite.strategy_name,
             symbol=favorite.symbol,
@@ -541,6 +717,8 @@ class FavoriteBacktestRefreshService:
                 updated_at=now,
             )
             session.add(run)
+            # Card #1122: o pulo "sem candle fechado novo" só vale depois de um SUCCESS.
+            self._previous_refresh_status = favorite.auto_refresh_status
             favorite.auto_refresh_status = REFRESH_STATUS_RUNNING
             favorite.auto_refresh_error = None
             favorite.auto_refresh_started_at = now
@@ -548,9 +726,44 @@ class FavoriteBacktestRefreshService:
             favorite.auto_refresh_run_id = run_id
             session.commit()
 
-            result = self._run_optimization(favorite)
+            self._last_prepare_info = {}
+            try:
+                result = self._run_optimization(favorite)
+            except RefreshUpToDate:
+                return self._finish_up_to_date(session, favorite, run, run_id)
+            except RefreshInsufficient as exc:
+                return self._finish_insufficient(session, favorite, run, run_id, exc)
+            prepare_info = dict(getattr(self, "_last_prepare_info", {}) or {})
             attempt_snapshot_id = result.get("snapshot_id") if isinstance(result, dict) else None
-            _ensure_fresh_candles(result, favorite, _utcnow())
+            parameters_now = _decode_jsonish(favorite.parameters)
+            source_now = str(
+                (parameters_now or {}).get("data_source")
+                if isinstance(parameters_now, dict)
+                else ""
+            ).lower() or resolve_data_source_for_symbol(favorite.symbol, None)
+            if _is_equity_source(source_now):
+                candles = result.get("candles") if isinstance(result.get("candles"), list) else []
+                if not candles:
+                    raise RuntimeError(
+                        f"No candles returned for {favorite.symbol} {favorite.timeframe}"
+                    )
+                latest = max(
+                    (
+                        pd.Timestamp(c.get("timestamp_utc") or c.get("timestamp"))
+                        for c in candles
+                        if c.get("timestamp_utc") or c.get("timestamp")
+                    ),
+                    default=None,
+                )
+                _ensure_calendar_fresh(
+                    latest,
+                    data_source=source_now,
+                    symbol=favorite.symbol,
+                    timeframe=favorite.timeframe,
+                    now=_utcnow(),
+                )
+            else:
+                _ensure_fresh_candles(result, favorite, _utcnow())
             _ensure_trade_events_within_candles(result, favorite)
             refreshed_metrics = result.get("best_metrics") or result.get("metrics") or {}
             current_metrics = _decode_jsonish(favorite.metrics)
@@ -578,6 +791,11 @@ class FavoriteBacktestRefreshService:
                 "analysis_execution": result.get("execution"),
                 "analysis_conventions": result.get("conventions"),
                 "analysis_asset": result.get("asset"),
+                # Card #1122: último candle fechado e último pregão (status de ação/ETF).
+                "analysis_last_closed_candle": prepare_info.get("last_closed_candle"),
+                "analysis_last_session": (
+                    prepare_info.get("end_date") if _is_equity_source(source_now) else None
+                ),
                 "auto_refreshed_at": _utcnow().isoformat(),
                 "auto_refresh_run_id": run_id,
             }
@@ -597,7 +815,11 @@ class FavoriteBacktestRefreshService:
                 if previous_snapshot_id and previous_snapshot_id != attempt_snapshot_id:
                     history_snapshots.release(session, previous_snapshot_id, completed_at)
             if uses_operational_period(current_metrics) and favorite.period_type == "all":
-                favorite.end_date = completed_at.date().isoformat()
+                favorite.end_date = (
+                    prepare_info.get("end_date")
+                    if _is_equity_source(source_now) and prepare_info.get("end_date")
+                    else completed_at.date().isoformat()
+                )
             favorite.auto_refresh_status = REFRESH_STATUS_SUCCESS
             favorite.auto_refresh_error = None
             favorite.auto_refresh_completed_at = completed_at
@@ -664,6 +886,56 @@ class FavoriteBacktestRefreshService:
         finally:
             if owns_session:
                 session.close()
+
+    def _finish_up_to_date(
+        self, session: Session, favorite: FavoriteStrategy, run: Any, run_id: str
+    ) -> dict[str, Any]:
+        """Sem candle fechado novo: o número fica, o status segue ``SUCCESS`` (card #1122)."""
+
+        completed_at = _utcnow()
+        favorite.auto_refresh_status = REFRESH_STATUS_SUCCESS
+        favorite.auto_refresh_error = None
+        favorite.auto_refresh_completed_at = completed_at
+        if run is not None:
+            run.status = REFRESH_STATUS_SUCCESS
+            run.stage_3_result = {"favorite_id": favorite.id, "skipped": "no_new_closed_candle"}
+            run.updated_at = completed_at
+            run.completed_at = completed_at
+        session.commit()
+        return {
+            "favorite_id": favorite.id,
+            "status": REFRESH_STATUS_SUCCESS,
+            "run_id": run_id,
+            "skipped": "no_new_closed_candle",
+        }
+
+    def _finish_insufficient(
+        self,
+        session: Session,
+        favorite: FavoriteStrategy,
+        run: Any,
+        run_id: str,
+        exc: RefreshInsufficient,
+    ) -> dict[str, Any]:
+        """Série curta: ``INSUFFICIENT`` com "N de M candles", nunca "Falha" (card #1122)."""
+
+        completed_at = _utcnow()
+        favorite.auto_refresh_status = REFRESH_STATUS_INSUFFICIENT
+        favorite.auto_refresh_error = f"{exc.available} de {exc.required} candles"
+        favorite.auto_refresh_completed_at = completed_at
+        if run is not None:
+            run.status = REFRESH_STATUS_INSUFFICIENT
+            run.error_message = favorite.auto_refresh_error
+            run.updated_at = completed_at
+            run.completed_at = completed_at
+        session.commit()
+        return {
+            "favorite_id": favorite.id,
+            "status": REFRESH_STATUS_INSUFFICIENT,
+            "run_id": run_id,
+            "available": exc.available,
+            "required": exc.required,
+        }
 
     def run_due_refreshes(
         self,
@@ -799,6 +1071,8 @@ class FavoriteBacktestRefreshService:
             result = self.refresh_favorite(favorite_id)
             if result.get("status") == REFRESH_STATUS_SUCCESS:
                 summary["success"] += 1
+            elif result.get("status") == REFRESH_STATUS_INSUFFICIENT:
+                summary["insufficient"] = summary.get("insufficient", 0) + 1
             else:
                 summary["failed"] += 1
             _write_refresh_state(summary)

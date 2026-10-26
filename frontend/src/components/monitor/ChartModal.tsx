@@ -21,13 +21,13 @@ import {
     type StrategyTradeMetrics,
 } from '../charts/StrategyTradesTable';
 import {
-    getOpportunityAssetType,
     getStrategyDisplayName,
     isProtectedStrategy,
     type Opportunity,
     type OpportunitySignalHistoryItem,
 } from './types';
-import { fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
+import { fetchOpportunityCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
+import { isOpportunityDataStale } from './marketState';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
 import {
     alignStrategyTransparencyToLoadedCandles,
@@ -272,15 +272,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     onClose,
 }) => {
     const isTradesView = viewMode === 'trades';
-    const isStockAsset = React.useMemo(
-        () => getOpportunityAssetType(opportunity) === 'stock',
-        [opportunity],
-    );
     const strategyTimeframe = React.useMemo(
         () => toChartTimeframe(opportunity.timeframe),
         [opportunity.timeframe],
     );
-    const lockedTimeframe: ChartTimeframe = isStockAsset ? '1d' : strategyTimeframe;
+    // Card #1122: ação/ETF da Binance no tempo do favorito, pela série do favorito.
+    const lockedTimeframe: ChartTimeframe = strategyTimeframe;
     const supportedTimeframes = React.useMemo(
         () => [lockedTimeframe],
         [lockedTimeframe],
@@ -479,21 +476,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
     const signalLabel = resolvedSignal.visual.markerLabel;
     const CHART_UNAVAILABLE = 'indisponível — dado não confiável';
-    const CHART_TIMEFRAME_MS: Record<string, number> = {
-        '15m': 15 * 60 * 1000,
-        '1h': 60 * 60 * 1000,
-        '4h': 4 * 60 * 60 * 1000,
-        '1d': 24 * 60 * 60 * 1000,
-    };
-    const chartRiskStale = React.useMemo(() => {
-        const ref = opportunity.indicator_values_candle_time;
-        if (!ref) return false;
-        const ms = Date.parse(ref);
-        if (Number.isNaN(ms)) return false;
-        const tf = String(opportunity.timeframe || '1d').trim().toLowerCase();
-        const maxAge = (CHART_TIMEFRAME_MS[tf] ?? CHART_TIMEFRAME_MS['1d']) * 3;
-        return Date.now() - ms > maxAge;
-    }, [opportunity.indicator_values_candle_time, opportunity.timeframe]);
+    const chartRiskStale = React.useMemo(
+        () => isOpportunityDataStale(opportunity),
+        [opportunity],
+    );
     const chartHasRiskValue = (value: unknown): boolean => value !== null && value !== undefined && !chartRiskStale;
     const chartFormatUsd = (value: number): string => new Intl.NumberFormat('en-US', {
         style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 8,
@@ -530,12 +516,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     }, [onClose]);
 
     React.useEffect(() => {
-        if (isStockAsset && timeframe !== '1d') {
-            setTimeframe('1d');
-            return;
-        }
-
-        if (!isStockAsset && !supportedTimeframes.includes(timeframe)) {
+        if (!supportedTimeframes.includes(timeframe)) {
             setTimeframe(resolvedInitialTimeframe);
             return;
         }
@@ -554,7 +535,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             setLoading(true);
             setError(null);
             try {
-                const rows = await fetchMarketCandles(symbol, timeframe, controller.signal);
+                const rows = await fetchOpportunityCandles(opportunity, timeframe, controller.signal);
                 if (rows.length === 0) {
                     throw new Error('Sem dados de candle para este timeframe.');
                 }
@@ -574,7 +555,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         void run();
 
         return () => controller.abort();
-    }, [symbol, timeframe, isStockAsset, supportedTimeframes, resolvedInitialTimeframe]);
+    }, [opportunity, symbol, timeframe, supportedTimeframes, resolvedInitialTimeframe]);
 
     React.useEffect(() => {
         const controller = new AbortController();

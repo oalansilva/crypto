@@ -208,7 +208,7 @@ test('Combo: cópia antes do clique diz o que roda e o que fica fora', () => {
   assert.equal(combo(['BTC/USDT']).text, '1 ativo selecionado: otimiza, salva em favoritos e abre a página de favoritos.')
   const one = combo(['NVDA'])
   assert.equal(one.blocked, false)
-  assert.equal(one.text, '1 ação (NVDA): otimiza e abre o resultado, sem salvar em favoritos: ações e ETFs ainda não podem ser favoritados.')
+  assert.equal(one.text, '1 ação (NVDA): otimiza e abre o resultado; para acompanhar, salve nos Favoritos por lá.')
   assert.equal(combo(['SPY']).text.slice(0, 15), '1 ETF (SPY): ot')
   const lote = combo(['BTC/USDT', 'NVDA', 'SPY'])
   assert.equal(lote.blocked, false)

@@ -994,7 +994,7 @@
     },
     {
       "file": "backend/tests/unit/test_card_1120_favorites_asset.py",
-      "protected_behavior": "GET /api/favorites/ com asset de qualquer classe, contrato de unicidade com data_source e asset, favoritar ação/ETF pela tela segue recusado, Monitor só cripto",
+      "protected_behavior": "GET /api/favorites/ com asset de qualquer classe, contrato de unicidade com data_source e asset, favoritar ação/ETF pela tela aceito desde o #1122 (sem Alertar, 409 da mesma configuração), Monitor com ação/ETF",
       "production_reachability": "reachable",
       "persistence_need": "postgres",
       "regression_risk": "high",
@@ -1018,6 +1018,33 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, coleta e otimizador simulados e histórico de ações em schema privado"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1122_favorite_alerts.py",
+      "protected_behavior": "Alertas do Telegram por favorito (#1122): origem só nos favoritos marcados do dono, estado por favorito com base na primeira leitura, evento com chave e reserva (sending vira unknown, failed volta), sem limite por hora para sinal e atraso, matriz de ação/ETF na carteira, falha da carteira só pausa cripto, aviso único de atraso por episódio e recuperação silenciosa, mercado fechado sem mensagem, transição só para quem recebia pelo catálogo, mensagem com configuração e candle e sem ordem, 409 da mesma configuração e coexistência de fontes, Alertar só do dono, signal_monitor sem ticker e calendário de NY (sábado, feriado, meio pregão)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, serviço de oportunidades e envio do Telegram simulados, TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1122_migration.py",
+      "protected_behavior": "Migração Alembic do #1122 em schema privado: backfill de fonte/sessão/ajuste, marcas Alertar de quem não é admin zeradas, estado por favorito semeado do par, tabelas e índice único parcial, default falso, ON DELETE CASCADE e downgrade",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com schema privado descartado no fim"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1122_monitor_refresh.py",
+      "protected_behavior": "Monitor com ação/ETF pelo calendário de NY (candle fechado sem descartar o último, estado aberto/fechado/atrasado/insuficiente, configuração por linha) e atualização diária de ação/ETF (domingo sem candle novo mantém SUCCESS, INSUFFICIENT N de M candles, fim no último pregão, atraso real falha com o motivo)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, provedor de mercado, coleta e otimizador simulados"
     }
   ]
 }

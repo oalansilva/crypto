@@ -189,7 +189,14 @@ def test_mixed_1d_batch_saves_three_favorites_with_precision_and_window(batch_en
     assert favorites["BTC/USDT"].metrics["analysis_asset"]["currency"] == "USDT"
     # cripto mantém o nível de estrela do lote; ação/ETF sem nível até o #1122
     assert favorites["BTC/USDT"].tier == 3
-    assert favorites["NVDA"].tier is None and favorites["SPY"].tier is None
+    # Card #1122 (decisão 12 e decisão 2 de Alan): 1 estrela em qualquer classe e sem "Alertar".
+    assert favorites["NVDA"].tier == 3 and favorites["SPY"].tier == 3
+    assert not any(f.notify_telegram for f in favorites.values())
+    assert (favorites["NVDA"].data_source, favorites["NVDA"].session) == (
+        "binance_equity",
+        "regular_ny",
+    )
+    assert favorites["BTC/USDT"].data_source == "ccxt"
     assert favorites["NVDA"].parameters["data_source"] == "binance_equity"
 
     # 3.3 mesma amostra: cada ativo foi lido uma vez e a amostra vai para o item e para o favorito
@@ -348,7 +355,11 @@ def test_existing_favorite_is_skipped_and_failed_collection_says_why(batch_env):
                 symbol="SPY",
                 timeframe="1d",
                 strategy_name="multi_ma_crossover",
-                parameters={"direction": "long"},
+                # Card #1122: a duplicata compara a configuração (Binance Ações; Stooq coexiste).
+                parameters={"direction": "long", "data_source": "binance_equity"},
+                data_source="binance_equity",
+                session="regular_ny",
+                adjustment="split",
                 metrics={},
                 start_date=START,
                 end_date=END,

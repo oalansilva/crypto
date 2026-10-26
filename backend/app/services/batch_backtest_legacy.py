@@ -285,8 +285,12 @@ def run_legacy_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
 
         db = SessionLocal()
         try:
+            from app.services.favorite_configuration import derive_configuration
             from app.services.favorite_uniqueness import lock_and_find_duplicate
 
+            configuration = derive_configuration(
+                symbol, data_source=effective_data_source, parameters=params_with_direction
+            )
             if lock_and_find_duplicate(
                 db,
                 user_id=user_id,
@@ -297,6 +301,7 @@ def run_legacy_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
                 start_date=start_date,
                 end_date=end_date,
                 parameters=params_with_direction,
+                configuration=configuration,
             ):
                 job["skipped"] = job.get("skipped", 0) + 1
                 job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
@@ -313,6 +318,11 @@ def run_legacy_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
                 metrics=metrics,
                 notes=notes,
                 tier=3,
+                # Card #1122: favorito novo nunca nasce com "Alertar".
+                notify_telegram=False,
+                data_source=configuration.data_source,
+                session=configuration.session,
+                adjustment=configuration.adjustment,
                 start_date=start_date,
                 end_date=end_date,
                 period_type=period_type,
