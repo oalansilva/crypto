@@ -2,7 +2,8 @@
 
 A gravação valida o payload contra este contrato antes de escrever; a leitura devolve o que foi gravado.
 ``reason.code`` cobre os motivos do resultado (``no_history | no_overlap | short_overlap``) e os da
-coluna extra do Decidir (``sample_expired`` e ``regeneration_failed``), sempre sem número.
+coluna extra do Decidir (``sample_expired``, ``sample_unavailable`` e ``regeneration_failed``), sempre
+sem número.
 """
 
 from __future__ import annotations
@@ -77,10 +78,17 @@ class Delta(_Open):
 
 class Reason(_Open):
     code: Literal[
-        "no_history", "no_overlap", "short_overlap", "sample_expired", "regeneration_failed"
+        "no_history",
+        "no_overlap",
+        "short_overlap",
+        "sample_expired",
+        "sample_unavailable",
+        "regeneration_failed",
     ]
     text: str
     short: Optional[str] = None
+    # ``sample_unavailable``: ``metrics_mismatch | missing | unrecorded`` (cripto do caminho antigo).
+    detail: Optional[str] = None
 
 
 class ReferenceSample(_Open):

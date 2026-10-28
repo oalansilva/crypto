@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+from contextlib import contextmanager
 from pathlib import Path
 import tempfile
 
@@ -256,10 +257,9 @@ def prepare(inputs, on_progress=None):
         return _prepare_equity(inputs, on_progress)
     if _unified() and "/" in str(inputs.get("symbol", "")):
         return _prepare_crypto(inputs)
-    from src.data.incremental_loader import IncrementalLoader
     from app.services.market_data_providers import CcxtMarketDataProvider
 
-    loader = IncrementalLoader(cache_dir=os.getenv("DISCOVERY_MARKET_CACHE_DIR"))
+    loader = _legacy_loader()
     frame = CcxtMarketDataProvider(loader).fetch_ohlcv(
         symbol=inputs["symbol"],
         timeframe=inputs["timeframe"],
@@ -273,11 +273,23 @@ def prepare(inputs, on_progress=None):
         until_str=inputs["end_date"],
         read_only=False,
     )
+    return _write_legacy_spool((("candles", frame), ("intraday", intraday)))
+
+
+def _legacy_loader():
+    """O carregador do caminho antigo (sem amostra durável): cache parquet local da Binance."""
+    from src.data.incremental_loader import IncrementalLoader
+
+    return IncrementalLoader(cache_dir=os.getenv("DISCOVERY_MARKET_CACHE_DIR"))
+
+
+def _write_legacy_spool(frames):
+    """Grava os parquets privados do caminho antigo e devolve o manifesto com o SHA-256 de cada um."""
     root = Path(tempfile.mkdtemp(prefix="inputs-", dir=spool_directory()))
     mark_spool_owner(root)
     manifest = {"directory": str(root), "files": {}}
     try:
-        for name, data in (("candles", frame), ("intraday", intraday)):
+        for name, data in frames:
             path = root / f"{name}.parquet"
             data.to_parquet(path, index=True)
             path.chmod(0o600)
@@ -298,6 +310,152 @@ def prepare(inputs, on_progress=None):
     except BaseException:
         discard(manifest)
         raise
+
+
+# --------------------------------------------------------------------------- caminho antigo refeito
+#
+# Card #1123 (retrabalho pós Não homologar): a cripto da Descoberta sem ``MARKET_HISTORY_UNIFIED``
+# nunca guarda amostra. Para refazer os trades, as velas são relidas do mesmo cache local (só leitura:
+# nada é coletado nem gravado no cache) e entregues ao otimizador por um spool privado, igual ao
+# ``prepare``. A versão das velas (SHA-256) não é condição: a vela diária ainda aberta na hora da
+# varredura muda o byte sem mudar os trades; quem decide se o refeito vale é a conferência das métricas
+# refeitas contra as gravadas (``discovery_reference_column``).
+
+LEGACY_MISSING = "missing"  # o cache local não tem mais a série (ou a janela)
+LEGACY_UNRECORDED = "unrecorded"  # a varredura não registrou janela/métricas para conferir
+
+
+class LegacyInputsUnavailable(Exception):
+    """Não dá para refazer os trades do caminho antigo iguais aos da varredura."""
+
+    def __init__(self, detail):
+        super().__init__(detail)
+        self.detail = detail
+
+
+def _legacy_paths(loader, symbol, timeframe):
+    return {
+        "candles": (loader._get_parquet_path(symbol, timeframe), timeframe),
+        "intraday": (loader._get_parquet_path(symbol, "15m"), "15m"),
+    }
+
+
+def legacy_cache_present(symbol, timeframe, loader=None):
+    """Os dois arquivos do cache local existem (sem ler as velas; para o aviso antes da escolha)."""
+
+    loader = loader or _legacy_loader()
+    return all(
+        os.path.exists(path) for path, _ in _legacy_paths(loader, symbol, timeframe).values()
+    )
+
+
+def legacy_window_from_training(
+    symbol, timeframe, train_start, train_end, train_ratio, loader=None
+):
+    """Janela inteira de uma varredura antiga que não gravou as datas, a partir do treino gravado.
+
+    Varreduras antigas pediam um período relativo ("2y", "all") e não gravavam datas na combinação nem
+    na varredura. O resultado guarda a primeira e a última vela devolvidas pelo otimizador
+    (``start_at``/``end_at``), que são as do recorte de treino: as ``int(N * train_ratio)`` primeiras
+    das N velas da janela (``split_train_holdout``). Essas velas já estavam fechadas, então qualquer N
+    com o mesmo corte dá o mesmo treino e as mesmas métricas gravadas; usa o menor. Devolve
+    ``(início, fim)`` em ISO, o fim até o último instante da última vela (para o 15m de dentro dela
+    entrar), lendo só o cache local; sem velas suficientes levanta ``LegacyInputsUnavailable``.
+    """
+
+    loader = loader or _legacy_loader()
+    path, _tf = _legacy_paths(loader, symbol, timeframe)["candles"]
+    if not os.path.exists(path):
+        raise LegacyInputsUnavailable(LEGACY_MISSING)
+    since = loader._parse_datetime_utc(str(train_start), pd.Timestamp("2017-01-01", tz="UTC"))
+    last_train = loader._parse_datetime_utc(str(train_end), pd.Timestamp.now(tz="UTC"))
+    try:
+        frame = loader._read_parquet_slice(path, since, pd.Timestamp.now(tz="UTC"))
+    except Exception as exc:
+        raise LegacyInputsUnavailable(LEGACY_MISSING) from exc
+    if frame is None or frame.empty:
+        raise LegacyInputsUnavailable(LEGACY_MISSING)
+    times = pd.DatetimeIndex(frame.index).sort_values()
+    train_len = int((times <= last_train).sum())
+    if train_len < 1 or times[train_len - 1] != last_train:
+        raise LegacyInputsUnavailable(LEGACY_MISSING)  # o cache não tem mais as velas do treino
+    first = max(train_len + 1, int(train_len / train_ratio) - 2)
+    total = next(
+        (
+            n
+            for n in range(first, len(times) + 1)
+            if max(1, min(n - 1, int(n * train_ratio))) == train_len
+        ),
+        None,
+    )
+    if total is None:
+        raise LegacyInputsUnavailable(LEGACY_MISSING)
+    try:
+        step = pd.Timedelta(str(timeframe))
+    except (TypeError, ValueError):
+        step = pd.Timedelta(0)
+    end = times[total - 1] + (step - pd.Timedelta(seconds=1) if step > pd.Timedelta(0) else step)
+    return times[0].isoformat(), end.isoformat()
+
+
+def legacy_cache_frames(symbol, timeframe, start_date, end_date, loader=None):
+    """Recorte do cache local igual ao que o caminho antigo devolveu, sem rede e sem escrever.
+
+    Lê o parquet direto (``_read_parquet_slice``, o mesmo recorte do ``fetch_data`` quando o cache
+    cobre a janela), inclusive com ``MARKET_HISTORY_UNIFIED`` ligado depois da varredura.
+    """
+
+    loader = loader or _legacy_loader()
+    default_start = pd.Timestamp("2017-01-01", tz="UTC")
+    since = loader._parse_datetime_utc(start_date, default_start)
+    until = loader._parse_datetime_utc(end_date, pd.Timestamp.now(tz="UTC"))
+    frames = []
+    for role, (path, _tf) in _legacy_paths(loader, symbol, timeframe).items():
+        if not os.path.exists(path):
+            raise LegacyInputsUnavailable(LEGACY_MISSING)
+        try:
+            frame = loader._read_parquet_slice(path, since, until)
+        except Exception as exc:
+            raise LegacyInputsUnavailable(LEGACY_MISSING) from exc
+        if frame is None or frame.empty:
+            raise LegacyInputsUnavailable(LEGACY_MISSING)
+        frames.append((role, frame))
+    return frames
+
+
+@contextmanager
+def legacy_frozen_inputs(symbol, timeframe, start_date, end_date, loader=None):
+    """Spool privado com o recorte do cache local da janela; aponta o processo para ele.
+
+    O spool continua necessário: é por ele (``DISCOVERY_FROZEN_INPUT_DIR``) que o otimizador lê as
+    velas sem ir à rede, e o cache não pode ser apontado direto (série inteira, outros nomes). O
+    ambiente é trocado sob a mesma trava da reprodução por amostra (um por vez no processo do worker)
+    e restaurado na saída; o spool é apagado sempre. Sem janela fechada não há o que refazer.
+    """
+
+    from app.services.market_history.reproduction import _ENV_LOCK
+
+    if not start_date or not end_date:
+        raise LegacyInputsUnavailable(LEGACY_UNRECORDED)
+    frames = legacy_cache_frames(symbol, timeframe, start_date, end_date, loader=loader)
+    manifest = _write_legacy_spool(frames)
+    try:
+        keys = ("DISCOVERY_FROZEN_INPUT_DIR", SNAPSHOT_ID_ENV, SNAPSHOT_SEGMENTS_ENV)
+        with _ENV_LOCK:
+            saved = {key: os.environ.get(key) for key in keys}
+            os.environ.pop(SNAPSHOT_ID_ENV, None)
+            os.environ.pop(SNAPSHOT_SEGMENTS_ENV, None)
+            os.environ["DISCOVERY_FROZEN_INPUT_DIR"] = manifest["directory"]
+            try:
+                yield manifest
+            finally:
+                for key, value in saved.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
+    finally:
+        discard(manifest)
 
 
 def _validate_snapshot(manifest):

@@ -17,7 +17,13 @@ export const SECTION_SUBTITLE =
 
 export const CLASS_LABEL: Record<string, string> = { crypto: 'Cripto', stock: 'Ação', etf: 'ETF' }
 
-export type ReasonCode = 'no_history' | 'no_overlap' | 'short_overlap' | 'sample_expired' | 'regeneration_failed'
+export type ReasonCode =
+    | 'no_history'
+    | 'no_overlap'
+    | 'short_overlap'
+    | 'sample_expired'
+    | 'sample_unavailable'
+    | 'regeneration_failed'
 
 export interface ComparisonReference {
     kind: 'own' | 'catalog'
@@ -321,6 +327,12 @@ export interface CandidateWindow {
     symbol: string
     start: string | null
     end: string | null
+    /**
+     * `kept | pinned | expired` (amostra guardada) ou, para o candidato que nunca guardou amostra
+     * (cripto da Descoberta sem o histórico novo), `legacy` (refeito pelas velas do cache e conferido
+     * no cálculo pelas métricas gravadas na varredura) e `unavailable` (não dá para refazer: sem a
+     * janela da varredura ou sem o cache).
+     */
     sample?: string
     retain_until?: string | null
 }
@@ -333,8 +345,21 @@ export function columnChoiceHints(
 ): ChoiceHint[] {
     const out: ChoiceHint[] = []
     const expired = candidates.filter((c) => c.sample === 'expired')
+    // Cripto que nunca guardou amostra e não dá para refazer pelo caminho antigo: não é "vencida".
+    const unavailable = candidates.filter((c) => c.sample === 'unavailable')
     if (candidates.length > 0 && expired.length === candidates.length) {
         out.push({ tone: 'warn', text: `Todos os ${candidates.length} candidatos com amostra vencida: rode a varredura de novo para comparar` })
+        return out
+    }
+    if (candidates.length > 0 && unavailable.length === candidates.length) {
+        out.push({ tone: 'warn', text: `Todos os ${candidates.length} candidatos sem as velas da varredura: rode a varredura de novo para comparar` })
+        return out
+    }
+    if (candidates.length > 0 && expired.length + unavailable.length === candidates.length) {
+        out.push({
+            tone: 'warn',
+            text: `Nenhum dos ${candidates.length} candidatos tem amostra ou velas da varredura para refazer os trades: rode a varredura de novo para comparar`,
+        })
         return out
     }
     const span = storedSpan(asset)
@@ -356,6 +381,9 @@ export function columnChoiceHints(
     }
     if (expired.length > 0) {
         out.push({ tone: 'note', text: `${expired.length} ${expired.length === 1 ? 'candidato' : 'candidatos'} com amostra vencida` })
+    }
+    if (unavailable.length > 0) {
+        out.push({ tone: 'note', text: `${unavailable.length} ${unavailable.length === 1 ? 'candidato' : 'candidatos'} sem as velas da varredura` })
     }
     return out
 }
@@ -424,6 +452,7 @@ export interface ColumnCounts {
     no_overlap?: number
     no_history?: number
     sample_expired?: number
+    sample_unavailable?: number
     regeneration_failed?: number
     computed: number
     total: number
@@ -444,6 +473,8 @@ export function stripSummary(counts: ColumnCounts | null | undefined, refSymbol:
     add(counts.short_overlap, 'período comum curto')
     add(counts.no_overlap, 'sem período comum')
     add(counts.sample_expired, 'amostra vencida')
+    // Velas fora do cache, janela não registrada ou trades refeitos que não batem com a varredura.
+    add(counts.sample_unavailable, 'sem os trades da varredura')
     add(counts.no_history, 'sem histórico')
     add(counts.regeneration_failed, 'trades não refeitos')
     return `${counts.valid} de ${total} candidatos desta varredura com comparação${parts.length ? `; ${parts.join('; ')}` : ''}.`

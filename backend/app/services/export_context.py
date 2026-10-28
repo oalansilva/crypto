@@ -329,6 +329,16 @@ def situation_text(payload: dict[str, Any], *, short: bool = False) -> str:
     text = (
         (reason.get("short") if short else reason.get("text")) or reason.get("text") or "sem motivo"
     )
+    long_text = str(reason.get("text") or "")
+    if reason.get("code") == "sample_unavailable" or (
+        # Cripto sem amostra cujo refeito falhou: o texto longo já diz "Sem comparação:".
+        reason.get("code") == "regeneration_failed"
+        and long_text.startswith("Sem comparação")
+    ):
+        # Card #1123 (retrabalho): o histórico não é insuficiente; os trades da varredura é que não
+        # puderam ser refeitos iguais (conferidos pelas métricas). O texto longo já começa com
+        # "Sem comparação:".
+        return text if text.startswith("Sem comparação") else f"Sem comparação: {text}"
     return f"Histórico insuficiente: {text}"
 
 
