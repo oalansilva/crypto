@@ -21,6 +21,15 @@
       "evidence": "PostgreSQL fixture and route assertions"
     },
     {
+      "file": "backend/tests/unit/test_alembic_single_head.py",
+      "protected_behavior": "Cadeia de migrações do Alembic com uma única head (o alembic upgrade head do ./restart recusa várias) e merge 20261028_0002 unindo as heads do #1122 e do #1123",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ScriptDirectory sobre backend/alembic.ini e backend/alembic/versions, sem banco"
+    },
+    {
       "file": "backend/tests/unit/test_api_coverage.py",
       "protected_behavior": "API health, candles and metadata",
       "production_reachability": "reachable",
