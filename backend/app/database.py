@@ -96,6 +96,48 @@ FAVORITE_ALERT_SCHEMA_SQL = (
 )
 
 
+# Card #1123: ponteiro do favorito para a comparação gravada (tabela nova vem do ``create_all``).
+# A FK (ON DELETE SET NULL, como no modelo) só entra quando as duas tabelas existem e ainda não há
+# FK do ponteiro; o ponteiro órfão vira nulo antes. Corrida entre processos na subida é ignorada.
+BENCHMARK_SCHEMA_SQL = (
+    "ALTER TABLE IF EXISTS favorite_strategies "
+    "ADD COLUMN IF NOT EXISTS benchmark_comparison_id VARCHAR(36) NULL",
+    "CREATE INDEX IF NOT EXISTS ix_favorite_strategies_benchmark_comparison "
+    "ON favorite_strategies (benchmark_comparison_id)",
+    """
+    DO $$
+    BEGIN
+        IF to_regclass('favorite_strategies') IS NOT NULL
+           AND to_regclass('benchmark_comparisons') IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM pg_constraint c
+               JOIN pg_attribute a
+                 ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+               WHERE c.contype = 'f'
+                 AND c.conrelid = to_regclass('favorite_strategies')
+                 AND c.confrelid = to_regclass('benchmark_comparisons')
+                 AND a.attname = 'benchmark_comparison_id'
+           ) THEN
+            UPDATE favorite_strategies f SET benchmark_comparison_id = NULL
+             WHERE f.benchmark_comparison_id IS NOT NULL
+               AND NOT EXISTS (
+                   SELECT 1 FROM benchmark_comparisons b WHERE b.id = f.benchmark_comparison_id
+               );
+            BEGIN
+                ALTER TABLE favorite_strategies
+                    ADD CONSTRAINT fk_favorite_strategies_benchmark_comparison
+                    FOREIGN KEY (benchmark_comparison_id)
+                    REFERENCES benchmark_comparisons (id) ON DELETE SET NULL;
+            EXCEPTION WHEN duplicate_object THEN
+                NULL;
+            END;
+        END IF;
+    END
+    $$
+    """,
+)
+
+
 def ensure_runtime_schema_migrations() -> None:
     """Backward-compatible runtime migration entrypoint used during app startup."""
 
@@ -379,6 +421,9 @@ def ensure_runtime_schema_migrations() -> None:
                 """))
         # Card #1122: configuração do favorito, default falso de "Alertar" e evento com identidade.
         for statement in FAVORITE_ALERT_SCHEMA_SQL:
+            conn.execute(text(statement))
+        # Card #1123: comparação com referência gravada no favorito.
+        for statement in BENCHMARK_SCHEMA_SQL:
             conn.execute(text(statement))
         conn.execute(text("""
                 ALTER TABLE favorite_strategies

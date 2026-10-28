@@ -109,6 +109,9 @@ class ComboBacktestResponse(BaseModel):
     conventions: Optional[Dict[str, Any]] = Field(
         None, description="Custos, anualização, calendário, fração e short"
     )
+    # Card #1123 (decisão 5): comparação padrão (próprio ativo) gravada ao rodar.
+    benchmark_comparison: Optional[Dict[str, Any]] = None
+    benchmark_comparison_error: Optional[Dict[str, Any]] = None
 
 
 class ComboOptimizationRequest(BaseModel):
@@ -207,6 +210,9 @@ class ComboOptimizationResponse(BaseModel):
     conventions: Optional[Dict[str, Any]] = Field(
         None, description="Custos, anualização, calendário, fração e short"
     )
+    # Card #1123 (decisão 5): comparação padrão (próprio ativo) gravada ao rodar.
+    benchmark_comparison: Optional[Dict[str, Any]] = None
+    benchmark_comparison_error: Optional[Dict[str, Any]] = None
     combination_errors: Optional[Dict[str, Any]] = Field(
         None,
         description="Combinações descartadas por erro: {failed, executed, reasons[{reason, count}], message}; "

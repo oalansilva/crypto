@@ -28,6 +28,8 @@ class FavoriteStrategyBase(BaseModel):
     auto_refresh_started_at: Optional[datetime] = None
     auto_refresh_completed_at: Optional[datetime] = None
     auto_refresh_run_id: Optional[str] = None
+    # Card #1123 (decisão 5): comparação com referência gravada (herdada do resultado ao salvar).
+    benchmark_comparison_id: Optional[str] = None
 
 
 class FavoriteStrategyCreate(FavoriteStrategyBase):
@@ -52,6 +54,8 @@ class FavoriteStrategyResponse(FavoriteStrategyBase):
     configuration: Optional[Dict[str, Any]] = None
     # Card #1122: linha do catálogo do Cripto Farol (vitrine), sem controle "Alertar".
     is_curated_fallback: bool = False
+    # Card #1123: comparação gravada resumida ("Ref.: SPY · comparação gravada 27/10").
+    benchmark_comparison: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True

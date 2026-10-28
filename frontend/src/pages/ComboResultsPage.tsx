@@ -5,6 +5,8 @@ import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCand
 import { SaveFavoriteError, SaveFavoriteModal, type SaveFavoriteIdentity } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
 import { DataExecutionBlock } from '../components/results/DataExecutionBlock'
+import { BenchmarkComparison } from '../components/results/BenchmarkComparison'
+import type { BenchmarkComparison as BenchmarkComparisonPayload } from '@/lib/benchmarkComparison'
 import {
     CLASS_CHIP_LABEL,
     currencyOf,
@@ -54,6 +56,13 @@ interface BacktestResult {
     execution?: ExecutionInfo | null
     conventions?: ConventionsInfo | null
     combination_errors?: CombinationErrorsInfo | null
+    /** Card #1123: comparação gravada (padrão do próprio ativo ao rodar, ou a escolhida). */
+    benchmark_comparison?: BenchmarkComparisonPayload | null
+    benchmark_comparison_error?: { message?: string } | null
+    snapshot_id?: string | null
+    /** Análise aberta de Favoritos: a troca grava no favorito. */
+    favorite_id?: number | null
+    favorite_name?: string | null
     strategy_description?: string | null
     is_strategy_protected?: boolean
     parameters: Record<string, any>
@@ -113,6 +122,36 @@ export function ComboResultsPage() {
     const returnTo = location.state?.returnTo as string | undefined
     const isOptimization = location.state?.isOptimization === true
     const [isModalOpen, setIsModalOpen] = useState(false)
+    // Card #1123: comparação gravada; a troca substitui `history.state` (recarregar mantém a escolha).
+    const [comparison, setComparison] = useState<BenchmarkComparisonPayload | null>(
+        result?.benchmark_comparison ?? null,
+    )
+    const [exportStatus, setExportStatus] = useState('')
+    const favoriteOwner = returnTo === '/favorites' && Boolean(result?.favorite_id)
+
+    const handleComparisonRecorded = (payload: BenchmarkComparisonPayload) => {
+        setComparison(payload)
+        navigate(`${location.pathname}${location.search}`, {
+            replace: true,
+            state: { ...(location.state || {}), result: { ...result, benchmark_comparison: payload } },
+        })
+    }
+
+    const resultContext = () => ({
+        symbol: result.symbol,
+        timeframe: result.timeframe,
+        asset: result.asset ?? null,
+        data_provenance: result.data_provenance ?? null,
+        execution: result.execution ?? null,
+        conventions: result.conventions ?? null,
+        start_date: result.start_date ?? null,
+        end_date: result.end_date ?? null,
+        period_type: result.period_type ?? null,
+        execution_mode: result.execution_mode ?? null,
+        snapshot_id: result.snapshot_id ?? null,
+        direction: (result as any).direction ?? result.parameters?.direction ?? 'long',
+        is_optimization: isOptimization,
+    })
 
     const handleSaveFavorite = async (data: any) => {
         console.log('📤 handleSaveFavorite chamado com:', data)
@@ -121,7 +160,8 @@ export function ComboResultsPage() {
             const response = await authFetch(`${API_BASE_URL}/favorites`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                // Card #1123: a referência escolhida vai junto ao salvar.
+                body: JSON.stringify({ ...data, benchmark_comparison_id: comparison?.id ?? null })
             })
 
             console.log('📡 Response status:', response.status)
@@ -201,14 +241,19 @@ export function ComboResultsPage() {
                 };
             });
 
-            const response = await fetch(`${API_BASE_URL}/combos/export-trades`, {
+            setExportStatus('Gerando a planilha…');
+            const response = await authFetch(`${API_BASE_URL}/combos/export-trades`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     trades: tradesData,
                     symbol: result.symbol,
                     template_name: result.template_name,
-                    timeframe: result.timeframe
+                    timeframe: result.timeframe,
+                    // Card #1123: contexto e comparação gravada (aba Contexto); do favorito, o servidor lê o dele.
+                    context: resultContext(),
+                    benchmark_comparison_id: comparison?.id ?? null,
+                    favorite_id: favoriteOwner ? result.favorite_id : null,
                 })
             });
 
@@ -226,7 +271,7 @@ export function ComboResultsPage() {
             const contentDisposition = response.headers.get('Content-Disposition');
             let filename = `${result.template_name}_${result.symbol.replace('/', '_')}_${result.timeframe}_trades.xlsx`;
             if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/);
                 if (filenameMatch) {
                     filename = filenameMatch[1];
                 }
@@ -237,9 +282,15 @@ export function ComboResultsPage() {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+            const refText = !comparison
+                ? 'referência não registrada'
+                : comparison.reference.kind === 'own'
+                    ? 'referência próprio ativo'
+                    : `referência ${comparison.reference.symbol}`;
+            setExportStatus(`Planilha baixada: ${filename} · abas Trades, Contexto e Legenda · ${refText}.`);
         } catch (err) {
             console.error('❌ Erro ao exportar trades:', err);
-            alert('Erro ao exportar trades para Excel. Tente novamente.');
+            setExportStatus('Não foi possível exportar a planilha. Tente de novo.');
         }
     }
 
@@ -522,6 +573,28 @@ export function ComboResultsPage() {
                         </div>
                     </section>
 
+                    <BenchmarkComparison
+                        strategy={{
+                            symbol: result.symbol,
+                            assetClass: resultAsset?.asset_class ?? (result.symbol.includes('/') ? 'crypto' : null),
+                            currency: resultCurrency,
+                            name: resultAsset?.name ?? null,
+                            direction,
+                            window: {
+                                start: result.execution?.window?.covered?.start ?? comparison?.strategy?.window?.start ?? result.start_date ?? null,
+                                end: result.execution?.window?.covered?.end ?? comparison?.strategy?.window?.end ?? result.end_date ?? null,
+                            },
+                        }}
+                        comparison={comparison}
+                        initialError={result.benchmark_comparison_error ?? null}
+                        owner={favoriteOwner ? 'favorite' : 'result'}
+                        favoriteId={favoriteOwner ? result.favorite_id ?? null : null}
+                        favoriteName={result.favorite_name ?? null}
+                        buildContext={() => ({ ...resultContext(), trades: result.trades })}
+                        onRecorded={handleComparisonRecorded}
+                        readOnly={returnTo === '/favorites' && !result.favorite_id}
+                    />
+
                     <DataExecutionBlock
                         asset={resultAsset}
                         provenance={result.data_provenance}
@@ -611,6 +684,7 @@ export function ComboResultsPage() {
                         direction={direction}
                         metrics={isDiscovery ? derivedMetrics || metrics : metrics}
                         onExport={handleExportTrades}
+                        exportStatus={exportStatus}
                         testId="result-trades"
                         showMetrics={false}
                         currency={resultCurrency}

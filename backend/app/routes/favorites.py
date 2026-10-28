@@ -174,6 +174,17 @@ def _assets_for_rows(db: Session, rows: list[FavoriteStrategy]) -> dict[str, dic
     return out
 
 
+def _comparisons_for_rows(db: Session, rows: list[FavoriteStrategy]) -> dict[str, dict[str, Any]]:
+    """Comparações gravadas das linhas, de uma vez (card #1123)."""
+
+    from app.services.benchmark_comparison import get_comparisons
+
+    try:
+        return get_comparisons(db, [getattr(r, "benchmark_comparison_id", None) for r in rows])
+    except Exception:  # tabela ausente num banco antigo: a lista segue sem "Ref."
+        return {}
+
+
 def _favorite_response(
     row: FavoriteStrategy,
     *,
@@ -186,6 +197,7 @@ def _favorite_response(
     template_by_strategy: dict[str, dict[str, Any]] | None = None,
     asset_by_symbol: dict[str, dict[str, Any]] | None = None,
     is_curated_fallback: bool = False,
+    comparisons: dict[str, dict[str, Any]] | None = None,
 ) -> FavoriteStrategyResponse:
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
@@ -208,6 +220,13 @@ def _favorite_response(
     # Card #1122 (decisão 11): fonte, sessão, ajuste e os rótulos da configuração.
     payload["configuration"] = configuration_of_row(row).payload()
     payload["is_curated_fallback"] = bool(is_curated_fallback)
+    # Card #1123: comparação gravada resumida (lida, nunca calculada).
+    if comparisons is not None and row.benchmark_comparison_id:
+        from app.services.benchmark_comparison import summary as comparison_summary
+
+        payload["benchmark_comparison"] = comparison_summary(
+            comparisons.get(str(row.benchmark_comparison_id))
+        )
     template_data = (template_by_strategy or {}).get(str(row.strategy_name))
     payload["strategy_transparency"] = build_strategy_transparency(
         row.strategy_name,
@@ -669,6 +688,199 @@ async def _run_favorite_optimization(favorite: FavoriteStrategy) -> Dict[str, An
     )
 
 
+def _fmt_pct(value: Any) -> str:
+    number = _numeric_metric(value)
+    if number is None:
+        return "-"
+    return f"{number:.2f}%" if number > 1 or number < -1 else f"{number * 100:.2f}%"
+
+
+def _fmt_num(value: Any, decimals: int = 2) -> str:
+    number = _numeric_metric(value)
+    return "-" if number is None else f"{number:.{decimals}f}"
+
+
+def _fmt_currency(value: Any) -> str:
+    number = _numeric_metric(value)
+    return "-" if number is None else f"${number:.2f}"
+
+
+def _fmt_br_date(value: Any) -> str:
+    text = str(value or "").strip()
+    if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+        return f"{text[8:10]}/{text[5:7]}/{text[0:4]}"
+    return ""
+
+
+def _fmt_period(row: FavoriteStrategy) -> str:
+    start, end = _fmt_br_date(row.start_date), _fmt_br_date(row.end_date)
+    if start and end:
+        return f"{start} → {end}"
+    if start:
+        return f"≥ {start}"
+    if end:
+        return f"≤ {end}"
+    return "Todo"
+
+
+def _compound_points(metrics: dict[str, Any]) -> float | None:
+    points = _numeric_metric(metrics.get("total_return_pct"))
+    if points is not None:
+        return points
+    ratio = _numeric_metric(metrics.get("total_return"))
+    return None if ratio is None else ratio * 100
+
+
+FAVORITES_TODAY_COLUMNS = (
+    "Name",
+    "Symbol",
+    "Strategy",
+    "Direção",
+    "Timeframe",
+    "Período",
+    "Parameters",
+    "Stop Loss",
+    "Sharpe",
+    "Trades",
+    "Win Rate",
+    "Total Return",
+    "Ret/T %",
+    "Exp/Trade",
+    "Max DD",
+    "Profit Factor",
+    "Sortino",
+    "Max Loss",
+    "Avg ATR",
+    "WR Bull",
+    "WR Bear",
+    "Avg ADX",
+    "Notes",
+    "Created At",
+)
+
+
+def _favorite_today_columns(row: FavoriteStrategy, label: str, protected: bool) -> list[Any]:
+    """Colunas de hoje da planilha de Favoritos, com os mesmos nomes e regras da tela."""
+
+    from app.services.discovery_favorite_metrics import is_discovery_origin
+
+    raw = row.metrics if isinstance(row.metrics, dict) else {}
+    m = flatten_discovery_grid_metrics(raw) if raw else {}
+    m = m if isinstance(m, dict) else {}
+    if is_discovery_origin(raw) or not isinstance(m.get("trades"), list):
+        n = m.get(
+            "total_trades", m.get("trades") if isinstance(m.get("trades"), (int, float)) else None
+        )
+        trades = max(0, int(_numeric_metric(n) or 0))
+    else:
+        trades = len(m["trades"])
+    points = _compound_points(m)
+    per_trade = points / max(1, trades) if points is not None else None
+    total_pnl = _numeric_metric(m.get("total_pnl"))
+    expectancy = _numeric_metric(m.get("expectancy"))
+    if expectancy is None and total_pnl is not None and trades:
+        expectancy = total_pnl / max(1, trades)
+    parameters = row.parameters if isinstance(row.parameters, dict) else {}
+    if protected:
+        params_text = "Detalhes indisponíveis"
+    elif not parameters:
+        params_text = "Sem parametros"
+    else:
+        params_text = "&".join(f"{k}={v}" for k, v in parameters.items())
+    direction = str(parameters.get("direction") or "long").lower()
+    created = row.created_at.strftime("%d/%m/%Y %H:%M:%S") if row.created_at else ""
+    return [
+        row.name,
+        row.symbol,
+        label,
+        "Short" if direction == "short" else "Long",
+        row.timeframe,
+        _fmt_period(row),
+        params_text,
+        _fmt_pct(parameters.get("stop_loss") or None),
+        _fmt_num(m.get("sharpe_ratio")),
+        trades,
+        _fmt_pct(m.get("win_rate")),
+        "-" if points is None else f"{'+' if points >= 0 else ''}{points:.2f}%",
+        _fmt_pct(per_trade) if per_trade is not None else "-",
+        _fmt_currency(expectancy),
+        _fmt_pct(m.get("max_drawdown")),
+        _fmt_num(m.get("profit_factor")),
+        _fmt_num(m.get("sortino")),
+        m.get("max_consecutive_losses") or m.get("stop_loss_count") or 0,
+        _fmt_num(m.get("avg_atr")),
+        _fmt_pct(m.get("win_rate_bull")),
+        _fmt_pct(m.get("win_rate_bear")),
+        _fmt_num(m.get("avg_adx")),
+        row.notes or "",
+        created,
+    ]
+
+
+@router.get("/export")
+def export_favorites(
+    ids: str = Query("", description="Ids da lista filtrada, na ordem da tela"),
+    current_user_id: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Planilha de Favoritos pelo servidor (card #1123): colunas de hoje + 22 de contexto + Legenda.
+
+    Lê o favorito e a comparação gravada; nunca coleta nem recalcula.
+    """
+
+    import io
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services import export_context as xc
+
+    wanted: list[int] = []
+    for part in str(ids or "").split(","):
+        part = part.strip()
+        if part.isdigit() and int(part) not in wanted:
+            wanted.append(int(part))
+    if wanted:
+        rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.id.in_(wanted)).all()
+    else:
+        rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
+        wanted = [int(r.id) for r in sorted(rows, key=lambda r: r.id)]
+    visible = {str(current_user_id)} | set(
+        _admin_catalog_user_ids(db, exclude_user_id=current_user_id)
+    )
+    by_id = {
+        int(r.id): _normalize_favorite_json_fields(r) for r in rows if str(r.user_id) in visible
+    }
+    ordered = [by_id[i] for i in wanted if i in by_id]
+    _, display_names = _strategy_identities_for_rows(db, ordered)
+    assets = _assets_for_rows(db, ordered)
+    comparisons = _comparisons_for_rows(db, ordered)
+    header = list(FAVORITES_TODAY_COLUMNS) + list(xc.CONTEXT_FIELDS)
+    body: list[list[Any]] = []
+    for row in ordered:
+        label = display_names.get(str(row.strategy_name)) or str(row.strategy_name).replace(
+            "_", " "
+        )
+        cells = xc.favorite_context(
+            row,
+            _favorite_asset(row, assets),
+            (
+                comparisons.get(str(row.benchmark_comparison_id))
+                if row.benchmark_comparison_id
+                else None
+            ),
+        )
+        body.append(_favorite_today_columns(row, label, protected=False) + cells)
+    content = xc.write_workbook(
+        [("Favoritos", header, body), xc.legend_sheet(favorite=True, favorites_screen=True)]
+    )
+    filename = f"Crypto_Backtest_Favorites_{xc.today_iso()}.xlsx"
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/exists", response_model=ExistsResponse)
 def favorite_exists(
     strategy_name: str = Query(..., description="Template name"),
@@ -747,6 +959,7 @@ def list_favorites(
         descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
         assets = _assets_for_rows(db, rows)
+        comparisons = _comparisons_for_rows(db, rows)
         return [
             _favorite_response(
                 row,
@@ -757,6 +970,7 @@ def list_favorites(
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
                 asset_by_symbol=assets,
+                comparisons=comparisons,
             )
             for row in rows
         ]
@@ -766,6 +980,7 @@ def list_favorites(
         descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
         assets = _assets_for_rows(db, rows)
+        comparisons = _comparisons_for_rows(db, rows)
         return [
             _favorite_response(
                 row,
@@ -776,6 +991,7 @@ def list_favorites(
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
                 asset_by_symbol=assets,
+                comparisons=comparisons,
             )
             for row in rows
         ]
@@ -796,6 +1012,7 @@ def list_favorites(
         descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
         assets = _assets_for_rows(db, user_rows)
+        comparisons = _comparisons_for_rows(db, user_rows)
         return [
             _favorite_response(
                 row,
@@ -806,6 +1023,7 @@ def list_favorites(
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
                 asset_by_symbol=assets,
+                comparisons=comparisons,
             )
             for row in user_rows
         ]
@@ -815,6 +1033,7 @@ def list_favorites(
         descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
         assets = _assets_for_rows(db, user_rows)
+        comparisons = _comparisons_for_rows(db, user_rows)
         return [
             _favorite_response(
                 row,
@@ -825,6 +1044,7 @@ def list_favorites(
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
                 asset_by_symbol=assets,
+                comparisons=comparisons,
             )
             for row in user_rows
         ]
@@ -843,6 +1063,7 @@ def list_favorites(
     descriptions, display_names = _strategy_identities_for_rows(db, rows)
     templates = _strategy_templates_for_rows(db, rows)
     assets = _assets_for_rows(db, rows)
+    comparisons = _comparisons_for_rows(db, rows)
     return [
         _favorite_response(
             row,
@@ -854,6 +1075,7 @@ def list_favorites(
             display_name_by_strategy=display_names,
             template_by_strategy=templates,
             asset_by_symbol=assets,
+            comparisons=comparisons,
             is_curated_fallback=True,
         )
         for row in rows
@@ -1078,6 +1300,19 @@ def create_favorite(
         payload = favorite.model_dump(
             exclude={"oos_metrics", "oos_verdict", "oos_proof", "override_oos"}
         )
+        # Card #1123 (decisão 5): a comparação escolhida no resultado vai junto ao salvar.
+        inherited_comparison = None
+        comparison_id = payload.pop("benchmark_comparison_id", None)
+        if comparison_id:
+            from app.services.benchmark_comparison import get_comparison
+
+            inherited_comparison = get_comparison(db, comparison_id)
+            if inherited_comparison is None or str(
+                inherited_comparison.get("user_id") or ""
+            ) not in ("", str(current_user_id)):
+                raise HTTPException(
+                    status_code=422, detail="Comparação com referência não encontrada"
+                )
         metrics = payload.get("metrics") or {}
         if isinstance(favorite.oos_metrics, dict):
             metrics = {**metrics, "oos_metrics": favorite.oos_metrics}
@@ -1167,6 +1402,20 @@ def create_favorite(
 
         db_favorite = FavoriteStrategy(user_id=current_user_id, **payload)
         db.add(db_favorite)
+        if inherited_comparison is not None:
+            from app.models_benchmark import BenchmarkComparison
+            from app.services.benchmark_comparison import pin_reference
+
+            db.flush()
+            db_favorite.benchmark_comparison_id = inherited_comparison["id"]
+            row = (
+                db.query(BenchmarkComparison)
+                .filter(BenchmarkComparison.id == inherited_comparison["id"])
+                .first()
+            )
+            if row is not None and row.favorite_id is None:
+                row.favorite_id = db_favorite.id
+            pin_reference(db, inherited_comparison)
         db.commit()
         db.refresh(db_favorite)
         include_details = can_view_strategy_details(db, current_user_id)
@@ -1179,6 +1428,7 @@ def create_favorite(
             display_name_by_strategy=display_names,
             template_by_strategy=_strategy_templates_for_rows(db, [db_favorite]),
             asset_by_symbol=_assets_for_rows(db, [db_favorite]),
+            comparisons=_comparisons_for_rows(db, [db_favorite]),
         )
     except HTTPException:
         raise

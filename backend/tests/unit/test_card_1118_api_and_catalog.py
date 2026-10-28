@@ -353,6 +353,8 @@ def test_only_the_history_route_and_the_equity_provider_may_collect_equity():
         "services/market_history/facade.py",  # loader_frame (só cripto)
         "services/market_history/service.py",  # a própria coleta
         "services/market_history/rate_limit.py",  # limitador compartilhado (importa os erros do provedor)
+        # Card #1123 (decisão 6): referência escolhida coletada na hora da escolha, com teto de tempo.
+        "services/benchmark_comparison.py",
     }
 
 

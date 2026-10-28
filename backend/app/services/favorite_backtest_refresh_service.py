@@ -689,6 +689,27 @@ class FavoriteBacktestRefreshService:
             direction=_favorite_direction(parameters),
         )
 
+    def _refresh_comparison(self, session: Session, favorite_id: int) -> None:
+        """Refaz a comparação gravada; falha nunca derruba o refresh já gravado."""
+
+        refresher = getattr(self, "comparison_refresher", None)
+        if refresher is None:
+            from app.services.benchmark_comparison import (
+                auto_record_enabled,
+                refresh_favorite_comparison,
+            )
+
+            if not auto_record_enabled():
+                return
+            refresher = refresh_favorite_comparison
+        try:
+            refresher(session, favorite_id)
+        except Exception as exc:
+            session.rollback()
+            logger.warning(
+                "Comparison refresh failed for favorite %s: %s", favorite_id, exc, exc_info=True
+            )
+
     def refresh_favorite(self, favorite_id: int, *, db: Session | None = None) -> dict[str, Any]:
         owns_session = db is None
         session = db or self._db_factory()
@@ -840,6 +861,8 @@ class FavoriteBacktestRefreshService:
             run.updated_at = completed_at
             run.completed_at = completed_at
             session.commit()
+            # Card #1123 (decisão 5): o único recálculo da comparação, com a mesma referência.
+            self._refresh_comparison(session, favorite.id)
             return {"favorite_id": favorite.id, "status": REFRESH_STATUS_SUCCESS, "run_id": run_id}
         except Exception as exc:
             session.rollback()

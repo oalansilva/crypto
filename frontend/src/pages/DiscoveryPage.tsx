@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Check, ChevronLeft, ChevronRight, CircleX, Clock, Copy, Edit3, History, Pause, Play, RefreshCw,
-  Shield, Square, Star, Trash2, TriangleAlert, X,
+  Shield, Square, Star, Target, Trash2, TriangleAlert, X,
 } from 'lucide-react'
 import { authFetch } from '../lib/authFetch'
 import { API_BASE_URL } from '../lib/apiBase'
@@ -71,6 +71,14 @@ import {
 } from '../lib/assetSelection'
 import { useSelectionView } from '../lib/assetStore'
 import { evidenceSample, rowSample, seriesLine, type SampleInfo, type ResultProvenance } from '../lib/sampleState'
+import {
+  RankingExportButton,
+  ReferenceColumnCell,
+  ReferenceColumnHeader,
+  ReferenceColumnStrip,
+  type RefColumnState,
+} from '../components/results/ReferenceColumn'
+import { promotionReferenceNote, showPromotionReferenceNote, type CellSummary } from '../lib/benchmarkComparison'
 import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
 import './DiscoveryPage.css'
 
@@ -182,6 +190,8 @@ type LeaderboardRow = {
   asset?: ResultAsset | null
   execution?: ExecutionInfo | null
   conventions?: ConventionsInfo | null
+  /** Card #1123: célula da coluna extra (lida do que foi gravado; nunca calculada na leitura). */
+  reference_comparison?: CellSummary | null
 }
 
 type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
@@ -439,6 +449,8 @@ export function DiscoveryPage() {
   const [busy, setBusy] = useState(false)
   // Leaderboard
   const [rows, setRows] = useState<LeaderboardRow[]>([])
+  // Card #1123: coluna extra gravada por varredura e usuário (resumo vem com o leaderboard).
+  const [refColumn, setRefColumn] = useState<RefColumnState | null>(null)
   // Card 852: parciais do Acompanhar vivem separadas do leaderboard do
   // Decidir (top-5 travadas do sweep em curso, sem paginação).
   const [partials, setPartials] = useState<LeaderboardRow[]>([])
@@ -1011,6 +1023,7 @@ export function DiscoveryPage() {
         setTotalMatched(data.total || 0)
         setTotalAvailable(data.unfiltered_total ?? data.total ?? 0)
         setClassCounts(data.class_counts ?? null)
+        setRefColumn(data.reference_column ?? null)
       } catch {
         if (req !== lbReqRef.current) return
         setLbError(true)
@@ -1529,6 +1542,12 @@ export function DiscoveryPage() {
       window.clearTimeout(t)
     }
   }, [discardTarget, closeDiscard])
+
+  const extraColumn = refColumn?.column ?? null
+  const reloadLeaderboardSilently = useCallback(() => {
+    if (!viewSweep) return
+    void loadLeaderboard(viewSweep.sweep_id, metric, fSymbol, fTimeframe, fDirection, page, true, fClass)
+  }, [viewSweep, loadLeaderboard, metric, fSymbol, fTimeframe, fDirection, page, fClass])
 
   const renderLeaderboardActionCell = (row: LeaderboardRow) => {
     const insufficient = row.eligibility === 'insufficient_sample'
@@ -2812,9 +2831,23 @@ export function DiscoveryPage() {
                     ) : null}
                   </p>
                 </div>
-                <span className="text-xs text-[var(--text-tertiary)]" aria-live="polite" data-testid="result-count">
-                  {lbLoading ? 'Carregando…' : `${totalMatched} de ${totalAvailable} candidatos · página ${page} de ${totalPages}`}
-                </span>
+                <div className="b23-lb-actions">
+                  <span className="text-xs text-[var(--text-tertiary)]" aria-live="polite" data-testid="result-count">
+                    {lbLoading ? 'Carregando…' : `${totalMatched} de ${totalAvailable} candidatos · página ${page} de ${totalPages}`}
+                  </span>
+                  <RankingExportButton
+                    sweepId={viewSweep.sweep_id}
+                    params={{
+                      metric,
+                      ...(fSymbol !== 'all' ? { symbol: fSymbol } : {}),
+                      ...(fTimeframe !== 'all' ? { timeframe: fTimeframe } : {}),
+                      ...(fDirection !== 'all' ? { direction: fDirection } : {}),
+                      ...(fClass !== 'all' ? { asset_class: fClass } : {}),
+                    }}
+                    disabled={lbLoading || totalMatched === 0}
+                    column={refColumn?.column ?? null}
+                  />
+                </div>
               </div>
 
               {viewNote ? (
@@ -2847,6 +2880,13 @@ export function DiscoveryPage() {
                   <b>Viés de sobrevivência:</b> {survivorshipDecidir(viewWindow)}
                 </span>
               </p>
+              <p className="mc-note" data-testid="ranking-reference">
+                <Target aria-hidden="true" />
+                <span>
+                  <b>Referência do ranking:</b> o próprio ativo (buy-and-hold, long-only). A ordem, o rank global e a elegibilidade não mudam com a coluna extra nem com a referência escolhida num resultado ou favorito.
+                </span>
+              </p>
+              <ReferenceColumnStrip sweepId={viewSweep.sweep_id} state={refColumn} onReload={reloadLeaderboardSilently} />
 
               {lbError ? (
                 <div className="mt-4 rounded-lg border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-3.5">
@@ -2978,13 +3018,14 @@ export function DiscoveryPage() {
                     <th scope="col" aria-label="CAGR anualizado da varredura">
                       <span>CAGR anualizado</span>
                     </th>
+                    {extraColumn ? <ReferenceColumnHeader symbol={extraColumn.reference.symbol} /> : null}
                     <th scope="col" className="action">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
                   {classEmpty ? (
                     <tr className="mc-empty" data-testid="class-empty">
-                      <td colSpan={10}>
+                      <td colSpan={extraColumn ? 11 : 10}>
                         {classEmptyText(fClass)}{' '}
                         <button type="button" className="mc-linkbtn" onClick={clearFilters}>
                           Limpar filtros
@@ -3028,7 +3069,10 @@ export function DiscoveryPage() {
                               {(() => {
                                 // Card #1118: estado da amostra da própria varredura; favorito lembra que
                                 // Favoritos guarda a amostra do último refresh (o número que se refaz igual).
-                                const state = rowSample(row)
+                                const base = rowSample(row)
+                                const state = extraColumn && base.sample && base.sampleTone !== 'expired'
+                                  ? { ...base, sample: 'amostra guardada pela coluna extra' }
+                                  : base
                                 return (
                                   <>
                                     {state.sample ? (
@@ -3158,6 +3202,14 @@ export function DiscoveryPage() {
                         >
                           {easy.cagr}
                         </td>
+                        {extraColumn ? (
+                          <ReferenceColumnCell
+                            cell={row.reference_comparison}
+                            symbol={extraColumn.reference.symbol}
+                            computing={extraColumn.status === 'computing' || extraColumn.status === 'collecting'}
+                            resultId={row.result_id}
+                          />
+                        ) : null}
                         {renderLeaderboardActionCell(row)}
                       </tr>
                     )
@@ -3294,6 +3346,11 @@ export function DiscoveryPage() {
                 <small className="block text-[var(--text-muted)]">Destino obrigatório</small>
                 <strong className="text-[var(--accent-primary)]">{PROMOTION_DESTINATION}</strong>
                 <span className="mt-1 block text-[11px] text-[var(--text-tertiary)] max-w-[75ch]">{promotionDestinationNote(rowClass(promoteTarget))}</span>
+                {extraColumn && showPromotionReferenceNote(extraColumn.status, promoteTarget.reference_comparison) ? (
+                  <span className="mt-1 block text-[12px] text-[var(--text-secondary)] max-w-[75ch]" data-testid="promotion-reference">
+                    {promotionReferenceNote(promoteTarget.reference_comparison, extraColumn.reference.symbol)}
+                  </span>
+                ) : null}
               </div>
               {promoteConflict ? (
                 <div className="mt-3.5 rounded-lg border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-3 text-xs text-[var(--text-secondary)]" data-testid="promote-conflict">

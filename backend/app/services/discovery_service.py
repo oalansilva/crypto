@@ -2364,6 +2364,20 @@ class DiscoveryService:
             from app.services.market_history import snapshots as history_snapshots
 
             history_snapshots.pin(db, favorite.snapshot_id)
+        # Card #1123 (P2 da crítica): com a coluna extra ativa, o favorito promovido herda a
+        # comparação gravada da célula (mesma referência, mesma amostra, sem recálculo). Candidato
+        # "Sem comparação" vai com a referência padrão (próprio ativo, gravada no 1º refresh).
+        inherited_comparison = None
+        try:
+            from app.services import benchmark_comparison as bench
+            from app.services.discovery_reference_column import inherited_for_promotion
+
+            inherited_comparison = inherited_for_promotion(db, result.sweep_id, actor, result.id)
+            if inherited_comparison is not None:
+                favorite.benchmark_comparison_id = inherited_comparison["id"]
+                bench.pin_reference(db, inherited_comparison)
+        except Exception:
+            logger.warning("Comparação da coluna extra não herdada na promoção", exc_info=True)
         result.dedup_state = "already_promoted"
         result.dedup_reference = str(favorite.id)
         result.updated_at = _utcnow()
@@ -2397,7 +2411,10 @@ class DiscoveryService:
                     "result_id": result_id,
                 }, 200
             raise
-        return {"favorite_id": str(favorite.id), "result_id": result.id}, 201
+        body = {"favorite_id": str(favorite.id), "result_id": result.id}
+        if inherited_comparison is not None:
+            body["benchmark_comparison_id"] = inherited_comparison["id"]
+        return body, 201
 
     @staticmethod
     def _promotion_identity(

@@ -9,6 +9,9 @@ os.environ["ASSET_CATALOG_REFRESH_ENABLED"] = "0"
 os.environ["WORKFLOW_DB_ENABLED"] = "1"
 os.environ["WORKFLOW_ALLOW_SHARED_PROJECT_DB"] = "1"
 os.environ["JWT_SECRET"] = "pytest-jwt-secret-do-not-use-elsewhere"
+# Card #1123: a comparação automática (rodada e refresh) coleta na Binance; os testes que a
+# exercitam ligam de novo e trocam a fonte da referência.
+os.environ.setdefault("BENCHMARK_AUTO_RECORD", "0")
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/crypto_app_test",
@@ -72,10 +75,14 @@ def _card_1118_provenance_columns():
             # Card #1122: colunas novas de favoritos e alertas em bancos de teste persistentes.
             from sqlalchemy import text
 
-            from app.database import FAVORITE_ALERT_SCHEMA_SQL
+            from app.database import BENCHMARK_SCHEMA_SQL, FAVORITE_ALERT_SCHEMA_SQL
 
             with engine.begin() as connection:
                 for statement in FAVORITE_ALERT_SCHEMA_SQL:
+                    connection.execute(text(statement))
+            # Card #1123: ponteiro da comparação gravada em favoritos.
+            with engine.begin() as connection:
+                for statement in BENCHMARK_SCHEMA_SQL:
                     connection.execute(text(statement))
         finally:
             engine.dispose()
