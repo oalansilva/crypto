@@ -164,6 +164,48 @@ const CLOSED_REASON: Record<string, { short: string; long: string }> = {
     pre_open: { short: '', long: ' · fora do pregão' },
 };
 
+/** Horário de um candle intradiário da série atrasada: só a hora quando é do dia (BRT) de agora. */
+const intradayLabel = (value: string | null | undefined, now: Date, long: boolean): string | null => {
+    const date = parseDate(value);
+    if (!date) return null;
+    const local = parts(date, BRT);
+    if (sameDay(local, parts(now, BRT))) return local.time;
+    return `${long ? dayLong(local) : dayShort(local)} ${local.time}`;
+};
+
+/**
+ * Card #1122 (residual P2 da w3): a linha está em espera por causa de outro tempo gráfico do mesmo
+ * ativo (`stale_detail`). O texto diz o tempo gráfico e os horários da série atrasada, nunca
+ * "falta" de um candle do próprio tempo gráfico que já chegou.
+ */
+const otherTimeframeDelay = (
+    opportunity: Opportunity,
+    now: Date,
+): { short: string; full: string } | null => {
+    const state = opportunity.market_state;
+    const detail = state?.stale_detail;
+    const timeframe = String(detail?.timeframe || state?.stale_timeframe || '').trim().toLowerCase();
+    const own = String(opportunity.timeframe || '').trim().toLowerCase();
+    if (!detail || !timeframe || timeframe === own) return null;
+    const equity = isEquityOpportunity(opportunity);
+    const daily = timeframe === '1d';
+    const expectedShort = daily
+        ? candleLabel(detail.expected_candle, timeframe, equity, false)
+        : intradayLabel(detail.expected_candle, now, false) ?? '-';
+    const expectedLong = daily
+        ? candleLabel(detail.expected_candle, timeframe, equity, true)
+        : intradayLabel(detail.expected_candle, now, true) ?? '-';
+    const last = daily
+        ? candleLabel(detail.last_candle, timeframe, equity, true)
+        : intradayLabel(detail.last_candle, now, true);
+    return {
+        short: `Dados atrasados no ${timeframe} · falta ${expectedShort}`,
+        full: last && last !== '-'
+            ? `Dados atrasados no ${timeframe} · último ${last}; esperado ${expectedLong}`
+            : `Dados atrasados no ${timeframe} · nenhum candle recebido; esperado ${expectedLong}`,
+    };
+};
+
 /**
  * Estado do mercado da linha, em quatro tons (ícone + texto, nunca só cor).
  * A cripto só mostra estado quando o servidor diz que o dado está atrasado.
@@ -174,6 +216,16 @@ export const marketStateView = (opportunity: Opportunity, now: Date = new Date()
     const equity = isEquityOpportunity(opportunity);
     const tone = String(state.state || '') as MarketTone;
     if (tone === 'stale') {
+        const other = otherTimeframeDelay(opportunity, now);
+        if (other) {
+            return {
+                tone,
+                short: other.short,
+                full: other.full,
+                holdShort: 'Sinal em espera',
+                holdFull: 'Sinal em espera até o dado normalizar',
+            };
+        }
         const expected = candleLabel(state.expected_candle, opportunity.timeframe, equity, false);
         const last = candleLabel(state.last_candle, opportunity.timeframe, equity, true);
         const expectedLong = candleLabel(state.expected_candle, opportunity.timeframe, equity, true);
@@ -244,9 +296,4 @@ export const isOpportunityDataStale = (
 
 export const isInsufficientData = (opportunity: Pick<Opportunity, 'market_state'>): boolean => (
     opportunity.market_state?.state === 'insufficient'
-);
-
-/** Favorito marcado "Alertar" pelo dono (a vitrine do catálogo nunca mostra a tag). */
-export const showsAlertTag = (opportunity: Pick<Opportunity, 'notify_telegram' | 'is_curated_fallback'>): boolean => (
-    opportunity.notify_telegram === true && opportunity.is_curated_fallback !== true
 );

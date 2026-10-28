@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Trash2, Search, List, Activity, BarChart3, Bell, Star, RefreshCw, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Trash2, Search, List, Activity, BarChart3, Star, RefreshCw, X } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
@@ -24,8 +24,7 @@ import {
 } from '@/lib/discoveryFavoriteMetrics';
 import { formatCompoundReturn } from '@/lib/compoundReturn';
 import {
-    OUTSIDE_PORTFOLIO_WARNING,
-    alertarLabel,
+    MONITOR_STAR_HELP,
     atrWithCurrency,
     chipLabel,
     classCounts,
@@ -34,7 +33,6 @@ import {
     favoriteLoteId,
     favoriteRowData,
     formatFavoriteRefreshStatus,
-    isEquityClass,
     loteBannerText,
     FILTER_EMPTY_LOTE,
     type FavoriteConfiguration,
@@ -80,7 +78,7 @@ interface FavoriteStrategy {
     asset?: { symbol: string; asset_id?: string | null; asset_class?: 'crypto' | 'stock' | 'etf' | null; name?: string | null; currency?: string | null } | null;
     /** Card #1122: fonte, sessão e ajuste (e rótulos). */
     configuration?: FavoriteConfiguration | null;
-    /** Card #1122: linha do catálogo do Cripto Farol (vitrine), sem "Alertar". */
+    /** Card #1122: linha do catálogo do Cripto Farol (vitrine), sem controle de alerta. */
     is_curated_fallback?: boolean;
 }
 
@@ -354,25 +352,6 @@ const FavoritesDashboard: React.FC = () => {
         retry: false,
     });
 
-    // Card #1122: carteira manual do Monitor, para o aviso "Fora da carteira: sem alerta".
-    const { data: monitorPreferences } = useQuery({
-        queryKey: ['monitor-preferences', user?.id ?? 'anonymous'],
-        queryFn: async () => {
-            const response = await authFetch(`${API_BASE_URL}/monitor/preferences`);
-            if (!response.ok) return {} as Record<string, { in_portfolio?: boolean }>;
-            const payload = await response.json();
-            return (payload && typeof payload === 'object' ? payload : {}) as Record<string, { in_portfolio?: boolean }>;
-        },
-        retry: false,
-    });
-    const isOutsidePortfolio = (fav: FavoriteStrategy): boolean => (
-        fav.notify_telegram === true
-        && !fav.is_curated_fallback
-        && isEquityClass(favoriteClass(fav))
-        && monitorPreferences !== undefined
-        && monitorPreferences?.[fav.symbol]?.in_portfolio !== true
-    );
-
     // Delete mutation
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
@@ -387,10 +366,38 @@ const FavoritesDashboard: React.FC = () => {
         }
     });
 
+    /**
+     * Card #1122 (d2, decisão 19): a estrela é a porta do Monitor. A primeira estrela põe a estratégia
+     * no Monitor com o alerta ligado; tirar a última a tira do Monitor e do Telegram. O anúncio e a
+     * marca "alerta ligado" só vêm depois de o PATCH gravar; se falhar, o status diz que não salvou.
+     */
+    const [starStatus, setStarStatus] = useState('');
+    const [justStarred, setJustStarred] = useState<Record<number, boolean>>({});
+
+    const announceTierSaved = (fav: FavoriteStrategy, tier: number | null) => {
+        if (fav.is_curated_fallback) return;
+        const name = `${fav.symbol} ${fav.timeframe}`.trim();
+        const hadStar = getStarCount(fav.tier) > 0;
+        const nextStars = getStarCount(tier);
+        if (!hadStar && nextStars > 0) {
+            setStarStatus(`${name} entrou no Monitor com o alerta ligado.`);
+            setJustStarred((current) => ({ ...current, [fav.id]: true }));
+        } else if (hadStar && nextStars === 0) {
+            setStarStatus(`${name} saiu do Monitor e não manda mais alerta.`);
+            setJustStarred((current) => {
+                const next = { ...current };
+                delete next[fav.id];
+                return next;
+            });
+        } else {
+            setStarStatus(`${name}: ${nextStars} ${nextStars === 1 ? 'estrela' : 'estrelas'}; o alerta no Monitor fica como estava.`);
+        }
+    };
+
     // Update tier mutation
     const updateTierMutation = useMutation({
-        mutationFn: async ({ id, tier }: { id: number; tier: number | null }) => {
-            const res = await authFetch(`${API_BASE_URL}/favorites/${id}`, {
+        mutationFn: async ({ fav, tier }: { fav: FavoriteStrategy; tier: number | null }) => {
+            const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tier })
@@ -398,32 +405,18 @@ const FavoritesDashboard: React.FC = () => {
             if (!res.ok) throw new Error('Failed to update tier');
             return res.json();
         },
-        onSuccess: () => {
+        onSuccess: (_, { fav, tier }) => {
+            announceTierSaved(fav, tier);
             queryClient.invalidateQueries({ queryKey: ['favorites', user?.id ?? 'anonymous'] });
+        },
+        onError: (_, { fav }) => {
+            const name = `${fav.symbol} ${fav.timeframe}`.trim();
+            setStarStatus(`Não foi possível salvar as estrelas de ${name}. Tente de novo.`);
         }
     });
 
     const handleUpdateTier = (fav: FavoriteStrategy, tier: number | null) => {
-        updateTierMutation.mutate({ id: fav.id, tier });
-    };
-
-    const updateTelegramMutation = useMutation({
-        mutationFn: async ({ id, notify_telegram }: { id: number; notify_telegram: boolean }) => {
-            const res = await authFetch(`${API_BASE_URL}/favorites/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notify_telegram })
-            });
-            if (!res.ok) throw new Error('Failed to update Telegram notification');
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['favorites', user?.id ?? 'anonymous'] });
-        }
-    });
-
-    const handleToggleTelegram = (fav: FavoriteStrategy) => {
-        updateTelegramMutation.mutate({ id: fav.id, notify_telegram: !fav.notify_telegram });
+        updateTierMutation.mutate({ fav, tier });
     };
 
     const revalidateMutation = useMutation({
@@ -535,6 +528,7 @@ const FavoritesDashboard: React.FC = () => {
                             type="button"
                             disabled={isSaving}
                             aria-pressed={active}
+                            aria-label={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
                             title={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
                             onClick={(event) => {
                                 event.stopPropagation();
@@ -557,74 +551,23 @@ const FavoritesDashboard: React.FC = () => {
         );
     };
 
-    /**
-     * "Alertar" do dono (card #1122, decisão 3): coluna a partir de 1280 px, sino na célula Ações de
-     * 1024 a 1279 px e "Alertar: on/off" com 44 px no celular. A vitrine do catálogo não tem controle.
-     */
-    const renderTelegramControl = (fav: FavoriteStrategy, variant: 'column' | 'mobile' | 'actions' = 'column') => {
-        if (fav.is_curated_fallback) {
-            return variant === 'actions' ? null : (
-                <span className="alert-catalog-none" data-testid={`alertar-catalog-${fav.id}`}>Catálogo · não alerta</span>
-            );
-        }
-        const active = fav.notify_telegram === true;
-        const isSaving = updateTelegramMutation.isPending;
-        const label = alertarLabel(active);
-        if (variant === 'actions') {
-            return (
-                <button
-                    type="button"
-                    className="alertar-in-actions"
-                    aria-pressed={active}
-                    aria-label={label}
-                    title={label}
-                    disabled={isSaving}
-                    data-testid={`alertar-actions-${fav.id}`}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        handleToggleTelegram(fav);
-                    }}
-                >
-                    <Bell className="h-4 w-4" fill={active ? 'currentColor' : 'none'} aria-hidden="true" />
-                </button>
-            );
-        }
-        const compact = variant === 'mobile';
+    /** Legenda da célula das estrelas: "No Monitor" / "Fora do Monitor" (a vitrine não tem). */
+    const renderMonitorLegend = (fav: FavoriteStrategy, placement: 'row' | 'card') => {
+        if (fav.is_curated_fallback) return null;
+        const inMonitor = getStarCount(fav.tier) > 0;
+        const label = inMonitor
+            ? (justStarred[fav.id] ? 'No Monitor · alerta ligado' : 'No Monitor')
+            : 'Fora do Monitor';
         return (
-            <button
-                type="button"
-                disabled={isSaving}
-                aria-pressed={active}
-                aria-label={label}
-                title={label}
-                data-testid={`alertar-${compact ? 'mobile' : 'column'}-${fav.id}`}
-                onClick={(event) => {
-                    event.stopPropagation();
-                    handleToggleTelegram(fav);
-                }}
-                className={[
-                    'telegram-toggle inline-flex items-center justify-center gap-1 rounded-md border transition-colors',
-                    compact ? 'alertar-mobile h-11 min-w-[7.5rem] px-2 text-xs font-semibold' : 'h-8 min-w-[4.5rem] px-2 text-xs',
-                    active
-                        ? 'border-emerald-400 bg-emerald-400/15 text-emerald-600'
-                        : 'border-zinc-200 bg-zinc-50 text-zinc-400 hover:text-emerald-600',
-                    isSaving ? 'opacity-60 cursor-wait' : '',
-                ].join(' ')}
+            <span
+                className="fav-monitor-legend"
+                data-on={inMonitor ? 'true' : 'false'}
+                data-testid={`fav-monitor-legend-${placement}-${fav.id}`}
             >
-                <Bell className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill={active ? 'currentColor' : 'none'} aria-hidden="true" />
-                {compact ? (active ? 'Alertar: on' : 'Alertar: off') : active ? 'On' : 'Off'}
-            </button>
+                {label}
+            </span>
         );
     };
-
-    const renderOutsidePortfolioWarning = (fav: FavoriteStrategy) => (
-        isOutsidePortfolio(fav) ? (
-            <span className="alert-portfolio-warning" data-testid={`alertar-outside-portfolio-${fav.id}`}>
-                {OUTSIDE_PORTFOLIO_WARNING}{' '}
-                <Link to="/monitor">Marque o ativo como "No portfólio" no Monitor</Link>.
-            </span>
-        ) : null
-    );
 
     const getFavoriteStrategyLabel = (fav: FavoriteStrategy): string => {
         const manifestDisplayName = fav.strategy_transparency?.display_name;
@@ -1400,7 +1343,7 @@ const FavoritesDashboard: React.FC = () => {
 
     const formatSignedPct = (metrics?: Record<string, any>) => formatCompoundReturn(metrics, { empty: '-' });
 
-    const tableColumnCount = isAdmin ? 19 : 18;
+    const tableColumnCount = isAdmin ? 18 : 17;
 
     const clearLoteFilter = () => {
         const next = new URLSearchParams(searchParams);
@@ -1424,6 +1367,10 @@ const FavoritesDashboard: React.FC = () => {
                             <div>
                                 <h1>Estratégias favoritas</h1>
                                 <p>Catálogo operacional para escolher quais setups entram no Monitor por estrelas.</p>
+                                {showsCatalogFallback ? null : (
+                                    <p className="fav-monitor-help" data-testid="fav-monitor-help">{MONITOR_STAR_HELP}</p>
+                                )}
+                                <p className="fav-star-status" role="status" aria-live="polite" data-testid="fav-star-status">{starStatus}</p>
                             </div>
                         </div>
                         <div className="fav-meta">
@@ -1437,7 +1384,7 @@ const FavoritesDashboard: React.FC = () => {
 
                     <div className="tier-cards" aria-label="Resumo por estrelas">
                         {[
-                            { key: 'watch', label: 'Acompanhar', value: tierCounts.watch, stars: 1, helper: 'Monitorar quando fizer sentido', tone: 'watch' },
+                            { key: 'watch', label: 'Acompanhar', value: tierCounts.watch, stars: 1, helper: 'No Monitor, com alerta ligado', tone: 'watch' },
                             { key: 'high', label: 'Interesse alto', value: tierCounts.high, stars: 2, helper: 'Prioridade intermediária', tone: 'high' },
                             { key: 'top', label: 'Top picks', value: tierCounts.top, stars: 3, helper: 'Fila principal do Monitor', tone: 'top' },
                         ].map((card) => (
@@ -1462,7 +1409,7 @@ const FavoritesDashboard: React.FC = () => {
                     {showsCatalogFallback ? (
                         <div className="alert-catalog-banner" role="status" data-testid="favorites-catalog-banner">
                             <strong>Estas estratégias são o catálogo do Cripto Farol e não mandam alerta.</strong>{' '}
-                            Os alertas do Telegram vêm só dos seus favoritos marcados "Alertar". Salve os seus no Combo, na Descoberta ou no lote e marque "Alertar" aqui.
+                            Os alertas do Telegram vêm das estratégias que você acompanha no Monitor: salve um resultado do Combo nos Favoritos e dê pelo menos 1 estrela aqui.
                         </div>
                     ) : null}
 
@@ -1626,7 +1573,6 @@ const FavoritesDashboard: React.FC = () => {
                                                 <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title} data-testid="fav-refresh-status">
                                                     {refreshStatus.label}
                                                 </span>
-                                                {renderOutsidePortfolioWarning(fav)}
                                                 {revalidationStatus ? (
                                                     <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
                                                         {revalidationStatus.label}
@@ -1640,7 +1586,7 @@ const FavoritesDashboard: React.FC = () => {
                                         </div>
                                         <div className="fav-mobile-stars">
                                             {renderStarTierControl(fav, true)}
-                                            {renderTelegramControl(fav, 'mobile')}
+                                            {renderMonitorLegend(fav, 'card')}
                                         </div>
                                         <div className="fav-mobile-metrics">
                                             <span><b>TF</b>{fav.timeframe}</span>
@@ -1674,7 +1620,6 @@ const FavoritesDashboard: React.FC = () => {
                                 <tr>
                                     {isAdmin ? <th className="select-col">Sel</th> : null}
                                     <th className="stars-cell">Tier</th>
-                                    <th className="telegram-col">Alertar</th>
                                     <th className="symbol-col">Symbol</th>
                                     <th className="strategy-col">Estratégia</th>
                                     <th className="direction-col">Direção</th>
@@ -1746,8 +1691,10 @@ const FavoritesDashboard: React.FC = () => {
                                                         />
                                                     </td>
                                                 ) : null}
-                                                <td className="stars-cell">{renderStarTierControl(fav)}</td>
-                                                <td className="telegram-col">{renderTelegramControl(fav, 'column')}</td>
+                                                <td className="stars-cell">
+                                                    {renderStarTierControl(fav)}
+                                                    {renderMonitorLegend(fav, 'row')}
+                                                </td>
                                                 <td className="symbol-col">
                                                     <div className="sym-cell">
                                                         <span className="sym-tile">{symbol.base.slice(0, 3)}</span>
@@ -1770,8 +1717,7 @@ const FavoritesDashboard: React.FC = () => {
                                                         <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title} data-testid="fav-refresh-status">
                                                             {refreshStatus.label}
                                                         </span>
-                                                        {renderOutsidePortfolioWarning(fav)}
-                                                        {revalidationStatus ? (
+                                                                {revalidationStatus ? (
                                                             <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
                                                                 {revalidationStatus.label}
                                                             </span>
@@ -1801,7 +1747,6 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td className="metric-cell advanced-col">{atrWithCurrency(m.avg_atr, row.currency)}</td>
                                                 <td>
                                                     <div className="fav-row-actions">
-                                                        {renderTelegramControl(fav, 'actions')}
                                                         <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa" data-testid={`open-chart-${fav.id}`}>
                                                             {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
                                                         </button>

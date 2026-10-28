@@ -748,7 +748,7 @@ export function ComboConfigurePage() {
                         <h2 className="text-xl font-bold text-zinc-900 mb-4 flex items-center gap-2">
                             <Sliders className="w-5 h-5" />
                             Otimizar
-                            <span className="text-xs font-normal text-zinc-400 flex items-center gap-1" title='1 ativo: otimiza, salva em favoritos e redireciona. N ativos: batch, salva cada um em favoritos (nota "gerado em lote", tier 3).'>
+                            <span className="text-xs font-normal text-zinc-400 flex items-center gap-1" title='1 ativo: otimiza, salva em favoritos e redireciona. N ativos: batch, salva cada um em favoritos (nota "gerado em lote", sem estrela).'>
                                 <HelpCircle className="w-4 h-4" />
                                 ajuda
                             </span>

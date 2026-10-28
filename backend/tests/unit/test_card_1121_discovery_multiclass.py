@@ -672,28 +672,29 @@ def test_promote_nvda_without_star_level_and_with_the_execution_identity(db, mon
     )
     db.commit()
     service = DiscoveryService()
-    # Outro tier no payload continua recusado, também para ação e ETF (contrato fixo).
-    refused_body, refused = service.promote_result(
-        result_id="RS-NVDA1121B2",
-        actor="admin-1",
-        idempotency_key="promote-other",
-        payload={"tier": 2, "result_id": "RS-NVDA1121B2"},
-        db=db,
-    )
-    assert refused == 422 and db.query(FavoriteStrategy).count() == 0, refused_body
-    # O contrato do payload segue exigindo tier 3; o servidor grava o nível pela classe.
+    # Card #1122 (d2): qualquer tier no payload é recusado (promoção sem estrela), também o 3.
+    for tier in (2, 3):
+        refused_body, refused = service.promote_result(
+            result_id="RS-NVDA1121B2",
+            actor="admin-1",
+            idempotency_key=f"promote-other-{tier}",
+            payload={"tier": tier, "result_id": "RS-NVDA1121B2"},
+            db=db,
+        )
+        assert refused == 422 and db.query(FavoriteStrategy).count() == 0, refused_body
+        assert refused_body["detail"] == "promoção sem estrela"
     body, status = service.promote_result(
         result_id="RS-NVDA1121B2",
         actor="admin-1",
         idempotency_key="promote-RS-NVDA1121B2",
-        payload={"tier": 3, "result_id": "RS-NVDA1121B2"},
+        payload={"result_id": "RS-NVDA1121B2"},
         db=db,
     )
     assert status == 201, body
     favorite = db.get(FavoriteStrategy, int(body["favorite_id"]))
-    # Card #1122: tier 3 em qualquer classe, sem "Alertar" e com a configuração do resultado.
-    assert favorite.tier == 3
-    assert favorite.notify_telegram is False
+    # Card #1122 (d2): sem estrela em qualquer classe, alerta ligado e a configuração do resultado.
+    assert favorite.tier is None
+    assert favorite.notify_telegram is True
     assert favorite.data_source == "binance_equity"
     assert (
         favorite.parameters["data_source"] == "binance_equity"
@@ -711,7 +712,7 @@ def test_promote_nvda_without_star_level_and_with_the_execution_identity(db, mon
     assert captured["start_date"] == "2003-01-02"
 
 
-def test_crypto_promotion_stays_tier_3(db, monkeypatch):
+def test_crypto_promotion_is_saved_without_star(db, monkeypatch):
     from app.models import FavoriteStrategy
     from app.models_discovery import DiscoveryResult
     from app.services import favorite_operational_period
@@ -763,12 +764,12 @@ def test_crypto_promotion_stays_tier_3(db, monkeypatch):
         result_id="RS-BTC1121A1",
         actor="admin-1",
         idempotency_key="promote-RS-BTC1121A1",
-        payload={"tier": 3, "result_id": "RS-BTC1121A1"},
+        payload={"result_id": "RS-BTC1121A1"},
         db=db,
     )
     assert status == 201, body
     favorite = db.get(FavoriteStrategy, int(body["favorite_id"]))
-    assert favorite.tier == 3
+    assert favorite.tier is None and favorite.notify_telegram is True
     assert favorite.metrics["analysis_asset"]["asset_class"] == "crypto"
     assert favorite.parameters["data_source"] == "ccxt"
     assert (captured["period_type"], captured["start_date"], captured["end_date"]) == (

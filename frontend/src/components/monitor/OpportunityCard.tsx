@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, CircleDollarSign, Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
+import { CircleDollarSign, Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
@@ -15,9 +15,9 @@ import {
     isOpportunityDataStale,
     marketStateView,
     opportunityRowKey,
-    showsAlertTag,
 } from './marketState';
 import { MarketStateBadge } from './MarketStateBadge';
+import { AlertSwitch, CatalogNoAlert, hasAlertSwitch } from './AlertSwitch';
 import {
     getStrategyDisplayName,
     isProtectedStrategy,
@@ -44,6 +44,8 @@ interface OpportunityCardProps {
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
     onOpenChart: (opportunity: Opportunity, mode?: 'chart' | 'trades') => void;
     onOpenTrade: (opportunity: Opportunity) => void;
+    /** Card #1122 (d2): liga/desliga o alerta da estratégia (linha, cartão e detalhe sincronizados). */
+    onToggleAlert?: (opportunity: Opportunity) => void;
 }
 
 const toDisplayValue = (value: unknown, precision = 2): string => {
@@ -82,6 +84,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     onToggleCardMode,
     onOpenChart,
     onOpenTrade,
+    onToggleAlert,
 }) => {
     const {
         symbol,
@@ -116,7 +119,17 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const identityShort = assetIdentityShort(opportunity);
     const identityLong = assetIdentityLong(opportunity);
     const marketView = marketStateView(opportunity);
-    const alertTag = showsAlertTag(opportunity);
+    const alertSwitch = Boolean(onToggleAlert) && hasAlertSwitch(opportunity);
+    const catalogRow = opportunity.is_curated_fallback === true;
+    const alertControl = alertSwitch && onToggleAlert ? (
+        <AlertSwitch
+            opportunity={opportunity}
+            variant={placement === 'detail' ? 'detail' : 'card'}
+            onToggle={onToggleAlert}
+        />
+    ) : catalogRow ? (
+        <CatalogNoAlert testId={`monitor-alert-catalog-${placement}-${opportunityRowKey(opportunity)}`} />
+    ) : null;
     // Ação/ETF atrasada: só o sinal fica em espera; entrada, stop e distâncias do último candle
     // fechado seguem visíveis, como no protótipo aprovado (card #1122). A cripto segue como hoje.
     const hideRiskWhenStale = isRiskStale && !equity;
@@ -278,6 +291,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 </div>
                 {showManagementControls ? (
                     <div className="detail-controls">
+                        {alertControl}
                         <button
                             type="button"
                             className="btn ghost"
@@ -300,18 +314,14 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             </span>
                         </button>
                     </div>
+                ) : alertControl ? (
+                    <div className="detail-controls">{alertControl}</div>
                 ) : null}
             </div>
-            {identityShort || alertTag || marketView ? (
+            {identityShort || marketView ? (
                 <div className="card-asset-meta" data-testid={`monitor-card-meta-${symbolTestKey}`}>
                     {identityShort ? (
                         <div className="asset-identity" title={identityLong ?? undefined}>{identityShort}</div>
-                    ) : null}
-                    {alertTag ? (
-                        <span className="tag tag-alert" title="Alertar no Telegram: ligado">
-                            <Bell className="tag-alert-icon" aria-hidden="true" />
-                            Alerta
-                        </span>
                     ) : null}
                     {marketView ? (
                         <MarketStateBadge view={marketView} testId={`monitor-card-market-${symbolTestKey}`} />
@@ -370,9 +380,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             </span>
                         ) : null}
                     </div>
-                    {equity && showManagementControls ? (
-                        <p className="monitor-status-card-note portfolio-help" data-testid={`portfolio-help-${symbolTestKey}`}>
-                            Ação/ETF na carteira recebe entrada e saída no Telegram.
+                    {alertSwitch && placement === 'detail' ? (
+                        <p className="monitor-status-card-note alert-switch-help" data-testid={`monitor-alert-help-${symbolTestKey}`}>
+                            Entrada e saída saem com ou sem o ativo na carteira. Desligado, nada sai no Telegram para esta estratégia.
                         </p>
                     ) : null}
                     {isPortfolioDerived && portfolioStatusMessage ? (

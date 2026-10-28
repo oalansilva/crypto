@@ -265,7 +265,7 @@ for (const viewport of VIEWPORTS) {
     await expect(page.getByTestId('mode-acomp')).toHaveCount(0)
     await expect(page.getByTestId('leaderboard-meta')).toContainText(ACTIVE_ID)
     await expect(page.getByTestId('decidir-table')).toContainText(CANDIDATE_ID)
-    await expect(page.getByTestId('decidir-table')).toContainText('Favorito tier 3')
+    await expect(page.getByTestId('decidir-table')).toContainText('Em Favoritos')
     await expect(page.getByText('Acompanhar já concluída')).toHaveCount(0)
     await expect(page.getByTestId('active-state-chip')).toHaveCount(0)
   })

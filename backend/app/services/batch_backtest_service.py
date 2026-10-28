@@ -739,9 +739,10 @@ class BatchRunner:
                 parameters=parameters,
                 metrics=metrics,
                 notes=f"gerado em lote ({self.job_id[:8]})",
-                # Card #1122 (decisão 12): 1 estrela em qualquer classe; nunca nasce com "Alertar".
-                tier=3,
-                notify_telegram=False,
+                # Card #1122 (d2, decisão 12): sem estrela em qualquer classe (fora do Monitor e
+                # sem alerta até o dono dar a estrela); o alerta nasce ligado.
+                tier=None,
+                notify_telegram=True,
                 data_source=configuration.data_source,
                 session=configuration.session,
                 adjustment=configuration.adjustment,

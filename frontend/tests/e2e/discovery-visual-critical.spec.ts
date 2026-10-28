@@ -597,9 +597,9 @@ test('card 469 — fluxo funcional do protótipo', async ({ page }) => {
   expect(captured.discardedResultId).toBe('RS-1049')
 
   await page.getByTestId('promote-RS-1048').click()
-  await expect(page.getByRole('dialog', { name: 'Promover a favorito tier 3' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Promover a favorito' })).toBeVisible()
   await expect(page.getByTestId('modal-result')).toHaveText('RS-1048')
-  await expect(page.getByText('Tier 3 · observação')).toBeVisible()
+  await expect(page.getByText('Favoritos · sem estrela')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('promote-RS-1048')).toBeFocused()
   await page.getByTestId('promote-RS-1048').click()

@@ -354,12 +354,9 @@ for (const viewport of VIEWPORTS) {
       for (const id of [104, 101, 102, 105, 103]) {
         const rowSel = mobile ? `[data-testid="favorite-${id}-mobile"]` : `[data-testid="favorite-${id}"]`
         for (const testid of ['fav-precision', 'fav-conventions', 'fav-effective']) {
-          // Card #1122: a coluna "Alertar" (a partir de 1280 px) estreita a Estratégia em ~71 px: só a
-          // largura da mesa deixa de ser a do protótipo do #1120 (a geometria de Favoritos é medida contra
-          // o protótipo do #1122 no spec dele); texto, estilo e altura seguem com a tolerância do #1120,
-          // exceto a precisão de SPY, que passa a quebrar em duas linhas na coluna mais estreita.
-          const wraps = !mobile && id === 105 && testid === 'fav-precision'
-          blocks.push({ name: `${id} ${testid}`, proto: `${rowSel} [data-testid="${testid}"]`, product: `${rowSel} [data-testid="${testid}"]`, tol: wraps ? 20 : 3, tolW: mobile ? 3 : 75 })
+          // Card #1122 (d2): sem a coluna "Alertar", a Estratégia volta à largura do protótipo do #1120;
+          // texto, estilo, altura e largura voltam à tolerância de 3 px.
+          blocks.push({ name: `${id} ${testid}`, proto: `${rowSel} [data-testid="${testid}"]`, product: `${rowSel} [data-testid="${testid}"]`, tol: 3 })
         }
         // P3 de Apply: na tabela o par classe · moeda não se parte em duas linhas (o protótipo quebrava "Ação ·" e "USD")
         blocks.push({
@@ -400,7 +397,7 @@ for (const viewport of VIEWPORTS) {
         expect(Math.abs(b!.height - a!.height), `altura ${id}: ${a!.height} x ${b!.height}`).toBeLessThanOrEqual(mobile ? 70 : 40)
       }
 
-      // Card #1122: estrelas, "Alertar" e Revalidar de ação/ETF ligados (o protótipo do #1120 os desabilitava).
+      // Card #1122: estrelas e Revalidar de ação/ETF ligados (o protótipo do #1120 os desabilitava).
       for (const id of [104, 105]) {
         const sel = mobile ? `[data-testid="favorite-${id}-mobile"]` : `[data-testid="favorite-${id}"]`
         const productOff = await productPage.locator(`${sel} [data-lote-off]`).count()

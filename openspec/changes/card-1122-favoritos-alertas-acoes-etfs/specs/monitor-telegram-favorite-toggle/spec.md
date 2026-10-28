@@ -1,47 +1,48 @@
 ## MODIFIED Requirements
 
 ### Requirement: Admin controls Telegram alert eligibility per favorite
-The system SHALL allow the owner of a favorite, admin or not, to mark it "Alertar" (`notify_telegram=true`) or unmark it, in any class. A user MUST NOT change the mark of a favorite he does not own, including an admin catalog favorite seen through the Monitor fallback. In Favoritos, the column header SHALL be "Alertar" for every owner, shown from 1280 px; from 1024 to 1279 px the column is hidden and the same control (bell, `aria-pressed`) SHALL sit in the Ações cell; on mobile cards the control SHALL read "Alertar: on" / "Alertar: off" with a 44 px target. Every control, crypto rows included, SHALL carry `aria-label` "Alertar no Telegram: ligado/desligado" from page load. When "Alertar" is on for an ação or ETF favorite whose asset is not in the owner's portfolio, the row SHALL show "Fora da carteira: sem alerta. Marque o ativo como "No portfólio" no Monitor". Catalog rows seen through the fallback MUST show no control.
+The system SHALL let the owner of a favorite, admin or not, switch its Telegram alert on or off (`notify_telegram`) in any class, **only from the Monitor** (card #1122, Alan's decision of 27/10/2026). The alert is on by default (`notify_telegram=true` on every creation path) and only has effect while the favorite has at least one star. Giving the first star to an unstarred favorite SHALL switch its alert on in the same write; changing between 1, 2 and 3 stars SHALL NOT change it. A user MUST NOT change the alert of a favorite he does not own. Favoritos SHALL NOT show any alert control: no "Alertar" column, no bell in the Ações cell, no "Alertar: on/off" on mobile cards and no "Fora da carteira: sem alerta" notice.
 
-#### Scenario: Owner enables Alertar on NVDA
-- **WHEN** a common user updates his own NVDA favorite with `notify_telegram=true`
-- **THEN** the system SHALL persist the mark
-- **AND** subsequent Favorites and Monitor responses SHALL include `notify_telegram=true`
+In the Monitor, every own starred strategy SHALL show the control (`monitor-multiclass`): a switch (`role="switch"`, `aria-checked`) with the visible text "Alerta" and the state, whose accessible name includes the asset, timeframe, strategy and, for ação/ETF, the short configuration, in the row actions (1280 px and wider), in the Status cell from 1024 to 1279 px, in the mobile card (44 px target) and in the detail. Unstarred favorites do not appear in the Monitor, so there is no unstarred row state; catalog rows SHALL show "Catálogo · sem alerta", without a control.
 
-#### Scenario: Notebook at 1180 px
-- **WHEN** the owner opens Favoritos at 1180 px
-- **THEN** the "Alertar" column SHALL be hidden and the control SHALL appear in the Ações cell
-- **AND** the strategy column SHALL keep the name, configuration and refresh status readable
+#### Scenario: Owner switches the alert off in the Monitor
+- **WHEN** a common user switches off the alert of his own ETH/USDT 4h favorite in the Monitor
+- **THEN** the system SHALL persist `notify_telegram=false`
+- **AND** subsequent Monitor responses SHALL include `notify_telegram=false`
+- **AND** the switch SHALL read "Alerta" with the state "desligado" and `aria-checked="false"`
 
-#### Scenario: Ação marked outside the portfolio
-- **WHEN** SPY has "Alertar" on and SPY is not in the owner's portfolio
-- **THEN** the SPY row SHALL show "Fora da carteira: sem alerta"
+#### Scenario: New favorite starts with the alert on
+- **WHEN** a favorite is created from a result, a batch or the Descoberta
+- **THEN** it SHALL have `notify_telegram=true`
 
-#### Scenario: Owner disables Alertar
-- **WHEN** the owner updates a favorite with `notify_telegram=false`
-- **THEN** the system SHALL persist the favorite as not alerting
-- **AND** subsequent Favorites API responses SHALL include `notify_telegram=false`
+#### Scenario: First star switches the alert on
+- **WHEN** the owner gives 1 star to his unstarred QQQ favorite whose alert is off
+- **THEN** the system SHALL persist `tier=3` and `notify_telegram=true`
 
-#### Scenario: User cannot change the mark of a catalog favorite he sees
+#### Scenario: Favoritos has no alert control
+- **WHEN** the owner opens Favoritos at 1440, 1280, 1024 or 390 px
+- **THEN** no "Alertar" column, bell or "Alertar: on/off" control SHALL be shown
+- **AND** no "Fora da carteira: sem alerta" notice SHALL be shown
+
+#### Scenario: User cannot change the alert of a catalog favorite he sees
 - **WHEN** a user attempts to update `notify_telegram` of an admin catalog favorite that is visible to him
 - **THEN** the system SHALL reject the update with 403 and change nothing
 
-#### Scenario: User cannot change the mark of a favorite he does not see
+#### Scenario: User cannot change the alert of a favorite he does not see
 - **WHEN** a user attempts to update `notify_telegram` of a favorite owned by someone else that is not visible to him
 - **THEN** the system SHALL answer 404, without revealing that the favorite exists, and change nothing
 
 ### Requirement: Telegram scan uses explicit favorite eligibility
-Monitor Telegram alert scans SHALL evaluate, for each eligible user, only that user's own favorites where `notify_telegram=true`.
+Monitor Telegram alert scans SHALL evaluate, for each eligible user, only that user's own favorites with at least one star (`tier` 1, 2 or 3) and `notify_telegram=true`. The system tier filter (`monitor_telegram_tier_filter`) SHALL NOT change eligibility.
 
-#### Scenario: Unstarred marked favorite remains eligible by default
-- **WHEN** a user's own favorite has `notify_telegram=true`
-- **AND** no explicit Monitor Telegram tier filter is configured
-- **THEN** the scan SHALL evaluate that favorite for its owner even when it has no tier/star classification
-
-#### Scenario: Unmarked favorite is excluded from alert scan
-- **WHEN** a favorite has `notify_telegram=false`
+#### Scenario: Unstarred favorite is not eligible
+- **WHEN** a user's own favorite has `notify_telegram=true` and no star
 - **THEN** the scan SHALL NOT evaluate that favorite as an alert candidate
 
-#### Scenario: Marked favorite remains eligible for alert scan
-- **WHEN** a user's own favorite has `notify_telegram=true`
-- **THEN** the scan SHALL evaluate that favorite for its owner, subject to event identity, portfolio and dry-run rules
+#### Scenario: Switched-off favorite is excluded from alert scan
+- **WHEN** a starred favorite has `notify_telegram=false`
+- **THEN** the scan SHALL NOT evaluate that favorite as an alert candidate
+
+#### Scenario: Starred favorite with the alert on is eligible
+- **WHEN** a user's own favorite has 1, 2 or 3 stars and `notify_telegram=true`
+- **THEN** the scan SHALL evaluate that favorite for its owner, subject to event identity, data health and dry-run rules, regardless of the portfolio

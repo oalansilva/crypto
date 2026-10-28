@@ -1570,7 +1570,7 @@ class TestPromotion:
 
         from app.models import FavoriteStrategy
 
-        payload = {"tier": 3, "result_id": "RS-PRO-1"}
+        payload = {"result_id": "RS-PRO-1"}
         key = f"p-{uuid.uuid4().hex[:12]}"
         body, status = service.promote_result(
             result_id="RS-PRO-1",
@@ -1585,7 +1585,7 @@ class TestPromotion:
             db.query(FavoriteStrategy).filter(FavoriteStrategy.id == int(favorite_id)).first()
         )
         assert favorite is not None
-        assert favorite.tier == 3
+        assert favorite.tier is None and favorite.notify_telegram is True
 
         retry, status2 = service.promote_result(
             result_id="RS-PRO-1",
@@ -1671,7 +1671,7 @@ class TestPromotion:
             result_id="RS-B109ED2C80",
             actor="admin-1",
             idempotency_key=f"p-{uuid.uuid4().hex[:12]}",
-            payload={"tier": 3, "result_id": "RS-B109ED2C80"},
+            payload={"result_id": "RS-B109ED2C80"},
             db=db,
         )
         assert status == 201
@@ -1728,7 +1728,7 @@ class TestPromotion:
             db=db,
         )
         assert status == 422
-        assert "tier must be 3" in body["error"]
+        assert body["detail"] == "promoção sem estrela"
         db.close()
 
     def test_promote_low_sample_rejected(self, engine_factory):
@@ -1762,7 +1762,7 @@ class TestPromotion:
             result_id="RS-PRO-3",
             actor="admin-1",
             idempotency_key=f"p-{uuid.uuid4().hex[:12]}",
-            payload={"tier": 3, "result_id": "RS-PRO-3"},
+            payload={"result_id": "RS-PRO-3"},
             db=db,
         )
         assert status == 422
@@ -1805,7 +1805,7 @@ class TestPromotion:
             result_id="RS-DSC-1",
             actor="admin-1",
             idempotency_key=f"p-{uuid.uuid4().hex[:12]}",
-            payload={"tier": 3, "result_id": "RS-DSC-1"},
+            payload={"result_id": "RS-DSC-1"},
             db=db,
         )
         assert pstatus == 422
@@ -2551,12 +2551,12 @@ class TestDiscoveryRoutes:
             assert missing.status_code == 404
             promote = await client.post(
                 "/api/combos/discovery/results/RS-RTE-1/promote",
-                json={"tier": 3, "idempotency_key": "promote-rte-1"},
+                json={"idempotency_key": "promote-rte-1"},
             )
             assert promote.status_code == 201
             promote2 = await client.post(
                 "/api/combos/discovery/results/RS-RTE-1/promote",
-                json={"tier": 3, "idempotency_key": "promote-rte-1"},
+                json={"idempotency_key": "promote-rte-1"},
             )
             assert promote2.status_code == 200
             discarded = await client.post("/api/combos/discovery/results/RS-RTE-1/discard")

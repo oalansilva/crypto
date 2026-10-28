@@ -112,8 +112,8 @@ class _FakeOpportunityService:
         self.calls.append({"user_id": user_id, "tier_filter": tier_filter})
         return list(self.opportunities)
 
-    def get_alert_opportunities(self, *, tier_filter, now=None):
-        self.calls.append({"source": "favorites", "tier_filter": tier_filter})
+    def get_alert_opportunities(self, *, now=None):
+        self.calls.append({"source": "favorites"})
         return list(self.opportunities)
 
 
@@ -212,6 +212,7 @@ def _favorite_opportunity(favorite: FavoriteStrategy, status: str) -> dict:
         "asset_class": "crypto",
         "currency": "USDT",
         "notify_telegram": True,
+        "tier": favorite.tier,
         "market_state": {"state": "open", "reason": "24x7"},
     }
 
@@ -305,7 +306,8 @@ def test_scan_records_failure_and_continues(monitor_alert_db_session):
     assert "telegram down" in row.error_text
 
 
-def test_scan_two_users_different_positions(monitor_alert_db_session, monkeypatch):
+def test_scan_two_users_different_positions_both_receive(monitor_alert_db_session, monkeypatch):
+    """Card #1122 (d2): a carteira não decide; com e sem saldo, a saída sai para os dois."""
     db = monitor_alert_db_session
     user_a = _add_eligible_user(db, chat_id="9001")
     user_b = _add_eligible_user(db, chat_id="9002")
@@ -318,14 +320,12 @@ def test_scan_two_users_different_positions(monitor_alert_db_session, monkeypatc
     _seed_state(db, fav_a, "HOLD")
     _seed_state(db, fav_b, "HOLD")
 
-    def fake_holdings(_db, user_id, **_kwargs):
-        if user_id == str(user_a.id):
-            return ({"BTC": 1.5}, True)
-        return ({}, True)
+    def wallet_must_not_be_read(*_args, **_kwargs):
+        raise AssertionError("a varredura não lê a carteira Binance")
 
     monkeypatch.setattr(
-        "app.services.monitor_telegram_alerts.fetch_user_wallet_holdings",
-        fake_holdings,
+        "app.services.monitor_portfolio_status.fetch_user_wallet_holdings",
+        wallet_must_not_be_read,
     )
     sent_chat_ids: list[str] = []
 
@@ -340,12 +340,11 @@ def test_scan_two_users_different_positions(monitor_alert_db_session, monkeypatc
     )
 
     assert summary["eligible_users"] == 2
-    assert summary["sent"] == 1
-    assert summary["suppressed_by_position_matrix"] == 1
-    assert sent_chat_ids == ["9001"]
+    assert summary["sent"] == 2
+    assert "suppressed_by_position_matrix" not in summary
+    assert sorted(sent_chat_ids) == ["9001", "9002"]
     rows = db.query(MonitorTelegramAlert).all()
-    assert len(rows) == 1
-    assert rows[0].user_id == str(user_a.id)
+    assert {row.user_id for row in rows} == {str(user_a.id), str(user_b.id)}
 
 
 def test_send_telegram_message_uses_configured_thread(monkeypatch):

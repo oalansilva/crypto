@@ -226,8 +226,8 @@ for (const viewport of VIEWPORTS) {
     await expect(cfxRow.getByTestId('discard-RS-916-CFX')).toBeVisible()
 
     await cfxRow.getByTestId('promote-RS-916-CFX').click()
-    await expect(page.getByRole('dialog', { name: 'Promover a favorito tier 3' })).toBeVisible()
-    await expect(page.getByText('Tier 3 · observação')).toBeVisible()
+    await expect(page.getByRole('dialog', { name: 'Promover a favorito' })).toBeVisible()
+    await expect(page.getByText('Favoritos · sem estrela')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(cfxRow.getByTestId('promote-RS-916-CFX')).toBeFocused()
     await expect(page.getByTestId('progress-count')).toContainText('309 de 697')

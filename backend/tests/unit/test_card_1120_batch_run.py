@@ -187,11 +187,10 @@ def test_mixed_1d_batch_saves_three_favorites_with_precision_and_window(batch_en
     assert favorites["NVDA"].metrics["analysis_asset"]["currency"] == "USD"
     assert favorites["SPY"].metrics["analysis_asset"]["asset_class"] == "etf"
     assert favorites["BTC/USDT"].metrics["analysis_asset"]["currency"] == "USDT"
-    # cripto mantém o nível de estrela do lote; ação/ETF sem nível até o #1122
-    assert favorites["BTC/USDT"].tier == 3
-    # Card #1122 (decisão 12 e decisão 2 de Alan): 1 estrela em qualquer classe e sem "Alertar".
-    assert favorites["NVDA"].tier == 3 and favorites["SPY"].tier == 3
-    assert not any(f.notify_telegram for f in favorites.values())
+    # Card #1122 (d2, decisão 12): o lote salva sem estrela em qualquer classe (fora do Monitor)
+    # e com o alerta ligado, que só vale depois que o dono der a estrela.
+    assert all(f.tier is None for f in favorites.values())
+    assert all(f.notify_telegram for f in favorites.values())
     assert (favorites["NVDA"].data_source, favorites["NVDA"].session) == (
         "binance_equity",
         "regular_ny",

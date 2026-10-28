@@ -317,9 +317,9 @@ def run_legacy_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
                 parameters=params_with_direction,
                 metrics=metrics,
                 notes=notes,
-                tier=3,
-                # Card #1122: favorito novo nunca nasce com "Alertar".
-                notify_telegram=False,
+                # Card #1122 (d2, decisão 12): lote salva sem estrela; o alerta nasce ligado.
+                tier=None,
+                notify_telegram=True,
                 data_source=configuration.data_source,
                 session=configuration.session,
                 adjustment=configuration.adjustment,

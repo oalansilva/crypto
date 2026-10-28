@@ -1,4 +1,8 @@
-"""Card #1122: alertas por favorito em cripto, ação e ETF (um teste por cenário do design)."""
+"""Card #1122: alertas por favorito em cripto, ação e ETF (um teste por cenário do design).
+
+Regra de 27/10/2026 (Design d2): alerta = estratégia própria com estrela e alerta ligado; a
+carteira não decide. Os cenários novos do d2 estão em ``test_card_1122_d2_alert_rule.py``.
+"""
 
 from __future__ import annotations
 
@@ -33,7 +37,7 @@ from app.services.market_history import nyse_calendar as cal
 from app.services.monitor_telegram_alerts import (
     MonitorTelegramAlertSettings,
     run_monitor_telegram_alert_scan,
-    should_send_position_aware_alert,
+    signal_direction,
 )
 from app.services.user_exchange_credentials import BINANCE_PROVIDER
 
@@ -178,6 +182,7 @@ def _opp(
         "currency": "USDT" if crypto else "USD",
         "configuration": cfg,
         "notify_telegram": bool(fav.notify_telegram),
+        "tier": fav.tier,
         "market_state": {
             "state": state,
             "episode_id": episode,
@@ -193,7 +198,7 @@ class FakeService:
         self.rows = list(rows or [])
         self.calls = 0
 
-    def get_alert_opportunities(self, *, tier_filter, now=None):
+    def get_alert_opportunities(self, *, now=None):
         self.calls += 1
         return [dict(r) for r in self.rows]
 
@@ -239,15 +244,14 @@ def test_only_the_owner_who_marked_receives(db):
     b = _user(db, "b")
     nvda = _favorite(db, a, "NVDA")
     btc = _favorite(db, a, "BTC/USDT")
-    _portfolio(db, a, "NVDA")
-    _portfolio(db, a, "BTC/USDT")
     sender = Sender()
     _baseline(db, [_opp(nvda, "EXIT", FRI), _opp(btc, "HOLD", FRI)], sender)
     summary = _scan(db, [_opp(nvda, "HOLD", MON), _opp(btc, "EXIT", MON)], sender)
     chats = [chat for chat, _ in sender.messages]
-    # BTC flat sem credencial: matriz de hoje (só a entrada); NVDA entrada.
-    assert chats == ["chat-a"]
+    # Sem carteira na decisão (d2): a entrada de NVDA e a saída de BTC sem saldo saem para A.
+    assert chats == ["chat-a", "chat-a"]
     assert "NVDA (Ação · USD)" in sender.messages[0][1]
+    assert "BTC/USDT (Cripto · USDT)" in sender.messages[1][1]
     assert summary["rate_limited"] == 0
     assert "chat-b" not in chats
     assert db.query(MonitorTelegramAlert).filter_by(user_id=str(b.id)).count() == 0
@@ -357,42 +361,17 @@ def test_failed_send_is_retried_while_the_event_is_current(db):
     assert again["candidates"] == 0 and len(ok.messages) == 1
 
 
-# ---------------------------------------------------------------- matriz
+# ---------------------------------------------------------------- sentido (sem carteira)
 
 
-def test_equity_in_portfolio_gets_entry_and_exit_and_outside_gets_nothing():
-    assert should_send_position_aware_alert(
-        previous_status="HOLD",
-        new_status="EXIT",
-        has_spot_position=False,
-        in_portfolio=True,
-        asset_class="stock",
-    ) == (True, "sell")
-    assert should_send_position_aware_alert(
-        previous_status="EXIT",
-        new_status="HOLD",
-        has_spot_position=False,
-        in_portfolio=True,
-        asset_class="etf",
-    ) == (True, "buy")
-    assert should_send_position_aware_alert(
-        previous_status="EXIT",
-        new_status="HOLD",
-        has_spot_position=False,
-        in_portfolio=False,
-        asset_class="stock",
-    ) == (False, "outside_portfolio_scope")
-    # Cripto como hoje: flat suprime a saída.
-    assert should_send_position_aware_alert(
-        previous_status="HOLD",
-        new_status="EXIT",
-        has_spot_position=False,
-        in_portfolio=True,
-        asset_class="crypto",
-    ) == (False, "suppressed_flat_exit")
+def test_signal_direction_is_the_same_in_the_three_classes():
+    assert signal_direction("EXIT", "HOLD") == "buy"
+    assert signal_direction("HOLD", "EXIT") == "sell"
+    assert signal_direction("HOLD", "HOLD") is None
+    assert signal_direction(None, "HOLD") is None
 
 
-def test_nvda_exit_in_portfolio_is_sent_and_outside_portfolio_is_not(db):
+def test_exit_is_sent_with_or_without_the_asset_in_the_portfolio(db):
     a = _user(db, "a")
     b = _user(db, "b")
     fa = _favorite(db, a, "NVDA")
@@ -402,8 +381,8 @@ def test_nvda_exit_in_portfolio_is_sent_and_outside_portfolio_is_not(db):
     sender = Sender()
     _baseline(db, [_opp(fa, "HOLD", FRI), _opp(fb, "HOLD", FRI)], sender)
     _scan(db, [_opp(fa, "EXIT", MON), _opp(fb, "EXIT", MON)], sender)
-    assert [chat for chat, _ in sender.messages] == ["chat-a"]
-    assert "Leitura atual: Venda" in sender.messages[0][1]
+    assert sorted(chat for chat, _ in sender.messages) == ["chat-a", "chat-b"]
+    assert all("Leitura atual: Venda" in text for _, text in sender.messages)
 
 
 def test_seven_changes_send_seven_messages_without_rate_limit(db):
@@ -419,37 +398,6 @@ def test_seven_changes_send_seven_messages_without_rate_limit(db):
     assert len(sender.messages) == 7
     assert summary["rate_limited"] == 0
     assert not any(r.get("result") == "rate_limited" for r in summary["results"])
-
-
-def test_wallet_failure_pauses_crypto_only_and_the_notice_is_rate_limited(db, monkeypatch):
-    a = _user(db, "a")
-    db.add(
-        UserExchangeCredential(
-            user_id=str(a.id), provider=BINANCE_PROVIDER, api_key="k", api_secret="s"
-        )
-    )
-    db.commit()
-    nvda = _favorite(db, a, "NVDA")
-    btc = _favorite(db, a, "BTC/USDT")
-    _portfolio(db, a, "NVDA")
-    monkeypatch.setattr(alerts, "fetch_user_wallet_holdings", lambda *a, **k: ({}, False))
-    sender = Sender()
-    _baseline(db, [_opp(nvda, "EXIT", FRI), _opp(btc, "EXIT", FRI)], sender)
-    sender.messages.clear()
-    summary = _scan(db, [_opp(nvda, "HOLD", MON), _opp(btc, "HOLD", MON)], sender)
-    texts = [t for _, t in sender.messages]
-    assert any("NVDA (Ação · USD)" in t for t in texts)
-    assert not any("BTC/USDT (Cripto" in t for t in texts)
-    notice = next(t for t in texts if "Aviso operacional" in t)
-    assert "ações e ETFs seguem" in notice
-    assert summary["binance_sync_failed_users"] == 1
-    again = _scan(
-        db,
-        [_opp(nvda, "HOLD", MON), _opp(btc, "EXIT", TUE)],
-        Sender(),
-        now=datetime(2026, 10, 27, 11, 30),
-    )
-    assert again["operational_dms"] == 0 and again["operational_rate_limited"] == 1
 
 
 # ---------------------------------------------------------------- atraso e mercado fechado
@@ -477,20 +425,23 @@ def test_delay_notice_once_per_episode_and_recovery_is_silent(db):
     assert len(sender.messages) == 2 and "qua., 28 out. 2026" in sender.messages[1][1]
 
 
-def test_crypto_delay_notice_needs_the_asset_in_portfolio(db):
+def test_crypto_delay_notice_goes_to_who_has_it_in_the_monitor_with_the_alert_on(db):
     a = _user(db, "a")
     b = _user(db, "b")
+    c = _user(db, "c")
     fa = _favorite(db, a, "BTC/USDT")
     fb = _favorite(db, b, "BTC/USDT")
+    fc = _favorite(db, c, "BTC/USDT", notify=False)
+    # A carteira não decide: A tem BTC marcado na carteira, B não.
     _portfolio(db, a, "BTC/USDT", True)
     sender = Sender()
     rows = [
         _opp(f, "HOLD", "2026-10-23T00:00:00+00:00", state="stale", episode="ep-btc")
-        for f in (fa, fb)
+        for f in (fa, fb, fc)
     ]
     summary = _scan(db, rows, sender, now=datetime(2026, 10, 25, 11, 5))
-    assert [c for c, _ in sender.messages] == ["chat-a"]
-    assert summary["delay_notices"] == 1 and "BTC/USDT (Cripto · USDT)" in sender.messages[0][1]
+    assert sorted(c for c, _ in sender.messages) == ["chat-a", "chat-b"]
+    assert summary["delay_notices"] == 2 and "BTC/USDT (Cripto · USDT)" in sender.messages[0][1]
 
 
 def test_closed_market_never_sends(db):
@@ -1039,7 +990,7 @@ def _catalog_receiver_alert(db, user: User) -> None:
 
 
 def test_transition_notice_only_on_the_first_scan_after_the_switch(db):
-    """P3: quem marcou logo após a troca e desmarcou semanas depois não recebe o aviso."""
+    """P3: quem ligou logo após a troca e desligou semanas depois não recebe o aviso."""
 
     marker = alerts.MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY
     receiver = _user(db, "receiver")
@@ -1048,14 +999,14 @@ def test_transition_notice_only_on_the_first_scan_after_the_switch(db):
     _catalog_receiver_alert(db, receiver)
     _catalog_receiver_alert(db, late)
     db.commit()
-    # "late" marcou um favorito logo depois da troca: na primeira varredura, nada para ele.
+    # "late" deu estrela a um favorito (alerta ligado) logo depois da troca: nada para ele.
     fav = _favorite(db, late, "BTC/USDT")
     sender = Sender()
     first = _scan(db, [], sender, now=datetime(2026, 10, 27, 11, 5))
     assert first["transition_notices"] == 1
     assert [c for c, _ in sender.messages] == ["chat-receiver"]
     assert db.get(SystemPreference, marker).value.startswith("2026-10-27T11:05")
-    # Depois ele desmarca: nenhuma varredura seguinte manda o aviso.
+    # Depois ele desliga o alerta: nenhuma varredura seguinte manda o aviso.
     fav.notify_telegram = False
     db.commit()
     for now in (datetime(2026, 10, 28, 11, 5), datetime(2026, 11, 16, 11, 5)):
@@ -1074,3 +1025,355 @@ def test_transition_notice_is_not_sent_long_after_the_switch(db):
     sender = Sender()
     summary = _scan(db, [], sender, now=datetime(2026, 11, 16, 11, 5))
     assert summary["transition_notices"] == 0 and sender.messages == []
+
+
+# ---------------------------------------------------------------- regra nova (Design d2, 27/10)
+# Alerta = estratégia própria no Monitor (estrela 1–3) com o alerta ligado; a carteira não decide;
+# o catálogo não alerta; lote e Descoberta salvam sem estrela.
+
+
+def _no_wallet(monkeypatch):
+    from app.services import monitor_portfolio_status
+
+    def boom(*_a, **_k):
+        raise AssertionError("a varredura não lê a carteira Binance")
+
+    monkeypatch.setattr(monitor_portfolio_status, "fetch_user_wallet_holdings", boom)
+    monkeypatch.setattr(monitor_portfolio_status, "resolve_portfolio_status_for_user", boom)
+
+
+def test_d2_unstarred_or_switched_off_favorites_never_alert(db):
+    a = _user(db, "a")
+    starred = _favorite(db, a, "NVDA", tier=2)
+    unstarred = _favorite(db, a, "QQQ", tier=None)
+    off = _favorite(db, a, "ETH/USDT", tier=2, notify=False)
+
+    def rows(status, candle):
+        return [
+            _opp(starred, status, candle),
+            _opp(unstarred, status, candle),
+            _opp(off, status, candle),
+        ]
+
+    sender = Sender()
+    _baseline(db, rows("EXIT", FRI), sender)
+    summary = _scan(db, rows("HOLD", MON), sender)
+    assert summary["favorites_evaluated"] == 1
+    assert len(sender.messages) == 1 and "NVDA (Ação · USD)" in sender.messages[0][1]
+    # Sem estrela ou desligado: nem estado guardado, nem alerta.
+    assert db.get(MonitorFavoriteAlertState, unstarred.id) is None
+    assert db.get(MonitorFavoriteAlertState, off.id) is None
+
+
+def test_d2_catalog_never_alerts_even_with_the_preference_star(db, unit_database_url, monkeypatch):
+    from app.models import MonitorStrategyPreference
+    from app.services.opportunity_service import OpportunityService
+
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@test.local")
+    admin = _user(db, "admin")
+    c = _user(db, "c")
+    catalog_unstarred = _favorite(db, admin, "ETH/USDT", tier=None)
+    catalog_starred = _favorite(db, admin, "BTC/USDT", tier=3)
+    db.add(
+        MonitorStrategyPreference(
+            user_id=str(c.id), favorite_id=catalog_unstarred.id, liked=True, tier=3
+        )
+    )
+    db.commit()
+    favorites = OpportunityService(db_path=unit_database_url).get_alert_favorites()
+    assert [(f["id"], f["user_id"]) for f in favorites] == [(catalog_starred.id, str(admin.id))]
+    # A linha da vitrine que C vê (com a estrela dele) nunca entra na varredura.
+    vitrine = {
+        **_opp(catalog_unstarred, "HOLD", MON),
+        "user_id": str(c.id),
+        "tier": 3,
+        "is_curated_fallback": True,
+    }
+    sender = Sender()
+    _baseline(db, [{**vitrine, "status": "EXIT"}, _opp(catalog_starred, "EXIT", FRI)], sender)
+    _scan(db, [vitrine, _opp(catalog_starred, "HOLD", MON)], sender)
+    assert [chat for chat, _ in sender.messages] == ["chat-admin"]
+
+
+def test_d2_entry_outside_portfolio_exit_and_crypto_without_the_wallet(db, monkeypatch):
+    _no_wallet(monkeypatch)
+    a = _user(db, "a")
+    db.add(
+        UserExchangeCredential(
+            user_id=str(a.id), provider=BINANCE_PROVIDER, api_key="k", api_secret="s"
+        )
+    )
+    db.commit()
+    nvda = _favorite(db, a, "NVDA")  # fora da carteira
+    spy = _favorite(db, a, "SPY")
+    btc = _favorite(db, a, "BTC/USDT")  # com saldo: a reentrada sai
+    sol = _favorite(db, a, "SOL/USDT")  # sem saldo: a saída sai
+    _portfolio(db, a, "NVDA", False)
+    _portfolio(db, a, "SPY", True)
+    sender = Sender()
+    _baseline(
+        db,
+        [
+            _opp(nvda, "EXIT", FRI),
+            _opp(spy, "HOLD", FRI),
+            _opp(btc, "EXIT", FRI),
+            _opp(sol, "HOLD", FRI),
+        ],
+        sender,
+    )
+    summary = _scan(
+        db,
+        [
+            _opp(nvda, "HOLD", MON),
+            _opp(spy, "EXIT", MON),
+            _opp(btc, "HOLD", MON),
+            _opp(sol, "EXIT", MON),
+        ],
+        sender,
+    )
+    texts = [text for _, text in sender.messages]
+    assert len(texts) == 4 and summary["sent"] == 4
+    assert any("NVDA (Ação" in t and "Leitura atual: Compra" in t for t in texts)
+    assert any("SPY (Ação" in t and "Leitura atual: Venda" in t for t in texts)
+    assert any("BTC/USDT (Cripto" in t and "Leitura atual: Compra" in t for t in texts)
+    assert any("SOL/USDT (Cripto" in t and "Leitura atual: Venda" in t for t in texts)
+    assert not any("Aviso operacional" in t for t in texts)
+    for gone in ("binance_sync_failed_users", "operational_dms", "suppressed_by_position_matrix"):
+        assert gone not in summary
+    assert not any(
+        str(r.get("result", "")).startswith(("suppressed", "outside_portfolio"))
+        for r in summary["results"]
+    )
+
+
+def test_d2_tier_filter_is_ignored_and_recorded(db, monkeypatch):
+    monkeypatch.setenv("MONITOR_TELEGRAM_TIER_FILTER", "1")
+    a = _user(db, "a")
+    one_star = _favorite(db, a, "NVDA", tier=3)
+    sender = Sender()
+    _baseline(db, [_opp(one_star, "EXIT", FRI)], sender)
+    summary = _scan(db, [_opp(one_star, "HOLD", MON)], sender, tier_filter="1")
+    assert len(sender.messages) == 1
+    assert summary["tier_filter_ignored"] == "1"
+    monkeypatch.delenv("MONITOR_TELEGRAM_TIER_FILTER")
+    db.add(SystemPreference(key=alerts.MONITOR_TELEGRAM_TIER_FILTER_KEY, value="2"))
+    db.commit()
+    again = _scan(db, [], Sender(), now=datetime(2026, 10, 28, 11, 5))
+    assert again["tier_filter_ignored"] == "2"
+    db.query(SystemPreference).filter_by(key=alerts.MONITOR_TELEGRAM_TIER_FILTER_KEY).delete()
+    db.commit()
+    assert "tier_filter_ignored" not in _scan(db, [], Sender())
+
+
+def test_d2_signal_and_delay_messages_say_how_to_stop(db):
+    a = _user(db, "a")
+    nvda = _favorite(db, a, "NVDA")
+    sender = Sender()
+    _baseline(db, [_opp(nvda, "EXIT", FRI)], sender)
+    _scan(db, [_opp(nvda, "HOLD", MON)], sender)
+    signal = sender.messages[0][1]
+    assert (
+        'Para não receber mais desta estratégia: desligue o "Alerta" dela no Monitor '
+        "ou tire a estrela em Favoritos." in signal
+    )
+    assert "carteira" not in signal.lower()
+    stale = _opp(nvda, "HOLD", MON, state="stale", episode="ep-9", last=MON, expected=TUE)
+    _scan(db, [stale], sender, now=datetime(2026, 10, 28, 11, 5))
+    delay = sender.messages[1][1]
+    assert "Dados atrasados" in delay
+    assert 'Para não receber avisos de NVDA: desligue o "Alerta" das estratégias de NVDA' in delay
+
+
+def test_d2_delay_notice_without_portfolio_and_not_for_who_switched_off(db):
+    a = _user(db, "a")
+    b = _user(db, "b")
+    fa = _favorite(db, a, "NVDA")  # fora da carteira, alerta ligado
+    fb = _favorite(db, b, "NVDA", notify=False)
+    sender = Sender()
+    rows = [
+        _opp(f, "HOLD", FRI, state="stale", episode="ep-n", last=FRI, expected=MON)
+        for f in (fa, fb)
+    ]
+    summary = _scan(db, rows, sender)
+    assert [chat for chat, _ in sender.messages] == ["chat-a"]
+    assert summary["delay_notices"] == 1
+
+
+def test_d2_star_switches_the_alert_on_and_resets_the_state(api, db):
+    client, _state, owner, _other = api
+    qqq = _favorite(db, owner, "QQQ", tier=None, notify=False)
+    db.add(MonitorFavoriteAlertState(favorite_id=qqq.id, status="HOLD", observed_at=datetime.now()))
+    db.commit()
+    # Dar a primeira estrela liga o alerta na mesma gravação e a próxima leitura é só base.
+    given = client.patch(f"/api/favorites/{qqq.id}", json={"tier": 3})
+    assert given.status_code == 200, given.text
+    assert given.json()["tier"] == 3 and given.json()["notify_telegram"] is True
+    db.expire_all()
+    assert db.get(MonitorFavoriteAlertState, qqq.id) is None
+    # Desligar no Monitor; subir de 1 para 2 estrelas não mexe.
+    off = client.patch(f"/api/favorites/{qqq.id}", json={"notify_telegram": False})
+    assert off.status_code == 200 and off.json()["notify_telegram"] is False
+    up = client.patch(f"/api/favorites/{qqq.id}", json={"tier": 2}).json()
+    assert up["tier"] == 2 and up["notify_telegram"] is False
+    # Tirar as estrelas: sai do Monitor e da varredura (o valor fica guardado).
+    removed = client.patch(f"/api/favorites/{qqq.id}", json={"tier": None}).json()
+    assert removed["tier"] is None and removed["notify_telegram"] is False
+    # Dar a estrela de novo religa o alerta que estava desligado (P3 aceito).
+    again = client.patch(f"/api/favorites/{qqq.id}", json={"tier": 1}).json()
+    assert again["tier"] == 1 and again["notify_telegram"] is True
+
+
+def test_d2_new_favorite_starts_without_star_and_with_the_alert_on(api, db):
+    client, _state, _owner, _other = api
+    created = client.post("/api/favorites/", json={**_body("SPY"), "notify_telegram": False})
+    assert created.status_code == 200, created.text
+    assert created.json()["tier"] is None and created.json()["notify_telegram"] is True
+
+
+def test_d2_alert_origin_fields_and_banner_only_for_the_vitrine(api, db, monkeypatch):
+    client, state, owner, _other = api
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@test.local")
+    body = client.get("/api/opportunities/alert-origin").json()
+    assert body["show_banner"] is True and body["has_monitored_strategy"] is False
+    assert body["alerts_on"] == 0 and "has_marked_favorite" not in body
+    # Só favorito sem estrela: o Monitor mostra a vitrine, a faixa fica.
+    _favorite(db, owner, "QQQ", tier=None)
+    assert client.get("/api/opportunities/alert-origin").json()["show_banner"] is True
+    # Estratégia com estrela, mesmo com o alerta desligado: sem faixa.
+    _favorite(db, owner, "NVDA", tier=2, notify=False)
+    body = client.get("/api/opportunities/alert-origin").json()
+    assert body["show_banner"] is False and body["has_monitored_strategy"] is True
+    assert body["alerts_on"] == 0
+    # O admin nunca vê a vitrine.
+    admin = _user(db, "admin")
+    state["user"] = str(admin.id)
+    assert client.get("/api/opportunities/alert-origin").json()["show_banner"] is False
+
+
+def test_d2_vitrine_ignores_the_screen_star_filter(db, unit_database_url, monkeypatch):
+    from app.services.opportunity_service import OpportunityService
+
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@test.local")
+    admin = _user(db, "admin")
+    bia = _user(db, "bia")
+    _favorite(db, admin, "BTC/USDT", tier=1)
+    own = _favorite(db, bia, "NVDA", tier=3)
+    service = OpportunityService(db_path=unit_database_url)
+    # Bia tem estratégia com estrela: filtrar por 3 estrelas não a joga na vitrine.
+    assert service.get_favorites(str(bia.id), tier_filter="1") == []
+    listed = service.get_favorites(str(bia.id), tier_filter="1,2,3")
+    assert [f["id"] for f in listed] == [own.id]
+    assert not listed[0]["is_curated_fallback"]
+    # Só favorito sem estrela: a vitrine do catálogo, sem alerta.
+    own.tier = None
+    db.commit()
+    vitrine = service.get_favorites(str(bia.id), tier_filter=None)
+    assert vitrine and all(f["is_curated_fallback"] for f in vitrine)
+    assert not any(f["notify_telegram"] for f in vitrine)
+
+
+def _transition_receiver(db, name: str) -> User:
+    user = _user(db, name)
+    _catalog_receiver_alert(db, user)
+    db.commit()
+    return user
+
+
+def test_d2_transition_criterion_text_and_no_mark_in_dry_run(db):
+    marker = alerts.MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY
+    db.add(SystemPreference(key="monitor_telegram_favorite_origin_at", value="2026-10-26T12:00:00"))
+    db.commit()
+    off = _transition_receiver(db, "off")  # tem estratégia com estrela, mas desligada
+    unstarred = _transition_receiver(db, "unstarred")  # só favorito sem estrela
+    on = _transition_receiver(db, "on")  # estrela e alerta ligado: não recebe
+    _favorite(db, off, "NVDA", tier=1, notify=False)
+    _favorite(db, unstarred, "QQQ", tier=None)
+    _favorite(db, on, "BTC/USDT", tier=3)
+    dry = run_monitor_telegram_alert_scan(
+        db,
+        user_id="cron",
+        settings=_settings(),
+        opportunity_service=FakeService([]),
+        sender=Sender(),
+        force_dry_run=True,
+        now=datetime(2026, 10, 27, 11, 5),
+    )
+    assert dry["transition_notices"] == 2
+    # Ensaio: nem a marca nem a reserva da chave ``transition`` são gravadas.
+    assert db.get(SystemPreference, marker) is None
+    assert db.query(MonitorTelegramAlert).filter_by(source="transition").count() == 0
+    sender = Sender()
+    real = _scan(db, [], sender, now=datetime(2026, 10, 27, 11, 30))
+    assert real["transition_notices"] == 2
+    assert sorted(chat for chat, _ in sender.messages) == ["chat-off", "chat-unstarred"]
+    text = sender.messages[0][1]
+    assert "agora vêm das estratégias que você acompanha no Monitor" in text
+    assert "Você recebia: BTC/USDT." in text
+    assert "dê pelo menos 1 estrela: o alerta já vem ligado e você desliga no Monitor" in text
+    assert "Alertar" not in text
+    assert db.get(SystemPreference, marker) is not None
+
+
+def test_d2_transition_mark_waits_for_a_failed_delivery(db):
+    marker = alerts.MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY
+    db.add(SystemPreference(key="monitor_telegram_favorite_origin_at", value="2026-10-26T12:00:00"))
+    db.commit()
+    _transition_receiver(db, "ok")
+    _transition_receiver(db, "down")
+    first = Sender(fail_for={"chat-down"})
+    summary = _scan(db, [], first, now=datetime(2026, 10, 27, 11, 5))
+    assert summary["failed"] == 1 and [c for c, _ in first.messages] == ["chat-ok"]
+    assert db.get(SystemPreference, marker) is None
+    retry = Sender()
+    again = _scan(db, [], retry, now=datetime(2026, 10, 28, 11, 5))
+    # Só quem falhou recebe de novo; a chave impede repetir quem já recebeu.
+    assert [c for c, _ in retry.messages] == ["chat-down"] and again["failed"] == 0
+    assert db.get(SystemPreference, marker) is not None
+
+
+def test_d2_discovery_promotion_request_refuses_any_tier(monkeypatch):
+    from fastapi import HTTPException
+
+    from app.routes import discovery_routes
+
+    captured = {}
+
+    class FakeDiscovery:
+        def promote_result(self, *, result_id, actor, idempotency_key, payload, db):
+            captured["payload"] = payload
+            if "tier" in payload:
+                return {"error": "tier not allowed", "detail": "promoção sem estrela"}, 422
+            return {"favorite_id": "1", "result_id": result_id}, 201
+
+    monkeypatch.setattr(discovery_routes, "_service", lambda: FakeDiscovery())
+    ok = discovery_routes.promote_discovery_result(
+        "RS-1", discovery_routes.PromoteRequest(idempotency_key="promote-1"), "admin", None
+    )
+    assert ok["favorite_id"] == "1" and captured["payload"] == {"result_id": "RS-1"}
+    with pytest.raises(HTTPException) as refused:
+        discovery_routes.promote_discovery_result(
+            "RS-1",
+            discovery_routes.PromoteRequest(idempotency_key="promote-2", tier=3),
+            "admin",
+            None,
+        )
+    assert refused.value.status_code == 422
+    assert captured["payload"] == {"result_id": "RS-1", "tier": 3}
+
+
+def test_d2_patch_updates_the_monitor_cache_of_the_owner(api, db, monkeypatch):
+    client, _state, owner, _other = api
+    fav = _favorite(db, owner, "NVDA", tier=2)
+    monkeypatch.setattr(opportunity_routes, "_OPPORTUNITIES_CACHE", {})
+    opportunity_routes._write_cached_opportunities(
+        str(owner.id), "1,2,3", [{"id": fav.id, "notify_telegram": True, "tier": 2}]
+    )
+    # Desligar no Monitor: a linha em cache já volta desligada (sem recalcular a lista).
+    assert (
+        client.patch(f"/api/favorites/{fav.id}", json={"notify_telegram": False}).status_code == 200
+    )
+    cached = opportunity_routes._read_cached_opportunities(str(owner.id), "1,2,3")
+    assert cached == [{"id": fav.id, "notify_telegram": False, "tier": 2}]
+    # Mudar a estrela muda quem está na lista: o cache do dono sai.
+    assert client.patch(f"/api/favorites/{fav.id}", json={"tier": 3}).status_code == 200
+    assert opportunity_routes._read_cached_opportunities(str(owner.id), "1,2,3") is None

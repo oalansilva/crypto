@@ -4,9 +4,9 @@ import { X, Star, AlertCircle, ShieldAlert } from 'lucide-react'
 import { useAuth } from '@/stores/authStore'
 import '@/styles/favoriteAlerts.css'
 
-/** Card #1122: o favorito nasce sem "Alertar"; a nota diz como passar a receber. */
+/** Card #1122 (d2): o favorito entra sem estrela; a estrela põe no Monitor com o alerta ligado. */
 export const SAVE_FAVORITE_ALERT_NOTE =
-    'O favorito nasce sem alerta. Para receber os sinais no Telegram, marque "Alertar" em Favoritos e marque o ativo como "No portfólio" no Monitor.'
+    'O favorito entra sem estrela, só em Favoritos. Dê pelo menos 1 estrela lá para acompanhar no Monitor e receber os sinais no Telegram; o alerta já vem ligado e você desliga no Monitor.'
 export const SAVE_FAVORITE_DUPLICATE =
     'Já está nos favoritos com esta configuração (fonte, sessão e ajuste). Nada foi salvo.'
 
