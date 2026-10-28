@@ -18,6 +18,7 @@ celery_app = Celery(
     include=[
         "app.tasks.batch_backtest_tasks",
         "app.tasks.discovery_celery_tasks",
+        "app.tasks.benchmark_column_tasks",
     ],
 )
 
@@ -25,6 +26,8 @@ celery_app.conf.update(
     task_default_queue="default",
     task_routes={
         "app.tasks.batch_backtest_tasks.run_batch_backtest_task": {"queue": "batch_backtest"},
+        # Card #1123: a coluna extra do Decidir roda no worker da fila de lotes.
+        "app.tasks.benchmark_column_tasks.run_reference_column_task": {"queue": "batch_backtest"},
         "app.tasks.discovery_celery_tasks.run_sweep_orchestrator_task": {"queue": "discovery"},
     },
     task_serializer="json",

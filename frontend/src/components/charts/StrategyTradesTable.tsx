@@ -47,6 +47,8 @@ interface StrategyTradesTableProps {
     loading?: boolean
     error?: string | null
     onExport?: () => void
+    /** Card #1123: status do download da planilha (região `polite`). */
+    exportStatus?: string
     testId?: string
     showMetrics?: boolean
     /** Moeda da classe em todas as colunas de dinheiro: USDT (cripto, padrão) ou USD (ação e ETF). */
@@ -216,6 +218,7 @@ export function StrategyTradesTable({
     loading,
     error,
     onExport,
+    exportStatus,
     testId = 'strategy-trades-table',
     showMetrics = true,
     currency = 'USDT',
@@ -286,6 +289,11 @@ export function StrategyTradesTable({
                                 <Download className="h-4 w-4" />
                                 Exportar para Excel
                             </button>
+                        ) : null}
+                        {onExport ? (
+                            <span className="b23-export-status" role="status" aria-live="polite" data-testid="trades-export-status">
+                                {exportStatus ?? ''}
+                            </span>
                         ) : null}
                     </div>
                 </div>

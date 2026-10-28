@@ -62,6 +62,8 @@ from app.services.equity_backtest import (
 from app.metrics.backtest_execution_costs import fee_for_symbol, slippage_for_timeframe
 from app.services.strategy_transparency import build_strategy_transparency
 from app.middleware.authMiddleware import get_current_admin
+from app.database import get_db
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
@@ -110,119 +112,149 @@ def _ensure_crypto_data_source(data_source: str) -> None:
         )
 
 
-@router.post("/export-trades")
-async def export_trades_to_excel(
-    request: Dict[str, Any],
-    _admin_user_id: str = Depends(get_current_admin),
-):
-    """
-    Export trades to Excel file.
-
-    Args:
-        request: Dict with 'trades', 'symbol', 'template_name', 'timeframe'
-
-    Returns:
-        Excel file as streaming response
-    """
-    try:
-        trades = request.get("trades", [])
-        symbol = request.get("symbol", "UNKNOWN")
-        template_name = request.get("template_name", "strategy")
-        timeframe = request.get("timeframe", "1d")
-
-        # Prepare data for Excel
-        excel_data = []
-        for trade in trades:
-            # Calculate P&L in USD
-            pnl_usd = trade.get("pnl", None)
-            if pnl_usd is None:
-                # If P&L not provided, calculate from profit percentage and initial capital
-                profit_pct = trade.get("profit", 0) if trade.get("profit") is not None else 0
-                initial_capital = (
+def _trade_rows(trades: List[Dict[str, Any]], currency: str) -> List[Dict[str, Any]]:
+    rows = []
+    for trade in trades:
+        pnl_usd = trade.get("pnl", None)
+        if pnl_usd is None:
+            profit_pct = trade.get("profit", 0) if trade.get("profit") is not None else 0
+            initial_capital = (
+                trade.get("initial_capital", 100)
+                if trade.get("initial_capital") is not None
+                else 100
+            )
+            pnl_usd = initial_capital * profit_pct
+        return_pct = (trade.get("profit", 0) * 100) if trade.get("profit") is not None else 0
+        signal_type = trade.get("signal_type", "")
+        if not signal_type:
+            exit_reason = trade.get("exit_reason", "")
+            if "stop" in str(exit_reason).lower():
+                signal_type = "Stop"
+            elif exit_reason:
+                signal_type = "Close entry(s) order..."
+            else:
+                signal_type = trade.get("entry_signal_type", "Comprar")
+        rows.append(
+            {
+                "Entry Time": trade.get("entry_time", ""),
+                "Entry Price": trade.get("entry_price", 0),
+                "Exit Time": trade.get("exit_time", "") if trade.get("exit_time") else "",
+                "Exit Price": trade.get("exit_price", 0) if trade.get("exit_price") else "",
+                "Trade Type": (trade.get("type", "Long").upper() if trade.get("type") else "LONG"),
+                "Signal": signal_type,
+                "P&L (USD)": round(pnl_usd, 2),
+                "Return %": round(return_pct, 2),
+                "Initial Capital": (
                     trade.get("initial_capital", 100)
                     if trade.get("initial_capital") is not None
                     else 100
-                )
-                pnl_usd = initial_capital * profit_pct
+                ),
+                "Final Capital": (
+                    trade.get("final_capital", 0)
+                    if trade.get("final_capital") is not None
+                    else (100 + pnl_usd)
+                ),
+                "Moeda": currency,
+            }
+        )
+    return rows
 
-            # Calculate Return %
-            return_pct = (trade.get("profit", 0) * 100) if trade.get("profit") is not None else 0
 
-            # Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
-            signal_type = trade.get("signal_type", "")
-            if not signal_type:
-                # Se não tiver signal_type, tentar inferir do exit_reason
-                exit_reason = trade.get("exit_reason", "")
-                if "stop" in str(exit_reason).lower():
-                    signal_type = "Stop"
-                elif exit_reason:
-                    signal_type = "Close entry(s) order..."
-                else:
-                    # Se for entrada, usar entry_signal_type
-                    signal_type = trade.get("entry_signal_type", "Comprar")
+@router.post("/export-trades")
+def export_trades_to_excel(
+    request: Dict[str, Any],
+    _admin_user_id: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Planilha de trades com contexto (card #1123, decisão 7): abas Trades, Contexto e Legenda.
 
-            excel_data.append(
-                {
-                    "Entry Time": trade.get("entry_time", ""),
-                    "Entry Price": trade.get("entry_price", 0),
-                    "Exit Time": trade.get("exit_time", "") if trade.get("exit_time") else "",
-                    "Exit Price": trade.get("exit_price", 0) if trade.get("exit_price") else "",
-                    "Trade Type": (
-                        trade.get("type", "Long").upper() if trade.get("type") else "LONG"
-                    ),
-                    "Signal": signal_type,  # Tipo de sinal (Stop/Comprar/Close entry(s) order...)
-                    "P&L (USD)": round(pnl_usd, 2),
-                    "Return %": round(return_pct, 2),
-                    "Initial Capital": (
-                        trade.get("initial_capital", 100)
-                        if trade.get("initial_capital") is not None
-                        else 100
-                    ),
-                    "Final Capital": (
-                        trade.get("final_capital", 0)
-                        if trade.get("final_capital") is not None
-                        else (100 + pnl_usd)
-                    ),
-                }
+    Corpo: ``trades``, ``symbol``, ``template_name``, ``timeframe``, ``context`` (asset,
+    data_provenance, execution, conventions, período e modo do resultado), ``benchmark_comparison_id``
+    e, aberta de Favoritos, ``favorite_id`` (o servidor lê o contexto do favorito e ignora o do corpo).
+    Nada é recalculado: a referência sai da comparação gravada.
+    """
+    from app.models import FavoriteStrategy
+    from app.services import benchmark_comparison as bench
+    from app.services import export_context as xc
+
+    try:
+        trades = request.get("trades", []) or []
+        symbol = request.get("symbol", "UNKNOWN")
+        template_name = request.get("template_name", "strategy")
+        timeframe = request.get("timeframe", "1d")
+        context = request.get("context") if isinstance(request.get("context"), dict) else {}
+        context = {
+            **context,
+            "symbol": context.get("symbol") or symbol,
+            "timeframe": context.get("timeframe") or timeframe,
+        }
+        favorite_id = request.get("favorite_id") or context.get("favorite_id")
+        comparison_id = request.get("benchmark_comparison_id")
+
+        favorite = None
+        if favorite_id:
+            favorite = (
+                db.query(FavoriteStrategy).filter(FavoriteStrategy.id == int(favorite_id)).first()
+            )
+            if favorite is None or str(favorite.user_id) != str(_admin_user_id):
+                raise HTTPException(status_code=404, detail="Favorite not found")
+        if favorite is not None:
+            from app.routes.favorites import (
+                _assets_for_rows,
+                _favorite_asset,
+                _normalize_favorite_json_fields,
             )
 
-        # Create DataFrame
-        df = pd.DataFrame(excel_data)
+            _normalize_favorite_json_fields(favorite)
+            comparison = bench.get_comparison(db, favorite.benchmark_comparison_id)
+            asset = _favorite_asset(favorite, _assets_for_rows(db, [favorite]))
+            cells = xc.favorite_context(favorite, asset, comparison)
+        else:
+            comparison = bench.get_comparison(db, comparison_id)
+            if comparison is not None and str(comparison.get("user_id") or "") not in (
+                "",
+                str(_admin_user_id),
+            ):
+                comparison = None
+            cells = xc.result_context(context, comparison)
+            asset = context.get("asset") if isinstance(context.get("asset"), dict) else None
 
-        # Create Excel file in memory
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Trades")
-
-            # Get the workbook and worksheet
-            workbook = writer.book
-            worksheet = writer.sheets["Trades"]
-
-            # Auto-adjust column widths
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
-
-        output.seek(0)
-
-        # Generate filename
-        safe_symbol = symbol.replace("/", "_")
-        safe_template = template_name.replace(" ", "_")
-        filename = f"{safe_template}_{safe_symbol}_{timeframe}_trades.xlsx"
-
-        return StreamingResponse(
-            io.BytesIO(output.read()),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        currency = (asset or {}).get("currency") or ("USDT" if "/" in str(symbol) else "USD")
+        excel_rows = _trade_rows(trades, currency)
+        header = (
+            list(excel_rows[0].keys())
+            if excel_rows
+            else [
+                "Entry Time",
+                "Entry Price",
+                "Exit Time",
+                "Exit Price",
+                "Trade Type",
+                "Signal",
+                "P&L (USD)",
+                "Return %",
+                "Initial Capital",
+                "Final Capital",
+                "Moeda",
+            ]
         )
+        content = xc.write_workbook(
+            [
+                ("Trades", header, [[row[h] for h in header] for row in excel_rows]),
+                xc.context_sheet(cells),
+                xc.legend_sheet(favorite=favorite is not None),
+            ]
+        )
+        safe_symbol = str(symbol).replace("/", "_")
+        safe_template = str(template_name).replace(" ", "_")
+        filename = f"{safe_template}_{safe_symbol}_{timeframe}_trades.xlsx"
+        return StreamingResponse(
+            io.BytesIO(content),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error exporting trades to Excel: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error exporting trades: {str(e)}")
@@ -459,7 +491,18 @@ def _freeze_equity_run(request: ComboBacktestRequest, df, *, deep: bool):
     return candles, intraday, sample
 
 
-async def execute_combo_backtest(request: ComboBacktestRequest):
+async def _attach_default_comparison(result: Dict[str, Any], user_id: str) -> None:
+    """Card #1123 (decisão 5): grava a comparação padrão (próprio ativo) e a devolve no resultado."""
+    import asyncio
+
+    from app.services.benchmark_comparison import record_run_default
+
+    payload, error = await asyncio.to_thread(record_run_default, result, user_id)
+    result["benchmark_comparison"] = payload
+    result["benchmark_comparison_error"] = error
+
+
+async def execute_combo_backtest(request: ComboBacktestRequest, user_id: Optional[str] = None):
     """
     Execute a combo strategy backtest.
 
@@ -748,7 +791,10 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         logger.info("Response object created successfully")
         from fastapi.encoders import jsonable_encoder
 
-        return jsonable_encoder(response)
+        encoded = jsonable_encoder(response)
+        if user_id is not None:
+            await _attach_default_comparison(encoded, user_id)
+        return encoded
 
     except HTTPException:
         raise
@@ -768,7 +814,7 @@ async def run_combo_backtest(
     _admin_user_id: str = Depends(get_current_admin),
 ):
     """Execute a combo strategy backtest for admin users."""
-    return await execute_combo_backtest(request)
+    return await execute_combo_backtest(request, _admin_user_id)
 
 
 @router.post("/optimize", response_model=ComboOptimizationResponse)
@@ -896,6 +942,11 @@ async def optimize_combo_strategy(
                 "trades": result.get("trades") if isinstance(result.get("trades"), list) else [],
             }
 
+        result["start_date"] = request.start_date
+        result["end_date"] = request.end_date
+        await _attach_default_comparison(result, _admin_user_id)
+        result.pop("start_date", None)
+        result.pop("end_date", None)
         return ComboOptimizationResponse(**result)
 
     except HTTPException:

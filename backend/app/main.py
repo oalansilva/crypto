@@ -19,6 +19,7 @@ from app.config import get_settings
 from app.api import router
 from app.routes.favorites import router as favorites_router
 from app.routes.combo_routes import router as combo_router
+from app.routes.benchmark_routes import router as benchmark_router
 from app.routes.asset_catalog_routes import router as asset_catalog_router
 from app.routes.market_history_routes import router as market_history_router
 from app.routes.discovery_routes import router as discovery_router
@@ -316,6 +317,7 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(favorites_router)
 app.include_router(combo_router)
+app.include_router(benchmark_router)
 app.include_router(asset_catalog_router)
 app.include_router(market_history_router)
 app.include_router(discovery_router)

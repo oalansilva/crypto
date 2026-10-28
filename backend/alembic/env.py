@@ -17,6 +17,7 @@ import app.models_signal_history  # noqa: F401
 import app.models_discovery  # noqa: F401
 import app.models_asset_catalog  # noqa: F401
 import app.models_batch_backtest  # noqa: F401
+import app.models_benchmark  # noqa: F401
 from app.config import get_settings
 from app.database import Base
 

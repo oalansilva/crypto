@@ -55,6 +55,11 @@ The result screen SHALL offer "Trocar referência", which opens a single-choice 
 - **WHEN** Alan switches a fresh result to SPY and then saves it with "Salvar nos Favoritos"
 - **THEN** the new favorite points to the same recorded comparison
 
+#### Scenario: Promoted favorite inherits the Decidir cell
+
+- **WHEN** a candidate with a valid "Contra SPY" cell is promoted from the Decidir
+- **THEN** the favorite starts with that recorded comparison and its analysis shows SPY without computing on open
+
 #### Scenario: Back to the own asset
 
 - **WHEN** Alan picks "Próprio ativo" in the selector

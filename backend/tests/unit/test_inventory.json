@@ -1045,6 +1045,51 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, provedor de mercado, coleta e otimizador simulados"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_benchmark_compute.py",
+      "protected_behavior": "Cálculo da comparação com referência (#1123): período comum encaixado no calendário da referência (BTC/USDT x SPY com 01/01/2019 fora e 0 trades), trades fora (BTC x SOL), NVDA x SPY sem aviso de moeda, ETF x próprio ativo, igualdade com o Retorno total, CRCL sem interseção, período comum curto (mínimo 30 dias), sem histórico, short long-only, nunca zero",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "Função pura com séries sintéticas, sem banco nem rede"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_benchmark_routes.py",
+      "protected_behavior": "Rotas da comparação (#1123): gravação no resultado e no favorito, leitura sem cálculo nem coleta, dono e admin, falha na coleta sem gravar, herança ao salvar nos Favoritos com fixação da amostra, troca no favorito soltando a amostra anterior, reabrir com histórico novo mantém os números, refresh refaz com a mesma referência, padrão do próprio ativo na rodada",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, fonte de referência simulada e TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_discovery_column.py",
+      "protected_behavior": "Coluna extra do Decidir (#1123): SPY igual ao resultado (02/01/2019, 0 trades fora, aviso de moeda), PENGU/USDT período curto, CRCL sem período comum em todos, ordem e rank iguais, leitura e exportação sem cálculo nem coleta, reativar sem recalcular, falha na coleta sem gravar e Tentar de novo, troca cancela o job, amostra vencida, fixação e soltura, outra varredura e outro usuário sem coluna, ativo marcado recusado, planilha com 13 colunas (extra), herança na promoção",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, fonte de referência e regeneração de trades simuladas, TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_export_context.py",
+      "protected_behavior": "Planilhas com contexto (#1123): Favoritos pelo servidor com colunas de hoje e os 22 campos, favorito antigo com deduzido e não registrado, aviso de moeda, Legenda com Tela × planilha e Comparação refeita, admin-only; trades com abas Trades (+Moeda), Contexto e Legenda, insuficiente com células vazias, contexto do favorito",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, openpyxl e TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_migration.py",
+      "protected_behavior": "Migração Alembic do #1123 em schema privado: tabelas benchmark_comparisons e discovery_reference_columns, ponteiro do favorito sem backfill, índice único parcial da coluna ativa, idempotência",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com schema privado descartado no fim"
     }
   ]
 }

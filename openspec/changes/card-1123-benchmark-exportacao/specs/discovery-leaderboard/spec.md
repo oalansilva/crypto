@@ -50,7 +50,8 @@ After a sweep is completed, the Decidir SHALL offer "Comparar com outra referên
 
 - **WHEN** Alan chooses SPY on a sweep with BTC/USDT, NVDA, SOL/USDT, SPY and PENGU/USDT (14-day window)
 - **THEN** all five candidates show a "Contra SPY" cell
-- **AND** BTC/USDT shows "+66.8 p.p.", "SPY +15.25% a.a.", "02/01/2019 – 31/12/2024" and "USDT tratado como USD"
+- **AND** BTC/USDT shows "+66,8 p.p.", "SPY +15,25% a.a.", "2 jan. 2019 – 31 dez. 2024" and "USDT tratado como USD", in the pt-BR format of the rest of the Decidir
+- **AND** the column header hint says "Δ CAGR · período comum · não ordena"
 - **AND** NVDA shows its difference without a currency warning
 - **AND** PENGU/USDT shows "Sem comparação" and "Período comum de 14 dias: o mínimo é 30." without any percentage
 
@@ -86,6 +87,25 @@ The server SHALL compute the extra column once per choice, for all candidates of
 
 - **WHEN** the QQQ collection fails while the column shows CRCL
 - **THEN** nothing is recorded, the column keeps CRCL and an alert offers "Tentar de novo"
+
+#### Scenario: Expired candidate sample
+
+- **WHEN** the frozen sample of a candidate expired before the extra column was chosen
+- **THEN** its cell shows "Sem comparação" and "Amostra do candidato vencida em <data>." without any number, and nothing new is fetched
+- **AND** the selector warned before the choice how many candidates have an expired sample (and, when all of them, to run the sweep again)
+- **AND** the strip summary counts it as "(amostra vencida)"; while the column is active the other candidates show "amostra guardada pela coluna extra"
+
+#### Scenario: Candidate without a recorded CAGR
+
+- **WHEN** a candidate has metrics but no recorded CAGR (for example, a CAGR above the ranking ceiling) and is not `insufficient_sample`
+- **THEN** it is not computed and, once the column is recorded, its cell shows "Sem comparação" and "Sem CAGR gravado do candidato." without any number (reason `no_cagr`), never "Calculando…"
+- **AND** in the spreadsheet its "Referência (extra)" is the column's asset and "Situação da comparação (extra)" says "Sem comparação: o candidato não tem CAGR gravado."
+
+#### Scenario: Promote with the extra column active
+
+- **WHEN** Alan promotes a candidate whose "Contra SPY" cell is valid
+- **THEN** the promotion says "Leva a comparação com SPY gravada" and the new favorite points to that recorded comparison (same reference, same sample, no recomputation)
+- **AND** a candidate with "Sem comparação" is promoted with the default reference (own asset)
 
 #### Scenario: Another sweep starts without a column
 

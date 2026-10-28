@@ -177,6 +177,17 @@ class FavoriteStrategy(Base):
     # Card #1118: amostra de execução do último refresh bem-sucedido (reprodução exata).
     snapshot_id = Column(String(40), nullable=True)
 
+    # Card #1123 (decisão 5): comparação com referência gravada que o favorito mostra e exporta.
+    benchmark_comparison_id = Column(
+        String(36),
+        ForeignKey(
+            "benchmark_comparisons.id",
+            ondelete="SET NULL",
+            name="fk_favorite_strategies_benchmark_comparison",
+        ),
+        nullable=True,
+    )
+
 
 class AutoBacktestRun(Base):
     """Model for Auto Backtest execution history"""
@@ -538,3 +549,4 @@ class OptimizationResult(Base):
 from app.models_onchain import OnchainSignal, OnchainSignalHistory  # noqa: F401, E402
 from app.models_asset_catalog import AssetCatalog, AssetCatalogRefresh  # noqa: F401, E402
 from app.models_batch_backtest import BatchBacktestItem, BatchBacktestJob  # noqa: F401, E402
+from app.models_benchmark import BenchmarkComparison, DiscoveryReferenceColumn  # noqa: F401, E402

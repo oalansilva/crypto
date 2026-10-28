@@ -44,7 +44,8 @@ import {
 import '../styles/lote.css';
 import '../styles/favoriteAlerts.css';
 
-import * as XLSX from 'xlsx';
+import { favoriteRefTag, type BenchmarkComparison as BenchmarkComparisonPayload, type ComparisonSummary } from '@/lib/benchmarkComparison';
+import '../components/results/BenchmarkComparison.css';
 
 type MonitorSignalSyncResult = {
     trades: any[] | null;
@@ -82,6 +83,9 @@ interface FavoriteStrategy {
     configuration?: FavoriteConfiguration | null;
     /** Card #1122: linha do catálogo do Cripto Farol (vitrine), sem "Alertar". */
     is_curated_fallback?: boolean;
+    /** Card #1123: comparação com referência gravada (resumo; a análise lê a inteira). */
+    benchmark_comparison_id?: string | null;
+    benchmark_comparison?: ComparisonSummary | null;
 }
 
 interface MonitorSignalHistoryItem {
@@ -488,7 +492,7 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     /** Precisão, convenções e período efetivo à vista; "Limitações e origem" atrás de um `<details>` fechado. */
-    const renderRowData = (row: RowData) => (
+    const renderRowData = (row: RowData, fav?: FavoriteStrategy) => (
         <div className="lote-rowdata">
             <span className="lote-prec" data-tone={row.precision.tone} data-testid="fav-precision">
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -510,6 +514,10 @@ const FavoritesDashboard: React.FC = () => {
             </span>
             <span className="lote-conv" data-testid="fav-conventions">{row.conventions}</span>
             <span className="lote-conv" data-testid="fav-effective">{row.effective}</span>
+            {/* Card #1123: só fora do padrão (próprio ativo), para não pesar a coluna Estratégia. */}
+            {fav && favoriteRefTag(fav.benchmark_comparison) ? (
+                <span className="lote-conv b23-favref" data-testid="fav-reference">{favoriteRefTag(fav.benchmark_comparison)}</span>
+            ) : null}
             {row.details ? (
                 <details className="lote-more-info" data-testid="fav-more-info">
                     <summary>{row.details.summary}</summary>
@@ -989,7 +997,25 @@ const FavoritesDashboard: React.FC = () => {
             is_strategy_protected: isFavoriteProtected(fav) && !isAdmin,
             strategy_transparency: recovered.strategyTransparency ?? fav.strategy_transparency ?? null,
             strategy_description: getFavoriteStrategyDescription(fav),
+            // Card #1123: a troca grava no favorito; identidade e janela para o seletor.
+            favorite_id: fav.is_curated_fallback ? null : fav.id,
+            favorite_name: fav.name,
+            asset: fav.asset ?? null,
+            execution: (fav.metrics?.analysis_execution as any) ?? null,
+            benchmark_comparison: null as BenchmarkComparisonPayload | null,
         };
+    };
+
+    const loadFavoriteComparison = async (fav: FavoriteStrategy): Promise<BenchmarkComparisonPayload | null> => {
+        const id = fav.benchmark_comparison?.id || fav.benchmark_comparison_id;
+        if (!id) return null;
+        try {
+            const response = await authFetch(`${API_BASE_URL}/benchmark-comparisons/${encodeURIComponent(id)}`);
+            if (!response.ok) return null;
+            return (await response.json()) as BenchmarkComparisonPayload;
+        } catch {
+            return null;
+        }
     };
 
     const handleViewAnalysis = async (fav: FavoriteStrategy) => {
@@ -1003,7 +1029,7 @@ const FavoritesDashboard: React.FC = () => {
                 status: 'timeout',
                 strategy_transparency: null,
             };
-            const [currentCandles, monitorSync] = await Promise.all([
+            const [currentCandles, monitorSync, savedComparison] = await Promise.all([
                 resolveWithTimeout(
                     loadCurrentChartCandles(fav),
                     recovered.candles || [],
@@ -1016,8 +1042,10 @@ const FavoritesDashboard: React.FC = () => {
                     FAVORITE_MONITOR_SIGNAL_SYNC_TIMEOUT_MS,
                     () => console.warn(`Opening favorite analysis without monitor trade sync for ${fav.symbol} ${fav.timeframe}; monitor sync timed out.`),
                 ),
+                loadFavoriteComparison(fav),
             ]);
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
+            analysisResult.benchmark_comparison = savedComparison;
             // Extend cached MA series with live Monitor points so overlays reach the newest candles.
             analysisResult.strategy_transparency = mergeStrategyTransparencySeries(
                 analysisResult.strategy_transparency,
@@ -1187,71 +1215,40 @@ const FavoritesDashboard: React.FC = () => {
 
     const selectedStrategies = favorites?.filter(f => selectedIds.includes(f.id)) || [];
 
-    const handleExportExcel = () => {
-        if (!favorites || favorites.length === 0) {
-            alert("No data to export.");
+    // Card #1123: a planilha sai do servidor com as colunas de hoje e as 22 de contexto (sem SheetJS).
+    const [exportStatus, setExportStatus] = useState('');
+    const handleExportExcel = async () => {
+        if (!favorites || favorites.length === 0 || filteredFavorites.length === 0) {
+            setExportStatus('Nenhum favorito na lista filtrada para exportar.');
             return;
         }
-
-        // Prepare data for export
-        const dataToExport = filteredFavorites.map(fav => {
-            const m = favoriteGridMetrics(fav.metrics);
-            const totalReturnPct = formatCompoundReturn(m, { empty: '-' }).points;
-            const tradesN = Math.max(1, getTradesCount(fav));
-            const returnPerTradePct = totalReturnPct != null ? totalReturnPct / tradesN : null;
-            const expectancy = m.expectancy ?? (m.total_pnl && tradesN ? m.total_pnl / tradesN : null);
-            const stopLoss = fav.parameters.stop_loss || null;
-
-            const direction = getFavoriteDirection(fav);
-            return {
-                Name: fav.name,
-                Symbol: fav.symbol,
-                Strategy: getFavoriteStrategyLabel(fav),
-                Direção: direction === 'short' ? 'Short' : 'Long',
-                Timeframe: fav.timeframe,
-                Período: formatPeriod(fav),
-                Parameters: formatParams(fav.parameters, isFavoriteProtected(fav)),
-                "Stop Loss": formatPct(stopLoss),
-                Sharpe: formatNum(m.sharpe_ratio),
-                Trades: getTradesCount(fav),
-                "Win Rate": formatPct(m.win_rate),
-                "Total Return": formatCompoundReturn(m, { empty: '-' }).text,
-                "Ret/T %": returnPerTradePct != null ? formatPct(returnPerTradePct) : '-',
-                "Exp/Trade": formatCurrency(expectancy),
-                "Max DD": formatPct(m.max_drawdown),
-                "Profit Factor": formatNum(m.profit_factor),
-                Sortino: formatNum(m.sortino),
-                "Max Loss": m.max_consecutive_losses ?? m.stop_loss_count ?? 0,
-                "Avg ATR": formatNum(m.avg_atr),
-                "WR Bull": formatPct(m.win_rate_bull),
-                "WR Bear": formatPct(m.win_rate_bear),
-                "Avg ADX": formatNum(m.avg_adx),
-                Notes: fav.notes || '',
-                "Created At": new Date(fav.created_at).toLocaleString()
-            };
-        });
-
-        // Create workbook
-        const ws = XLSX.utils.json_to_sheet(dataToExport);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Favorites");
-
-        // Generate filename
-        const filename = `Crypto_Backtest_Favorites_${new Date().toISOString().slice(0, 10)}.xlsx`;
-
-        // Download
-        XLSX.writeFile(wb, filename);
+        setExportStatus('Gerando a planilha…');
+        try {
+            const ids = filteredFavorites.map((fav) => fav.id).join(',');
+            const response = await authFetch(`${API_BASE_URL}/favorites/export?ids=${encodeURIComponent(ids)}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename="?([^";]+)"?/);
+            const filename = match ? match[1] : `Crypto_Backtest_Favorites_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(link);
+            setExportStatus(
+                `Planilha baixada: ${filename} · ${filteredFavorites.length} ${filteredFavorites.length === 1 ? 'favorito' : 'favoritos'} da lista filtrada · colunas de hoje + contexto · abas Favoritos e Legenda.`,
+            );
+        } catch (error) {
+            console.error('Erro ao exportar favoritos:', error);
+            setExportStatus('Não foi possível exportar a planilha. Tente de novo.');
+        }
     };
 
     // Formatters
-    const formatParams = (params: Record<string, any>, protectedStrategy = false) => {
-        if (protectedStrategy) return 'Detalhes indisponíveis';
-        if (!params || Object.keys(params).length === 0) return 'Sem parametros';
-        return Object.entries(params)
-            .map(([k, v]) => `${k}=${v}`)
-            .join('&');
-    };
-
     const formatPct = (val?: number) => {
         if (val === undefined || val === null) return '-';
         return val > 1 || val < -1 ? `${val.toFixed(2)}%` : `${(val * 100).toFixed(2)}%`;
@@ -1260,11 +1257,6 @@ const FavoritesDashboard: React.FC = () => {
     const formatNum = (val?: number, decimals = 2) => {
         if (val === undefined || val === null) return '-';
         return val.toFixed(decimals);
-    };
-
-    const formatCurrency = (val?: number) => {
-        if (val === undefined || val === null) return '-';
-        return `$${val.toFixed(2)}`;
     };
 
     const formatPeriod = (fav: FavoriteStrategy): string => {
@@ -1560,7 +1552,7 @@ const FavoritesDashboard: React.FC = () => {
                         </label>
                         {isAdmin ? (
                             <div className="fav-actions">
-                                <button type="button" onClick={handleExportExcel} className="fav-secondary-action">
+                                <button type="button" onClick={() => void handleExportExcel()} className="fav-secondary-action" data-testid="export-favorites">
                                     <List className="h-4 w-4" />
                                     Exportar
                                 </button>
@@ -1568,6 +1560,11 @@ const FavoritesDashboard: React.FC = () => {
                                     Nova estratégia
                                 </button>
                             </div>
+                        ) : null}
+                        {isAdmin ? (
+                            <p className="b23-export-status b23-fav-status" role="status" aria-live="polite" data-testid="favorites-export-status">
+                                {exportStatus}
+                            </p>
                         ) : null}
                     </div>
                 </section>
@@ -1632,7 +1629,7 @@ const FavoritesDashboard: React.FC = () => {
                                                         {revalidationStatus.label}
                                                     </span>
                                                 ) : null}
-                                                {renderRowData(row)}
+                                                {renderRowData(row, fav)}
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                 {direction === 'short' ? 'Short' : 'Long'}
@@ -1776,7 +1773,7 @@ const FavoritesDashboard: React.FC = () => {
                                                                 {revalidationStatus.label}
                                                             </span>
                                                         ) : null}
-                                                        {renderRowData(row)}
+                                                        {renderRowData(row, fav)}
                                                     </div>
                                                 </td>
                                                 <td className="direction-col">
