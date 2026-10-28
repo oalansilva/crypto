@@ -94,3 +94,20 @@ export function rowSample(row: SampledRow): { sample: string | null; sampleTone:
   if (info.state === 'pinned') return { sample: 'amostra guardada enquanto for favorito', sampleTone: 'plain', favorite }
   return { sample: `amostra até ${day(info.retain_until)}`, sampleTone: 'plain', favorite }
 }
+
+export const EXTRA_COLUMN_KEEPS = 'amostra guardada pela coluna extra'
+
+/**
+ * Estado da amostra na linha do candidato com a coluna extra do Decidir (card #1123): só a amostra que
+ * existe (guardada ou fixada) passa a ser "guardada pela coluna extra". O candidato que nunca guardou
+ * amostra (cripto do caminho antigo, refeita pelas velas do cache) segue "sem amostra guardada", e a
+ * amostra vencida segue vencida.
+ */
+export function rowSampleWithColumn(
+  row: SampledRow,
+  extraColumn: boolean,
+): { sample: string | null; sampleTone: SampleTone; favorite: string | null } {
+  const base = rowSample(row)
+  const kept = row.sample?.state === 'kept' || row.sample?.state === 'pinned'
+  return extraColumn && kept && base.sample ? { ...base, sample: EXTRA_COLUMN_KEEPS } : base
+}

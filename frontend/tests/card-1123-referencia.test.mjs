@@ -32,6 +32,7 @@ import {
   stripSummary,
   COLUMN_HINT,
 } from '../src/lib/benchmarkComparison.ts'
+import { EXTRA_COLUMN_KEEPS, rowSampleWithColumn } from '../src/lib/sampleState.ts'
 
 const SPY = { kind: 'catalog', symbol: 'SPY', asset_class: 'etf', currency: 'USD', return_kind: 'price_no_dividends', long_only: true }
 const BTC_OWN = { kind: 'own', symbol: 'BTC/USDT', asset_class: 'crypto', currency: 'USDT', return_kind: 'price', long_only: true }
@@ -182,6 +183,41 @@ test('resumo da faixa conta a varredura e diz o motivo, inclusive amostra vencid
     '3 de 5 candidatos desta varredura com comparação; 1 sem comparação (período comum curto); 1 sem comparação (amostra vencida).',
   )
   assert.match(stripSummary({ valid: 0, no_overlap: 5, computed: 5, total: 5 }, 'CRCL'), /^Nenhum candidato desta varredura tem período comum com CRCL/)
+})
+
+test('cripto sem amostra: refazível pelo caminho antigo não é aviso; sem as velas ou trades que não batem dizem o motivo, nunca "vencida"', () => {
+  const legacy = CANDS.map((c, i) => ({ ...c, sample: i === 0 ? 'legacy' : 'kept' }))
+  assert.deepEqual(columnChoiceHints(asset('2003-01-02T05:00:00Z'), legacy), [
+    { tone: 'note', text: '1 candidato com período comum curto (PENGU/USDT)' },
+  ])
+  const unavailable = CANDS.map((c, i) => ({ ...c, sample: i === 0 ? 'unavailable' : 'kept' }))
+  const hints = columnChoiceHints(asset('2003-01-02T05:00:00Z'), unavailable)
+  assert.deepEqual(hints.at(-1), { tone: 'note', text: '1 candidato sem as velas da varredura' })
+  assert.doesNotMatch(JSON.stringify(hints), /vencida/)
+  const allUnavailable = CANDS.map((c) => ({ ...c, sample: 'unavailable' }))
+  assert.deepEqual(columnChoiceHints(asset('2003-01-02T05:00:00Z'), allUnavailable), [
+    { tone: 'warn', text: 'Todos os 3 candidatos sem as velas da varredura: rode a varredura de novo para comparar' },
+  ])
+  const mixed = CANDS.map((c, i) => ({ ...c, sample: i === 0 ? 'expired' : 'unavailable' }))
+  assert.match(columnChoiceHints(asset('2003-01-02T05:00:00Z'), mixed)[0].text, /^Nenhum dos 3 candidatos tem amostra ou velas da varredura/)
+  assert.equal(
+    stripSummary({ valid: 3, short_overlap: 1, sample_unavailable: 1, computed: 5, total: 5 }, 'SPY'),
+    '3 de 5 candidatos desta varredura com comparação; 1 sem comparação (período comum curto); 1 sem comparação (sem os trades da varredura).',
+  )
+  const off = cellView({ state: 'insufficient', reason_code: 'sample_unavailable', reason: 'Trades refeitos não batem com a varredura.' }, 'SPY', false)
+  assert.deepEqual(off, { kind: 'off', title: 'Sem comparação', reason: 'Trades refeitos não batem com a varredura.', code: 'sample_unavailable' })
+})
+
+test('linha do candidato: só a amostra que existe fica "guardada pela coluna extra"', () => {
+  const row = (sample) => ({ timeframe: '1d', candle_source: 'ccxt', sample })
+  assert.equal(rowSampleWithColumn(row({ state: 'none', retain_until: null }), true).sample, 'sem amostra guardada')
+  assert.equal(rowSampleWithColumn(row(null), true).sample, 'sem amostra guardada')
+  assert.equal(rowSampleWithColumn(row({ state: 'kept', retain_until: '2026-11-25T00:00:00Z' }), true).sample, EXTRA_COLUMN_KEEPS)
+  assert.equal(rowSampleWithColumn(row({ state: 'pinned', retain_until: null }), true).sample, EXTRA_COLUMN_KEEPS)
+  const expired = rowSampleWithColumn(row({ state: 'expired', retain_until: '2026-09-30T00:00:00Z' }), true)
+  assert.equal(expired.sampleTone, 'expired')
+  assert.notEqual(expired.sample, EXTRA_COLUMN_KEEPS)
+  assert.equal(rowSampleWithColumn(row({ state: 'kept', retain_until: '2026-11-25T00:00:00Z' }), false).sample, 'amostra até 25 nov. 2026')
 })
 
 test('Favoritos: Ref. só fora do padrão; promoção diz o que leva', () => {

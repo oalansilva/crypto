@@ -1074,6 +1074,15 @@
       "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, fonte de referência simulada e TestClient"
     },
     {
+      "file": "backend/tests/unit/test_card_1123_crypto_without_sample.py",
+      "protected_behavior": "Coluna extra do Decidir com cripto sem amostra (#1123, retrabalho pós Não homologar, Conferir pelas métricas): recorte do cache local com a mesma serialização do caminho antigo; trades refeitos pelo caminho antigo com mesma janela (da combinação, da varredura ou derivada do treino gravado nas varreduras antigas), parâmetros, template congelado e split, e célula com número só quando trades, taxa de acerto e CAGR (tolerância 0.0005) batem com os gravados, mesmo com SHA das velas diferente ou sem versão gravada (cache só lido, spool apagado, ambiente restaurado); métricas diferentes (metrics_mismatch), cache ausente e janela indeterminável (GET unavailable e célula unrecorded sem rodar o otimizador) fecham sem número com o motivo verdadeiro (nunca vencida), também na planilha; erro inesperado no refeito fecha regeneration_failed sem citar amostra e com Sem comparação na planilha; ação/ETF com amostra e amostra vencida de verdade inalteradas",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, cache parquet local em tmp_path no formato do IncrementalLoader, rede bloqueada, otimizador e fonte de referência simulados, TestClient e openpyxl"
+    },
+    {
       "file": "backend/tests/unit/test_card_1123_discovery_column.py",
       "protected_behavior": "Coluna extra do Decidir (#1123): SPY igual ao resultado (02/01/2019, 0 trades fora, aviso de moeda), PENGU/USDT período curto, CRCL sem período comum em todos, ordem e rank iguais, leitura e exportação sem cálculo nem coleta, reativar sem recalcular, falha na coleta sem gravar e Tentar de novo, troca cancela o job, amostra vencida, fixação e soltura, outra varredura e outro usuário sem coluna, ativo marcado recusado, planilha com 13 colunas (extra), herança na promoção",
       "production_reachability": "reachable",

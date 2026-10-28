@@ -572,10 +572,12 @@ const CRCL_CELLS = Object.fromEntries(CANDIDATES.map((c) => [c.result_id, { stat
 
 type Col = { id: string; reference: Record<string, unknown>; status: string; done: number; total: number; error?: string | null; active: boolean; created_at: string; completed_at: string | null; counts?: Record<string, unknown>; reference_version?: string }
 
-async function openDecidir(page: Page) {
+async function openDecidir(page: Page, opts: { results?: typeof CANDIDATES; windows?: typeof WINDOWS } = {}) {
+  const results = opts.results ?? CANDIDATES
+  const windows = opts.windows ?? WINDOWS
   await installDiscoveryMulticlassMocks(page, {
     sweepState: 'completed',
-    results: CANDIDATES,
+    results,
     history: [{ sweep_id: SWEEP, state: 'completed', total: 5, processed: 5, succeeded: 5, failed: 0, skipped: 0, snapshot_hash: '1123', created_at: '2026-10-27T12:00:00Z' }],
   })
   await mockAssetCatalog(page, { assets: CATALOG })
@@ -627,7 +629,7 @@ async function openDecidir(page: Page) {
   }
   const snapshot = () => ({ column: state.column, pending: state.pending })
   await page.route('**/api/combos/discovery/sweeps/*/leaderboard?*', (route) => {
-    const rows = CANDIDATES.map((c) => (state.column ? { ...c, reference_comparison: state.cells[c.result_id] ?? { state: 'pending' } } : c))
+    const rows = results.map((c) => (state.column ? { ...c, reference_comparison: state.cells[c.result_id] ?? { state: 'pending' } } : c))
     return route.fulfill(json({ results: rows, total: rows.length, unfiltered_total: rows.length, class_counts: { all: 5, crypto: 3, stock: 1, etf: 1 }, offset: 0, limit: 12, reference_column: state.column || state.pending ? snapshot() : null }))
   })
   await page.route('**/api/combos/discovery/sweeps/*/leaderboard/export?*', (route) => {
@@ -662,7 +664,7 @@ async function openDecidir(page: Page) {
       return route.fulfill(json(snapshot(), 202))
     }
     advance()
-    return route.fulfill(json({ ...snapshot(), candidates: WINDOWS, not_computed: 0, min_days: 30 }))
+    return route.fulfill(json({ ...snapshot(), candidates: windows, not_computed: 0, min_days: 30 }))
   })
   await page.goto('/combo/discovery')
   await page.getByRole('tab', { name: 'Decidir' }).click()
@@ -821,6 +823,61 @@ test('Decidir: candidato com amostra vencida fica "Sem comparação" com aviso e
   await page.getByTestId('promote-RS-BTC1123A1').click()
   await expect(page.getByTestId('promotion-reference')).toContainText('Leva a comparação com SPY gravada')
 })
+
+// Retrabalho pós Não homologar: a cripto da Descoberta sem o histórico novo nunca guarda amostra. O
+// BTC/USDT foi refeito pelo caminho antigo (velas do cache) com as mesmas métricas da varredura e
+// compara; o SOL/USDT também é refazível (cache presente), mas os trades refeitos não batem com a
+// varredura (trades, CAGR ou acerto) e a célula diz o motivo verdadeiro, nunca "vencida"; a linha de
+// nenhum dos dois diz que a amostra está guardada pela coluna extra.
+const NO_SAMPLE = new Set(['RS-BTC1123A1', 'RS-SOL1123D4'])
+const LEGACY_CANDIDATES = CANDIDATES.map((c) =>
+  NO_SAMPLE.has(c.result_id) ? { ...c, candle_source: 'ccxt', candle_version: '32bc697fc369', sample: { state: 'none', retain_until: null } } : c,
+)
+const LEGACY_WINDOWS = WINDOWS.map((w) =>
+  NO_SAMPLE.has(w.result_id) ? { ...w, sample: 'legacy' } : w,
+)
+for (const vp of VIEWPORTS) {
+  test(`Decidir a ${vp.name} px: cripto sem amostra compara pelo caminho antigo ou diz o motivo verdadeiro`, async ({ page }) => {
+    await page.setViewportSize(vp.size)
+    const state = await openDecidir(page, { results: LEGACY_CANDIDATES, windows: LEGACY_WINDOWS })
+    // Antes da escolha: o refazível pelo caminho antigo não é aviso (a conferência é no cálculo).
+    await page.getByTestId('discovery-ref-switch').click()
+    const dialog = page.getByRole('dialog', { name: 'Escolher referência da coluna extra' })
+    const spy = dialog.getByTestId('benchmark-opt-SPY')
+    await expect(spy).not.toContainText('sem as velas da varredura')
+    await expect(spy).toContainText('1 candidato com período comum curto (PENGU/USDT)')
+    await expect(dialog).not.toContainText('vencida')
+    await page.keyboard.press('Escape')
+    state.column = {
+      id: 'col-SPY', reference: { symbol: 'SPY', asset_class: 'etf', currency: 'USD', return_kind: 'price_no_dividends' }, reference_version: '5', status: 'done', done: 5, total: 5, active: true,
+      created_at: '2026-10-27T17:40:00Z', completed_at: '2026-10-27T17:41:00Z',
+      counts: { valid: 3, short_overlap: 1, sample_unavailable: 1, sample_expired: 0, computed: 5, total: 5, currency_note: true },
+    }
+    state.cells = {
+      ...SPY_CELLS,
+      'RS-SOL1123D4': { state: 'insufficient', reason_code: 'sample_unavailable', reason: 'Trades refeitos não batem com a varredura.', expired_at: null },
+    }
+    await page.reload()
+    await page.getByRole('tab', { name: 'Decidir' }).click()
+    const btc = page.getByTestId('extra-cell-RS-BTC1123A1')
+    await expect(btc).toContainText('+66,8 p.p.')
+    await expect(btc).toContainText('SPY +15,25% a.a.')
+    await expect(btc).toContainText('2 jan. 2019 – 31 dez. 2024')
+    const sol = page.getByTestId('extra-cell-RS-SOL1123D4')
+    await expect(sol).toContainText('Sem comparação')
+    await expect(sol).toContainText('Trades refeitos não batem com a varredura.')
+    expect(await sol.innerText()).not.toMatch(/%|p\.p\.|vencida/)
+    await expect(page.getByTestId('extra-ref-summary')).toHaveText(
+      '3 de 5 candidatos desta varredura com comparação; 1 sem comparação (período comum curto); 1 sem comparação (sem os trades da varredura).',
+    )
+    // A linha do candidato sem amostra não diz que a amostra está guardada.
+    await expect(page.getByTestId('sample-RS-BTC1123A1')).toHaveText('sem amostra guardada')
+    await expect(page.getByTestId('sample-RS-SOL1123D4')).toHaveText('sem amostra guardada')
+    await expect(page.getByTestId('sample-RS-NVDA1123B2')).toHaveText('amostra guardada pela coluna extra')
+    await expect(page.getByTestId('decidir-table')).not.toContainText('vencida')
+    await shot(page, `decidir-cripto-sem-amostra-${vp.name}`)
+  })
+}
 
 // ---------------------------------------------------------------- 7.2: as três planilhas baixam com o contexto
 

@@ -4,8 +4,10 @@ A escolha vale por varredura e por usuário (``discovery_reference_columns``, no
 ``(sweep_id, actor)``). Cada célula é uma ``benchmark_comparisons`` com dono ``discovery_result``,
 calculada uma vez num job da fila de lotes (#1120), em lotes de 25, com a mesma função
 ``benchmark_comparison.compute`` do resultado. Os trades de cada candidato são regenerados só da
-amostra congelada dele; nenhum dado novo do candidato é buscado. Ler, recarregar ou exportar lê o que
-foi gravado. Ordem, rank global, "Ordenar por" e elegibilidade não dependem desta coluna.
+amostra congelada dele; a cripto que nunca guardou amostra (sem ``MARKET_HISTORY_UNIFIED``) refaz
+pelo caminho antigo, com as velas do cache local, e só vale se as métricas refeitas baterem com as
+gravadas na varredura (``metrics_match``). Nenhum dado novo do candidato é buscado. Ler, recarregar ou exportar lê o que foi gravado. Ordem,
+rank global, "Ordenar por" e elegibilidade não dependem desta coluna.
 """
 
 from __future__ import annotations
@@ -20,17 +22,56 @@ from sqlalchemy.orm import Session
 
 from app.models_benchmark import COLUMN_RUNNING, BenchmarkComparison, DiscoveryReferenceColumn
 from app.services import benchmark_comparison as bench
+from app.services.discovery_inputs import LegacyInputsUnavailable
 
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 25
 NOT_COMPUTED = ("insufficient_sample",)
 REGENERATION_FAILED = "regeneration_failed"
+# Cripto sem amostra (sem ``snapshot_id``) cujo refeito pelo caminho antigo falhou por erro inesperado:
+# não há amostra para citar; o histórico não é insuficiente (a planilha usa "Sem comparação").
+REGENERATION_FAILED_LEGACY_TEXT = (
+    "Sem comparação: não foi possível refazer os trades do candidato com as velas guardadas no "
+    "servidor."
+)
 # Candidato com métrica mas sem CAGR gravado (ex.: acima de ``CAGR_ABS_CEILING``): não entra no
 # cálculo e, com a coluna concluída, a célula fecha sem número com este motivo.
 NO_CAGR = "no_cagr"
 NO_CAGR_TEXT = "Sem comparação: o candidato não tem CAGR gravado."
 NO_CAGR_SHORT = "Sem CAGR gravado do candidato."
+# Candidato que nunca guardou amostra (cripto da Descoberta sem ``MARKET_HISTORY_UNIFIED``): os trades
+# são refeitos pelo caminho antigo com as velas do cache local e conferidos pelas métricas gravadas na
+# varredura. Quando não dá para refazer igual, a célula fecha sem número com o motivo verdadeiro (nunca
+# "vencida": essa amostra não existiu).
+SAMPLE_UNAVAILABLE = "sample_unavailable"
+METRICS_MISMATCH = "metrics_mismatch"
+UNAVAILABLE_TEXTS = {
+    METRICS_MISMATCH: (
+        "Trades refeitos não batem com a varredura.",
+        "Sem comparação: os trades refeitos com as velas guardadas no servidor não dão as mesmas "
+        "métricas da varredura (trades, CAGR ou taxa de acerto), então não são os mesmos trades. "
+        "Rode a varredura de novo para comparar.",
+    ),
+    "missing": (
+        "Velas do candidato não estão mais guardadas.",
+        "Sem comparação: as velas do candidato usadas na varredura não estão mais guardadas no "
+        "servidor. Rode a varredura de novo para comparar.",
+    ),
+    "unrecorded": (
+        "Varredura sem dados para refazer os trades.",
+        "Sem comparação: a varredura não registrou a janela ou as métricas do candidato, então não dá "
+        "para refazer os trades e conferir que são os mesmos. Rode a varredura de novo para comparar.",
+    ),
+}
+# Conferência do refeito (decisão do Alan, "Conferir pelas métricas"): mesmo número de trades, mesma
+# taxa de acerto e o mesmo CAGR na precisão em que a Descoberta o mostra. O CAGR gravado e o refeito
+# são frações (0.123 = 12,3%) do recorte de treino do split, e a Descoberta mostra 1 casa decimal do
+# percentual (``fmtPct``): 0.0005 é meia casa, então diferenças abaixo disso aparecem iguais na tela.
+# A taxa de acerto é ``ganhos / trades`` com o mesmo número de trades: igual, salvo arredondamento
+# binário do float.
+CAGR_MATCH_TOLERANCE = 0.0005
+WIN_RATE_MATCH_TOLERANCE = 1e-9
 
 
 def _now() -> datetime:
@@ -172,6 +213,7 @@ def column_counts(cells: dict[str, dict[str, Any]], total: int) -> dict[str, Any
         "no_overlap": 0,
         "no_history": 0,
         bench.SAMPLE_EXPIRED: 0,
+        SAMPLE_UNAVAILABLE: 0,
         REGENERATION_FAILED: 0,
     }
     fx = False
@@ -421,9 +463,16 @@ def state(db: Session, sweep_id: str, actor: str) -> dict[str, Any]:
     out_col = column_payload(col)
     if col is not None:
         out_col["counts"] = column_counts(column_cells(db, col.id), len(comp))
+    legacy = legacy_samples(db, [r for r in comp if not r.snapshot_id])
     windows = []
     for r in comp:
         st = states.get(r.snapshot_id) if r.snapshot_id else None
+        if r.snapshot_id:
+            sample = (st or {}).get("state") or "expired"
+        else:
+            # Nunca teve amostra: ``legacy`` = refazível pelo caminho antigo (conferido pelas métricas
+            # no job); ``unavailable`` = não dá para refazer (sem janela ou sem o cache local).
+            sample = legacy.get(r.id, "unavailable")
         windows.append(
             {
                 "result_id": r.id,
@@ -431,7 +480,7 @@ def state(db: Session, sweep_id: str, actor: str) -> dict[str, Any]:
                 "asset_class": r.asset_class,
                 "start": bench.iso_day(bench.to_day(r.start_at, r.asset_class)),
                 "end": bench.iso_day(bench.to_day(r.end_at, r.asset_class)),
-                "sample": (st or {}).get("state") or ("none" if not r.snapshot_id else "expired"),
+                "sample": sample,
                 "retain_until": (st or {}).get("retain_until"),
             }
         )
@@ -486,16 +535,279 @@ def export_cells(
 # --------------------------------------------------------------------------- job
 
 
-def regenerate_trades(db: Session, result: Any) -> list[dict[str, Any]]:
-    """Trades do candidato só da amostra congelada dele (mesmo caminho determinístico do favorito)."""
+def _is_crypto(result: Any) -> bool:
+    from app.services import discovery_multiclass as multiclass
+
+    return "/" in str(result.symbol or "") and (
+        multiclass.class_of(result.symbol, result.asset_class) == "crypto"
+    )
+
+
+def _legacy_windows(db: Session, rows: Iterable[Any]) -> dict[str, tuple[Any, Any]]:
+    """Janela pedida de cada candidato: a da combinação, senão a do ``snapshot`` da varredura (mesma
+    regra do caminho com amostra, ``regenerate_trades``). Lê só ``start_date``/``end_date`` dos JSON
+    (sem carregá-los inteiros); ``None`` onde a varredura não gravou datas (período relativo antigo).
+    """
 
     from app.models_discovery import DiscoveryCombination, DiscoverySweep
-    from app.services.combo_optimizer import ComboOptimizer
+
+    rows = list(rows)
+    ids = list({r.combination_id for r in rows if r.combination_id is not None})
+    snap = DiscoveryCombination.input_snapshot
+    combos: dict[Any, tuple[Any, Any]] = {}
+    for offset in range(0, len(ids), 500):
+        for cid, start, end in (
+            db.query(DiscoveryCombination.id, snap["start_date"], snap["end_date"])
+            .filter(DiscoveryCombination.id.in_(ids[offset : offset + 500]))
+            .all()
+        ):
+            combos[cid] = (
+                start if isinstance(start, str) else None,
+                end if isinstance(end, str) else None,
+            )
+    sweeps: dict[Any, tuple[Any, Any]] = {}
+    sweep_ids = list({r.sweep_id for r in rows})
+    if sweep_ids:
+        sweep_snap = DiscoverySweep.snapshot
+        for sid, start, end in (
+            db.query(DiscoverySweep.id, sweep_snap["start_date"], sweep_snap["end_date"])
+            .filter(DiscoverySweep.id.in_(sweep_ids))
+            .all()
+        ):
+            sweeps[sid] = (
+                start if isinstance(start, str) else None,
+                end if isinstance(end, str) else None,
+            )
+    out: dict[str, tuple[Any, Any]] = {}
+    for r in rows:
+        start, end = combos.get(r.combination_id) or (None, None)
+        sweep_start, sweep_end = sweeps.get(r.sweep_id) or (None, None)
+        out[r.id] = (start or sweep_start, end or sweep_end)
+    return out
+
+
+def legacy_samples(db: Session, rows: Iterable[Any]) -> dict[str, str]:
+    """Estado, antes da escolha, dos candidatos que nunca tiveram amostra (sem ler as velas).
+
+    ``legacy``: cripto com janela determinável (gravada ou derivada do treino gravado no resultado) e o
+    cache local presente (refazer e conferir pelas métricas acontece no job, mesmo sem versão das
+    velas gravada); ``unavailable``: não dá para refazer. Ação/ETF sem amostra é sempre
+    ``unavailable`` (o caminho antigo é só da cripto).
+    """
+
+    from app.services import discovery_inputs as di
+
+    rows = list(rows)
+    out: dict[str, str] = {}
+    loader = None
+    present: dict[tuple[str, str], bool] = {}
+    crypto = [r for r in rows if _is_crypto(r)]
+    windows = _legacy_windows(db, crypto)
+    for r in rows:
+        start, end = windows.get(r.id) or (None, None)
+        derivable = r.start_at is not None and r.end_at is not None
+        if not _is_crypto(r) or not ((start and end) or derivable):
+            out[r.id] = "unavailable"
+            continue
+        key = (r.symbol, r.timeframe)
+        if key not in present:
+            try:
+                loader = loader or di._legacy_loader()
+                present[key] = di.legacy_cache_present(r.symbol, r.timeframe, loader=loader)
+            except Exception:
+                logger.warning("Cache local indisponível para %s", key, exc_info=True)
+                present[key] = False
+        out[r.id] = "legacy" if present[key] else "unavailable"
+    return out
+
+
+def unavailable_sample_payload(
+    strategy: bench.StrategySide, reference: dict[str, Any], detail: str
+) -> dict[str, Any]:
+    """Célula do candidato que nunca teve amostra e não dá para refazer igual: sem número."""
+
+    short, text = UNAVAILABLE_TEXTS.get(detail) or UNAVAILABLE_TEXTS["unrecorded"]
+    payload = bench.compute(strategy, reference, bench.daily_closes(None, None))
+    payload["common_window"] = None
+    payload["reason"] = {"code": SAMPLE_UNAVAILABLE, "text": text, "short": short, "detail": detail}
+    return payload
+
+
+def _run_fixed(
+    result: Any,
+    inputs: dict[str, Any],
+    start: Any,
+    end: Any,
+    *,
+    equity: bool,
+    optimizer_factory: Optional[Callable[[], Any]] = None,
+) -> dict[str, Any]:
+    """Os parâmetros do candidato, sem otimizar, com o template congelado na varredura.
+
+    Devolve a saída inteira do otimizador (``trades``, ``best_metrics``, ``candles``).
+    """
+
     from app.services.combo_service import ComboService
     from app.services.favorite_backtest_refresh_service import _fixed_optimization_ranges
+    from app.tasks.discovery_tasks import DISCOVERY_SPLIT_TRAIN_RATIO
+
+    if optimizer_factory is None:
+        from app.services.combo_optimizer import ComboOptimizer
+
+        optimizer_factory = ComboOptimizer
+    frozen_metadata = inputs.get("template_metadata")
+    parameters = result.parameters if isinstance(result.parameters, dict) else {}
+    original = ComboService.get_template_metadata
+    if frozen_metadata is not None:
+        ComboService.get_template_metadata = lambda self, name: (
+            frozen_metadata if name == result.template_id else original(self, name)
+        )
+    try:
+        out = optimizer_factory().run_optimization(
+            template_name=result.template_id,
+            symbol=result.symbol,
+            timeframe=result.timeframe,
+            data_source="binance_equity" if equity else "ccxt",
+            start_date=start,
+            end_date=end,
+            custom_ranges=_fixed_optimization_ranges(parameters),
+            deep_backtest=True,
+            direction=result.direction,
+            split_train_ratio=DISCOVERY_SPLIT_TRAIN_RATIO,
+        )
+    finally:
+        ComboService.get_template_metadata = original
+    return out or {}
+
+
+def _template_metadata(db: Session, result: Any) -> Any:
+    from app.models_discovery import DiscoveryCombination
+
+    return (
+        db.query(DiscoveryCombination.input_snapshot["template_metadata"])
+        .filter(DiscoveryCombination.id == result.combination_id)
+        .scalar()
+    )
+
+
+def legacy_window(db: Session, result: Any, *, loader: Any = None) -> tuple[Any, Any]:
+    """Janela do refeito: a pedida e gravada; senão (varredura antiga com período relativo), a
+    derivada do treino gravado no resultado (``discovery_inputs.legacy_window_from_training``)."""
+
+    from app.services import discovery_inputs as di
+    from app.tasks.discovery_tasks import DISCOVERY_SPLIT_TRAIN_RATIO
+
+    start, end = _legacy_windows(db, [result]).get(result.id) or (None, None)
+    if start and end:
+        return start, end
+    if result.start_at is None or result.end_at is None:
+        return None, None
+    return di.legacy_window_from_training(
+        result.symbol,
+        result.timeframe,
+        result.start_at,
+        result.end_at,
+        DISCOVERY_SPLIT_TRAIN_RATIO,
+        loader=loader,
+    )
+
+
+def redone_metrics(out: dict[str, Any]) -> dict[str, Any]:
+    """Trades, CAGR e taxa de acerto do refeito, na mesma grandeza que a varredura gravou.
+
+    Mesmo cálculo do ``run_combination``: ``trades_count = len(trades)``, ``win_rate`` do
+    ``best_metrics`` (fração do recorte de treino) e o CAGR das colunas de ranking
+    (``_ensure_in_sample_ranking`` + ``_ranking_columns``: fração, ``None`` sem trades ou fora do teto).
+    """
+
+    from app.tasks.discovery_tasks import _ensure_in_sample_ranking, _ranking_columns
+
+    trades = out.get("trades") or []
+    best = dict(out.get("best_metrics") or {})
+    _ensure_in_sample_ranking(best, trades, out.get("candles") or [])
+    cagr, _calmar, _bh, _delta = _ranking_columns(best, len(trades))
+    return {"trades_count": len(trades), "cagr": cagr, "win_rate": best.get("win_rate")}
+
+
+def _close(recorded: Any, redone: Any, tolerance: float) -> bool:
+    if recorded is None or redone is None:
+        return recorded is None and redone is None
+    try:
+        return abs(float(recorded) - float(redone)) <= tolerance
+    except (TypeError, ValueError):
+        return False
+
+
+def metrics_match(result: Any, redone: dict[str, Any]) -> bool:
+    """O refeito tem as métricas gravadas: trades iguais, acerto igual, CAGR na tolerância."""
+
+    return (
+        result.trades_count == redone.get("trades_count")
+        and _close(result.win_rate, redone.get("win_rate"), WIN_RATE_MATCH_TOLERANCE)
+        and _close(result.cagr, redone.get("cagr"), CAGR_MATCH_TOLERANCE)
+    )
+
+
+def regenerate_legacy_trades(
+    db: Session,
+    result: Any,
+    *,
+    optimizer_factory: Optional[Callable[[], Any]] = None,
+    loader: Any = None,
+) -> list[dict[str, Any]]:
+    """Cripto sem amostra: refaz pelo caminho antigo com as velas do cache e confere pelas métricas.
+
+    Mesma janela (``legacy_window``), mesmos parâmetros, direção, template congelado e
+    ``split_train_ratio`` da varredura, com o recorte do cache local (só leitura, sem rede).
+    A versão das velas não é condição; o refeito só vale se ``metrics_match``. Senão levanta
+    ``LegacyInputsUnavailable`` com o motivo verdadeiro (``missing``, ``unrecorded`` ou
+    ``metrics_mismatch``) e a célula fecha sem número.
+    """
+
+    from app.services import discovery_inputs as di
+
+    if not _is_crypto(result) or result.trades_count is None:
+        raise di.LegacyInputsUnavailable(di.LEGACY_UNRECORDED)
+    start, end = legacy_window(db, result, loader=loader)
+    with di.legacy_frozen_inputs(result.symbol, result.timeframe, start, end, loader=loader):
+        out = _run_fixed(
+            result,
+            {"template_metadata": _template_metadata(db, result)},
+            start,
+            end,
+            equity=False,
+            optimizer_factory=optimizer_factory,
+        )
+    redone = redone_metrics(out)
+    if not metrics_match(result, redone):
+        logger.info(
+            "Candidato %s refeito pelo caminho antigo não bate com a varredura: gravado "
+            "trades=%s cagr=%s win_rate=%s; refeito %s",
+            result.id,
+            result.trades_count,
+            result.cagr,
+            result.win_rate,
+            redone,
+        )
+        raise di.LegacyInputsUnavailable(METRICS_MISMATCH)
+    return out.get("trades") or []
+
+
+def regenerate_trades(
+    db: Session, result: Any, *, optimizer_factory: Optional[Callable[[], Any]] = None
+) -> list[dict[str, Any]]:
+    """Trades do candidato só da amostra congelada dele (mesmo caminho determinístico do favorito).
+
+    Sem ``snapshot_id`` (cripto da Descoberta sem amostra durável), refaz pelo caminho antigo
+    conferido pelas métricas (``regenerate_legacy_trades``).
+    """
+
+    if not result.snapshot_id:
+        return regenerate_legacy_trades(db, result, optimizer_factory=optimizer_factory)
+
+    from app.models_discovery import DiscoveryCombination, DiscoverySweep
     from app.services.market_history import snapshots
     from app.services.market_history.reproduction import frozen_environment
-    from app.tasks.discovery_tasks import DISCOVERY_SPLIT_TRAIN_RATIO
 
     from app.database import engine
 
@@ -513,29 +825,10 @@ def regenerate_trades(db: Session, result: Any) -> list[dict[str, Any]]:
     equity = str(result.asset_class or "").lower() in ("stock", "etf") or "/" not in str(
         result.symbol
     )
-    frozen_metadata = inputs.get("template_metadata")
-    parameters = result.parameters if isinstance(result.parameters, dict) else {}
     with frozen_environment(manifest):
-        original = ComboService.get_template_metadata
-        if frozen_metadata is not None:
-            ComboService.get_template_metadata = lambda self, name: (
-                frozen_metadata if name == result.template_id else original(self, name)
-            )
-        try:
-            out = ComboOptimizer().run_optimization(
-                template_name=result.template_id,
-                symbol=result.symbol,
-                timeframe=result.timeframe,
-                data_source="binance_equity" if equity else "ccxt",
-                start_date=start,
-                end_date=end,
-                custom_ranges=_fixed_optimization_ranges(parameters),
-                deep_backtest=True,
-                direction=result.direction,
-                split_train_ratio=DISCOVERY_SPLIT_TRAIN_RATIO,
-            )
-        finally:
-            ComboService.get_template_metadata = original
+        out = _run_fixed(
+            result, inputs, start, end, equity=equity, optimizer_factory=optimizer_factory
+        )
     return out.get("trades") or []
 
 
@@ -651,11 +944,9 @@ def run_column(
                 if result.id in existing:
                     continue
                 strategy = _candidate_side(result)
-                sample_state = (
-                    (states.get(result.snapshot_id) or {})
-                    if result.snapshot_id
-                    else {"state": "expired"}
-                )
+                # Sem ``snapshot_id`` o candidato nunca teve amostra (não "venceu"): o ``regenerate``
+                # refaz pelo caminho antigo conferido pelas métricas ou diz por que não dá.
+                sample_state = (states.get(result.snapshot_id) or {}) if result.snapshot_id else {}
                 if sample_state.get("state") == "expired":
                     payload = bench.expired_sample_payload(
                         strategy, identity, sample_state.get("retain_until")
@@ -671,10 +962,18 @@ def run_column(
                             loaded=loaded,
                             reference_sample=ref_sample,
                         )
+                    except LegacyInputsUnavailable as exc:
+                        logger.info(
+                            "Candidato %s sem amostra não refeito pelo caminho antigo: %s",
+                            result.id,
+                            exc.detail,
+                        )
+                        payload = unavailable_sample_payload(strategy, identity, exc.detail)
+                        payload["samples"] = {"strategy": None, "reference": ref_sample}
                     except Exception as exc:
                         logger.warning("Trades do candidato %s não regenerados: %s", result.id, exc)
                         code = getattr(exc, "code", "")
-                        if str(code).startswith("frozen_input"):
+                        if result.snapshot_id and str(code).startswith("frozen_input"):
                             payload = bench.expired_sample_payload(strategy, identity, None)
                         else:
                             payload = bench.compute(
@@ -682,7 +981,11 @@ def run_column(
                             )
                             payload["reason"] = {
                                 "code": REGENERATION_FAILED,
-                                "text": "Não foi possível refazer os trades do candidato a partir da amostra.",
+                                "text": (
+                                    "Não foi possível refazer os trades do candidato a partir da amostra."
+                                    if result.snapshot_id
+                                    else REGENERATION_FAILED_LEGACY_TEXT
+                                ),
                                 "short": "Trades do candidato não refeitos.",
                             }
                         payload["samples"] = {"strategy": None, "reference": ref_sample}

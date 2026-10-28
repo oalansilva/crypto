@@ -72,7 +72,7 @@ import {
   type PreflightExcludedAsset,
 } from '../lib/assetSelection'
 import { useSelectionView } from '../lib/assetStore'
-import { evidenceSample, rowSample, seriesLine, type SampleInfo, type ResultProvenance } from '../lib/sampleState'
+import { evidenceSample, rowSampleWithColumn, seriesLine, type SampleInfo, type ResultProvenance } from '../lib/sampleState'
 import {
   RankingExportButton,
   ReferenceColumnCell,
@@ -3074,10 +3074,9 @@ export function DiscoveryPage() {
                               {(() => {
                                 // Card #1118: estado da amostra da própria varredura; favorito lembra que
                                 // Favoritos guarda a amostra do último refresh (o número que se refaz igual).
-                                const base = rowSample(row)
-                                const state = extraColumn && base.sample && base.sampleTone !== 'expired'
-                                  ? { ...base, sample: 'amostra guardada pela coluna extra' }
-                                  : base
+                                // Só a amostra que existe fica guardada pela coluna extra; o candidato sem
+                                // amostra (cripto do caminho antigo) segue "sem amostra guardada".
+                                const state = rowSampleWithColumn(row, Boolean(extraColumn))
                                 return (
                                   <>
                                     {state.sample ? (
