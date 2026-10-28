@@ -18,9 +18,9 @@ import { ChartModal } from '@/components/monitor/ChartModal';
 import { SpotMarketTradePanel } from '@/components/monitor/SpotMarketTradePanel';
 import { Button } from '@/components/ui/Button';
 import {
-    Bell,
     ChevronRight,
     CircleDollarSign,
+    Info,
     LineChart,
     ListChecks,
     RefreshCw,
@@ -43,9 +43,15 @@ import {
     isLegacySource,
     marketStateView,
     opportunityRowKey,
-    showsAlertTag,
 } from './marketState';
 import { MarketStateBadge } from './MarketStateBadge';
+import {
+    ALERT_SWITCH_ERROR,
+    AlertSwitch,
+    CatalogNoAlert,
+    alertSwitchStatus,
+    hasAlertSwitch,
+} from './AlertSwitch';
 
 type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
 type TierFilter = 'rated' | 'all' | '1_2' | '1' | '2' | '3' | 'none';
@@ -69,7 +75,7 @@ type DerivedPortfolioStatus = {
     tone: 'neutral' | 'success' | 'warning';
 };
 
-/** Card #1122: faixa da transição (alertas vêm dos favoritos marcados "Alertar"). */
+/** Card #1122 (d2, decisão 16): faixa da vitrine (o catálogo não alerta). */
 type AlertOrigin = {
     show_banner: boolean;
     received_catalog_alerts: boolean;
@@ -201,7 +207,12 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => {
     setTimeout(resolve, ms);
 });
 
-export const MonitorStatusTab: React.FC = () => {
+interface MonitorStatusTabProps {
+    /** Card #1122 (d2): avisa a página se o Monitor mostra a vitrine (a ajuda do alerta some nela). */
+    onCatalogViewChange?: (catalogView: boolean | null) => void;
+}
+
+export const MonitorStatusTab: React.FC<MonitorStatusTabProps> = ({ onCatalogViewChange }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -233,6 +244,9 @@ export const MonitorStatusTab: React.FC = () => {
     const [telegramAlertsEnabled, setTelegramAlertsEnabled] = useState(false);
     const [telegramAlertsSaving, setTelegramAlertsSaving] = useState(false);
     const [alertOrigin, setAlertOrigin] = useState<AlertOrigin | null>(null);
+    const [alertStatus, setAlertStatus] = useState('');
+    // Escolha do interruptor ainda não refletida pela lista do servidor (gravação otimista).
+    const alertOverridesRef = useRef<Map<number, boolean>>(new Map());
     const telegramHasLoadedRef = useRef(false);
     const opportunitiesFetchGenerationRef = useRef(0);
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
@@ -586,7 +600,7 @@ export const MonitorStatusTab: React.FC = () => {
                         setOpportunitiesLoadError(true);
                         return false;
                     }
-                    setOpportunities(opportunityRows);
+                    setOpportunities(applyAlertOverrides(opportunityRows));
                     if (!favoritesFailed || opportunityRows.length > 0) {
                         setOpportunitiesLoadError(false);
                     }
@@ -676,6 +690,49 @@ export const MonitorStatusTab: React.FC = () => {
             });
         } finally {
             setSavingSymbols((current) => ({ ...current, [symbol]: false }));
+        }
+    };
+
+    /** A lista do servidor que já concorda com a escolha do interruptor encerra a sobreposição. */
+    const applyAlertOverrides = (rows: Opportunity[]): Opportunity[] => {
+        const overrides = alertOverridesRef.current;
+        if (overrides.size === 0) return rows;
+        return rows.map((row) => {
+            if (!overrides.has(row.id)) return row;
+            const value = overrides.get(row.id) as boolean;
+            if ((row.notify_telegram !== false) === value) {
+                overrides.delete(row.id);
+                return row;
+            }
+            return { ...row, notify_telegram: value };
+        });
+    };
+
+    const setLocalAlert = (favoriteId: number, value: boolean) => {
+        alertOverridesRef.current.set(favoriteId, value);
+        setOpportunities((current) => current.map((row) => (
+            row.id === favoriteId ? { ...row, notify_telegram: value } : row
+        )));
+    };
+
+    /** Card #1122 (d2, decisão 18): liga/desliga o alerta da estratégia, com gravação otimista. */
+    const handleToggleAlert = async (opportunity: Opportunity) => {
+        const previous = opportunity.notify_telegram !== false;
+        const next = !previous;
+        setLocalAlert(opportunity.id, next);
+        setAlertStatus(alertSwitchStatus(opportunity, next));
+        try {
+            const response = await authFetch(`${API_BASE_URL}/favorites/${opportunity.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notify_telegram: next }),
+            });
+            if (!response.ok) {
+                throw new Error(`Falha (${response.status})`);
+            }
+        } catch {
+            setLocalAlert(opportunity.id, previous);
+            setAlertStatus(ALERT_SWITCH_ERROR);
         }
     };
 
@@ -1029,6 +1086,18 @@ export const MonitorStatusTab: React.FC = () => {
         filteredOpportunities.length > 0 &&
         visibleOpportunityCount === 0;
     const emptyFilterMessage = 'Não há resultado com estes filtros.';
+    // Vitrine do catálogo (quem não é admin e não tem estratégia própria com estrela).
+    const catalogView: boolean | null = alertOrigin?.show_banner === true
+        || (opportunities.length > 0 && opportunities.every((row) => row.is_curated_fallback === true))
+        ? true
+        : alertOrigin === null && opportunities.length === 0
+            ? null
+            : false;
+
+    useEffect(() => {
+        onCatalogViewChange?.(catalogView);
+    }, [catalogView, onCatalogViewChange]);
+
     const showCatalogEmpty =
         opportunities.length === 0 &&
         !loading &&
@@ -1220,19 +1289,21 @@ export const MonitorStatusTab: React.FC = () => {
                         </div>
                     </header>
 
+                    <p className="monitor-alert-status" role="status" aria-live="polite" data-testid="monitor-alert-status">{alertStatus}</p>
+
                     {alertOrigin?.show_banner ? (
                         <div className="alert-origin-banner" role="status" data-testid="monitor-alert-origin-banner">
-                            <Bell className="alert-origin-banner-icon" aria-hidden="true" />
+                            <Info className="alert-origin-banner-icon" aria-hidden="true" />
                             <div>
-                                <strong>Os alertas do Telegram agora vêm dos seus favoritos marcados "Alertar".</strong>
-                                {' '}Você ainda não marcou nenhum.
+                                <strong>Estas estratégias são o catálogo do Cripto Farol: só exibição, sem alerta no Telegram.</strong>
+                                {' '}Os alertas vêm das estratégias que você acompanha no Monitor. Dê pelo menos 1 estrela a uma estratégia sua em Favoritos (ou salve lá um resultado do Combo): ela entra aqui com o alerta ligado.
                                 {alertOrigin.received_catalog_alerts && formatBannerDate(alertOrigin.catalog_until) ? (
                                     <span data-testid="monitor-alert-origin-dated">
-                                        {' '}Até {formatBannerDate(alertOrigin.catalog_until)} você recebia os alertas do catálogo do Cripto Farol; agora cada pessoa escolhe os próprios.
+                                        {' '}Até {formatBannerDate(alertOrigin.catalog_until)} você recebia os alertas do catálogo; agora cada pessoa recebe os das próprias estratégias.
                                     </span>
                                 ) : null}
                             </div>
-                            <Link className="alert-origin-banner-link" to="/favorites">Marcar em Favoritos</Link>
+                            <Link className="alert-origin-banner-link" to="/favorites">Ir para Favoritos</Link>
                         </div>
                     ) : null}
 
@@ -1410,6 +1481,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                             onToggleCardMode={handleToggleCardMode}
                                                             onOpenChart={handleOpenChart}
                                                             onOpenTrade={handleOpenTrade}
+                                                            onToggleAlert={handleToggleAlert}
                                                         />
                                                     </article>
                                                 );
@@ -1447,6 +1519,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                             const identityLong = assetIdentityLong(opportunity);
                                                             const marketView = marketStateView(opportunity);
                                                             const insufficient = isInsufficientData(opportunity);
+                                                            const alertSwitch = hasAlertSwitch(opportunity);
                                                             const pairPrefix = equity
                                                                 ? String(opportunity.symbol || '').slice(0, 4).toUpperCase()
                                                                 : getOpportunityBaseAsset(opportunity)
@@ -1515,6 +1588,9 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         {marketView ? (
                                                                             <MarketStateBadge view={marketView} compact testId={`monitor-row-market-${rowTestKey}`} />
                                                                         ) : null}
+                                                                        {alertSwitch ? (
+                                                                            <AlertSwitch opportunity={opportunity} variant="compact" onToggle={handleToggleAlert} />
+                                                                        ) : null}
                                                                     </td>
                                                                     <td className="num lg">{formatPrice(opportunity.last_price)}</td>
                                                                     {showTechnicalColumns ? <td>{formatPercent(opportunity.distance_to_next_status)}</td> : null}
@@ -1567,16 +1643,15 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 </span>
                                                                             ) : null}
                                                                             {showTechnicalColumns ? <span className="tag strategy">▲ Strategy</span> : null}
-                                                                            {showsAlertTag(opportunity) ? (
-                                                                                <span className="tag tag-alert" title="Alertar no Telegram: ligado" data-testid={`monitor-row-alert-${rowTestKey}`}>
-                                                                                    <Bell className="tag-alert-icon" aria-hidden="true" />
-                                                                                    Alerta
-                                                                                </span>
-                                                                            ) : null}
                                                                         </div>
                                                                     </td>
                                                                     <td className="actions-cell">
                                                                         <div className="row-actions" aria-label={`Ações ${opportunity.symbol}`}>
+                                                                        {alertSwitch ? (
+                                                                            <AlertSwitch opportunity={opportunity} variant="row" onToggle={handleToggleAlert} />
+                                                                        ) : opportunity.is_curated_fallback ? (
+                                                                            <CatalogNoAlert testId={`monitor-alert-catalog-row-${rowTestKey}`} />
+                                                                        ) : null}
                                                                         {legacy ? (
                                                                             <>
                                                                                 <button
@@ -1699,6 +1774,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 onToggleCardMode={handleToggleCardMode}
                                                                                 onOpenChart={handleOpenChart}
                                                                                 onOpenTrade={handleOpenTrade}
+                                                                                onToggleAlert={handleToggleAlert}
                                                                             />
                                                                         </td>
                                                                     </tr>

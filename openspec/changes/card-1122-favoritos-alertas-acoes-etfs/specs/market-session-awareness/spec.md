@@ -36,7 +36,7 @@ A cripto é sempre `open`, exceto quando `stale`. Os horários MUST ser mostrado
 - **THEN** o estado MUST ser `open`, com fechamento "17:00 (16:00 em NY)"
 
 ### Requirement: Atraso real sem falso positivo
-Atraso real é faltar o candle de um pregão ou bloco que o calendário diz que já fechou; ele é detectado na varredura seguinte, mesmo com o mercado fechado. Um ativo SHALL estar com atraso real (`stale`) quando, para alguma das séries monitoradas dele (fonte, símbolo, tempo), o último candle recebido é anterior ao último candle que o calendário da classe diz que já fechou, passada uma tolerância por tempo gráfico. Fim de semana, feriado, horário fora do pregão e o candle em formação MUST NOT contar como atraso. Falha de leitura da fonte sem nenhum candle MUST contar como atraso, com o motivo. O estado `stale` MUST registrar o último candle recebido, o candle esperado e o início do episódio.
+Atraso real é faltar o candle de um pregão ou bloco que o calendário diz que já fechou, passada uma tolerância por tempo gráfico; ele é detectado na varredura seguinte, mesmo com o mercado fechado. O atraso de um ativo SHALL ser decidido **por passada**: numa passada, o ativo está atrasado (`stale`) só quando alguma série dele **lida nessa passada** (fonte, símbolo, tempo) tem o último candle recebido anterior ao último candle que o calendário diz que já fechou. O detalhe guardado de uma série que não foi lida na passada MUST NOT decidir a passada atual; o episódio guardado só fecha quando nenhum detalhe segue atrasado, sem reabrir nem repetir o aviso. Fim de semana, feriado, horário fora do pregão e o candle em formação MUST NOT contar como atraso. Tempo esgotado da coleta local (série que não terminou ou não foi entregue dentro do orçamento da passada) MUST NOT contar como atraso: a série fica sem leitura nessa passada, sem sinal, sem episódio e sem aviso. Falha de leitura **da fonte** (a fonte respondeu com erro ou sem nenhum candle) MUST contar como atraso, com o motivo. O estado `stale` MUST registrar o último candle recebido, o candle esperado, o início do episódio e, quando a série atrasada é de outro tempo gráfico, esse tempo gráfico e os horários dela (`stale_timeframe`, `stale_detail`), que MUST NOT virar último e esperado da linha do próprio tempo gráfico.
 
 #### Scenario: Segunda sem dado na terça
 - **WHEN** na terça às 08:05 BRT o último candle 1d de NVDA é o de sexta
@@ -49,6 +49,20 @@ Atraso real é faltar o candle de um pregão ou bloco que o calendário diz que 
 #### Scenario: Cripto atrasada
 - **WHEN** às 08:05 BRT o último candle 1d de BTC/USDT é de dois dias antes
 - **THEN** BTC/USDT MUST estar `stale`
+
+#### Scenario: Tempo esgotado da coleta
+- **WHEN** a série de NVDA 1d não termina dentro do orçamento da passada, sem erro da fonte
+- **THEN** NVDA MUST NOT ficar `stale` por isso
+- **AND** nenhum episódio MUST abrir e nenhum aviso MUST sair
+
+#### Scenario: Outro tempo gráfico atrasado
+- **WHEN** na passada o 15m de NVDA está atrasado e o 1d está em dia
+- **THEN** a linha do 1d MUST ficar em espera com `stale_timeframe = 15m` e os horários do 15m em `stale_detail`
+- **AND** o último e o esperado da linha do 1d MUST continuar os do 1d
+
+#### Scenario: Passada seguinte com o 15m em dia
+- **WHEN** na passada seguinte o 15m chega e o 1d segue em dia
+- **THEN** o episódio MUST fechar sem mensagem e o 1d MUST sair da espera
 
 ### Requirement: Dado insuficiente é estado próprio
 Quando a série de um favorito tem menos candles fechados do que a análise precisa (ativo novo ou histórico curto), o sistema SHALL tratar como dado insuficiente, com a contagem disponível e a necessária, e não como atraso nem como falha. Dado insuficiente MUST NOT gerar alerta de sinal nem aviso de atraso. O Monitor o mostra como estado próprio (`monitor-multiclass`) e Favoritos como "Aguardando dados: N de M candles" (`favorite-backtest-refresh`).

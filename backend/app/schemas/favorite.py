@@ -14,8 +14,8 @@ class FavoriteStrategyBase(BaseModel):
     metrics: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     tier: Optional[int] = None  # 1=Core obrigatório, 2=Bons complementares, 3=Outros
-    # Card #1122 (decisão 2 de Alan): todo favorito novo nasce sem "Alertar".
-    notify_telegram: bool = False
+    # Card #1122 (d2, decisão 3): todo favorito novo nasce com o alerta ligado (vale com estrela).
+    notify_telegram: bool = True
     # Card #1122 (decisão 11): configuração de dados (fonte, sessão, ajuste).
     data_source: Optional[str] = None
     session: Optional[str] = None

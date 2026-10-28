@@ -163,7 +163,7 @@ test('Decidir: cabeçalho multiclasse, bloco do candidato, filtro Classe com ran
   await expect(rows.first().locator('.rank-cell-value')).toHaveText('2')
 
   await page.getByTestId('promote-RS-NVDA1121B2').click()
-  const dialog = page.getByRole('dialog', { name: 'Promover a favorito tier 3' })
+  const dialog = page.getByRole('dialog', { name: 'Promover a favorito' })
   await expect(dialog).toBeVisible()
   await expect(page.getByTestId('confirm-promotion')).toBeFocused()
   const identity = dialog.getByTestId('modal-execution-identity')
@@ -172,26 +172,30 @@ test('Decidir: cabeçalho multiclasse, bloco do candidato, filtro Classe com ran
   await expect(identity).toContainText('Binance Ações · NY · split · 252/ano')
   await expect(identity).toContainText('Período efetivo 2 jan. 2003 – 23 out. 2026')
   await expect(identity).toContainText('Amostra 8b41d7e2 · guardada enquanto o favorito existir · Direção Long')
-  // Card #1122: ação e ETF vão para Tier 3, com a nota de "Alertar" e da carteira.
-  await expect(dialog.getByTestId('destination-tier3')).toContainText('Tier 3 · observação')
-  await expect(dialog.getByTestId('destination-tier3')).toContainText('marque "Alertar" lá e marque o ativo como "No portfólio" no Monitor')
+  // Card #1122 (d2): a Descoberta promove a favorito sem estrela, fora do Monitor até a estrela.
+  await expect(dialog.getByTestId('destination-tier3')).toContainText('Favoritos · sem estrela')
+  await expect(dialog.getByTestId('destination-tier3')).toContainText(
+    'Onde ver depois: Favoritos, sem estrela e fora do Monitor, com a configuração Binance Ações. Para acompanhar no Monitor e receber no Telegram, dê pelo menos 1 estrela lá. Reversível: retire o favorito; o histórico da varredura fica.',
+  )
+  await expect(dialog).not.toContainText('Alertar')
+  await expect(dialog).not.toContainText('No portfólio')
   await expect(dialog).not.toContainText('Monitor, Telegram e Revalidar: ainda não para ações e ETFs')
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('promote-RS-NVDA1121B2')).toBeFocused()
   await page.getByTestId('promote-RS-NVDA1121B2').click()
   await page.getByTestId('confirm-promotion').click()
   const promoted = page.locator('[data-promoted-result="RS-NVDA1121B2"]')
-  await expect(promoted).toHaveText('Favorito tier 3')
+  await expect(promoted).toHaveText('Em Favoritos')
   await expect(promoted).toBeFocused()
   const link = page.getByTestId('see-favorite-RS-NVDA1121B2')
   await expect(link).toHaveText('Ver em Favoritos')
   expect((await link.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44)
 
-  // Cripto segue "Promover a favorito tier 3".
+  // Cripto também vai para Favoritos sem estrela.
   await classFilter.selectOption('all')
   await page.getByTestId('promote-RS-BTC1121A1').click()
-  await expect(page.getByRole('dialog', { name: 'Promover a favorito tier 3' })).toBeVisible()
-  await expect(page.getByText('Tier 3 · observação')).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Promover a favorito' })).toBeVisible()
+  await expect(page.getByText('Favoritos · sem estrela')).toBeVisible()
 })
 
 test('falha de coleta: "Sem resultado" no Decidir, ETFs (0) desabilitado e "ver Por ativo"', async ({ page }) => {

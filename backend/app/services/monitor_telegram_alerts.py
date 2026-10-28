@@ -1,15 +1,18 @@
 """Alertas do Monitor no Telegram (card #747; origem por favorito desde o card #1122).
 
-Card #1122:
-- origem = favoritos marcados "Alertar" de cada usuário (o catálogo deixa de ser origem);
+Card #1122 (regra de 27/10/2026, Design d2):
+- origem = estratégias próprias que cada usuário acompanha no Monitor: favoritos com estrela
+  (``tier`` 1, 2 ou 3) e alerta ligado (``notify_telegram``); o catálogo nunca alerta e o filtro de
+  estrelas do sistema (``monitor_telegram_tier_filter``) é ignorado;
+- a carteira não decide: entrada e saída saem nas três classes, com ou sem o ativo na carteira; a
+  varredura não lê a carteira Binance e não manda aviso operacional;
 - estado por favorito (``monitor_favorite_alert_states``); a primeira leitura é só base;
 - evento com identidade (``event_key``) e reserva ``sending`` antes do envio; ``sending`` antigo
   vira ``unknown`` sem reenvio; ``failed`` volta enquanto o evento for o atual;
-- sem limite por hora para sinal e atraso (decisão 4 de Alan); o limite fica no aviso de falha da
-  carteira Binance;
-- ação/ETF na carteira (marca manual) recebe entrada e saída; falha da carteira pausa só a cripto;
-- aviso único de atraso real por usuário, ativo e episódio; mercado fechado nunca manda mensagem;
-- aviso único de transição para quem recebia pelo catálogo.
+- sem limite por hora para sinal e atraso (decisão 4 de Alan);
+- aviso único de atraso real por usuário, ativo e episódio, a quem tem o ativo no Monitor com
+  alerta ligado; mercado fechado nunca manda mensagem;
+- aviso único de transição para quem recebia pelo catálogo (sem marca em dry-run nem com falha).
 """
 
 from __future__ import annotations
@@ -33,11 +36,11 @@ from app.models import (
     MonitorTelegramAlert,
     User,
 )
-from app.services.monitor_portfolio_status import (
-    fetch_user_wallet_holdings,
-    resolve_portfolio_status_for_user,
+from app.services.opportunity_service import (
+    MONITOR_TIERS,
+    OpportunityService,
+    is_known_non_admin,
 )
-from app.services.opportunity_service import OpportunityService
 from app.services.system_preferences_service import (
     get_system_preference_bool,
     get_system_preference_int,
@@ -71,6 +74,11 @@ EDUCATIONAL_DISCLAIMER = (
     "Não constitui recomendação financeira nem ordem de compra/venda."
 )
 NO_ORDER_LINE = "Este alerta não envia ordem: é só o sinal da estratégia."
+# Decisão 10 (r2): como parar de receber.
+STOP_SIGNAL_LINE = (
+    'Para não receber mais desta estratégia: desligue o "Alerta" dela no Monitor '
+    "ou tire a estrela em Favoritos."
+)
 BRT = "America/Sao_Paulo"
 _WEEKDAYS = ("seg.", "ter.", "qua.", "qui.", "sex.", "sáb.", "dom.")
 _MONTHS = (
@@ -293,45 +301,35 @@ def _is_stop_reason(opportunity: dict[str, Any]) -> bool:
     return bool(opportunity.get("stop_breached_now")) or raw == "STOPPED_OUT"
 
 
-def should_send_position_aware_alert(
-    *,
-    previous_status: str | None,
-    new_status: str,
-    has_spot_position: bool,
-    in_portfolio: bool,
-    asset_class: str | None = None,
-) -> tuple[bool, str]:
-    """Matriz da carteira.
+def signal_direction(previous_status: str | None, new_status: str | None) -> str | None:
+    """Sentido da mudança de leitura (card #1122, decisão 6: a carteira não decide).
 
-    - ação/ETF (card #1122, decisão 6): ``in_portfolio`` é a marca manual; com a marca, a entrada
-      (``EXIT→HOLD``) e a saída (``HOLD→EXIT``) saem; sem a marca, nada sai. Até o #1124 não há
-      posição real de ação/ETF (ponto de extensão: ``SymbolPortfolioStatus.derived_active``).
-    - cripto: a matriz de hoje (posição derivada da carteira Binance).
+    ``EXIT→HOLD`` = entrada (``buy``) e ``HOLD→EXIT`` = saída (``sell``), em cripto, ação e ETF,
+    com ou sem o ativo na carteira e com ou sem saldo na Binance. Outra combinação não é sinal.
     """
 
-    if not in_portfolio:
-        return False, "outside_portfolio_scope"
     prev = str(previous_status or "").strip().upper()
     new = str(new_status or "").strip().upper()
-    if prev == new:
-        return False, "unchanged"
-    if _is_equity_class(asset_class):
-        if prev == "EXIT" and new == "HOLD":
-            return True, "buy"
-        if prev == "HOLD" and new == "EXIT":
-            return True, "sell"
-        return False, "suppressed_by_position_matrix"
-    if has_spot_position:
-        if prev == "HOLD" and new == "EXIT":
-            return True, "sell"
-        if prev == "EXIT" and new == "HOLD":
-            return False, "suppressed_reentry"
-    else:
-        if prev == "EXIT" and new == "HOLD":
-            return True, "buy"
-        if prev == "HOLD" and new == "EXIT":
-            return False, "suppressed_flat_exit"
-    return False, "suppressed_by_position_matrix"
+    if prev == "EXIT" and new == "HOLD":
+        return "buy"
+    if prev == "HOLD" and new == "EXIT":
+        return "sell"
+    return None
+
+
+def is_monitored_alert_on(item: dict[str, Any]) -> bool:
+    """Estratégia própria no Monitor com alerta ligado: estrela (1–3) e ``notify_telegram``.
+
+    A linha do catálogo (vitrine) nunca alerta, nem com a estrela da preferência de quem vê.
+    """
+
+    if item.get("is_curated_fallback") or not item.get("notify_telegram"):
+        return False
+    try:
+        tier = int(item["tier"]) if item.get("tier") is not None else None
+    except (TypeError, ValueError):
+        return False
+    return tier in MONITOR_TIERS
 
 
 def load_monitor_telegram_alert_settings(db: Session) -> MonitorTelegramAlertSettings:
@@ -369,23 +367,18 @@ def load_monitor_telegram_alert_settings(db: Session) -> MonitorTelegramAlertSet
     )
 
 
-def _operational_sent_recently(
-    db: Session,
-    *,
-    user_id: str,
-    since: datetime,
-) -> bool:
-    return (
-        db.query(MonitorTelegramAlert)
-        .filter(
-            MonitorTelegramAlert.user_id == user_id,
-            MonitorTelegramAlert.source == "operational",
-            MonitorTelegramAlert.created_at >= since,
-            MonitorTelegramAlert.result_status.in_(("sent", "dry_run")),
-        )
-        .first()
-        is not None
-    )
+def tier_filter_ignored(db: Session) -> str | None:
+    """O filtro de estrelas do sistema preenchido (preferência ou ambiente), que a varredura ignora
+    desde a regra de 27/10/2026 (decisão 2). ``None`` quando vazio ou ``all``."""
+
+    raw = (
+        get_system_preference_value(db, MONITOR_TELEGRAM_TIER_FILTER_KEY)
+        or os.getenv("MONITOR_TELEGRAM_TIER_FILTER")
+        or ""
+    ).strip()
+    if not raw or raw.lower() == "all":
+        return None
+    return raw
 
 
 def _asset_line(opportunity: dict[str, Any], symbol: str) -> str:
@@ -451,6 +444,7 @@ def build_monitor_alert_candidate(
     if stop_reason:
         message += "\nMotivo=Stop"
     message += f"\n{NO_ORDER_LINE}"
+    message += f"\n{STOP_SIGNAL_LINE}"
     message += EDUCATIONAL_DISCLAIMER
 
     payload = {
@@ -530,20 +524,22 @@ def build_delay_message(
         f"Último candle recebido: {day_of(last)} ({timeframe})\n"
         f"Esperado: {day_of(expected)} ({expected_note})\n"
         f"Os sinais deste ativo ficam em espera até o dado normalizar{waiting}. "
-        "Você não recebe outro aviso enquanto o atraso durar."
+        "Você não recebe outro aviso enquanto o atraso durar.\n"
+        f'Para não receber avisos de {symbol}: desligue o "Alerta" das estratégias de {symbol} '
+        "no Monitor."
     )
 
 
 def build_transition_message(symbols: list[str]) -> str:
     listed = ", ".join(symbols[:-1]) + (" e " + symbols[-1] if len(symbols) > 1 else "")
     listed = listed or (symbols[0] if symbols else "")
-    received = f" ({listed})" if listed else ""
+    received = f" Você recebia: {listed}." if listed else ""
     return (
         "Cripto Farol - Mudança nos alertas\n\n"
-        'A partir de hoje, os alertas do Telegram vêm dos seus favoritos marcados "Alertar", '
-        "em cripto, ações e ETFs. Até agora você recebia os alertas do catálogo do Cripto Farol"
-        f"{received}. Para continuar recebendo, salve nos seus Favoritos as estratégias que quer "
-        'acompanhar e marque "Alertar". Esta mensagem não se repete.'
+        "Os alertas do Telegram agora vêm das estratégias que você acompanha no Monitor, e não "
+        f"mais do catálogo do Cripto Farol.{received} Para voltar a receber, salve a estratégia "
+        "nos Favoritos e dê pelo menos 1 estrela: o alerta já vem ligado e você desliga no "
+        "Monitor. Esta mensagem não se repete."
     )
 
 
@@ -568,51 +564,6 @@ def send_telegram_message(
     )
     response.raise_for_status()
     return response.json()
-
-
-def _record_alert(
-    db: Session,
-    candidate: MonitorAlertCandidate | None,
-    *,
-    user_id: str,
-    chat_id: str,
-    result_status: str,
-    source: str = "monitor",
-    symbol: str | None = None,
-    timeframe: str | None = None,
-    previous_status: str | None = None,
-    new_status: str | None = None,
-    severity: str = "Informativo",
-    payload: dict[str, Any] | None = None,
-    payload_hash: str | None = None,
-    error_text: str | None = None,
-    favorite_id: int | None = None,
-    event_key: str | None = None,
-    created_at: datetime | None = None,
-) -> MonitorTelegramAlert:
-    body = payload or (candidate.payload if candidate else {})
-    row = MonitorTelegramAlert(
-        created_at=created_at or datetime.utcnow(),
-        user_id=user_id,
-        symbol=candidate.symbol if candidate else (symbol or "SYSTEM"),
-        timeframe=candidate.timeframe if candidate else (timeframe or "na"),
-        previous_status=candidate.previous_status if candidate else previous_status,
-        new_status=candidate.new_status if candidate else (new_status or "INFO"),
-        severity=candidate.severity if candidate else severity,
-        destination_chat_id=chat_id,
-        destination_thread_id=None,
-        result_status=result_status,
-        error_text=error_text,
-        payload_hash=payload_hash or (candidate.payload_hash if candidate else _json_hash(body)),
-        source=source,
-        payload_json=body,
-        favorite_id=favorite_id,
-        event_key=event_key,
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row
 
 
 def _settings_diagnostics(settings: MonitorTelegramAlertSettings) -> dict[str, Any]:
@@ -706,8 +657,13 @@ def _deliver(
     summary: dict[str, Any],
     kind: str,
     now: datetime | None = None,
+    record_dry_run: bool = True,
 ) -> str:
-    """Reserva o evento, chama o Telegram e grava o resultado. Uma mensagem por evento."""
+    """Reserva o evento, chama o Telegram e grava o resultado. Uma mensagem por evento.
+
+    ``record_dry_run=False``: em dry-run nada é gravado (nem a reserva), para o ensaio não
+    consumir a chave (aviso de transição, residual P2 da w3).
+    """
 
     uid = str(user.id)
     chat_id = str(user.telegram_chat_id or "").strip()
@@ -724,6 +680,10 @@ def _deliver(
         summary["duplicates"] += 1
         summary["results"].append({**result_entry, "result": "duplicate"})
         return "duplicate"
+    if dry_run and not record_dry_run:
+        summary["dry_run_count"] += 1
+        summary["results"].append({**result_entry, "result": "dry_run", "recorded": False})
+        return "dry_run"
     row = MonitorTelegramAlert(
         created_at=now or datetime.utcnow(),
         user_id=uid,
@@ -768,73 +728,6 @@ def _deliver(
     summary["sent"] += 1
     summary["results"].append({**result_entry, "result": "sent"})
     return "sent"
-
-
-def _send_operational_pause_dm(
-    db: Session,
-    *,
-    user: User,
-    settings: MonitorTelegramAlertSettings,
-    sender: Callable[..., dict[str, Any]],
-    rate_limit_since: datetime,
-    dry_run: bool,
-    summary: dict[str, Any],
-    now: datetime | None = None,
-) -> None:
-    """Aviso de falha da carteira Binance: o único com limite por usuário e janela."""
-
-    if _operational_sent_recently(db, user_id=str(user.id), since=rate_limit_since):
-        summary["operational_rate_limited"] += 1
-        return
-    message = (
-        "Cripto Farol - Aviso operacional\n\n"
-        "Sua carteira Binance está indisponível no momento. "
-        "Os alertas de cripto ficam pausados até a sincronização voltar; "
-        "ações e ETFs seguem." + EDUCATIONAL_DISCLAIMER
-    )
-    chat_id = str(user.telegram_chat_id or "")
-    try:
-        if dry_run:
-            _record_alert(
-                db,
-                None,
-                user_id=str(user.id),
-                chat_id=chat_id,
-                result_status="dry_run",
-                source="operational",
-                new_status="PAUSED",
-                payload={"message": message},
-                created_at=now,
-            )
-            summary["operational_dms"] = summary.get("operational_dms", 0) + 1
-        else:
-            sender(bot_token=settings.bot_token, chat_id=chat_id, text=message, dry_run=False)
-            _record_alert(
-                db,
-                None,
-                user_id=str(user.id),
-                chat_id=chat_id,
-                result_status="sent",
-                source="operational",
-                new_status="PAUSED",
-                payload={"message": message},
-                created_at=now,
-            )
-            summary["operational_dms"] = summary.get("operational_dms", 0) + 1
-    except Exception as exc:
-        _record_alert(
-            db,
-            None,
-            user_id=str(user.id),
-            chat_id=chat_id,
-            result_status="failed",
-            source="operational",
-            new_status="PAUSED",
-            payload={"message": message},
-            error_text=str(exc),
-            created_at=now,
-        )
-        summary["failed"] += 1
 
 
 # ---------------------------------------------------------------- estado por favorito
@@ -914,7 +807,7 @@ def _transition_scan_due(db: Session, origin_at: datetime | None, now: datetime)
     """O aviso de transição sai só na primeira varredura depois da troca, no dia dela.
 
     Sem o instante da troca não há dia da troca: nenhum aviso. Depois da primeira varredura
-    (marcada em ``MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY``), quem marca e desmarca um
+    (marcada em ``MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY``), quem dá e tira a estrela de um
     favorito semanas depois não recebe o aviso.
     """
 
@@ -940,25 +833,38 @@ def _catalog_alert_rows(db: Session, user_id: str, origin_at: datetime | None):
     return query
 
 
-def _has_marked_favorite(db: Session, user_id: str) -> bool:
+def _monitored_favorites(db: Session, user_id: str):
+    """Favoritos próprios com estrela: os que estão no Monitor."""
+
+    return db.query(FavoriteStrategy).filter(
+        FavoriteStrategy.user_id == user_id,
+        FavoriteStrategy.tier.in_(MONITOR_TIERS),
+    )
+
+
+def _has_monitored_alert_on(db: Session, user_id: str) -> bool:
+    """Tem estratégia própria com estrela e alerta ligado (critério da transição, decisão 16)."""
+
     return (
-        db.query(FavoriteStrategy.id)
-        .filter(
-            FavoriteStrategy.user_id == user_id,
-            FavoriteStrategy.notify_telegram.is_(True),
-        )
+        _monitored_favorites(db, user_id)
+        .filter(FavoriteStrategy.notify_telegram.is_(True))
+        .with_entities(FavoriteStrategy.id)
         .first()
         is not None
     )
 
 
 def alert_origin_for_user(db: Session, user_id: str) -> dict[str, Any]:
-    """Faixa do Monitor (decisão 16): alertas ligados, sem favorito marcado; frase datada só para
-    quem recebia pelo catálogo."""
+    """Faixa da vitrine no Monitor (decisão 16).
+
+    ``show_banner`` = o Monitor mostra o catálogo: quem não é admin e não tem favorito próprio com
+    estrela, com ou sem Telegram ligado. A frase datada só vale para quem recebia pelo catálogo.
+    """
 
     user = db.query(User).filter(User.id == user_id).first()
     enabled = bool(user and user.telegram_alerts_enabled)
-    marked = _has_marked_favorite(db, str(user_id))
+    monitored = _monitored_favorites(db, str(user_id)).all()
+    alerts_on = sum(1 for row in monitored if row.notify_telegram)
     origin_at = _origin_at(db)
     rows = _catalog_alert_rows(db, str(user_id), origin_at)
     received = rows.first() is not None
@@ -971,10 +877,13 @@ def alert_origin_for_user(db: Session, user_id: str) -> dict[str, Any]:
             until = last.created_at.date().isoformat() if last and last.created_at else None
     return {
         "telegram_alerts_enabled": enabled,
-        "has_marked_favorite": marked,
+        "has_monitored_strategy": bool(monitored),
+        "alerts_on": alerts_on,
         "received_catalog_alerts": received,
         "catalog_until": until,
-        "show_banner": bool(enabled and not marked),
+        "show_banner": bool(
+            user is not None and not monitored and is_known_non_admin(db, str(user_id))
+        ),
     }
 
 
@@ -998,13 +907,9 @@ def _new_summary(settings: MonitorTelegramAlertSettings, dry_run: bool) -> dict[
         "duplicates": 0,
         # Card #1122 (decisão 4 de Alan): sinal e atraso nunca ficam como ``rate_limited``.
         "rate_limited": 0,
-        "operational_rate_limited": 0,
         "unknown": 0,
         "skipped": 0,
-        "suppressed_by_position_matrix": 0,
         "failed": 0,
-        "binance_sync_failed_users": 0,
-        "operational_dms": 0,
         "results": [],
     }
     summary.update(_settings_diagnostics(settings))
@@ -1041,14 +946,16 @@ def _delay_series(opp: dict[str, Any]) -> tuple[str, Any, Any]:
     )
 
 
-def _alert_opportunities(service: Any, tier_filter: str, now: Any) -> list[dict[str, Any]]:
+def _alert_opportunities(service: Any, now: Any) -> list[dict[str, Any]]:
+    """Favoritos com estrela e alerta ligado de todos os donos (sem filtro de estrelas)."""
+
     getter = getattr(service, "get_alert_opportunities", None)
     if getter is None:
         return []
     try:
-        return list(getter(tier_filter=tier_filter, now=now) or [])
+        return list(getter(now=now) or [])
     except TypeError:
-        return list(getter(tier_filter=tier_filter) or [])
+        return list(getter() or [])
 
 
 def run_monitor_telegram_alert_scan(
@@ -1061,7 +968,8 @@ def run_monitor_telegram_alert_scan(
     force_dry_run: bool = False,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    """Varredura diária: cada usuário recebe só os alertas dos próprios favoritos marcados.
+    """Varredura diária: cada usuário recebe só os alertas das próprias estratégias no Monitor
+    (favorito com estrela e alerta ligado), em cripto, ação e ETF, sem consultar a carteira.
 
     ``user_id`` não limita nada (a varredura é de todos); fica por compatibilidade.
     """
@@ -1085,13 +993,17 @@ def run_monitor_telegram_alert_scan(
     ]
     summary["eligible_users"] = len(eligible_users)
     users_by_id = {str(user.id): user for user in eligible_users}
-    rate_limit_since = now - timedelta(minutes=max(settings.rate_limit_window_minutes, 1))
+    # Decisão 2: o filtro de estrelas do sistema não muda quem recebe; fica só no resumo.
+    ignored_filter = tier_filter_ignored(db)
+    if ignored_filter:
+        summary["tier_filter_ignored"] = ignored_filter
 
-    # (c) a união dos favoritos marcados, avaliada uma vez (a coleta deduplica fonte:símbolo_tempo).
+    # (c) a união das estratégias com estrela e alerta ligado, avaliada uma vez (a coleta
+    # deduplica fonte:símbolo_tempo). O catálogo nunca entra.
     opportunities = [
         opp
-        for opp in _alert_opportunities(service, settings.tier_filter, pd.Timestamp(now))
-        if opp.get("notify_telegram", True) and not opp.get("is_curated_fallback")
+        for opp in _alert_opportunities(service, pd.Timestamp(now))
+        if is_monitored_alert_on(opp)
     ]
     summary["favorites_evaluated"] = len(opportunities)
 
@@ -1150,48 +1062,7 @@ def run_monitor_telegram_alert_scan(
             continue
         signal_items.append({"opportunity": opp, "event": event, "owner": owner})
 
-    # Usuários que precisam da carteira nesta varredura.
-    symbols_by_user: dict[str, set[str]] = {}
-    for item in signal_items:
-        symbols_by_user.setdefault(item["owner"], set()).add(
-            str(item["opportunity"].get("symbol") or "").strip().upper()
-        )
-    for owner, _source, symbol in delay_groups:
-        symbols_by_user.setdefault(owner, set()).add(symbol)
-
-    portfolios: dict[str, dict[str, Any]] = {}
-    sync_failed_users: set[str] = set()
-    for owner, symbols in symbols_by_user.items():
-        user = users_by_id.get(owner)
-        if user is None:
-            continue
-        needs_wallet = any("/" in symbol for symbol in symbols)
-        holdings, sync_ok = ({}, True)
-        if needs_wallet:
-            holdings, sync_ok = fetch_user_wallet_holdings(db, owner, min_usd=1.0)
-        portfolio = resolve_portfolio_status_for_user(
-            db,
-            owner,
-            sorted(symbols),
-            wallet_holdings=holdings,
-            binance_sync_ok=sync_ok,
-        )
-        portfolios[owner] = portfolio
-        if any(item.sync_failed for item in portfolio.values()):
-            sync_failed_users.add(owner)
-            summary["binance_sync_failed_users"] += 1
-            _send_operational_pause_dm(
-                db,
-                user=user,
-                settings=settings,
-                sender=sender,
-                rate_limit_since=rate_limit_since,
-                dry_run=dry_run,
-                summary=summary,
-                now=now,
-            )
-
-    # Alertas de sinal: uma mensagem por favorito, sem limite por hora.
+    # Alertas de sinal: uma mensagem por favorito, sem limite por hora e sem carteira (decisão 6).
     for item in signal_items:
         opp = item["opportunity"]
         event = item["event"]
@@ -1208,24 +1079,8 @@ def run_monitor_telegram_alert_scan(
         if user is None:
             summary["results"].append({**base_entry, "result": "owner_not_eligible"})
             continue
-        asset_class = str(opp.get("asset_class") or ("crypto" if "/" in symbol else "stock"))
-        status = (portfolios.get(owner) or {}).get(symbol)
-        if status is None:
-            continue
-        if status.sync_failed and not _is_equity_class(asset_class):
-            summary["results"].append({**base_entry, "result": "binance_sync_failed"})
-            continue
-        should_send, reason = should_send_position_aware_alert(
-            previous_status=event.get("previous_status"),
-            new_status=event["new_status"],
-            has_spot_position=status.has_spot_position,
-            in_portfolio=status.in_portfolio,
-            asset_class=asset_class,
-        )
-        if not should_send:
-            if reason.startswith("suppressed"):
-                summary["suppressed_by_position_matrix"] += 1
-            summary["results"].append({**base_entry, "result": reason})
+        if signal_direction(event.get("previous_status"), event.get("new_status")) is None:
+            summary["results"].append({**base_entry, "result": "not_a_signal"})
             continue
         candle_time = event.get("candle_time") or opp.get("candle_time")
         candidate = build_monitor_alert_candidate(
@@ -1257,21 +1112,14 @@ def run_monitor_telegram_alert_scan(
             now=now,
         )
 
-    # Avisos de atraso: um por usuário, ativo e episódio, a quem tem o ativo na carteira.
+    # Avisos de atraso: um por usuário, ativo e episódio, a quem tem o ativo no Monitor com alerta
+    # ligado (decisão 9); a carteira não entra.
     for (owner, data_source, symbol), group in delay_groups.items():
         user = users_by_id.get(owner)
         if user is None:
             continue
         opp = group["opportunity"]
         asset_class = str(opp.get("asset_class") or ("crypto" if "/" in symbol else "stock"))
-        status = (portfolios.get(owner) or {}).get(symbol)
-        if status is None or (status.sync_failed and not _is_equity_class(asset_class)):
-            continue
-        if not status.in_portfolio:
-            summary["results"].append(
-                {"user_id": owner, "kind": "delay", "symbol": symbol, "result": "outside_portfolio"}
-            )
-            continue
         market = opp.get("market_state") or {}
         delay_timeframe, delay_last, delay_expected = _delay_series(opp)
         message = build_delay_message(
@@ -1315,11 +1163,12 @@ def run_monitor_telegram_alert_scan(
             summary["delay_notices"] += 1
 
     # Transição: aviso único, só na primeira varredura depois da troca (o dia da troca), para
-    # quem recebia pelo catálogo e não tinha favorito marcado nesse momento (residual P3).
+    # quem recebia pelo catálogo e não tem estratégia própria com estrela e alerta ligado.
     origin_at = _origin_at(db)
     transition_users = users_by_id if _transition_scan_due(db, origin_at, now) else {}
+    transition_failed = False
     for uid, user in transition_users.items():
-        if _has_marked_favorite(db, uid):
+        if _has_monitored_alert_on(db, uid):
             continue
         transition_key = transition_event_key(uid)
         if _event_reserved(db, user_id=uid, event_key=transition_key):
@@ -1348,10 +1197,22 @@ def run_monitor_telegram_alert_scan(
             summary=summary,
             kind="transition",
             now=now,
+            # Em dry-run nem a reserva da chave ``transition`` é gravada (residual P2 da w3).
+            record_dry_run=False,
         )
+        if delivered == "failed":
+            transition_failed = True
         if delivered in NOTICE_COUNTED_RESULTS:
             summary["transition_notices"] += 1
-    if origin_at is not None and now >= origin_at and _transition_scan_at(db) is None:
+    # A marca só é gravada numa varredura real em que nenhuma entrega de transição falhou: o
+    # ensaio em dry-run não fecha a janela, e quem falhou é tentado de novo na varredura seguinte.
+    if (
+        not dry_run
+        and not transition_failed
+        and origin_at is not None
+        and now >= origin_at
+        and _transition_scan_at(db) is None
+    ):
         set_system_preference_value(
             db,
             key=MONITOR_TELEGRAM_TRANSITION_SCAN_AT_KEY,
@@ -1373,8 +1234,10 @@ __all__ = [
     "build_monitor_alert_candidate",
     "build_transition_message",
     "describe_candle",
+    "is_monitored_alert_on",
     "load_monitor_telegram_alert_settings",
     "run_monitor_telegram_alert_scan",
     "send_telegram_message",
-    "should_send_position_aware_alert",
+    "signal_direction",
+    "tier_filter_ignored",
 ]

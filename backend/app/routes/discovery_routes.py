@@ -45,7 +45,9 @@ class CreateSweepRequest(BaseModel):
 
 class PromoteRequest(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=64)
-    tier: int = 3
+    # Card #1122 (d2): a promoção cria o favorito sem estrela; um pedido com ``tier`` (qualquer
+    # valor) é recusado com 422 "promoção sem estrela" e nada muda.
+    tier: Optional[int] = None
 
 
 def _service() -> DiscoveryService:
@@ -467,7 +469,9 @@ def promote_discovery_result(
     db: Session = Depends(get_db),
 ):
     service = _service()
-    payload = {"tier": req.tier, "result_id": result_id}
+    payload: dict = {"result_id": result_id}
+    if "tier" in req.model_fields_set:
+        payload["tier"] = req.tier
     body, status = service.promote_result(
         result_id=result_id,
         actor=actor,

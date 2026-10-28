@@ -159,8 +159,9 @@ class FavoriteStrategy(Base):
 
     # Tier system - para categorizar estratégias (1=Core obrigatório, 2=Bons complementares, 3=Outros)
     tier = Column(Integer, nullable=True)
-    # Card #1122 (decisão 2 de Alan): todo favorito novo nasce sem "Alertar"; a marca é ato do dono.
-    notify_telegram = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+    # Card #1122 (d2, decisão 3): "alerta ligado" (opt-out no Monitor); nasce ligado e só vale com
+    # estrela (``tier`` 1, 2 ou 3).
+    notify_telegram = Column(Boolean, nullable=False, default=True, server_default=text("true"))
 
     # Card #1122 (decisão 11): configuração de dados do favorito, parte da chave de duplicata.
     data_source = Column(String, nullable=True)  # ccxt | binance_equity | stooq

@@ -9,11 +9,21 @@ import {
   isOpportunityDataStale,
   marketStateView,
   opportunityRowKey,
-  showsAlertTag,
 } from '../src/components/monitor/marketState.ts'
 import { resolveOpportunitySignal } from '../src/components/monitor/signalResolution.ts'
-import { conventionsShort, formatFavoriteRefreshStatus, favoriteRowData } from '../src/lib/favoriteClass.ts'
-import { promotionDestinationNote, promotionTitle } from '../src/lib/discoveryMulticlass.ts'
+import { conventionsShort, formatFavoriteRefreshStatus, favoriteRowData, MONITOR_STAR_HELP } from '../src/lib/favoriteClass.ts'
+import {
+  PROMOTED_LABEL,
+  PROMOTION_DESTINATION,
+  promotionDestinationNote,
+  promotionSuccessText,
+  promotionTitle,
+} from '../src/lib/discoveryMulticlass.ts'
+import {
+  alertSwitchLabel,
+  alertSwitchStatus,
+  hasAlertSwitch,
+} from '../src/components/monitor/AlertSwitch.tsx'
 
 const BINANCE = {
   data_source: 'binance_equity',
@@ -124,10 +134,58 @@ test('cripto só mostra estado quando o servidor diz atraso; "Dados atrasados" s
   assert.equal(resolveOpportunitySignal(monday, { selectedTimeframe: '1d' }).freshnessReason, null)
 })
 
-test('tag Alerta só no favorito marcado e nunca na vitrine', () => {
-  assert.equal(showsAlertTag(opp()), true)
-  assert.equal(showsAlertTag(opp({ notify_telegram: false })), false)
-  assert.equal(showsAlertTag(opp({ is_curated_fallback: true })), false)
+test('d2: interruptor "Alerta" só em estratégia própria com estrela; nome com ativo, tempo, estratégia e configuração', () => {
+  assert.equal(hasAlertSwitch(opp({ tier: 2 })), true)
+  assert.equal(hasAlertSwitch(opp({ tier: 2, notify_telegram: false })), true)
+  assert.equal(hasAlertSwitch(opp({ tier: null })), false)
+  assert.equal(hasAlertSwitch(opp({ tier: 3, is_curated_fallback: true })), false)
+  const nvda = opp({ tier: 2, strategy_display_name: 'Médias Móveis: Tendência em Virada' })
+  assert.equal(
+    alertSwitchLabel(nvda),
+    'Alerta no Telegram · NVDA 1d · Médias Móveis: Tendência em Virada · Binance Ações',
+  )
+  assert.equal(
+    alertSwitchLabel({ ...nvda, configuration: STOOQ }),
+    'Alerta no Telegram · NVDA 1d · Médias Móveis: Tendência em Virada · Stooq fonte antiga',
+  )
+  assert.equal(
+    alertSwitchLabel(opp({ symbol: 'BTC/USDT', asset_class: 'crypto', configuration: null, strategy_display_name: 'Médias Móveis: Tendência em Virada' })),
+    'Alerta no Telegram · BTC/USDT 1d · Médias Móveis: Tendência em Virada',
+  )
+  assert.equal(alertSwitchStatus(nvda, true), 'Alerta de NVDA 1d ligado: entrada e saída saem no Telegram.')
+  assert.equal(alertSwitchStatus(nvda, false), 'Alerta de NVDA 1d desligado: nada sai no Telegram para esta estratégia.')
+})
+
+test('d2: linha retida pelo 15m diz o tempo gráfico e os horários do 15m, nunca "falta" do 1d', () => {
+  const now = new Date('2026-10-26T18:00:00Z') // seg., 15:00 BRT
+  const view = marketStateView(opp({
+    market_state: {
+      state: 'stale',
+      last_candle: '2026-10-23T04:00:00+00:00',
+      expected_candle: '2026-10-23T04:00:00+00:00',
+      stale_timeframe: '15m',
+      stale_detail: {
+        timeframe: '15m',
+        last_candle: '2026-10-26T17:15:00+00:00',
+        expected_candle: '2026-10-26T17:30:00+00:00',
+      },
+    },
+  }), now)
+  assert.equal(view.tone, 'stale')
+  assert.equal(view.short, 'Dados atrasados no 15m · falta 14:30')
+  assert.equal(view.full, 'Dados atrasados no 15m · último 14:15; esperado 14:30')
+  assert.equal(view.holdShort, 'Sinal em espera')
+  assert.doesNotMatch(view.short, /seg\. 26\/10/)
+  // A própria série atrasada (stale_timeframe = tempo da linha) segue o texto de hoje.
+  const own = marketStateView(opp({
+    market_state: {
+      state: 'stale',
+      stale_timeframe: '1d',
+      last_candle: '2026-10-23T04:00:00+00:00',
+      expected_candle: '2026-10-26T04:00:00+00:00',
+    },
+  }), now)
+  assert.equal(own.short, 'Dados atrasados · falta seg. 26/10')
 })
 
 test('Favoritos: status com o último pregão, "Aguardando dados" e a fonte antiga', () => {
@@ -148,8 +206,16 @@ test('Favoritos: status com o último pregão, "Aguardando dados" e a fonte anti
   assert.equal(favoriteRowData({ ...nvda, configuration: BINANCE }).conventions, 'Binance Ações · NY · split · 252/ano')
 })
 
-test('Descoberta: ação e ETF vão para Tier 3 com a nota de "Alertar" e da carteira', () => {
-  assert.equal(promotionTitle('stock'), 'Promover a favorito tier 3')
-  assert.match(promotionDestinationNote('etf'), /marque "Alertar" lá e marque o ativo como "No portfólio" no Monitor/)
-  assert.doesNotMatch(promotionDestinationNote('crypto'), /No portfólio/)
+test('d2: Descoberta promove a favorito sem estrela, com a nota nova', () => {
+  assert.equal(promotionTitle('stock'), 'Promover a favorito')
+  assert.equal(PROMOTION_DESTINATION, 'Favoritos · sem estrela')
+  assert.equal(PROMOTED_LABEL, 'Em Favoritos')
+  assert.equal(
+    promotionDestinationNote('etf'),
+    'Onde ver depois: Favoritos, sem estrela e fora do Monitor, com a configuração Binance Ações. Para acompanhar no Monitor e receber no Telegram, dê pelo menos 1 estrela lá. Reversível: retire o favorito; o histórico da varredura fica.',
+  )
+  assert.doesNotMatch(promotionDestinationNote('crypto'), /Binance Ações|Alertar|No portfólio/)
+  assert.match(promotionSuccessText('NVDA', 'stock', '7', 'sw1'), /entrou em Favoritos sem estrela/)
+  assert.match(promotionSuccessText('BTC/USDT', 'crypto', '7', 'sw1'), /entrou em Favoritos sem estrela/)
+  assert.match(MONITOR_STAR_HELP, /^Com pelo menos 1 estrela, a estratégia entra no Monitor/)
 })

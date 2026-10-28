@@ -1,389 +1,348 @@
-> Proveniência: Assessment B (detector + gate estático + browser real), papel `assessment-b`, faixa `juizo`, modelo da captura **Opus 5.5** (`claude-opus-5-5`, effort `high`), captura `cf-assess-b-1122.json` (attempt `44558289-2276-4517-99a4-ae2f0ad366b7`, capture_sha256 `7e384188…`), wave `cf-assess-a-1122.json` (`1122-d1`), birth `44558289-2276-4517-99a4-ae2f0ad366b7.birth.json`, cliente claude, superfície claude-desktop, 2026-10-26T18:25Z.
+> Proveniência: Assessment B (detector + gate estático + browser real), papel `assessment-b`, faixa `juizo`, modelo da captura **Opus 5.5** (`claude-opus-5-5`, effort `high`), captura `cf-assess-b-d2.json` (attempt `f5d8aa0c-f23b-4309-b477-175072f76ef6`, capture_sha256 `17a52fba…`), wave `cf-assess-a-d2w.json` (`1122-d2`), birth `f5d8aa0c-f23b-4309-b477-175072f76ef6.birth.json`, cliente claude, superfície claude-desktop, 2026-10-27.
 
-# Assessment B (detector + browser real): card 1122 · change card-1122-favoritos-alertas-acoes-etfs
+# Assessment B, rodada d2 (detector + browser real): card 1122 · change card-1122-favoritos-alertas-acoes-etfs
 
-> Assessor B isolado. Não li o snapshot nem o scratch do Assessment A. Não houve nested-spawn. Cliente Claude Code (adapter cooperativo, sem modo Auto).
-> Este filho escreveu só este snapshot e os screenshots `card-1122-B-*.png` nesta pasta. Scripts e JSON ficam em `/tmp/claude-1001/-srv-apps-dev-criptofarol-source/6e575182-2e59-4ca3-aca7-4c1cc8d2f8a5/scratchpad/c1122B/` e não são versionados.
-> Para a captura viva fresca (seção 4), reexecutei os scripts de captura do autor (`c1122/capture.py`, `capture2.py`) com saída no meu scratch: mesmo mock de API, render novo do bundle vivo de hoje.
-> Tokens parseáveis do `design.md` (rubrica D4): `UI impact: affected` · `live_route: /monitor` · `surface: existing`, nas linhas 1 a 3, cada um em linha própria. Regiões COPIED e DELTA listadas em Context; P3 aceitos em Risks / Trade-offs.
+> Assessor B isolado. Não li o snapshot nem o scratch do Assessment A. Não criei filhos. Cliente Claude Code (adapter cooperativo, sem modo Auto).
+> Este filho escreveu só este snapshot. Scripts, JSON e screenshots ficam em `/tmp/claude-1001/-srv-apps-dev-criptofarol-source/6e575182-2e59-4ca3-aca7-4c1cc8d2f8a5/scratchpad/c1122B-d2/` e não são versionados. A versão d1 deste snapshot fica no git.
+> A rodada d2 é uma mudança sobre o que já está implementado na develop (`9b83d25e`), depois do "Não homologar" de 27/10.
+> **Fronteira:** li o issue e os comentários pelo REST (22 comentários). Os três últimos não foram reabertos:
+> - "Não homologar";
+> - as 4 decisões da regra nova;
+> - as 3 decisões do Design d2: Q1 e Q2 com a resposta recomendada, e o Monitor continua abrindo em "Em portfólio".
+>
+> A troca da decisão 21 para "Em portfólio" já vai para o rework e não é achado meu.
 
 ```
-Assessment B 1122
-snapshot: .impeccable/critique/1122-card-1122-favoritos-alertas-acoes-etfs-B.md (2026-10-26T18:25Z)
+Assessment B 1122 d2
+snapshot: .impeccable/critique/1122-card-1122-favoritos-alertas-acoes-etfs-B.md
 model: Opus 5.5 (claude-opus-5-5, effort high)
-digest_match: disco == HTTPS (curl) em 9/9 arquivos (HTTP 200); a pasta / serve o index.html; live.css == /assets/index-WJwiIv3A.css vivo de hoje (8f4edf0a…); design.md d4d64e7e… igual no início e no fim
-detector CLI: index 1 · favorites 2 · results 1 · configure 8 · discovery 0 · profile 1 · delta.css 0 · delta.js 0 · live.css 39
-detector hook (DESIGN.md): HTML iguais ao CLI · delta.css 20 (10 cor, 7 tamanho, 3 raio) · delta.js 0 · live.css 331
-detector browser (6 páginas, estados do delta): únicos desk COPIED 222 × DELTA 68 · mob COPIED 197 × DELTA 89; dos DELTA, só desk 21 / mob 14 em elementos m22-* (8/4 do painel Demonstração), o resto é marcação viva clonada; 0 low-contrast de autoria do delta
-gate: design_token_gap=None · evaluate_clone_gate(HEAD)=True · clone_gate_ok=True · classify(index,/monitor)=PASS · copied_utf8_sum 59679 · 23/23 COPIED · 23/23 DELTA · 0 marcador dentro de tag
-gate extras (informativo): favorites PASS · results PASS · discovery BLOCKED (falta "Rascunho de varredura", captura do Decidir) · configure/profile sem rota no catálogo
-clone vs vivo: 65/65 regiões COPIED (6 páginas) são substring literal de uma captura viva fresca; texto fora de marcador = 0 em todas
-browser: 363 asserts, 347 PASS, 16 FAIL (11 de harness, re-testados PASS ou conferidos na fonte; 5 reais = P2-1 e P3-1) · 0 console error / pageerror / ≥400 / requestfailed
+pacote: não commitado; digests iguais no início e no fim (design.md e79b20b0…, index.html ca632b32…); openspec validate --strict = válido
+URL pública: ainda serve a d1 (index sha d0d7aa5a…); browser no servidor local do worktree (127.0.0.1:8792, já encerrado)
+gate: design_token_gap=None · clone_gate_ok=True · classify(index,/monitor)=PASS · copied_utf8_sum 120281 · COPIED 55/55 · DELTA 59/59 · 0 marcador dentro de tag
+gate extras (informativo): favorites PASS · results PASS · discovery BLOCKED (catálogo) · profile sem rota no catálogo
+clone vs vivo: 122/122 regiões COPIED (5 páginas) são substring literal de uma captura viva fresca (bundle index-C9_PkDmo.js / index-DOHmvARO.css); live.css = CSS vivo (353ac045…)
+detector CLI: index 1 · favorites 3 · results 1 · discovery 0 · profile 1 · delta.css 0 · delta.js 0 · live.css 39 (todos os HTML em COPIED)
+detector hook (DESIGN.md): delta.css 0 (eram 20 na d1) · delta.js 0 · live.css 334
+detector browser (4 larguras): autoria m22 = "Catálogo · sem alerta" 10 px, parágrafos da Demonstração com 91 a 96 car./linha; 0 low-contrast em m22
+browser: 373 asserts, 366 PASS, 7 FAIL (6 reais = P2-1; 1 de harness) · 0 console.error / pageerror / ≥400 / requestfailed · 0 rolagem horizontal
+alturas: linhas da tabela iguais ao vivo a 1280/1024 (BTC/SOL −16 px a 1440, sem a tag) · cartões a 390 +61 a +114 px (+7 a +16%)
 P0: nenhum
 P1: nenhum
-P2: [mecânico] Ver Trades da fonte antiga habilitado no cartão · [mecânico] detalhe da linha NVDA fonte antiga diz "Em posição" com preços de BTC · [produto] Monitor sem estado de dado insuficiente · [produto, juízo] densidade da linha de ação/ETF a 1440
-P3: [a11y/Apply] modal Salvar com aria-modal sem prender Tab · [a11y/Apply] Alertar das linhas cripto sem aria-label até o 1º clique · [amostra] estrelas de NVDA fonte antiga e "6 ativos" · [polish] ícone "NVD" 9 px · [polish] linhas longas · [polish] link "Ver em Favoritos" inline · [herdado] .btn sem anel, 10 px, padding 0 · [processo] discovery.html BLOCKED no catálogo e parse_live_route · [Apply] hook DESIGN.md no delta.css · [demo] lacunas da Demonstração
-verdict: PASS com rework (leve, opcional dentro do teto)
+P2: [mecânico] detalhe aberto não reflete o estado do interruptor · [mecânico/demo] cenários não mudam a linha destacada; atraso por outro tempo gráfico (stale_detail) sem desenho
+P3: [doc] Q1/Q2 respondidas ainda em Open Questions · [doc] nome acessível com a configuração · [amostra] SOL/USDT no Monitor e fora de Favoritos · [juízo] ajuda repetida em cada cartão a 390 · [doc] Impact do proposal desatualizado · [polish] "Catálogo · sem alerta" 10 px, linhas longas · [Apply] "Em Favoritos" da Descoberta sem desenho · [Apply] cor do "ligado" = verde de sinal · [Apply] vitrine depende do filtro de estrelas · [herdado] .btn sem anel, estrelas de 24/28 px, tabela a 1024 · [processo] URL pública na d1, discovery BLOCKED
+verdict: PASS com rework (o rework já previsto pela decisão 3 de Alan; os P2 cabem nele)
 ```
 
-- UTC: 2026-10-26T18:25Z
-- Tupla (só leitura): `bound_card=1122` · `q_git=card-1122-favoritos-alertas-acoes-etfs` @ `f093e2cc` · Status=**Design**, conforme o prompt do pai. A leitura GraphQL do Project foi recusada pela guarda do worktree e não foi refeita.
-- Pacote não commitado: `git status` mostra a pasta do protótipo e a change como `??`.
-- Não houve `process_event`, commit, push, Gist, comentário nem restart.
-- Fronteira: `gh api repos/oalansilva/crypto/issues/1122` e `/comments`, sem `gh issue view`. Body grelhado: 10 itens no Entra (5 decisões de Alan de 26/10/2026) e 4 no Não entra. Comentários: "card nítido; sem grill" e o handoff do grill-card. As decisões não foram reabertas. A "Transição da cripto" está aberta como pergunta 1 do design.md.
+## 1. Digests e validação
 
-## 1. Digest servido == local
-
-| Arquivo | sha256 (disco = HTTPS) | bytes |
+| Arquivo | sha256 (início = fim) | Tabela do design.md |
 |---|---|---|
-| `index.html` (a pasta `/` serve o mesmo) | `b7a4971379428845d9f78717c41a0a072ccf74f760a6f8f5e8c308645126c9d7` | 121525 |
-| `favorites.html` | `99d0fdb1ac13811186db56a7479e85ce20f244fe44c765e20e3f0215cb796dea` | 107766 |
-| `results.html` | `5953caa17e29ceededc10ec31846577626cfca7c24e85e02fd52d0c3a9db2ca4` | 46431 |
-| `configure.html` | `d94216041b570e1168d4024b7ab81e758d7ff6df43ffae13637b38623215b3db` | 33736 |
-| `discovery.html` | `d1f32be145edd65ff863b0dc74ac9c26d2c64ae26520faca07c968596e79f3df` | 47445 |
-| `profile.html` | `9824fe0bc64d86c53263362da7b6afec029b9057b69df6a0c5eff9122cd7f30d` | 30564 |
-| `live.css` | `8f4edf0aca9aca6ff4414384993cab1adb18042e4443ee074fe5ee9a6d569183` (= `index-WJwiIv3A.css` servido hoje em DEV; o `/monitor` vivo referencia `index-DUWqPrYj.js` + `index-WJwiIv3A.css`) | 248557 |
-| `delta.css` | `d83e8e504da566369683ed9b398d5600dd9267ea24aaac17bbcb375f71175f00` | 7271 |
-| `delta.js` | `9be14c630d273439eee7e4214492e606f69411db775d53fd500bf274e9358f18` | 19132 |
+| `design.md` | `e79b20b0f943…` | — |
+| `tasks.md` | `98b9ae6a6a1f…` | — |
+| `index.html` | `ca632b32a2fb…` | igual |
+| `favorites.html` | `106ff36d9e92…` | igual |
+| `results.html` | `5159b303aa6c…` | igual |
+| `discovery.html` | `0bb4e4e150e8…` | igual |
+| `profile.html` | `2781744bf5fb…` | igual |
+| `live.css` | `353ac045db2d…` (= `/assets/index-DOHmvARO.css` servido hoje) | igual |
+| `delta.css` | `92fe48d60dc0…` | igual |
+| `delta.js` | `7bfd0d9c90aa…` | igual |
 
-Os 9 arquivos respondem HTTP 200, e os prefixos batem com a tabela de Prototype Validation do design.md. O risco "URL pública responde 404 até o pai reiniciar o serviço" (Risks) já não vale. Os digests foram conferidos de novo no fim, sem mudança.
+- `openspec validate card-1122-favoritos-alertas-acoes-etfs --strict`: válido.
+- `configure.html` saiu da pasta, como o design.md diz.
+- O bundle vivo de hoje continua `index-C9_PkDmo.js` / `index-DOHmvARO.css`, o mesmo da captura do autor.
+- A URL pública ainda responde com a d1 (`index.html` sha `d0d7aa5a…`), como o próprio design.md registra.
 
-## 2. Detector Impeccable
-
-### 2a. CLI (`node .agents/skills/impeccable/scripts/detect.mjs --json <arquivo>`)
-
-| Alvo | exit | Achados | Região |
-|---|---|---|---|
-| `index.html` | 2 | 1 `flat-type-hierarchy` (12/14/18 px) | página inteira; vem da escala viva |
-| `favorites.html` | 2 | 1 `flat-type-hierarchy`, 1 `gray-on-color` (`text-zinc-400` sobre `bg-amber-400`) | o par de classes é o das estrelas vivas: 4×/10× em COPIED e 14×/6× nas linhas DELTA clonadas da linha viva |
-| `results.html` | 2 | 1 `ai-color-palette` (`text-purple-400`) | "Sharpe Ratio" do modal: marcação viva do `SaveFavoriteModal`, levada para o bloco DELTA |
-| `configure.html` | 2 | 4 `gray-on-color`, 3 `ai-color-palette`, 1 `flat-type-hierarchy` | todos em COPIED |
-| `discovery.html` | 0 | `[]` | — |
-| `profile.html` | 2 | 1 `flat-type-hierarchy` | página inteira |
-| `delta.css` | 0 | `[]` | — |
-| `delta.js` | 0 | `[]` | — |
-| `live.css` | 2 | 39 (24 `gray-on-color`, 6 `ai-color-palette`, 4 `side-tab`, 2 `overused-font`, 1 `border-accent-on-rounded`, 1 `gradient-text`, 1 `layout-transition`) | CSS vivo inteiro, COPIED |
-
-Os HTML capturados têm o corpo numa linha só (L13/L14). Por isso, a região de cada achado foi localizada procurando a classe denunciada entre os marcadores, e não pelo número da linha.
-
-### 2b. Modo hook (`hook-lib.loadDetector` + `readConfig` + `designSystemOptions(…, REPO)`; DESIGN.md carregado)
-
-- HTML: iguais ao CLI.
-- `delta.js`: 0.
-- `live.css`: 331 (os 39 do CLI mais 292 `design-system-*`).
-- `delta.css`: 20, todos fora da escala do DESIGN.md:
-  - 10 `design-system-color`: `#b7bdc6` ×7 e `#474d57` ×3;
-  - 7 `design-system-font-size`: 11 px ×4, 9, 10 e 15 px;
-  - 3 `design-system-radius`: 5 e 10 px ×2.
-
-O design.md aceita como P3 as cores literais e os 11 px. Os 9, 10 e 15 px e os raios de 5 e 10 px são da mesma família, mas não estão listados (P3-9).
-
-### 2c. Detector no browser (`detect-antipatterns-browser.js` injetado, `impeccableDetect({serialize:false})`)
-
-Cada elemento foi classificado pelo marcador `COPIED`/`DELTA` que o contém. Nó criado pelo `delta.js` depois da carga conta como DELTA-js. Estados varridos a 1440 e 390:
-
-- Monitor: aberto, atraso e transição.
-- Favoritos: dono e vitrine.
-- Resultado: modal.
-- Combo, Descoberta e Perfil: carga.
-
-| Viewport | COPIED | DELTA | PAGE |
-|---|---|---|---|
-| 1440 | 222 | 68 | 8 |
-| 390 | 197 | 89 | 8 |
-
-Os DELTA se dividem assim:
-
-- **Marcação viva clonada para as linhas, cartões e detalhes de NVDA/SPY** (sem classe `m22-*`): desk 48, mob 77. São `undersized-ui-text` (tags e rótulos de 10 px), `low-contrast` (`#707a8a` sobre `#181a20`, 4,0:1: "Lote … · ref", "Sinal · Em posição", "Destino obrigatório" da Descoberta), `cramped-padding`, `side-tab` e `nested-cards`, todos com a mesma classe da linha de BTC viva. Contam como herdados (P3-7).
-- **Painel Demonstração** (só protótipo): desk 8, mob 4. Botões com padding vertical 0 (mas `min-height: 44px`) e `<p>` com cerca de 92 caracteres por linha.
-- **Autoria do delta (contam):** desk 13, mob 10.
-  - Tag "Alerta" a 10 px (×4). É o tamanho da `.tag` viva ("Carteira", "Strategy" medem 10 px), então é herdado.
-  - `.pair-icon.m22-eq` a 9 px, com o texto "NVD"/"SPY" (×3; a viva é 10 px com "BTC"). Ver P3-4.
-  - `.m22-cat-none` "Catálogo · não alerta" a 11 px (×5).
-  - `p.m22-modal-note` com cerca de 112 caracteres por linha a 1440, encostando na borda do viewport a 390 (o padding do modal é zerado pelo reset vivo). Ver P3-5.
-
-Nenhum `low-contrast` em elemento `m22-*`. Nenhum `script-error`.
-
-## 3. Gate estático (`scripts/process-fsm/design_clone_gate.py` importado; `clone_gate_ok` é o que `process_event` chama)
+## 2. Gate estático (`scripts/process-fsm/design_clone_gate.py`)
 
 ```
 lines1-3 ['UI impact: affected', 'live_route: /monitor', 'surface: existing']
-design_token_gap None
-parse_ui_impact affected
-parse_live_route ('/monitor', 'surface: existing')
-parse_surface existing
-catalog (load_head_catalog) ['/combo/discovery', '/combo/results', '/combo/select', '/favorites', '/monitor', 'landing']
-/monitor entry: selectors ["table.signals"], texts Status/Preço/Distância/7d/Risco até stop/Tags/Operar/Par / Estratégia
-evaluate_clone_gate True
-clone_gate_ok True
-index.html     /monitor          landmarks True  classify PASS     copied 59679  COPIED 23/23 DELTA 23/23  inside_tag 0  121525 B
-favorites.html /favorites        landmarks True  classify PASS     copied 55574  COPIED 19/19 DELTA 23/23  inside_tag 0
-results.html   /combo/results    landmarks True  classify PASS     copied 38998  COPIED 6/6   DELTA 6/6    inside_tag 0
-configure.html /combo/configure  (sem rota no catálogo)            copied 32565  COPIED 5/5   DELTA 5/5    inside_tag 0
-discovery.html /combo/discovery  landmarks False classify BLOCKED  copied 45527  COPIED 7/7   DELTA 7/7    inside_tag 0
-profile.html   /profile          (sem rota no catálogo)            copied 29330  COPIED 5/5   DELTA 5/5    inside_tag 0
+design_token_gap None · parse_live_route ('/monitor', 'surface: existing') · parse_surface existing
+evaluate_clone_gate True · clone_gate_ok True
+index.html     /monitor        landmarks True  PASS     copied 120281  COPIED 55/55  DELTA 59/59  inside_tag 0
+favorites.html /favorites      landmarks True  PASS     copied 152976  COPIED 49/49  DELTA 57/57  inside_tag 0
+results.html   /combo/results  landmarks True  PASS     copied  44251  COPIED 5/5    DELTA 5/5    inside_tag 0
+discovery.html /combo/discovery landmarks False BLOCKED copied  45943  COPIED 8/8    DELTA 8/8    inside_tag 0
+profile.html   /profile        (sem rota no catálogo)   copied  29330  COPIED 5/5    DELTA 5/5    inside_tag 0
 ```
 
-- O canônico passa, e o número de `copied_utf8_sum` (59.679) é o mesmo do design.md.
-- Nos extras, a minha soma de COPIED conta os nós de comentário internos, por isso dá alguns bytes acima da tabela do autor, que conta sem os marcadores. Os pares conferem.
-- `discovery.html` é BLOCKED no `classify`: falta o texto "Rascunho de varredura", porque a captura é o Decidir com o modal aberto. O gate só lê o canônico, então isso é informativo (P3-8).
-- `parse_live_route` continua levando a linha seguinte (`surface: existing`) como justificativa. É inofensivo com rota de catálogo (P3-8).
+- Os tokens da rubrica D4 estão em L1–L3, cada um em linha própria. O `copied_utf8_sum` (120.281) é o mesmo do design.md.
+- Nos extras, a soma conta os comentários internos e fica alguns bytes acima da tabela do autor. Os pares conferem.
+- `discovery.html` continua BLOCKED no `classify`, porque o catálogo pede "Rascunho de varredura" e a captura é o Decidir com o modal. O gate só lê o canônico, então é informativo (P3-11).
 
-## 4. Clone contra a página viva (fora do DELTA)
+## 3. Clone contra a página viva
 
-- Rodei os scripts de captura do autor com saída no meu scratch (`live1/`, `live2/`). É o mesmo mock de API, mas um render novo do bundle vivo de hoje (`index-DUWqPrYj.js`), a 1440 e a 390, sem erros de página.
-- Rotas e estados capturados: `/monitor` (fechado e com BTC aberto), `/favorites`, `/profile`, `/combo/results` (NVDA e modal de BTC), `/combo/configure` com NVDA e `/combo/discovery` com o modal de NVDA.
-- Para cada região COPIED, testei se o conteúdo (sem os blocos DELTA aninhados, com o relógio HH:MM:SS normalizado) é **substring literal** de alguma dessas capturas:
+- Reexecutei os scripts de captura do autor (`c1122d2/capture_d2.py`, `capture2_d2.py`) com saída no meu scratch (`live1/`, `live2/`). É a mesma API simulada, num render novo do bundle vivo de hoje, a 1440 e a 390, sem erro de página.
+- Cada região COPIED, sem os DELTA aninhados e com o relógio normalizado, é **substring literal** de uma captura:
 
-| Página | Regiões COPIED | Substring do vivo |
+| Página | COPIED | Substring do vivo |
 |---|---|---|
-| `index.html` (`/monitor`) | 23 | 23 |
-| `favorites.html` | 19 | 19 |
-| `results.html` | 6 | 6 |
-| `configure.html` | 5 | 5 |
-| `discovery.html` | 7 | 7 |
+| `index.html` (`/monitor`, própria + vitrine) | 55 | 55 |
+| `favorites.html` (própria + vitrine) | 49 | 49 |
+| `results.html` | 5 | 5 |
+| `discovery.html` | 8 | 8 |
 | `profile.html` | 5 | 5 |
 
-- O texto fora de qualquer marcador no `<body>` é vazio em todas as páginas (só espaço, 38 a 132 B).
-- `live.css` é byte-idêntico ao CSS vivo servido hoje.
+- Fora de marcador fica só o `</div>` que fecha o `#root` e espaços (54 a 76 B). É inofensivo.
 - Fora do DELTA, o clone é o vivo.
+
+## 4. Detector Impeccable
+
+### 4a. CLI (`node .agents/skills/impeccable/scripts/detect.mjs --json`)
+
+| Alvo | Achados | Região |
+|---|---|---|
+| `index.html` | 1 `flat-type-hierarchy` | escala viva |
+| `favorites.html` | 1 `flat-type-hierarchy`, 2 `gray-on-color` (`text-zinc-400` sobre `bg-amber-400`, L13 e L22) | estrelas vivas, em COPIED |
+| `results.html` | 1 `ai-color-palette` (`text-purple-400`) | modal vivo, agora todo em COPIED (o DELTA é só a nota) |
+| `discovery.html` | 0 | — |
+| `profile.html` | 1 `flat-type-hierarchy` | escala viva |
+| `delta.css` / `delta.js` | 0 / 0 | — |
+| `live.css` | 39 | CSS vivo |
+
+### 4b. Modo hook (DESIGN.md carregado)
+
+- `delta.css` dá **0 achados** (na d1 eram 20).
+- Todas as 30 variáveis do `delta.css` existem no `live.css`: `--hold*`, `--t-2/3`, `--line`, `--space-*`, `--text-*`, `--radius-*`, `--bg-*`, `--accent-*`, `--fav-muted-strong`.
+- Os únicos valores literais são medidas de alvo ou estrutura: ícone de 14 px, checkbox de 18 px, 44 px, `min-height` de 30 px, outline de 2 px, larguras de 62/75ch e as quebras de 1024/1280.
+- Conclusão: o `delta.css` usa os tokens do DESIGN.md.
+
+### 4c. Detector no browser (`detect-antipatterns-browser.js`, regiões por marcador)
+
+| Largura | COPIED | DELTA | DELTA-js | PAGE |
+|---|---|---|---|---|
+| 1440 | 336 | 25 | 27 | 8 |
+| 1280 | 332 | 25 | 27 | 8 |
+| 1024 | 331 | 25 | 26 | 8 |
+| 390 | 345 | 19 | 39 | 8 |
+
+- A maior parte dos DELTA é marcação viva clonada para a vitrine e os detalhes:
+  - 23 `low-contrast` em `#707a8a`;
+  - `cramped-padding` em `table-wrap`;
+  - `side-tab` e `nested-cards`.
+- **Autoria do delta (`m22-*`):**
+  - `.m22-alert-none` "Catálogo · sem alerta" a 10 px (`tiny-text`/`undersized-ui-text`), ver P3-6;
+  - parágrafos da Demonstração com 91 a 96 caracteres por linha, mesmo com `max-width: 75ch`, ver P3-6;
+  - `body-text-viewport-edge` na ajuda do cartão a 390. É falso positivo: medi `left 64 / right 326`, dentro do cartão (`49–341`).
+- Nenhum `low-contrast` em elemento `m22-*`.
 
 ## 5. Browser real
 
-- Playwright Python 1.62 com Chromium headless shell 1243 (`--no-sandbox`), `colorScheme: dark`, `pt-BR`, fuso São Paulo.
-- **URL pública:** `https://dev.criptofarol.com.br/prototypes/card-1122-favoritos-alertas-acoes-etfs/` e as 5 páginas extras.
-- Viewports: 1440×900 (desk) e 390×844 (mob, `isMobile`, toque, DPR 2). Contexto novo por página.
-- Scripts: `browser.py` (352 asserts), `extra.py` (11) e `extra2.py` (medidas).
-- Screenshots `card-1122-B-*.png` nesta pasta: 35 no total.
-
-**Erros:** 0 `console.error`, 0 `pageerror`, 0 respostas ≥ 400 e 0 `requestfailed` nos 12 contextos.
+- Ambiente:
+  - Playwright Python, Chromium headless shell 1243, `--no-sandbox`, tema escuro, `pt-BR`;
+  - servidor local do worktree (`python3 -m http.server 8792 --directory frontend/public`, já encerrado);
+  - contexto novo por página e largura: 1440×900, 1280×800, 1024×768 e 390×844 (toque, DPR 2).
+- Scripts: `browser.py` (373 asserts), `probe.py` (geometria e recortes) e `live_heights.py` (alturas do `/monitor` vivo com a mesma API simulada nas 4 larguras).
+- **Erros:** 0 `console.error`, 0 `pageerror`, 0 respostas ≥ 400 e 0 `requestfailed` nos 20 contextos. Sem rolagem horizontal em nenhuma página, cenário ou largura.
 
 ### Matriz
 
-| Página × viewport | Asserts | PASS | FAIL |
-|---|---|---|---|
-| Monitor desk / mob | 133 / 126 | 131 / 123 | 2 / 3 |
-| Favoritos desk / mob | 17 / 16 | 15 / 15 | 2 / 1 |
-| Resultado desk / mob | 15 / 15 | 12 / 12 | 3 / 3 |
-| Combo, Descoberta, Perfil desk / mob | 15 / 15 | 15 / 15 | 0 |
-| `extra.py` (re-testes) | 11 | 9 | 2 |
-| **Total** | **363** | **347** | **16** |
-
-**FAIL de harness (11), re-testados PASS ou conferidos na fonte:**
-
-- A pílula "SAÍDA / COBERTURA" e o cabeçalho "ALERTAR" vêm do `innerText` com `uppercase`. Pelo `textContent`, dão "Saída / cobertura" e "Alertar", ambos PASS.
-- Os links "Marcar em Favoritos" e "Ver em Favoritos" apontam para `favorites.html`, o clone na mesma pasta. O teste esperava `/favorites`. Com o alvo do clone, passam (44 px no link da faixa).
-- O resumo de Favoritos: "Interesse alto" e "2" estão em nós sem espaço entre eles. Na fonte, o resumo é "Acompanhar 1 · Interesse alto 2 · Top picks 1 · Sem estrela 1", o que bate com as estrelas das 5 linhas (BTC 3, NVDA-b 2, ETH 2, SPY 1, NVDA-s 0).
-
-**FAIL reais (5):**
-
-- Resultado d/m: o Tab sai do modal na 4ª parada (2). Com o foco fora, o Esc não fecha (2). Ver P3-1.
-- Monitor mob: Ver Trades do cartão de NVDA (fonte antiga) está habilitado (1). Ver P2-1.
-
-**Monitor, todos PASS d/m (salvo o indicado):**
-
-- **Carga** (pregão aberto):
-  - NVDA (Binance Ações) e SPY ficam em Em posição; NVDA (fonte antiga) em Saída / cobertura.
-  - Linha de identidade:
-    - NVDA: "Ação · USD · Binance Ações · NY · split";
-    - SPY: "ETF · USD · Binance Ações · NY · split";
-    - NVDA antiga: "Ação · USD · Stooq · fonte antiga · diário".
-  - As duas NVDA se distinguem só por essa linha, e há 2 linhas/cartões NVDA.
-  - "Alerta" aparece em BTC, SOL, NVDA-b e SPY (4), e não em NVDA-s.
-  - A cripto não mostra estado de mercado.
-  - Indicadores "Em posição 4 · Saída / cobertura 2 · Total 6 · Em carteira 6".
-- **Cenários**: em cada um, conferi o tom, o texto, o ícone (1 visível) e o "Sinal em espera" só no atraso, nas 3 linhas e nos 3 cartões.
-
-  | Cenário | Estado de NVDA-b · SPY · NVDA-s | Telegram |
-  |---|---|---|
-  | Seg. 15:00 | aberto "fecha 17:00 (16:00 em NY)" ×3 | 0 mensagens |
-  | Sáb. | fechado "fim de semana · abre seg., 26 out., 10:30 (09:30 em NY)" ×3 | 1: entrada de NVDA com "NVDA (Ação · USD)", Estratégia, "Configuração: Binance Ações · pregão regular de NY · ajustado por split", "TimeFrame: 1d", leituras, "Candle: sex., 23 out. 2026 (pregão fechou às 17:00 BRT)", valores em USD, "Ordem: nenhuma enviada", sem USDT |
-  | Feriado 26/11 | fechado "feriado em Nova York · abre sex., 27 nov., 11:30 (09:30 em NY)", em cinza | 0 |
-  | Ter. 08:05 | NVDA-b `stale` em âmbar `rgb(240,185,11)`, "Dados atrasados · último candle sex., 23 out.; esperado seg., 26 out." + "Sinal em espera até o dado normalizar"; SPY e NVDA-s "fora do pregão · abre hoje, 10:30" | 1: "Dados atrasados" com ativo, fonte, último, esperado e "em espera" |
-  | Qua. 08:05 | fechado ×3; NVDA-b vai para Saída / cobertura, contagens (3)/(3) | 1: saída de NVDA, "Leitura atual: Venda", "Ordem: nenhuma enviada" |
-  | Transição | aberto ×3; a faixa `role=status` fica acima dos indicadores, com "Marcar em Favoritos" de 44 px; nenhum "Alerta" nas linhas | 1: "Mudança nos alertas" |
-
-  Nenhuma mensagem de mercado fechado ou feriado. Voltar ao aberto devolve NVDA-b a Em posição. Sem rolagem horizontal em nenhum cenário.
-- **Fonte antiga:** na linha (desk), Abrir Gráfico e Ver Trades têm `aria-disabled="true"` e "Fonte antiga: gráfico depois da migração para a Binance". **No cartão (390), só Abrir Gráfico tem isso** (P2-1). Em NVDA-b, os dois botões estão habilitados.
-- **Detalhe (desk):**
-  - O chevron de NVDA-b abre com `aria-expanded=true` e mostra "Ação/ETF na carteira recebe entrada e saída no Telegram.".
-  - O detalhe de NVDA-s abre, mas o conteúdo diz "Em posição" e mostra stop/entrada de BTC (P2-2).
-  - O detalhe de BTC copiado abre.
-- **Carteira (desk):** desmarcar NVDA vira "○ Carteira", e "Em portfólio" esconde as duas NVDA. "Todos" as traz de volta. Remarcar volta a "● Carteira".
-- **Timeframe (desk):** as opções são todas/4h/1d, e 4h esconde NVDA e SPY.
-- **Cartão (mob):** o controle de carteira e a ajuda "Ação/ETF na carteira recebe entrada e saída no Telegram." ficam visíveis.
-
-**Favoritos, todos PASS d/m:**
-
-- Nenhum "ainda não" na página.
-- A coluna "Alertar" aparece a 1440.
-- NVDA-b fica ligado, NVDA-s desligado e SPY ligado, com `aria-label` "Alertar no Telegram: ligado/desligado". O clique alterna, atualiza o `aria-label` e anuncia "Alertar no Telegram desligado para NVDA." na região viva.
-- A estrela da fonte antiga liga.
-- Textos "último pregão 23/10", "Stooq · fonte antiga · diário" e "Aguardando dados: 40 de 200 candles" (este na lista da Demonstração).
-- "Revalidar na janela recente" está habilitado em NVDA, NVDA e SPY.
-- **Vitrine:**
-  - a faixa `role=status` "Estas estratégias são o catálogo … e não mandam alerta …" aparece;
-  - não há controle Alertar (0 visíveis);
-  - "Catálogo · não alerta" aparece ×5.
-- O Alertar das linhas cripto (COPIED) não tem `aria-label` e mantém o title vivo "Notificar Telegram ativo" até o primeiro clique (P3-2).
-
-**Resultado, d/m:**
-
-- "Salvar nos Favoritos" está habilitado.
-- O modal é `role=dialog` com `aria-modal=true` e `aria-label`, e abre com o foco no nome.
-- Ele mostra "NVDA · Ação · USD", "Binance Ações · pregão regular de NY · ajustado por split · 1d · Long" e a nota "Depois de salvar, marque "Alertar" em Favoritos … O favorito nasce sem alerta."
-- **Salvar:** "Salvo em Favoritos com a configuração Binance Ações. Ver em Favoritos" com `role=status`, e o Salvar fica desabilitado.
-- **Esc logo após abrir:** fecha e devolve o foco ao Salvar.
-- **Duplicata:** "Já está nos favoritos com esta configuração (fonte, sessão e ajuste). Nada foi salvo." com `role=alert`, sem a mensagem de sucesso.
-- **FAIL:** a sequência de Tab é nome → notas → "Ver Parâmetros" → Salvar → `body` → links da página. Com o foco fora, o Esc não fecha (P3-1).
-
-**Combo, Descoberta e Perfil, PASS d/m:**
-
-- Combo: "1 ação (NVDA): otimiza e abre o resultado; para acompanhar, salve nos Favoritos por lá."
-- Descoberta: "Promover a favorito tier 3", "Tier 3 · observação" com a configuração Binance Ações e "Alertar". Sem "ainda não para ações e ETFs" e sem "sem nível de estrela".
-- Perfil: "… favorito seu marcado "Alertar" (cripto, ação ou ETF) com o ativo na sua carteira. Mercado fechado e feriado aparecem só no Monitor." Sem "catálogo".
-
-**Teclado:**
-
-- Favoritos: 74 paradas (desk) e 60 (mob), **0 sem anel**.
-- Monitor: 55 (desk) e 73 (mob) paradas. Ficam sem anel 10 (desk) e 45 (mob). Todas são `.btn` do `monitor-theme`, iguais nas linhas/cartões COPIED de BTC/SOL/ETH: "Telegram: on", "Tema", "Atualizar", "No portfólio", "Preço", "Exportar", "Reavaliar", "Confirmar gestão", "Abrir Gráfico" e "Ver Trades". O delta clona essa marcação (P3-7).
-- Os controles próprios do delta têm anel: a faixa, os botões da Demonstração e o Alertar.
-
-**Densidade (rubrica 5, `extra2.py`):**
-
-| Linha | BTC (vivo) | NVDA/SPY aberto | NVDA atrasado |
-|---|---|---|---|
-| Monitor a 1440 | 158 px | 230 px (+46%) | 305 px (+93%) |
-| Cartão a 390 | 815 px | 935 px (+15%) | 982 px (+20%) |
-
-A coluna "Par / Estratégia" tem 188 px a 1440. A caixa âmbar do atraso quebra em 5 linhas, e "Pregão aberto · fecha 17:00 (16:00 em NY)" em 3.
-
-## 6. Confronto com o Entra (só o visível; backend = Apply)
-
-| Entra | Visto no browser | Disposition |
+| Página | Asserts por largura | FAIL |
 |---|---|---|
-| Favoritos conservam fonte, sessão, ajuste e identidade; configurações distintas não colidem | NVDA Binance × NVDA Stooq lado a lado no Monitor e em Favoritos, cada um com estrelas, Alertar e estado; duplicata "com esta configuração (fonte, sessão e ajuste)" | PASS |
-| Atualização respeita calendário, candle fechado, dados insuficientes; fim de semana/feriado sem falso stale | "Backtest atualizado … · último pregão 23/10", "Aguardando dados: 40 de 200 candles", falha só no atraso real; sábado e feriado sem atraso | PASS em Favoritos. O Monitor não tem estado de dado insuficiente (P2-3). |
-| Canais existentes atendem ação/ETF e distinguem sinal, atraso e fechado; restart não duplica | Mensagens de sinal, de atraso e nenhuma de fechado. Idempotência é spec/Apply. | PASS (visível) |
-| Quem recebe: os próprios favoritos marcados, inclusive cripto | Alertar do dono em todas as classes; vitrine "Catálogo · não alerta"; frase do Perfil | PASS |
-| Transição da cripto (decidir no Design com Alan) | Recomendação A demonstrada (aviso único + faixa); pergunta aberta 1 do design.md | Com Alan (não é defeito) |
-| Entrada e saída de ação/ETF na carteira | Entrada no sábado e saída na quarta, com NVDA na carteira; texto de ajuda no detalhe e no cartão | PASS |
-| Um alerta por favorito, que identifica estratégia e configuração | Estados separados das duas NVDA nas linhas; a mensagem traz Estratégia e Configuração | PASS. O detalhe de NVDA-s contradiz o estado (P2-2). |
-| Atraso: aviso único por ativo; fechado só na tela | Atraso de terça com 1 aviso; quarta com recuperação sem mensagem; fechado sem mensagem | PASS |
-| Alerta não envia ordem | "Ordem: nenhuma enviada — o alerta é só o sinal da estratégia." | PASS |
-| Validar ação, ETF, cripto, configurações distintas, atraso, fechado, recuperação | Demonstração cobre ação, ETF, as duas configurações, atraso, fechado e recuperação. Cripto só na transição. | PASS (lacunas da demo em P3-10) |
-| Não entra: canais novos, robô, compra/venda, migração da fonte antiga, Telegram de fechado | Nenhum controle novo; a fonte antiga coexiste sem migrar; nenhuma mensagem de fechado | PASS |
+| Monitor | 76–79 | 2 por largura de mesa (P2-1) + 1 de harness a 390 |
+| Favoritos | 14 | 0 |
+| Resultado, Descoberta, Perfil | 4–5 cada | 0 |
+| **Total** | **373** | **7 (366 PASS)** |
 
-## 7. Nielsen (observado; sem ensaio de personas)
+O FAIL de harness: a 390, o anel do interruptor do cartão é `solid 3px` (o `.btn` vivo), e o teste esperava 2 px. O foco está visível.
 
-| # | Heurística | Observado | Sev. |
-|---|---|---|---|
-| 1 | Visibilidade do estado | Estado do mercado com ícone + texto em cada linha de ação/ETF; atraso âmbar com último/esperado; a faixa da transição diz por que o alerta parou | — |
-| 2 | Mundo real | Horários em BRT com NY entre parênteses; "pregão", "feriado em Nova York" | — |
-| 4 | Consistência | A identidade "Binance Ações · NY · split" é igual no Monitor, em Favoritos e no modal. Já a fonte antiga tem ★★ no Monitor e nenhuma estrela em Favoritos, e o detalhe de NVDA-s contradiz a linha. | P2/P3 |
-| 5 | Prevenção de erro | Duplicata recusada com o motivo; favorito nasce sem Alertar | — |
-| 8 | Estética/minimalismo | A linha de ação/ETF cresce de 46 a 93% a 1440 | P2 |
-| 9 | Recuperação | Recuperação sem ruído no Telegram; "Sinal em espera" explica a ausência de sinal | — |
+### Interruptor "Alerta" (Monitor), PASS nas 4 larguras salvo o indicado
 
-## 8. Achados
+- **Quantidade e lugar:**
+  - 6 interruptores visíveis, um por estratégia;
+  - célula de ações a 1440 e 1280, célula Status a 1024 (`m22-alert-compact`), cartão a 390;
+  - nunca dois na mesma linha;
+  - todos dentro da área visível e do Monitor. A 1024, o Monitor termina em 773 px e a linha vai até 1024 (incumbente); o interruptor fica na célula Status, dentro da área.
+- **Semântica:** `<button role="switch" aria-checked>`. O nome acessível começa com "Alerta no Telegram · " e traz ativo, tempo gráfico, estratégia e configuração. Os 6 nomes são distintos, inclusive as duas NVDA.
+- **Estado:** ETH/USDT desligado, os demais ligados. O estado aparece em texto ("ligado"/"desligado", `aria-hidden`) com 1 ícone visível (sino ou sino cortado). Desligado tem borda tracejada, ou seja, não depende só da cor.
+- **Alvo:** 30×107 px na linha (acima dos 24 px do WCAG 2.5.8) e ≥ 44 px no cartão a 390.
+- **Clique:** desligar NVDA muda as 4 cópias (linha, célula Status, cartão e detalhe já aberto), anuncia "Alerta de NVDA 1d desligado: nada sai no Telegram para esta estratégia." no `role=status` e não abre a linha.
+- **Teclado:** o Tab chega ao interruptor de ETH com `:focus-visible` e outline `solid 2px` (3 px a 390). O Space liga e o Enter desliga.
+- **Tags:** nenhuma tag "Alerta" visível. A frase "Ação/ETF na carteira recebe entrada e saída…" e o "ainda não marcou" saíram.
+- **Detalhe (mesa):**
+  - NVDA e BTC abrem com o interruptor e a ajuda "Entrada e saída saem com ou sem o ativo na carteira. Desligado, nada sai no Telegram para esta estratégia.", sem tag "Alerta";
+  - **FAIL (P2-1):** depois de desligar NVDA na linha, o detalhe aberto mostra "ligado". Clicar nele deixa tudo desligado em vez de religar.
+- **Cartão (390):** ajuda visível nos 6 cartões.
+- **Filtro:** abre em "Todos", que é a decisão 21 do autor e vai para o rework.
+
+### Demonstração do Monitor, PASS nas 4 larguras
+
+| Cenário | Mensagem | Linha destacada (estado mostrado) |
+|---|---|---|
+| Entrada sem carteira | NVDA (Ação · USD), "Leitura atual: Compra", "não envia ordem" | NVDA "Em posição · Aberto" (coerente) |
+| Saída | SPY (ETF · USD), "Leitura atual: Venda" | SPY **"Em posição"** (P2-2) |
+| Cripto com saldo | BTC/USDT, "Leitura atual: Compra" | BTC "Em posição" (coerente) |
+| Alerta desligado | "Nenhuma mensagem." | ETH **"Saída / cobertura"**, e o texto diz Venda → Compra (P2-2) |
+| Dados atrasados | "Dados atrasados", NVDA, último 23/10 e esperado 26/10 | NVDA **"Pregão aberto · fecha 17:00"**, sem tom de atraso (P2-2) |
+| Catálogo sem alerta | "Mudança nos alertas" com o texto novo | vitrine |
+
+Na vitrine:
+
+- a vista própria some e não fica nenhum interruptor;
+- "Catálogo · sem alerta" aparece nas 2 linhas/cartões;
+- a faixa `role=status` com o texto novo fica acima dos indicadores;
+- "Ir para Favoritos" tem ≥ 44 px;
+- desmarcar "Recebia alertas do catálogo" esconde a frase datada.
+
+Não existe cenário de mercado fechado: a nota diz "Mercado fechado e feriado continuam só na tela". Isso não mudou nesta rodada e está implementado, então não é achado.
+
+### Favoritos, PASS nas 4 larguras
+
+- Não há "Alertar", "Fora da carteira", switch, sino nem `title` de Telegram visível em nenhuma largura.
+- A ajuda das estrelas está presente. As legendas dão 5 "No Monitor" e 2 "Fora do Monitor" (QQQ do lote e AAPL da Descoberta, sem estrela).
+- Mensagens das estrelas em QQQ:
+  - 1ª estrela: "QQQ 1d entrou no Monitor com o alerta ligado.", e a legenda vira "No Monitor";
+  - 1 → 2 estrelas: "o alerta no Monitor fica como estava";
+  - tirar as estrelas: "QQQ 1d saiu do Monitor e não manda mais alerta.".
+- A vitrine tem a faixa nova e nenhum "Alertar".
+- A coluna Estratégia mede 342 px a 1440, 296 a 1280 e 90 a 1024, como o design.md diz.
+- Teclado: 85 paradas (mesa) e 69 (390), **0 sem anel**.
+
+### Resultado, Descoberta e Perfil, PASS nas 4 larguras
+
+- **Resultado:** tem a nota nova do modal e não tem "Alertar", "nasce sem alerta" nem "No portfólio".
+- **Descoberta:** tem "Promover a favorito", "Favoritos · sem estrela" e a nota nova, sem "tier 3", "Alertar" ou "No portfólio". "Em Favoritos" na linha promovida e no aviso de sucesso não tem desenho (P3-7).
+- **Perfil:** tem a frase nova e não tem "catálogo" nem "Alertar".
+
+### Teclado do Monitor
+
+- 53 paradas na mesa e 80 a 390.
+- Ficam sem anel 3 na mesa ("Telegram: on", "Tema", "Atualizar") e 45 a 390. Todas são `.btn` do `monitor-theme` em COPIED, ou seja, herdadas.
+- Todos os controles do delta têm anel.
+
+### Alturas contra a página viva (mesma API simulada)
+
+| Estratégia | 1440 proto/vivo | 1280 | 1024 | Cartão 390 proto/vivo |
+|---|---|---|---|---|
+| BTC/USDT | 142 / 158 | 142 / 142 | 142 / 142 | 929 / 845 (+84) |
+| NVDA (Binance) | 178 / 178 | 178 / 178 | 178 / 178 | 974 / 913 (+61) |
+| SPY | 178 / 178 | 178 / 178 | 178 / 178 | 974 / 913 (+61) |
+| SOL/USDT | 141 / 158 | 141 / 141 | 141 / 141 | 929 / 845 (+84) |
+| ETH/USDT | 138 / 138 | 138 / 138 | 138 / 138 | 835 / 721 (+114) |
+| NVDA (fonte antiga) | 177 / 177 | 177 / 177 | 177 / 177 | 929 / 867 (+62) |
+
+- Na mesa, o interruptor cabe sem crescer a linha. BTC e SOL encolhem 16 px a 1440 porque a tag "Alerta" sai.
+- No cartão, o interruptor empurra "Preço" para a linha de baixo, e a ajuda soma 3 linhas (P3-4).
+
+## 6. Coerência design.md × specs × tasks
+
+- **Tasks:**
+  - o grupo 8 diz "Nenhuma tarefa edita design.md, specs, .design-digest ou o protótipo", e nenhuma tarefa os edita;
+  - as tarefas antigas substituídas estão marcadas ("substituída pela 8.x").
+- **Grupo 8 cobre a regra nova:**
+  - quem recebe, `tier_filter` ignorado e carteira fora: 8.2/8.3;
+  - estrela liga o alerta, lote e Descoberta sem estrela, 422: 8.3;
+  - migração Q1/Q2 e semente: 8.1/8.10;
+  - transição e `alert-origin`: 8.4;
+  - Monitor, Favoritos e textos: 8.6/8.7/8.8;
+  - testes, E2E nas 4 larguras, compare e ensaio: 8.9/8.11/8.12/8.13.
+- **Grupo 8 cobre os residuais:** `stale_detail` no Monitor (8.5), marca da transição em dry-run e com `failed` (8.4) e 403/404 (8.3, com 7.3 feita).
+- **Specs:**
+  - `monitor-telegram-favorite-toggle`: o cenário "Unstarred marked favorite remains eligible" saiu e foi trocado por "Unstarred favorite is not eligible";
+  - `favorite-telegram-alerts`: cobre entrada e saída sem carteira, carteira Binance fora, atraso a quem tem o ativo no Monitor com alerta ligado, e "(15m)" no aviso;
+  - `monitor-multiclass`: traz o interruptor, a vitrine e "Dados atrasados no 15m";
+  - `monitor-telegram-alerts`: remove a matriz, o escopo "Em portfólio" e o aviso de falha.
+- **Monitor só exibe as estrelas:** o código (`MonitorStatusTab.tsx`, `getTierStars`) não grava tier. O único caminho de gravação de tier é `PATCH /favorites/{id}` (`FavoritesDashboard.tsx:396`), então "dar a estrela liga o alerta" num só lugar fecha a regra.
+- **Pontos que o rework da decisão 21 precisa tocar** (ajuda ao pai, não é achado):
+  - design.md: decisão 21, Q3, Apply contract ("admin abre em Todos") e Prototype ("visão do admin em Todos");
+  - `specs/monitor-multiclass/spec.md`: última frase de "Carteira é só informação da tela" e o cenário "Admin abre o Monitor";
+  - tasks: 8.6 (último bullet) e 8.11 ("admin em Todos");
+  - `index.html`: o filtro "Todos" ligado.
+- **Incoerências menores:** P3-1 a P3-3 e P3-5.
+
+## 7. Achados
 
 ### P0: nenhum
 
 ### P1: nenhum
 
-Nenhum critério do Entra falhou no browser. Os tokens da rubrica D4 estão em L1–L3, e o gate passa.
+A regra nova de Alan (alerta = estratégia própria com estrela, ligada por padrão, desligada no Monitor; carteira fora; catálogo sem alerta; lote e Descoberta sem estrela) está visível e coerente no Monitor, em Favoritos e nas três telas extras. O gate passa e o clone é o vivo.
 
-### P2 (não bloqueiam; o único rework ou juízo de Alan)
+### P2 (não bloqueiam; cabem no rework já previsto)
 
-- **P2-1 Ver Trades da fonte antiga habilitado no cartão.** *Mecânico.*
-  - Onde: `index.html`, DELTA "cartão NVDA fonte antiga", `article[data-m22-card="nvda-s"]`.
-  - Problema: Abrir Gráfico tem `aria-disabled`, `data-m22-off` e o title, mas Ver Trades não tem nenhum dos três. A 390, o botão parece ativo. Isso contraria o contrato (`monitor-multiclass`: "na fonte antiga, os dois botões MUST ficar visíveis e indisponíveis"). Na linha de 1440 está certo.
-  - **Corrigir:** copiar os três atributos para o Ver Trades do cartão.
-- **P2-2 Detalhe da linha de NVDA (fonte antiga) contradiz o estado.** *Mecânico.*
-  - Onde: `tr[data-m22-detail="nvda-s"]` (1440).
-  - Problema: a linha e o cartão dizem "Saída / cobertura · Saída confirmada", mas o detalhe aberto mostra "Em posição", "Sinal · Em posição", "Compra / Stop" com stop $99,877.76 e entrada $105,134.49, que são preços de BTC, ao lado de preço atual $182.31. Isso enfraquece justamente o que o card mostra: as duas NVDA têm estados separados.
-  - **Corrigir:** gerar o detalhe de NVDA-s a partir do cartão dela, com "Saída confirmada" e "Risco residual".
-- **P2-3 O Monitor não tem estado de dado insuficiente.** *Produto.*
-  - Onde: `.m22-mkt` (tons `open`/`closed`/`stale`) e Demonstração do Monitor.
-  - Problema: o spec `market-session-awareness` ("Dado insuficiente é estado próprio … com a contagem disponível e a necessária … MUST NOT gerar alerta nem aviso") vale para o sistema. Só Favoritos o mostra ("Aguardando dados: 40 de 200 candles", na lista da Demonstração). No Monitor, um ticker recém-listado não tem desenho, e o Apply teria de inventar o estado ou cair no "Sem candle válido" vivo.
-  - **Corrigir:** um 4º tom em `.m22-mkt` (cinza, ícone): "Dados insuficientes · 40 de 200 candles · sem sinal até completar". Somar uma linha ou cenário na Demonstração, ou dizer no design.md que o Monitor reusa o texto de Favoritos.
-- **P2-4 Densidade da linha de ação/ETF no Monitor a 1440.** *Produto, juízo.*
-  - Onde: `td` Par / Estratégia (`.m22-id`, `.m22-mkt`, `.m22-hold-note`).
-  - Problema: a linha cresce de 158 para 230 px aberta (+46%) e 305 px atrasada (+93%), na coluna de 188 px. A caixa âmbar quebra em 5 linhas. O design.md aceita a coluna estreita como herdada, mas não o crescimento.
-  - **Corrigir:** pôr o estado do mercado sob a pílula de Status (coluna mais larga) e abreviar a identidade ("Ação · USD · Binance · NY · split"), ou deixar a coluna crescer. Alan pode aceitar como está.
+- **P2-1 O detalhe aberto não reflete o estado atual do interruptor.** *Mecânico, protótipo.*
+  - Onde: `delta.js`, `toggleDetail`. Ele clona `<template data-m22-detail-tpl>` com `aria-checked="true"` fixo.
+  - Problema: depois de desligar NVDA na linha, abrir o detalhe mostra "Alerta: ligado". Clicar nele calcula `on = !true` e deixa tudo desligado (6 FAIL, 1440/1280/1024). O contrato pede "o mesmo interruptor" no detalhe, e Alan, ao testar o protótipo, vê dois estados para a mesma estratégia.
+  - **Corrigir:** depois de clonar, ler o `aria-checked` atual da linha (`[data-m22-alert=id]`) e chamar `setAlert(id, estado)`.
+- **P2-2 Os cenários da Demonstração não mudam a linha destacada, e o atraso por outro tempo gráfico não tem desenho.** *Mecânico, demo.*
+  - Onde: `delta.js`, `setScenario`, que só destaca e mostra a mensagem.
+  - Problema:
+    - "Saída" destaca SPY ainda "Em posição" ao lado da mensagem de Venda;
+    - "Alerta desligado" destaca ETH em "Saída / cobertura" com o texto "passa de Venda para Compra";
+    - "Dados atrasados" destaca NVDA com "Pregão aberto · fecha 17:00", sem o tom âmbar nem "Sinal em espera" (na d1 os cenários trocavam o estado da linha);
+    - o texto novo desta rodada para a linha retida por outro tempo gráfico ("Dados atrasados no 15m · falta 10:30" / "…último 09:30; esperado 10:30", decisão 8, spec `monitor-multiclass`, task 8.5) não aparece em nenhuma tela do protótipo.
+  - **Corrigir:**
+    - no cenário, trocar a pílula e o estado do mercado da linha/cartão destacado, ou dizer na nota "a linha mostra o estado antes da varredura";
+    - no "Dados atrasados", mostrar NVDA 1d em atraso com o texto do `stale_detail`, por exemplo "Dados atrasados no 15m · falta 10:30".
 
-### P3 (aceitos: Apply, protótipo, herdado; não reabrir como P0/P1)
+### P3 (aceitos: Apply, protótipo, doc, herdado; não reabrir como P0/P1)
 
-- **P3-1 O modal Salvar declara `aria-modal=true` sem prender o Tab.** *A11y, Apply.*
-  - O foco sai para o `body` e para a página depois de Salvar.
-  - O Esc só fecha com o foco dentro (`keydown` no modal).
-  - O `SaveFavoriteModal` vivo não tem nem semântica de diálogo.
-  - **Apply:** prender o foco e tratar o Esc no documento.
-- **P3-2 O Alertar das linhas cripto (COPIED) só ganha `aria-label` no primeiro clique.** *A11y, Apply.* Até lá fica o title vivo "Notificar Telegram ativo". O contrato (decisão 3) já pede o `aria-label` em todas as linhas.
+- **P3-1 Q1 e Q2 já foram respondidas e ainda estão abertas.** *Doc.* Alan respondeu às 18:42 de 27/10, as duas com a recomendada. O design.md ainda as lista em Open Questions ("a migração segue a recomendada até a resposta"). **Rework:** mover para as decisões do Design d2, junto com a Q3 ("Em portfólio").
+- **P3-2 Nome acessível com a configuração.** *Doc/Apply.* O exemplo da decisão 18 e do spec é "Alerta no Telegram · NVDA 1d · Médias Móveis: Tendência em Virada". O protótipo acrescenta "· Binance Ações", e é isso que distingue as duas NVDA (mesmo ativo, tempo e estratégia). O cenário "Duas estratégias do mesmo ativo" exige nomes diferentes. **Alinhar** o texto: incluir a configuração.
 - **P3-3 Amostra entre páginas.** *Amostra.*
-  - NVDA da fonte antiga tem ★★ no Monitor, mas "sem estrela" em Favoritos.
-  - "Em carteira 6 · ativos rastreados" conta NVDA duas vezes (são 5 ativos).
-  - A faixa traz a data fixa "Até 26/10".
-- **P3-4 Ícone "NVD" a 9 px.** *Polish.* Em `.pair-icon.m22-eq`, o vivo usa 10 px com 3 letras do par. Para ticker de 4 letras, "NVDA" a 9 px ou o logo.
-- **P3-5 Linhas longas.** *Polish.*
-  - `p.m22-modal-note` tem cerca de 112 caracteres por linha a 1440 e encosta na borda a 390 (padding do modal zerado pelo reset vivo, já aceito).
-  - Os `<p>` da Demonstração têm cerca de 92.
-  - `max-width: 75ch` resolve.
-- **P3-6 Link "Ver em Favoritos" inline.** *Polish.* Tem 15 px de altura a 1440. Link inline é isento do alvo de 24 px; um botão de 44 px ajudaria no celular.
-- **P3-7 Herdados do incumbente (COPIED, fora do card).**
-  - `.btn` do `monitor-theme` sem anel de foco.
-  - Tags de 10 px; "Alerta" segue a `.tag` viva.
-  - Rótulos `#707a8a` com 4,0:1.
-  - Reset que zera padding.
-  - Detector no browser: 222/197 achados únicos COPIED e 48/77 na marcação viva clonada para as linhas de ação/ETF.
-  - O design.md já aceita o reset, a coluna estreita, os valores em "$" e o logo absoluto.
-- **P3-8 Processo.**
-  - `discovery.html` dá `classify=BLOCKED` contra o catálogo (`/combo/discovery` pede "Rascunho de varredura", que não existe no Decidir com modal). O gate só lê o canônico, então é inofensivo.
-  - `parse_live_route` captura `surface: existing` como justificativa. Já apontado no #1120 e no #1121.
-- **P3-9 Hook DESIGN.md no `delta.css`.** *Apply.* São 20 achados:
-  - cores `#b7bdc6` e `#474d57`;
-  - tamanhos de 9, 10, 11 e 15 px;
-  - raios de 5 e 10 px.
+  - SOL/USDT (1★, carteira) está no Monitor, mas não existe em `favorites.html`. Lá aparecem 5 "No Monitor" contra 6 estratégias no Monitor, o que vai contra a própria regra "Monitor = favoritos com estrela".
+  - A mensagem de entrada cita "Candle: seg., 26 out. (pregão fechou às 17:00)" com o relógio da página na segunda às 15:00, com o pregão aberto.
+  - **Corrigir:** somar SOL em Favoritos, ou tirar do Monitor.
+- **P3-4 A ajuda se repete em cada cartão a 390.** *Juízo/polish.*
+  - A mesma frase aparece 6 vezes, com +61 a +114 px por cartão (ETH 721 → 835, +16%).
+  - A decisão 18 só põe a ajuda no detalhe. O spec `monitor-multiclass` manda no cartão e no detalhe, e o protótipo segue o spec.
+  - **Alinhar** a decisão 18 com o spec. Se Alan preferir, a 390 a frase pode aparecer uma vez na página.
+- **P3-5 O Impact do `proposal.md` está desatualizado.** *Doc.* Ainda diz:
+  - "matriz com ação/ETF";
+  - "falha da carteira só para cripto";
+  - "o default de `notify_telegram` passa a ser falso, e as marcas de quem não é admin são zeradas";
+  - "o limite fica só no aviso de falha da carteira Binance".
 
-  O design.md aceita as cores e os 11 px. Os demais são da mesma família (casar com o `monitor-theme`) e devem entrar na lista de P3 aceitos.
-- **P3-10 Lacunas da Demonstração.** *Demo.* Não há cenário de cripto atrasada (`monitor-multiclass`: "A cripto MUST mostrar só "Dados atrasados""). Também não há dois favoritos marcados do mesmo ativo mudando juntos: NVDA-s nem está marcada para alertar, e a nota "não mudou, então não gerou alerta" não prova a separação. Os specs cobrem os dois casos, e o E2E deve exercitá-los.
+  Isso contradiz as decisões 3, 5 e 6. Atualizar junto com o rework.
+- **P3-6 Tamanhos e linhas longas.** *Polish.*
+  - "Catálogo · sem alerta" (`--text-xs` no `monitor-theme`, 10 px) fica abaixo do piso de 11 px do detector. É o mesmo tamanho da `.tag` viva, e "Sem estrela · sem alerta" segue igual.
+  - Os `<p>` da Demonstração têm 91 a 96 caracteres por linha.
+- **P3-7 "Em Favoritos" da Descoberta sem desenho.** *Apply.* A linha promovida e o aviso de sucesso não estão no protótipo (só o modal), mas o texto exato está na decisão 12.
+- **P3-8 A cor do "ligado" usa `--hold`, o verde de sinal.** *Apply.* O DESIGN.md (regra 7) reserva verde/vermelho de trading para preço. O design.md já aceita a cor exata do interruptor como P3: confirmar no Apply, e manter o ícone e o texto.
+- **P3-9 A vitrine depende do filtro de estrelas.** *Apply.* `get_favorites` decide a vitrine por `_has_monitor_candidate(rows)` com as linhas já filtradas pelo `tier_filter` da tela. Com "Estrelas: Todas", quem só tem favoritos sem estrela sai da vitrine. O spec `monitor-curated-fallback` fala de "favorito próprio com estrela": decidir no Apply se a condição ignora o filtro.
+- **P3-10 Herdados (COPIED, fora do card):**
+  - `.btn` do `monitor-theme` sem anel;
+  - estrelas de Favoritos com 24 px na mesa e 28 px no celular, que agora são a porta do Monitor, ainda abaixo de 44 px no toque;
+  - tabela do Monitor maior que a área de 1024 a 1279 px;
+  - rótulos `#707a8a`;
+  - reset que zera padding.
 
-Mecânicos: P2-1, P2-2 e P3-1 a P3-9. Produto ou juízo: P2-3 e P2-4.
+  O design.md já aceita esses pontos.
+- **P3-11 Processo.**
+  - A URL pública serve a d1 até o checkout DEV ter os arquivos novos. A Aprovação de Design precisa disso resolvido, ou de outro link para Alan.
+  - `discovery.html` dá BLOCKED no `classify` (informativo).
+  - `parse_live_route` captura `surface: existing` como justificativa (já apontado no #1120 e #1121).
 
-## 9. Veredito
+Mecânicos: P2-1, P2-2, P3-1, P3-2, P3-3, P3-5. Juízo: P3-4, que Alan pode aceitar como está.
 
-**PASS com rework (leve, opcional dentro do teto).** P0 e P1 zerados.
+## 8. Veredito
 
-- **Gate estático:** `clone_gate_ok=True` e `classify(index,/monitor)=PASS`, com copied 59.679 e os tokens L1–L3 conferidos.
-- **Digests:** batem do disco ao HTTPS nos 9 arquivos, e o `live.css` é igual ao CSS vivo de hoje.
-- **Clone:** as 65 regiões COPIED são substring literal de uma captura viva fresca.
-- **Detector:** 0 achados no estático de `delta.css`/`delta.js`. No browser, os achados de autoria do delta são de tamanho e de comprimento de linha (P3-4, P3-5), nenhum de contraste.
-- **Browser:** os seis cenários do Monitor, o Alertar, a vitrine, salvar, a duplicata e os textos das 3 extras funcionam a 1440 e 390. Sem rolagem horizontal, console limpo, controles do delta com anel.
+**PASS com rework.** P0 e P1 zerados.
 
-Disposition:
+- **Gate:** `clone_gate_ok=True`, `classify(index,/monitor)=PASS`, copied 120.281, 55/55 COPIED e 59/59 DELTA, 0 marcador dentro de tag.
+- **Clone:** as 122 regiões COPIED são substring de uma captura viva fresca, e o `live.css` é o vivo.
+- **Detector:** 0 achados no `delta.css` e no `delta.js`, tanto no CLI quanto no hook com DESIGN.md (na d1 eram 20). Todos os achados dos HTML estão em COPIED.
+- **Browser:**
+  - interruptor com semântica, foco, alvo e sincronia corretos nas 4 larguras;
+  - Favoritos sem "Alertar", com as mensagens das estrelas;
+  - vitrine sem alerta;
+  - textos novos nas extras;
+  - console limpo e sem rolagem horizontal.
 
-- P2-1 e P2-2 merecem o único rework: são baratos e tocam o contrato visível (fonte antiga indisponível e estados separados das duas NVDA).
-- P2-3 cabe no mesmo rework, com um tom a mais no `.m22-mkt`.
-- P2-4 é escolha de Alan: compactar ou aceitar.
-- Sem rework, os P2 viram nota na Aprovação de Design, e os P3 ficam aceitos para o Apply.
+Disposition: o rework já previsto (decisão 21 → "Em portfólio", Q1/Q2 registradas) leva P2-1, P2-2, P3-1, P3-2, P3-3 e P3-5, que são baratos. Os demais P3 ficam aceitos para o Apply.
 
-## 10. Referências
+Perguntas novas para Alan: nenhuma.
 
-- **Disco:** `frontend/public/prototypes/card-1122-favoritos-alertas-acoes-etfs/{index,favorites,results,configure,discovery,profile}.html`, `live.css`, `delta.css`, `delta.js`; `openspec/changes/card-1122-favoritos-alertas-acoes-etfs/design.md` (sha `d4d64e7e…`).
-- **HTTPS DEV:** https://dev.criptofarol.com.br/prototypes/card-1122-favoritos-alertas-acoes-etfs/. Vivo: https://dev.criptofarol.com.br/monitor e as rotas `/favorites`, `/profile`, `/combo/results`, `/combo/configure`, `/combo/discovery`, renderizadas com a API simulada.
-- **Detector:**
-  - CLI: `node .agents/skills/impeccable/scripts/detect.mjs --json`;
-  - hook: `hook-lib.loadDetector` + `designSystemOptions(readConfig(REPO), det, REPO)`;
-  - browser: `detect-antipatterns-browser.js` injetado com `autoScan:false`.
-- **Gate:** `scripts/process-fsm/design_clone_gate.py` + `route-landmarks.yaml` (HEAD `f093e2cc`).
-- **Scratchpad** (não versionado): `/tmp/claude-1001/-srv-apps-dev-criptofarol-source/6e575182-2e59-4ca3-aca7-4c1cc8d2f8a5/scratchpad/c1122B/`.
-  - Scripts: `gate.py`, `detclass.py`, `detclass2.py`, `deltatext.py`, `hookmode.mjs`, `browser.py`, `extra.py`, `extra2.py`, `clonecheck.py`.
-  - Saídas: `det-*.json`, `hookmode.json`, `asserts.json`, `extra.json`, `extra2.json`, `info.json`, `detect-browser.json`, `tabwalk.json`, `errors.json`, `clonecheck.json`, `live1/`, `live2/`.
-- **Screenshots** (`.impeccable/critique/card-1122-B-*.png`, 35):
-  - Monitor desk/mob: `{desk,mob}-monitor-{open,weekend,holiday,stale,recovery,transition,top}`.
-  - Monitor, recortes: `desk-monitor-stale-row-nvda`, `desk-monitor-detail-nvda`, `desk-monitor-detail-nvda-fonte-antiga`, `mob-monitor-stale-card-nvda`, `mob-monitor-card-nvda-fonte-antiga`.
-  - Favoritos: `{desk,mob}-favorites-{owner,catalog}`.
-  - Resultado: `{desk,mob}-results-{modal,ok,dup}`.
-  - Extras: `{desk,mob}-{configure,discovery,profile}`.
+## 9. Referências
+
+- **Disco:**
+  - `frontend/public/prototypes/card-1122-favoritos-alertas-acoes-etfs/{index,favorites,results,discovery,profile}.html`, `live.css`, `delta.css`, `delta.js`;
+  - `openspec/changes/card-1122-favoritos-alertas-acoes-etfs/` (design, proposal, tasks, 14 specs).
+- **Vivo:** https://dev.criptofarol.com.br/monitor, `/favorites`, `/profile`, `/combo/results` e `/combo/discovery`, com a API simulada dos scripts do autor.
+- **Gate:** `scripts/process-fsm/design_clone_gate.py` + `route-landmarks.yaml` (HEAD `9b83d25e`).
+- **Scratch:** `/tmp/claude-1001/-srv-apps-dev-criptofarol-source/6e575182-2e59-4ca3-aca7-4c1cc8d2f8a5/scratchpad/c1122B-d2/`.
+  - Scripts: `gate.py`, `clonecheck.py`, `hookmode.mjs`, `deltatext.py`, `browser.py`, `probe.py`, `live_heights.py`.
+  - Saídas: `gate.out`, `det-*.json`, `hookmode.json`, `asserts.json`, `errors.json`, `info.json`, `heights.json`, `tabwalk.json`, `detect-browser.json`, `livemeas/live_heights.json`, `live1/`, `live2/`.
+  - Screenshots: `shots/`.
 
 proxy modelo: Assessment B → Opus 5.5 (claude-opus-5-5, effort high)

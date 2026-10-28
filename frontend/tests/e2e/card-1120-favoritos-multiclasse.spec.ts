@@ -241,7 +241,7 @@ test.describe('Favoritos: lista única', () => {
     expect(await fits(page)).toBe(true)
   })
 
-  test('card #1122: estrelas, "Alertar" e Revalidar de ação e ETF funcionam; o resumo e o filtro por estrelas contam todas as classes', async ({ page }) => {
+  test('card #1122: estrelas e Revalidar de ação e ETF funcionam; o resumo e o filtro por estrelas contam todas as classes', async ({ page }) => {
     await page.setViewportSize(DESKTOP)
     const { patches } = await mockFavorites(page)
     await page.goto('/favorites')

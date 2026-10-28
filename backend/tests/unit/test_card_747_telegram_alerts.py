@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.models import MonitorPreference, User
 from app.services.monitor_portfolio_status import resolve_portfolio_status_for_user
-from app.services.monitor_telegram_alerts import should_send_position_aware_alert
+from app.services.monitor_telegram_alerts import signal_direction
 from app.services.user_telegram_service import (
     create_link_token,
     normalize_telegram_username,
@@ -38,19 +38,11 @@ def test_normalize_telegram_username():
     assert normalize_telegram_username("@Alan_Test") == "alan_test"
 
 
-def test_should_send_position_aware_matrix():
-    assert should_send_position_aware_alert(
-        previous_status="HOLD", new_status="EXIT", has_spot_position=True, in_portfolio=True
-    ) == (True, "sell")
-    assert should_send_position_aware_alert(
-        previous_status="EXIT", new_status="HOLD", has_spot_position=False, in_portfolio=True
-    ) == (True, "buy")
-    assert should_send_position_aware_alert(
-        previous_status="HOLD", new_status="EXIT", has_spot_position=False, in_portfolio=True
-    ) == (False, "suppressed_flat_exit")
-    assert should_send_position_aware_alert(
-        previous_status="EXIT", new_status="HOLD", has_spot_position=True, in_portfolio=True
-    ) == (False, "suppressed_reentry")
+def test_signal_direction_without_position_matrix():
+    # Card #1122 (d2): a carteira não decide; a reentrada com saldo e a saída sem saldo saem.
+    assert signal_direction("HOLD", "EXIT") == "sell"
+    assert signal_direction("EXIT", "HOLD") == "buy"
+    assert signal_direction("EXIT", "EXIT") is None
 
 
 @pytest.mark.postgres

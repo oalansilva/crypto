@@ -139,7 +139,8 @@ def test_uniqueness_contract_accepts_data_source_and_asset_without_changing_the_
 
 
 def test_manual_favoriting_of_equity_from_the_result_screen_is_accepted_since_1122(env):
-    """Card #1122: ação e ETF são favoritáveis; o favorito nasce sem "Alertar" e com a configuração."""
+    """Card #1122: ação e ETF são favoritáveis; o favorito nasce sem estrela, com o alerta ligado
+    (só vale com estrela, d2) e com a configuração."""
     client, Session = env
     body = {
         "name": "x",
@@ -147,12 +148,12 @@ def test_manual_favoriting_of_equity_from_the_result_screen_is_accepted_since_11
         "timeframe": "1d",
         "strategy_name": "multi_ma_crossover",
         "parameters": {"direction": "long", "data_source": "binance_equity"},
-        "notify_telegram": True,
+        "notify_telegram": False,
     }
     response = client.post("/api/favorites/", json=body)
     assert response.status_code == 200, response.text
     payload = response.json()
-    assert payload["notify_telegram"] is False
+    assert payload["notify_telegram"] is True and payload["tier"] is None
     assert payload["configuration"]["data_source"] == "binance_equity"
     assert payload["configuration"]["label_long"] == (
         "Binance Ações · pregão regular de NY · ajustado por split"

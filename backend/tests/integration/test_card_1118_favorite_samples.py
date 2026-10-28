@@ -210,7 +210,7 @@ def test_promotion_gives_the_favorite_the_sample_of_the_promoted_result(engine):
             result_id="RS-1118",
             actor="admin-1118",
             idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
-            payload={"tier": 3, "result_id": "RS-1118"},
+            payload={"result_id": "RS-1118"},
             db=db,
         )
         assert status == 201

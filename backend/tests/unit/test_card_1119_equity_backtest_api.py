@@ -431,13 +431,15 @@ def _favorite(symbol):
     }
 
 
-def test_favoriting_an_equity_is_accepted_since_1122_without_alert(env):
-    """Card #1122: a recusa do #1119 sai; ação/ETF viram favorito sem "Alertar"."""
+def test_favoriting_an_equity_is_accepted_since_1122_without_star(env):
+    """Card #1122: a recusa do #1119 sai; ação/ETF viram favorito sem estrela, com o alerta ligado
+    (d2: só vale depois da estrela)."""
     client, _provider, engine, *_ = env
     for symbol in ("SPY", "NVDA", "AAPL"):
         response = client.post("/api/favorites/", json=_favorite(symbol))
         assert response.status_code == 200, response.text
-        assert response.json()["notify_telegram"] is False
+        assert response.json()["notify_telegram"] is True
+        assert response.json()["tier"] is None
         assert "asset_class_not_favoritable" not in response.text
     with engine.connect() as conn:
         assert conn.execute(text("SELECT count(*) FROM favorite_strategies")).scalar() == 3

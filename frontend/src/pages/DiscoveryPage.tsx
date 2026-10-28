@@ -28,6 +28,7 @@ import {
   CALENDAR_COVERAGE_NOTE,
   DISCOVERY_CLASS_NOTE,
   DISCOVERY_COST_NOTE,
+  PROMOTED_LABEL,
   PROMOTION_DESTINATION,
   LIMIT_ADVICE,
   LIMIT_TITLE,
@@ -44,6 +45,7 @@ import {
   orderAssets,
   precisionLine,
   promotionDestinationNote,
+  promotionSuccessText,
   promotionTitle,
   rowClass,
   runLine,
@@ -1364,7 +1366,8 @@ export function DiscoveryPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tier: 3, idempotency_key: idempotencyKey('promote', promoteTarget.result_id) }),
+          // Card #1122 (d2): a promoção não leva estrela (um pedido com tier é recusado).
+          body: JSON.stringify({ idempotency_key: idempotencyKey('promote', promoteTarget.result_id) }),
         },
       )
       const data = await res.json().catch(() => null)
@@ -1393,12 +1396,14 @@ export function DiscoveryPage() {
       const promotedId = promoteTarget.result_id
       setPromotedFocusId(promotedId)
       closePromotion(false)
-      const equityPromoted = rowClass(promoteTarget) !== 'crypto'
       showToast(
         'Candidato promovido.',
-        equityPromoted
-          ? `${promoteTarget.symbol} entrou em Favoritos como tier 3, sem "Alertar", com classe, moeda, configuração, precisão, convenções, janela e amostra desta execução.`
-          : `Favorito tier 3 criado${fid ? ` (${String(fid)})` : ''} com origem #${viewSweep?.sweep_id ?? '—'}.`,
+        promotionSuccessText(
+          promoteTarget.symbol,
+          rowClass(promoteTarget),
+          fid ? String(fid) : null,
+          viewSweep?.sweep_id ?? '—',
+        ),
       )
     } finally {
       setPromoting(false)
@@ -1558,11 +1563,11 @@ export function DiscoveryPage() {
     return (
       <td className="action-cell" data-label="Ação">
         {promoted && rowClass(row) !== 'crypto' ? (
-          // Card #1121 (decisão 10): ação e ETF entram em Favoritos sem nível de estrela até o #1122.
+          // Card #1122 (d2): a linha promovida diz "Em Favoritos" (sem estrela, fora do Monitor).
           <span className="mc-promoted">
             <span className="promoted-state" tabIndex={-1} data-promoted-result={row.result_id}>
               <Check className="h-3.5 w-3.5" />
-              Favorito tier 3
+              {PROMOTED_LABEL}
             </span>
             <a href="/favorites" data-testid={`see-favorite-${row.result_id}`}>
               Ver em Favoritos
@@ -1571,7 +1576,7 @@ export function DiscoveryPage() {
         ) : promoted ? (
           <span className="promoted-state" tabIndex={-1} data-promoted-result={row.result_id}>
             <Check className="h-3.5 w-3.5" />
-            Favorito tier 3
+            {PROMOTED_LABEL}
           </span>
         ) : (
           <div className="action-stack">
@@ -3341,7 +3346,7 @@ export function DiscoveryPage() {
                   <b className="font-mono text-xs" data-testid="modal-result">{promoteTarget.result_id}</b>
                 </div>
               </div>
-              {/* Card #1122: ação e ETF também vão para Tier 3, sem "Alertar". */}
+              {/* Card #1122 (d2): o destino é Favoritos sem estrela, em qualquer classe. */}
               <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5" data-testid="destination-tier3">
                 <small className="block text-[var(--text-muted)]">Destino obrigatório</small>
                 <strong className="text-[var(--accent-primary)]">{PROMOTION_DESTINATION}</strong>
@@ -3394,7 +3399,7 @@ export function DiscoveryPage() {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--accent-primary)] bg-[var(--accent-primary)] px-4 py-2 text-sm font-bold text-[#181a20] hover:bg-[var(--accent-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Star className="h-4 w-4" />
-                {rowClass(promoteTarget) !== 'crypto' ? 'Promover a favorito tier 3' : 'Promover como tier 3'}
+                {promotionTitle(rowClass(promoteTarget))}
               </button>
             </div>
           </div>

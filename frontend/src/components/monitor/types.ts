@@ -35,6 +35,16 @@ export interface MarketState {
     stale_since?: string | null;
     available?: number | null;
     required?: number | null;
+    /** Linha em espera por outro tempo gráfico do mesmo ativo (série atrasada e os horários dela). */
+    stale_timeframe?: string | null;
+    stale_detail?: MarketStaleDetail | null;
+}
+
+/** Card #1122 (residual P2 da w3): a série atrasada que retém a linha (ex.: o 15m de um 1d). */
+export interface MarketStaleDetail {
+    timeframe?: string | null;
+    last_candle?: string | null;
+    expected_candle?: string | null;
 }
 
 export interface Opportunity {
@@ -81,7 +91,7 @@ export interface Opportunity {
     stop_price?: number | null;
     distance_to_stop_pct?: number | null;
 
-    /** Card #1122: classe, moeda, configuração, estado do mercado e "Alertar" do favorito. */
+    /** Card #1122: classe, moeda, configuração, estado do mercado e alerta ligado do favorito (d2). */
     asset_class?: 'crypto' | 'stock' | 'etf' | string | null;
     currency?: string | null;
     configuration?: OpportunityConfiguration | null;

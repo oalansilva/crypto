@@ -1,4 +1,5 @@
-/* Card #1122 — só o delta sobre o CSS vivo (live.css). Prefixo m22-. */
+/* Card #1122, rodada d2 + rework r2 (regra nova de alertas): só o delta sobre o CSS vivo (live.css). Prefixo m22-.
+   Cores, tamanhos, raios e espaços vêm dos tokens vivos (DESIGN.md / :root / monitor-theme). */
 
 /* ---------- cola do clone: AppNav desktop x móvel (o React troca em 1024 px) ---------- */
 :root { --app-sidebar-width: 224px; }
@@ -9,252 +10,178 @@
   .cf-mob { display: contents; }
 }
 
+/* ---------- vista própria x vitrine (Demonstração) ---------- */
+.m22-view, .m22-list { display: contents; }
+.m22-view[hidden] { display: none; }
+
 /* ---------- ícones ---------- */
 .m22-ic { width: 14px; height: 14px; flex: none; }
 
-/* ---------- Monitor: identidade da linha ---------- */
-.m22-id {
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--t-2, #b7bdc6);
-  max-width: 34ch;
+/* ---------- Monitor: interruptor "Alerta" por estratégia ---------- */
+.monitor-theme .row-action.m22-alert,
+.monitor-theme .btn.m22-alert {
+  gap: var(--space-xs);
+  color: var(--hold);
+  border-color: var(--hold-line);
+  background: var(--hold-soft);
 }
-.m22-conf { display: block; }
-.pair-icon.m22-eq { background: #2b3139; color: #eaecef; font-size: 9px; letter-spacing: .02em; }
-
-/* ---------- Monitor: estado do mercado ---------- */
-.m22-mkt {
-  display: flex;
-  align-items: flex-start;
-  gap: 5px;
-  margin-top: 6px;
-  max-width: 34ch;
-  font-size: 11px;
-  line-height: 1.4;
-  color: #929aa5;
+.monitor-theme .m22-alert .m22-alert-state { font-weight: var(--font-normal); color: var(--t-2); }
+.monitor-theme .m22-alert .m22-ic-off { display: none; }
+.monitor-theme .m22-alert[aria-checked="false"] {
+  color: var(--t-3);
+  background: transparent;
+  border-color: var(--line);
+  border-style: dashed;
 }
-.m22-mkt .m22-ic { margin-top: 1px; }
-.m22-mkt .m22-ic { display: none; }
-.m22-mkt[data-tone="open"] .m22-ic:nth-of-type(1) { display: block; color: #0ecb81; }
-.m22-mkt[data-tone="closed"] .m22-ic:nth-of-type(2) { display: block; }
-.m22-mkt[data-tone="stale"] .m22-ic:nth-of-type(3) { display: block; }
-.m22-mkt[data-tone="insufficient"] .m22-ic:nth-of-type(4) { display: block; }
-.m22-mkt[hidden], .m22-card-meta[hidden] { display: none !important; }
-.m22-mkt[data-tone="insufficient"] {
-  color: #b7bdc6;
-  border: 1px dashed #474d57;
-  border-radius: 5px;
-  padding: 4px 6px;
-}
-/* linha da tabela: o estado fica sob a pílula de Status, compacto (decisão 5) */
-/* a tabela viva já ocupa a largura toda: o bloco quebra dentro da coluna Status, sem alargá-la */
-.monitor-theme table.signals td .m22-mkt { display: block; max-width: 100%; font-size: 11px; }
-.monitor-theme table.signals td .m22-mkt .m22-ic { width: 12px; height: 12px; margin: 0 4px 0 0; vertical-align: -2px; }
-.monitor-theme table.signals td .m22-mkt[data-tone] .m22-ic { display: none; }
-.monitor-theme table.signals td .m22-mkt[data-tone="open"] .m22-ic:nth-of-type(1),
-.monitor-theme table.signals td .m22-mkt[data-tone="closed"] .m22-ic:nth-of-type(2),
-.monitor-theme table.signals td .m22-mkt[data-tone="stale"] .m22-ic:nth-of-type(3),
-.monitor-theme table.signals td .m22-mkt[data-tone="insufficient"] .m22-ic:nth-of-type(4) { display: inline-block; }
-.monitor-theme table.signals td .m22-mkt[data-tone="stale"],
-.monitor-theme table.signals td .m22-mkt[data-tone="insufficient"] { padding: 3px 4px; }
-.monitor-theme table.signals td .m22-hold-note { max-width: 100%; font-size: 11px; }
-.monitor-theme .status-pill.m22-none { color: #b7bdc6; background: rgba(132, 142, 156, 0.12); border-color: rgba(132, 142, 156, 0.35); }
-.m22-mkt[data-tone="closed"] { color: #b7bdc6; }
-.m22-mkt[data-tone="stale"] {
-  color: #f0b90b;
-  background: rgba(240, 185, 11, 0.08);
-  border: 1px solid rgba(240, 185, 11, 0.35);
-  border-radius: 5px;
-  padding: 4px 6px;
-}
-.m22-hold-note {
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: #f0b90b;
-  max-width: 34ch;
-}
-.m22-hold-note[hidden] { display: none; }
-.m22-hold-note[data-tone="insufficient"] { color: #b7bdc6; }
-
-/* ---------- Monitor: tag Alerta ---------- */
-.monitor-theme .tag.m22-alert {
-  color: #0ecb81;
-  background: rgba(14, 203, 129, 0.1);
-  border-color: rgba(14, 203, 129, 0.35);
-}
-.monitor-theme .tag.m22-alert .m22-ic { width: 11px; height: 11px; }
-body[data-scenario="transition"] .m22-alert, body[data-scenario="newuser"] .m22-alert { display: none !important; }
-
-/* ---------- Monitor: cartão do celular ---------- */
-.m22-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 6px 10px;
-  padding: 8px 14px 0;
-}
-.m22-card-meta .m22-id { margin-top: 0; max-width: none; }
-.m22-card-meta .m22-mkt, .m22-card-meta .m22-hold-note { flex-basis: 100%; margin-top: 0; max-width: none; }
-.m22-card-meta .tag.m22-alert {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 10px; padding: 2px 7px; border-radius: 4px; border: 1px solid;
-}
-.m22-pf-help { color: #b7bdc6 !important; font-size: 12px !important; margin-top: 8px; }
-
-/* ---------- Monitor: faixa da transição ---------- */
-.m22-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 16px;
-  padding: 12px 14px;
-  border: 1px solid rgba(252, 213, 53, 0.35);
-  border-radius: 10px;
-  background: rgba(252, 213, 53, 0.07);
-  color: #eaecef;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.m22-banner[hidden] { display: none; }
-.m22-banner > .m22-ic { width: 18px; height: 18px; color: #fcd535; }
-.m22-banner > div { flex: 1; max-width: 75ch; }
-.m22-banner-link {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 8px;
-  background: #fcd535;
-  color: #0b0e11;
-  font-weight: 600;
-  text-decoration: none;
-}
-.m22-banner-link:focus-visible, .m22-demo button:focus-visible, .m22-alertar:focus-visible {
-  outline: 2px solid #3b82f6;
+.monitor-theme .m22-alert[aria-checked="false"] .m22-ic-on { display: none; }
+.monitor-theme .m22-alert[aria-checked="false"] .m22-ic-off { display: inline-block; }
+.monitor-theme .m22-alert[aria-checked="false"] .m22-alert-state { color: var(--t-3); }
+.monitor-theme .m22-alert:focus-visible,
+.m22-demo button:focus-visible,
+.m22-demo a:focus-visible,
+.m22-demo input:focus-visible {
+  outline: 2px solid var(--accent-cyan);
   outline-offset: 2px;
 }
-@media (max-width: 640px) {
-  .m22-banner { flex-wrap: wrap; }
-  .m22-banner-link { width: 100%; justify-content: center; }
+/* cartão (390) e detalhe: alvo de 44 px no celular */
+.monitor-theme .btn.m22-alert-card { display: inline-flex; align-items: center; }
+@media (max-width: 1023.98px) {
+  .monitor-theme .btn.m22-alert-card { min-height: 44px; }
+}
+.monitor-theme .m22-alert-none {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--t-3);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+}
+.monitor-theme .m22-alert-help { max-width: 75ch; margin-top: var(--space-sm); font-size: var(--text-sm); line-height: 1.5; color: var(--t-3); }
+
+/* destaque da linha do cenário */
+.monitor-theme tr[data-m22-focus] > td { background: var(--hold-soft); }
+.monitor-theme .mobile-card[data-m22-focus] { outline: 1px solid var(--hold-line); outline-offset: 2px; border-radius: var(--radius-lg); }
+
+/* status do interruptor e das estrelas (anúncio) */
+.m22-status:empty { display: none; }
+.m22-status {
+  margin: 0 0 var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  max-width: 75ch;
 }
 
-/* ---------- botões indisponíveis (fonte antiga) ---------- */
-[data-m22-off] { opacity: 0.5; cursor: not-allowed; }
-.m22-off-why { margin: 6px 0 0; font-size: 11px; line-height: 1.4; color: #b7bdc6; max-width: 32ch; }
-.detail-foot .m22-off-why, .mobile-card .m22-off-why { flex-basis: 100%; max-width: 75ch; text-align: right; }
-.mobile-card .m22-off-why { text-align: left; }
+/* ---------- Favoritos: ajuda das estrelas e legenda ---------- */
+.m22-fav-help {
+  margin: var(--space-sm) 0 0;
+  max-width: 75ch;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--fav-muted-strong);
+}
+.m22-fav-help + .m22-status { margin-top: var(--space-sm); }
+.m22-legend {
+  display: block;
+  margin-top: var(--space-xs);
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  text-align: center;
+  color: var(--fav-muted-strong);
+}
+.m22-legend[data-on="true"] { color: var(--accent-success); }
+.fav-mobile-stars .m22-legend { align-self: center; margin: 0 0 0 var(--space-sm); text-align: left; }
 
 /* ---------- Demonstração (no fluxo, fim da página) ---------- */
 .m22-demo {
-  margin: 28px 0 8px;
-  padding: 18px;
-  border: 1px dashed #474d57;
-  border-radius: 12px;
-  background: #14171c;
-  color: #eaecef;
+  margin: var(--space-xl) 0 var(--space-sm);
+  padding: var(--space-md);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-xl);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
 }
-.m22-demo h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
-.m22-demo-lead, .m22-demo-note, .m22-demo-now { font-size: 13px; line-height: 1.55; color: #b7bdc6; max-width: 75ch; margin: 0 0 12px; }
-.m22-demo-now { color: #eaecef; }
-.m22-demo-h3 { font-size: 13px; font-weight: 600; margin: 16px 0 6px; color: #eaecef; }
-.m22-demo-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.m22-demo h2 { font-size: var(--text-lg); font-weight: var(--font-semibold); margin: 0 0 var(--space-sm); color: var(--text-primary); }
+.m22-demo-lead, .m22-demo-note, .m22-demo-now {
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--text-tertiary);
+  max-width: 65ch;
+  margin: 0 0 var(--space-md);
+}
+.m22-demo-now { color: var(--text-secondary); }
+.m22-demo-now strong { color: var(--text-primary); }
+.m22-demo-h3 { font-size: var(--text-base); font-weight: var(--font-semibold); margin: var(--space-md) 0 var(--space-sm); color: var(--text-primary); }
+.m22-demo-btns { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin: 0 0 var(--space-md); }
 .m22-demo-btns button {
   min-height: 44px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid #2b3139;
-  background: #1e2329;
-  color: #eaecef;
-  font-size: 12px;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
   cursor: pointer;
 }
-.m22-demo-btns button[aria-pressed="true"] { border-color: #fcd535; color: #fcd535; }
-.m22-tg { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
-.m22-tg-msg {
+.m22-demo-btns button[aria-pressed="true"] { border-color: var(--accent-primary); color: var(--accent-primary); }
+.m22-demo-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+.m22-demo-check input { width: 18px; height: 18px; accent-color: var(--accent-primary); }
+.m22-scn[hidden] { display: none; }
+.m22-tg {
   margin: 0;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: #1e2329;
-  border: 1px solid #2b3139;
-  font: 12px/1.55 ui-monospace, "JetBrains Mono", monospace;
+  max-width: 62ch;
+  padding: var(--space-md);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: #eaecef;
 }
-.m22-tg-msg b { color: #fcd535; font-weight: 600; }
+.m22-tg-none { margin: 0; max-width: 65ch; font-size: var(--text-base); color: var(--text-tertiary); }
+.m22-demo a { color: var(--accent-primary); }
 
-/* ---------- Favoritos: coluna Alertar (o vivo esconde Telegram abaixo de 1540 px) ---------- */
-@media (min-width: 1280px) and (max-width: 1540px) {
-  .favorites-workbench table.fav-strategies th.telegram-col,
-  .favorites-workbench table.fav-strategies td.telegram-col { display: table-cell; }
-}
-.m22-act-alertar, .favorites-workbench .fav-row-actions .m22-act-alertar { display: none; }
+/* 1024–1279 px: a célula de ações da tabela viva fica fora da área visível (incumbente);
+   o interruptor da linha vai para a célula Status, abaixo da pílula e do estado do mercado */
+.monitor-theme .row-action.m22-alert-compact { display: none; }
 @media (max-width: 1279.98px) {
-  .favorites-workbench .fav-row-actions .m22-act-alertar {
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #929aa5;
+  .monitor-theme .actions-cell .row-action.m22-alert { display: none; }
+  .monitor-theme .row-action.m22-alert-compact { display: inline-flex; min-width: 0; margin-top: var(--space-sm); }
+}
+/* ações da linha com o interruptor (ajuste do Alan na Aprovação de Design): botões da mesma largura,
+   alinhados em coluna; com folga na tela (>= 1600 px), grade 2 x 2 sem alargar a tabela */
+.monitor-theme .actions-cell .row-actions:has(.m22-alert) {
+  display: grid;
+  grid-template-columns: max-content;
+  justify-content: end;
+}
+.monitor-theme .actions-cell .row-actions:has(.m22-alert) > * { white-space: nowrap; }
+@media (min-width: 1600px) {
+  .monitor-theme .actions-cell .row-actions:has(.m22-alert) { grid-template-columns: repeat(2, max-content); }
+}
+.m22-tg + .m22-demo-note, .m22-tg-none + .m22-demo-note { margin-top: var(--space-md); }
+.m22-scn + .m22-demo-note { margin-top: var(--space-md); }
+
+/* Favoritos no celular: a estrela agora põe a estratégia no Monitor com alerta; alvo de 44 px (r2, A P2-8) */
+@media (max-width: 1023.98px) {
+  .favorites-workbench .fav-mobile-stars [aria-label="Prioridade por estrelas"] button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
-  .favorites-workbench .fav-row-actions .m22-act-alertar[aria-pressed="true"] { color: #0ecb81; }
 }
-.m22-act-alertar:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
-body[data-view="catalog"] .m22-act-alertar { display: none !important; }
-/* celular: rótulo legível e alvo de 44 px */
-.fav-mobile-stars .telegram-toggle.m22-tg-mob { min-height: 44px; min-width: 7.5rem; font-size: 12px; font-weight: 600; }
-.m22-pf-warn { display: block; margin-top: 4px; font-size: 12px; line-height: 1.45; color: #f0b90b; max-width: 75ch; }
-.m22-pf-warn[hidden] { display: none; }
-.m22-pf-warn a { color: #f0b90b; text-decoration: underline; }
-.m22-alertar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 32px;
-  min-width: 4.75rem;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 1px solid #474d57;
-  background: transparent;
-  color: #929aa5;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.m22-alertar[aria-pressed="true"] { border-color: rgba(14, 203, 129, 0.6); background: rgba(14, 203, 129, 0.12); color: #0ecb81; }
-.m22-alertar[aria-pressed="true"] .m22-ic { fill: currentColor; }
-.m22-alertar.m22-compact { min-height: 44px; min-width: 6.5rem; }
-.m22-cat-none { color: #707a8a; font-size: 11px; }
-.m22-fav-status { display: block; font-size: 12px; line-height: 1.45; margin-top: 4px; }
-.m22-fav-status[data-tone="ok"] { color: #0ecb81; }
-.m22-fav-status[data-tone="wait"] { color: #b7bdc6; }
-.m22-fav-banner { margin: 0 0 14px; }
-body[data-view="catalog"] .telegram-toggle { display: none !important; }
-.m22-cat-none[hidden] { display: none; }
-.m22-demo-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13px; line-height: 1.5; color: #b7bdc6; max-width: 75ch; }
-.m22-demo-list .fav-refresh-status { display: inline; }
-.favorites-workbench .fav-refresh-status[data-testid="fav-refresh-status"] { white-space: normal; overflow: visible; text-overflow: clip; }
-
-/* ---------- Resultado: modal de salvar ação/ETF ---------- */
-[data-m22-modal][hidden] { display: none !important; }
-.m22-modal-ident { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid #474d57; border-radius: 8px; font-size: 13px; color: #eaecef; }
-.m22-modal-ident span { color: #b7bdc6; font-size: 12px; }
-.m22-modal-note { font-size: 12px; line-height: 1.5; color: #b7bdc6; margin: 0; max-width: 75ch; }
-.m22-dest-note { max-width: 75ch; }
-.m22-modal-dup { font-size: 13px; color: #f6465d; margin: 0; }
-.m22-modal-ok { font-size: 13px; color: #0ecb81; margin: 0; }
-.m22-modal-ok { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.m22-modal-ok p { margin: 0; outline: none; }
-.m22-ok-link {
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px;
-  border-radius: 8px; border: 1px solid #fcd535; color: #fcd535; font-weight: 600; text-decoration: none;
-}
-.m22-ok-link:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
-.m22-modal-dup[hidden], .m22-modal-ok[hidden] { display: none; }
-
-/* ---------- Favoritos: 1024–1279 px, quatro ações na célula (quebra em 2×2) ---------- */
-@media (max-width: 1279.98px) {
-  .favorites-workbench table.fav-strategies .fav-row-actions { flex-wrap: wrap; justify-content: center; }
-}
-.favorites-workbench .strategy-stack .m22-pf-warn { white-space: normal; overflow: visible; text-overflow: clip; }

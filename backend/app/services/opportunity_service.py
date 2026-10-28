@@ -47,8 +47,28 @@ _TIER_UNSET = object()
 MARKET_FETCH_WORKERS = 8
 ALERT_MARKET_FETCH_TIMEOUT_SECONDS = 300.0
 
+# Card #1122 (d2): estrelas que põem a estratégia no Monitor (``tier`` 1, 2 ou 3); só elas alertam.
+MONITOR_TIERS = (1, 2, 3)
+
 # Lista carregada de backend/config/excluded_symbols.json (compatibilidade com código que usa o nome)
 UNSUPPORTED_SYMBOLS = get_excluded_symbols()
+
+
+def configured_admin_emails() -> list[str]:
+    """E-mails do admin (``ADMIN_EMAILS`` do ambiente, na ordem; senão a lista do middleware)."""
+
+    raw = os.getenv("ADMIN_EMAILS", "")
+    ordered = [email.strip().lower() for email in raw.split(",") if email.strip()]
+    if ordered:
+        return list(dict.fromkeys(ordered))
+    return sorted(email for email in ADMIN_EMAILS if email)
+
+
+def is_known_non_admin(db, user_id: str) -> bool:
+    """Usuário que existe e não é admin: o que vê a vitrine do catálogo sem estratégia própria."""
+
+    user = db.query(User).filter(User.id == user_id).first()
+    return bool(user and str(user.email).strip().lower() not in configured_admin_emails())
 
 
 def _row_asset_class(row: Any) -> str | None:
@@ -826,7 +846,11 @@ class OpportunityService:
         with self._session_factory() as db:
             rows = self._favorite_rows_for_user(db, user_id, tier_filter)
             source_user_id = user_id
-            if self._known_non_admin_user(db, user_id) and not self._has_monitor_candidate(rows):
+            # Card #1122 (d2): a vitrine vale para quem não é admin e não tem favorito próprio
+            # com estrela, de qualquer classe, independente do filtro de estrelas da tela (P3).
+            if self._known_non_admin_user(db, user_id) and not self._has_monitor_candidate(
+                self._favorite_rows_for_user(db, user_id, ",".join(map(str, MONITOR_TIERS)))
+            ):
                 admin_user_ids = self._admin_catalog_user_ids(db, exclude_user_id=user_id)
                 if admin_user_ids:
                     tier_by_favorite_id = self._strategy_tier_preferences(db, user_id)
@@ -927,8 +951,7 @@ class OpportunityService:
         return bool(user and str(user.email).strip().lower() in self._configured_admin_emails())
 
     def _known_non_admin_user(self, db, user_id: str) -> bool:
-        user = db.query(User).filter(User.id == user_id).first()
-        return bool(user and str(user.email).strip().lower() not in self._configured_admin_emails())
+        return is_known_non_admin(db, user_id)
 
     def _admin_catalog_user_ids(self, db, *, exclude_user_id: str | None = None) -> list[str]:
         admin_emails = self._configured_admin_emails()
@@ -1012,11 +1035,7 @@ class OpportunityService:
         return None
 
     def _configured_admin_emails(self) -> list[str]:
-        raw = os.getenv("ADMIN_EMAILS", "")
-        ordered = [email.strip().lower() for email in raw.split(",") if email.strip()]
-        if ordered:
-            return list(dict.fromkeys(ordered))
-        return sorted(email for email in ADMIN_EMAILS if email)
+        return configured_admin_emails()
 
     def _asset_classes_for(self, favorites: List[Dict[str, Any]]) -> dict[str, str]:
         """Ticker -> classe pelo catálogo, só para favoritos de ação/ETF sem classe gravada."""
@@ -1096,6 +1115,7 @@ class OpportunityService:
             "configuration": fav.get("configuration")
             or configuration_of_row(_FavoriteView(fav)).payload(),
             "notify_telegram": bool(fav.get("notify_telegram")),
+            "tier": fav.get("tier"),
             "is_curated_fallback": bool(fav.get("is_curated_fallback")),
             "status": None,
             "is_holding": False,
@@ -1265,22 +1285,27 @@ class OpportunityService:
             source_label="favorite",
         )
 
-    def get_alert_favorites(self, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Favoritos marcados "Alertar" de todos os donos (card #1122, decisão 2): a união que a
-        varredura avalia uma vez. O filtro de estrelas do sistema vale sobre o nível do favorito."""
+    def get_alert_favorites(self) -> List[Dict[str, Any]]:
+        """Estratégias que cada dono acompanha no Monitor com o alerta ligado (card #1122, d2):
+        favoritos com estrela (``tier`` 1, 2 ou 3) e ``notify_telegram``, de todos os donos; a
+        união que a varredura avalia uma vez. O filtro de estrelas do sistema não entra."""
 
         with self._session_factory() as db:
-            query = db.query(FavoriteStrategy).filter(FavoriteStrategy.notify_telegram.is_(True))
-            rows = list(self._apply_tier_filter(query, tier_filter).all())
+            rows = (
+                db.query(FavoriteStrategy)
+                .filter(
+                    FavoriteStrategy.notify_telegram.is_(True),
+                    FavoriteStrategy.tier.in_(MONITOR_TIERS),
+                )
+                .all()
+            )
             favorites = [self._favorite_row_to_dict(row) for row in rows]
         return [f for f in favorites if str(f.get("symbol") or "").strip()]
 
-    def get_alert_opportunities(
-        self, tier_filter: Optional[str] = None, *, now: Any = None
-    ) -> List[Dict[str, Any]]:
+    def get_alert_opportunities(self, *, now: Any = None) -> List[Dict[str, Any]]:
         return self._calculate_opportunities(
-            self.get_alert_favorites(tier_filter),
-            tier_filter=tier_filter,
+            self.get_alert_favorites(),
+            tier_filter=None,
             source_label="alert",
             now=now,
         )

@@ -85,7 +85,7 @@ FAVORITE_ALERT_SCHEMA_SQL = (
     "ALTER TABLE IF EXISTS favorite_strategies ADD COLUMN IF NOT EXISTS data_source VARCHAR NULL",
     "ALTER TABLE IF EXISTS favorite_strategies ADD COLUMN IF NOT EXISTS session VARCHAR NULL",
     "ALTER TABLE IF EXISTS favorite_strategies ADD COLUMN IF NOT EXISTS adjustment VARCHAR NULL",
-    "ALTER TABLE IF EXISTS favorite_strategies ALTER COLUMN notify_telegram SET DEFAULT FALSE",
+    "ALTER TABLE IF EXISTS favorite_strategies ALTER COLUMN notify_telegram SET DEFAULT TRUE",
     "ALTER TABLE IF EXISTS monitor_telegram_alerts ADD COLUMN IF NOT EXISTS favorite_id INTEGER NULL",
     "ALTER TABLE IF EXISTS monitor_telegram_alerts ADD COLUMN IF NOT EXISTS event_key VARCHAR(64) NULL",
     "CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_favorite_id "
@@ -417,9 +417,9 @@ def ensure_runtime_schema_migrations() -> None:
                 """))
         conn.execute(text("""
                 ALTER TABLE favorite_strategies
-                ADD COLUMN IF NOT EXISTS notify_telegram BOOLEAN NOT NULL DEFAULT FALSE
+                ADD COLUMN IF NOT EXISTS notify_telegram BOOLEAN NOT NULL DEFAULT TRUE
                 """))
-        # Card #1122: configuração do favorito, default falso de "Alertar" e evento com identidade.
+        # Card #1122: configuração do favorito, alerta ligado por padrão (d2) e evento com identidade.
         for statement in FAVORITE_ALERT_SCHEMA_SQL:
             conn.execute(text(statement))
         # Card #1123: comparação com referência gravada no favorito.

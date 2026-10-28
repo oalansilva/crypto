@@ -164,7 +164,7 @@ export function TelegramAlertsForm({
           Alertas Telegram
         </h2>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Receba DMs individuais quando mudar a leitura de um favorito seu marcado "Alertar" (cripto, ação ou ETF) com o ativo na sua carteira. Mercado fechado e feriado aparecem só no Monitor.
+          Receba DMs individuais quando mudar a leitura de uma estratégia sua que está no Monitor (cripto, ação ou ETF), com ou sem o ativo na carteira. Desligue por estratégia no Monitor. Mercado fechado e feriado aparecem só no Monitor.
         </p>
       </div>
 

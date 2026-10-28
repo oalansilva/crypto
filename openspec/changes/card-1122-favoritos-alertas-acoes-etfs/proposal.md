@@ -32,18 +32,20 @@ Como usuário, quero favoritar e acompanhar estratégias de ações/ETFs, recebe
 
 > Seções acima copiadas do body do issue [#1122](https://github.com/oalansilva/crypto/issues/1122) (grelhado, fronteira vazia; 5 decisões de Alan de 26/10/2026 dentro de Entra). Não houve reentrevista. A "Transição da cripto" ficou para o Design; Alan a decidiu em 26/10/2026, com outras quatro decisões, registradas em `design.md`.
 
+> **Regra nova de alertas (27/10/2026).** Depois do "Não homologar", Alan mudou quem recebe: alerta = o que a pessoa acompanha no Monitor (estratégia própria com estrela, ligado por padrão e desligado no Monitor); a carteira não decide; o catálogo não alerta; lote e Descoberta salvam sem estrela. O bullet "Entrada e saída" de Entra, acima, fica mais amplo: entrada e saída saem com ou sem o ativo na carteira, em todas as classes. Detalhe em `design.md`.
+
 ## What Changes
 
-- **Origem dos alertas = favoritos de cada usuário.** O Telegram passa a avaliar os favoritos que cada usuário com alertas ligados marcou "Alertar", em cripto, ação e ETF. O catálogo curado do admin deixa de ser a origem. O Monitor continua mostrando o catálogo como vitrine para quem não tem favorito próprio. **BREAKING** para quem hoje recebe alerta de cripto só pelo catálogo (transição pela decisão 1 de Alan em `design.md`: aviso único no Telegram e faixa no Monitor, sem período de transição).
-- **"Alertar" é de cada dono.** Todo usuário marca e desmarca "Alertar" nos próprios favoritos, em Favoritos; a marca deixa de ser exclusiva do admin. Favorito novo nasce sem a marca (decisão de Alan). A migração mantém só as marcas que o admin já tinha nos próprios favoritos.
+- **Origem dos alertas = o que cada pessoa acompanha no Monitor.** O Telegram passa a avaliar, para cada usuário com alertas ligados, as estratégias próprias com pelo menos 1 estrela (as que aparecem no Monitor) e com o alerta ligado, em cripto, ação e ETF. O catálogo curado do admin deixa de ser a origem e não alerta ninguém. **BREAKING** para quem hoje recebe alerta de cripto só pelo catálogo (aviso único no Telegram e faixa na vitrine do Monitor, sem período de transição).
+- **Alerta ligado por padrão, desligado no Monitor (regra de 27/10/2026).** O alerta de cada estratégia nasce ligado e o dono o desliga no próprio Monitor, por estratégia (linha, cartão e detalhe). O "Alertar" sai de Favoritos. Dar a estrela põe a estratégia no Monitor com o alerta ligado; tirar todas as estrelas tira do Monitor e para o alerta. A migração trata os dados que já existem como Alan decidiu: tira a estrela automática de lote e Descoberta e liga o alerta de tudo o que fica no Monitor (decisões d2-1 e d2-2 do design). O Monitor do admin continua abrindo em "Em portfólio", sem aviso de estratégias fora da carteira (d2-3).
 - **Um estado e um alerta por favorito.** O estado observado passa a ser por favorito, e não mais por ativo e tempo gráfico. Dois favoritos no mesmo ativo e tempo (outra estratégia ou outra configuração) mudam e alertam separados. A mensagem identifica a estratégia e a configuração (fonte, sessão, ajuste) e diz que nenhuma ordem foi enviada.
 - **Evento com identidade.** Cada alerta tem a chave favorito + leitura nova + candle fechado. Reinício, reprocessamento ou nova varredura com o mesmo dado não reenviam. A janela de repetição por tempo sai.
-- **Entrada e saída para ação/ETF na carteira.** Ação ou ETF marcado na carteira recebe a entrada e a saída. Nenhuma das duas depende de posição na Binance. Quando a posição real existir (#1124), o alerta segue a posição, como na cripto. Falha da carteira Binance pausa só os alertas de cripto.
+- **A carteira não decide quem recebe.** Entrada e saída saem com ou sem o ativo na carteira, em cripto, ação e ETF; a cripto perde a supressão da reentrada com saldo e a da saída sem saldo. A varredura não lê mais a carteira Binance, e o aviso de falha dela sai. O Monitor continua mostrando a carteira como informação.
 - **Calendário e candle fechado.** Ação e ETF são avaliados no último candle fechado pelo calendário de Nova York (#1118). Fim de semana, feriado e horário fora do pregão não geram atraso falso.
 - **Atraso real e mercado fechado.** Quando falta um candle que o calendário diz que já fechou, o Telegram recebe um único aviso por ativo, que não se repete até o dado normalizar. Mercado fechado, feriado e abertura aparecem só na tela do Monitor.
 - **Identidade do favorito.** Fonte, sessão e ajuste entram na identidade e na chave de duplicata. NVDA na Binance e NVDA na fonte antiga coexistem, e a mesma configuração repetida é recusada como duplicata.
-- **Ação e ETF no Monitor e na atualização diária.** O Monitor lista os favoritos de ação e ETF com classe, moeda, configuração e estado do mercado. A atualização diária usa o calendário e o intradiário da Binance Ações. Quando faltam candles, o favorito fica em "Aguardando dados". Estrelas, "Alertar" e "Revalidar" de ação e ETF passam a funcionar em Favoritos.
-- **Favoritar ação e ETF por todo caminho que já favorita cripto.** Sai a recusa do #1119 na página do resultado. O lote e a Descoberta gravam ação e ETF com 1 estrela, como a cripto. Saem os textos "ainda não para ações e ETFs" e "ainda não podem ser favoritados".
+- **Ação e ETF no Monitor e na atualização diária.** O Monitor lista os favoritos de ação e ETF com classe, moeda, configuração e estado do mercado. A atualização diária usa o calendário e o intradiário da Binance Ações. Quando faltam candles, o favorito fica em "Aguardando dados". Estrelas e "Revalidar" de ação e ETF passam a funcionar em Favoritos.
+- **Favoritar ação e ETF por todo caminho que já favorita cripto.** Sai a recusa do #1119 na página do resultado. O lote e a Descoberta gravam o favorito sem estrela, em qualquer classe: ele fica em Favoritos, fora do Monitor e sem alerta, até a pessoa dar a estrela. Saem os textos "ainda não para ações e ETFs" e "ainda não podem ser favoritados".
 - **Alerta ≠ ordem.** Favoritar ou receber alerta nunca envia ordem. O `signal_monitor` continua só no feed de sinais cripto e nunca recebe ação/ETF.
 
 ## Capabilities
@@ -51,64 +53,64 @@ Como usuário, quero favoritar e acompanhar estratégias de ações/ETFs, recebe
 ### New Capabilities
 
 - `favorite-telegram-alerts`:
-  - origem por usuário e por favorito marcado, com estado e evento por favorito;
-  - entrada e saída de ação/ETF na carteira;
+  - origem por usuário e por estratégia com estrela e alerta ligado, com estado e evento por favorito;
+  - entrada e saída com ou sem o ativo na carteira, nas três classes;
   - mensagem com a configuração e sem ordem;
   - aviso único de atraso, e mercado fechado só na tela;
-  - falha da carteira pausando só a cripto;
+  - carteira Binance fora da varredura;
   - transição da cripto.
 - `market-session-awareness`: candle fechado e estado do mercado pelo calendário da classe (aberto, fechado, feriado, atraso real), sem atraso falso. O Monitor, o Telegram e a atualização diária usam a mesma regra.
 - `favorite-configuration-identity`:
   - fonte, sessão e ajuste na identidade e na unicidade do favorito, com os rótulos de configuração;
   - fonte antiga coexistindo com a Binance;
   - favoritar ação e ETF pelo resultado;
-  - lote e Descoberta gravando com 1 estrela, e "Alertar" desligado ao nascer.
-- `monitor-multiclass`: Monitor com os favoritos de ação e ETF, a linha de classe e configuração, o estado do mercado, a carteira manual com entrada e saída e o gráfico pela série do favorito.
+  - lote e Descoberta gravando sem estrela, e o alerta ligado ao nascer.
+- `monitor-multiclass`: Monitor com os favoritos de ação e ETF, a linha de classe e configuração, o estado do mercado, o controle de alerta por estratégia, a carteira só como informação, a faixa da vitrine e o gráfico pela série do favorito.
 
 ### Modified Capabilities
 
 - `crypto-only-mvp`: o Monitor passa a incluir ação e ETF (sobre o texto do #1121).
 - `monitor-telegram-general-alerts`: saem os requisitos do catálogo curado como origem.
-- `monitor-telegram-favorite-toggle`: a marca passa a ser do dono do favorito, não só do admin.
-- `monitor-telegram-alerts`: anti-repetição por evento; matriz por favorito, com ação/ETF na carteira; escopo pelos favoritos do usuário; falha da carteira só para cripto.
-- `monitor-curated-fallback`: favorito próprio de qualquer classe tira o usuário da vitrine do catálogo.
+- `monitor-telegram-favorite-toggle`: o alerta é do dono, ligado por padrão e desligado no Monitor; só estratégia com estrela alerta.
+- `monitor-telegram-alerts`: anti-repetição por evento; saem a matriz da carteira, o escopo "Em portfólio" e o aviso de falha da carteira.
+- `monitor-curated-fallback`: favorito próprio com estrela, de qualquer classe, tira o usuário da vitrine do Monitor; a vitrine não alerta.
 - `favorite-backtest-refresh`: frescor pelo calendário, intradiário da Binance Ações, "Aguardando dados" e período operacional que termina no último pregão.
 - `favorites`: sai a recusa de favoritar ação/ETF do #1119.
-- `discovery-promotion`: ação e ETF passam a ser promovidos com 1 estrela, como a cripto.
-- `multiclass-batch`: o lote passa a gravar ação e ETF com 1 estrela, como a cripto.
-- `favorites-class-comparison`: estrelas, "Alertar" e "Revalidar" de ação/ETF passam a funcionar.
+- `discovery-promotion`: a promoção cria o favorito sem estrela, em qualquer classe.
+- `multiclass-batch`: o lote grava o favorito sem estrela, em qualquer classe.
+- `favorites-class-comparison`: estrelas e "Revalidar" de ação/ETF passam a funcionar; a estrela é a porta do Monitor; Favoritos sem controle de alerta.
 
 ## Impact
 
 - Backend:
   - `services/monitor_telegram_alerts.py`:
     - origem por usuário, com estado e evento por favorito;
-    - matriz com ação/ETF;
-    - aviso de atraso e mensagem nova;
-    - falha da carteira só para cripto.
+    - entrada e saída sem a matriz da carteira, nas três classes, e sem ler a carteira Binance;
+    - aviso de atraso e mensagem nova, com a linha de como parar de receber;
+    - sem o aviso operacional de falha da carteira Binance.
   - `services/opportunity_service.py`:
     - ação/ETF no Monitor e no scan;
     - candle fechado e estado do mercado pelo calendário;
     - configuração e estado na oportunidade;
     - vitrine só para quem não tem favorito próprio.
-  - `services/monitor_portfolio_status.py`: carteira manual de ação/ETF com entrada e saída.
+  - `services/monitor_portfolio_status.py`: carteira manual de ação/ETF só para a tela (sai da decisão de alerta).
   - `services/favorite_uniqueness.py`, `routes/favorites.py`:
     - chave com fonte, sessão e ajuste, e `exists` com a configuração;
-    - "Alertar" do dono e fim da recusa de ação/ETF;
+    - alerta do dono (dar a estrela liga) e fim da recusa de ação/ETF;
     - lista sem vitrine para quem tem favorito próprio de qualquer classe.
   - `services/favorite_backtest_refresh_service.py`, `services/favorite_operational_period.py`:
     - frescor e fim do período pelo calendário;
     - intradiário da Binance Ações e "Aguardando dados";
     - fonte do favorito na busca do primeiro candle.
   - `services/market_history/nyse_calendar.py`: helpers de último candle fechado, próxima abertura e estado do mercado.
-  - `services/batch_backtest_service.py`, `services/discovery_service.py`: 1 estrela para ação/ETF e "Alertar" desligado.
+  - `services/batch_backtest_service.py`, `services/discovery_service.py`: favorito sem estrela e com o alerta ligado; a Descoberta recusa pedido com tier.
   - `services/signal_monitor.py`: guarda explícita para nunca consultar ação/ETF.
   - `ops/run_monitor_telegram_alert_scan.py`: resumo com eventos e avisos de atraso.
 - Frontend:
-  - `components/monitor/MonitorStatusTab.tsx`, `OpportunityCard.tsx`, `types.ts`, `ChartModal.tsx`, `chartData.ts`: ação e ETF, configuração, estado do mercado, "Alerta", carteira, gráfico pela série do favorito e faixa da transição.
-  - `pages/FavoritesDashboard.tsx`, `lib/favoriteClass.ts`: coluna "Alertar" para todo dono, estrelas e Revalidar de ação/ETF, status de atualização pelo calendário, configuração da fonte antiga e faixa da transição.
+  - `components/monitor/MonitorStatusTab.tsx`, `OpportunityCard.tsx`, `types.ts`, `ChartModal.tsx`, `chartData.ts`: ação e ETF, configuração, estado do mercado, controle de alerta por estratégia, carteira, gráfico pela série do favorito e faixa da transição.
+  - `pages/FavoritesDashboard.tsx`, `lib/favoriteClass.ts`: estrelas e Revalidar de ação/ETF, legenda "No Monitor"/"Fora do Monitor", status de atualização pelo calendário, configuração da fonte antiga e faixa da vitrine; sem controle de alerta.
   - `pages/ComboResultsPage.tsx`, `components/SaveFavoriteModal.tsx`, `lib/equityExecution.ts`: "Salvar nos Favoritos" de ação/ETF, com a configuração e a duplicata.
-  - `lib/assetSelection.ts` (Combo), `lib/discoveryMulticlass.ts`, `pages/DiscoveryPage.tsx`: saem os textos de recusa, e o destino passa a ser 1 estrela.
+  - `lib/assetSelection.ts` (Combo), `lib/discoveryMulticlass.ts`, `pages/DiscoveryPage.tsx`: saem os textos de recusa, e o destino passa a ser Favoritos sem estrela.
   - `components/telegram/TelegramAlertsForm.tsx`: texto do Perfil sobre a origem dos alertas.
 - APIs:
   - `GET /api/opportunities/` inclui ação e ETF e ganha `asset_class`, `currency`, `configuration`, `market_state` e `notify_telegram` por linha.
@@ -121,6 +123,6 @@ Como usuário, quero favoritar e acompanhar estratégias de ações/ETFs, recebe
   - tabela nova de estado por favorito, semeada do estado por par;
   - tabela nova de saúde do dado por ativo;
   - `monitor_telegram_alerts` ganha `favorite_id` e `event_key`, com índice único parcial;
-  - o default de `notify_telegram` passa a ser falso, e as marcas de quem não é admin são zeradas.
-- Operação: o timer diário (08:05 BRT) continua o mesmo. Alan decidiu manter só a passada das 08:05. Alertas de sinal e avisos de atraso da varredura não passam pelo limite de mensagens por hora; o limite fica só no aviso de falha da carteira Binance.
+  - `20261027_0001`: o default de `notify_telegram` volta a ser verdadeiro (alerta ligado por padrão); a estrela automática de lote e Descoberta que ainda está em 1 sai (d2-1); o alerta de todos os favoritos fica ligado (d2-2); semente do estado dos favoritos que passam a alertar. (A migração anterior, `20261026_0001`, já aplicada no DEV, deixou o default falso e zerou as marcas de quem não é admin.)
+- Operação: o timer diário (08:05 BRT) continua o mesmo. Alan decidiu manter só a passada das 08:05. Alertas de sinal e avisos de atraso da varredura não passam pelo limite de mensagens por hora; com o fim do aviso de falha da carteira Binance, o limite fica sem uso na varredura (remoção depois do archive).
 - Dependências: #1117 a #1121 em `develop`. O #1124 (posição real de ação/ETF) e o #1126 (migração da fonte antiga) dependem deste card.

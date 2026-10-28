@@ -304,11 +304,8 @@ export function formatFavoriteRefreshStatus(fav: FavoriteRefreshInput): RefreshS
   return { label: 'Backtest aguardando atualização', className: 'pending' }
 }
 
-/** "Alertar" ligado num ação/ETF fora da carteira: não sai alerta (decisão 6 do card #1122). */
-export const OUTSIDE_PORTFOLIO_WARNING = 'Fora da carteira: sem alerta.'
-
-export function alertarLabel(active: boolean): string {
-  return active ? 'Alertar no Telegram: ligado' : 'Alertar no Telegram: desligado'
-}
+/** Card #1122 (d2, decisão 19): a estrela é a porta do Monitor e do alerta; Favoritos não tem "Alertar". */
+export const MONITOR_STAR_HELP =
+  'Com pelo menos 1 estrela, a estratégia entra no Monitor e manda alerta no Telegram, ligado por padrão (desligue no Monitor). Sem estrela, fica só aqui; lote e Descoberta salvam sem estrela.'
 
 export const FILTER_EMPTY_LOTE = 'Nenhuma estratégia com estes filtros. Troque a classe ou limpe os filtros.'

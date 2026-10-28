@@ -345,23 +345,34 @@ export function modalSampleText(row: MulticlassRow): string {
   return `Amostra ${row.snapshot_id.replace(/^snap[-_]?/i, '').slice(0, 8)} · guardada enquanto o favorito existir · Direção ${direction}`
 }
 
-/** Card #1122: ação e ETF também viram favorito tier 3 (1 estrela), como a cripto. */
+/** Card #1122 (d2, decisão 12): a Descoberta promove a favorito sem estrela, em qualquer classe. */
 export function promotionTitle(_cls: AssetClass): string {
-  return 'Promover a favorito tier 3'
+  return 'Promover a favorito'
 }
 
-export const PROMOTION_DESTINATION = 'Tier 3 · observação'
+export const PROMOTION_DESTINATION = 'Favoritos · sem estrela'
 
-/** Nota do destino: ação/ETF ganha a configuração e como passar a receber no Telegram. */
+/** Estado da linha promovida (Decidir e parciais do Acompanhar). */
+export const PROMOTED_LABEL = 'Em Favoritos'
+
+/** Nota do destino: fora do Monitor até ganhar estrela (ação/ETF com a configuração). */
 export function promotionDestinationNote(cls: AssetClass): string {
+  const where = isEquityClass(cls)
+    ? 'Onde ver depois: Favoritos, sem estrela e fora do Monitor, com a configuração Binance Ações. '
+    : 'Onde ver depois: Favoritos, sem estrela e fora do Monitor. '
+  return (
+    where +
+    'Para acompanhar no Monitor e receber no Telegram, dê pelo menos 1 estrela lá. ' +
+    'Reversível: retire o favorito; o histórico da varredura fica.'
+  )
+}
+
+/** Aviso de sucesso da promoção. */
+export function promotionSuccessText(symbol: string, cls: AssetClass, favoriteId: string | null, sweepId: string): string {
   if (isEquityClass(cls)) {
-    return (
-      'Onde ver depois: Favoritos → Tier 3, com a configuração Binance Ações. ' +
-      'Para receber no Telegram, marque "Alertar" lá e marque o ativo como "No portfólio" no Monitor. ' +
-      'Reversível: retire o favorito; o histórico da varredura fica.'
-    )
+    return `${symbol} entrou em Favoritos sem estrela, com classe, moeda, configuração, precisão, convenções, janela e amostra desta execução.`
   }
-  return 'Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica.'
+  return `${symbol} entrou em Favoritos sem estrela${favoriteId ? ` (favorito ${favoriteId})` : ''}, com origem #${sweepId}.`
 }
 
 // --- Filtro Classe e cabeçalho do Decidir --------------------------------------------------------------------------

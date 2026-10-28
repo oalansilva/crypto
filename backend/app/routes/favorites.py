@@ -8,7 +8,13 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from app.database import get_db
-from app.models import ComboTemplate, FavoriteStrategy, MonitorStrategyPreference, User
+from app.models import (
+    ComboTemplate,
+    FavoriteStrategy,
+    MonitorFavoriteAlertState,
+    MonitorStrategyPreference,
+    User,
+)
 from app.middleware.authMiddleware import (
     ADMIN_EMAILS,
     get_current_admin,
@@ -1397,8 +1403,9 @@ def create_favorite(
         payload["data_source"] = configuration.data_source
         payload["session"] = configuration.session
         payload["adjustment"] = configuration.adjustment
-        # Card #1122 (decisão 2 de Alan): todo favorito novo nasce sem "Alertar".
-        payload["notify_telegram"] = False
+        # Card #1122 (d2, decisão 3): o favorito nasce sem estrela e com o alerta ligado (só vale
+        # depois que o dono der a estrela).
+        payload["notify_telegram"] = True
 
         db_favorite = FavoriteStrategy(user_id=current_user_id, **payload)
         db.add(db_favorite)
@@ -1442,6 +1449,12 @@ def create_favorite(
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
+def _alerts_from_monitor(favorite: FavoriteStrategy) -> bool:
+    """Estratégia no Monitor (com estrela) e com o alerta ligado: a que a varredura avalia."""
+
+    return favorite.tier in (1, 2, 3) and bool(favorite.notify_telegram)
+
+
 @router.patch("/{favorite_id}", response_model=FavoriteStrategyResponse)
 def update_favorite(
     favorite_id: int,
@@ -1478,11 +1491,16 @@ def update_favorite(
                 detail="Common users can update only their own star tier for admin favorites",
             )
 
+    alerting_before = _alerts_from_monitor(favorite)
     if "tier" in updates:
         tier_val = updates["tier"]
         if tier_val is not None and tier_val not in (1, 2, 3):
             raise HTTPException(status_code=400, detail="Tier must be 1, 2, 3 or null (Sem tier)")
         if owns_favorite:
+            # Card #1122 (d2, decisão 3): dar a primeira estrela põe no Monitor com o alerta
+            # ligado, na mesma gravação; trocar entre 1, 2 e 3 estrelas não mexe no alerta.
+            if favorite.tier not in (1, 2, 3) and tier_val is not None:
+                favorite.notify_telegram = True
             favorite.tier = tier_val
         else:
             _upsert_strategy_tier_preference(
@@ -1498,9 +1516,24 @@ def update_favorite(
         favorite.notes = update_data.notes
     if update_data.notify_telegram is not None:
         favorite.notify_telegram = bool(update_data.notify_telegram)
+    if owns_favorite and _alerts_from_monitor(favorite) != alerting_before:
+        # A primeira leitura depois de a estratégia passar a alertar (estrela dada, alerta
+        # religado) é só base: o estado antigo não gera alerta de uma mudança de antes.
+        db.query(MonitorFavoriteAlertState).filter(
+            MonitorFavoriteAlertState.favorite_id == favorite.id
+        ).delete(synchronize_session=False)
 
     db.commit()
     db.refresh(favorite)
+    if "tier" in updates or "notify_telegram" in updates:
+        from app.routes.opportunity_routes import apply_favorite_update_to_cache
+
+        apply_favorite_update_to_cache(
+            current_user_id,
+            favorite.id,
+            notify_telegram=favorite.notify_telegram if owns_favorite else None,
+            tier_changed="tier" in updates,
+        )
     descriptions, display_names = _strategy_identities_for_rows(db, [favorite])
     return _favorite_response(
         favorite,

@@ -3,7 +3,7 @@
 Varredura sistemática de estratégias swing: preflight server-side, criação
 idempotente com snapshot imutável, máquina de estados completa, claim com
 lease, outbox at-least-once, leaderboard determinístico, deduplicação por
-identidade de estratégia e promoção exclusivamente tier 3.
+identidade de estratégia e promoção a favorito sem estrela (card #1122).
 """
 
 from __future__ import annotations
@@ -2129,7 +2129,7 @@ class DiscoveryService:
             matched = matched[offset : offset + limit]
         return matched, total, unfiltered_total
 
-    # --- Promoção tier 3 (spec discovery-promotion) -------------------------
+    # --- Promoção a favorito sem estrela (spec discovery-promotion) ----------
 
     def promote_result(
         self,
@@ -2142,6 +2142,14 @@ class DiscoveryService:
     ) -> tuple[dict[str, Any], int]:
         from app.models_discovery import DiscoveryIdempotency
         from app.services.favorite_uniqueness import lock_and_find_duplicate
+
+        # Card #1122 (d2, decisão 12): a promoção cria o favorito sem estrela; pedido com
+        # qualquer tier é recusado e nada muda.
+        if "tier" in payload:
+            return {
+                "error": "tier not allowed",
+                "detail": "promoção sem estrela",
+            }, 422
 
         payload_hash = _payload_hash(payload)
         existing_idem = (
@@ -2191,13 +2199,6 @@ class DiscoveryService:
             )
         if effective_state == "already_promoted":
             return {"favorite_id": effective_ref, "result_id": result.id}, 200
-
-        tier = payload.get("tier")
-        if tier != 3:
-            return {
-                "error": "tier must be 3",
-                "detail": "promoção exclusivamente tier 3",
-            }, 422
 
         # Lock transacional por identidade de estratégia (spec discovery-deduplication).
         lock_key = int(hashlib.sha256(result.strategy_identity_key.encode()).hexdigest()[:16], 16)
@@ -2343,9 +2344,10 @@ class DiscoveryService:
             timeframe=result.timeframe,
             strategy_name=result.template_id,
             parameters=favorite_parameters,
-            # Card #1122 (decisão 12): tier 3 em qualquer classe e sem "Alertar" (decisão 2 de Alan).
-            tier=3,
-            notify_telegram=False,
+            # Card #1122 (d2, decisão 12): sem estrela em qualquer classe (fora do Monitor e sem
+            # alerta até o dono dar a estrela); o alerta nasce ligado.
+            tier=None,
+            notify_telegram=True,
             data_source=identity["configuration"].data_source,
             session=identity["configuration"].session,
             adjustment=identity["configuration"].adjustment,
